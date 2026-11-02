@@ -188,40 +188,12 @@ class _Tokens {
   int get totalBillable => input + output + cacheRead + cacheCreation;
 }
 
-_Tokens _tokensOf(Map<String, Object?> raw) {
-  final input = _int(
-    raw['input_tokens'] ?? raw['inputTokens'] ?? raw['prompt_tokens'],
-  );
-  final output = _int(
-    raw['output_tokens'] ?? raw['outputTokens'] ?? raw['completion_tokens'],
-  );
-  final promptDetails = raw['prompt_tokens_details'];
-  final cached = _firstNonZero([
-    _int(raw['cache_read_input_tokens']),
-    _int(raw['prompt_cache_hit_tokens']),
-    _int(raw['cacheReadTokens']),
-    _int(raw['cached_tokens']),
-    if (promptDetails is Map) _int(promptDetails['cached_tokens']),
-  ]);
-  final cacheCreation = _firstNonZero([
-    _int(raw['cache_creation_input_tokens']),
-    _int(raw['prompt_cache_write_tokens']),
-    _int(raw['cacheWriteTokens']),
-  ]);
-  return _Tokens(
-    input: input,
-    output: output,
-    cacheRead: cached,
-    cacheCreation: cacheCreation,
-  );
-}
-
-int _firstNonZero(Iterable<int> values) {
-  for (final value in values) {
-    if (value != 0) return value;
-  }
-  return 0;
-}
+_Tokens _tokensOf(Map<String, Object?> raw) => _Tokens(
+  input: _int(raw['input_tokens']),
+  output: _int(raw['output_tokens']),
+  cacheRead: _int(raw['cache_read_input_tokens']),
+  cacheCreation: _int(raw['cache_creation_input_tokens']),
+);
 
 int _int(Object? raw) => raw is num ? raw.toInt() : 0;
 
