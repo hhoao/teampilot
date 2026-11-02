@@ -436,7 +436,7 @@ void main() {
     final provider = ManagedProvider(
       id: 'm1',
       name: 'Usage',
-      kind: ManagedProviderKind.balance,
+      kind: ManagedProviderKind.apiBalance,
       adapterId: 'http_json_mapping',
     );
 
@@ -522,12 +522,12 @@ class _BrokenVerifyVaultService extends VaultService {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [ ] **Step 3: Run the test to verify it fails**
 
 Run: `cd client && dart run tool/run_tests.dart test/services/vault/credential_capture_test.dart`
 Expected: FAIL — `Couldn't resolve the package 'teampilot/services/vault/credential_capture.dart'`.
 
-- [ ] **Step 3: Implement the capture service**
+- [ ] **Step 4: Implement the capture service**
 
 Create `client/lib/services/vault/credential_capture.dart`:
 
@@ -751,18 +751,18 @@ class VaultCredentialCapture {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [ ] **Step 5: Run the test to verify it passes**
 
 Run: `cd client && dart run tool/run_tests.dart test/services/vault/credential_capture_test.dart`
 Expected: `All tests passed!`
 
-- [ ] **Step 5: Analyze and commit**
+- [ ] **Step 6: Analyze and commit**
 
 Run: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings`
 Expected: 0 errors.
 
 ```bash
-git add client/lib/services/vault/credential_capture.dart client/test/services/vault/credential_capture_test.dart
+git add client/lib/services/vault/credential_capture.dart client/lib/services/vault/vault_service.dart client/test/services/vault/credential_capture_test.dart client/test/services/vault/vault_service_test.dart
 git commit -m "feat(vault): add credential capture with verify and rollback"
 ```
 
@@ -1863,7 +1863,7 @@ Append to `client/test/services/vault/credential_capture_test.dart` inside `main
     final provider = ManagedProvider(
       id: 'm1',
       name: 'Usage',
-      kind: ManagedProviderKind.balance,
+      kind: ManagedProviderKind.apiBalance,
       adapterId: 'http_json_mapping',
     );
     final result = await capture.captureManaged(provider, {'apiKey': 'a'});
@@ -1942,7 +1942,7 @@ void main() {
   final provider = ManagedProvider(
     id: 'm1',
     name: 'Usage',
-    kind: ManagedProviderKind.balance,
+    kind: ManagedProviderKind.apiBalance,
     adapterId: 'http_json_mapping',
   );
 
@@ -2704,7 +2704,7 @@ void main() {
       ManagedProvider(
         id: 'm1',
         name: 'Usage',
-        kind: ManagedProviderKind.balance,
+        kind: ManagedProviderKind.apiBalance,
         adapterId: 'http_json_mapping',
         credentialRef: 'managed-provider:m1',
       ),
