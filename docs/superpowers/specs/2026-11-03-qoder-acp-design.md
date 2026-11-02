@@ -18,10 +18,12 @@ Scope (locked with the user, 2026-11-03):
 - **Credentials: provider-isolated login (option 1).** Each provider row owns
   its own Qoder account. The machine's `~/.qoder` login is only a read-only
   fallback when no provider account exists.
-- Desktop local first. Android / SSH ACP stay out of scope for this phase
-  (same gates as existing personal ACP).
-- Personal sessions first. Registering `AcpCapability` is enough for the
-  mixed-seat gate later; no `stampMemberAcp` seed in this phase.
+- **Mixed-team ACP seats included.** Because Qoder is ACP-only, every mixed
+  Qoder member becomes an ACP seat wherever the existing mixed-seat gates
+  pass (local or SSH transport, not Android). TeamBus `teammate-bus` is
+  staged into the seat's `mcp.json` instead of `session/new`.
+- Desktop local first for personal sessions. Android ACP stays out of scope
+  for this phase (same gates as existing personal ACP).
 
 ## Evidence (local probe, qodercli 1.1.81)
 
@@ -99,7 +101,8 @@ Other CLI surface verified:
 | Headless | `capabilities/headless.dart` → `qodercli -p --output-format stream-json` |
 | History | ACP app-owned transcript (`acp-transcript.jsonl`). `AiHistoryCapability` is a stub: never call `session/load`. |
 | Usage | `capabilities/usage/session_usage.dart` — prompt-result `usage` + `_meta.quota`, zero-cost when absent |
-| Launch policy | ACP-only personal sessions: `AppSession.acp` inferred at create (Gemini/CodeBuddy branch), `willLaunchPersonalAcp` true on desktop. |
+| Launch policy | ACP-only personal sessions: `AppSession.acp` inferred at create (Gemini/CodeBuddy branch), `willLaunchPersonalAcp` true on desktop. Mixed seats: `CliTransportCapability(supported: {acp})` → `launchesAcpOnly` stamps every Qoder member ACP where the generic gates pass. |
+| Team seat MCP | `forwardSessionNewMcpServers = false`; `prepareTeamConnect` stages `teammate-bus` into `<config>/mcp.json` (the existing mixed-seat path, no TeamBus change). |
 
 No new `CliTool.qoderAcp`. No `if (cli == qoder)` in `AcpSessionRuntime` /
 `AcpChatRuntimeCubit`; quirks live on the capability and translator.
@@ -158,6 +161,24 @@ time. Machine login is never mutated.
   exits immediately without an `initialize` response, the CLI is treated as
   unsupported (guards against upstream removing the hidden flag).
 
+### Mixed-team seats
+
+Qoder seats reuse the existing mixed-team ACP path end to end:
+
+- `SessionMemberBinding.acp` is stamped by `stampMemberAcp` with
+  `launchesAcpOnly(CliTool.qoder) == true`, so a Qoder member is ACP whenever
+  `_memberAcpGates` passes — no new `_requestedMemberAcpSeed` switch arm.
+- Gates follow the generic mixed-seat rule: mixed team, member target is
+  local or SSH transport, not Android, `AcpCapability` present.
+- `shouldAttachMemberAcp` at connect time is the defense-in-depth gate; a
+  failed ACP attach does not fall back to PTY for that seat.
+- `teammate-bus` reaches the seat through `prepareTeamConnect` staging
+  (`<config>/mcp.json`), because `forwardSessionNewMcpServers = false`.
+  `AcpHostMcpPermission` keeps only teammate-bus auto-allowed under `ask`.
+- Seat chat, wake, and retry delivery use the existing
+  `ChatTab.memberAcpRuntimes` mapping; no TeamBus change.
+- Native teams never include Qoder (the CLI has no `--team-name` adapter).
+
 ## Provider & models
 
 - One built-in provider preset: **Qoder account** (OAuth, no API key). No
@@ -188,6 +209,10 @@ capability.
   for Qoder on desktop vs Android.
 - Auth-store tests: provider isolation, machine fallback, never writing to
   `~/.qoder`.
+- Mixed-seat tests: `stampMemberAcp` marks Qoder true on local/SSH mixed
+  targets and false on Android; `shouldAttachMemberAcp` false when the
+  binding is missing; `prepareTeamConnect` stages `teammate-bus` into
+  `mcp.json`.
 - `test/integration/qoder_acp_local_smoke_test.dart` (tag `integration`):
   real `qodercli --acp` through `productionAcpSpawner` +
   `AcpSessionRuntime`, one prompt turn; skipped when the binary or login is
@@ -204,9 +229,9 @@ capability.
 
 ## Out of scope (follow-ups)
 
-- Mixed-team ACP seats + `stampMemberAcp` seed
 - Native JSONL history parsing (`projects/*.jsonl`)
 - `loadSession` / resume via the CLI's own transcript
-- Android / SSH transports
+- Personal sessions on Android / SSH (mixed seats on SSH follow the generic
+  mixed-seat gate)
 - Custom / BYOK providers
 - Qoder private `_meta` (quota model breakdown, prompt queueing)
