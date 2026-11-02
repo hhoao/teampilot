@@ -75,11 +75,15 @@ typedef AcpTeamConnectPrepare =
     });
 
 /// Team staging result member attach passes into the ACP runtime start.
+///
+/// [remoteCliPath] is the CLI path resolved on the remote work plane; empty for
+/// local targets, where the host's shell factory owns the executable.
 typedef AcpTeamLaunchStaging = ({
   Map<String, String> env,
   List<acpd.McpServer> mcpServers,
   String workingDirectory,
   String memberConfigDir,
+  String remoteCliPath,
 });
 
 /// Thrown when TeamBus extra names teammate-bus but none of it maps to ACP.
@@ -119,6 +123,10 @@ Future<Map<String, String>> prepareAcpLaunchEnvironment({
 /// Does not call simple connect. When extra contains teammate-bus and
 /// [acpMcpServersFromExtra] yields nothing, throws before staging so attach
 /// fails instead of opening a silent seat.
+///
+/// Only local targets get the desktop `PATH` prepended: a remote seat runs on
+/// the work plane, whose `PATH` comes from the staged plan env (or the login
+/// shell) — injecting the desktop value would shadow the remote one.
 Future<AcpTeamLaunchStaging> prepareAcpTeamLaunchEnvironment({
   required AcpTeamConnectPrepare prepareTeamConnect,
   required AppSession session,
@@ -148,14 +156,16 @@ Future<AcpTeamLaunchStaging> prepareAcpTeamLaunchEnvironment({
   );
   final stagedCwd =
       prepared.shellLaunch.launchContext.workingDirectory?.trim() ?? '';
+  final remote = usesSshTransport(launchTarget.kind);
   return (
     env: {
-      'PATH': path ?? Platform.environment['PATH'] ?? '',
+      if (!remote) 'PATH': path ?? Platform.environment['PATH'] ?? '',
       ...prepared.shellLaunch.plan.env,
     },
     mcpServers: mcpServers,
     workingDirectory: stagedCwd.isNotEmpty ? stagedCwd : workingDirectory,
     memberConfigDir: prepared.shellLaunch.plan.memberConfigDir,
+    remoteCliPath: remote ? prepared.remoteCliPath.trim() : '',
   );
 }
 

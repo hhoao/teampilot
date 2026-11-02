@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import '../../../../models/app_session.dart';
 import '../../../../models/runtime_target.dart';
 import '../../../../models/team_config.dart';
@@ -194,7 +196,7 @@ class AcpRuntimeAttach {
     }
 
     final sshLaunch = remote
-        ? (sshLaunchFactory ?? _productionSshLaunch)(
+        ? (sshLaunchFactory ?? productionSshLaunch)(
             session: session,
             launchTarget: launchTarget,
           )
@@ -273,7 +275,8 @@ class AcpRuntimeAttach {
   /// session, then hands out exec channels over it. Keyed by [memberId] for
   /// team seats (matching [ChatTab.closeMemberSshSession]) and by
   /// `session.sessionId` for a personal remote session.
-  AcpSshLaunch _productionSshLaunch({
+  @visibleForTesting
+  AcpSshLaunch productionSshLaunch({
     required AppSession session,
     required RuntimeTarget launchTarget,
     String? memberId,
@@ -318,6 +321,7 @@ class AcpRuntimeAttach {
         !shouldAttachMemberAcp(
           session: session,
           memberId: member.id,
+          targetId: launchTarget.id,
         )) {
       return false;
     }
@@ -398,12 +402,15 @@ class AcpRuntimeAttach {
       );
     }
     final remote = usesSshTransport(launchTarget.kind);
+    final executable = remote
+        ? _remoteMemberExecutable(staged)
+        : _host.shellFactory.executableFor(cli);
     final sshLaunch = remote
         ? sshLaunchFactory?.call(
               session: session,
               launchTarget: launchTarget,
             ) ??
-            _productionSshLaunch(
+            productionSshLaunch(
               session: session,
               launchTarget: launchTarget,
               memberId: member.id,
@@ -434,7 +441,7 @@ class AcpRuntimeAttach {
     tab.teamBus?.markMemberRunning(member.id);
     _host.memberMaterializer.markMemberReady(session.sessionId, member.id);
     await cubit.start(
-      executable: _host.shellFactory.executableFor(cli),
+      executable: executable,
       sessionToolDir: _memberSessionToolDir(
         session,
         cli,
@@ -455,6 +462,19 @@ class AcpRuntimeAttach {
     _host.finishSessionConnect(session.sessionId);
     _host.updateTabRunning(tab.info.id);
     return true;
+  }
+
+  /// Remote seats must spawn the CLI that exists on the work plane. The
+  /// personal path logs and falls back to the local path; a team seat has no
+  /// equivalent safe fallback (the desktop binary is not on the remote host),
+  /// so an empty staged path fails the attach instead of spawning a missing
+  /// executable.
+  String _remoteMemberExecutable(AcpTeamLaunchStaging staged) {
+    final remoteCli = staged.remoteCliPath.trim();
+    if (remoteCli.isEmpty) {
+      throw StateError('ACP remote member requires a staged remote CLI path');
+    }
+    return remoteCli;
   }
 
   /// TeamBus idle fires when the seat becomes prompt-ready: the first

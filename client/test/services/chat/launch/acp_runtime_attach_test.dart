@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:acpd/acpd.dart' as acpd;
+import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/session/acp/acp_transport_wiring.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -11,6 +14,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
+import 'package:teampilot/repositories/ssh_credential_store.dart';
+import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_session_files.dart';
@@ -39,6 +44,7 @@ import 'package:teampilot/services/chat/team_bus/agent_node.dart';
 import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_gateway_port.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/acp.dart'
     show opencodeEnableQuestionToolEnvKey;
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
@@ -401,7 +407,134 @@ void main() {
     expect(sshLaunchBuilt, isTrue);
     expect(harness.tab.memberAcpRuntimes.keys, contains('lead'));
     expect(harness.runtime.started, isTrue);
+    // The member spawns the CLI staged on the remote work plane, never the
+    // desktop path, and the desktop PATH is not injected into the seat env.
+    expect(harness.runtime.executable, '/remote/bin/claude');
+    expect(harness.runtime.baseEnv['PATH'], isNot(Platform.environment['PATH']));
   });
+
+  test(
+    'attachMemberAcpRuntime fails loudly when a remote seat has no staged CLI',
+    () async {
+      final harness = _Harness(
+        prepareTeamRemoteCliPath: '',
+        sshLaunchFactory: ({required session, required launchTarget}) => (
+          profile: const SshProfile(
+            id: 'p1',
+            name: 'host',
+            host: 'host',
+            username: 'u',
+            authType: SshAuthType.password,
+          ),
+          openChannel: (_) async => throw UnimplementedError(),
+        ),
+      );
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        sessionTeam: 'team-1',
+        members: [
+          SessionMemberBinding(
+            rosterMemberId: 'lead',
+            taskId: 'task-lead',
+            cli: CliTool.claude,
+            acp: true,
+          ),
+        ],
+        memberTargets: const {'lead': 'ssh:p1'},
+        createdAt: 1,
+      );
+      final team = _mixedTeam();
+      final member = _lead();
+
+      await expectLater(
+        harness.service.attachMemberAcpRuntime(
+          _job(session, team, member),
+          session,
+          (team: team, member: member, cli: CliTool.claude),
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            contains('remote CLI path'),
+          ),
+        ),
+      );
+      expect(harness.runtime.started, isFalse);
+    },
+  );
+
+  test(
+    'production SSH launch keys member sessions by roster member id',
+    () async {
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())
+        ..setActiveWorkspaceId('w1');
+      final tab = ChatTab(
+        info: ChatTabInfo(id: 's1', title: 'S', subtitle: ''),
+        cliTeamName: '',
+      );
+      tabStore.registerSession(tab);
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'host',
+        host: 'host',
+        username: 'u',
+        authType: SshAuthType.password,
+      );
+      final clientFactory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async =>
+            _FailingExecClient(),
+      );
+      final host = _Host(
+        tabStore,
+        _RecordingMaterializer(tabStore: tabStore),
+        RuntimeTarget.local(),
+        shellFactory: _SshShellFactory(
+          profile: profile,
+          clientFactory: clientFactory,
+        ),
+      );
+      final attach = AcpRuntimeAttach(
+        host: host,
+        storage: fakeHomeStorage(),
+        workspaceById: (_) => null,
+        launchWorkTarget: (session, {memberId}) =>
+            RuntimeTarget.ssh('p1', label: 'host'),
+      );
+      final target = RuntimeTarget.ssh('p1', label: 'host');
+      final session = _mixedSession(acp: true);
+
+      // The fake client cannot build a real `SSHSession`, so `openChannel`
+      // fails after the member session is registered. That is enough: the key
+      // decision happens before the exec channel is opened.
+      Future<void> openChannel(String? memberId) async {
+        final launch = attach.productionSshLaunch(
+          session: session,
+          launchTarget: target,
+          memberId: memberId,
+        );
+        expect(launch.profile, profile);
+        await expectLater(
+          launch.openChannel('/remote/bin/claude'),
+          throwsA(isA<StateError>()),
+        );
+      }
+
+      await openChannel('lead');
+      await openChannel('builder');
+      await openChannel(null);
+
+      expect(
+        tab.memberSshSessions.keys.toSet(),
+        {'lead', 'builder', 's1'},
+        reason: 'team seats are keyed by member id; personal falls back to the '
+            'session id',
+      );
+    },
+  );
 
   test(
     'attachAcpRuntime wires the question bridge for a local personal seat',
@@ -653,6 +786,7 @@ class _Harness {
       'teammate-bus': {'type': 'http', 'url': 'http://127.0.0.1:9/mcp'},
     },
     this.gate,
+    this.prepareTeamRemoteCliPath = '/remote/bin/claude',
     RuntimeTarget? launchTarget,
     this.remoteStaging,
     this.sshLaunchFactory,
@@ -703,7 +837,7 @@ class _Harness {
                 ),
               ),
               warnings: const <String>[],
-              remoteCliPath: '',
+              remoteCliPath: prepareTeamRemoteCliPath,
             );
           },
       acpMemberExtraMcp: ({required session, required member}) => extra,
@@ -715,6 +849,7 @@ class _Harness {
 
   final Map<String, Map<String, Object?>> extra;
   final AcpMemberLifecycleGate? gate;
+  final String prepareTeamRemoteCliPath;
   final RuntimeTarget launchTarget;
   final AcpRemoteStagingBuilder? remoteStaging;
   final AcpSshLaunchFactory? sshLaunchFactory;
@@ -828,7 +963,10 @@ class _Host implements SessionLaunchHost {
     this._launchTarget, {
     this.gateway,
     this.seatLookup,
-  });
+    ChatSessionShellFactory? shellFactory,
+  }) : _shellFactory = shellFactory;
+
+  final ChatSessionShellFactory? _shellFactory;
 
   @override
   final ChatTabStore tabStore;
@@ -858,6 +996,7 @@ class _Host implements SessionLaunchHost {
 
   @override
   ChatSessionShellFactory get shellFactory =>
+      _shellFactory ??
       ChatSessionShellFactory(executableResolver: () => '/usr/bin/claude');
 
   @override
@@ -1001,4 +1140,95 @@ class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
 
   @override
   Future<void> close() async {}
+}
+
+/// Shell factory whose factory carries an SSH client factory and profile, so
+/// `AcpRuntimeAttach.productionSshLaunch` can run for real.
+class _SshShellFactory extends ChatSessionShellFactory {
+  _SshShellFactory({required this.profile, SshClientFactory? clientFactory})
+    : _clientFactory = clientFactory,
+      super(executableResolver: () => '/usr/bin/claude');
+
+  final SshProfile profile;
+  final SshClientFactory? _clientFactory;
+
+  @override
+  SshClientFactory? get sshClientFactory => _clientFactory;
+
+  @override
+  SshProfile? profileFor(RuntimeTarget target) => profile;
+}
+
+/// Authenticates instantly and fails on `execute`, which is enough to observe
+/// the per-seat key written before the exec channel opens.
+class _FailingExecClient extends SSHClient {
+  _FailingExecClient() : super(_FakeSSHSocket(), username: 'test');
+
+  @override
+  Future<void> get authenticated => Future.value();
+
+  @override
+  Future<void> ping() async {}
+
+  @override
+  Future<SSHSession> execute(
+    String command, {
+    Map<String, String>? environment,
+    SSHPtyConfig? pty,
+    SSHX11Config? x11,
+  }) async {
+    throw StateError('fake exec channel');
+  }
+}
+
+class _FakeSSHSocket implements SSHSocket {
+  final _inputController = StreamController<Uint8List>();
+  final _doneCompleter = Completer<void>();
+
+  @override
+  Stream<Uint8List> get stream => _inputController.stream;
+
+  @override
+  StreamSink<List<int>> get sink => _NoopSink();
+
+  @override
+  Future<void> get done => _doneCompleter.future;
+
+  @override
+  Future<void> flush() async {}
+
+  @override
+  Future<void> close() async {
+    if (!_doneCompleter.isCompleted) {
+      _doneCompleter.complete();
+    }
+    await _inputController.close();
+  }
+
+  @override
+  void destroy() {
+    if (!_doneCompleter.isCompleted) {
+      _doneCompleter.complete();
+    }
+    unawaited(_inputController.close());
+  }
+}
+
+class _NoopSink implements StreamSink<List<int>> {
+  @override
+  void add(List<int> data) {}
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {}
+
+  @override
+  Future<void> addStream(Stream<List<int>> stream) async {
+    await for (final _ in stream) {}
+  }
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  Future<void> get done async {}
 }
