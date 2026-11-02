@@ -743,11 +743,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
           .where((field) => field != credentialField)
           .toSet();
     }
-    final hasNewSecret = credentialValues.isNotEmpty;
-    final capture = hasNewSecret
-        ? context.read<VaultCredentialCapture>()
-        : null;
-    final unlockGate = hasNewSecret ? context.read<VaultUnlockGate>() : null;
     if (requiredSecretsToKeep.isNotEmpty) {
       final hasExisting = (current?.vaultEntryId?.trim().isNotEmpty ?? false)
           ? await _vaultHasRequiredSecrets(
@@ -837,20 +832,24 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final secretValues = _isLinkedProviderSource
         ? const <String, String>{}
         : credentialValues;
+    // Vault-backed rows need no pre-read: capture merges the owner entry.
+    // Reading it here would throw while the encrypted vault is locked, before
+    // the writer can prompt for unlock.
+    final existingValues = current == null
+        ? const <String, String>{}
+        : (current.vaultEntryId?.trim().isNotEmpty ?? false)
+        ? const <String, String>{}
+        : await _legacyManagedFields(secretStore, current.credentialRef);
+    if (!mounted) return;
     var persisted = next;
     try {
       if (secretValues.isNotEmpty) {
-        final existingValues = current == null
-            ? const <String, String>{}
-            : (current.vaultEntryId?.trim().isNotEmpty ?? false)
-            ? await capture!.existingManagedFields(current)
-            : await _legacyManagedFields(secretStore, current.credentialRef);
         persisted = await saveManagedProviderWithVault(
           provider: next,
           existingValues: existingValues,
           secretValues: secretValues,
-          capture: capture!,
-          unlockGate: unlockGate!,
+          capture: context.read<VaultCredentialCapture>(),
+          unlockGate: context.read<VaultUnlockGate>(),
           persist: (value) async {
             await cubit.upsert(value);
             if (cubit.state.errorCode != null) {
