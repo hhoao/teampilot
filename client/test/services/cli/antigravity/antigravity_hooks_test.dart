@@ -40,8 +40,7 @@ void main() {
   );
 
   Map<String, Object?> hooksJson(HookWriteResult result) =>
-      (jsonDecode(result.configFragments['hooks.json']! as String) as Map)
-          .cast<String, Object?>();
+      (result.configFragments['hooks.json']! as Map).cast<String, Object?>();
 
   group('event matrix', () {
     test('maps the six native events to normalised hook events', () {
@@ -91,7 +90,9 @@ void main() {
       );
       expect(result.warnings, isEmpty);
 
-      final json = result.configFragments['hooks.json']! as String;
+      final fragment = result.configFragments['hooks.json'];
+      expect(fragment, isA<Map<String, Object?>>());
+      final json = jsonEncode(fragment);
       expect(json, contains('"PreToolUse"'));
       expect(json, contains('"matcher":"run_command"'));
 
@@ -101,9 +102,12 @@ void main() {
       expect(group['matcher'], 'run_command');
       final inner = (group['hooks'] as List).single as Map;
       expect(inner['type'], 'command');
-      expect(inner['command'], '/hooks/teampilot-hook-guard.sh');
+      expect(inner['command'], '/hooks/teampilot-hook-guard-preToolUse.sh');
       expect(inner['timeout'], AntigravityHookWriter.defaultTimeoutSeconds);
-      expect(result.scripts.single.fileName, 'teampilot-hook-guard.sh');
+      expect(
+        result.scripts.single.fileName,
+        'teampilot-hook-guard-preToolUse.sh',
+      );
     });
 
     test('omits the matcher when blank and honours an explicit timeout', () {
@@ -128,6 +132,21 @@ void main() {
         result.scripts.single.content,
         contains('{"decision":"deny","reason":"TeamPilot hook policy"}'),
       );
+    });
+
+    test('deny reason quotes and backslashes stay valid JSON', () {
+      const reason = r'He said "no" to C:\temp';
+      const custom = AntigravityHookWriter(denyReason: reason);
+      final result = custom.render(
+        entries: [entry(policy: HookPolicy.deny)],
+        ctx: ctx,
+      );
+      final decision = RegExp(
+        r"DECISION='(.+)'",
+      ).firstMatch(result.scripts.single.content)!.group(1)!;
+      final decoded = jsonDecode(decision) as Map<String, Object?>;
+      expect(decoded['decision'], 'deny');
+      expect(decoded['reason'], reason);
     });
 
     test('allow policy injects {"decision":"allow"}', () {
@@ -232,7 +251,45 @@ void main() {
       );
       final hook = (hooksJson(result)['teampilot-guard'] as Map)
           .cast<String, Object?>();
-      expect(hook['PreToolUse'], hasLength(2));
+      final groups = hook['PreToolUse'] as List;
+      expect(groups, hasLength(2));
+
+      final scripts = result.scripts.map((s) => s.fileName).toList();
+      expect(scripts, [
+        'teampilot-hook-guard-preToolUse.sh',
+        'teampilot-hook-guard-preToolUse-2.sh',
+      ]);
+      final commands = groups.map((group) {
+        final hooks = (group as Map)['hooks'] as List;
+        return (hooks.single as Map)['command'];
+      }).toList();
+      expect(commands, [
+        '/hooks/teampilot-hook-guard-preToolUse.sh',
+        '/hooks/teampilot-hook-guard-preToolUse-2.sh',
+      ]);
+    });
+
+    test('fragments from two provisions merge into valid JSON', () {
+      final first = writer.render(
+        entries: [entry(id: 'a')],
+        ctx: ctx,
+      );
+      final second = writer.render(
+        entries: [entry(id: 'b', event: HookEvent.stop)],
+        ctx: ctx,
+      );
+      expect(first.configFragments['hooks.json'], isA<Map<String, Object?>>());
+      expect(second.configFragments['hooks.json'], isA<Map<String, Object?>>());
+
+      final merged = <String, Object?>{
+        ...hooksJson(first),
+        ...hooksJson(second),
+      };
+      final roundTrip = jsonDecode(jsonEncode(merged)) as Map<String, Object?>;
+      expect(
+        roundTrip.keys,
+        containsAll(<String>['teampilot-a', 'teampilot-b']),
+      );
     });
   });
 }

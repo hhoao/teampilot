@@ -74,6 +74,7 @@ final class AntigravityHookWriter implements HookCapability {
     final scripts = <GeneratedScript>[];
     final warnings = <String>[];
     final runner = ctx.runner;
+    final usedScriptFileNames = <String>{};
 
     for (final entry in entries) {
       final native = nativeEvent(entry.event);
@@ -89,7 +90,7 @@ final class AntigravityHookWriter implements HookCapability {
           ? null
           : entry.policy == HookPolicy.allow
           ? '{"decision":"allow"}'
-          : '{"decision":"deny","reason":"$denyReason"}';
+          : jsonEncode({'decision': 'deny', 'reason': denyReason});
 
       final action = entry.action;
       if (action is NativePluginHookAction) {
@@ -124,9 +125,11 @@ final class AntigravityHookWriter implements HookCapability {
           blockOnDecision: entry.blockOnDecision,
           dialect: runner?.dialect.name == 'powershell' ? 'powershell' : 'bash',
         );
-        final scriptFileName =
-            'teampilot-hook-${entry.id}'
-            '${runner?.dialect.scriptExtension ?? '.sh'}';
+        final scriptFileName = _uniqueScriptFileName(
+          'teampilot-hook-${entry.id}-${entry.event.name}',
+          runner?.dialect.scriptExtension ?? '.sh',
+          usedScriptFileNames,
+        );
         scripts.add(GeneratedScript(fileName: scriptFileName, content: glue));
         command = runner == null
             ? '${ctx.hooksDir}/$scriptFileName'
@@ -160,10 +163,27 @@ final class AntigravityHookWriter implements HookCapability {
       return HookWriteResult(scripts: scripts, warnings: warnings);
     }
     return HookWriteResult(
-      configFragments: {'hooks.json': jsonEncode(hooks)},
+      configFragments: {'hooks.json': hooks},
       scripts: scripts,
       warnings: warnings,
     );
+  }
+
+  /// Disambiguates scripts that share the same id + event (for example, two
+  /// user-library hooks on `PreToolUse`) so one provision never overwrites the
+  /// other's glue script.
+  static String _uniqueScriptFileName(
+    String base,
+    String extension,
+    Set<String> used,
+  ) {
+    var candidate = '$base$extension';
+    var index = 2;
+    while (!used.add(candidate)) {
+      candidate = '$base-$index$extension';
+      index++;
+    }
+    return candidate;
   }
 
   String? _innerCommand(
