@@ -4191,3 +4191,75 @@ the keychain grant is used.
 4. **Diagnostics.** Log only the error type when the vault read fails
 (`AppLogger.instance.w('[connect-relay] vault grant read failed: ${error.runtimeType}')`),
 so a locked or corrupt vault is distinguishable from a missing grant.
+
+### Task 11 correction follow-up
+
+The importer's convergence path (an owner already references an entry) must
+verify before deleting, and ref sharing must be respected.
+
+1. **SSH convergence.** For a profile with `vaultEntryId`:
+
+```dart
+final entryId = profile.vaultEntryId?.trim() ?? '';
+if (entryId.isNotEmpty) {
+  final entry = await _vault.get(entryId);
+  final hasSecret = entry != null &&
+      (profile.authType == SshAuthType.password
+          ? (entry.fields['password'] ?? '').isNotEmpty
+          : (entry.fields['privateKey'] ?? '').isNotEmpty ||
+              (entry.fields['passphrase'] ?? '').isNotEmpty);
+  if (hasSecret) {
+    await _sshCredentials.deleteAll(profile.id);
+    continue;
+  }
+  // Dangling/incomplete link: fall through and re-capture from the keychain.
+}
+```
+
+2. **Managed convergence and ref sharing.** Before deleting a legacy ref,
+require every provider that shares it to have a vault entry with non-empty
+fields:
+
+```dart
+final refOwners = <String, int>{};
+for (final provider in providers) {
+  final ref = provider.credentialRef?.trim() ?? '';
+  if (ref.isNotEmpty) refOwners[ref] = (refOwners[ref] ?? 0) + 1;
+}
+```
+
+Track `verifiedRefs` (refs whose owners all have non-empty
+`existingManagedFields`) and delete a ref after the catalog save only when
+`verifiedRefs[ref] == refOwners[ref]`. For a provider with `vaultEntryId`
+whose entry has no fields, fall through and re-capture from its ref.
+
+3. **`invalidReference` is not a failure.** In both the managed read and
+delete paths, catch `ManagedProviderCredentialError` and ignore
+`ManagedProviderCredentialErrorCode.invalidReference` (a free-text ref that
+can never address stored data); rethrow other codes.
+
+4. **GitHub convergence.** Add to `GithubCredentialsStore`:
+
+```dart
+  Future<void> clearLegacyCopy() async {
+    await _clearLegacy();
+  }
+```
+
+When `storedVaultEntryId()` is non-null and `readStored()` returns a token,
+call `clearLegacyCopy()` so a stale plaintext token cannot survive marker=1.
+
+5. **Verify the managed catalog save.** After `_managedProviders.save(updated)`,
+reload and require `vaultEntryId` non-empty for every captured provider
+before deleting refs; otherwise count a failure and skip deletions.
+
+6. **Test the convergence branches.** Add:
+   - linked SSH profile with empty keychain → entry keeps its value, no delete;
+   - dangling SSH link + keychain secret → re-captured, legacy deleted;
+   - two managed providers sharing a ref, one fails → ref not deleted;
+   - linked managed provider with an existing entry → ref deleted after save;
+   - capture failure in one category does not stop the others (marker 0).
+
+7. Replace the vacuous managed-delete assertion with
+`expect((await managedSecrets.read(ref)).isEmpty, isTrue)` or an explicit
+missing-scope assertion.
