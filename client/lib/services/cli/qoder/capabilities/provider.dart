@@ -6,6 +6,7 @@ import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_action_result.dart';
 import '../../../../models/credential_probe.dart';
 import '../../../../models/team_config.dart';
+import '../../../../utils/logging/logger_utils.dart';
 import '../../../../utils/team/team_member_naming.dart';
 import '../../../chat/launch/staging/manifest/work_plane_paths.dart';
 import '../../../io/filesystem.dart';
@@ -64,6 +65,7 @@ final class QoderProviderCapability extends CatalogModelCapability
       fs: home.fs,
       basePath: home.paths.basePath,
       pathContext: home.fs.pathContext,
+      machineHome: home.home,
     );
   }
 
@@ -228,10 +230,21 @@ final class QoderProviderCapability extends CatalogModelCapability
     );
     await delegate.fs.ensureDir(configDir);
     final providerId = ctx.member?.provider.trim() ?? '';
-    await _authStore?.seedSessionAuth(
+    final authStore = _authStore;
+    if (authStore == null) {
+      AppLogger.instance.w(
+        'qoder: auth store unavailable; session .auth not seeded '
+        '(provider "$providerId")',
+      );
+    } else if (!await authStore.seedSessionAuth(
       providerId: providerId,
       sessionConfigDir: configDir,
-    );
+    )) {
+      AppLogger.instance.w(
+        'qoder: session .auth not seeded; the session will need a sign-in '
+        '(provider "$providerId")',
+      );
+    }
     final environment = <String, String>{configDirEnvKey: configDir};
 
     final settingsPath = delegate.joinWork(configDir, 'settings.json');
