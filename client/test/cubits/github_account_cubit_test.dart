@@ -23,6 +23,26 @@ class InMemorySecureKeyValueStore implements SecureKeyValueStore {
   Future<void> write(String key, String value) async => values[key] = value;
 }
 
+/// A store whose vault paths always fail, as when the vault cannot initialize.
+class _ThrowingStore extends GithubCredentialsStore {
+  _ThrowingStore() : super(kv: InMemorySecureKeyValueStore());
+
+  @override
+  Future<void> migrateLegacyHubPublishTokenIfNeeded() async {
+    throw StateError('vault unavailable');
+  }
+
+  @override
+  Future<GithubCredentialsSnapshot?> readStored() async {
+    throw StateError('vault unavailable');
+  }
+
+  @override
+  Future<String?> resolveToken() async {
+    throw StateError('vault unavailable');
+  }
+}
+
 /// A vault that always reports itself locked, so every mutating store call
 /// fails unless the caller unlocks it.
 class _LockedVault implements VaultService {
@@ -219,6 +239,15 @@ void main() {
         isFalse,
       );
       expect(kv.values['teampilot.github.v1.token'], 'ghp_legacy');
+    });
+
+    test('emits disconnected when the store throws', () async {
+      final cubit = createCubit(store: _ThrowingStore());
+      addTearDown(cubit.close);
+
+      await cubit.hydrate();
+
+      expect(cubit.state.status, GithubAccountStatus.disconnected);
     });
   });
 

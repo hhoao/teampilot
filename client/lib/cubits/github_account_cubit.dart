@@ -112,9 +112,16 @@ class GithubAccountCubit extends Cubit<GithubAccountState> {
   int _connectGeneration = 0;
 
   Future<void> hydrate() async {
-    await _store.migrateLegacyHubPublishTokenIfNeeded();
+    GithubCredentialsSnapshot? stored;
+    try {
+      await _store.migrateLegacyHubPublishTokenIfNeeded();
+      stored = await _store.readStored();
+    } on Object {
+      // A locked or unavailable vault must not break boot; fall through to the
+      // env resolution and the disconnected state below.
+      stored = null;
+    }
 
-    final stored = await _store.readStored();
     if (stored != null) {
       var login = stored.login;
       if (login == null || login.isEmpty) {
@@ -146,7 +153,7 @@ class GithubAccountCubit extends Cubit<GithubAccountState> {
       return;
     }
 
-    final token = await _store.resolveToken();
+    final token = await _resolveHydrationToken();
     if (token != null && token.isNotEmpty) {
       emit(
         state.copyWith(
@@ -171,6 +178,16 @@ class GithubAccountCubit extends Cubit<GithubAccountState> {
         clearErrorMessage: true,
       ),
     );
+  }
+
+  /// Token fallback for hydration; a vault failure resolves to "no token"
+  /// instead of leaving an unhandled error at boot.
+  Future<String?> _resolveHydrationToken() async {
+    try {
+      return await _store.resolveToken();
+    } on Object {
+      return null;
+    }
   }
 
   Future<void> connect() async {
