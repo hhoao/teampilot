@@ -1232,7 +1232,15 @@ Future<AppShell> buildAppShell({
         onProviderDeletedCredentialCleanup: (provider) async {
           final vaultEntryId = provider.vaultEntryId?.trim() ?? '';
           if (vaultEntryId.isNotEmpty) {
-            await vaultService.delete(vaultEntryId);
+            try {
+              await vaultService.delete(vaultEntryId);
+            } on Object catch (error, stackTrace) {
+              appLogger.w(
+                'Vault entry cleanup failed for managed provider ${provider.id}',
+                error: error,
+                stackTrace: stackTrace,
+              );
+            }
           }
           final ref = provider.credentialRef?.trim();
           if (ref != null && ref.isNotEmpty) {

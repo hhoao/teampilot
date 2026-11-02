@@ -158,4 +158,20 @@ void main() {
     expect(await service.verifyFields('a', {'token': 'other'}), isFalse);
     expect(await service.verifyFields('missing', {'token': 't'}), isFalse);
   });
+
+  test('writes before initialize are rejected without touching the store', () async {
+    final store = _FakeStore();
+    final service = buildService(store: store);
+    await expectLater(
+      service.upsert(
+        const VaultEntry(id: 'a', type: VaultEntryType.token, title: 'A'),
+      ),
+      throwsA(isA<VaultStorageException>()),
+    );
+    await expectLater(
+      service.delete('a'),
+      throwsA(isA<VaultStorageException>()),
+    );
+    expect(store.values, isEmpty);
+  });
 }
