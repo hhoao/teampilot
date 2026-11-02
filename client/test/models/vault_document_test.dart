@@ -23,4 +23,26 @@ void main() {
       throwsA(isA<FormatException>()),
     );
   });
+
+  test('legacy import marker round-trips and defaults to zero', () {
+    const document = VaultDocument(legacyImportVersion: 1);
+    expect(document.toJson()['legacyImportVersion'], 1);
+    expect(VaultDocument.fromJson(document.toJson()).legacyImportVersion, 1);
+    expect(
+      const VaultDocument().legacyImportVersion,
+      0,
+      reason: 'old documents have no marker',
+    );
+    expect(
+      VaultDocument.fromJson({'version': 1, 'entries': []}).legacyImportVersion,
+      0,
+    );
+  });
+
+  test('marker does not disturb entry equality', () {
+    expect(
+      const VaultDocument(legacyImportVersion: 1),
+      isNot(const VaultDocument(legacyImportVersion: 0)),
+    );
+  });
 }
