@@ -33,7 +33,7 @@ bool readAcpDefault(BuildContext context, CliTool? cli) {
 bool readClaudeAcpDefault(BuildContext context) =>
     readAcpDefault(context, CliTool.claude);
 
-/// Current settings default for "personal Codex uses ACP"; true when the
+/// Current settings default for "this CLI uses ACP"; true when the
 /// preferences cubit is not in scope (matches [SessionPreferences] default).
 bool readCodexAcpDefault(BuildContext context) =>
     readAcpDefault(context, CliTool.codex);

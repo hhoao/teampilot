@@ -32,7 +32,7 @@ typedef AutomationSessionLookup =
 
 int _automationDefaultNowMs() => DateTime.now().millisecondsSinceEpoch;
 
-bool _defaultPersonalAcpDefaultFor(CliTool cli) => true;
+bool _defaultAcpDefaultFor(CliTool cli) => true;
 
 class AutomationDispatcher {
   AutomationDispatcher({
@@ -63,7 +63,7 @@ class AutomationDispatcher {
        _teamById = teamById,
        _resolveCliPreset = resolveCliPreset,
        _sessionById = sessionById,
-       _acpDefaultFor = acpDefaultFor ?? _defaultPersonalAcpDefaultFor,
+       _acpDefaultFor = acpDefaultFor ?? _defaultAcpDefaultFor,
        _nowMs = nowMs ?? _automationDefaultNowMs,
        _memberReadyTimeout = memberReadyTimeout,
        _runDeliveryInFlight = runDeliveryInFlight;
