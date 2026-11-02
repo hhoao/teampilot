@@ -4130,3 +4130,64 @@ initialization failure never leaves an unhandled async error at boot.
 3. Store test: dangling pointer + legacy hub token only → returns the legacy
 token and does not delete it. Cubit test: a store that throws from
 `readStored` still emits disconnected on hydrate.
+
+### Task 10 correction follow-up
+
+1. **Security: `relayGrant` must be masked.** Add `'relayGrant'` to
+   `VaultEntryType.sshPassword.secretFields` and
+   `VaultEntryType.sshPrivateKey.secretFields` in
+   `client/lib/models/vault_entry.dart`, plus a model test asserting
+   `isSecretField('relayGrant')` is true for both types and that the detail
+   view masks it.
+2. **Fallback coverage.** In `paired_relay_tunnel_registry_test.dart` add:
+   - a vault whose `readField` throws (locked) plus a keychain grant → returns
+     the keychain grant;
+   - a linked entry without a `relayGrant` plus a keychain grant → keychain
+     grant;
+   - `vault == null` → keychain grant.
+3. **Pin `ensureSshTunnel` to the vault grant.** Add an end-to-end test with a
+   fake tunnel:
+
+```dart
+class _RecordingTunnel extends PhoneRelayTunnel {
+  String? grant;
+  bool opened = false;
+
+  @override
+  bool get isClosed => !opened;
+
+  @override
+  InternetAddress get address => InternetAddress.loopbackIPv4;
+
+  @override
+  int get port => 1234;
+
+  @override
+  Future<void> open({
+    required Uri relayUrl,
+    required String hostId,
+    required String channel,
+    String? deviceId,
+    String? inviteToken,
+    String? relayGrant,
+  }) async {
+    opened = true;
+    grant = relayGrant;
+  }
+
+  @override
+  Future<void> close() async {
+    opened = false;
+  }
+}
+```
+
+Seed `InMemorySshCredentialStore.saveDevicePrivateKey` with the ed25519 PEM
+fixture from `client/test/services/connect/embedded_ssh_server_test.dart`,
+seed the vault entry's `relayGrant`, construct the registry with the fake
+factory, call `ensureSshTunnel(profile)`, and assert
+`tunnel.grant == 'vault-grant'`. Add a second case where the vault throws and
+the keychain grant is used.
+4. **Diagnostics.** Log only the error type when the vault read fails
+(`AppLogger.instance.w('[connect-relay] vault grant read failed: ${error.runtimeType}')`),
+so a locked or corrupt vault is distinguishable from a missing grant.
