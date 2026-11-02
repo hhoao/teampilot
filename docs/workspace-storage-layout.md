@@ -52,6 +52,11 @@ rebind the home plane to a remote host, and the vault must not follow it. The de
 backend is the OS keychain (`teampilot.vault.v1.document`); after enabling encryption
 the document lives in `vault/vault.json`.
 
+Credentials are **vault-first**: SSH passwords/keys/relay grants, provider API keys,
+managed-provider (balance/usage) credentials and the GitHub token are captured into the
+vault on save. Legacy keychain entries and `providers.json` `apiKey` values are imported
+once in the background (marker: `VaultDocument.legacyImportVersion`) and then deleted.
+
 ## Workspace directory
 
 Each workspace is self-contained; deleting `workspace/workspaces/{workspaceId}/` removes manifest, bindings, sessions (metadata + bus + CLI runtime).

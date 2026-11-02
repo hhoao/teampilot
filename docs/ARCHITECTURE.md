@@ -271,7 +271,7 @@ Mixed-mode teams talk through `services/chat/team_bus/`: per-member mail JSONL, 
 | Event transport / presence | `services/event/` |
 | Workbench splits / tabs | `cubits/workbench/`, `services/workbench/` |
 | Generic terminal (workspace shell, not agent CLI) | `services/terminal/` (session still exists; agent PTY lives under `chat/runtime/pty/`) |
-| Credential vault (SSH/provider secrets) | `services/vault/` — `CredentialBackend` (keychain / encrypted file) and `VaultService`; SSH and providers read secrets only through `readField(entryId, field)` |
+| Credential vault (SSH/provider/usage/GitHub secrets) | `services/vault/` — `VaultCredentialCapture` (find-or-create + verify + rollback), `VaultLegacyImportService` (one-shot migration), `VaultUnlockGate`; owners keep explicit references and read secrets only through the vault |
 | Wire a new service | `app/app_shell.dart` |
 
 ## Routes (high level)
