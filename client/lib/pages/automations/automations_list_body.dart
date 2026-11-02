@@ -650,6 +650,7 @@ class AutomationRunHistoryRow extends StatelessWidget {
     final when = DateTime.fromMillisecondsSinceEpoch(run.scheduledForMs);
     final label = _statusLabel(l10n, run.status);
     final statusColor = _statusColor(cs, run.status);
+    final durationMs = run.durationMs;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -657,27 +658,48 @@ class AutomationRunHistoryRow extends StatelessWidget {
       color: cs.surfaceContainerLow,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: Text(
-                formatCoarseRelativeTime(l10n, when),
-                style: styles.lg,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    formatCoarseRelativeTime(l10n, when),
+                    style: styles.lg,
+                  ),
+                ),
+                if (run.exitCode != null) ...[
+                  const SizedBox(width: 12),
+                  Text(
+                    l10n.automationsExitCode(run.exitCode!),
+                    style: styles.smColored(cs.onSurfaceVariant),
+                  ),
+                ],
+                if (durationMs != null) ...[
+                  const SizedBox(width: 12),
+                  Text(
+                    _durationLabel(l10n, durationMs),
+                    style: styles.smColored(cs.onSurfaceVariant),
+                  ),
+                ],
+                const SizedBox(width: 12),
+                Text(label, style: styles.smSemiboldColored(statusColor)),
+              ],
             ),
-            if (run.exitCode != null) ...[
-              const SizedBox(width: 12),
-              Text(
-                l10n.automationsExitCode(run.exitCode!),
-                style: styles.smColored(cs.onSurfaceVariant),
-              ),
-            ],
-            const SizedBox(width: 12),
-            Text(label, style: styles.smSemiboldColored(statusColor)),
+            AutomationRunOutputBlock(run: run),
           ],
         ),
       ),
     );
+  }
+
+  String _durationLabel(AppLocalizations l10n, int durationMs) {
+    if (durationMs < 1000) {
+      return l10n.automationsRunDurationMilliseconds(durationMs);
+    }
+    return l10n.automationsRunDurationSeconds((durationMs / 1000).round());
   }
 
   String _statusLabel(AppLocalizations l10n, AutomationRunStatus status) {
@@ -709,5 +731,96 @@ class AutomationRunHistoryRow extends StatelessWidget {
       AutomationRunStatus.timedOut => cs.error,
       _ => cs.onSurface,
     };
+  }
+}
+
+/// Captured command output for one [AutomationRunHistoryRow]: runner error,
+/// stdout/stderr tails (monospace, scrollable), and the truncation notice.
+class AutomationRunOutputBlock extends StatelessWidget {
+  const AutomationRunOutputBlock({required this.run, super.key});
+
+  /// Tails are usually capped in the tens of KB; this keeps the history dialog
+  /// readable and lets a single noisy run scroll instead of pushing the rest
+  /// out of view.
+  static const double maxOutputHeight = 160;
+
+  final AutomationRun run;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final styles = TpTextStyles.of(context);
+    final stdout = run.stdoutTail?.trimRight() ?? '';
+    final stderr = run.stderrTail?.trimRight() ?? '';
+    final error = run.error?.trim() ?? '';
+    final hasOutput = stdout.isNotEmpty || stderr.isNotEmpty;
+    if (!hasOutput && error.isEmpty && !run.outputTruncated) {
+      return const SizedBox.shrink();
+    }
+
+    final monospace = styles.xs.copyWith(fontFamily: 'monospace', height: 1.4);
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (error.isNotEmpty)
+            Text(
+              l10n.automationsRunError(error),
+              style: styles.xsColored(cs.error),
+            ),
+          if (hasOutput) ...[
+            if (error.isNotEmpty) const SizedBox(height: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: maxOutputHeight),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (stdout.isNotEmpty) ...[
+                      Text(
+                        l10n.automationsRunStdout,
+                        style: styles.xsColored(cs.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        stdout,
+                        style: monospace.copyWith(color: cs.onSurface),
+                      ),
+                    ],
+                    if (stderr.isNotEmpty) ...[
+                      if (stdout.isNotEmpty) const SizedBox(height: 6),
+                      Text(
+                        l10n.automationsRunStderr,
+                        style: styles.xsColored(cs.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(stderr, style: monospace.copyWith(color: cs.error)),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if (run.outputTruncated) ...[
+            if (hasOutput || error.isNotEmpty) const SizedBox(height: 6),
+            Text(
+              l10n.automationsRunOutputTruncated,
+              style: styles.xsColored(cs.onSurfaceVariant),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }

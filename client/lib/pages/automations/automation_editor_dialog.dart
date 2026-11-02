@@ -475,6 +475,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
         catchUpPolicy: _catchUpOnce
             ? AutomationCatchUpPolicy.once
             : AutomationCatchUpPolicy.none,
+        projectFolderPath: projectFolderPath,
         workingDirectoryPath: workingDirectoryPath,
         message: '',
         preset: schedule.preset,

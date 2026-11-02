@@ -3690,6 +3690,33 @@
       }
     }
   },
+  "automationsRunStdout": "stdout",
+  "automationsRunStderr": "stderr",
+  "automationsRunError": "Error: {error}",
+  "@automationsRunError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "automationsRunDurationSeconds": "Took {seconds}s",
+  "@automationsRunDurationSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "automationsRunDurationMilliseconds": "Took {milliseconds} ms",
+  "@automationsRunDurationMilliseconds": {
+    "placeholders": {
+      "milliseconds": {
+        "type": "int"
+      }
+    }
+  },
+  "automationsRunOutputTruncated": "Output truncated",
   "automationsCommand": "Command",
   "automationsCommandHelp": "Runs only while TeamPilot is running. Missed runs older than the grace window are skipped unless catch-up is on.",
   "automationsCommandTimeout": "Timeout (seconds)",

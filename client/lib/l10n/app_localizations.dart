@@ -12824,6 +12824,42 @@ abstract class AppLocalizations {
   /// **'Exit code {code}'**
   String automationsExitCode(int code);
 
+  /// No description provided for @automationsRunStdout.
+  ///
+  /// In en, this message translates to:
+  /// **'stdout'**
+  String get automationsRunStdout;
+
+  /// No description provided for @automationsRunStderr.
+  ///
+  /// In en, this message translates to:
+  /// **'stderr'**
+  String get automationsRunStderr;
+
+  /// No description provided for @automationsRunError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {error}'**
+  String automationsRunError(String error);
+
+  /// No description provided for @automationsRunDurationSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Took {seconds}s'**
+  String automationsRunDurationSeconds(int seconds);
+
+  /// No description provided for @automationsRunDurationMilliseconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Took {milliseconds} ms'**
+  String automationsRunDurationMilliseconds(int milliseconds);
+
+  /// No description provided for @automationsRunOutputTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'Output truncated'**
+  String get automationsRunOutputTruncated;
+
   /// No description provided for @automationsCommand.
   ///
   /// In en, this message translates to:

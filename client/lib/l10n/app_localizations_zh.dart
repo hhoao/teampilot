@@ -6924,6 +6924,30 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get automationsRunStdout => '标准输出';
+
+  @override
+  String get automationsRunStderr => '标准错误';
+
+  @override
+  String automationsRunError(String error) {
+    return '错误：$error';
+  }
+
+  @override
+  String automationsRunDurationSeconds(int seconds) {
+    return '耗时 $seconds 秒';
+  }
+
+  @override
+  String automationsRunDurationMilliseconds(int milliseconds) {
+    return '耗时 $milliseconds 毫秒';
+  }
+
+  @override
+  String get automationsRunOutputTruncated => '输出已截断';
+
+  @override
   String get automationsCommand => '命令';
 
   @override

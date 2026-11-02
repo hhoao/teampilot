@@ -7209,6 +7209,30 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get automationsRunStdout => 'stdout';
+
+  @override
+  String get automationsRunStderr => 'stderr';
+
+  @override
+  String automationsRunError(String error) {
+    return 'Error: $error';
+  }
+
+  @override
+  String automationsRunDurationSeconds(int seconds) {
+    return 'Took ${seconds}s';
+  }
+
+  @override
+  String automationsRunDurationMilliseconds(int milliseconds) {
+    return 'Took $milliseconds ms';
+  }
+
+  @override
+  String get automationsRunOutputTruncated => 'Output truncated';
+
+  @override
   String get automationsCommand => 'Command';
 
   @override
