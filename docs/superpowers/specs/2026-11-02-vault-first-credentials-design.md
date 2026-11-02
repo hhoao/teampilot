@@ -1,7 +1,7 @@
 # Vault-First Credentials — Design
 
 Date: 2026-11-02
-Status: Approved for implementation planning
+Status: Implemented
 Supersedes: the opt-in linking UX in `2026-10-28-vault-credential-management-design.md` (storage model and crypto stay unchanged)
 
 ## 1. Background
