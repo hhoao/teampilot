@@ -154,6 +154,7 @@ import '../services/mcp/mcp_server_probe_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_connection_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
+import '../cubits/vault_cubit.dart';
 import '../cubits/termux_cubit.dart';
 import '../cubits/github_account_cubit.dart';
 import '../config/github_oauth_config.dart';
@@ -190,6 +191,9 @@ import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
 import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
+import '../services/vault/encrypted_vault_backend.dart';
+import '../services/vault/keychain_vault_backend.dart';
+import '../services/vault/vault_service.dart';
 import '../services/io/local_filesystem.dart';
 import '../services/connect/connect_agent.dart';
 import '../services/connect/authorized_keys_file.dart';
@@ -534,6 +538,8 @@ class AppShell {
     required this.appUpdateCubit,
     required this.remoteDownloadCatalogCubit,
     required this.sshProfileCubit,
+    required this.vaultService,
+    required this.vaultCubit,
     required this.termuxCubit,
     required this.homeStorageInvalidator,
     required this.homeInvalidationService,
@@ -656,6 +662,8 @@ class AppShell {
   final AppUpdateCubit appUpdateCubit;
   final RemoteDownloadCatalogCubit remoteDownloadCatalogCubit;
   final SshProfileCubit sshProfileCubit;
+  final VaultService vaultService;
+  final VaultCubit vaultCubit;
   final TermuxCubit termuxCubit;
   final HomeStorageInvalidator homeStorageInvalidator;
   final HomeInvalidationService homeInvalidationService;
@@ -787,6 +795,21 @@ Future<AppShell> buildAppShell({
   final sshCredentialStore = const SecureSshCredentialStore(
     FlutterSecureKeyValueStore(),
   );
+  final vaultService = VaultService(
+    keychainBackend: KeychainVaultBackend(const FlutterSecureKeyValueStore()),
+    encryptedBackend: EncryptedVaultBackend(
+      repository: deviceLocalVaultRepository(nativeAppDataPath),
+    ),
+  );
+  try {
+    await vaultService.initialize();
+  } on Object catch (error, stackTrace) {
+    appLogger.w(
+      '[vault] initialize failed: $error',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
   // Relay tunnels for paired (QR) SSH profiles: while a tunnel lives, every
   // dial for that profile rides the loopback port instead of the stored host.
   final pairedRelayTunnels = PairedRelayTunnelRegistry(
@@ -874,6 +897,7 @@ Future<AppShell> buildAppShell({
   reloadAllAppData;
 
   late final SshProfileCubit sshProfileCubit;
+  late final VaultCubit vaultCubit;
   late final HomeTargetController homeTargetController;
   late final HomeWorkspaceUiCache homeWorkspaceUiCache;
   sshProfileCubit = SshProfileCubit(
@@ -1055,6 +1079,12 @@ Future<AppShell> buildAppShell({
     'home context installed '
     '(${homeStorage.context.mode}, home=${homeTarget.id}, '
     'root=${homeStorage.appDataRoot})',
+  );
+
+  vaultCubit = VaultCubit(
+    service: vaultService,
+    sshProfiles: sshProfileRepo,
+    appProviders: AppProviderRepository(storage: homeStorage),
   );
 
   // Managed Providers belong to the home/control plane. Construct this graph
@@ -3376,6 +3406,8 @@ Future<AppShell> buildAppShell({
       appUpdateCubit: appUpdateCubit,
       remoteDownloadCatalogCubit: remoteDownloadCatalogCubit,
       sshProfileCubit: sshProfileCubit,
+      vaultService: vaultService,
+      vaultCubit: vaultCubit,
       termuxCubit: termuxCubit,
       homeStorageInvalidator: homeStorageInvalidator,
       homeInvalidationService: homeInvalidationService,

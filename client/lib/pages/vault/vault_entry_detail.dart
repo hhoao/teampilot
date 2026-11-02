@@ -4,7 +4,6 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/vault_cubit.dart';
 import '../../l10n/app_localizations.dart';
