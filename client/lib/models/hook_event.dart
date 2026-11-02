@@ -77,6 +77,10 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'sessionStart',
       ),
+      CliTool.antigravity: HookCliSupport(
+        supported: true,
+        nativeEvent: 'SessionStart',
+      ),
     },
     HookEvent.sessionEnd: {
       CliTool.claude: HookCliSupport(
@@ -123,6 +127,11 @@ abstract final class HookEventCapability {
         approximate: true,
         nativeEvent: 'chat.message',
       ),
+      CliTool.antigravity: HookCliSupport(
+        supported: true,
+        approximate: true,
+        nativeEvent: 'PreInvocation',
+      ),
     },
     HookEvent.preToolUse: {
       CliTool.claude: HookCliSupport(
@@ -146,6 +155,10 @@ abstract final class HookEventCapability {
         supported: true,
         approximate: true,
         nativeEvent: 'tool.execute.before',
+      ),
+      CliTool.antigravity: HookCliSupport(
+        supported: true,
+        nativeEvent: 'PreToolUse',
       ),
     },
     HookEvent.postToolUse: {
@@ -173,6 +186,10 @@ abstract final class HookEventCapability {
         supported: true,
         approximate: true,
         nativeEvent: 'tool.execute.after',
+      ),
+      CliTool.antigravity: HookCliSupport(
+        supported: true,
+        nativeEvent: 'PostToolUse',
       ),
     },
     HookEvent.postToolUseFailure: {
@@ -231,6 +248,7 @@ abstract final class HookEventCapability {
         approximate: true,
         nativeEvent: 'session.idle',
       ),
+      CliTool.antigravity: HookCliSupport(supported: true, nativeEvent: 'Stop'),
     },
     HookEvent.stopFailure: {
       CliTool.claude: HookCliSupport(

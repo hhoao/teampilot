@@ -6,6 +6,7 @@ import '../registry/capabilities/cli_executable_capability.dart';
 import '../registry/capabilities/cli_launch_security_capability.dart';
 import '../registry/capabilities/cli_session_capability.dart';
 import '../registry/capabilities/cli_transport_capability.dart';
+import '../registry/capabilities/hook_capability.dart';
 import '../registry/capabilities/mcp_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/plugin_capability.dart';
@@ -23,6 +24,7 @@ import 'capabilities/acp.dart';
 import 'capabilities/acp_settings.dart';
 import 'capabilities/defaults.dart';
 import 'capabilities/executable.dart';
+import 'capabilities/hook_writer.dart';
 import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import 'capabilities/provider.dart';
@@ -45,12 +47,15 @@ final class AntigravityCliTool implements CliToolDefinition {
     this.runtimeEvents = const AntigravityChatInteraction(),
     this.skill = const DefaultSkillCapability(),
     this.mcp = const AntigravityMcpCapability(),
+    this.hookWriter = const AntigravityHookWriter(),
     this.userExtraArgs = const UserExtraArgsProvider(),
     this.workspaceBaseInfo = const AntigravityWorkspaceBaseInfo(),
     this.launchSecurity = const AcpAskFullAccessCliLaunchSecurityCapability(),
     this.acp = const AntigravityAcpCapability(),
     this.acpSettings = const AntigravityAcpSettings(),
-    this.transport = const CliTransportCapability(supported: {CliTransport.acp}),
+    this.transport = const CliTransportCapability(
+      supported: {CliTransport.acp},
+    ),
   });
 
   final ProviderCapability provider;
@@ -64,6 +69,7 @@ final class AntigravityCliTool implements CliToolDefinition {
   final RuntimeEventCapability runtimeEvents;
   final SkillCapability skill;
   final McpCapability mcp;
+  final HookCapability hookWriter;
   final UserExtraArgsProvider userExtraArgs;
   final WorkspaceBaseInfoCapability workspaceBaseInfo;
   final CliLaunchSecurityCapability launchSecurity;
@@ -90,6 +96,7 @@ final class AntigravityCliTool implements CliToolDefinition {
     runtimeEvents,
     skill,
     mcp,
+    hookWriter,
     userExtraArgs,
     workspaceBaseInfo,
     launchSecurity,
