@@ -114,7 +114,9 @@ final class QoderSessionUsageCapability implements SessionUsageCapability {
         outputTokens: tokens.output,
         cacheReadTokens: tokens.cacheRead,
         cacheCreationTokens: tokens.cacheCreation,
-        inputSemantics: UsageInputSemantics.total,
+        // Qoder writes Anthropic-style usage: `input_tokens` already excludes
+        // the cache fields, so it is fresh input, not a cached-inclusive total.
+        inputSemantics: UsageInputSemantics.fresh,
         timestampMs: _timestampMs(obj['timestamp']),
         sessionId: ctx.sessionId,
         memberId: ctx.memberId,

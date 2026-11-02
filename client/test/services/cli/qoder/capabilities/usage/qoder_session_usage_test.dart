@@ -128,7 +128,8 @@ void main() {
     expect(event.outputTokens, 5);
     expect(event.cacheReadTokens, 2);
     expect(event.cacheCreationTokens, 3);
-    expect(event.inputSemantics, UsageInputSemantics.total);
+    expect(event.inputSemantics, UsageInputSemantics.fresh);
+    expect(event.freshInputTokens, 10);
     expect(
       event.timestampMs,
       DateTime.parse('2026-11-02T16:57:33.552Z').millisecondsSinceEpoch,
