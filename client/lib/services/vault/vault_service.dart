@@ -132,6 +132,38 @@ class VaultService {
     return (value == null || value.isEmpty) ? null : value;
   }
 
+  /// Verifies that [fields] are present with these values.
+  ///
+  /// Keychain mode reloads the backend, so this is a real persistence
+  /// round-trip. The encrypted backend does not retain the passphrase after
+  /// save, so it compares the in-memory document that the awaited save
+  /// already committed.
+  Future<bool> verifyFields(String entryId, Map<String, String> fields) async {
+    if (_locked) return false;
+    VaultDocument? source;
+    if (_encrypted) {
+      source = _document;
+    } else {
+      try {
+        source = await _keychainBackend.load();
+      } on Object {
+        return false;
+      }
+    }
+    VaultEntry? entry;
+    for (final candidate in source?.entries ?? const <VaultEntry>[]) {
+      if (candidate.id == entryId) {
+        entry = candidate;
+        break;
+      }
+    }
+    if (entry == null) return false;
+    for (final field in fields.entries) {
+      if (entry.fields[field.key] != field.value) return false;
+    }
+    return true;
+  }
+
   Future<void> enableEncryptedBackend(String passphrase) async {
     if (_encrypted) throw const VaultStorageException('alreadyEncrypted');
     final document = _requireDocument();

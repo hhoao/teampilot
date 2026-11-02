@@ -141,4 +141,21 @@ void main() {
     await reloaded.initialize();
     expect(reloaded.legacyImportVersion, 1);
   });
+
+  test('verifyFields reloads the keychain backend', () async {
+    final store = _FakeStore();
+    final service = buildService(store: store);
+    await service.initialize();
+    await service.upsert(
+      const VaultEntry(
+        id: 'a',
+        type: VaultEntryType.token,
+        title: 'A',
+        fields: {'token': 't'},
+      ),
+    );
+    expect(await service.verifyFields('a', {'token': 't'}), isTrue);
+    expect(await service.verifyFields('a', {'token': 'other'}), isFalse);
+    expect(await service.verifyFields('missing', {'token': 't'}), isFalse);
+  });
 }

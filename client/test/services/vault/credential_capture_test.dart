@@ -105,7 +105,10 @@ void main() {
       baseUrl: 'https://api.example.com',
     );
 
-    final result = await capture.captureProvider(provider);
+    final result = await capture.captureProvider(
+      provider,
+      apiKey: provider.apiKey,
+    );
     final entry = (await service.get(result.entryId))!;
     expect(entry.title, 'OpenAI');
     expect(entry.fields['apiKey'], 'sk-1');
@@ -114,9 +117,35 @@ void main() {
 
     await capture.captureProvider(
       provider.copyWith(name: 'OpenAI 2', apiKey: 'sk-2'),
+      apiKey: 'sk-2',
     );
     expect((await service.get(result.entryId))!.fields['apiKey'], 'sk-2');
     expect(await service.readField(result.entryId, 'apiKey'), 'sk-2');
+  });
+
+  test('capture preserves notes and provider key clear semantics', () async {
+    final service = await _service();
+    final capture = VaultCredentialCapture(vault: service);
+    const provider = AppProviderConfig(
+      id: 'p2',
+      cli: CliTool.codex,
+      name: 'Provider',
+    );
+
+    final created = await capture.captureProvider(provider, apiKey: 'k');
+    final entry = (await service.get(created.entryId))!;
+    await service.upsert(entry.copyWith(notes: 'hello'));
+
+    await capture.captureProvider(provider);
+    final kept = (await service.get(created.entryId))!;
+    expect(kept.fields['apiKey'], 'k');
+    expect(kept.notes, 'hello');
+
+    await capture.captureProvider(provider, apiKey: '');
+    expect(
+      (await service.get(created.entryId))!.fields.containsKey('apiKey'),
+      isFalse,
+    );
   });
 
   test('managed capture merges fields', () async {
@@ -146,38 +175,49 @@ void main() {
       source: 'oauth',
     );
     final entry = (await service.get(result.entryId))!;
+    expect(entry.type, VaultEntryType.token);
+    expect(entry.isSecretField('token'), isTrue);
     expect(entry.fields, {'token': 'ghp_x', 'login': 'me', 'source': 'oauth'});
     expect(entry.extra['ownerKind'], vaultOwnerKindGithub);
     expect(entry.extra['ownerId'], 'default');
   });
 
-  test(
-    'verify failure throws and rollback restores the previous entry',
-    () async {
-      final store = _FakeStore();
-      final service = await _service(store: store);
-      final capture = VaultCredentialCapture(vault: service);
-      final created = await capture.captureSsh(
-        passwordProfile,
-        password: 'old',
-      );
+  test('verify failure restores the previous entry', () async {
+    final store = _FakeStore();
+    final service = await _service(store: store);
+    final capture = VaultCredentialCapture(vault: service);
+    await capture.captureSsh(passwordProfile, password: 'old');
 
-      final broken = _BrokenReadBackVaultService(store);
-      await broken.initialize();
-      final brokenCapture = VaultCredentialCapture(vault: broken);
-      await expectLater(
-        brokenCapture.captureSsh(passwordProfile, password: 'new'),
-        throwsA(isA<VaultCaptureException>()),
-      );
+    final broken = _BrokenVerifyVaultService(store);
+    await broken.initialize();
+    final brokenCapture = VaultCredentialCapture(vault: broken);
+    await expectLater(
+      brokenCapture.captureSsh(passwordProfile, password: 'new'),
+      throwsA(isA<VaultCaptureException>()),
+    );
 
-      await capture.rollback(created);
-      expect(await service.list(), isEmpty);
-    },
-  );
+    final reloaded = await _service(store: store);
+    expect(
+      await reloaded.readField((await reloaded.list()).single.id, 'password'),
+      'old',
+    );
+  });
+
+  test('rollback of an update restores the previous fields', () async {
+    final store = _FakeStore();
+    final service = await _service(store: store);
+    final capture = VaultCredentialCapture(vault: service);
+    await capture.captureSsh(passwordProfile, password: 'old');
+    final updated = await capture.captureSsh(passwordProfile, password: 'new');
+    expect(updated.created, isFalse);
+
+    await capture.rollback(updated);
+    expect(await service.readField(updated.entryId, 'password'), 'old');
+  });
 }
 
-class _BrokenReadBackVaultService extends VaultService {
-  _BrokenReadBackVaultService(_FakeStore store)
+class _BrokenVerifyVaultService extends VaultService {
+  _BrokenVerifyVaultService(_FakeStore store)
     : super(
         keychainBackend: KeychainVaultBackend(store),
         encryptedBackend: EncryptedVaultBackend(
@@ -196,5 +236,6 @@ class _BrokenReadBackVaultService extends VaultService {
       );
 
   @override
-  Future<String?> readField(String entryId, String field) async => null;
+  Future<bool> verifyFields(String entryId, Map<String, String> fields) async =>
+      false;
 }
