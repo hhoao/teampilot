@@ -1150,6 +1150,7 @@ Future<AppShell> buildAppShell({
           // (later-constructed) cubit's load-order dependency. Same disk,
           // same cache-free reads.
           appProviders: AppProviderRepository(storage: homeStorage),
+          vault: vaultService,
         ),
         http: resolvedManagedProviderHttpClient!,
       );
@@ -1180,6 +1181,15 @@ Future<AppShell> buildAppShell({
     final entries = await resolvedManagedProviderRepository.load();
     final entry = entries.where((e) => e.id == link.trim()).firstOrNull;
     if (entry == null) return null;
+    final entryVaultEntryId = entry.vaultEntryId?.trim() ?? '';
+    if (entryVaultEntryId.isNotEmpty) {
+      final field = entry.endpointConfig.credentialField ?? 'apiKey';
+      try {
+        return await vaultService.readField(entryVaultEntryId, field);
+      } on Object {
+        return null;
+      }
+    }
     final ref = entry.credentialRef?.trim();
     if (ref == null || ref.isEmpty) return null;
     final scope = await resolvedManagedProviderSecretStore.read(ref);
@@ -1220,6 +1230,10 @@ Future<AppShell> buildAppShell({
         onProviderDeletedState:
             resolvedManagedProviderUsageCubit.removeProvider,
         onProviderDeletedCredentialCleanup: (provider) async {
+          final vaultEntryId = provider.vaultEntryId?.trim() ?? '';
+          if (vaultEntryId.isNotEmpty) {
+            await vaultService.delete(vaultEntryId);
+          }
           final ref = provider.credentialRef?.trim();
           if (ref != null && ref.isNotEmpty) {
             await resolvedManagedProviderSecretStore.delete(ref);
