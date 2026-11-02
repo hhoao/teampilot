@@ -1583,6 +1583,9 @@ git commit -m "feat(vault): capture SSH credentials on save and drop manual link
 
 **Files:**
 - Modify: `client/lib/cubits/app_provider_cubit.dart`
+- Modify: `client/lib/pages/llm_config/llm_config_helpers.dart`
+- Modify: `client/lib/pages/llm_config/llm_config_workspace.dart`
+- Modify: `client/lib/pages/llm_config/llm_providers_tab_content.dart`
 - Modify: `client/lib/widgets/app_provider/app_provider_form_sheet.dart`
 - Test: `client/test/cubits/app_provider_cubit_test.dart`
 
@@ -1663,6 +1666,45 @@ Append to `client/test/cubits/app_provider_cubit_test.dart` inside `main()` (add
     expect(saved.apiKey, 'resolved-in-memory');
     expect(await vault.list(), isEmpty);
     expect(prompts, 0);
+
+    const unlinked = AppProviderConfig(
+      id: 'unlinked',
+      cli: CliTool.claude,
+      name: 'Unlinked',
+      apiKey: 'plain',
+    );
+    expect(await autoCubit.upsertProvider(unlinked), isTrue);
+    final persisted = autoCubit.state.providersFor(CliTool.claude)
+        .firstWhere((p) => p.id == 'unlinked');
+    expect(persisted.apiKey, 'plain');
+    expect(await vault.list(), isEmpty);
+    expect(prompts, 0);
+  });
+
+  test('dropping a managed link never persists the resolved key', () async {
+    final vault = await _vaultService();
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const linked = AppProviderConfig(
+      id: 'linked',
+      cli: CliTool.claude,
+      name: 'Linked',
+      credentialLink: 'm1',
+    );
+    await autoCubit.upsertProvider(linked);
+    final resolved = linked.copyWith(apiKey: 'resolved', credentialLink: '');
+    await autoCubit.upsertProvider(resolved);
+    final saved = autoCubit.state.providersFor(CliTool.claude)
+        .firstWhere((p) => p.id == 'linked');
+    expect(saved.apiKey, isEmpty);
   });
 
   test('same provider id in two CLIs keeps separate vault entries', () async {
@@ -1938,6 +1980,79 @@ Apply the same ordering to `removeProviderRow(cli, providerId)`: compute the
 target, `await _repository.saveProviders(cli, filtered)`, then best-effort
 `deleteOwner(vaultOwnerKindAppProvider, '${cli.value}:${providerId.trim()}')`
 with an `appLogger.w` catch.
+
+6. Form helpers opt in and propagate failure. In
+`client/lib/pages/llm_config/llm_config_helpers.dart`:
+
+```dart
+  final saved = await appCubit.upsertProvider(
+    provider,
+    captureVaultCredentials: true,
+  );
+  if (!saved) {
+    if (context.mounted) {
+      AppToast.show(
+        context,
+        message: context.l10n.vaultLockedSaveBlocked,
+        variant: TpToastVariant.error,
+      );
+    }
+    return null;
+  }
+  return id;
+}
+
+Future<bool> saveExistingAppProvider(
+  BuildContext context,
+  AppProviderConfig existing, {
+  required AppProviderConfig draft,
+}) async {
+  final appCubit = context.read<AppProviderCubit>();
+  final saved = await appCubit.upsertProvider(
+    draft.copyWith(id: existing.id, cli: existing.cli),
+    captureVaultCredentials: true,
+  );
+  if (!saved && context.mounted) {
+    AppToast.show(
+      context,
+      message: context.l10n.vaultLockedSaveBlocked,
+      variant: TpToastVariant.error,
+    );
+  }
+  return saved;
+}
+```
+
+Add the needed imports (`../widgets/app_toast/app_toast.dart`, `package:shared_ui/shared_ui.dart`).
+
+Update both `saveExistingAppProvider` call sites (`llm_config_workspace.dart`,
+`llm_providers_tab_content.dart`) to abort navigation on failure:
+
+```dart
+              onSaved: (draft) async {
+                final saved = await saveExistingAppProvider(
+                  context,
+                  selected,
+                  draft: draft,
+                );
+                if (!context.mounted || !saved) return;
+                onCloseEditor();
+              },
+```
+
+7. Background plaintext guard. In `upsertProvider`, immediately after
+`final existing = current.where((p) => p.id == trimmedId).firstOrNull;` add:
+
+```dart
+    if (!captureVaultCredentials &&
+        existing != null &&
+        existing.credentialLink.trim().isNotEmpty &&
+        provider.credentialLink.trim() != existing.credentialLink.trim()) {
+      // A background update (provider-link janitor, probe) that drops a link
+      // must never persist the resolved secret as plaintext.
+      effectiveApiKey = '';
+    }
+```
 
 - [ ] **Step 4: Remove vault options from the provider form**
 
