@@ -869,6 +869,14 @@ void main() {
   });
 }
 
+class _ThrowingSshProfileRepository implements SshProfileRepository {
+  @override
+  Future<void> save(SshProfile profile) async => throw StateError('save failed');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _LockedVaultService implements VaultService {
   _LockedVaultService(this._delegate);
 
@@ -1077,6 +1085,49 @@ void main() {
     expect(await vault.readField(result.capture.entryId, 'relayGrant'), 'grant-1');
   });
 
+  test('repository failure rolls the capture back', () async {
+    final vault = await _vault();
+    final credentials = InMemorySshCredentialStore();
+    final capture = VaultCredentialCapture(vault: vault);
+
+    await expectLater(
+      saveSshProfileWithVault(
+        profile: profile,
+        password: 'secret',
+        privateKey: null,
+        passphrase: null,
+        capture: capture,
+        unlockGate: VaultUnlockGate(vault: vault, prompt: () async => true),
+        repository: _ThrowingSshProfileRepository(),
+        credentialStore: credentials,
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(await vault.list(), isEmpty);
+  });
+
+  test('adopts legacy keychain secrets and deletes them after save', () async {
+    final vault = await _vault();
+    final repository = SshProfileRepository(storage: fakeHomeStorage());
+    final credentials = InMemorySshCredentialStore();
+    await credentials.savePassword('p1', 'legacy');
+    final capture = VaultCredentialCapture(vault: vault);
+
+    final result = await saveSshProfileWithVault(
+      profile: profile,
+      password: '',
+      privateKey: null,
+      passphrase: null,
+      capture: capture,
+      unlockGate: VaultUnlockGate(vault: vault, prompt: () async => true),
+      repository: repository,
+      credentialStore: credentials,
+    );
+
+    expect(await vault.readField(result.capture.entryId, 'password'), 'legacy');
+    expect(await credentials.loadPassword('p1'), isNull);
+  });
+
   test('blocked vault aborts without saving the profile or an entry', () async {
     final vault = await _vault();
     final repository = SshProfileRepository(storage: fakeHomeStorage());
@@ -1103,6 +1154,14 @@ void main() {
     expect(await repository.loadAll(), isEmpty);
     expect(await vault.list(), isEmpty);
   });
+}
+
+class _ThrowingSshProfileRepository implements SshProfileRepository {
+  @override
+  Future<void> save(SshProfile profile) async => throw StateError('save failed');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _LockedVaultService implements VaultService {
@@ -1146,8 +1205,14 @@ class SshProfileVaultWriteResult {
 
 /// Captures SSH secrets in the vault, then saves the profile metadata.
 ///
-/// On failure the capture is rolled back so no orphan entry remains. The
-/// keychain is never written.
+/// Field semantics match the capture service: `null` keeps the stored value,
+/// `''` removes it, a value overwrites it. For a profile that is not linked
+/// yet, empty password/key/passphrase arguments are filled from the legacy
+/// keychain so an edit never silently drops an existing secret.
+///
+/// The keychain is never written. After the profile is saved, its legacy
+/// keychain secrets are deleted (best effort); a failure there does not fail
+/// the save because the vault already holds the values.
 Future<SshProfileVaultWriteResult> saveSshProfileWithVault({
   required SshProfile profile,
   required String? password,
@@ -1161,20 +1226,49 @@ Future<SshProfileVaultWriteResult> saveSshProfileWithVault({
   if (!await unlockGate.ensureUnlocked()) {
     throw const VaultSaveBlockedException();
   }
+  final linked = (profile.vaultEntryId ?? '').isNotEmpty;
+  var effectivePassword = password;
+  var effectivePrivateKey = privateKey;
+  var effectivePassphrase = passphrase;
+  if (!linked) {
+    if (profile.authType == SshAuthType.password &&
+        (effectivePassword == null || effectivePassword.isEmpty)) {
+      effectivePassword = await credentialStore.loadPassword(profile.id);
+    }
+    if (profile.authType == SshAuthType.privateKey) {
+      if (effectivePrivateKey == null || effectivePrivateKey.isEmpty) {
+        effectivePrivateKey = await credentialStore.loadPrivateKey(profile.id);
+      }
+      if (effectivePassphrase == null || effectivePassphrase.isEmpty) {
+        effectivePassphrase = await credentialStore.loadPrivateKeyPassphrase(
+          profile.id,
+        );
+      }
+    }
+  }
   final relayGrant = await credentialStore.loadRelayGrant(profile.id);
   final result = await capture.captureSsh(
     profile,
-    password: password,
-    privateKey: privateKey,
-    passphrase: passphrase,
+    password: effectivePassword,
+    privateKey: effectivePrivateKey,
+    passphrase: effectivePassphrase,
     relayGrant: relayGrant,
   );
   final saved = profile.copyWith(vaultEntryId: result.entryId);
   try {
     await repository.save(saved);
   } on Object {
-    await capture.rollback(result);
+    try {
+      await capture.rollback(result);
+    } on Object {
+      // Preserve the repository error; the final review can spot orphans.
+    }
     rethrow;
+  }
+  try {
+    await credentialStore.deleteAll(profile.id);
+  } on Object {
+    // Best effort: the vault already holds the values.
   }
   return SshProfileVaultWriteResult(profile: saved, capture: result);
 }
@@ -1247,14 +1341,23 @@ In `client/lib/pages/ssh_profiles/ssh_profile_form_dialog.dart`:
       return null;
     }
     try {
+      final linked =
+          (widget.initialProfile?.vaultEntryId ?? '').isNotEmpty;
       String? password;
       String? privateKey;
       String? passphrase;
       if (_usesPasswordAuth) {
-        password = _passwordController.text;
+        password = _passwordController.text.isEmpty
+            ? (linked ? null : '')
+            : _passwordController.text;
+        privateKey = '';
+        passphrase = '';
       } else {
         privateKey = await _readIdentityFile();
-        passphrase = _passphraseController.text;
+        passphrase = _passphraseController.text.isEmpty
+            ? null
+            : _passphraseController.text;
+        password = '';
       }
       final result = await saveSshProfileWithVault(
         profile: profile,
@@ -1339,13 +1442,19 @@ and fields:
       final result = await saveSshProfileWithVault(
         profile: profile,
         password: _authType == SshAuthType.password
-            ? _passwordController.text
+            ? (_passwordController.text.isEmpty && linked
+                  ? null
+                  : _passwordController.text)
             : '',
         privateKey: _authType == SshAuthType.privateKey
-            ? _privateKeyController.text
+            ? (_privateKeyController.text.isEmpty
+                  ? null
+                  : _privateKeyController.text)
             : '',
         passphrase: _authType == SshAuthType.privateKey
-            ? _passphraseController.text
+            ? (_passphraseController.text.isEmpty
+                  ? null
+                  : _passphraseController.text)
             : '',
         capture: widget.vaultCapture ?? context.read<VaultCredentialCapture>(),
         unlockGate:
@@ -1511,6 +1620,14 @@ class _FakeVaultStore implements SecureKeyValueStore {
 
   @override
   Future<void> write(String key, String value) async => values[key] = value;
+}
+
+class _ThrowingSshProfileRepository implements SshProfileRepository {
+  @override
+  Future<void> save(SshProfile profile) async => throw StateError('save failed');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _LockedVaultService implements VaultService {
