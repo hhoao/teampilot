@@ -816,4 +816,24 @@ void main() {
     expect(data['timeoutSeconds'], 900);
     expect(data['catchUpPolicy'], 'once');
   });
+
+  test(
+    'create runCommand persists working_directory to the repository',
+    () async {
+      await module.handle(
+        CatalogOp.create,
+        req({
+          'name': 'nightly',
+          'action': 'runCommand',
+          'command': 'make',
+          'working_directory': '/repo/sub',
+          'schedule': {'type': 'daily', 'time': '02:00'},
+        }),
+      );
+
+      final stored = await repo.listForWorkspace(workspaceId);
+      final automation = stored.singleWhere((a) => a.name == 'nightly');
+      expect(automation.workingDirectoryPath, '/repo/sub');
+    },
+  );
 }

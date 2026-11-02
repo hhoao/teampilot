@@ -422,6 +422,8 @@ class Automation {
         'command': command,
         'timeoutSeconds': timeoutSeconds,
         'catchUpPolicy': catchUpPolicy.name,
+        if (workingDirectoryPath != null && workingDirectoryPath!.isNotEmpty)
+          'workingDirectoryPath': workingDirectoryPath,
       },
       if (sessionId != null && sessionId!.isNotEmpty) 'sessionId': sessionId,
       'message': message,

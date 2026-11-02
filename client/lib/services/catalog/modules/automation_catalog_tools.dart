@@ -17,9 +17,11 @@ const automationCatalogTools = <CatalogToolSpec>[
   CatalogToolSpec(
     name: 'create_automation',
     description:
-        'Create an automation. Always created disabled; enable it in the '
-        'Automations page or with update_automation. runCommand requires '
-        'command; message is ignored for it.',
+        'Create an automation. scheduledMessage and launchPrompt are always '
+        'created disabled; runCommand honours an explicit enabled flag '
+        '(default false). Enable it in the Automations page or with '
+        'update_automation. runCommand requires command; message is ignored '
+        'for it.',
     inputSchema: {
       'type': 'object',
       'properties': {

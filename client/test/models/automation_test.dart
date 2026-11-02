@@ -406,6 +406,7 @@ void main() {
     int timeoutSeconds = 300,
     AutomationCatchUpPolicy catchUpPolicy = AutomationCatchUpPolicy.none,
     String? sessionId,
+    String? workingDirectoryPath,
   }) {
     return Automation(
       id: 'a1',
@@ -416,6 +417,7 @@ void main() {
       timeoutSeconds: timeoutSeconds,
       catchUpPolicy: catchUpPolicy,
       sessionId: sessionId,
+      workingDirectoryPath: workingDirectoryPath,
       message: '',
       preset: AutomationSchedulePreset.daily,
       hourMinute: '02:00',
@@ -473,6 +475,15 @@ void main() {
     expect(restored.isRunCommand, isTrue);
     expect(restored.timeoutSeconds, 900);
     expect(restored.catchUpPolicy, AutomationCatchUpPolicy.once);
+  });
+
+  test('runCommand json round-trips workingDirectoryPath', () {
+    final original = runCommandAutomation(workingDirectoryPath: '/repo/sub');
+    final json = original.toJson();
+    expect(json['workingDirectoryPath'], '/repo/sub');
+    final restored = Automation.fromJson(json);
+    expect(restored.workingDirectoryPath, '/repo/sub');
+    expect(restored, original);
   });
 
   test('legacy json without runCommand fields still parses', () {
