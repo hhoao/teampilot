@@ -193,6 +193,7 @@ import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
 import '../services/vault/encrypted_vault_backend.dart';
 import '../services/vault/keychain_vault_backend.dart';
+import '../services/vault/provider_credential_link.dart';
 import '../services/vault/vault_service.dart';
 import '../services/io/local_filesystem.dart';
 import '../services/connect/connect_agent.dart';
@@ -1167,11 +1168,17 @@ Future<AppShell> buildAppShell({
   // Resolves a provider config's `credentialLink` to the linked managed
   // entry's stored secret (spec: reverse direction). Secret-free failure: a
   // missing entry or secret resolves to null, never throws.
-  Future<String?> appProviderLinkedCredentialLookup(
-    String managedProviderId,
-  ) async {
+  Future<String?> appProviderLinkedCredentialLookup(String link) async {
+    final vaultEntryId = vaultEntryIdFromCredentialLink(link);
+    if (vaultEntryId != null) {
+      try {
+        return await vaultService.readField(vaultEntryId, 'apiKey');
+      } on Object {
+        return null;
+      }
+    }
     final entries = await resolvedManagedProviderRepository.load();
-    final entry = entries.where((e) => e.id == managedProviderId).firstOrNull;
+    final entry = entries.where((e) => e.id == link.trim()).firstOrNull;
     if (entry == null) return null;
     final ref = entry.credentialRef?.trim();
     if (ref == null || ref.isEmpty) return null;
