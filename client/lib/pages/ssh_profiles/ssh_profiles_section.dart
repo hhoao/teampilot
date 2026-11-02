@@ -11,7 +11,9 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../services/ssh/ssh_connection_failure.dart';
+import '../../services/ssh/ssh_credentials_resolver.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
+import '../../services/vault/vault_service.dart';
 import '../../services/storage/home_storage.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
 import '../../utils/ui/app_keys.dart';
@@ -104,17 +106,25 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
   Future<({String? password, String? privateKey, String? passphrase})>
   _loadCredentials(SshProfile profile) async {
     final store = context.read<SshCredentialStore>();
-    if (profile.authType == SshAuthType.password) {
-      return (
-        password: await store.loadPassword(profile.id),
-        privateKey: null,
-        passphrase: null,
-      );
+    VaultService? vault;
+    try {
+      vault = context.read<VaultService>();
+    } on ProviderNotFoundException {
+      vault = null;
     }
+    final resolved = await resolveSshCredentials(
+      profile,
+      vault: vault == null
+          ? null
+          : (entryId, field) => vault!.readField(entryId, field),
+      legacyPassword: store.loadPassword,
+      legacyPrivateKey: store.loadPrivateKey,
+      legacyPassphrase: store.loadPrivateKeyPassphrase,
+    );
     return (
-      password: null,
-      privateKey: await store.loadPrivateKey(profile.id),
-      passphrase: await store.loadPrivateKeyPassphrase(profile.id),
+      password: resolved.password,
+      privateKey: resolved.privateKey,
+      passphrase: resolved.passphrase,
     );
   }
 
