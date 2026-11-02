@@ -1,12 +1,19 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/managed_provider.dart';
+import 'package:teampilot/models/vault_entry.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
+import 'package:teampilot/repositories/vault_repository.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_link_binding.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_secret_store.dart';
+import 'package:teampilot/services/vault/encrypted_vault_backend.dart';
+import 'package:teampilot/services/vault/keychain_vault_backend.dart';
+import 'package:teampilot/services/vault/vault_crypto.dart';
+import 'package:teampilot/services/vault/vault_service.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -138,4 +145,33 @@ void main() {
       );
     },
   );
+
+  test('vaultEntryId reads the entry before the legacy store', () async {
+    final vault = VaultService(
+      keychainBackend: KeychainVaultBackend(_FakeSecureKeyValueStore()),
+      encryptedBackend: EncryptedVaultBackend(
+        repository: VaultRepository(
+          rootDir: '/root/vault',
+          fs: InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix)),
+        ),
+        crypto: const VaultCrypto(memoryKiB: 256, iterations: 1, parallelism: 1),
+      ),
+    );
+    await vault.initialize();
+    await vault.upsert(
+      const VaultEntry(
+        id: 'v1',
+        type: VaultEntryType.apiKey,
+        title: 'Usage',
+        fields: {'apiKey': 'from-vault'},
+      ),
+    );
+    final store = ManagedProviderSecretStore(_FakeSecureKeyValueStore());
+    await store.write('managed-provider:m1', {'apiKey': 'from-store'});
+    final resolver = ManagedProviderCredentialResolver(store, vault: vault);
+    final provider = _secretEntry().copyWith(vaultEntryId: 'v1');
+
+    final scope = await resolver.resolve(provider);
+    expect(scope?.valueFor('apiKey'), 'from-vault');
+  });
 }

@@ -5,6 +5,7 @@ import '../../models/app_provider_config.dart';
 import '../../models/managed_provider.dart';
 import '../../repositories/app_provider_repository.dart';
 import '../../repositories/ssh_credential_store.dart';
+import '../vault/vault_service.dart';
 import 'managed_provider_link_binding.dart';
 
 /// A request-scoped view of managed-provider credentials.
@@ -557,10 +558,13 @@ class ManagedProviderCredentialResolver implements ProviderCredentialResolver {
   ManagedProviderCredentialResolver(
     this._store, {
     AppProviderRepository? appProviders,
-  }) : _appProviders = appProviders;
+    VaultService? vault,
+  }) : _appProviders = appProviders,
+       _vault = vault;
 
   final ManagedProviderSecretStore _store;
   final AppProviderRepository? _appProviders;
+  final VaultService? _vault;
 
   @override
   Future<ProviderCredentialScope?> resolve(ManagedProvider provider) async {
@@ -568,6 +572,15 @@ class ManagedProviderCredentialResolver implements ProviderCredentialResolver {
       provider.endpointConfig.credentialSource,
     );
     if (link != null) return _resolveLinkedProvider(link, provider);
+    final vaultEntryId = provider.vaultEntryId?.trim() ?? '';
+    if (vaultEntryId.isNotEmpty) {
+      final entry = await _vault?.get(vaultEntryId);
+      if (entry == null || entry.fields.isEmpty) return null;
+      return ManagedProviderCredentialScope({
+        for (final field in entry.fields.entries)
+          if (field.value.isNotEmpty) field.key: field.value,
+      });
+    }
     final ref = provider.credentialRef?.trim();
     if (ref == null || ref.isEmpty) return null;
 

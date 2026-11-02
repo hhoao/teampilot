@@ -347,4 +347,24 @@ void main() {
       expect(provider.displayConfig.decimalPlaces, isNull);
     }
   });
+
+  test('vaultEntryId round-trips and stays absent when null', () {
+    final provider = ManagedProvider(
+      id: 'm1',
+      name: 'Usage',
+      kind: ManagedProviderKind.apiBalance,
+      adapterId: 'http_json_mapping',
+      vaultEntryId: 'v1',
+    );
+    expect(ManagedProvider.fromJson(provider.toJson()).vaultEntryId, 'v1');
+
+    final plain = ManagedProvider(
+      id: 'm2',
+      name: 'Plain',
+      kind: ManagedProviderKind.apiBalance,
+      adapterId: 'http_json_mapping',
+    );
+    expect(plain.toJson().containsKey('vaultEntryId'), isFalse);
+    expect(ManagedProvider.fromJson(plain.toJson()).vaultEntryId, isNull);
+  });
 }
