@@ -11,18 +11,20 @@ import '../../../io/filesystem.dart';
 /// (`user` + `machine_id`), so a fresh session config dir cannot
 /// authenticate. TeamPilot runs the login with an isolated HOME/config and
 /// copies both files into a per-provider store; each session config dir is
-/// seeded once from that store (or from `~/.qoder` when the provider row was
-/// never created). An already seeded session keeps its own refreshed copy.
+/// seeded from that store (or from `~/.qoder` when the provider row was never
+/// created). An already seeded session keeps its own refreshed copy unless the
+/// recorded provider marker shows the seat switched accounts.
 class QoderAuthStore {
   QoderAuthStore({
     required this.fs,
     required this.basePath,
     required this.pathContext,
     String? machineHome,
-  }) : machineHome = machineHome ??
-            (Platform.environment['HOME'] ??
-                Platform.environment['USERPROFILE'] ??
-                '');
+  }) : machineHome =
+           machineHome ??
+           (Platform.environment['HOME'] ??
+               Platform.environment['USERPROFILE'] ??
+               '');
 
   final Filesystem fs;
   final String basePath;
@@ -31,6 +33,14 @@ class QoderAuthStore {
 
   static const userFileName = 'user';
   static const machineIdFileName = 'machine_id';
+
+  /// Fingerprint of the account that seeded a session `.auth`. Compared on
+  /// later seeds so a provider switch reseeds while an in-session token
+  /// refresh is preserved.
+  static const markerFileName = '.qoder-provider';
+
+  /// Marker value used when the machine `~/.qoder` login was the source.
+  static const machineMarkerValue = 'machine';
 
   String loginRoot(String providerId) =>
       pathContext.join(basePath, 'cli-login', 'qoder', _safe(providerId));
@@ -42,12 +52,8 @@ class QoderAuthStore {
   String loginWorkspace(String providerId) =>
       pathContext.join(loginRoot(providerId), 'workspace');
 
-  String providerAuthDir(String providerId) => pathContext.join(
-    basePath,
-    'providers',
-    'qoder',
-    _safe(providerId),
-  );
+  String providerAuthDir(String providerId) =>
+      pathContext.join(basePath, 'providers', 'qoder', _safe(providerId));
 
   Future<bool> hasProviderAuth(String providerId) =>
       _hasAuthPair(providerAuthDir(providerId));
@@ -66,25 +72,38 @@ class QoderAuthStore {
     return true;
   }
 
-  /// Seeds `<sessionConfigDir>/.auth` so `session/new` can authenticate.
+  /// Seeds `<sessionConfigDir>/.auth` from [authSourceDir].
   ///
-  /// An already seeded session keeps its copy: a scoped login may have
-  /// refreshed it after materialization. A partial provider row never falls
-  /// back to the machine login — that would silently switch accounts.
+  /// The first seed records a [markerFileName] fingerprint. Later seeds keep
+  /// the session copy when the marker matches (a scoped login may have
+  /// refreshed it) or when no marker exists (legacy/preexisting session). A
+  /// different marker means the seat switched providers and is reseeded.
   Future<bool> seedSessionAuth({
     required String providerId,
     required String sessionConfigDir,
   }) async {
     final target = pathContext.join(sessionConfigDir, '.auth');
-    if (await _hasAuthPair(target)) return true;
-    final source = await _seedSource(providerId);
-    if (source == null) return false;
+    final hasSessionAuth = await _hasAuthPair(target);
+    final source = await authSourceDir(providerId);
+    if (source == null) return hasSessionAuth;
+    final marker = markerFor(providerId: providerId, sourceDir: source);
+    if (hasSessionAuth) {
+      final existing = await _readMarker(target);
+      if (existing == null || existing == marker) return true;
+    }
     await fs.ensureDir(target);
     await _copyAuth(source, target);
+    await _writeMarker(target, marker);
     return true;
   }
 
-  Future<String?> _seedSource(String providerId) async {
+  /// Directory holding BOTH `.auth` files for [providerId].
+  ///
+  /// The per-provider store wins when it is complete; otherwise the machine
+  /// login `~/.qoder/.auth`. Null when neither holds the pair — a partial
+  /// provider row never falls back to the machine login — or when the home is
+  /// unknown.
+  Future<String?> authSourceDir(String providerId) async {
     final providerDir = providerAuthDir(providerId);
     if ((await fs.stat(providerDir)).exists) {
       if (await _hasAuthPair(providerDir)) return providerDir;
@@ -98,6 +117,24 @@ class QoderAuthStore {
     final machineAuth = pathContext.join(machineHome, '.qoder', '.auth');
     return await _hasAuthPair(machineAuth) ? machineAuth : null;
   }
+
+  /// Marker value for a seed sourced from [sourceDir].
+  String markerFor({required String providerId, required String sourceDir}) {
+    final id = providerId.trim();
+    if (id.isEmpty || sourceDir != providerAuthDir(providerId)) {
+      return machineMarkerValue;
+    }
+    return id;
+  }
+
+  Future<String?> _readMarker(String authDir) async {
+    final raw = await fs.readString(pathContext.join(authDir, markerFileName));
+    final value = raw?.trim() ?? '';
+    return value.isEmpty ? null : value;
+  }
+
+  Future<void> _writeMarker(String authDir, String marker) =>
+      fs.writeString(pathContext.join(authDir, markerFileName), marker);
 
   Future<bool> _hasAuthPair(String dir) async =>
       (await fs.stat(pathContext.join(dir, userFileName))).isFile &&
