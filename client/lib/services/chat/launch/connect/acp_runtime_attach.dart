@@ -270,11 +270,13 @@ class AcpRuntimeAttach {
   }
 
   /// Production SSH launch: opens (and stores on the tab) one member SSH
-  /// session, then hands out exec channels over it. Stored under
-  /// `session.sessionId` so [ChatTab.disposeBus] tears it down.
+  /// session, then hands out exec channels over it. Keyed by [memberId] for
+  /// team seats (matching [ChatTab.closeMemberSshSession]) and by
+  /// `session.sessionId` for a personal remote session.
   AcpSshLaunch _productionSshLaunch({
     required AppSession session,
     required RuntimeTarget launchTarget,
+    String? memberId,
   }) {
     final factory = _host.shellFactory.sshClientFactory;
     final profile = _host.shellFactory.profileFor(launchTarget);
@@ -283,6 +285,7 @@ class AcpRuntimeAttach {
         'ACP remote session requires an SSH profile and client factory',
       );
     }
+    final key = memberId ?? session.sessionId;
     return (
       profile: profile,
       openChannel: (command) async {
@@ -293,9 +296,9 @@ class AcpRuntimeAttach {
           );
         }
         final memberSession =
-            tab.memberSshSessions[session.sessionId] ??
+            tab.memberSshSessions[key] ??
             await SshMemberSession.open(factory, profile);
-        tab.memberSshSessions[session.sessionId] = memberSession;
+        tab.memberSshSessions[key] = memberSession;
         return DartSsh2AcpChannel(await memberSession.openExec(command));
       },
     );
@@ -396,10 +399,15 @@ class AcpRuntimeAttach {
     }
     final remote = usesSshTransport(launchTarget.kind);
     final sshLaunch = remote
-        ? (sshLaunchFactory ?? _productionSshLaunch)(
-            session: session,
-            launchTarget: launchTarget,
-          )
+        ? sshLaunchFactory?.call(
+              session: session,
+              launchTarget: launchTarget,
+            ) ??
+            _productionSshLaunch(
+              session: session,
+              launchTarget: launchTarget,
+              memberId: member.id,
+            )
         : null;
     final remoteAdapterPath = remote
         ? await _resolveRemoteAdapterPath(cli, launchTarget)

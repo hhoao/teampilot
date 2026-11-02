@@ -110,7 +110,6 @@ abstract final class DefaultWorkspaceService {
           team: defaultTeam,
           rosterMembers: rosterMembers,
         ),
-        teamMode: defaultTeam.teamMode,
       );
       mutated = true;
     }

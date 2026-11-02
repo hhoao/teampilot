@@ -7,7 +7,7 @@ import '../../../models/cli_preset.dart';
 import '../../../models/session_member_binding.dart';
 import '../../../models/workspace_icon_ref.dart';
 import '../../../models/team_config.dart'
-    show CliTool, TeamMemberConfig, TeamMode, TeamProfile;
+    show CliTool, TeamMemberConfig, TeamProfile;
 import '../../../repositories/launch_profile_repository.dart';
 import '../../../repositories/session_repository.dart';
 import '../../catalog/workspace_catalog.dart' show ChatDataSnapshot;
@@ -260,7 +260,6 @@ class SessionDataStore {
     String? fixedSessionId,
     List<SessionMemberBinding>? members,
     Map<String, String>? memberTargets,
-    TeamMode teamMode = TeamMode.native,
     bool seedClaudeMemberAcp = true,
     bool seedCodexMemberAcp = true,
     bool seedCursorMemberAcp = true,
@@ -276,7 +275,6 @@ class SessionDataStore {
       fixedSessionId: fixedSessionId,
       members: members,
       memberTargets: memberTargets,
-      teamMode: teamMode,
       seedClaudeMemberAcp: seedClaudeMemberAcp,
       seedCodexMemberAcp: seedCodexMemberAcp,
       seedCursorMemberAcp: seedCursorMemberAcp,
@@ -456,7 +454,6 @@ class SessionDataStore {
       sessionTeam: sessionTeamId,
       rosterMembers: rosterMembers,
       memberClis: resolvedClis,
-      teamMode: team?.teamMode ?? TeamMode.native,
     );
     snapshot = appendSession(snapshot, created.session);
     snapshot = snapshotWithWorkspace(snapshot, created.workspace);

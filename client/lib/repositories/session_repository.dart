@@ -778,7 +778,6 @@ class SessionRepository {
     Map<String, String>? memberTargets,
     Workspace? knownWorkspace,
     bool acp = false,
-    TeamMode teamMode = TeamMode.native,
     bool seedClaudeMemberAcp = true,
     bool seedCodexMemberAcp = true,
     bool seedCursorMemberAcp = true,
