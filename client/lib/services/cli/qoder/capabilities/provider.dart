@@ -284,14 +284,24 @@ final class QoderProviderCapability extends CatalogModelCapability
         'qoder: auth store unavailable; session .auth not seeded '
         '(provider "$providerId")',
       );
-    } else if (!await authStore.seedSessionAuth(
-      providerId: providerId,
-      sessionConfigDir: configDir,
-    )) {
-      AppLogger.instance.w(
-        'qoder: session .auth not seeded; the session will need a sign-in '
-        '(provider "$providerId")',
-      );
+    } else {
+      final seeded = ctx.crossMachine
+          ? await _seedCrossMachineAuth(
+              ctx,
+              store: authStore,
+              configDir: configDir,
+              providerId: providerId,
+            )
+          : await authStore.seedSessionAuth(
+              providerId: providerId,
+              sessionConfigDir: configDir,
+            );
+      if (!seeded) {
+        AppLogger.instance.w(
+          'qoder: session .auth not seeded; the session will need a sign-in '
+          '(provider "$providerId")',
+        );
+      }
     }
     final environment = <String, String>{configDirEnvKey: configDir};
 
@@ -314,6 +324,54 @@ final class QoderProviderCapability extends CatalogModelCapability
     );
     return SessionHomeContribution(environment: environment);
   }
+
+  /// Copies `<source>/.auth/{user,machine_id}` onto the work plane.
+  ///
+  /// Reads stay on the control plane ([QoderAuthStore.authSourceDir]); the
+  /// writes go through [ConfigProfileDelegate.fs] so the manifest flushes them
+  /// to the SSH seat. The `.qoder-provider` marker is written next to them.
+  Future<bool> _seedCrossMachineAuth(
+    SessionHomeContext ctx, {
+    required QoderAuthStore store,
+    required String configDir,
+    required String providerId,
+  }) async {
+    final source = await store.authSourceDir(providerId);
+    if (source == null) return false;
+    final targetDir = ctx.paths.joinWork(configDir, '.auth');
+    final marker = store.markerFor(providerId: providerId, sourceDir: source);
+    final markerPath = ctx.paths.joinWork(
+      targetDir,
+      QoderAuthStore.markerFileName,
+    );
+    if (await _hasWorkAuthPair(ctx.paths.fs, targetDir)) {
+      final existing = (await ctx.paths.fs.readString(markerPath))?.trim();
+      // No marker means a legacy/preexisting seat: keep its own refreshed copy.
+      if (existing == null || existing.isEmpty || existing == marker) {
+        return true;
+      }
+    }
+    await ensureWorkDir(ctx.paths.fs, targetDir);
+    for (final name in const [
+      QoderAuthStore.userFileName,
+      QoderAuthStore.machineIdFileName,
+    ]) {
+      await ctx.paths.fs.copyFile(
+        store.pathContext.join(source, name),
+        ctx.paths.joinWork(targetDir, name),
+      );
+    }
+    await writeWorkString(ctx.paths.fs, markerPath, marker);
+    return true;
+  }
+
+  Future<bool> _hasWorkAuthPair(Filesystem fs, String dir) async =>
+      (await fs.stat(
+        fs.pathContext.join(dir, QoderAuthStore.userFileName),
+      )).isFile &&
+      (await fs.stat(
+        fs.pathContext.join(dir, QoderAuthStore.machineIdFileName),
+      )).isFile;
 
   Future<AppProviderConfig?> _resolveLaunchProvider(
     SessionHomeContext ctx,

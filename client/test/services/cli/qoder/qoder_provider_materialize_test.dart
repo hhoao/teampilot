@@ -7,6 +7,8 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/credential_action_result.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/chat/launch/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/launch_manifest.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/manifest_filesystem.dart';
 import 'package:teampilot/services/cli/qoder/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -85,6 +87,81 @@ void main() {
       machineAuthBefore,
       reason: 'the machine ~/.qoder tree is never modified',
     );
+  });
+
+  test('cross-machine seeds .auth through the work-plane manifest', () async {
+    // Control plane: provider store + storage-backed auth reads.
+    final homeFs = InMemoryFilesystem();
+    final storage = fakeHomeStorage(filesystem: homeFs, appDataRoot: '/tp');
+    final catalogService = ConfigProfileService(
+      basePath: '/tp',
+      fs: homeFs,
+      layout: RuntimeLayout(teampilotRoot: '/tp', fs: homeFs),
+      storage: storage,
+    );
+    // Work plane: remote root, mutations staged into the manifest.
+    final manifest = LaunchManifest();
+    final workFs = ManifestFilesystem(manifest: manifest, readDelegate: homeFs);
+    final workService = ConfigProfileService(
+      basePath: '/remote/tp',
+      fs: workFs,
+      layout: RuntimeLayout(teampilotRoot: '/remote/tp', fs: workFs),
+      storage: storage,
+    );
+    final capability = QoderProviderCapability(storage: storage);
+
+    await homeFs.ensureDir('/tp/providers/qoder/work');
+    await homeFs.atomicWrite('/tp/providers/qoder/work/user', 'USER');
+    await homeFs.atomicWrite('/tp/providers/qoder/work/machine_id', 'MID');
+
+    const member = TeamMemberConfig(id: 'm1', name: 'Member', provider: 'work');
+    final scope = resolveLaunchProfileScope(
+      workspaceId: 'workspace-1',
+      teamId: 'team-a',
+      appSessionId: 'session-1',
+      cliTeamName: 'session-1',
+    );
+
+    final contribution = await capability.materializeSessionHome(
+      SessionHomeContext(
+        workspaceId: 'workspace-1',
+        teamId: 'team-a',
+        sessionId: scope.sessionId,
+        scope: scope,
+        tool: CliTool.qoder,
+        paths: workService,
+        catalog: catalogService,
+        members: const [member],
+        member: member,
+        workingDirectory: '/workspace/workspace',
+        crossMachine: true,
+      ),
+    );
+
+    final configDir =
+        contribution.environment[QoderProviderCapability.configDirEnvKey]!;
+    expect(configDir, startsWith('/remote/tp/'));
+
+    final copies = manifest.entries.whereType<ManifestCopyFile>().toList();
+    expect(
+      copies.map((c) => '${c.source} -> ${c.destination}'),
+      containsAll([
+        '/tp/providers/qoder/work/user -> $configDir/.auth/user',
+        '/tp/providers/qoder/work/machine_id -> $configDir/.auth/machine_id',
+      ]),
+      reason: 'the work-plane manifest must carry both auth files',
+    );
+    expect(
+      manifest.files['$configDir/.auth/.qoder-provider'],
+      'work',
+      reason: 'the account marker travels with the staged copy',
+    );
+    expect(
+      homeFs.files.keys.where((k) => k.startsWith('$configDir/.auth')),
+      isEmpty,
+      reason: 'cross-machine seeding must not write through the home fs',
+    );
+    expect((await homeFs.stat('$configDir/.auth/user')).exists, isFalse);
   });
 
   test('materializes QODER_CONFIG_DIR, model and settings.json', () async {
