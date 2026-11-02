@@ -16,8 +16,14 @@ class SshProfileVaultWriteResult {
 
 /// Captures SSH secrets in the vault, then saves the profile metadata.
 ///
-/// On failure the capture is rolled back so no orphan entry remains. The
-/// keychain is never written.
+/// Field semantics match the capture service: `null` keeps the stored value,
+/// `''` removes it, a value overwrites it. For a profile that is not linked
+/// yet, empty password/key/passphrase arguments are filled from the legacy
+/// keychain so an edit never silently drops an existing secret.
+///
+/// The keychain is never written. After the profile is saved, its legacy
+/// keychain secrets are deleted (best effort); a failure there does not fail
+/// the save because the vault already holds the values.
 Future<SshProfileVaultWriteResult> saveSshProfileWithVault({
   required SshProfile profile,
   required String? password,
@@ -31,20 +37,49 @@ Future<SshProfileVaultWriteResult> saveSshProfileWithVault({
   if (!await unlockGate.ensureUnlocked()) {
     throw const VaultSaveBlockedException();
   }
+  final linked = (profile.vaultEntryId ?? '').isNotEmpty;
+  var effectivePassword = password;
+  var effectivePrivateKey = privateKey;
+  var effectivePassphrase = passphrase;
+  if (!linked) {
+    if (profile.authType == SshAuthType.password &&
+        (effectivePassword == null || effectivePassword.isEmpty)) {
+      effectivePassword = await credentialStore.loadPassword(profile.id);
+    }
+    if (profile.authType == SshAuthType.privateKey) {
+      if (effectivePrivateKey == null || effectivePrivateKey.isEmpty) {
+        effectivePrivateKey = await credentialStore.loadPrivateKey(profile.id);
+      }
+      if (effectivePassphrase == null || effectivePassphrase.isEmpty) {
+        effectivePassphrase = await credentialStore.loadPrivateKeyPassphrase(
+          profile.id,
+        );
+      }
+    }
+  }
   final relayGrant = await credentialStore.loadRelayGrant(profile.id);
   final result = await capture.captureSsh(
     profile,
-    password: password,
-    privateKey: privateKey,
-    passphrase: passphrase,
+    password: effectivePassword,
+    privateKey: effectivePrivateKey,
+    passphrase: effectivePassphrase,
     relayGrant: relayGrant,
   );
   final saved = profile.copyWith(vaultEntryId: result.entryId);
   try {
     await repository.save(saved);
   } on Object {
-    await capture.rollback(result);
+    try {
+      await capture.rollback(result);
+    } on Object {
+      // Preserve the repository error; the final review can spot orphans.
+    }
     rethrow;
+  }
+  try {
+    await credentialStore.deleteAll(profile.id);
+  } on Object {
+    // Best effort: the vault already holds the values.
   }
   return SshProfileVaultWriteResult(profile: saved, capture: result);
 }

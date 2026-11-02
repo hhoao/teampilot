@@ -108,6 +108,49 @@ void main() {
     );
   });
 
+  test('repository failure rolls the capture back', () async {
+    final vault = await _vault();
+    final credentials = InMemorySshCredentialStore();
+    final capture = VaultCredentialCapture(vault: vault);
+
+    await expectLater(
+      saveSshProfileWithVault(
+        profile: profile,
+        password: 'secret',
+        privateKey: null,
+        passphrase: null,
+        capture: capture,
+        unlockGate: VaultUnlockGate(vault: vault, prompt: () async => true),
+        repository: _ThrowingSshProfileRepository(),
+        credentialStore: credentials,
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(await vault.list(), isEmpty);
+  });
+
+  test('adopts legacy keychain secrets and deletes them after save', () async {
+    final vault = await _vault();
+    final repository = SshProfileRepository(storage: fakeHomeStorage());
+    final credentials = InMemorySshCredentialStore();
+    await credentials.savePassword('p1', 'legacy');
+    final capture = VaultCredentialCapture(vault: vault);
+
+    final result = await saveSshProfileWithVault(
+      profile: profile,
+      password: '',
+      privateKey: null,
+      passphrase: null,
+      capture: capture,
+      unlockGate: VaultUnlockGate(vault: vault, prompt: () async => true),
+      repository: repository,
+      credentialStore: credentials,
+    );
+
+    expect(await vault.readField(result.capture.entryId, 'password'), 'legacy');
+    expect(await credentials.loadPassword('p1'), isNull);
+  });
+
   test('blocked vault aborts without saving the profile or an entry', () async {
     final vault = await _vault();
     final repository = SshProfileRepository(storage: fakeHomeStorage());
@@ -134,6 +177,15 @@ void main() {
     expect(await repository.loadAll(), isEmpty);
     expect(await vault.list(), isEmpty);
   });
+}
+
+class _ThrowingSshProfileRepository implements SshProfileRepository {
+  @override
+  Future<void> save(SshProfile profile) async =>
+      throw StateError('save failed');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _LockedVaultService implements VaultService {
