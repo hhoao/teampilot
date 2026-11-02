@@ -4343,3 +4343,36 @@ missing-scope assertion.
       }),
     );
 ```
+
+### Final-review fixes (whole branch)
+
+1. **SSH profile deletion must delete its vault entry.** Add optional
+   `VaultCredentialCapture? vaultCapture` to `SshProfileCubit`. In
+   `deleteProfile`, capture `vaultEntryId` and the profile id first, delete the
+   repository row, then best-effort `deleteOwner(vaultOwnerKindSshProfile, id)`
+   (log only `error.runtimeType`). A repository failure must keep the entry.
+   Wire `vaultCapture: vaultCredentialCapture` in `app_shell`. Test both paths.
+2. **SSH convergence must not drop a relay grant (or other stored field).**
+   In the verified-link branch of `_importSsh`, read the keychain relay grant;
+   if the entry lacks `relayGrant` and the keychain has one, re-capture with
+   `relayGrant:` (merge) before `deleteAll`. Add a test.
+3. **Managed-provider deletion must gate on unlock.** Add optional
+   `Future<bool> Function()? ensureVaultUnlocked` to `ManagedProviderCubit`;
+   in `delete`, when the provider has a `vaultEntryId`, call it and return on
+   false (no row deletion, no entry deletion). Wire the gate in `app_shell`.
+   Test cancel keeps both.
+4. **`refreshMarkerFromBackend` must serialize with writes.** Await the
+   current `_writeTail` (swallowing its error) before reloading; never replace
+   `_document` while a capture is in flight.
+5. **GitHub background hydrate must not prompt.** Add
+   `bool allowUnlockPrompt = true` to `saveOAuth`/`savePat`; when false and the
+   vault is locked, skip the vault write and the legacy write (treat as
+   handled). `GithubAccountCubit.hydrate` passes false for its login re-save.
+6. **Credential-source header.** In `app_provider_form_sheet.dart`, the
+   `itemLabel` fallback for a `vault:` value returns
+   `context.l10n.vaultStoredInVault` instead of the raw id.
+7. **SSH connect/test while the vault is locked.** In
+   `ssh_profiles_section.dart`, before connect/test for a profile with a
+   non-empty `vaultEntryId`, check `VaultService.isUnlocked`; when locked, run
+   `VaultUnlockGate.ensureUnlocked()` and abort with the existing
+   `vaultLockedSaveBlocked` toast on cancel.
