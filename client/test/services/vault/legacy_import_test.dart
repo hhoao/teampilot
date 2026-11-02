@@ -34,19 +34,21 @@ class _FakeStore implements SecureKeyValueStore {
 }
 
 class _Harness {
-  _Harness(this.fs, this.storage, this.vault, this.capture);
+  _Harness(this.fs, this.storage, this.vault, this.capture, this.keyStore);
 
   final InMemoryFilesystem fs;
   final HomeStorage storage;
   final VaultService vault;
   final VaultCredentialCapture capture;
+  final _FakeStore keyStore;
 }
 
 Future<_Harness> _harness() async {
   final fs = InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix));
   final storage = fakeHomeStorage(filesystem: fs);
+  final keyStore = _FakeStore();
   final vault = VaultService(
-    keychainBackend: KeychainVaultBackend(_FakeStore()),
+    keychainBackend: KeychainVaultBackend(keyStore),
     encryptedBackend: EncryptedVaultBackend(
       repository: VaultRepository(
         rootDir: '/root/vault',
@@ -56,13 +58,56 @@ Future<_Harness> _harness() async {
     ),
   );
   await vault.initialize();
-  return _Harness(fs, storage, vault, VaultCredentialCapture(vault: vault));
+  return _Harness(
+    fs,
+    storage,
+    vault,
+    VaultCredentialCapture(vault: vault),
+    keyStore,
+  );
+}
+
+/// A second `VaultService` over the same keychain store and encrypted backend,
+/// as a retried `buildAppShell` would build.
+///
+/// [markerWrites] makes a re-run of the import pass observable: re-running is
+/// idempotent at the capture level, so only the marker write proves whether the
+/// pass actually executed.
+class _CountingVault extends VaultService {
+  _CountingVault({
+    required super.keychainBackend,
+    required super.encryptedBackend,
+  });
+
+  int markerWrites = 0;
+
+  @override
+  Future<void> markLegacyImported(int version) {
+    markerWrites++;
+    return super.markLegacyImported(version);
+  }
+}
+
+Future<_CountingVault> _secondService(_Harness h) async {
+  final service = _CountingVault(
+    keychainBackend: KeychainVaultBackend(h.keyStore),
+    encryptedBackend: EncryptedVaultBackend(
+      repository: VaultRepository(
+        rootDir: '/root/vault',
+        fs: InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix)),
+      ),
+      crypto: const VaultCrypto(memoryKiB: 256, iterations: 1, parallelism: 1),
+    ),
+  );
+  await service.initialize();
+  return service;
 }
 
 VaultLegacyImportService _importer(
   _Harness h, {
   VaultService? vault,
   VaultCredentialCapture? capture,
+  String importKey = 'test-root',
   SshProfileRepository? sshProfiles,
   SshCredentialStore? sshCredentials,
   AppProviderRepository? appProviders,
@@ -72,6 +117,7 @@ VaultLegacyImportService _importer(
 }) => VaultLegacyImportService(
   vault: vault ?? h.vault,
   capture: capture ?? h.capture,
+  importKey: importKey,
   sshProfiles: sshProfiles ?? SshProfileRepository(storage: h.storage),
   sshCredentials: sshCredentials ?? InMemorySshCredentialStore(),
   appProviders:
@@ -587,14 +633,50 @@ void main() {
       sshCredentials: sshCredentials,
     );
 
-    // A retried `buildAppShell` builds a second importer over the same vault;
-    // both must observe the same in-flight pass.
+    // A retried `buildAppShell` builds a second importer over the same
+    // app-data root; both must observe the same in-flight pass.
     final first = importer().runOnce();
     final second = importer().runOnce();
     expect(identical(first, second), isTrue);
     await Future.wait([first, second]);
     expect(capture.sshCaptures, 1);
     expect(h.vault.legacyImportVersion, 1);
+  });
+
+  test('a second service over the same store sees the marker and no-ops', () async {
+    final h = await _harness();
+    // A retried bootstrap builds a fresh service over the same keychain store;
+    // its in-memory document predates the first shell's import pass.
+    final secondService = await _secondService(h);
+    final capture = _CountingCapture(h.vault);
+    final sshProfiles = SshProfileRepository(storage: h.storage);
+    final sshCredentials = InMemorySshCredentialStore();
+    await sshProfiles.save(
+      const SshProfile(id: 'p1', name: 'Server', host: 'h', username: 'u'),
+    );
+    await sshCredentials.savePassword('p1', 'pw');
+
+    await _importer(
+      h,
+      capture: capture,
+      sshProfiles: sshProfiles,
+      sshCredentials: sshCredentials,
+    ).runOnce();
+    expect(h.vault.legacyImportVersion, 1);
+    expect(secondService.legacyImportVersion, 0);
+
+    await _importer(
+      h,
+      vault: secondService,
+      capture: capture,
+      sshProfiles: sshProfiles,
+      sshCredentials: sshCredentials,
+    ).runOnce();
+
+    // Only the refreshed marker prevents a second capture pass.
+    expect(capture.sshCaptures, 1);
+    expect(secondService.markerWrites, 0);
+    expect(secondService.legacyImportVersion, 1);
   });
 }
 
@@ -700,6 +782,8 @@ class _LockedVault implements VaultService {
   bool get isEncrypted => _delegate.isEncrypted;
   @override
   bool get isUnlocked => false;
+  @override
+  Future<void> refreshMarkerFromBackend() async {}
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
