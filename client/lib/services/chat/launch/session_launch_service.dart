@@ -939,7 +939,10 @@ class SessionLaunchService
   /// Marks the seat discarded on the bus before tearing the runtime down, then
   /// removes the cubit and records it as reclaimed. Closing the cubit persists
   /// the transcript and the agent session id and kills the agent process; the
-  /// member-connect funnel re-attaches it on demand (resume).
+  /// member-connect funnel re-attaches it on demand (resume). The per-seat
+  /// remote plane is closed too — with one SSH session per member, an
+  /// unreleased plane would leak an idle connection per reclaimed remote seat.
+  /// Local seats have no member SSH session, so the close is a no-op for them.
   void discardAcpSeat(String sessionId, String memberId) {
     final id = sessionId.trim();
     final mid = memberId.trim();
@@ -953,6 +956,7 @@ class SessionLaunchService
     tab.memberAcpRuntimes.remove(mid);
     tab.reclaimedMemberIds.add(mid);
     unawaited(cubit.close());
+    unawaited(tab.closeMemberRemotePlane(mid));
     _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: mid);
     _h.clearLaunchError(tab.info.id);
     _h.updateTabRunning(tab.info.id);

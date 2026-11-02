@@ -9058,27 +9058,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cliTransportDefaultTerminal => '新会话默认使用终端（PTY）';
 
   @override
-  String get claudePersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
-
-  @override
-  String get claudePersonalAcpDefaultDescription =>
-      '新建个人和混合团队 Claude 会话走无终端 ACP（claude-agent-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
-
-  @override
-  String get cursorPersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
-
-  @override
-  String get cursorPersonalAcpDefaultDescription =>
-      '新建个人和混合团队 Cursor 会话走无终端 ACP（cursor-agent acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
-
-  @override
-  String get opencodePersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
-
-  @override
-  String get opencodePersonalAcpDefaultDescription =>
-      '新建个人和混合团队 OpenCode 会话走无终端 ACP（opencode acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
-
-  @override
   String get acpLaunchFailedAdapter =>
       '无法启动 Claude ACP 适配器（claude-agent-acp）。请安装后重试。';
 
@@ -9089,13 +9068,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String acpChatSessionOpenFailed(String cliName) {
     return '无法打开 $cliName 会话。';
   }
-
-  @override
-  String get codexPersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
-
-  @override
-  String get codexPersonalAcpDefaultDescription =>
-      '新建个人和混合团队 Codex 会话走无终端 ACP（codex-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
 
   @override
   String get codexAcpLaunchFailedAdapter =>

@@ -9465,28 +9465,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'New sessions default to the terminal (PTY)';
 
   @override
-  String get claudePersonalAcpDefaultLabel => 'Personal sessions use ACP chat';
-
-  @override
-  String get claudePersonalAcpDefaultDescription =>
-      'Run new personal and mixed-team Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
-
-  @override
-  String get cursorPersonalAcpDefaultLabel => 'Personal sessions use ACP chat';
-
-  @override
-  String get cursorPersonalAcpDefaultDescription =>
-      'Run new personal and mixed-team Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
-
-  @override
-  String get opencodePersonalAcpDefaultLabel =>
-      'Personal sessions use ACP chat';
-
-  @override
-  String get opencodePersonalAcpDefaultDescription =>
-      'Run new personal and mixed-team OpenCode sessions as terminal-less ACP chat via opencode acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
-
-  @override
   String get acpLaunchFailedAdapter =>
       'Could not start the Claude ACP adapter (claude-agent-acp). Install it and try again.';
 
@@ -9498,13 +9476,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String acpChatSessionOpenFailed(String cliName) {
     return 'Couldn\'t open the $cliName session.';
   }
-
-  @override
-  String get codexPersonalAcpDefaultLabel => 'Personal sessions use ACP chat';
-
-  @override
-  String get codexPersonalAcpDefaultDescription =>
-      'Run new personal and mixed-team Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
 
   @override
   String get codexAcpLaunchFailedAdapter =>

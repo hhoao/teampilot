@@ -136,9 +136,10 @@ class SessionPreferences {
   /// background.
   final bool chatSubmitSwitchesToTerminal;
 
-  /// Personal ACP defaults keyed by [CliTool.value]. Missing key means "launch
-  /// personal sessions as ACP" — controlled from CLI settings; existing
-  /// sessions keep the runtime they were started with.
+  /// New-session ACP defaults keyed by [CliTool.value] (the JSON key keeps its
+  /// legacy `personalAcpDefaults` name). Missing key means "launch new sessions
+  /// as ACP" — controlled from the CLI card's transport pill; existing sessions
+  /// keep the runtime they were started with.
   final Map<String, bool> personalAcpDefaults;
 
   /// Default ACP compose permission for new personal ACP launches and new

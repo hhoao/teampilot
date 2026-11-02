@@ -540,6 +540,47 @@ void main() {
     expect(cubit.acpDefaultFor(CliTool.claude), isTrue);
   });
 
+  testWidgets('stored false preference marks the terminal segment active', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await cubit.setAcpDefaultFor(CliTool.claude, false);
+
+    await tester.pumpWidget(_wrapCard(cubit));
+    await tester.pump();
+
+    expect(cubit.acpDefaultFor(CliTool.claude), isFalse);
+    final terminal = tester.widget<Icon>(
+      find.byIcon(Icons.terminal_rounded),
+    );
+    final chat = tester.widget<Icon>(
+      find.byIcon(Icons.chat_bubble_outline_rounded),
+    );
+    expect(terminal.color, Colors.white, reason: 'terminal is the active chip');
+    expect(chat.color, isNot(Colors.white));
+  });
+
+  testWidgets('tapping the active pill segment does not write again', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(_wrapCard(cubit));
+    await tester.pump();
+    expect(cubit.acpDefaultFor(CliTool.claude), isTrue);
+
+    var emissions = 0;
+    final sub = cubit.stream.listen((_) => emissions++);
+    addTearDown(sub.cancel);
+
+    await tester.tap(find.byIcon(Icons.chat_bubble_outline_rounded));
+    await tester.pumpAndSettle();
+
+    expect(emissions, 0, reason: 'an active segment is a no-op');
+    expect(cubit.acpDefaultFor(CliTool.claude), isTrue);
+  });
+
   testWidgets('ACP pill replaces the old preference row', (tester) async {
     final cubit = await _makeCubit();
     addTearDown(cubit.close);

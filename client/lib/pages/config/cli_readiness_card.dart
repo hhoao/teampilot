@@ -602,7 +602,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
           ),
           if (_separateAdapter) ...[
             const SizedBox(height: 12),
-            _buildAcpBlock(
+            _buildAcpAdapterRow(
               context,
               l10n: l10n,
               adapterKnown: adapterKnown,
@@ -616,7 +616,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     );
   }
 
-  Widget _buildAcpBlock(
+  Widget _buildAcpAdapterRow(
     BuildContext context, {
     required AppLocalizations l10n,
     required bool adapterKnown,
@@ -634,46 +634,38 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     final showAdapterInstall =
         !adapterKnown && _settings?.adapterInstaller != null;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (_separateAdapter)
-          CliReadinessPathRow(
-            label: l10n.cliReadinessRowAcp,
-            fieldKey: AppKeys.acpAdapterPathFieldFor(widget.cli),
-            storedPath: adapterStored,
-            discoveredPath: cubit.discoveredAcpAdapterPath(widget.cli),
-            version: adapterVersion,
-            onPersist: (value) => cubit.setAcpAdapterPathFor(widget.cli, value),
-            browseKey: AppKeys.acpAdapterBrowseButtonFor(widget.cli),
-            onBrowse: (isRemote || busyAdapter) ? null : _pickAdapterFile,
-            locateOrResetKey: adapterStored.trim().isEmpty
-                ? AppKeys.acpAdapterLocateButtonFor(widget.cli)
-                : AppKeys.acpAdapterResetButtonFor(widget.cli),
-            locateLabel: l10n.cliExecutablePathLocate,
-            resetLabel: l10n.cliExecutablePathReset,
-            onLocateOrReset: busyAdapter
-                ? null
-                : (adapterStored.trim().isEmpty
-                      ? _locateAdapter
-                      : _resetAdapterPath),
-            installKey: showAdapterInstall
-                ? AppKeys.acpAdapterInstallButtonFor(widget.cli)
-                : null,
-            onInstall: showAdapterInstall
-                ? () => _installOrUpgradeAdapter(upgrading: false)
-                : null,
-            installing: installingAdapter,
-            upgradeKey: adapterUpdate
-                ? AppKeys.acpAdapterUpgradeButtonFor(widget.cli)
-                : null,
-            onUpgrade: adapterUpdate
-                ? () => _installOrUpgradeAdapter(upgrading: true)
-                : null,
-            locating: _locatingAdapter,
-            enabled: !_isAndroid,
-          ),
-      ],
+    return CliReadinessPathRow(
+      label: l10n.cliReadinessRowAcp,
+      fieldKey: AppKeys.acpAdapterPathFieldFor(widget.cli),
+      storedPath: adapterStored,
+      discoveredPath: cubit.discoveredAcpAdapterPath(widget.cli),
+      version: adapterVersion,
+      onPersist: (value) => cubit.setAcpAdapterPathFor(widget.cli, value),
+      browseKey: AppKeys.acpAdapterBrowseButtonFor(widget.cli),
+      onBrowse: (isRemote || busyAdapter) ? null : _pickAdapterFile,
+      locateOrResetKey: adapterStored.trim().isEmpty
+          ? AppKeys.acpAdapterLocateButtonFor(widget.cli)
+          : AppKeys.acpAdapterResetButtonFor(widget.cli),
+      locateLabel: l10n.cliExecutablePathLocate,
+      resetLabel: l10n.cliExecutablePathReset,
+      onLocateOrReset: busyAdapter
+          ? null
+          : (adapterStored.trim().isEmpty ? _locateAdapter : _resetAdapterPath),
+      installKey: showAdapterInstall
+          ? AppKeys.acpAdapterInstallButtonFor(widget.cli)
+          : null,
+      onInstall: showAdapterInstall
+          ? () => _installOrUpgradeAdapter(upgrading: false)
+          : null,
+      installing: installingAdapter,
+      upgradeKey: adapterUpdate
+          ? AppKeys.acpAdapterUpgradeButtonFor(widget.cli)
+          : null,
+      onUpgrade: adapterUpdate
+          ? () => _installOrUpgradeAdapter(upgrading: true)
+          : null,
+      locating: _locatingAdapter,
+      enabled: !_isAndroid,
     );
   }
 }
@@ -693,7 +685,6 @@ class _CliTransportPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return TpSegmentedControl(
-      key: ValueKey(acp),
       totalSwitches: 2,
       initialLabelIndex: acp ? 0 : 1,
       labels: const ['', ''],
@@ -705,7 +696,6 @@ class _CliTransportPill extends StatelessWidget {
         l10n.cliTransportDefaultChat,
         l10n.cliTransportDefaultTerminal,
       ],
-      minWidth: 32,
       minHeight: 28,
       customWidths: const [36, 36],
       onToggle: (index) {
