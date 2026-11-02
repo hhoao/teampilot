@@ -116,6 +116,14 @@ class GithubCredentialsStore {
     return pointer.isEmpty ? null : pointer;
   }
 
+  /// Deletes the legacy plaintext token keys without touching the vault entry.
+  ///
+  /// Used by the one-shot importer to drop a copy left behind by a partial
+  /// pass once the vault pointer is known to resolve.
+  Future<void> clearLegacyCopy() async {
+    await _clearLegacy();
+  }
+
   Future<void> clearStored() async {
     final pointer = (await _kv.read(_vaultEntryKey))?.trim() ?? '';
     if (pointer.isNotEmpty && _vault != null) {

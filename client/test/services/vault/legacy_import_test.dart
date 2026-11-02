@@ -88,6 +88,22 @@ VaultLegacyImportService _importer(
   github: github ?? GithubCredentialsStore(kv: _FakeStore()),
 );
 
+ManagedProviderRepository _managedRepository(_Harness h) =>
+    ManagedProviderRepository(
+      storage: h.storage,
+      fs: h.fs,
+      configPath: '/tp/managed.json',
+      onProvidersDeleted: (_) async {},
+    );
+
+ManagedProvider _managedProvider(String id, {String? ref}) => ManagedProvider(
+  id: id,
+  name: id,
+  kind: ManagedProviderKind.apiBalance,
+  adapterId: 'http_json_mapping',
+  credentialRef: ref,
+);
+
 void main() {
   test('imports every legacy secret once', () async {
     final h = await _harness();
@@ -155,7 +171,11 @@ void main() {
     expect(provider.apiKey, isEmpty);
     final managed = (await managedRepo.load()).single;
     expect(managed.vaultEntryId, isNotNull);
-    expect(await managedSecrets.read('managed-provider:m1'), isNotNull);
+    expect(
+      (await managedSecrets.read('managed-provider:m1')).isEmpty,
+      isTrue,
+      reason: 'the legacy scope is deleted after the reference is persisted',
+    );
     expect(
       (await h.vault.list()).any(
         (entry) => entry.extra['ownerKind'] == vaultOwnerKindGithub,
@@ -300,6 +320,236 @@ void main() {
     expect(h.vault.legacyImportVersion, 1);
   });
 
+  test(
+    'a linked SSH profile with an empty keychain keeps its vault secret',
+    () async {
+      final h = await _harness();
+      final sshProfiles = SshProfileRepository(storage: h.storage);
+      final sshCredentials = InMemorySshCredentialStore();
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'Server',
+        host: 'h',
+        username: 'u',
+      );
+      await sshProfiles.save(profile);
+      final captured = await h.capture.captureSsh(
+        profile,
+        password: 'vault-pw',
+      );
+      await sshProfiles.save(profile.copyWith(vaultEntryId: captured.entryId));
+
+      await _importer(
+        h,
+        sshProfiles: sshProfiles,
+        sshCredentials: sshCredentials,
+      ).runOnce();
+
+      final linked = (await sshProfiles.loadAll()).single;
+      expect(linked.vaultEntryId, captured.entryId);
+      expect(await h.vault.readField(captured.entryId, 'password'), 'vault-pw');
+      expect(await sshCredentials.loadPassword('p1'), isNull);
+      expect(h.vault.legacyImportVersion, 1);
+    },
+  );
+
+  test(
+    'a dangling SSH link is re-captured before the keychain is deleted',
+    () async {
+      final h = await _harness();
+      final sshProfiles = SshProfileRepository(storage: h.storage);
+      final sshCredentials = InMemorySshCredentialStore();
+      await sshProfiles.save(
+        const SshProfile(
+          id: 'p1',
+          name: 'Server',
+          host: 'h',
+          username: 'u',
+          vaultEntryId: 'gone',
+        ),
+      );
+      await sshCredentials.savePassword('p1', 'pw');
+
+      await _importer(
+        h,
+        sshProfiles: sshProfiles,
+        sshCredentials: sshCredentials,
+      ).runOnce();
+
+      final linked = (await sshProfiles.loadAll()).single;
+      expect(linked.vaultEntryId, isNotNull);
+      expect(linked.vaultEntryId, isNot('gone'));
+      expect(await h.vault.readField(linked.vaultEntryId!, 'password'), 'pw');
+      expect(await sshCredentials.loadPassword('p1'), isNull);
+      expect(h.vault.legacyImportVersion, 1);
+    },
+  );
+
+  test(
+    'a linked SSH entry that lost its secret is refilled from the keychain',
+    () async {
+      final h = await _harness();
+      final sshProfiles = SshProfileRepository(storage: h.storage);
+      final sshCredentials = InMemorySshCredentialStore();
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'Server',
+        host: 'h',
+        username: 'u',
+      );
+      await sshProfiles.save(profile);
+      // An entry with no password: the link is not usable on its own.
+      final captured = await h.capture.captureSsh(profile, password: '');
+      await sshProfiles.save(profile.copyWith(vaultEntryId: captured.entryId));
+      await sshCredentials.savePassword('p1', 'pw');
+
+      await _importer(
+        h,
+        sshProfiles: sshProfiles,
+        sshCredentials: sshCredentials,
+      ).runOnce();
+
+      final linked = (await sshProfiles.loadAll()).single;
+      expect(linked.vaultEntryId, captured.entryId);
+      expect(await h.vault.readField(captured.entryId, 'password'), 'pw');
+      expect(await sshCredentials.loadPassword('p1'), isNull);
+      expect(h.vault.legacyImportVersion, 1);
+    },
+  );
+
+  test(
+    'two managed providers sharing a ref keep it until both migrate',
+    () async {
+      final h = await _harness();
+      final managedRepo = _managedRepository(h);
+      final managedSecrets = ManagedProviderSecretStore(_FakeStore());
+      await managedRepo.save([
+        _managedProvider('m1', ref: 'shared'),
+        _managedProvider('m2', ref: 'shared'),
+      ]);
+      await managedSecrets.write('shared', {'apiKey': 'shared-key'});
+
+      await _importer(
+        h,
+        capture: _FailingManagedCapture(h.vault, 'm2'),
+        managedProviders: managedRepo,
+        managedSecrets: managedSecrets,
+      ).runOnce();
+
+      final providers = {for (final p in await managedRepo.load()) p.id: p};
+      expect(providers['m1']!.vaultEntryId, isNotNull);
+      expect(providers['m2']!.vaultEntryId, isNull);
+      expect(
+        (await managedSecrets.read('shared')).isEmpty,
+        isFalse,
+        reason: 'a shared ref must survive while one owner is still unmigrated',
+      );
+      expect(h.vault.legacyImportVersion, 0);
+    },
+  );
+
+  test(
+    'a linked managed provider releases its legacy ref after the save',
+    () async {
+      final h = await _harness();
+      final managedRepo = _managedRepository(h);
+      final managedSecrets = ManagedProviderSecretStore(_FakeStore());
+      final provider = _managedProvider('m1', ref: 'shared');
+      await managedRepo.save([provider]);
+      await managedSecrets.write('shared', {'apiKey': 'shared-key'});
+      final captured = await h.capture.captureManaged(provider, {
+        'apiKey': 'shared-key',
+      });
+      await managedRepo.save([
+        provider.copyWith(vaultEntryId: captured.entryId),
+      ]);
+
+      await _importer(
+        h,
+        managedProviders: managedRepo,
+        managedSecrets: managedSecrets,
+      ).runOnce();
+
+      final linked = (await managedRepo.load()).single;
+      expect(linked.vaultEntryId, captured.entryId);
+      expect((await managedSecrets.read('shared')).isEmpty, isTrue);
+      expect(h.vault.legacyImportVersion, 1);
+    },
+  );
+
+  test('a failure in one category does not stop the others', () async {
+    final h = await _harness();
+    final sshProfiles = SshProfileRepository(storage: h.storage);
+    final sshCredentials = InMemorySshCredentialStore();
+    await sshProfiles.save(
+      const SshProfile(id: 'bad', name: 'Bad', host: 'h', username: 'u'),
+    );
+    await sshCredentials.savePassword('bad', 'pw');
+    final appProviders = AppProviderRepository(storage: h.storage, fs: h.fs);
+    await appProviders.saveProviders(CliTool.claude, const [
+      AppProviderConfig(
+        id: 'openai',
+        cli: CliTool.claude,
+        name: 'OpenAI',
+        apiKey: 'sk',
+      ),
+    ]);
+
+    await _importer(
+      h,
+      capture: _FailingSshCapture(h.vault),
+      sshProfiles: sshProfiles,
+      sshCredentials: sshCredentials,
+      appProviders: appProviders,
+    ).runOnce();
+
+    final provider = (await appProviders.loadProviders(CliTool.claude)).single;
+    expect(provider.credentialLink, startsWith('vault:'));
+    expect(provider.apiKey, isEmpty);
+    expect(await sshCredentials.loadPassword('bad'), 'pw');
+    expect(h.vault.legacyImportVersion, 0);
+  });
+
+  test('an unusable managed ref does not block the marker', () async {
+    final h = await _harness();
+    final managedRepo = _managedRepository(h);
+    await managedRepo.save([_managedProvider('m1', ref: 'bad/ref')]);
+
+    await _importer(h, managedProviders: managedRepo).runOnce();
+
+    expect((await managedRepo.load()).single.vaultEntryId, isNull);
+    expect(h.vault.legacyImportVersion, 1);
+  });
+
+  test('a resolving GitHub pointer clears a stale plaintext token', () async {
+    final h = await _harness();
+    final githubKv = _FakeStore();
+    final github = GithubCredentialsStore(
+      kv: githubKv,
+      vault: h.vault,
+      vaultCapture: h.capture,
+      ensureVaultUnlocked: () async => true,
+    );
+    await github.saveOAuth(token: 'vault-token', login: 'me');
+    // Simulate a pass that stored the pointer but failed to delete its copies.
+    await githubKv.write('teampilot.github.v1.token', 'stale');
+    await githubKv.write('teampilot.github.v1.login', 'stale');
+    await githubKv.write('teampilot.github.v1.source', 'pat');
+    await githubKv.write('teampilot.hub_publish.v1.github_token', 'stale-hub');
+
+    await _importer(h, github: github).runOnce();
+
+    expect(await githubKv.read('teampilot.github.v1.token'), isNull);
+    expect(await githubKv.read('teampilot.github.v1.login'), isNull);
+    expect(await githubKv.read('teampilot.github.v1.source'), isNull);
+    expect(
+      await githubKv.read('teampilot.hub_publish.v1.github_token'),
+      isNull,
+    );
+    expect((await github.readStored())?.token, 'vault-token');
+    expect(h.vault.legacyImportVersion, 1);
+  });
+
   test('locked vault is a no-op', () async {
     final h = await _harness();
     final sshProfiles = SshProfileRepository(storage: h.storage);
@@ -343,6 +593,24 @@ class _FailingSshCapture extends VaultCredentialCapture {
       passphrase: passphrase,
       relayGrant: relayGrant,
     );
+  }
+}
+
+class _FailingManagedCapture extends VaultCredentialCapture {
+  _FailingManagedCapture(VaultService vault, this.failingId)
+    : super(vault: vault);
+
+  final String failingId;
+
+  @override
+  Future<VaultCaptureResult> captureManaged(
+    ManagedProvider provider,
+    Map<String, String> values,
+  ) async {
+    if (provider.id == failingId) {
+      throw const VaultCaptureException('injected');
+    }
+    return super.captureManaged(provider, values);
   }
 }
 

@@ -25,6 +25,14 @@ class _OwnerImportFailure implements Exception {
   String toString() => 'legacy import incomplete for $owner ($failures failed)';
 }
 
+/// The catalog save returned without the reference actually reaching disk.
+class _ReferenceNotPersistedException implements Exception {
+  const _ReferenceNotPersistedException();
+
+  @override
+  String toString() => 'reference not persisted';
+}
+
 /// Imports every legacy secret into the vault exactly once.
 ///
 /// Order: GitHub → SSH → app providers → managed providers. Each owner is
@@ -120,8 +128,11 @@ class VaultLegacyImportService {
   Future<void> _importGithub() async {
     final pointer = await _github.storedVaultEntryId();
     if (pointer != null && await _vault.readField(pointer, 'token') != null) {
-      // A resolvable pointer with a token is authoritative: the legacy keys
-      // were cleared when it was written, so there is nothing left to import.
+      // A resolvable pointer with a token is authoritative. Drop any plaintext
+      // copy a previous partial pass left behind so a legacy token can never
+      // survive alongside marker = 1.
+      await _github.migrateLegacyHubPublishTokenIfNeeded();
+      await _github.clearLegacyCopy();
       return;
     }
     // No pointer yet, or one that no longer resolves to a token (a locked or
@@ -143,12 +154,15 @@ class VaultLegacyImportService {
     var failures = 0;
     for (final profile in await _sshProfiles.loadAll()) {
       try {
-        if ((profile.vaultEntryId ?? '').trim().isEmpty) {
-          await _captureSshProfile(profile);
+        if (await _hasVerifiedSshLink(profile)) {
+          // The vault entry already holds this profile's secret; only the
+          // legacy cleanup remains. Never delete before verifying.
+          await _sshCredentials.deleteAll(profile.id);
+          continue;
         }
-        // Also reached for an already-linked profile, so a pass that stored
-        // the reference but failed to delete the keychain copy converges
-        // instead of leaving a duplicate secret behind.
+        // No link, or a link whose entry no longer holds the secret: capture
+        // from the keychain first, persist the reference, then delete.
+        await _captureSshProfile(profile);
         await _sshCredentials.deleteAll(profile.id);
       } on Object catch (error, stackTrace) {
         failures++;
@@ -156,6 +170,20 @@ class VaultLegacyImportService {
       }
     }
     if (failures > 0) throw _OwnerImportFailure('ssh', failures);
+  }
+
+  /// True when the profile is linked to an entry that still holds the secret
+  /// the profile's auth type needs.
+  Future<bool> _hasVerifiedSshLink(SshProfile profile) async {
+    final entryId = (profile.vaultEntryId ?? '').trim();
+    if (entryId.isEmpty) return false;
+    final entry = await _vault.get(entryId);
+    if (entry == null) return false;
+    if (profile.authType == SshAuthType.password) {
+      return (entry.fields['password'] ?? '').isNotEmpty;
+    }
+    return (entry.fields['privateKey'] ?? '').isNotEmpty ||
+        (entry.fields['passphrase'] ?? '').isNotEmpty;
   }
 
   Future<void> _captureSshProfile(SshProfile profile) async {
@@ -233,26 +261,49 @@ class VaultLegacyImportService {
 
   Future<void> _importManaged() async {
     final providers = await _managedProviders.load();
+
+    // A legacy ref is shared state: it may only be deleted once every provider
+    // that points at it has a verified vault entry, otherwise deleting it would
+    // destroy the only copy for the other owners.
+    final refOwners = <String, int>{};
+    for (final provider in providers) {
+      final ref = provider.credentialRef?.trim() ?? '';
+      if (ref.isNotEmpty) refOwners[ref] = (refOwners[ref] ?? 0) + 1;
+    }
+
     final updated = <ManagedProvider>[];
-    final legacyRefs = <String>[];
+    final verifiedRefs = <String, int>{};
+    final captured = <({String id, String ref})>[];
     var failures = 0;
     var changed = false;
+
+    void verify(String ref) {
+      if (ref.isEmpty) return;
+      verifiedRefs[ref] = (verifiedRefs[ref] ?? 0) + 1;
+    }
+
     for (final provider in providers) {
       final ref = provider.credentialRef?.trim() ?? '';
       try {
-        if ((provider.vaultEntryId ?? '').trim().isNotEmpty) {
-          // Already linked; deleting the legacy scope is a no-op when the
-          // earlier pass cleaned it up and converges when it did not.
-          updated.add(provider);
-          if (ref.isNotEmpty) legacyRefs.add(ref);
-          continue;
+        final entryId = (provider.vaultEntryId ?? '').trim();
+        if (entryId.isNotEmpty) {
+          final fields = await _capture.existingManagedFields(provider);
+          if (fields.isNotEmpty) {
+            updated.add(provider);
+            verify(ref);
+            continue;
+          }
+          // Dangling/incomplete link: fall through and re-capture from the ref
+          // instead of deleting the legacy scope behind it.
         }
         if (ref.isEmpty) {
           updated.add(provider);
           continue;
         }
-        final scope = await _managedSecrets.read(ref);
-        if (scope.isEmpty) {
+        final scope = await _readManagedScope(ref);
+        if (scope == null || scope.isEmpty) {
+          // Nothing stored under this ref, so there is nothing to migrate and
+          // nothing that could leak; leave the provider untouched.
           updated.add(provider);
           continue;
         }
@@ -263,7 +314,7 @@ class VaultLegacyImportService {
         };
         final result = await _capture.captureManaged(provider, values);
         updated.add(provider.copyWith(vaultEntryId: result.entryId));
-        legacyRefs.add(ref);
+        captured.add((id: provider.id, ref: ref));
         changed = true;
       } on Object catch (error, stackTrace) {
         failures++;
@@ -271,26 +322,69 @@ class VaultLegacyImportService {
         updated.add(provider);
       }
     }
+
     // Save the catalog before deleting anything: a save failure throws here,
     // so a legacy scope is never removed before its reference is persisted.
-    if (changed) await _managedProviders.save(updated);
-    for (final ref in legacyRefs) {
-      try {
-        await _managedSecrets.delete(ref);
-      } on ManagedProviderCredentialError catch (error, stackTrace) {
-        // An unusable reference never had anything stored, so it cannot leak.
-        if (error.code == ManagedProviderCredentialErrorCode.invalidReference) {
-          continue;
+    if (changed) {
+      await _managedProviders.save(updated);
+      // A silent save failure would otherwise let the deletion below destroy
+      // the only copy, so confirm the references reached disk first.
+      final persisted = {
+        for (final provider in await _managedProviders.load())
+          provider.id: (provider.vaultEntryId ?? '').trim(),
+      };
+      for (final capture in captured) {
+        if ((persisted[capture.id] ?? '').isNotEmpty) {
+          verify(capture.ref);
+        } else {
+          failures++;
+          _warn(
+            'managed ${capture.id}',
+            const _ReferenceNotPersistedException(),
+            StackTrace.current,
+          );
         }
-        failures++;
-        _warn('managed ref $ref', error, stackTrace);
-      } on Object catch (error, stackTrace) {
-        failures++;
-        _warn('managed ref $ref', error, stackTrace);
       }
     }
+
+    for (final entry in refOwners.entries) {
+      if (verifiedRefs[entry.key] != entry.value) continue;
+      if (!await _deleteManagedRef(entry.key)) failures++;
+    }
+
     if (failures > 0) {
       throw _OwnerImportFailure('managedProvider', failures);
+    }
+  }
+
+  /// Reads a managed-provider scope. An unusable reference can never address
+  /// stored data, so it reads as "nothing stored" instead of a failure.
+  Future<ProviderCredentialScope?> _readManagedScope(String ref) async {
+    try {
+      return await _managedSecrets.read(ref);
+    } on ManagedProviderCredentialError catch (error) {
+      if (error.code == ManagedProviderCredentialErrorCode.invalidReference) {
+        return null;
+      }
+      rethrow;
+    }
+  }
+
+  /// Deletes a legacy scope; returns false only for a real storage failure.
+  Future<bool> _deleteManagedRef(String ref) async {
+    try {
+      await _managedSecrets.delete(ref);
+      return true;
+    } on ManagedProviderCredentialError catch (error, stackTrace) {
+      // An unusable reference never had anything stored, so it cannot leak.
+      if (error.code == ManagedProviderCredentialErrorCode.invalidReference) {
+        return true;
+      }
+      _warn('managed ref $ref', error, stackTrace);
+      return false;
+    } on Object catch (error, stackTrace) {
+      _warn('managed ref $ref', error, stackTrace);
+      return false;
     }
   }
 
