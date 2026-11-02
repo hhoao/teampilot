@@ -126,7 +126,9 @@ snake_case 别名仍然接受（兼容 ACP 回放与夹具）。解析器：
 | `sessionEnd` / `postToolUseFailure` / `permissionRequest` / `subagentStop` / `preCompact` / `notification` / `shellCommandRequest` | 不支持 | 渲染时告警 `hook_unsupported_event_<id>_<event>` |
 
 - 决策 JSON：`{"decision":"allow"}` / `{"decision":"deny","reason":"TeamPilot hook policy"}`；
-  非拦截事件的 policy 被忽略并告警（`hook_policy_ignored_…`）。
+  非拦截事件的 policy 被忽略并告警（`hook_policy_ignored_<id>_<event>`）。
+- matcher 仅在 `PreToolUse` / `PostToolUse` 生效；其余事件原样写出但被 CLI 忽略，并告警
+  `hook_matcher_ignored_<id>_<event>`。
 - **HTTP hook 与原生插件 hook 不支持**：分别告警 `hook_http_unsupported_<id>`、
   `hook_native_plugin_unsupported_<id>` 后跳过（不静默丢弃）。
 - 复用 `GlueScriptBuilder`：stdin 透传、env 合并、stdout 透传、timeout（默认 10s）。

@@ -623,8 +623,8 @@ Assembler 按以下顺序工作：
 ### 启动安全能力与固定产品策略
 
 `CliLaunchSecurityCapability` 是启动边界声明的 CLI 安全策略能力，提供
-`supportedPolicies` 与 `supportsUserConfiguration`。当前五个内置可启动 CLI（Claude、
-FlashskyAI、Codex、Cursor、OpenCode）都注册不可配置的
+`supportedPolicies` 与 `supportsUserConfiguration`。当前内置可启动 CLI（Claude、
+FlashskyAI、Codex、Cursor、OpenCode、Gemini、CodeBuddy、Antigravity）都注册不可配置的
 `FullAccessOnlyCliLaunchSecurityCapability`：其 `supportedPolicies` 唯一值是
 `{LaunchSecurityPolicy.fullAccess}`，且 `supportsUserConfiguration` 为 `false`。
 

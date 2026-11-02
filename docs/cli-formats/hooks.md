@@ -40,7 +40,8 @@
   （`HookEvent.isIntercepting`）；其余事件 policy 必须为 `none`（UI 校验 + writer 侧
   `hook_policy_ignored_<id>_<event>` 警告兜底）。
 - **matcher**（工具名/命令正则）：claude/flashskyai/codex/cursor ✓；antigravity 仅
-  `PreToolUse`/`PostToolUse` ✓（其余事件忽略并告警）；opencode 桥仅
+  `PreToolUse`/`PostToolUse` ✓（其余事件 matcher 原样写出但被 CLI 忽略，writer 告警
+  `hook_matcher_ignored_<id>_<event>`）；opencode 桥仅
   `tool.execute.before/after` 按 tool 键限定，其余事件上的 matcher 忽略并警告
   （`hook_matcher_ignored_<id>_<event>`）。
 - **http action**：claude/flashskyai/codex 原生 http hook ✓；cursor 渲染为 bash curl 转发脚本

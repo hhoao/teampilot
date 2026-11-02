@@ -49,6 +49,11 @@ final class AntigravityHookWriter implements HookCapability {
 
   final String denyReason;
 
+  /// Native events whose matcher groups the CLI actually evaluates.
+  static const Set<String> matcherEvents = {'PreToolUse', 'PostToolUse'};
+
+  static bool _supportsMatcher(String native) => matcherEvents.contains(native);
+
   @override
   String? nativeEvent(HookEvent event) =>
       HookEventCapability.nativeEvent(event, CliTool.antigravity);
@@ -84,6 +89,12 @@ final class AntigravityHookWriter implements HookCapability {
       }
       if (entry.policy != HookPolicy.none && !entry.event.isIntercepting) {
         warnings.add('hook_policy_ignored_${entry.id}_${entry.event.name}');
+      }
+      // Antigravity only honours matchers on the two tool events. The matcher is
+      // still written through (the CLI ignores it), and the user is warned.
+      if ((entry.matcher?.trim().isNotEmpty ?? false) &&
+          !_supportsMatcher(native)) {
+        warnings.add('hook_matcher_ignored_${entry.id}_${entry.event.name}');
       }
       final decisionJson =
           entry.policy == HookPolicy.none || !entry.event.isIntercepting

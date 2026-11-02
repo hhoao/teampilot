@@ -166,6 +166,33 @@ void main() {
       expect(result.scripts.single.content, isNot(contains('DECISION=')));
     });
 
+    test('matcher on a non-tool event is written through and warned', () {
+      final result = writer.render(
+        entries: [entry(event: HookEvent.sessionStart, matcher: 'run_command')],
+        ctx: ctx,
+      );
+      expect(
+        result.warnings,
+        contains('hook_matcher_ignored_guard_sessionStart'),
+      );
+      final group =
+          ((hooksJson(result)['teampilot-guard'] as Map)['SessionStart']
+                      as List)
+                  .single
+              as Map;
+      expect(group['matcher'], 'run_command');
+    });
+
+    test('PreToolUse and PostToolUse matchers are not warned', () {
+      for (final event in [HookEvent.preToolUse, HookEvent.postToolUse]) {
+        final result = writer.render(
+          entries: [entry(event: event, matcher: 'run_command')],
+          ctx: ctx,
+        );
+        expect(result.warnings, isEmpty, reason: event.name);
+      }
+    });
+
     test('http hooks are unsupported and warned', () {
       final result = writer.render(
         entries: [
