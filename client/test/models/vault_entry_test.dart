@@ -56,6 +56,27 @@ void main() {
     },
   );
 
+  test('relay grants are masked for both SSH entry types', () {
+    const password = VaultEntry(
+      id: '1',
+      type: VaultEntryType.sshPassword,
+      title: 'p',
+    );
+    expect(password.isSecretField('relayGrant'), isTrue);
+    expect(password.isSecretField('password'), isTrue);
+    expect(password.isSecretField('host'), isFalse);
+    expect(password.isSecretField('username'), isFalse);
+
+    const key = VaultEntry(
+      id: '2',
+      type: VaultEntryType.sshPrivateKey,
+      title: 'k',
+    );
+    expect(key.isSecretField('relayGrant'), isTrue);
+    expect(key.isSecretField('privateKey'), isTrue);
+    expect(key.isSecretField('passphrase'), isTrue);
+  });
+
   test('private keys are never revealable', () {
     const entry = VaultEntry(
       id: '1',

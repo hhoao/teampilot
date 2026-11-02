@@ -37,8 +37,12 @@ enum VaultEntryType {
   };
 
   Set<String> get secretFields => switch (this) {
-    VaultEntryType.sshPassword => const {'password'},
-    VaultEntryType.sshPrivateKey => const {'privateKey', 'passphrase'},
+    VaultEntryType.sshPassword => const {'password', 'relayGrant'},
+    VaultEntryType.sshPrivateKey => const {
+      'privateKey',
+      'passphrase',
+      'relayGrant',
+    },
     VaultEntryType.apiKey => const {'apiKey'},
     VaultEntryType.login => const {'password'},
     VaultEntryType.token => const {'token'},

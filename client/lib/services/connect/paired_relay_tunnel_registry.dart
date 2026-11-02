@@ -81,8 +81,13 @@ class PairedRelayTunnelRegistry {
       try {
         final grant = await vault!.readField(entryId, 'relayGrant');
         if (grant != null && grant.isNotEmpty) return grant;
-      } on Object {
-        // Fall through to the keychain.
+      } on Object catch (error) {
+        // Read failures (locked, corrupt) fall through to the keychain; log
+        // only the type so a locked vault is distinguishable from a missing
+        // grant without ever touching the value.
+        AppLogger.instance.w(
+          '[connect-relay] vault grant read failed: ${error.runtimeType}',
+        );
       }
     }
     return credentialStore.loadRelayGrant(profile.id);
