@@ -983,8 +983,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         : null;
     return LandingLaunchContext(
       isPersonal: isSimple,
-      acp: willLaunchPersonalAcp(
-        isPersonal: isSimple,
+      acp: willLaunchAcp(
         cli: launchCli,
         requested: readPersonalAcpDefault(context, launchCli),
       ),

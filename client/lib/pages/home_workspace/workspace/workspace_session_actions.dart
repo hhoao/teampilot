@@ -810,11 +810,11 @@ Future<bool> _ensureLandingSessionConnected({
 
 /// Builds the create request for a workspace conversation.
 ///
-/// [acp] only survives for personal Claude, Cursor, Codex, or OpenCode on
-/// desktop (see [resolveLaunchAcp]);
-/// team creates and Android always get false. Mixed member ACP is copied from
-/// the Claude/Codex/Cursor settings seeds. Gemini ACP is inferred by session
-/// create, so it needs no flag here.
+/// [acp] survives for any session scope (personal / native team / mixed team);
+/// only the platform and whether the CLI offers a transport choice can veto it
+/// (see [resolveLaunchAcp]); Android always gets false. Mixed member ACP is
+/// copied from the Claude/Codex/Cursor settings seeds. Gemini ACP is inferred
+/// by session create, so it needs no flag here.
 SessionCreateRequest buildWorkspaceConversationCreateRequest({
   required Workspace workspace,
   required bool isPersonal,
@@ -856,7 +856,6 @@ SessionCreateRequest buildWorkspaceConversationCreateRequest({
     purpose: purpose,
     workflowId: workflowId,
     acp: resolveLaunchAcp(
-      isPersonal: isPersonal,
       cli: cli,
       requested: acp,
       isAndroidOverride: isAndroidOverride,

@@ -8,132 +8,59 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_session_actio
 
 void main() {
   group('resolveLaunchAcp', () {
-    test('true only for personal Claude when requested on desktop', () {
+    test('true for desktop Claude, Cursor, Codex and OpenCode', () {
+      for (final cli in [
+        CliTool.claude,
+        CliTool.cursor,
+        CliTool.codex,
+        CliTool.opencode,
+      ]) {
+        expect(
+          resolveLaunchAcp(
+            cli: cli,
+            requested: true,
+            isAndroidOverride: false,
+          ),
+          isTrue,
+          reason: '$cli should honour the ACP preference on desktop',
+        );
+      }
+    });
+
+    test('false when not requested, ACP-only, null, or Android', () {
       expect(
         resolveLaunchAcp(
-          isPersonal: true,
+          cli: CliTool.claude,
+          requested: false,
+          isAndroidOverride: false,
+        ),
+        isFalse,
+      );
+      expect(
+        resolveLaunchAcp(
+          cli: CliTool.gemini,
+          requested: true,
+          isAndroidOverride: false,
+        ),
+        isFalse,
+        reason: 'Gemini is ACP-only and has no transport choice',
+      );
+      expect(
+        resolveLaunchAcp(
+          cli: null,
+          requested: true,
+          isAndroidOverride: false,
+        ),
+        isFalse,
+      );
+      expect(
+        resolveLaunchAcp(
           cli: CliTool.claude,
           requested: true,
-          isAndroidOverride: false,
-        ),
-        isTrue,
-      );
-    });
-
-    test('true for personal Cursor when requested on desktop', () {
-      expect(
-        resolveLaunchAcp(
-          isPersonal: true,
-          cli: CliTool.cursor,
-          requested: true,
-          isAndroidOverride: false,
-        ),
-        isTrue,
-      );
-    });
-
-    test('true for personal Codex when requested on desktop', () {
-      expect(
-        resolveLaunchAcp(
-          isPersonal: true,
-          cli: CliTool.codex,
-          requested: true,
-          isAndroidOverride: false,
-        ),
-        isTrue,
-      );
-    });
-
-    test('true for personal OpenCode when requested on desktop', () {
-      expect(
-        resolveLaunchAcp(
-          isPersonal: true,
-          cli: CliTool.opencode,
-          requested: true,
-          isAndroidOverride: false,
-        ),
-        isTrue,
-      );
-    });
-
-    test('false for OpenCode team, not requested, or Android', () {
-      expect(
-        resolveLaunchAcp(
-          isPersonal: false,
-          cli: CliTool.opencode,
-          requested: true,
-          isAndroidOverride: false,
-        ),
-        isFalse,
-      );
-      expect(
-        resolveLaunchAcp(
-          isPersonal: true,
-          cli: CliTool.opencode,
-          requested: false,
-          isAndroidOverride: false,
-        ),
-        isFalse,
-      );
-      expect(
-        resolveLaunchAcp(
-          isPersonal: true,
-          cli: CliTool.opencode,
-          requested: true,
           isAndroidOverride: true,
         ),
         isFalse,
       );
-    });
-
-    test('false for Codex team, not requested, or Android', () {
-      expect(
-        resolveLaunchAcp(
-          isPersonal: false,
-          cli: CliTool.codex,
-          requested: true,
-          isAndroidOverride: false,
-        ),
-        isFalse,
-      );
-      expect(
-        resolveLaunchAcp(
-          isPersonal: true,
-          cli: CliTool.codex,
-          requested: false,
-          isAndroidOverride: false,
-        ),
-        isFalse,
-      );
-      expect(
-        resolveLaunchAcp(
-          isPersonal: true,
-          cli: CliTool.codex,
-          requested: true,
-          isAndroidOverride: true,
-        ),
-        isFalse,
-      );
-    });
-
-    test('false for team, Gemini, not requested, or Android', () {
-      bool resolve({
-        bool isPersonal = true,
-        CliTool? cli = CliTool.claude,
-        bool requested = true,
-        bool isAndroid = false,
-      }) => resolveLaunchAcp(
-        isPersonal: isPersonal,
-        cli: cli,
-        requested: requested,
-        isAndroidOverride: isAndroid,
-      );
-      expect(resolve(isPersonal: false), isFalse);
-      expect(resolve(cli: CliTool.gemini), isFalse);
-      expect(resolve(cli: null), isFalse);
-      expect(resolve(requested: false), isFalse);
-      expect(resolve(isAndroid: true), isFalse);
-      expect(resolve(cli: CliTool.cursor, isAndroid: true), isFalse);
     });
   });
 
@@ -183,7 +110,7 @@ void main() {
       expect(request.acp, isFalse);
     });
 
-    test('team create stays false even when acp is requested', () {
+    test('team create keeps request.acp when requested', () {
       final request = buildWorkspaceConversationCreateRequest(
         workspace: workspace,
         isPersonal: false,
@@ -191,7 +118,7 @@ void main() {
         acp: true,
         isAndroidOverride: false,
       );
-      expect(request.acp, isFalse);
+      expect(request.acp, isTrue);
     });
 
     test('Android forces acp false', () {
@@ -205,7 +132,7 @@ void main() {
       expect(request.acp, isFalse);
     });
 
-    test('team create keeps request.acp false and copies CLI seeds', () {
+    test('team create copies CLI seeds and keeps request.acp', () {
       final request = buildWorkspaceConversationCreateRequest(
         workspace: workspace,
         isPersonal: false,
@@ -217,7 +144,7 @@ void main() {
         seedOpencodeMemberAcp: true,
         isAndroidOverride: false,
       );
-      expect(request.acp, isFalse);
+      expect(request.acp, isTrue);
       expect(request.seedClaudeMemberAcp, isTrue);
       expect(request.seedCodexMemberAcp, isTrue);
       expect(request.seedCursorMemberAcp, isTrue);

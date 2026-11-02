@@ -25,21 +25,16 @@ import 'claude_acp_launch_switch.dart';
 bool _isAndroid(bool? isAndroidOverride) =>
     isAndroidOverride ?? Platform.isAndroid;
 
-/// ACP-only personal desktop CLIs (Gemini, CodeBuddy) always launch
-/// ACP; otherwise [resolveLaunchAcp].
-bool willLaunchPersonalAcp({
-  required bool isPersonal,
+/// ACP-only CLIs (Gemini, CodeBuddy) always launch ACP; otherwise
+/// [resolveLaunchAcp].
+bool willLaunchAcp({
   required CliTool? cli,
   required bool requested,
   bool? isAndroidOverride,
 }) {
-  if (isPersonal &&
-      CliToolRegistry.builtIn().launchesAcpOnly(cli) &&
-      !_isAndroid(isAndroidOverride)) {
-    return true;
-  }
+  if (_isAndroid(isAndroidOverride)) return false;
+  if (CliToolRegistry.builtIn().launchesAcpOnly(cli)) return true;
   return resolveLaunchAcp(
-    isPersonal: isPersonal,
     cli: cli,
     requested: requested,
     isAndroidOverride: isAndroidOverride,
@@ -56,8 +51,7 @@ bool showLandingAcpPermissionChip({
 }) {
   if (_isAndroid(isAndroidOverride)) return false;
   if (isPersonal) {
-    return willLaunchPersonalAcp(
-      isPersonal: true,
+    return willLaunchAcp(
       cli: cli,
       requested: requested,
       isAndroidOverride: isAndroidOverride,

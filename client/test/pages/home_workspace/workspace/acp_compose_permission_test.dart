@@ -16,19 +16,17 @@ import 'package:teampilot/widgets/compose/compose_chrome.dart';
 
 void main() {
   test(
-    'willLaunchPersonalAcp is true for Gemini and for requested Claude desktop',
+    'willLaunchAcp is true for Gemini and for requested Claude desktop',
     () {
       expect(
-        willLaunchPersonalAcp(
-          isPersonal: true,
+        willLaunchAcp(
           cli: CliTool.gemini,
           requested: false,
         ),
         isTrue,
       );
       expect(
-        willLaunchPersonalAcp(
-          isPersonal: true,
+        willLaunchAcp(
           cli: CliTool.codebuddy,
           requested: false,
         ),
@@ -36,8 +34,7 @@ void main() {
         reason: 'CodeBuddy is ACP-only on desktop',
       );
       expect(
-        willLaunchPersonalAcp(
-          isPersonal: true,
+        willLaunchAcp(
           cli: CliTool.codebuddy,
           requested: true,
           isAndroidOverride: true,
@@ -45,24 +42,21 @@ void main() {
         isFalse,
       );
       expect(
-        willLaunchPersonalAcp(
-          isPersonal: true,
+        willLaunchAcp(
           cli: CliTool.claude,
           requested: true,
         ),
         isTrue,
       );
       expect(
-        willLaunchPersonalAcp(
-          isPersonal: true,
+        willLaunchAcp(
           cli: CliTool.claude,
           requested: false,
         ),
         isFalse,
       );
       expect(
-        willLaunchPersonalAcp(
-          isPersonal: true,
+        willLaunchAcp(
           cli: CliTool.claude,
           requested: true,
           isAndroidOverride: true,

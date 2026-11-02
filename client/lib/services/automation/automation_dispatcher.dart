@@ -285,7 +285,6 @@ class AutomationDispatcher {
         officialProviderId: CliToolRegistry.builtIn().defaultOfficialProviderId,
       );
       final acp = resolveLaunchAcp(
-        isPersonal: true,
         cli: simpleIdentity.cli,
         requested: _personalAcpDefaultFor(simpleIdentity.cli),
       );
