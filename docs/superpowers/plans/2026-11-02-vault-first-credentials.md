@@ -4304,3 +4304,42 @@ missing-scope assertion.
 
 4. **Diagnostics.** Log only `error.runtimeType` in `_runOnUnlocked`; never pass
    the error object (it may stringify request data).
+
+### Task 12 correction follow-up 2
+
+1. **Single-flight must be per app-data root, not per service instance.**
+   `buildAppShell` constructs a new `VaultService` per retry, so keying the
+   static future on the service does not dedupe. Add
+   `required String importKey` to `VaultLegacyImportService` (app_shell passes
+   `nativeAppDataPath`) and key a static `Expando`/map on that string. A second
+   caller awaits the running future and returns without re-running.
+2. **Refresh the marker before a pass.** Before reading
+   `legacyImportVersion`, call:
+
+```dart
+  Future<void> refreshMarkerFromBackend() async {
+    if (_locked || _encrypted || !_initialized) return;
+    try {
+      final reloaded = await _keychainBackend.load();
+      if (reloaded != null) _document = reloaded;
+    } on Object {
+      // Keep the in-memory document.
+    }
+  }
+```
+
+   The importer awaits it at the start of `_run`, so a second shell whose
+   service was built before the first pass finished sees the updated marker and
+   no-ops.
+3. **Unhandled unlock hydrate.** Wrap the unlock-time hydrate:
+
+```dart
+    unawaited(
+      githubAccountCubit.hydrate().catchError((Object error, StackTrace stack) {
+        appLogger.w(
+          '[vault] post-unlock GitHub hydrate failed: ${error.runtimeType}',
+          stackTrace: stack,
+        );
+      }),
+    );
+```
