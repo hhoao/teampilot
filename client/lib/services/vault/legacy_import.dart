@@ -72,19 +72,25 @@ class VaultLegacyImportService {
   final ManagedProviderSecretStore _managedSecrets;
   final GithubCredentialsStore _github;
 
-  Future<void>? _running;
+  /// In-flight pass per vault, shared by every importer instance so a retried
+  /// `buildAppShell` cannot start a second concurrent migration.
+  static final _runningByVault = Expando<Future<void>>();
 
   /// Runs the migration once; concurrent calls share the same pass.
   ///
   /// Safe to call on every launch: the vault marker makes it a no-op after a
   /// clean pass, and a failed pass retries only the owners that did not
   /// finish (finished owners are skipped by their stored reference).
+  ///
+  /// Single-flight is keyed on the vault, not the instance: a retried
+  /// `buildAppShell` constructs a second importer over the same vault, and two
+  /// concurrent passes would race on capture/delete.
   Future<void> runOnce() {
-    final active = _running;
-    if (active != null) return active;
-    final next = _run();
-    _running = next.whenComplete(() => _running = null);
-    return _running!;
+    final existing = _runningByVault[_vault];
+    if (existing != null) return existing;
+    final next = _run().whenComplete(() => _runningByVault[_vault] = null);
+    _runningByVault[_vault] = next;
+    return next;
   }
 
   Future<void> _run() async {

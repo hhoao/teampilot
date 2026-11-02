@@ -332,9 +332,9 @@ class VaultCubit extends Cubit<VaultState> {
     try {
       await hook();
     } on Object catch (error, stackTrace) {
+      // Type only: an error object can stringify request data.
       AppLogger.instance.w(
-        '[vault] post-unlock hook failed',
-        error: error,
+        '[vault] post-unlock hook failed: ${error.runtimeType}',
         stackTrace: stackTrace,
       );
     }

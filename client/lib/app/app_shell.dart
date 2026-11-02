@@ -962,7 +962,6 @@ Future<AppShell> buildAppShell({
     },
     deviceFlowAvailable: githubDeviceFlowAvailable,
   );
-  unawaited(githubAccountCubit.hydrate());
 
   // P1: targets.json is a pure target catalog (no default/migrate); the home
   // target authority is the device-local homeTargetStore read above. The
@@ -1114,8 +1113,10 @@ Future<AppShell> buildAppShell({
     onUnlocked: () async {
       // Import first: GitHub hydration reads the store, and a token that only
       // lives in the vault must be captured before the pointer is consulted.
+      // Hydration is NOT awaited: it may hit api.github.com, and unlock/save
+      // must stay responsive while it runs.
       await legacyImporter.runOnce();
-      await githubAccountCubit.hydrate();
+      unawaited(githubAccountCubit.hydrate());
     },
   );
 
@@ -1319,7 +1320,20 @@ Future<AppShell> buildAppShell({
     managedSecrets: resolvedManagedProviderSecretStore,
     github: githubCredentialsStore,
   );
-  unawaited(legacyImporter.runOnce());
+  // One background sequence, not two: hydration reads the GitHub store that
+  // the import writes, so running them independently can duplicate the vault
+  // entry. Failure-tolerant and off the boot critical path.
+  unawaited(() async {
+    try {
+      await githubAccountCubit.hydrate();
+      await legacyImporter.runOnce();
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[vault] boot hydrate/import failed: ${error.runtimeType}',
+        stackTrace: stackTrace,
+      );
+    }
+  }());
 
   // One-shot startup sweep: reclaim orphaned `-mp-` rows and the legacy
   // shared rows. Fire-and-forget and failure-tolerant — the control plane

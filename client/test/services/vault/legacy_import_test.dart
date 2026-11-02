@@ -570,6 +570,58 @@ void main() {
     expect((await h.vault.list()), isEmpty);
     expect(h.vault.legacyImportVersion, 0);
   });
+
+  test('concurrent runs of two instances share one pass', () async {
+    final h = await _harness();
+    final capture = _CountingCapture(h.vault);
+    final sshProfiles = SshProfileRepository(storage: h.storage);
+    final sshCredentials = InMemorySshCredentialStore();
+    await sshProfiles.save(
+      const SshProfile(id: 'p1', name: 'Server', host: 'h', username: 'u'),
+    );
+    await sshCredentials.savePassword('p1', 'pw');
+    VaultLegacyImportService importer() => _importer(
+      h,
+      capture: capture,
+      sshProfiles: sshProfiles,
+      sshCredentials: sshCredentials,
+    );
+
+    // A retried `buildAppShell` builds a second importer over the same vault;
+    // both must observe the same in-flight pass.
+    final first = importer().runOnce();
+    final second = importer().runOnce();
+    expect(identical(first, second), isTrue);
+    await Future.wait([first, second]);
+    expect(capture.sshCaptures, 1);
+    expect(h.vault.legacyImportVersion, 1);
+  });
+}
+
+class _CountingCapture extends VaultCredentialCapture {
+  _CountingCapture(VaultService vault) : super(vault: vault);
+
+  int sshCaptures = 0;
+
+  @override
+  Future<VaultCaptureResult> captureSsh(
+    SshProfile profile, {
+    String? password,
+    String? privateKey,
+    String? passphrase,
+    String? relayGrant,
+  }) async {
+    sshCaptures++;
+    // Long enough that a second pass would overlap this one.
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    return super.captureSsh(
+      profile,
+      password: password,
+      privateKey: privateKey,
+      passphrase: passphrase,
+      relayGrant: relayGrant,
+    );
+  }
 }
 
 class _FailingSshCapture extends VaultCredentialCapture {
