@@ -3872,3 +3872,128 @@ Two execution options:
 2. **Inline Execution** — execute tasks in this session with checkpoints.
 
 Note: OpenCode Go subagent models were unavailable during the previous plan (insufficient funds / free limit); if they are still unavailable, inline execution in this session is the fallback.
+
+---
+
+## Execution Amendment — Task 8 corrections (2026-11-02)
+
+Task 8's original snippets had three defects found in review. Where they differ, this amendment governs:
+
+1. **Writer contract.** `saveManagedProviderWithVault` takes `required Map<String, String> existingValues` instead of `ManagedProvider? current`; the caller supplies the current fields from the vault entry or the legacy store. The writer merges `{...existingValues, ...secretValues}` and does not read the vault itself. Its rollback is guarded so a rollback failure never masks the persistence error:
+
+```dart
+Future<ManagedProvider> saveManagedProviderWithVault({
+  required ManagedProvider provider,
+  required Map<String, String> existingValues,
+  required Map<String, String> secretValues,
+  required VaultCredentialCapture capture,
+  required VaultUnlockGate unlockGate,
+  required Future<void> Function(ManagedProvider) persist,
+}) async {
+  if (secretValues.isEmpty) {
+    await persist(provider);
+    return provider;
+  }
+  if (!await unlockGate.ensureUnlocked()) {
+    throw const VaultSaveBlockedException();
+  }
+  final result = await capture.captureManaged(provider, {
+    ...existingValues,
+    ...secretValues,
+  });
+  final saved = provider.copyWith(vaultEntryId: result.entryId);
+  try {
+    await persist(saved);
+  } on Object {
+    try {
+      await capture.rollback(result);
+    } on Object {
+      // Preserve the persistence error.
+    }
+    rethrow;
+  }
+  return saved;
+}
+```
+
+2. **Editor current fields and first query.** Before persisting, compute:
+
+```dart
+    final existingValues = current == null
+        ? const <String, String>{}
+        : (current.vaultEntryId?.trim().isNotEmpty ?? false)
+        ? await context.read<VaultCredentialCapture>().existingManagedFields(
+            current,
+          )
+        : await _legacyManagedFields(secretStore, current.credentialRef);
+```
+
+with:
+
+```dart
+Future<Map<String, String>> _legacyManagedFields(
+  ManagedProviderSecretStore store,
+  String? credentialRef,
+) async {
+  final ref = credentialRef?.trim() ?? '';
+  if (ref.isEmpty) return const {};
+  try {
+    final scope = await store.read(ref);
+    return {
+      for (final field in scope.fields)
+        if ((scope.valueFor(field) ?? '').isNotEmpty)
+          field: scope.valueFor(field)!,
+    };
+  } on Object {
+    return const {};
+  }
+}
+```
+
+Keep the persisted row and query it (not the pre-capture `next`):
+
+```dart
+    var persisted = next;
+    try {
+      if (secretValues.isNotEmpty) {
+        persisted = await saveManagedProviderWithVault(
+          provider: next,
+          existingValues: existingValues,
+          secretValues: secretValues,
+          capture: context.read<VaultCredentialCapture>(),
+          unlockGate: context.read<VaultUnlockGate>(),
+          persist: (value) async {
+            await cubit.upsert(value);
+            if (cubit.state.errorCode != null) {
+              throw const _ManagedProviderEditorPersistenceFailed();
+            }
+          },
+        );
+        if (mounted) setState(() => _provider = persisted);
+      } else {
+        await cubit.upsert(next);
+        if (cubit.state.errorCode != null) {
+          throw const _ManagedProviderEditorPersistenceFailed();
+        }
+      }
+    } on VaultSaveBlockedException {
+      // existing error UI unchanged
+    } on _ManagedProviderEditorPersistenceFailed {
+      // existing error UI unchanged
+    } on Object {
+      // existing error UI unchanged
+    }
+    // later:
+    if (shouldRunFirstQuery) {
+      await context.read<ManagedProviderUsageCubit>().queryProvider(persisted);
+    }
+```
+
+Also:
+- `vaultEntryId` on `next`: `(current?.vaultEntryId?.trim().isEmpty ?? true) ? null : current!.vaultEntryId!.trim()`.
+- required-field check guards `(current?.vaultEntryId?.trim().isNotEmpty ?? false)`.
+- `credentialConfigured`: `(provider.vaultEntryId ?? '').isNotEmpty || (provider.credentialRef ?? '').isNotEmpty`.
+
+3. **Tests.** Writer tests pass `existingValues` (`const {}` for creates, `{'apiKey': 'a'}` for updates) and add:
+   - empty secret values → persist without touching the vault or prompting;
+   - update persist failure → previous fields restored.
