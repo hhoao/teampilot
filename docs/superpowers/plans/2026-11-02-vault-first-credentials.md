@@ -421,6 +421,7 @@ void main() {
     expect(entry.fields['apiKey'], 'sk-1');
     expect(entry.fields['baseUrl'], 'https://api.example.com');
     expect(entry.tags, contains('provider'));
+    expect(entry.extra['ownerId'], 'codex:openai');
 
     await capture.captureProvider(
       provider.copyWith(name: 'OpenAI 2', apiKey: 'sk-2'),
@@ -625,7 +626,9 @@ class VaultCredentialCapture {
   }) {
     return _upsert(
       ownerKind: vaultOwnerKindAppProvider,
-      ownerId: provider.id,
+      // Provider ids are per-CLI catalogs; qualify to avoid cross-CLI
+      // clobbering of the same id.
+      ownerId: '${provider.cli.value}:${provider.id.trim()}',
       type: VaultEntryType.apiKey,
       title: provider.name,
       tags: const ['provider'],
@@ -1585,7 +1588,7 @@ git commit -m "feat(vault): capture SSH credentials on save and drop manual link
 
 **Interfaces:**
 - Consumes: `VaultCredentialCapture`, `VaultUnlockGate`, `vaultOwnerKindAppProvider`.
-- Produces: `AppProviderCubit({VaultCredentialCapture? vaultCapture, Future<bool> Function()? ensureVaultUnlocked, ...})`; `upsertProvider` now links and clears the plaintext key.
+- Produces: `AppProviderCubit({VaultCredentialCapture? vaultCapture, Future<bool> Function()? ensureVaultUnlocked, ...})`; `upsertProvider(AppProviderConfig provider, {bool captureVaultCredentials = false})` links and clears the plaintext key only for opted-in form saves. Probe/import/background upserts must never capture or prompt.
 
 - [ ] **Step 1: Write the failing cubit tests**
 
@@ -1611,7 +1614,13 @@ Append to `client/test/cubits/app_provider_cubit_test.dart` inside `main()` (add
       name: 'Captured',
       apiKey: 'sk-secret',
     );
-    expect(await autoCubit.upsertProvider(draft), isTrue);
+    expect(
+      await autoCubit.upsertProvider(
+        draft,
+        captureVaultCredentials: true,
+      ),
+      isTrue,
+    );
 
     final saved = autoCubit.state.providersFor(CliTool.claude)
         .firstWhere((p) => p.id == 'captured');
@@ -1624,14 +1633,18 @@ Append to `client/test/cubits/app_provider_cubit_test.dart` inside `main()` (add
     expect(await vault.get(entryId), isNull);
   });
 
-  test('a managed-linked row keeps its link on probe upserts', () async {
+  test('background upserts never capture or prompt', () async {
     final vault = await _vaultService();
+    var prompts = 0;
     final autoCubit = AppProviderCubit(
       repository: repository,
       basePath: temp.path,
       storage: fakeHomeStorage(),
       vaultCapture: VaultCredentialCapture(vault: vault),
-      ensureVaultUnlocked: () async => true,
+      ensureVaultUnlocked: () async {
+        prompts++;
+        return true;
+      },
     );
     addTearDown(autoCubit.close);
     await autoCubit.load();
@@ -1647,7 +1660,86 @@ Append to `client/test/cubits/app_provider_cubit_test.dart` inside `main()` (add
     final saved = autoCubit.state.providersFor(CliTool.claude)
         .firstWhere((p) => p.id == 'linked');
     expect(saved.credentialLink, 'm1');
+    expect(saved.apiKey, 'resolved-in-memory');
     expect(await vault.list(), isEmpty);
+    expect(prompts, 0);
+  });
+
+  test('same provider id in two CLIs keeps separate vault entries', () async {
+    final vault = await _vaultService();
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const claudeRow = AppProviderConfig(
+      id: 'shared',
+      cli: CliTool.claude,
+      name: 'Shared',
+      apiKey: 'claude-key',
+    );
+    const codexRow = AppProviderConfig(
+      id: 'shared',
+      cli: CliTool.codex,
+      name: 'Shared',
+      apiKey: 'codex-key',
+    );
+    await autoCubit.upsertProvider(
+      claudeRow,
+      captureVaultCredentials: true,
+    );
+    await autoCubit.upsertProvider(codexRow, captureVaultCredentials: true);
+    final entries = await vault.list();
+    expect(entries, hasLength(2));
+    expect(
+      entries.map((entry) => entry.fields['apiKey']).toSet(),
+      {'claude-key', 'codex-key'},
+    );
+
+    await autoCubit.setSelectedCli(CliTool.claude);
+    await autoCubit.deleteProvider('shared');
+    expect((await vault.list()).single.fields['apiKey'], 'codex-key');
+  });
+
+  test('a failed catalog save keeps the vault entry on delete', () async {
+    final vault = await _vaultService();
+    final throwing = _ThrowingSaveRepository(
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+    );
+    final autoCubit = AppProviderCubit(
+      repository: throwing,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+    const row = AppProviderConfig(
+      id: 'keep',
+      cli: CliTool.claude,
+      name: 'Keep',
+      apiKey: 'k',
+    );
+    await autoCubit.upsertProvider(row, captureVaultCredentials: true);
+    final entryId = autoCubit.state
+        .providersFor(CliTool.claude)
+        .firstWhere((p) => p.id == 'keep')
+        .credentialLink
+        .substring('vault:'.length);
+
+    throwing.failSaves = true;
+    await expectLater(
+      autoCubit.deleteProvider('keep'),
+      throwsA(isA<StateError>()),
+    );
+    expect(await vault.get(entryId), isNotNull);
   });
 
   test('a refused unlock aborts the save', () async {
@@ -1668,7 +1760,13 @@ Append to `client/test/cubits/app_provider_cubit_test.dart` inside `main()` (add
       name: 'Blocked',
       apiKey: 'sk-secret',
     );
-    expect(await autoCubit.upsertProvider(draft), isFalse);
+    expect(
+      await autoCubit.upsertProvider(
+        draft,
+        captureVaultCredentials: true,
+      ),
+      isFalse,
+    );
     expect(autoCubit.state.providersFor(CliTool.claude), isEmpty);
   });
 ```
@@ -1702,6 +1800,18 @@ class _FakeVaultStore implements SecureKeyValueStore {
 
   @override
   Future<void> write(String key, String value) async => values[key] = value;
+}
+
+class _ThrowingSaveRepository extends AppProviderRepository {
+  _ThrowingSaveRepository({required super.basePath, required super.storage});
+
+  bool failSaves = false;
+
+  @override
+  Future<void> saveProviders(CliTool cli, List<AppProviderConfig> providers) {
+    if (failSaves) throw StateError('save failed');
+    return super.saveProviders(cli, providers);
+  }
 }
 
 class _LockedVaultService implements VaultService {
@@ -1744,27 +1854,44 @@ In `client/lib/cubits/app_provider_cubit.dart`:
   final Future<bool> Function()? _ensureVaultUnlocked;
 ```
 
-3. In `upsertProvider`, after the cycle guard and before `final current = ...`:
+3. In `upsertProvider`, change the signature to opt-in capture:
+
+```dart
+  Future<bool> upsertProvider(
+    AppProviderConfig provider, {
+    bool captureVaultCredentials = false,
+  }) async {
+```
+
+Then, after the cycle guard and before `final current = ...`:
 
 ```dart
     final capture = _vaultCapture;
     var effectiveLink = provider.credentialLink.trim();
     var effectiveApiKey = provider.apiKey;
-    // Managed links resolve their secret into apiKey in memory; probe and
-    // binding upserts must never rewrite them into a vault link.
     final linkIsVault = effectiveLink.startsWith('vault:');
     final linkIsManaged = effectiveLink.isNotEmpty && !linkIsVault;
-    if (capture != null &&
+    if (captureVaultCredentials &&
+        capture != null &&
         !linkIsManaged &&
         (linkIsVault || provider.apiKey.isNotEmpty)) {
-      final unlock = _ensureVaultUnlocked;
-      if (unlock != null && !await unlock()) return false;
-      final captured = await capture.captureProvider(
-        provider,
-        apiKey: provider.apiKey.isEmpty ? null : provider.apiKey,
-      );
-      effectiveLink = 'vault:${captured.entryId}';
-      effectiveApiKey = '';
+      try {
+        final unlock = _ensureVaultUnlocked;
+        if (unlock != null && !await unlock()) return false;
+        final captured = await capture.captureProvider(
+          provider,
+          apiKey: provider.apiKey.isEmpty ? null : provider.apiKey,
+        );
+        effectiveLink = 'vault:${captured.entryId}';
+        effectiveApiKey = '';
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          'Vault provider capture failed for ${provider.id}',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return false;
+      }
     }
 ```
 
@@ -1775,16 +1902,42 @@ In `client/lib/cubits/app_provider_cubit.dart`:
       apiKey: effectiveApiKey,
 ```
 
-5. In `deleteProvider`, before filtering:
+5. In `deleteProvider`, replace the removal block with persist-first ordering:
 
 ```dart
+    final cli = state.selectedCli;
     final target = state.providers.where((p) => p.id == id).firstOrNull;
-    if (target != null && target.credentialLink.trim().startsWith('vault:')) {
+    final removeEntry =
+        target != null && target.credentialLink.trim().startsWith('vault:');
+    if (removeEntry) {
       final unlock = _ensureVaultUnlocked;
       if (unlock != null && !await unlock()) return;
-      await _vaultCapture?.deleteOwner(vaultOwnerKindAppProvider, id);
+    }
+    final list = state.providers
+        .where((p) => p.id != id)
+        .toList(growable: false);
+    // Persist the catalog first: if this fails, the credential must survive.
+    await _repository.saveProviders(cli, list);
+    if (removeEntry) {
+      try {
+        await _vaultCapture?.deleteOwner(
+          vaultOwnerKindAppProvider,
+          '${cli.value}:${id.trim()}',
+        );
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          'Vault entry cleanup failed for provider $id',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
     }
 ```
+
+Apply the same ordering to `removeProviderRow(cli, providerId)`: compute the
+target, `await _repository.saveProviders(cli, filtered)`, then best-effort
+`deleteOwner(vaultOwnerKindAppProvider, '${cli.value}:${providerId.trim()}')`
+with an `appLogger.w` catch.
 
 - [ ] **Step 4: Remove vault options from the provider form**
 
@@ -2408,31 +2561,6 @@ Append to `client/test/services/github/github_credentials_store_test.dart` insid
     expect(await vault.list(), isEmpty);
   });
 
-  test('a managed-linked row keeps its link on probe upserts', () async {
-    final vault = await _vaultService();
-    final autoCubit = AppProviderCubit(
-      repository: repository,
-      basePath: temp.path,
-      storage: fakeHomeStorage(),
-      vaultCapture: VaultCredentialCapture(vault: vault),
-      ensureVaultUnlocked: () async => true,
-    );
-    addTearDown(autoCubit.close);
-    await autoCubit.load();
-
-    const linked = AppProviderConfig(
-      id: 'linked',
-      cli: CliTool.claude,
-      name: 'Linked',
-      apiKey: 'resolved-in-memory',
-      credentialLink: 'm1',
-    );
-    expect(await autoCubit.upsertProvider(linked), isTrue);
-    final saved = autoCubit.state.providersFor(CliTool.claude)
-        .firstWhere((p) => p.id == 'linked');
-    expect(saved.credentialLink, 'm1');
-    expect(await vault.list(), isEmpty);
-  });
 
   test('a refused unlock aborts the save', () async {
     final vault = await _githubVault();
