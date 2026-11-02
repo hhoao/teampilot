@@ -9052,10 +9052,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get personalAcpSwitchLabel => '新建个人和混合会话使用 ACP';
+  String get cliTransportDefaultChat => '新会话默认使用对话（ACP）';
 
   @override
-  String get personalAcpSwitchCaption => '原生团队和远程成员仍用终端';
+  String get cliTransportDefaultTerminal => '新会话默认使用终端（PTY）';
 
   @override
   String get claudePersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
@@ -9079,9 +9079,6 @@ class AppLocalizationsZh extends AppLocalizations {
       '新建个人和混合团队 OpenCode 会话走无终端 ACP（opencode acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
 
   @override
-  String get claudePersonalAcpAndroidDisabled => '在远程 SSH exec 就绪前，ACP 聊天仅限桌面。';
-
-  @override
   String get acpLaunchFailedAdapter =>
       '无法启动 Claude ACP 适配器（claude-agent-acp）。请安装后重试。';
 
@@ -9099,9 +9096,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get codexPersonalAcpDefaultDescription =>
       '新建个人和混合团队 Codex 会话走无终端 ACP（codex-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
-
-  @override
-  String get codexPersonalAcpAndroidDisabled => '在远程 SSH exec 就绪前，ACP 聊天仅限桌面。';
 
   @override
   String get codexAcpLaunchFailedAdapter =>

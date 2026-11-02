@@ -524,10 +524,38 @@ void main() {
     expect(cubit.configuredAcpAdapterPath(CliTool.claude), '/opt/custom-acp');
   });
 
-  testWidgets('Gemini has no personal ACP switch', (tester) async {
+  testWidgets('ACP pill toggles the CLI transport default', (tester) async {
     final cubit = await _makeCubit();
     addTearDown(cubit.close);
+    await tester.pumpWidget(_wrapCard(cubit));
+    await tester.pump();
+    expect(cubit.personalAcpDefaultFor(CliTool.claude), isTrue);
 
+    await tester.tap(find.byIcon(Icons.terminal_rounded));
+    await tester.pumpAndSettle();
+    expect(cubit.personalAcpDefaultFor(CliTool.claude), isFalse);
+
+    await tester.tap(find.byIcon(Icons.chat_bubble_outline_rounded));
+    await tester.pumpAndSettle();
+    expect(cubit.personalAcpDefaultFor(CliTool.claude), isTrue);
+  });
+
+  testWidgets('ACP pill replaces the old preference row', (tester) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(_wrapCard(cubit));
+    await tester.pump();
+
+    expect(
+      find.byKey(AppKeys.personalAcpSwitchFor(CliTool.claude)),
+      findsOneWidget,
+    );
+    expect(find.byType(Switch), findsNothing);
+  });
+
+  testWidgets('Gemini has no ACP pill', (tester) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
     await tester.pumpWidget(_wrap(cubit));
     await tester.pump();
 
@@ -558,7 +586,7 @@ void main() {
   });
 
   testWidgets(
-    'Android override disables the switch and hides adapter actions',
+    'Android override hides the ACP pill and adapter actions',
     (tester) async {
       final cubit = await _makeCubit(
         locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
@@ -569,15 +597,10 @@ void main() {
       await tester.pump();
 
       expect(find.byType(SwitchListTile), findsNothing);
-      final sw = tester.widget<Switch>(
-        find.byKey(AppKeys.claudePersonalAcpSwitch),
-      );
-      expect(sw.onChanged, isNull);
+      expect(find.byType(Switch), findsNothing);
       expect(
-        find.text(
-          'ACP chat is desktop-only until remote SSH exec is available.',
-        ),
-        findsAtLeastNWidgets(1),
+        find.byKey(AppKeys.personalAcpSwitchFor(CliTool.claude)),
+        findsNothing,
       );
       expect(find.byKey(AppKeys.claudeAcpAdapterInstallButton), findsNothing);
       expect(find.byKey(AppKeys.claudeAcpAdapterLocateButton), findsNothing);

@@ -16790,17 +16790,17 @@ abstract class AppLocalizations {
   /// **'{cliName} exited unexpectedly'**
   String acpChatProcessExited(String cliName);
 
-  /// No description provided for @personalAcpSwitchLabel.
+  /// No description provided for @cliTransportDefaultChat.
   ///
   /// In en, this message translates to:
-  /// **'New personal / mixed sessions use ACP'**
-  String get personalAcpSwitchLabel;
+  /// **'New sessions default to chat (ACP)'**
+  String get cliTransportDefaultChat;
 
-  /// No description provided for @personalAcpSwitchCaption.
+  /// No description provided for @cliTransportDefaultTerminal.
   ///
   /// In en, this message translates to:
-  /// **'Native teams and remote members still use the terminal'**
-  String get personalAcpSwitchCaption;
+  /// **'New sessions default to the terminal (PTY)'**
+  String get cliTransportDefaultTerminal;
 
   /// No description provided for @claudePersonalAcpDefaultLabel.
   ///
@@ -16838,12 +16838,6 @@ abstract class AppLocalizations {
   /// **'Run new personal and mixed-team OpenCode sessions as terminal-less ACP chat via opencode acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.'**
   String get opencodePersonalAcpDefaultDescription;
 
-  /// No description provided for @claudePersonalAcpAndroidDisabled.
-  ///
-  /// In en, this message translates to:
-  /// **'ACP chat is desktop-only until remote SSH exec is available.'**
-  String get claudePersonalAcpAndroidDisabled;
-
   /// No description provided for @acpLaunchFailedAdapter.
   ///
   /// In en, this message translates to:
@@ -16873,12 +16867,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Run new personal and mixed-team Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.'**
   String get codexPersonalAcpDefaultDescription;
-
-  /// No description provided for @codexPersonalAcpAndroidDisabled.
-  ///
-  /// In en, this message translates to:
-  /// **'ACP chat is desktop-only until remote SSH exec is available.'**
-  String get codexPersonalAcpAndroidDisabled;
 
   /// No description provided for @codexAcpLaunchFailedAdapter.
   ///

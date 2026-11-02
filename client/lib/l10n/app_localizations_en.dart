@@ -9458,11 +9458,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get personalAcpSwitchLabel => 'New personal / mixed sessions use ACP';
+  String get cliTransportDefaultChat => 'New sessions default to chat (ACP)';
 
   @override
-  String get personalAcpSwitchCaption =>
-      'Native teams and remote members still use the terminal';
+  String get cliTransportDefaultTerminal =>
+      'New sessions default to the terminal (PTY)';
 
   @override
   String get claudePersonalAcpDefaultLabel => 'Personal sessions use ACP chat';
@@ -9487,10 +9487,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Run new personal and mixed-team OpenCode sessions as terminal-less ACP chat via opencode acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
 
   @override
-  String get claudePersonalAcpAndroidDisabled =>
-      'ACP chat is desktop-only until remote SSH exec is available.';
-
-  @override
   String get acpLaunchFailedAdapter =>
       'Could not start the Claude ACP adapter (claude-agent-acp). Install it and try again.';
 
@@ -9509,10 +9505,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get codexPersonalAcpDefaultDescription =>
       'Run new personal and mixed-team Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
-
-  @override
-  String get codexPersonalAcpAndroidDisabled =>
-      'ACP chat is desktop-only until remote SSH exec is available.';
 
   @override
   String get codexAcpLaunchFailedAdapter =>

@@ -557,6 +557,17 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
                     ? TpStatusBadgeTone.success
                     : TpStatusBadgeTone.warning,
               ),
+              if (_canChooseTransport && !_isAndroid) ...[
+                const SizedBox(width: 10),
+                KeyedSubtree(
+                  key: AppKeys.personalAcpSwitchFor(widget.cli),
+                  child: _CliTransportPill(
+                    acp: cubit.personalAcpDefaultFor(widget.cli),
+                    onChanged: (value) =>
+                        cubit.setPersonalAcpDefaultFor(widget.cli, value),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),
@@ -589,7 +600,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
                 : null,
             locating: _locatingCli,
           ),
-          if (_separateAdapter || _canChooseTransport) ...[
+          if (_separateAdapter) ...[
             const SizedBox(height: 12),
             _buildAcpBlock(
               context,
@@ -619,7 +630,6 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       cubit.installedVersion(widget.cli, CliBinaryKind.adapter),
       l10n.cliReadinessVersionUnknown,
     );
-    final showSwitch = _canChooseTransport;
     final busyAdapter = _locatingAdapter || installingAdapter;
     final showAdapterInstall =
         !adapterKnown && _settings?.adapterInstaller != null;
@@ -663,24 +673,47 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
             locating: _locatingAdapter,
             enabled: !_isAndroid,
           ),
-        if (showSwitch)
-          TpPreferenceRow(
-            title: _isAndroid
-                ? l10n.claudePersonalAcpAndroidDisabled
-                : l10n.personalAcpSwitchLabel,
-            subtitle: _isAndroid ? null : l10n.personalAcpSwitchCaption,
-            padding: EdgeInsets.zero,
-            showDividerBelow: false,
-            trailing: Switch(
-              key: AppKeys.personalAcpSwitchFor(widget.cli),
-              value: !_isAndroid && cubit.personalAcpDefaultFor(widget.cli),
-              onChanged: _isAndroid
-                  ? null
-                  : (value) =>
-                        cubit.setPersonalAcpDefaultFor(widget.cli, value),
-            ),
-          ),
       ],
+    );
+  }
+}
+
+/// Default-transport pill: chat (ACP) on the left, terminal (PTY) on the right.
+///
+/// Mirrors the in-session toggle in
+/// `pages/chat/session_workbench_view_toggle.dart` so settings and session use
+/// the same visual language: 36×28 icon segments, main-colour active chip.
+class _CliTransportPill extends StatelessWidget {
+  const _CliTransportPill({required this.acp, required this.onChanged});
+
+  final bool acp;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return TpSegmentedControl(
+      key: ValueKey(acp),
+      totalSwitches: 2,
+      initialLabelIndex: acp ? 0 : 1,
+      labels: const ['', ''],
+      icons: const [
+        Icons.chat_bubble_outline_rounded,
+        Icons.terminal_rounded,
+      ],
+      tooltips: [
+        l10n.cliTransportDefaultChat,
+        l10n.cliTransportDefaultTerminal,
+      ],
+      minWidth: 32,
+      minHeight: 28,
+      customWidths: const [36, 36],
+      onToggle: (index) {
+        if (index == null) return;
+        final next = index == 0;
+        if (next == acp) return;
+        onChanged(next);
+      },
     );
   }
 }
