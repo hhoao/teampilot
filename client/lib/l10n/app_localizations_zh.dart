@@ -9897,4 +9897,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sshVaultBadge => '保险库';
+
+  @override
+  String get vaultLockedSaveBlocked => '请先解锁保险库再保存凭据。';
+
+  @override
+  String get vaultUnavailable => '凭据保险库不可用。';
+
+  @override
+  String get vaultStoredInVault => '已存入保险库';
 }

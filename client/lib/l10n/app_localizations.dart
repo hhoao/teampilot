@@ -18347,6 +18347,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Vault'**
   String get sshVaultBadge;
+
+  /// No description provided for @vaultLockedSaveBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock the vault to save credentials.'**
+  String get vaultLockedSaveBlocked;
+
+  /// No description provided for @vaultUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential vault is unavailable.'**
+  String get vaultUnavailable;
+
+  /// No description provided for @vaultStoredInVault.
+  ///
+  /// In en, this message translates to:
+  /// **'Stored in vault'**
+  String get vaultStoredInVault;
 }
 
 class _AppLocalizationsDelegate
