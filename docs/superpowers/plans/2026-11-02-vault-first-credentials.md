@@ -79,7 +79,7 @@ Append to `client/test/models/vault_document_test.dart` inside `main()`:
     );
   });
 
-  test('marker does not disturb entry equality', () {
+  test('marker participates in document equality', () {
     expect(
       const VaultDocument(legacyImportVersion: 1),
       isNot(const VaultDocument(legacyImportVersion: 0)),
@@ -154,21 +154,19 @@ Append to `client/test/services/vault/vault_service_test.dart` inside `main()`:
 
 ```dart
   test('marker persists through the keychain backend', () async {
-    final service = buildService();
+    final store = _FakeStore();
+    final service = buildService(store: store);
     await service.initialize();
     expect(service.legacyImportVersion, 0);
 
     await service.markLegacyImported(1);
     expect(service.legacyImportVersion, 1);
 
-    final reloaded = buildService();
+    final reloaded = buildService(store: store);
     await reloaded.initialize();
-    expect(reloaded.legacyImportVersion, 0,
-        reason: 'a fresh backend is a different store in this harness');
+    expect(reloaded.legacyImportVersion, 1);
   });
 ```
-
-Note: the reloaded service uses a different `_FakeStore`, so the last expectation documents harness isolation, not production behavior. Keep it explicit.
 
 - [ ] **Step 5: Run the service test to verify it fails**
 
