@@ -124,10 +124,12 @@ class ProcessRunExecutor {
     );
 
     Future<void> stop() async {
+      // Kill first: cancelling a subscription can wait on the socket/pipes and
+      // never reach the kill when the transport is wedged.
+      handle.kill();
       for (final subscription in subscriptions) {
         await subscription.cancel();
       }
-      handle.kill();
     }
 
     return ProcessRunResult(

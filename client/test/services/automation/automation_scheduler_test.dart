@@ -139,7 +139,10 @@ class _RecordingCommandExecutor extends AutomationCommandExecutor {
   _RecordingCommandExecutor executor,
   AutomationRepository repo,
 })
-_buildCommandScheduler({required int nowMs}) {
+_buildCommandScheduler({
+  required int nowMs,
+  Duration tickInterval = const Duration(seconds: 30),
+}) {
   final layout = WorkspaceLayout(
     teampilotRoot: testHomeStorage.paths.basePath,
     fs: testHomeStorage.fs,
@@ -159,6 +162,7 @@ _buildCommandScheduler({required int nowMs}) {
     ),
     scheduleCalculator: AutomationScheduleCalculator(),
     commandExecutor: executor,
+    tickInterval: tickInterval,
     nowMs: () => nowMs,
   );
   return (scheduler: scheduler, executor: executor, repo: repo);
@@ -423,6 +427,71 @@ void main() {
     expect(stale.status, AutomationRunStatus.dispatchFailed);
     expect(stale.error, 'interrupted');
   });
+
+  test(
+    'marks a recently started dispatching run as interrupted on start',
+    () async {
+      final harness = _buildCommandScheduler(nowMs: _now);
+      final automation = _runCommandAutomation(timeoutSeconds: 300);
+      await harness.repo.upsert(automation);
+      await harness.repo.upsertRun(
+        'ws1',
+        AutomationRun(
+          id: 'recent',
+          automationId: automation.id,
+          workspaceId: 'ws1',
+          scheduledForMs: _now - 1000,
+          status: AutomationRunStatus.dispatching,
+          trigger: AutomationRunTrigger.scheduled,
+          startedAtMs: _now - 1000,
+        ),
+      );
+
+      harness.scheduler.start();
+      await harness.scheduler.waitForIdle();
+      harness.scheduler.stop();
+
+      // Nothing executes in a fresh process, so even a run that started
+      // seconds ago is stale and must not stay `dispatching` forever.
+      final runs = await harness.repo.runsFor('ws1');
+      final recent = runs.firstWhere((r) => r.id == 'recent');
+      expect(recent.status, AutomationRunStatus.dispatchFailed);
+      expect(recent.error, 'interrupted');
+    },
+  );
+
+  test(
+    'tick path skips an overdue runCommand beyond grace without catch-up',
+    () async {
+      final harness = _buildCommandScheduler(
+        nowMs: _now,
+        tickInterval: const Duration(milliseconds: 20),
+      );
+      final automation = _runCommandAutomation(
+        nextRunAtMs: _now + const Duration(minutes: 1).inMilliseconds,
+      );
+      await harness.repo.upsert(automation);
+
+      harness.scheduler.start();
+      await harness.scheduler.waitForIdle();
+      expect(harness.executor.calls, 0);
+
+      // Simulate a laptop resume: the next slot is now hours overdue and the
+      // periodic tick (not the one-shot startup pass) observes it.
+      await harness.repo.upsert(
+        automation.copyWith(
+          nextRunAtMs: _now - const Duration(hours: 2).inMilliseconds,
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      harness.scheduler.stop();
+      await harness.scheduler.waitForIdle();
+
+      final runs = await harness.repo.runsFor('ws1');
+      expect(runs.single.status, AutomationRunStatus.skippedMissed);
+      expect(harness.executor.calls, 0);
+    },
+  );
 
   test('scheduled runCommand records the due slot as scheduledForMs', () async {
     final layout = WorkspaceLayout(

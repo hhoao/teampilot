@@ -148,4 +148,44 @@ void main() {
     await result.stop();
     expect(spawner.killCount, 1);
   });
+
+  test('stop kills the handle before cancelling output subscriptions', () async {
+    final events = <String>[];
+    final stdout = StreamController<List<int>>(
+      onCancel: () => events.add('cancel'),
+    );
+    final stderr = StreamController<List<int>>(
+      onCancel: () => events.add('cancel'),
+    );
+    final exec = ProcessRunExecutor(
+      spawner:
+          ({
+            required executable,
+            required arguments,
+            required workingDirectory,
+            environment,
+            runInShell = false,
+            includeParentEnvironment = true,
+          }) async => FakeProcessHandle(
+            exitCode: Future<int>.value(0),
+            stdout: stdout.stream,
+            stderr: stderr.stream,
+            onKill: () => events.add('kill'),
+          ),
+    );
+    final result = await exec.start(
+      sessionId: 's1',
+      command: 'sleep',
+      args: const ['60'],
+      plan: localPlan,
+      onOutput: (_) {},
+    );
+
+    await result.stop();
+
+    expect(events.first, 'kill');
+    expect(events.where((e) => e == 'cancel'), hasLength(2));
+    await stdout.close();
+    await stderr.close();
+  });
 }

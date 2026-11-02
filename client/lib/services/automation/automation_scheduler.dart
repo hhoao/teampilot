@@ -127,32 +127,7 @@ class AutomationScheduler {
         continue;
       }
 
-      final skippedRun = AutomationRun(
-        id: '${automation.id}-missed-$dueAt',
-        automationId: automation.id,
-        workspaceId: automation.workspaceId,
-        scheduledForMs: dueAt,
-        status: AutomationRunStatus.skippedMissed,
-        trigger: AutomationRunTrigger.scheduled,
-        startedAtMs: now,
-        completedAtMs: now,
-        error: 'missed_run_grace_exceeded',
-      );
-      await _repository.upsertRun(automation.workspaceId, skippedRun);
-      final next = _scheduleCalculator.computeNextRunAtMs(
-        automation,
-        afterMs: now,
-      );
-      final advanced = automation.copyWith(
-        lastRunAtMs: now,
-        // Expired once schedules have no next occurrence — disable the
-        // automation instead of leaving it enabled with no next run.
-        enabled: next != null,
-        nextRunAtMs: next,
-        clearNextRunAtMs: next == null,
-        updatedAtMs: now,
-      );
-      await _repository.upsert(advanced);
+      await _recordSkippedMissed(automation, dueAt: dueAt, now: now);
     }
   }
 
@@ -166,14 +141,14 @@ class AutomationScheduler {
         automation.workspaceId,
         automationId: automation.id,
       );
-      final limitMs = automation.timeoutSeconds * 1000 + 60 * 1000;
       for (final run in runs) {
         if (run.status != AutomationRunStatus.pending &&
             run.status != AutomationRunStatus.dispatching) {
           continue;
         }
-        final startedAtMs = run.startedAtMs ?? run.scheduledForMs;
-        if (now - startedAtMs <= limitMs) continue;
+        // In a fresh process nothing is executing for this automation, so any
+        // pending/dispatching row is stale regardless of how recently it
+        // started (the previous process may have died seconds ago).
         await _repository.upsertRun(
           automation.workspaceId,
           run.copyWith(
@@ -184,6 +159,18 @@ class AutomationScheduler {
         );
       }
     }
+  }
+
+  /// True when a `runCommand` occurrence is too old to run without catch-up.
+  ///
+  /// Also used by the tick path: after a long suspend the periodic timer can
+  /// fire hours late, and `_missedRunsProcessed` will not run again to apply
+  /// the same grace rule.
+  bool _runCommandBeyondGrace(Automation automation, int dueAt, int now) {
+    if (!automation.isRunCommand) return false;
+    if (automation.catchUpPolicy == AutomationCatchUpPolicy.once) return false;
+    final graceMs = automation.missedRunGraceMinutes * 60 * 1000;
+    return now - dueAt > graceMs;
   }
 
   Future<void> _dispatchDueAutomations() async {
@@ -199,8 +186,46 @@ class AutomationScheduler {
         )
         .toList(growable: false);
     for (final automation in due) {
+      final dueAt = automation.nextRunAtMs!;
+      if (_runCommandBeyondGrace(automation, dueAt, now)) {
+        await _recordSkippedMissed(automation, dueAt: dueAt, now: now);
+        continue;
+      }
       await _dispatchClaimed(automation);
     }
+  }
+
+  Future<void> _recordSkippedMissed(
+    Automation automation, {
+    required int dueAt,
+    required int now,
+  }) async {
+    final skippedRun = AutomationRun(
+      id: '${automation.id}-missed-$dueAt',
+      automationId: automation.id,
+      workspaceId: automation.workspaceId,
+      scheduledForMs: dueAt,
+      status: AutomationRunStatus.skippedMissed,
+      trigger: AutomationRunTrigger.scheduled,
+      startedAtMs: now,
+      completedAtMs: now,
+      error: 'missed_run_grace_exceeded',
+    );
+    await _repository.upsertRun(automation.workspaceId, skippedRun);
+    final next = _scheduleCalculator.computeNextRunAtMs(
+      automation,
+      afterMs: now,
+    );
+    final advanced = automation.copyWith(
+      lastRunAtMs: now,
+      // Expired once schedules have no next occurrence — disable the
+      // automation instead of leaving it enabled with no next run.
+      enabled: next != null,
+      nextRunAtMs: next,
+      clearNextRunAtMs: next == null,
+      updatedAtMs: now,
+    );
+    await _repository.upsert(advanced);
   }
 
   Future<void> _dispatchClaimed(
