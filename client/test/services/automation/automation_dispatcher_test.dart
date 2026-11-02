@@ -990,6 +990,43 @@ void main() {
     final persisted = await repo.listForWorkspace('ws1');
     expect(persisted.single.sessionId, createdSessionId);
   });
+
+  test('rejects runCommand automations', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository(const []),
+      busGateway: _RecordingBusGateway(),
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+      workspaceById: (_) => null,
+      teamById: (_) => null,
+      nowMs: () => 100,
+    );
+    final automation = Automation(
+      id: 'a1',
+      name: 'nightly',
+      action: AutomationAction.runCommand,
+      workspaceId: 'ws1',
+      command: 'echo hi',
+      message: '',
+      preset: AutomationSchedulePreset.daily,
+      hourMinute: '02:00',
+      timezone: 'Asia/Shanghai',
+      dtstartMs: 0,
+      createdAtMs: 0,
+      updatedAtMs: 0,
+    );
+    await expectLater(
+      () => dispatcher.dispatch(automation),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
 }
 
 class _SlowBusGateway implements AutomationBusGateway {

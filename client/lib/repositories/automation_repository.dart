@@ -138,6 +138,17 @@ class AutomationRepository {
     await _writeStore(workspaceId, store.copyWith(runs: trimmed));
   }
 
+  /// Removes a single run record (used when the owning automation vanished
+  /// while the command was still executing).
+  Future<void> deleteRun(String workspaceId, String runId) async {
+    final store = await _readStore(workspaceId);
+    if (!store.runs.any((r) => r.id == runId)) return;
+    final runs = store.runs
+        .where((r) => r.id != runId)
+        .toList(growable: false);
+    await _writeStore(workspaceId, store.copyWith(runs: runs));
+  }
+
   Future<Automation> upsert(Automation automation) async {
     automation.validate();
     final workspaceId = automation.workspaceId;

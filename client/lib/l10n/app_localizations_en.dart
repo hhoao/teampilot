@@ -7195,6 +7195,79 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsRunStatusSkippedMissed => 'Skipped — missed window';
 
   @override
+  String get automationsRunStatusFailed => 'Failed';
+
+  @override
+  String get automationsRunStatusTimedOut => 'Timed out';
+
+  @override
+  String get automationsRunStatusSkippedOverlap => 'Skipped (still running)';
+
+  @override
+  String automationsExitCode(int code) {
+    return 'Exit code $code';
+  }
+
+  @override
+  String get automationsRunStdout => 'stdout';
+
+  @override
+  String get automationsRunStderr => 'stderr';
+
+  @override
+  String automationsRunError(String error) {
+    return 'Error: $error';
+  }
+
+  @override
+  String automationsRunDurationSeconds(int seconds) {
+    return 'Took ${seconds}s';
+  }
+
+  @override
+  String automationsRunDurationMilliseconds(int milliseconds) {
+    return 'Took $milliseconds ms';
+  }
+
+  @override
+  String get automationsRunOutputTruncated => 'Output truncated';
+
+  @override
+  String get automationsCommand => 'Command';
+
+  @override
+  String get automationsCommandHelp =>
+      'Runs only while TeamPilot is running. Missed runs older than the grace window are skipped unless catch-up is on.';
+
+  @override
+  String get automationsCommandTimeout => 'Timeout (seconds)';
+
+  @override
+  String get automationsCommandRequired => 'Command is required';
+
+  @override
+  String get automationsCommandTimeoutInvalid =>
+      'Timeout must be a whole number of seconds';
+
+  @override
+  String get automationsCommandTimeoutRange =>
+      'Timeout must be between 30 and 1800 seconds';
+
+  @override
+  String get automationsCommandTooLong =>
+      'Command must be at most 2000 characters';
+
+  @override
+  String get automationsCommandWorkingDirectory => 'Working directory';
+
+  @override
+  String get automationsCommandWorkingDirectoryMain =>
+      'Workspace default folder';
+
+  @override
+  String get automationsCatchUpOnce => 'Catch up once after startup';
+
+  @override
   String get automationsMaxRunCount => 'Run limit';
 
   @override

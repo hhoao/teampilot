@@ -189,7 +189,10 @@ import '../services/connect/system_sshd_backend.dart';
 import '../services/perf/live_perf_driver.dart';
 import '../services/storage/workspace_layout.dart';
 import '../services/automation/automation_bus_gateway.dart';
+import '../services/automation/automation_command_executor.dart';
+import '../services/automation/automation_command_runner.dart';
 import '../services/automation/automation_dispatcher.dart';
+import '../services/automation/automation_run_accounting.dart';
 import '../services/automation/automation_schedule_calculator.dart';
 import '../services/automation/automation_scheduler.dart';
 import '../services/chat/launch/staging/session_runtime_plan_builder.dart';
@@ -2576,6 +2579,25 @@ Future<AppShell> buildAppShell({
         cliPresetsCubit.state.presetById(presetId);
 
     final scheduleCalculator = AutomationScheduleCalculator();
+    void refreshAutomations() {
+      if (!automationCubit.isClosed) {
+        unawaited(automationCubit.reloadPreservingScope());
+      }
+    }
+
+    final automationCommandRunner = HostAutomationCommandRunner(
+      workspaceById: (workspaceId) => chatCubit.state.workspaces
+          .where((w) => w.workspaceId == workspaceId)
+          .firstOrNull,
+      resolver: RunTargetResolver(homeTarget: defaultTargetResolver),
+      executor: ProcessRunExecutor(sshSpawner: repoCloneSshSpawner),
+    );
+    final automationCommandExecutor = AutomationCommandExecutor(
+      repository: automationRepo,
+      accounting: AutomationRunAccounting(scheduleCalculator),
+      runner: automationCommandRunner,
+      onAfterRun: refreshAutomations,
+    );
     final automationDispatcher = AutomationDispatcher(
       repository: automationRepo,
       scheduleCalculator: scheduleCalculator,
@@ -2606,17 +2628,13 @@ Future<AppShell> buildAppShell({
       repository: automationRepo,
       dispatcher: automationDispatcher,
       scheduleCalculator: scheduleCalculator,
+      commandExecutor: automationCommandExecutor,
     );
     automationCubit = AutomationCubit(
       repository: automationRepo,
       scheduler: automationScheduler,
       scheduleCalculator: scheduleCalculator,
     );
-    void refreshAutomations() {
-      if (!automationCubit.isClosed) {
-        unawaited(automationCubit.reloadPreservingScope());
-      }
-    }
     chatCubit.bindAutomationsChangeNotifier(refreshAutomations);
     // Registered here rather than in CatalogRuntime.assemble because the
     // automation repo, scheduler and resolver locals are constructed below
@@ -2640,6 +2658,10 @@ Future<AppShell> buildAppShell({
           final session = await sessionRepo.findById(sessionId);
           return session != null && session.workspaceId == workspaceId;
         },
+        workspaceFolders: (workspaceId) => chatCubit.state.workspaces
+            .where((w) => w.workspaceId == workspaceId)
+            .firstOrNull
+            ?.folders,
       ),
     );
     final automationCatalogSub = catalogRuntime.bus.listen().listen((event) {

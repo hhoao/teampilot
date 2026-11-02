@@ -3679,6 +3679,54 @@
   "automationsRunStatusDispatching": "Dispatching",
   "automationsRunStatusDispatched": "Dispatched",
   "automationsRunStatusSkippedMissed": "Skipped — missed window",
+  "automationsRunStatusFailed": "Failed",
+  "automationsRunStatusTimedOut": "Timed out",
+  "automationsRunStatusSkippedOverlap": "Skipped (still running)",
+  "automationsExitCode": "Exit code {code}",
+  "@automationsExitCode": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "automationsRunStdout": "stdout",
+  "automationsRunStderr": "stderr",
+  "automationsRunError": "Error: {error}",
+  "@automationsRunError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "automationsRunDurationSeconds": "Took {seconds}s",
+  "@automationsRunDurationSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "automationsRunDurationMilliseconds": "Took {milliseconds} ms",
+  "@automationsRunDurationMilliseconds": {
+    "placeholders": {
+      "milliseconds": {
+        "type": "int"
+      }
+    }
+  },
+  "automationsRunOutputTruncated": "Output truncated",
+  "automationsCommand": "Command",
+  "automationsCommandHelp": "Runs only while TeamPilot is running. Missed runs older than the grace window are skipped unless catch-up is on.",
+  "automationsCommandTimeout": "Timeout (seconds)",
+  "automationsCommandRequired": "Command is required",
+  "automationsCommandTimeoutInvalid": "Timeout must be a whole number of seconds",
+  "automationsCommandTimeoutRange": "Timeout must be between 30 and 1800 seconds",
+  "automationsCommandTooLong": "Command must be at most 2000 characters",
+  "automationsCommandWorkingDirectory": "Working directory",
+  "automationsCommandWorkingDirectoryMain": "Workspace default folder",
+  "automationsCatchUpOnce": "Catch up once after startup",
   "automationsMaxRunCount": "Run limit",
   "@automationsMaxRunCount": {
     "description": "Label for optional max automation run count"

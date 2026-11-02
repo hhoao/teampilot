@@ -1106,6 +1106,199 @@ void main() {
       );
     },
   );
+
+  testWidgets('runCommand editor saves a command automation', (tester) async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          child: const AutomationEditorDialog(
+            kind: AutomationEditorKind.runCommand,
+            workspaceId: 'ws1',
+            defaultName: 'Nightly',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('automationCommandField')),
+      'echo hi',
+    );
+    await tester.runAsync(() async {
+      await tester.tap(find.text(l10n.save));
+      await pumpUntilClosed(tester);
+    });
+
+    final saved = (await tester.runAsync(
+      () => setup.repo.listForWorkspace('ws1'),
+    ))!.single;
+    expect(saved.action, AutomationAction.runCommand);
+    expect(saved.command, 'echo hi');
+    expect(saved.timeoutSeconds, 300);
+    expect(saved.catchUpPolicy, AutomationCatchUpPolicy.none);
+    expect(saved.message, isEmpty);
+    // No explicit folder chosen: the runner resolves the workspace main
+    // folder, so nothing is persisted.
+    expect(saved.workingDirectoryPath, isNull);
+  });
+
+  testWidgets('runCommand editor renders a working-directory picker', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          child: const AutomationEditorDialog(
+            kind: AutomationEditorKind.runCommand,
+            workspaceId: 'ws1',
+            defaultName: 'Nightly',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    expect(find.text(l10n.automationsCommandWorkingDirectory), findsOneWidget);
+    expect(
+      find.text(l10n.automationsCommandWorkingDirectoryMain),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('runCommand timeout errors surface on the command field', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          child: const AutomationEditorDialog(
+            kind: AutomationEditorKind.runCommand,
+            workspaceId: 'ws1',
+            defaultName: 'Nightly',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('automationCommandField')),
+      'echo hi',
+    );
+    await tester.enterText(
+      find.byKey(const Key('automationTimeoutField')),
+      '10',
+    );
+    await tester.tap(find.text(l10n.save));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text(l10n.automationsCommandTimeoutRange), findsOneWidget);
+    expect(find.byType(AutomationEditorDialog), findsOneWidget);
+    expect(
+      await tester.runAsync(() => setup.repo.listForWorkspace('ws1')),
+      isEmpty,
+    );
+  });
+
+  testWidgets('runCommand editor blocks an empty command', (tester) async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          child: const AutomationEditorDialog(
+            kind: AutomationEditorKind.runCommand,
+            workspaceId: 'ws1',
+            defaultName: 'Nightly',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    await tester.tap(find.text(l10n.save));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text(l10n.automationsCommandRequired), findsOneWidget);
+    expect(find.byType(AutomationEditorDialog), findsOneWidget);
+    expect(
+      await tester.runAsync(() => setup.repo.listForWorkspace('ws1')),
+      isEmpty,
+    );
+  });
+
+  test('kindForAutomation maps every action', () {
+    expect(
+      kindForAutomation(sampleAutomation(id: 'a', workspaceId: 'ws1')),
+      AutomationEditorKind.launchPrompt,
+    );
+    expect(
+      kindForAutomation(
+        sampleAutomation(id: 'b', workspaceId: 'ws1', sessionId: 'sess-1'),
+      ),
+      AutomationEditorKind.scheduledMessage,
+    );
+    expect(
+      kindForAutomation(
+        Automation(
+          id: 'c',
+          name: 'Nightly',
+          action: AutomationAction.runCommand,
+          workspaceId: 'ws1',
+          command: 'make',
+          message: '',
+          preset: AutomationSchedulePreset.daily,
+          hourMinute: '02:00',
+          timezone: 'UTC',
+          dtstartMs: 1,
+          createdAtMs: 1,
+          updatedAtMs: 1,
+        ),
+      ),
+      AutomationEditorKind.runCommand,
+    );
+  });
 }
 
 AppLocalizations l10nOfDialog(WidgetTester tester) =>

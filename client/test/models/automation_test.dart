@@ -400,4 +400,131 @@ void main() {
     );
     expect(AutomationRun.fromJson(run.toJson()), run);
   });
+
+  Automation runCommandAutomation({
+    String command = 'echo hi',
+    int timeoutSeconds = 300,
+    AutomationCatchUpPolicy catchUpPolicy = AutomationCatchUpPolicy.none,
+    String? sessionId,
+    String? workingDirectoryPath,
+  }) {
+    return Automation(
+      id: 'a1',
+      name: 'nightly',
+      action: AutomationAction.runCommand,
+      workspaceId: 'ws1',
+      command: command,
+      timeoutSeconds: timeoutSeconds,
+      catchUpPolicy: catchUpPolicy,
+      sessionId: sessionId,
+      workingDirectoryPath: workingDirectoryPath,
+      message: '',
+      preset: AutomationSchedulePreset.daily,
+      hourMinute: '02:00',
+      timezone: 'Asia/Shanghai',
+      dtstartMs: 1000,
+      createdAtMs: 1000,
+      updatedAtMs: 1000,
+    );
+  }
+
+  test('runCommand does not require a message', () {
+    runCommandAutomation().validate();
+  });
+
+  test('runCommand rejects empty command', () {
+    expect(
+      () => runCommandAutomation(command: '  ').validate(),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
+  test('runCommand rejects command over 2000 characters', () {
+    expect(
+      () => runCommandAutomation(command: 'a' * 2001).validate(),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
+  test('runCommand rejects out-of-range timeoutSeconds', () {
+    expect(
+      () => runCommandAutomation(timeoutSeconds: 10).validate(),
+      throwsA(isA<ArgumentError>()),
+    );
+    expect(
+      () => runCommandAutomation(timeoutSeconds: 1801).validate(),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
+  test('runCommand rejects a bound session', () {
+    expect(
+      () => runCommandAutomation(sessionId: 's1').validate(),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
+  test('runCommand json round-trips', () {
+    final original = runCommandAutomation(
+      command: 'npm ci && npm run build',
+      timeoutSeconds: 900,
+      catchUpPolicy: AutomationCatchUpPolicy.once,
+    );
+    final restored = Automation.fromJson(original.toJson());
+    expect(restored, original);
+    expect(restored.isRunCommand, isTrue);
+    expect(restored.timeoutSeconds, 900);
+    expect(restored.catchUpPolicy, AutomationCatchUpPolicy.once);
+  });
+
+  test('runCommand json round-trips workingDirectoryPath', () {
+    final original = runCommandAutomation(workingDirectoryPath: '/repo/sub');
+    final json = original.toJson();
+    expect(json['workingDirectoryPath'], '/repo/sub');
+    final restored = Automation.fromJson(json);
+    expect(restored.workingDirectoryPath, '/repo/sub');
+    expect(restored, original);
+  });
+
+  test('legacy json without runCommand fields still parses', () {
+    final json = <String, Object?>{
+      'id': 'a1',
+      'name': 'daily',
+      'action': 'scheduledMessage',
+      'workspaceId': 'ws1',
+      'sessionId': 's1',
+      'message': 'hi',
+      'preset': 'daily',
+      'hourMinute': '09:00',
+      'timezone': 'Asia/Shanghai',
+      'dtstartMs': 1000,
+      'createdAtMs': 1000,
+      'updatedAtMs': 1000,
+    };
+    final restored = Automation.fromJson(json);
+    expect(restored.timeoutSeconds, 300);
+    expect(restored.catchUpPolicy, AutomationCatchUpPolicy.none);
+    expect(restored.command, isNull);
+  });
+
+  test('AutomationRun carries command result fields', () {
+    const run = AutomationRun(
+      id: 'r1',
+      automationId: 'a1',
+      workspaceId: 'ws1',
+      scheduledForMs: 1000,
+      status: AutomationRunStatus.failed,
+      trigger: AutomationRunTrigger.scheduled,
+      exitCode: 2,
+      stdoutTail: 'out',
+      stderrTail: 'err',
+      outputTruncated: true,
+      durationMs: 1234,
+    );
+    final restored = AutomationRun.fromJson(run.toJson());
+    expect(restored, run);
+    expect(restored.exitCode, 2);
+    expect(restored.outputTruncated, isTrue);
+    expect(restored.durationMs, 1234);
+  });
 }

@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import '../../models/automation.dart';
 import '../../repositories/automation_repository.dart';
 import '../../utils/logging/logger.dart';
+import 'automation_command_executor.dart';
 import 'automation_dispatcher.dart';
 import 'automation_schedule_calculator.dart';
 
@@ -15,17 +16,20 @@ class AutomationScheduler {
     required AutomationRepository repository,
     required AutomationDispatcher dispatcher,
     required AutomationScheduleCalculator scheduleCalculator,
+    AutomationCommandExecutor? commandExecutor,
     Duration tickInterval = const Duration(seconds: 30),
     int Function()? nowMs,
   }) : _repository = repository,
        _dispatcher = dispatcher,
        _scheduleCalculator = scheduleCalculator,
+       _commandExecutor = commandExecutor,
        _tickInterval = tickInterval,
        _nowMs = nowMs ?? _automationSchedulerDefaultNowMs;
 
   final AutomationRepository _repository;
   final AutomationDispatcher _dispatcher;
   final AutomationScheduleCalculator _scheduleCalculator;
+  final AutomationCommandExecutor? _commandExecutor;
   final Duration _tickInterval;
   final int Function() _nowMs;
   void Function()? onAfterTick;
@@ -55,7 +59,30 @@ class AutomationScheduler {
           .where((a) => a.id == automationId)
           .firstOrNull;
       if (automation == null || automation.isRunLimitReached) return;
-      await _dispatchClaimed(automation, trigger: AutomationRunTrigger.manual);
+      final dispatch = _dispatchClaimed(
+        automation,
+        trigger: AutomationRunTrigger.manual,
+      );
+      if (automation.isRunCommand) {
+        // A manual run is queued behind other commands on the executor's
+        // serial queue, so waiting unbounded could exceed the promised
+        // `timeoutSeconds + 30 s` cap. The run keeps going on timeout and its
+        // record lands when it finishes.
+        try {
+          await dispatch.timeout(
+            Duration(seconds: automation.timeoutSeconds + 30),
+          );
+        } on TimeoutException catch (error, stackTrace) {
+          appLogger.w(
+            '[automations] manual run of ${automation.id} still queued after '
+            '${automation.timeoutSeconds + 30}s: $error',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
+      } else {
+        await dispatch;
+      }
       onAfterTick?.call();
     });
   }
@@ -86,44 +113,64 @@ class AutomationScheduler {
     _missedRunsProcessed = true;
     final now = _nowMs();
     final automations = await _repository.listAll();
+    await _markInterruptedRuns(automations, now);
     for (final automation in automations) {
       if (!automation.enabled || automation.isRunLimitReached) continue;
       final dueAt = automation.nextRunAtMs;
       if (dueAt == null || dueAt >= now) continue;
 
       final graceMs = automation.missedRunGraceMinutes * 60 * 1000;
-      if (now - dueAt <= graceMs) {
+      if (now - dueAt <= graceMs ||
+          (automation.isRunCommand &&
+              automation.catchUpPolicy == AutomationCatchUpPolicy.once)) {
         await _dispatchClaimed(automation);
         continue;
       }
 
-      final skippedRun = AutomationRun(
-        id: '${automation.id}-missed-$dueAt',
-        automationId: automation.id,
-        workspaceId: automation.workspaceId,
-        scheduledForMs: dueAt,
-        status: AutomationRunStatus.skippedMissed,
-        trigger: AutomationRunTrigger.scheduled,
-        startedAtMs: now,
-        completedAtMs: now,
-        error: 'missed_run_grace_exceeded',
-      );
-      await _repository.upsertRun(automation.workspaceId, skippedRun);
-      final next = _scheduleCalculator.computeNextRunAtMs(
-        automation,
-        afterMs: now,
-      );
-      final advanced = automation.copyWith(
-        lastRunAtMs: now,
-        // Expired once schedules have no next occurrence — disable the
-        // automation instead of leaving it enabled with no next run.
-        enabled: next != null,
-        nextRunAtMs: next,
-        clearNextRunAtMs: next == null,
-        updatedAtMs: now,
-      );
-      await _repository.upsert(advanced);
+      await _recordSkippedMissed(automation, dueAt: dueAt, now: now);
     }
+  }
+
+  Future<void> _markInterruptedRuns(
+    List<Automation> automations,
+    int now,
+  ) async {
+    for (final automation in automations) {
+      if (!automation.isRunCommand) continue;
+      final runs = await _repository.runsFor(
+        automation.workspaceId,
+        automationId: automation.id,
+      );
+      for (final run in runs) {
+        if (run.status != AutomationRunStatus.pending &&
+            run.status != AutomationRunStatus.dispatching) {
+          continue;
+        }
+        // In a fresh process nothing is executing for this automation, so any
+        // pending/dispatching row is stale regardless of how recently it
+        // started (the previous process may have died seconds ago).
+        await _repository.upsertRun(
+          automation.workspaceId,
+          run.copyWith(
+            status: AutomationRunStatus.dispatchFailed,
+            error: 'interrupted',
+            completedAtMs: now,
+          ),
+        );
+      }
+    }
+  }
+
+  /// True when a `runCommand` occurrence is too old to run without catch-up.
+  ///
+  /// Also used by the tick path: after a long suspend the periodic timer can
+  /// fire hours late, and `_missedRunsProcessed` will not run again to apply
+  /// the same grace rule.
+  bool _runCommandBeyondGrace(Automation automation, int dueAt, int now) {
+    if (!automation.isRunCommand) return false;
+    if (automation.catchUpPolicy == AutomationCatchUpPolicy.once) return false;
+    final graceMs = automation.missedRunGraceMinutes * 60 * 1000;
+    return now - dueAt > graceMs;
   }
 
   Future<void> _dispatchDueAutomations() async {
@@ -139,8 +186,46 @@ class AutomationScheduler {
         )
         .toList(growable: false);
     for (final automation in due) {
+      final dueAt = automation.nextRunAtMs!;
+      if (_runCommandBeyondGrace(automation, dueAt, now)) {
+        await _recordSkippedMissed(automation, dueAt: dueAt, now: now);
+        continue;
+      }
       await _dispatchClaimed(automation);
     }
+  }
+
+  Future<void> _recordSkippedMissed(
+    Automation automation, {
+    required int dueAt,
+    required int now,
+  }) async {
+    final skippedRun = AutomationRun(
+      id: '${automation.id}-missed-$dueAt',
+      automationId: automation.id,
+      workspaceId: automation.workspaceId,
+      scheduledForMs: dueAt,
+      status: AutomationRunStatus.skippedMissed,
+      trigger: AutomationRunTrigger.scheduled,
+      startedAtMs: now,
+      completedAtMs: now,
+      error: 'missed_run_grace_exceeded',
+    );
+    await _repository.upsertRun(automation.workspaceId, skippedRun);
+    final next = _scheduleCalculator.computeNextRunAtMs(
+      automation,
+      afterMs: now,
+    );
+    final advanced = automation.copyWith(
+      lastRunAtMs: now,
+      // Expired once schedules have no next occurrence — disable the
+      // automation instead of leaving it enabled with no next run.
+      enabled: next != null,
+      nextRunAtMs: next,
+      clearNextRunAtMs: next == null,
+      updatedAtMs: now,
+    );
+    await _repository.upsert(advanced);
   }
 
   Future<void> _dispatchClaimed(
@@ -158,6 +243,31 @@ class AutomationScheduler {
       updatedAtMs: now,
     );
     await _repository.upsert(claimed);
+
+    final executor = _commandExecutor;
+    if (automation.isRunCommand) {
+      if (executor == null) return;
+      if (trigger == AutomationRunTrigger.manual) {
+        await executor.enqueue(automation, trigger: trigger);
+      } else {
+        unawaited(
+          executor
+              .enqueue(automation, trigger: trigger)
+              .then<void>(
+                (_) {},
+                onError: (Object error, StackTrace stackTrace) {
+                  appLogger.w(
+                    '[automations] command enqueue failed for '
+                    '${automation.id}: $error',
+                    error: error,
+                    stackTrace: stackTrace,
+                  );
+                },
+              ),
+        );
+      }
+      return;
+    }
     await _dispatcher.dispatch(automation, trigger: trigger);
   }
 }

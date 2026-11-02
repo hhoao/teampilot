@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/automation.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/automation_repository.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 import 'package:teampilot/services/catalog/catalog_kind.dart';
@@ -58,6 +59,7 @@ void main() {
       presetExists: (presetId) => presetId == 'preset-1',
       memberExists: (teamId, memberId) =>
           teamId == 'team-1' && memberId == 'team-lead',
+      workspaceFolders: (_) => const [WorkspaceFolder(path: '/repo')],
       nowMs: () => now,
       newId: () => 'auto-1',
       defaultTimezone: () => 'UTC',
@@ -76,6 +78,8 @@ void main() {
       allowedRoots: const [],
     );
   }
+
+  CatalogRequest req(Map<String, Object?> args) => request(args);
 
   test('create forces disabled and returns the next run preview', () async {
     final result = await module.handle(
@@ -705,4 +709,131 @@ void main() {
     await flushEvents();
     expect(events.map((e) => e.op).toList(), [CatalogOp.create, CatalogOp.run]);
   });
+
+  test('create runCommand defaults to disabled', () async {
+    final result = await module.handle(
+      CatalogOp.create,
+      req({
+        'name': 'nightly',
+        'action': 'runCommand',
+        'command': 'npm ci && npm run build',
+        'schedule': {'type': 'daily', 'time': '02:00'},
+      }),
+    );
+    final data = result.data!['automation']! as Map<String, Object?>;
+    expect(data['enabled'], isFalse);
+    expect(data['command'], 'npm ci && npm run build');
+    expect(data['timeoutSeconds'], 300);
+    expect(data['catchUpPolicy'], 'none');
+  });
+
+  test('create runCommand honours enabled true', () async {
+    final result = await module.handle(
+      CatalogOp.create,
+      req({
+        'name': 'nightly',
+        'action': 'runCommand',
+        'command': 'make',
+        'enabled': true,
+        'schedule': {'type': 'daily', 'time': '02:00'},
+      }),
+    );
+    final data = result.data!['automation']! as Map<String, Object?>;
+    expect(data['enabled'], isTrue);
+    expect(data['nextRunAtMs'], isNotNull);
+  });
+
+  test('create runCommand rejects an empty command', () async {
+    await expectLater(
+      module.handle(
+        CatalogOp.create,
+        req({
+          'name': 'nightly',
+          'action': 'runCommand',
+          'command': '   ',
+          'schedule': {'type': 'daily', 'time': '02:00'},
+        }),
+      ),
+      throwsA(
+        isA<CatalogException>().having(
+          (e) => e.code,
+          'code',
+          'command_invalid',
+        ),
+      ),
+    );
+  });
+
+  test(
+    'create runCommand rejects a working directory outside the workspace',
+    () async {
+      await expectLater(
+        module.handle(
+          CatalogOp.create,
+          req({
+            'name': 'nightly',
+            'action': 'runCommand',
+            'command': 'make',
+            'working_directory': '/elsewhere',
+            'schedule': {'type': 'daily', 'time': '02:00'},
+          }),
+        ),
+        throwsA(
+          isA<CatalogException>().having(
+            (e) => e.code,
+            'code',
+            'working_directory_invalid',
+          ),
+        ),
+      );
+    },
+  );
+
+  test('update patches command and timeout', () async {
+    final created = await module.handle(
+      CatalogOp.create,
+      req({
+        'name': 'nightly',
+        'action': 'runCommand',
+        'command': 'make',
+        'schedule': {'type': 'daily', 'time': '02:00'},
+      }),
+    );
+    final id =
+        (created.data!['automation']! as Map<String, Object?>)['id'] as String;
+
+    final updated = await module.handle(
+      CatalogOp.update,
+      req({
+        'id': id,
+        'command': 'make release',
+        'timeout_seconds': 900,
+        'catch_up': 'once',
+      }),
+    );
+    final data = updated.data!['automation']! as Map<String, Object?>;
+    expect(data['command'], 'make release');
+    expect(data['timeoutSeconds'], 900);
+    expect(data['catchUpPolicy'], 'once');
+  });
+
+  test(
+    'create runCommand persists working_directory to the repository',
+    () async {
+      await module.handle(
+        CatalogOp.create,
+        req({
+          'name': 'nightly',
+          'action': 'runCommand',
+          'command': 'make',
+          'working_directory': '/repo/sub',
+          'schedule': {'type': 'daily', 'time': '02:00'},
+        }),
+      );
+
+      final stored = await repo.listForWorkspace(workspaceId);
+      final automation = stored.singleWhere((a) => a.name == 'nightly');
+      expect(automation.workingDirectoryPath, '/repo/sub');
+    },
+  );
 }

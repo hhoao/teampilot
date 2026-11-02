@@ -26,14 +26,17 @@ class AutomationsDialog extends StatefulWidget {
 class _AutomationsDialogState extends State<AutomationsDialog> {
   AutomationEnabledFilter _enabledFilter = AutomationEnabledFilter.all;
 
-  Future<void> _create() async {
+  Future<void> _create(AutomationEditorKind kind) async {
     final scope = widget.listScope;
     final saved = await AutomationEditorDialog.show(
       context,
+      kind: kind,
       workspaceId: scope.isWorkspace || scope.isSession
           ? scope.workspaceId
           : null,
-      sessionId: scope.sessionId,
+      sessionId: kind == AutomationEditorKind.scheduledMessage
+          ? scope.sessionId
+          : null,
     );
     if (saved != null && mounted) {
       await _reload();
@@ -103,10 +106,35 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
             ),
           ),
           const SizedBox(width: 8),
-          TpIconButton(
-            icon: Icons.add_rounded,
-            tooltip: l10n.automationsNew,
-            onTap: () => unawaited(_create()),
+          TpActionMenuIconAnchor(
+            triggerBuilder: (context, controller) => TpIconButton(
+              icon: Icons.add_rounded,
+              tooltip: l10n.automationsNew,
+              onTap: controller.isOpen ? controller.close : controller.open,
+            ),
+            buildMenuChildren: (ctx, controller) => [
+              TpActionMenuItem(
+                icon: Icons.send_rounded,
+                label: l10n.automationsCompactTitle,
+                menuController: controller,
+                onTap: () =>
+                    unawaited(_create(AutomationEditorKind.scheduledMessage)),
+              ),
+              TpActionMenuItem(
+                icon: Icons.play_arrow_rounded,
+                label: l10n.automationsFilterLaunchPrompt,
+                menuController: controller,
+                onTap: () =>
+                    unawaited(_create(AutomationEditorKind.launchPrompt)),
+              ),
+              TpActionMenuItem(
+                icon: Icons.terminal_rounded,
+                label: l10n.automationsCommand,
+                menuController: controller,
+                onTap: () =>
+                    unawaited(_create(AutomationEditorKind.runCommand)),
+              ),
+            ],
           ),
         ],
       ),

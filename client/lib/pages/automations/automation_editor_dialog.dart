@@ -24,9 +24,18 @@ import 'package:shared_ui/shared_ui.dart';
 import 'automation_editor_form_body.dart';
 import 'automation_schedule_picker.dart';
 
-enum AutomationEditorKind { scheduledMessage, launchPrompt }
+enum AutomationEditorKind { scheduledMessage, launchPrompt, runCommand }
 
-/// Editor for session scheduled messages or workspace launch-prompt automations.
+AutomationEditorKind kindForAutomation(Automation automation) {
+  return switch (automation.action) {
+    AutomationAction.scheduledMessage => AutomationEditorKind.scheduledMessage,
+    AutomationAction.launchPrompt => AutomationEditorKind.launchPrompt,
+    AutomationAction.runCommand => AutomationEditorKind.runCommand,
+  };
+}
+
+/// Editor for session scheduled messages, workspace launch prompts, or shell
+/// command automations.
 class AutomationEditorDialog extends StatefulWidget {
   const AutomationEditorDialog({
     this.initial,
@@ -74,6 +83,15 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   late final TextEditingController _nameCtl;
   late final TextEditingController _messageCtl;
   late final TextEditingController _maxRunCountCtl;
+  late final TextEditingController _commandCtl = TextEditingController(
+    text: widget.initial?.command ?? '',
+  );
+  late final TextEditingController _timeoutCtl = TextEditingController(
+    text: '${widget.initial?.timeoutSeconds ?? 300}',
+  );
+  late bool _catchUpOnce =
+      widget.initial?.catchUpPolicy == AutomationCatchUpPolicy.once;
+  String? _commandError;
   late bool _reuseSession;
   late bool _enabled;
   late AutomationScheduleDraft _schedule;
@@ -88,6 +106,8 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
   bool get _isScheduledMessage =>
       widget.kind == AutomationEditorKind.scheduledMessage;
+
+  bool get _isRunCommand => widget.kind == AutomationEditorKind.runCommand;
 
   bool get _isEditing => widget.initial != null;
 
@@ -164,7 +184,9 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             now: DateTime.now(),
           );
 
-    if (!_isScheduledMessage && initial == null) {
+    // Command automations carry no launch identity, so there is no landing
+    // draft to seed from.
+    if (!_isScheduledMessage && !_isRunCommand && initial == null) {
       unawaited(_seedFromLandingDraft());
     }
   }
@@ -211,6 +233,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   }
 
   void _seedLaunchDefaults() {
+    if (_isScheduledMessage || _isRunCommand) return;
     if (widget.initial != null) return;
     _seedPresetDefault();
     _seedTeamMemberDefault();
@@ -218,7 +241,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   }
 
   void _seedLocationDefaults() {
-    if (_isScheduledMessage) return;
+    if (_isScheduledMessage || _isRunCommand) return;
     final workspace = _workspace;
     if (workspace == null) return;
     final resolver = WorkspaceLandingProjectResolver(
@@ -269,6 +292,18 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       );
     }
     return _resolvedProjectFolderPath(workspace);
+  }
+
+  /// `runCommand` stores only the explicit picker choice; an empty value means
+  /// the workspace main folder and must stay null instead of persisting a
+  /// resolved path the user never chose.
+  String? _resolvedCommandWorkingDirectory() {
+    final stored = _workingDirectoryPath?.trim() ?? '';
+    if (stored.isEmpty) return null;
+    return normalizeWorkspacePath(
+      stored,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+    );
   }
 
   void _seedPresetDefault() {
@@ -327,6 +362,8 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     _nameCtl.dispose();
     _messageCtl.dispose();
     _maxRunCountCtl.dispose();
+    _commandCtl.dispose();
+    _timeoutCtl.dispose();
     super.dispose();
   }
 
@@ -416,7 +453,9 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final expertKey = _expertKey?.trim();
     final workspace = _workspace;
     final projectFolderPath = _resolvedProjectFolderPath(workspace);
-    final workingDirectoryPath = _resolvedWorkingDirectoryPath(workspace);
+    final workingDirectoryPath = _isRunCommand
+        ? _resolvedCommandWorkingDirectory()
+        : _resolvedWorkingDirectoryPath(workspace);
 
     // Keep hourMinute parseable for the calculator/summary paths; once/countdown
     // saves carry the time of day of the resolved target (for countdown the
@@ -428,6 +467,87 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           DateTime.fromMillisecondsSinceEpoch(schedule.runAtMs!),
         ),
       );
+    }
+
+    final cubit = context.read<AutomationCubit>();
+
+    if (_isRunCommand) {
+      final command = _commandCtl.text.trim();
+      if (command.isEmpty) {
+        setState(() => _commandError = context.l10n.automationsCommandRequired);
+        return;
+      }
+      if (command.length > 2000) {
+        setState(() => _commandError = l10n.automationsCommandTooLong);
+        return;
+      }
+      if (_commandError != null) {
+        setState(() => _commandError = null);
+      }
+      final timeout = int.tryParse(_timeoutCtl.text.trim());
+      if (timeout == null) {
+        setState(
+          () => _commandError = l10n.automationsCommandTimeoutInvalid,
+        );
+        return;
+      }
+      if (timeout < 30 || timeout > 1800) {
+        setState(
+          () => _commandError = l10n.automationsCommandTimeoutRange,
+        );
+        return;
+      }
+      var automation = Automation(
+        id: widget.initial?.id ?? const Uuid().v4(),
+        name: name,
+        action: AutomationAction.runCommand,
+        workspaceId: workspaceId,
+        command: command,
+        timeoutSeconds: timeout,
+        catchUpPolicy: _catchUpOnce
+            ? AutomationCatchUpPolicy.once
+            : AutomationCatchUpPolicy.none,
+        projectFolderPath: projectFolderPath,
+        workingDirectoryPath: workingDirectoryPath,
+        message: '',
+        preset: schedule.preset,
+        customCron: isOnceSchedule ? null : _schedule.customCron,
+        dayOfWeek: isOnceSchedule ? null : _schedule.dayOfWeek,
+        minute: _schedule.minute,
+        hourMinute: hourMinute,
+        timezone: _schedule.timezone,
+        dtstartMs: isOnceSchedule
+            ? schedule.runAtMs!
+            : (widget.initial?.dtstartMs ?? nowMs),
+        runAtMs: schedule.runAtMs,
+        enabled: _enabled,
+        nextRunAtMs: widget.initial?.nextRunAtMs,
+        lastRunAtMs: widget.initial?.lastRunAtMs,
+        maxRunCount: maxRunCount,
+        runCount: schedule.runCount,
+        createdAtMs: widget.initial?.createdAtMs ?? nowMs,
+        updatedAtMs: nowMs,
+      );
+      try {
+        automation.validate();
+      } on ArgumentError catch (e) {
+        // Command and timeout problems belong on the command field, not the
+        // name field.
+        setState(() => _commandError = e.message?.toString() ?? e.toString());
+        return;
+      }
+      final nextRun = _enabled && !_runLimitReached
+          ? _calculator.computeNextRunAtMs(automation, afterMs: nowMs)
+          : null;
+      final saved = automation.copyWith(
+        nextRunAtMs: nextRun,
+        clearNextRunAtMs: nextRun == null,
+        enabled: _enabled && !_runLimitReached,
+      );
+      await cubit.save(saved);
+      if (!mounted) return;
+      Navigator.of(context).pop(saved);
+      return;
     }
 
     var automation = Automation(
@@ -487,7 +607,6 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       enabled: _enabled && !_runLimitReached,
     );
 
-    final cubit = context.read<AutomationCubit>();
     await cubit.save(saved);
     if (!mounted) return;
     Navigator.of(context).pop(saved);
@@ -519,10 +638,20 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
         body: TpForm(
           key: _formKey,
           child: AutomationEditorFormBody(
-            isScheduledMessage: _isScheduledMessage,
+            kind: widget.kind,
             nameController: _nameCtl,
             messageController: _messageCtl,
             maxRunCountController: _maxRunCountCtl,
+            commandController: _commandCtl,
+            commandError: _commandError,
+            onCommandChanged: (_) {
+              if (_commandError != null) {
+                setState(() => _commandError = null);
+              }
+            },
+            timeoutController: _timeoutCtl,
+            catchUpOnce: _catchUpOnce,
+            onCatchUpChanged: (value) => setState(() => _catchUpOnce = value),
             schedule: _schedule,
             onScheduleChanged: (draft) => setState(() => _schedule = draft),
             calculator: _calculator,

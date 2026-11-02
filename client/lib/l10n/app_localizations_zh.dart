@@ -6910,6 +6910,75 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsRunStatusSkippedMissed => '已跳过 — 错过窗口';
 
   @override
+  String get automationsRunStatusFailed => '失败';
+
+  @override
+  String get automationsRunStatusTimedOut => '超时';
+
+  @override
+  String get automationsRunStatusSkippedOverlap => '已跳过（上次仍在运行）';
+
+  @override
+  String automationsExitCode(int code) {
+    return '退出码 $code';
+  }
+
+  @override
+  String get automationsRunStdout => '标准输出';
+
+  @override
+  String get automationsRunStderr => '标准错误';
+
+  @override
+  String automationsRunError(String error) {
+    return '错误：$error';
+  }
+
+  @override
+  String automationsRunDurationSeconds(int seconds) {
+    return '耗时 $seconds 秒';
+  }
+
+  @override
+  String automationsRunDurationMilliseconds(int milliseconds) {
+    return '耗时 $milliseconds 毫秒';
+  }
+
+  @override
+  String get automationsRunOutputTruncated => '输出已截断';
+
+  @override
+  String get automationsCommand => '命令';
+
+  @override
+  String get automationsCommandHelp =>
+      '仅在 TeamPilot 运行时执行。超过宽限期的错过运行会被跳过，除非开启了补跑。';
+
+  @override
+  String get automationsCommandTimeout => '超时（秒）';
+
+  @override
+  String get automationsCommandRequired => '命令不能为空';
+
+  @override
+  String get automationsCommandTimeoutInvalid => '超时时间必须是整数秒';
+
+  @override
+  String get automationsCommandTimeoutRange => '超时时间须在 30 到 1800 秒之间';
+
+  @override
+  String get automationsCommandTooLong => '命令不能超过 2000 个字符';
+
+  @override
+  String get automationsCommandWorkingDirectory => '工作目录';
+
+  @override
+  String get automationsCommandWorkingDirectoryMain => '工作区默认目录';
+
+  @override
+  String get automationsCatchUpOnce => '启动后补跑一次';
+
+  @override
   String get automationsMaxRunCount => '运行次数上限';
 
   @override

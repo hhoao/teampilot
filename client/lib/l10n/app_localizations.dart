@@ -12800,6 +12800,126 @@ abstract class AppLocalizations {
   /// **'Skipped — missed window'**
   String get automationsRunStatusSkippedMissed;
 
+  /// No description provided for @automationsRunStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get automationsRunStatusFailed;
+
+  /// No description provided for @automationsRunStatusTimedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Timed out'**
+  String get automationsRunStatusTimedOut;
+
+  /// No description provided for @automationsRunStatusSkippedOverlap.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped (still running)'**
+  String get automationsRunStatusSkippedOverlap;
+
+  /// No description provided for @automationsExitCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit code {code}'**
+  String automationsExitCode(int code);
+
+  /// No description provided for @automationsRunStdout.
+  ///
+  /// In en, this message translates to:
+  /// **'stdout'**
+  String get automationsRunStdout;
+
+  /// No description provided for @automationsRunStderr.
+  ///
+  /// In en, this message translates to:
+  /// **'stderr'**
+  String get automationsRunStderr;
+
+  /// No description provided for @automationsRunError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {error}'**
+  String automationsRunError(String error);
+
+  /// No description provided for @automationsRunDurationSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Took {seconds}s'**
+  String automationsRunDurationSeconds(int seconds);
+
+  /// No description provided for @automationsRunDurationMilliseconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Took {milliseconds} ms'**
+  String automationsRunDurationMilliseconds(int milliseconds);
+
+  /// No description provided for @automationsRunOutputTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'Output truncated'**
+  String get automationsRunOutputTruncated;
+
+  /// No description provided for @automationsCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get automationsCommand;
+
+  /// No description provided for @automationsCommandHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs only while TeamPilot is running. Missed runs older than the grace window are skipped unless catch-up is on.'**
+  String get automationsCommandHelp;
+
+  /// No description provided for @automationsCommandTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeout (seconds)'**
+  String get automationsCommandTimeout;
+
+  /// No description provided for @automationsCommandRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Command is required'**
+  String get automationsCommandRequired;
+
+  /// No description provided for @automationsCommandTimeoutInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeout must be a whole number of seconds'**
+  String get automationsCommandTimeoutInvalid;
+
+  /// No description provided for @automationsCommandTimeoutRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeout must be between 30 and 1800 seconds'**
+  String get automationsCommandTimeoutRange;
+
+  /// No description provided for @automationsCommandTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Command must be at most 2000 characters'**
+  String get automationsCommandTooLong;
+
+  /// No description provided for @automationsCommandWorkingDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Working directory'**
+  String get automationsCommandWorkingDirectory;
+
+  /// No description provided for @automationsCommandWorkingDirectoryMain.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace default folder'**
+  String get automationsCommandWorkingDirectoryMain;
+
+  /// No description provided for @automationsCatchUpOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Catch up once after startup'**
+  String get automationsCatchUpOnce;
+
   /// Label for optional max automation run count
   ///
   /// In en, this message translates to:
