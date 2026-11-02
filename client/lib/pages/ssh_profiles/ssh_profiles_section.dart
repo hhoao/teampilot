@@ -14,6 +14,7 @@ import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_credentials_resolver.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
 import '../../services/vault/vault_service.dart';
+import '../../services/vault/vault_unlock_gate.dart';
 import '../../services/storage/home_storage.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
 import '../../utils/ui/app_keys.dart';
@@ -39,6 +40,10 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
     if (_testingIds.contains(profile.id)) {
       return StateError('SSH profile test already in progress');
     }
+    if (!await _ensureVaultUnlockedFor(profile)) {
+      return const VaultSaveBlockedException();
+    }
+    if (!mounted) return StateError('Widget unmounted');
     setState(() => _testingIds.add(profile.id));
     try {
       final clientFactory = context
@@ -77,6 +82,8 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
   }
 
   Future<void> _connect(SshProfile profile) async {
+    if (!await _ensureVaultUnlockedFor(profile)) return;
+    if (!mounted) return;
     await context.read<SshConnectionCubit>().connect(profile.id);
     if (!mounted) return;
     final host = context.read<SshConnectionCubit>().state.hostsById[profile.id];
@@ -101,6 +108,38 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
 
   void _disconnect(SshProfile profile) {
     context.read<SshConnectionCubit>().disconnect(profile.id);
+  }
+
+  /// Vault-backed targets need an unlocked vault before their secret can be
+  /// read. Prompting here keeps connect/test from failing with a generic auth
+  /// error; a cancelled prompt aborts the action.
+  Future<bool> _ensureVaultUnlockedFor(SshProfile profile) async {
+    if ((profile.vaultEntryId ?? '').trim().isEmpty) return true;
+    VaultService? vault;
+    try {
+      vault = context.read<VaultService>();
+    } on ProviderNotFoundException {
+      vault = null;
+    }
+    if (vault == null || vault.isUnlocked) return true;
+    VaultUnlockGate? gate;
+    try {
+      gate = context.read<VaultUnlockGate>();
+    } on ProviderNotFoundException {
+      gate = null;
+    }
+    final unlocked = gate != null && await gate.ensureUnlocked();
+    if (!unlocked) {
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.vaultLockedSaveBlocked,
+          variant: TpToastVariant.error,
+        );
+      }
+      return false;
+    }
+    return true;
   }
 
   Future<({String? password, String? privateKey, String? passphrase})>

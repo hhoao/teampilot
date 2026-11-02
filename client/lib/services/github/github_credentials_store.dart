@@ -47,11 +47,16 @@ class GithubCredentialsStore {
   final Future<bool> Function()? _ensureVaultUnlocked;
   var _legacyMigrated = false;
 
-  Future<void> saveOAuth({required String token, required String login}) async {
+  Future<void> saveOAuth({
+    required String token,
+    required String login,
+    bool allowUnlockPrompt = true,
+  }) async {
     if (await _captureVault(
       token: token,
       login: login,
       source: GithubCredentialSource.oauth.name,
+      allowUnlockPrompt: allowUnlockPrompt,
     )) {
       return;
     }
@@ -60,11 +65,16 @@ class GithubCredentialsStore {
     await _kv.write(_sourceKey, GithubCredentialSource.oauth.name);
   }
 
-  Future<void> savePat(String token, {String? login}) async {
+  Future<void> savePat(
+    String token, {
+    String? login,
+    bool allowUnlockPrompt = true,
+  }) async {
     if (await _captureVault(
       token: token,
       login: login ?? '',
       source: GithubCredentialSource.pat.name,
+      allowUnlockPrompt: allowUnlockPrompt,
     )) {
       return;
     }
@@ -81,9 +91,17 @@ class GithubCredentialsStore {
     required String token,
     required String login,
     required String source,
+    bool allowUnlockPrompt = true,
   }) async {
     final capture = _vaultCapture;
     if (capture == null) return false;
+    final vault = _vault;
+    if (!allowUnlockPrompt && vault != null && !vault.isUnlocked) {
+      // Background hydration (boot) must never prompt. Treat the save as
+      // handled so no plaintext legacy copy is written either; the next
+      // explicit save or the importer persists it after unlock.
+      return true;
+    }
     final unlock = _ensureVaultUnlocked;
     if (unlock != null && !await unlock()) {
       throw const VaultSaveBlockedException();

@@ -13,12 +13,14 @@ ManagedProvider _provider({
   String id = 'p1',
   String name = 'Provider 1',
   bool enabled = true,
+  String? vaultEntryId,
 }) => ManagedProvider(
   id: id,
   name: name,
   kind: ManagedProviderKind.apiBalance,
   adapterId: 'fake',
   enabled: enabled,
+  vaultEntryId: vaultEntryId,
 );
 
 class _BlockingConfigReadFilesystem extends InMemoryFilesystem {
@@ -138,6 +140,32 @@ void main() {
 
       expect(events, ['p1:ref-1']);
       expect(cubit.state.providers, isEmpty);
+    },
+  );
+
+  test(
+    'delete keeps a vault-backed provider when the unlock is cancelled',
+    () async {
+      await repository.upsert(_provider(vaultEntryId: 'entry-1'));
+      var cleanupCalls = 0;
+      var prompts = 0;
+      final cubit = ManagedProviderCubit(
+        repository: repository,
+        ensureVaultUnlocked: () async {
+          prompts++;
+          return false;
+        },
+        onProviderDeletedCredentialCleanup: (_) async => cleanupCalls++,
+      );
+      addTearDown(cubit.close);
+      await cubit.load();
+
+      await cubit.delete('p1');
+
+      expect(prompts, 1);
+      expect(cleanupCalls, 0);
+      expect(cubit.state.providerFor('p1'), isNotNull);
+      expect((await repository.load()).single.id, 'p1');
     },
   );
 

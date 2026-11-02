@@ -177,8 +177,11 @@ class VaultLegacyImportService {
     for (final profile in await _sshProfiles.loadAll()) {
       try {
         if (await _hasVerifiedSshLink(profile)) {
-          // The vault entry already holds this profile's secret; only the
-          // legacy cleanup remains. Never delete before verifying.
+          // The vault entry already holds this profile's secret. Merge any
+          // keychain-only field (notably a relay grant stored after the entry
+          // was captured) before the legacy cleanup, otherwise `deleteAll`
+          // would destroy the only copy.
+          await _mergeSshRelayGrant(profile);
           await _sshCredentials.deleteAll(profile.id);
           continue;
         }
@@ -206,6 +209,22 @@ class VaultLegacyImportService {
     }
     return (entry.fields['privateKey'] ?? '').isNotEmpty ||
         (entry.fields['passphrase'] ?? '').isNotEmpty;
+  }
+
+  /// Copies a keychain-only relay grant into a verified entry before cleanup.
+  ///
+  /// Paired tunnels write grants through the legacy keychain store even after
+  /// a profile was linked, so deleting the keychain without merging would drop
+  /// the grant from both places.
+  Future<void> _mergeSshRelayGrant(SshProfile profile) async {
+    final entryId = (profile.vaultEntryId ?? '').trim();
+    if (entryId.isEmpty) return;
+    final entry = await _vault.get(entryId);
+    if (entry == null) return;
+    if ((entry.fields['relayGrant'] ?? '').isNotEmpty) return;
+    final relayGrant = await _sshCredentials.loadRelayGrant(profile.id);
+    if (relayGrant == null || relayGrant.isEmpty) return;
+    await _capture.captureSsh(profile, relayGrant: relayGrant);
   }
 
   Future<void> _captureSshProfile(SshProfile profile) async {

@@ -373,4 +373,33 @@ void main() {
     expect(kv.values['teampilot.github.v1.source'], 'pat');
     expect(await vault.list(), isEmpty);
   });
+
+  test(
+    'a background save without prompt skips vault and legacy writes while locked',
+    () async {
+      final vault = await _githubVault();
+      final kv = InMemorySecureKeyValueStore();
+      var prompts = 0;
+      final store = GithubCredentialsStore(
+        kv: kv,
+        vault: _LockedGithubVault(vault),
+        vaultCapture: VaultCredentialCapture(vault: _LockedGithubVault(vault)),
+        ensureVaultUnlocked: () async {
+          prompts++;
+          return true;
+        },
+      );
+
+      await store.savePat('ghp_bg', login: 'me', allowUnlockPrompt: false);
+      await store.saveOAuth(
+        token: 'gho_bg',
+        login: 'me',
+        allowUnlockPrompt: false,
+      );
+
+      expect(prompts, 0, reason: 'boot hydration must never prompt');
+      expect(kv.values, isEmpty);
+      expect(await vault.list(), isEmpty);
+    },
+  );
 }
