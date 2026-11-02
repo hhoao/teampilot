@@ -13,10 +13,13 @@ import '../../models/managed_provider.dart';
 import '../../models/managed_provider_editor_schema.dart';
 import '../../models/provider_usage_snapshot.dart';
 import '../../services/provider_usage/managed_provider_cli_binding.dart';
-import '../../services/provider_usage/managed_provider_credential_transaction.dart';
 import '../../services/provider_usage/managed_provider_link_binding.dart';
 import '../../services/provider_usage/managed_provider_presets.dart';
 import '../../services/provider_usage/managed_provider_secret_store.dart';
+import '../../services/provider_usage/managed_provider_vault_writer.dart';
+import '../../services/vault/credential_capture.dart';
+import '../../services/vault/vault_service.dart';
+import '../../services/vault/vault_unlock_gate.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../utils/managed_provider_error_localization.dart';
 import 'managed_provider_editor_field_examples.dart';
@@ -72,7 +75,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   String? _formError;
   bool _saving = false;
 
-  ManagedProvider? get _provider => widget.provider;
+  ManagedProvider? _savedProvider;
+
+  ManagedProvider? get _provider => _savedProvider ?? widget.provider;
 
   /// Stable id for the entry across the editor session: new entries get it
   /// at editor open so the per-entry CLI credential row can bind (and be
@@ -705,9 +710,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     });
     final cubit = context.read<ManagedProviderCubit>();
     final secretStore = context.read<ManagedProviderSecretStore>();
-    final credentialTransaction = ManagedProviderCredentialTransaction(
-      secretStore,
-    );
     final now = DateTime.now().millisecondsSinceEpoch;
     final current = _provider;
     final shouldRunFirstQuery = current == null && _schema.firstQuery;
@@ -740,12 +742,18 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
           .toSet();
     }
     if (requiredSecretsToKeep.isNotEmpty) {
-      final hasExisting = await _existingCredentialHasRequiredSecrets(
-        store: secretStore,
-        current: current,
-        credentialRef: credentialRef,
-        fields: requiredSecretsToKeep,
-      );
+      final hasExisting = current?.vaultEntryId != null
+          ? await _vaultHasRequiredSecrets(
+              context.read<VaultService>(),
+              current!,
+              requiredSecretsToKeep,
+            )
+          : await _existingCredentialHasRequiredSecrets(
+              store: secretStore,
+              current: current,
+              credentialRef: credentialRef,
+              fields: requiredSecretsToKeep,
+            );
       if (!mounted) return;
       if (!hasExisting) {
         setState(() {
@@ -802,6 +810,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         credentialPrefix: _credentialPrefix,
       ),
       credentialRef: credentialRef.isEmpty ? null : credentialRef,
+      vaultEntryId: current?.vaultEntryId,
       displayConfig: ManagedProviderDisplayConfig(
         currency: _currency.text.trim().isEmpty ? null : _currency.text.trim(),
         unit: _unit.text.trim().isEmpty ? null : _unit.text.trim(),
@@ -816,17 +825,40 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
           : current.createdAt,
       updatedAt: now,
     );
+    final secretValues = _isLinkedProviderSource
+        ? const <String, String>{}
+        : credentialValues;
     try {
-      await credentialTransaction.run<void>(
-        credentialRef: credentialRef,
-        nextValues: credentialValues,
-        persistProvider: () async {
-          await cubit.upsert(next);
-          if (cubit.state.errorCode != null) {
-            throw const _ManagedProviderEditorPersistenceFailed();
-          }
-        },
-      );
+      if (secretValues.isNotEmpty) {
+        final saved = await saveManagedProviderWithVault(
+          provider: next,
+          current: current,
+          secretValues: secretValues,
+          capture: context.read<VaultCredentialCapture>(),
+          unlockGate: context.read<VaultUnlockGate>(),
+          persist: (value) async {
+            await cubit.upsert(value);
+            if (cubit.state.errorCode != null) {
+              throw const _ManagedProviderEditorPersistenceFailed();
+            }
+          },
+        );
+        if (saved.vaultEntryId != next.vaultEntryId && mounted) {
+          setState(() => _savedProvider = saved);
+        }
+      } else {
+        await cubit.upsert(next);
+        if (cubit.state.errorCode != null) {
+          throw const _ManagedProviderEditorPersistenceFailed();
+        }
+      }
+    } on VaultSaveBlockedException {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _formError = context.l10n.vaultLockedSaveBlocked;
+      });
+      return;
     } on _ManagedProviderEditorPersistenceFailed {
       if (!mounted) return;
       setState(() {
@@ -1061,6 +1093,23 @@ Future<bool> _existingCredentialHasRequiredSecrets({
   try {
     final scope = await store.read(credentialRef);
     return fields.every((field) => scope.valueFor(field)?.isNotEmpty ?? false);
+  } on Object {
+    return false;
+  }
+}
+
+Future<bool> _vaultHasRequiredSecrets(
+  VaultService vault,
+  ManagedProvider provider,
+  Set<String> fields,
+) async {
+  if (fields.isEmpty) return true;
+  final entryId = provider.vaultEntryId?.trim() ?? '';
+  if (entryId.isEmpty) return false;
+  try {
+    final entry = await vault.get(entryId);
+    if (entry == null) return false;
+    return fields.every((field) => (entry.fields[field] ?? '').isNotEmpty);
   } on Object {
     return false;
   }

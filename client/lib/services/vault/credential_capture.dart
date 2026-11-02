@@ -134,6 +134,15 @@ class VaultCredentialCapture {
     );
   }
 
+  Future<Map<String, String>> existingManagedFields(
+    ManagedProvider provider,
+  ) async {
+    final entryId = provider.vaultEntryId?.trim() ?? '';
+    if (entryId.isEmpty) return const {};
+    final entry = await _vault.get(entryId);
+    return entry?.fields ?? const {};
+  }
+
   Future<VaultCaptureResult> captureGithub({
     required String token,
     String? login,
