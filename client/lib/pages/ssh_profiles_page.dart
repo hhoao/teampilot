@@ -7,6 +7,7 @@ import '../cubits/ssh_profile_cubit.dart';
 import '../models/ssh_profile.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
+import '../services/vault/vault_service.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import 'ssh_profile_setup_page.dart';
@@ -48,6 +49,7 @@ Future<void> openSshProfileEditor(
           profileRepository: context.read<SshProfileRepository>(),
           credentialStore: context.read<SshCredentialStore>(),
           initialProfile: profile,
+          vaultService: context.read<VaultService>(),
           connectionTester: SshProfileConnectionTester(
             clientFactory: context
                 .read<TerminalTransportFactory>()

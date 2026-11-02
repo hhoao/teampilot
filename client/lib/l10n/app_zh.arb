@@ -4486,5 +4486,11 @@
   "vaultTypeLogin": "账号密码",
   "vaultTypeToken": "令牌",
   "vaultTypeSecureNote": "安全笔记",
-  "vaultTypeCustom": "自定义"
+  "vaultTypeCustom": "自定义",
+  "sshCredentialSource": "凭据来源",
+  "sshCredentialSourceKeychain": "本机钥匙串",
+  "sshCredentialVaultDeleted": "已删除的条目",
+  "sshSaveToVault": "保存到保险库",
+  "sshMigrateToVault": "迁移到保险库",
+  "sshVaultBadge": "保险库"
 }
