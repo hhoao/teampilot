@@ -43,6 +43,7 @@ import '../flashskyai/flashskyai_tool.dart';
 import '../gemini/capabilities/acp.dart';
 import '../gemini/gemini_tool.dart';
 import '../opencode/opencode_tool.dart';
+import '../qoder/capabilities/headless.dart';
 import '../qoder/capabilities/provider.dart';
 import '../qoder/qoder_tool.dart';
 
@@ -134,7 +135,10 @@ void registerBuiltInCliTools(
   );
 
   registry.register(
-    QoderCliTool(provider: QoderProviderCapability(storage: storage)),
+    QoderCliTool(
+      provider: QoderProviderCapability(storage: storage),
+      headless: QoderHeadlessCapability(storage: storage),
+    ),
   );
 
   assert(
