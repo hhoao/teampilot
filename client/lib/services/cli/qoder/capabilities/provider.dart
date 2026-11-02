@@ -328,7 +328,7 @@ final class QoderProviderCapability extends CatalogModelCapability
   /// Copies `<source>/.auth/{user,machine_id}` onto the work plane.
   ///
   /// Reads stay on the control plane ([QoderAuthStore.authSourceDir]); the
-  /// writes go through [ConfigProfileDelegate.fs] so the manifest flushes them
+  /// writes go through the work-plane fs so the manifest flushes them
   /// to the SSH seat. The `.qoder-provider` marker is written next to them.
   Future<bool> _seedCrossMachineAuth(
     SessionHomeContext ctx, {
