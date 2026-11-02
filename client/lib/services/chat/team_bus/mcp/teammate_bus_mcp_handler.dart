@@ -52,6 +52,18 @@ class TeammateBusMcpHandler {
   bool isPushDelivery(String memberId) => !_resolveForceWait(memberId);
 
   static const protocolVersion = '2025-06-18';
+
+  /// Versions this server can serve. MCP negotiates: reply with the client's
+  /// version when it is one of these, else with [protocolVersion].
+  ///
+  /// CodeBuddy (ACP) asks for `2025-11-25`; answering `2025-06-18` keeps the
+  /// server "connected" but drops its tools from the session, so mixed teams
+  /// lost the whole bus. Claude still asks for `2025-06-18`.
+  static const supportedProtocolVersions = <String>{
+    '2025-06-18',
+    '2025-11-25',
+  };
+
   static const serverName = 'teampilot-teammate-bus';
 
   /// 保险丝：连续多少次 idle（中间一次 `wait_for_message` 都没调）后放行 stop。
@@ -132,8 +144,12 @@ class TeammateBusMcpHandler {
   Future<JsonRpcResponse?> handle(String memberId, JsonRpcRequest req) async {
     switch (req.method) {
       case McpMethod.initialize:
+        final requested = req.params['protocolVersion'];
         return JsonRpcResponse.result(req.id, {
-          'protocolVersion': protocolVersion,
+          'protocolVersion':
+              requested is String && supportedProtocolVersions.contains(requested)
+              ? requested
+              : protocolVersion,
           'capabilities': {'tools': <String, Object?>{}},
           'serverInfo': {'name': serverName, 'version': '1.0.0'},
         });

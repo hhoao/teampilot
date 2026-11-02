@@ -34,6 +34,7 @@ import '../../agent_runtime/agent_runtime.dart';
 import '../../cli/registry/launch/cli_launch_context.dart';
 import '../../cli/registry/cli_tool_registry.dart';
 import '../../cli/flashskyai/capabilities/provider.dart';
+import '../../cli/codebuddy/capabilities/provider.dart';
 import '../../provider/control_plane_profile_paths.dart';
 import '../launch/config_profile_service.dart';
 import '../../../models/runtime_target.dart';
@@ -1768,6 +1769,7 @@ class SessionLifecycleService {
     final home = env['HOME']?.trim() ?? '';
     if (home.isNotEmpty) return home;
     return env['CLAUDE_CONFIG_DIR'] ??
+        env[CodebuddyProviderCapability.configDirEnvKey] ??
         env[FlashskyaiProviderCapability.configDirEnvKey] ??
         env[FlashskyaiProviderCapability.sessionHomeDirEnvKey] ??
         env['CODEX_HOME'] ??

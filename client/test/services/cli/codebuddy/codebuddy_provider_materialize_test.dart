@@ -80,6 +80,199 @@ void main() {
     );
   });
 
+  test(
+    'mixed seats deny CLI-native team tools via settings permissions.deny',
+    () async {
+      final base = await Directory.systemTemp.createTemp('codebuddy_cap_');
+      addTearDown(() async {
+        if (await base.exists()) await base.delete(recursive: true);
+      });
+
+      final fs = LocalFilesystem();
+      final storage = fakeHomeStorage(appDataRoot: base.path);
+      final service = ConfigProfileService(
+        basePath: base.path,
+        fs: fs,
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+        storage: storage,
+      );
+      final capability = CodebuddyProviderCapability(storage: storage);
+      const member = TeamMemberConfig(id: 'builder-0', name: 'Builder');
+      const team = TeamProfile(
+        id: 'team-a',
+        name: 'Mixed',
+        teamMode: TeamMode.mixed,
+      );
+      final scope = resolveLaunchProfileScope(
+        workspaceId: 'workspace-1',
+        teamId: 'team-a',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+      );
+
+      final configDir = p.join(
+        base.path,
+        'workspace',
+        'workspaces',
+        'workspace-1',
+        'sessions',
+        'session-1',
+        'runtime',
+        'codebuddy',
+      );
+      await fs.ensureDir(configDir);
+      await fs.atomicWrite(
+        p.join(configDir, 'settings.json'),
+        jsonEncode({
+          'permissions': {
+            'deny': ['UserRule'],
+          },
+        }),
+      );
+
+      await contribute(
+        capability,
+        ConfigProfileLaunchContext(
+          workspaceId: 'workspace-1',
+          teamId: 'team-a',
+          sessionId: scope.sessionId,
+          scope: scope,
+          team: team,
+          member: member,
+          members: const [member],
+          workingDirectory: '/workspace/workspace',
+          paths: service,
+          catalog: service,
+        ),
+      );
+
+      final settings =
+          jsonDecode(
+                (await fs.readString(p.join(configDir, 'settings.json')))!,
+              )
+              as Map<String, Object?>;
+      final deny = ((settings['permissions'] as Map)['deny'] as List)
+          .cast<String>();
+      expect(deny, contains('UserRule'), reason: 'user rules are preserved');
+      expect(deny, containsAll(['TeamCreate', 'SendMessage', 'TaskList']));
+      expect(deny, isNot(contains('Agent')), reason: 'workers keep subagents');
+    },
+  );
+
+  test('mixed team-lead also loses the subagent tool', () async {
+    final base = await Directory.systemTemp.createTemp('codebuddy_cap_');
+    addTearDown(() async {
+      if (await base.exists()) await base.delete(recursive: true);
+    });
+
+    final fs = LocalFilesystem();
+    final storage = fakeHomeStorage(appDataRoot: base.path);
+    final service = ConfigProfileService(
+      basePath: base.path,
+      fs: fs,
+      layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+      storage: storage,
+    );
+    final capability = CodebuddyProviderCapability(storage: storage);
+    const member = TeamMemberConfig(id: 'team-lead', name: 'Lead');
+    const team = TeamProfile(
+      id: 'team-a',
+      name: 'Mixed',
+      teamMode: TeamMode.mixed,
+    );
+    final scope = resolveLaunchProfileScope(
+      workspaceId: 'workspace-1',
+      teamId: 'team-a',
+      appSessionId: 'session-1',
+      cliTeamName: 'session-1',
+    );
+
+    final contribution = await contribute(
+      capability,
+      ConfigProfileLaunchContext(
+        workspaceId: 'workspace-1',
+        teamId: 'team-a',
+        sessionId: scope.sessionId,
+        scope: scope,
+        team: team,
+        member: member,
+        members: const [member],
+        workingDirectory: '/workspace/workspace',
+        paths: service,
+        catalog: service,
+      ),
+    );
+
+    final configDir =
+        contribution.environment[CodebuddyProviderCapability.configDirEnvKey]!;
+    final settings =
+        jsonDecode((await fs.readString(p.join(configDir, 'settings.json')))!)
+            as Map<String, Object?>;
+    final deny = ((settings['permissions'] as Map)['deny'] as List)
+        .cast<String>();
+    expect(deny, contains('Agent'));
+  });
+
+  test('personal sessions keep CLI-native team tools', () async {
+    final base = await Directory.systemTemp.createTemp('codebuddy_cap_');
+    addTearDown(() async {
+      if (await base.exists()) await base.delete(recursive: true);
+    });
+
+    final fs = LocalFilesystem();
+    final storage = fakeHomeStorage(appDataRoot: base.path);
+    final service = ConfigProfileService(
+      basePath: base.path,
+      fs: fs,
+      layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+      storage: storage,
+    );
+    final capability = CodebuddyProviderCapability(storage: storage);
+    const member = TeamMemberConfig(id: 'm1', name: 'Member');
+    final scope = resolveLaunchProfileScope(
+      workspaceId: 'workspace-1',
+      teamId: '',
+      appSessionId: 'session-1',
+      cliTeamName: 'session-1',
+    );
+
+    final configDir = p.join(
+      base.path,
+      'workspace',
+      'workspaces',
+      'workspace-1',
+      'sessions',
+      'session-1',
+      'runtime',
+      'codebuddy',
+    );
+    await fs.ensureDir(configDir);
+    await fs.atomicWrite(
+      p.join(configDir, 'settings.json'),
+      jsonEncode({'model': 'glm-5.3'}),
+    );
+
+    await contribute(
+      capability,
+      ConfigProfileLaunchContext(
+        workspaceId: 'workspace-1',
+        teamId: '',
+        sessionId: scope.sessionId,
+        scope: scope,
+        member: member,
+        members: const [member],
+        workingDirectory: '/workspace/workspace',
+        paths: service,
+        catalog: service,
+      ),
+    );
+
+    final settings =
+        jsonDecode((await fs.readString(p.join(configDir, 'settings.json')))!)
+            as Map<String, Object?>;
+    expect(settings['permissions'], isNull);
+  });
+
   test('writes settings.json + models.json for a custom provider', () async {
     final base = await Directory.systemTemp.createTemp('codebuddy_cap_');
     addTearDown(() async {

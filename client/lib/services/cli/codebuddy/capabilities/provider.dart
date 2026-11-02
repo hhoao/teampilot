@@ -6,6 +6,8 @@ import 'package:flutter/widgets.dart';
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_action_result.dart';
 import '../../../../models/credential_probe.dart';
+import '../../../../models/team_config.dart';
+import '../../../../utils/team/team_member_naming.dart';
 import '../../../../widgets/home_storage_scope.dart';
 import '../../../chat/launch/staging/manifest/work_plane_paths.dart';
 import '../../../io/filesystem.dart';
@@ -15,10 +17,12 @@ import '../../../remote/remote_credential_materializer.dart';
 import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/interactive_login_capability.dart';
 import '../../registry/capabilities/provider_capability.dart';
+import '../../registry/config_profile/config_profile_context.dart';
 import '../provider/codebuddy_auth_store.dart';
 import '../provider/codebuddy_login_dialog.dart';
 import '../provider/codebuddy_provider_settings_resolver.dart';
 import '../provider_presets.dart';
+import 'defaults.dart';
 
 /// Built-in CodeBuddy model ids (the CLI's own account catalog;
 /// picker also accepts a custom entry, so this list is a convenience only).
@@ -322,8 +326,22 @@ final class CodebuddyProviderCapability extends CatalogModelCapability
     await delegate.fs.ensureDir(configDir);
 
     final environment = <String, String>{configDirEnvKey: configDir};
+    final settingsPath = delegate.joinWork(configDir, 'settings.json');
+    final settings = await delegate.readSettingsFile(settingsPath);
+
+    // The mixed-team deny list is independent of the provider row: a seat
+    // that falls back to the machine login must still lose the CLI's native
+    // team tools.
+    final denyTools = _mixedNativeTeamDenyTools(ctx);
+    if (denyTools.isNotEmpty) {
+      _mergePermissionsDeny(settings, denyTools);
+    }
+
     final provider = await _resolveLaunchProvider(ctx);
     if (provider == null) {
+      if (denyTools.isNotEmpty) {
+        await _writeSettings(delegate, settingsPath, settings, ctx);
+      }
       return SessionHomeContribution(environment: environment);
     }
 
@@ -331,9 +349,6 @@ final class CodebuddyProviderCapability extends CatalogModelCapability
     if (accessToken != null) {
       environment[CodebuddyAuthStore.apiKeyEnvKey] = accessToken;
     }
-
-    final settingsPath = delegate.joinWork(configDir, 'settings.json');
-    final settings = await delegate.readSettingsFile(settingsPath);
 
     final model = _resolveModel(ctx, provider);
     if (model.isNotEmpty) {
@@ -344,13 +359,7 @@ final class CodebuddyProviderCapability extends CatalogModelCapability
       settings['reasoningEffort'] = effort;
     }
 
-    await delegate.writeSettingsFile(
-      settingsPath,
-      settings,
-      tool: CliTool.codebuddy.value,
-      teamId: ctx.team?.id,
-      workspaceId: ctx.workspaceId,
-    );
+    await _writeSettings(delegate, settingsPath, settings, ctx);
 
     final apiKey = provider.apiKey.trim();
     if (apiKey.isNotEmpty) {
@@ -439,6 +448,51 @@ final class CodebuddyProviderCapability extends CatalogModelCapability
       'availableModels': [model],
     };
   }
+}
+
+Future<void> _writeSettings(
+  ConfigProfileDelegate delegate,
+  String settingsPath,
+  Map<String, Object?> settings,
+  SessionHomeContext ctx,
+) {
+  return delegate.writeSettingsFile(
+    settingsPath,
+    settings,
+    tool: CliTool.codebuddy.value,
+    teamId: ctx.team?.id,
+    workspaceId: ctx.workspaceId,
+  );
+}
+
+/// Native-team tools to remove from this seat's settings.
+///
+/// Only mixed TeamPilot teams replace the CLI's own coordination tools with
+/// teammate-bus; personal sessions and other modes keep the full CLI surface.
+List<String> _mixedNativeTeamDenyTools(SessionHomeContext ctx) {
+  if (ctx.isSimple || ctx.team?.teamMode != TeamMode.mixed) return const [];
+  final member = ctx.member;
+  return mixedDenyToolsForCodebuddy(
+    isLead: member != null && TeamMemberNaming.isTeamLead(member),
+  );
+}
+
+/// Merges [denyTools] into `settings.permissions.deny`, preserving user rules.
+void _mergePermissionsDeny(
+  Map<String, Object?> settings,
+  List<String> denyTools,
+) {
+  final current = settings['permissions'];
+  final permissions = current is Map
+      ? Map<String, Object?>.from(current)
+      : <String, Object?>{};
+  final existing = permissions['deny'];
+  final merged = <String>{
+    if (existing is List) ...existing.whereType<String>(),
+    ...denyTools,
+  };
+  permissions['deny'] = merged.toList(growable: false);
+  settings['permissions'] = permissions;
 }
 
 final _emptyCatalogUpdates = _EmptyListenable();
