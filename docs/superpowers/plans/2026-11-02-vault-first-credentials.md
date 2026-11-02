@@ -4089,3 +4089,44 @@ Task 9's original snippets had four Important gaps found in review. Where they d
       await githubAccountCubit.hydrate();
     },
 ```
+
+### Task 9 correction follow-up
+
+1. `migrateLegacyHubPublishTokenIfNeeded` must not delete the legacy hub token
+   on a dangling pointer, and must not prompt on a locked/unavailable vault:
+
+```dart
+  Future<void> migrateLegacyHubPublishTokenIfNeeded() async {
+    if (_legacyMigrated) return;
+    final pointer = (await _kv.read(_vaultEntryKey))?.trim() ?? '';
+    if (pointer.isNotEmpty) {
+      final vault = _vault;
+      if (vault == null) {
+        _legacyMigrated = true;
+        return;
+      }
+      try {
+        final entry = await vault.get(pointer);
+        if (entry != null) {
+          await _kv.delete(_legacyTokenKey);
+          _legacyMigrated = true;
+          return;
+        }
+      } on Object {
+        // Locked/unavailable: keep the legacy token for a later pass.
+        return;
+      }
+    }
+    if (_vault != null && !_vault!.isUnlocked) return;
+    final legacy = await _kv.read(_legacyTokenKey);
+    ...unchanged migration...
+  }
+```
+
+2. `GithubAccountCubit.hydrate` wraps the store migration/read in
+`try/on Object` and falls through to `resolveToken()`/disconnected, so a vault
+initialization failure never leaves an unhandled async error at boot.
+
+3. Store test: dangling pointer + legacy hub token only → returns the legacy
+token and does not delete it. Cubit test: a store that throws from
+`readStored` still emits disconnected on hydrate.
