@@ -1,15 +1,23 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
+import 'package:teampilot/repositories/ssh_credential_store.dart';
+import 'package:teampilot/repositories/vault_repository.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_link_binding.dart';
 import 'package:teampilot/services/provider/credential_login_progress.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
+import 'package:teampilot/services/vault/credential_capture.dart';
+import 'package:teampilot/services/vault/encrypted_vault_backend.dart';
+import 'package:teampilot/services/vault/keychain_vault_backend.dart';
+import 'package:teampilot/services/vault/vault_crypto.dart';
+import 'package:teampilot/services/vault/vault_service.dart';
 import '../support/in_memory_filesystem.dart';
 
 class _SpyProviderImportService extends ProviderImportService {
@@ -330,4 +338,101 @@ void main() {
       'opencode-go-2',
     );
   });
+
+  test('saving a key captures it in the vault and clears the plaintext', () async {
+    final vault = await _vaultService();
+    final capture = VaultCredentialCapture(vault: vault);
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: capture,
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const draft = AppProviderConfig(
+      id: 'captured',
+      cli: CliTool.claude,
+      name: 'Captured',
+      apiKey: 'sk-secret',
+    );
+    expect(await autoCubit.upsertProvider(draft), isTrue);
+
+    final saved = autoCubit.state.providersFor(CliTool.claude)
+        .firstWhere((p) => p.id == 'captured');
+    expect(saved.apiKey, isEmpty);
+    expect(saved.credentialLink, startsWith('vault:'));
+    final entryId = saved.credentialLink.substring('vault:'.length);
+    expect(await vault.readField(entryId, 'apiKey'), 'sk-secret');
+
+    await autoCubit.deleteProvider('captured');
+    expect(await vault.get(entryId), isNull);
+  });
+
+  test('a refused unlock aborts the save', () async {
+    final vault = await _vaultService();
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: _LockedVaultService(vault)),
+      ensureVaultUnlocked: () async => false,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const draft = AppProviderConfig(
+      id: 'blocked',
+      cli: CliTool.claude,
+      name: 'Blocked',
+      apiKey: 'sk-secret',
+    );
+    expect(await autoCubit.upsertProvider(draft), isFalse);
+    expect(autoCubit.state.providersFor(CliTool.claude), isEmpty);
+  });
+}
+
+Future<VaultService> _vaultService() async {
+  final service = VaultService(
+    keychainBackend: KeychainVaultBackend(_FakeVaultStore()),
+    encryptedBackend: EncryptedVaultBackend(
+      repository: VaultRepository(
+        rootDir: '/root/vault',
+        fs: InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix)),
+      ),
+      crypto: const VaultCrypto(memoryKiB: 256, iterations: 1, parallelism: 1),
+    ),
+  );
+  await service.initialize();
+  return service;
+}
+
+class _FakeVaultStore implements SecureKeyValueStore {
+  final values = <String, String>{};
+
+  @override
+  Future<void> delete(String key) async => values.remove(key);
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async => values[key] = value;
+}
+
+class _LockedVaultService implements VaultService {
+  _LockedVaultService(this._delegate);
+
+  final VaultService _delegate;
+
+  @override
+  bool get isUnlocked => false;
+
+  @override
+  Future<void> delete(String id) => _delegate.delete(id);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
