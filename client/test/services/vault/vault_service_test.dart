@@ -129,16 +129,16 @@ void main() {
   });
 
   test('marker persists through the keychain backend', () async {
-    final service = buildService();
+    final store = _FakeStore();
+    final service = buildService(store: store);
     await service.initialize();
     expect(service.legacyImportVersion, 0);
 
     await service.markLegacyImported(1);
     expect(service.legacyImportVersion, 1);
 
-    final reloaded = buildService();
+    final reloaded = buildService(store: store);
     await reloaded.initialize();
-    expect(reloaded.legacyImportVersion, 0,
-        reason: 'a fresh backend is a different store in this harness');
+    expect(reloaded.legacyImportVersion, 1);
   });
 }

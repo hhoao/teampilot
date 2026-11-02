@@ -39,7 +39,7 @@ void main() {
     );
   });
 
-  test('marker does not disturb entry equality', () {
+  test('marker participates in document equality', () {
     expect(
       const VaultDocument(legacyImportVersion: 1),
       isNot(const VaultDocument(legacyImportVersion: 0)),
