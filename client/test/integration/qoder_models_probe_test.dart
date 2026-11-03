@@ -27,10 +27,15 @@ void main() {
     try {
       await service.ensureLoaded(providerId: '');
       final models = service.modelIdsFor(providerId: '');
+      final autoName = service.modelNameFor(
+        providerId: '',
+        modelId: 'auto',
+      );
       // ignore: avoid_print
-      print('[qoder-models] ${models.join(', ')}');
+      print('[qoder-models] ${models.join(', ')} (auto=$autoName)');
       expect(models, isNotEmpty);
       expect(models, contains('auto'));
+      expect(autoName, isNotNull);
     } finally {
       try {
         temp.deleteSync(recursive: true);

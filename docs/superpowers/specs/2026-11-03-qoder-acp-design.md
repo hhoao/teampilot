@@ -246,7 +246,9 @@ Deliberate deviations from the text above, as shipped:
   six hours (`cache/qoder_models/<provider>.json`). The static list is only a
   fallback for an offline / signed-out probe. Ids are used as-is because
   `session/set_model` rejects the `--list-models` display names (for example
-  `qwen3.8-max` fails while `qmodel_38max` works).
+  `qwen3.8-max` fails while `qmodel_38max` works). The probe also caches each
+  model's `name`, so pickers and the compose chip show `Qwen3.8-Flash` while
+  the persisted value stays `qfmodel` (`ModelDisplayNameCapability`).
 - **`reasoningEffort` is a dead write.** The value is merged into
   `settings.json` but is not forwarded as a launch argument, and the effort
   pickers are hidden (`teamPickerPlacement` / `memberPickerPlacement` /

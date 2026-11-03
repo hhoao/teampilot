@@ -47,6 +47,7 @@ import '../../../services/expert_hub/expert_member_resolver.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/cli/registry/capabilities/native_command_capability.dart';
+import '../../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../../services/cli/preset_resolver.dart';
 import '../../../utils/team/team_member_naming.dart';
@@ -1480,11 +1481,17 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       final preset = presets
           .where((p) => p.id == _selectedPresetId)
           .firstOrNull;
+      final cli = _selectedCli;
+      final registry = CliToolRegistryScope.of(context);
       return simpleLaunchChipLabel(
         presetName: preset?.name,
-        cli: _selectedCli,
+        cli: cli,
         provider: _selectedProvider,
-        model: _selectedModel,
+        model: providerModelLabel(
+          cli == null ? null : registry.capability<ProviderCapability>(cli),
+          providerId: _selectedProvider ?? '',
+          modelId: _selectedModel ?? '',
+        ),
         emptyLabel: l10n.workspaceChatLandingUsePreset,
       );
     }
@@ -1571,6 +1578,16 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         managePresetsLabel: l10n.workspaceCliAddPresetTitle,
         cliGroups: groups,
         groupByCli: true,
+        modelLabel: (cli, providerId, modelId) => providerModelLabel(
+          registry.capability<ProviderCapability>(cli),
+          providerId: providerId,
+          modelId: modelId,
+        ),
+        modelTooltip: (cli, providerId, modelId) => providerModelDescription(
+          registry.capability<ProviderCapability>(cli),
+          providerId: providerId,
+          modelId: modelId,
+        ),
         onModelsOpened: (cli, providerId, config) => unawaited(
           refreshComposeCascadeCatalog(
             context,

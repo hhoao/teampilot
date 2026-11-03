@@ -339,6 +339,10 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
   required bool groupByCli,
   void Function(CliTool cli, String providerId, AppProviderConfig config)?
   onModelsOpened,
+  /// Optional friendly label for a model id; ids stay the persisted value.
+  String Function(CliTool cli, String providerId, String modelId)? modelLabel,
+  /// Optional hover text (capabilities / credit multiplier).
+  String? Function(CliTool cli, String providerId, String modelId)? modelTooltip,
   bool showSavePreset = true,
   bool showManagePresets = true,
 }) {
@@ -363,7 +367,11 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
               namespace: namespace,
               modelId: model,
             ),
-            label: model,
+            label: modelLabel?.call(group.cli, p.id, model) ?? model,
+            subtitle: switch (modelTooltip?.call(group.cli, p.id, model)) {
+              final text? => Text(text),
+              null => null,
+            },
             children: [
               TpActionMenuSpec.item(
                 value: CascadeModelPick(
@@ -396,7 +404,8 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
               namespace: namespace,
               modelId: model,
             ),
-            label: model,
+            label: modelLabel?.call(group.cli, p.id, model) ?? model,
+            tooltip: modelTooltip?.call(group.cli, p.id, model),
           ),
     ];
   }

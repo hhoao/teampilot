@@ -9,7 +9,11 @@ void main() {
         'currentModelId': 'auto',
         'availableModels': [
           {'modelId': 'auto', 'name': 'Auto (default)'},
-          {'modelId': 'smodel', 'name': 'Sonus'},
+          {
+            'modelId': 'smodel',
+            'name': 'Sonus',
+            'description': 'Reasoning · Vision · 8.00x Credit',
+          },
           {'modelId': 'qwen3.8-max', 'name': 'Qwen3.8-Max'},
         ],
       },
@@ -18,6 +22,12 @@ void main() {
     expect(snapshot, isNotNull);
     expect(snapshot!.modelIds, ['auto', 'smodel', 'qwen3.8-max']);
     expect(snapshot.defaultModelId, 'auto');
+    expect(snapshot.names['smodel'], 'Sonus');
+    expect(snapshot.names['qwen3.8-max'], 'Qwen3.8-Max');
+    expect(
+      snapshot.descriptions['smodel'],
+      'Reasoning · Vision · 8.00x Credit',
+    );
   });
 
   test('dedupes ids and drops blank entries', () {

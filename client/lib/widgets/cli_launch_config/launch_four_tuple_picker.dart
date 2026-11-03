@@ -10,6 +10,7 @@ import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../pages/home_workspace/workspace/config/cli_preset_edit_dialog.dart';
 import '../../pages/home_workspace/workspace/config/cli_presets_manage_dialog.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../cli/cli_brand_icon.dart';
@@ -178,7 +179,13 @@ class _LaunchFourTuplePickerState extends State<LaunchFourTuplePicker> {
       presetName: null,
       cli: widget.value?.cli,
       provider: widget.value?.providerId,
-      model: widget.value?.modelId,
+      model: providerModelLabel(
+        widget.value?.cli == null
+            ? null
+            : registry.capability<ProviderCapability>(widget.value!.cli),
+        providerId: widget.value?.providerId ?? '',
+        modelId: widget.value?.modelId ?? '',
+      ),
       emptyLabel: emptyLabel,
     );
     final iconCli =
@@ -197,6 +204,16 @@ class _LaunchFourTuplePickerState extends State<LaunchFourTuplePicker> {
       managePresetsLabel: l10n.workspaceCliAddPresetTitle,
       cliGroups: groups,
       groupByCli: widget.cliItems.length > 1,
+      modelLabel: (cli, providerId, modelId) => providerModelLabel(
+        registry.capability<ProviderCapability>(cli),
+        providerId: providerId,
+        modelId: modelId,
+      ),
+      modelTooltip: (cli, providerId, modelId) => providerModelDescription(
+        registry.capability<ProviderCapability>(cli),
+        providerId: providerId,
+        modelId: modelId,
+      ),
       showSavePreset: widget.showSavePreset,
       showManagePresets: widget.showManagePresets,
       onModelsOpened: (cli, providerId, provider) => unawaited(

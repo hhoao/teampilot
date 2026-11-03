@@ -14,10 +14,18 @@ class QoderModelsSnapshot {
   const QoderModelsSnapshot({
     required this.modelIds,
     this.defaultModelId = '',
+    this.names = const {},
+    this.descriptions = const {},
   });
 
   final List<String> modelIds;
   final String defaultModelId;
+
+  /// Display name per model id (`qfmodel` → `Qwen3.8-Flash`).
+  final Map<String, String> names;
+
+  /// Capability summary per model id (`Reasoning · Vision · 0.50x Credit`).
+  final Map<String, String> descriptions;
 }
 
 /// Runs one short-lived ACP handshake and returns the account's models.
@@ -39,16 +47,24 @@ QoderModelsSnapshot? parseQoderModelsResponse(Object? result) {
   final available = models['availableModels'];
   if (available is! List) return null;
   final ids = <String>[];
+  final names = <String, String>{};
+  final descriptions = <String, String>{};
   for (final entry in available) {
     if (entry is! Map) continue;
     final id = entry['modelId']?.toString().trim() ?? '';
     if (id.isEmpty || ids.contains(id)) continue;
     ids.add(id);
+    final name = entry['name']?.toString().trim() ?? '';
+    if (name.isNotEmpty) names[id] = name;
+    final description = entry['description']?.toString().trim() ?? '';
+    if (description.isNotEmpty) descriptions[id] = description;
   }
   if (ids.isEmpty) return null;
   return QoderModelsSnapshot(
     modelIds: List<String>.unmodifiable(ids),
     defaultModelId: models['currentModelId']?.toString().trim() ?? '',
+    names: Map<String, String>.unmodifiable(names),
+    descriptions: Map<String, String>.unmodifiable(descriptions),
   );
 }
 
@@ -64,26 +80,36 @@ class QoderModelsCacheEntry {
     required this.fetchedAtMs,
     required this.modelIds,
     this.defaultModelId = '',
+    this.names = const {},
+    this.descriptions = const {},
   });
 
   final int fetchedAtMs;
   final List<String> modelIds;
   final String defaultModelId;
+  final Map<String, String> names;
+  final Map<String, String> descriptions;
 
   Map<String, Object?> toJson() => {
     'fetchedAtMs': fetchedAtMs,
     'modelIds': modelIds,
     if (defaultModelId.isNotEmpty) 'defaultModelId': defaultModelId,
+    if (names.isNotEmpty) 'names': names,
+    if (descriptions.isNotEmpty) 'descriptions': descriptions,
   };
 
   factory QoderModelsCacheEntry.fromJson(Map<String, Object?> json) {
     final raw = json['modelIds'];
+    final rawNames = json['names'];
+    final rawDescriptions = json['descriptions'];
     return QoderModelsCacheEntry(
       fetchedAtMs: (json['fetchedAtMs'] as num?)?.toInt() ?? 0,
       modelIds: raw is List
           ? raw.map((e) => e.toString()).where((s) => s.isNotEmpty).toList()
           : const [],
       defaultModelId: json['defaultModelId']?.toString().trim() ?? '',
+      names: _stringMap(rawNames),
+      descriptions: _stringMap(rawDescriptions),
     );
   }
 }
@@ -136,6 +162,22 @@ class QoderModelsService {
 
   String defaultModelIdFor({required String providerId}) =>
       _memory[_cacheKey(providerId)]?.defaultModelId.trim() ?? '';
+
+  /// Friendly label for [modelId], or null when the catalog has no name.
+  String? modelNameFor({required String providerId, required String modelId}) {
+    final name = _memory[_cacheKey(providerId)]?.names[modelId.trim()]?.trim();
+    return name == null || name.isEmpty ? null : name;
+  }
+
+  /// Capability summary for [modelId] (`Reasoning · Vision · 0.50x Credit`).
+  String? modelDescriptionFor({
+    required String providerId,
+    required String modelId,
+  }) {
+    final text =
+        _memory[_cacheKey(providerId)]?.descriptions[modelId.trim()]?.trim();
+    return text == null || text.isEmpty ? null : text;
+  }
 
   Future<void> ensureLoaded({
     required String providerId,
@@ -226,6 +268,8 @@ class QoderModelsService {
       fetchedAtMs: DateTime.now().millisecondsSinceEpoch,
       modelIds: snapshot.modelIds,
       defaultModelId: snapshot.defaultModelId,
+      names: snapshot.names,
+      descriptions: snapshot.descriptions,
     );
   }
 
@@ -251,6 +295,8 @@ class QoderModelsService {
 
   bool _isFresh(QoderModelsCacheEntry? entry) {
     if (entry == null || entry.modelIds.isEmpty) return false;
+    // A cache written before names were captured must refetch for labels.
+    if (entry.names.isEmpty) return false;
     final age = DateTime.now().millisecondsSinceEpoch - entry.fetchedAtMs;
     return age >= 0 && age < cacheTtl.inMilliseconds;
   }
@@ -372,6 +418,14 @@ String _safeSegment(String value) {
   final safe = value.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
   return safe.isEmpty ? 'provider' : safe;
 }
+
+Map<String, String> _stringMap(Object? raw) => raw is Map
+    ? {
+        for (final entry in raw.entries)
+          if (entry.value.toString().trim().isNotEmpty)
+            entry.key.toString(): entry.value.toString().trim(),
+      }
+    : const {};
 
 class _CatalogUpdatesNotifier extends ChangeNotifier {
   void bump() => notifyListeners();

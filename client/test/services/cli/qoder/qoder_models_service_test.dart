@@ -46,6 +46,10 @@ void main() {
         return const QoderModelsSnapshot(
           modelIds: ['auto', 'qwen3.8-max'],
           defaultModelId: 'auto',
+          names: {'auto': 'Auto (default)', 'qwen3.8-max': 'Qwen3.8-Max'},
+          descriptions: {
+            'qwen3.8-max': 'Reasoning · Vision · 0.50x Credit',
+          },
         );
       },
     );
@@ -55,6 +59,17 @@ void main() {
 
     expect(service.modelIdsFor(providerId: 'work'), ['auto', 'qwen3.8-max']);
     expect(service.defaultModelIdFor(providerId: 'work'), 'auto');
+    expect(
+      service.modelNameFor(providerId: 'work', modelId: 'qwen3.8-max'),
+      'Qwen3.8-Max',
+    );
+    expect(
+      service.modelDescriptionFor(
+        providerId: 'work',
+        modelId: 'qwen3.8-max',
+      ),
+      'Reasoning · Vision · 0.50x Credit',
+    );
     expect(calls, 1);
     expect(notified, 1);
 
@@ -76,6 +91,7 @@ void main() {
         return const QoderModelsSnapshot(
           modelIds: ['auto', 'glm-5.3'],
           defaultModelId: 'auto',
+          names: {'auto': 'Auto (default)', 'glm-5.3': 'GLM-5.3'},
         );
       },
     );
@@ -96,6 +112,10 @@ void main() {
 
     expect(secondCalls, 0, reason: 'fresh disk cache skips the probe');
     expect(second.modelIdsFor(providerId: 'work'), ['auto', 'glm-5.3']);
+    expect(
+      second.modelNameFor(providerId: 'work', modelId: 'glm-5.3'),
+      'GLM-5.3',
+    );
   });
 
   test('does not probe without a provider or machine auth', () async {

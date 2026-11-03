@@ -57,6 +57,44 @@ abstract final class QoderModelCatalog {
     final live = service?.modelIdsFor(providerId: providerId) ?? const [];
     return live.isNotEmpty ? live : knownModels;
   }
+
+  /// `--list-models` display names for the static fallback.
+  static const fallbackNames = <String, String>{
+    'auto': 'Auto',
+    'ultimate': 'Ultimate',
+    'fast': 'Fast',
+    'efficient': 'Efficient',
+    'smodel': 'Sonus',
+    'cmodel': 'Cantus',
+    'qmodel_38max': 'Qwen3.8-Max',
+    'qfmodel': 'Qwen3.8-Flash',
+    'kmodel_latest': 'Kimi-K3.1-Pro',
+    'kmodel': 'Kimi-K2.8-Preview',
+    'gmodel': 'GLM-5.3',
+    'gfmodel': 'GLM-5.3-Flash',
+    'dmodel': 'DeepSeek-V4-Pro',
+    'dfmodel': 'DeepSeek-Flash',
+    'mmodel': 'MiniMax-M3.1-Flash',
+  };
+
+  /// Capability / credit text for the static fallback.
+  static const fallbackDescriptions = <String, String>{
+    'auto': 'Vision · 0.50x Credit',
+    'ultimate': 'Reasoning · Vision · 2.00x Credit',
+    'fast': 'Vision · 0.80x Credit',
+    'efficient': 'Vision · 0.30x Credit',
+    'smodel': 'Reasoning · Vision · New · 8.00x Credit',
+    'cmodel': 'Reasoning · Vision · New · 4.00x Credit',
+    'qmodel_38max': 'Reasoning · Vision · New · 0.50x Credit',
+    'qfmodel': 'Reasoning · Vision · New · 0.00x Credit',
+    'kmodel_latest': 'Vision · New · 1.00x Credit',
+    'kmodel': 'Vision · New · 0.80x Credit',
+    'gmodel': 'Reasoning · Vision · New · 0.80x Credit',
+    'gfmodel': 'Reasoning · Vision · New · 0.10x Credit',
+    'dmodel': 'Reasoning · Vision · New · 0.50x Credit',
+    'dfmodel': 'Reasoning · Vision · New · 0.10x Credit',
+    'mmodel': 'Vision · New · 0.10x Credit',
+  };
 }
 
 final class _QoderCatalogSource implements ModelCatalogSource {
@@ -79,7 +117,11 @@ final class _QoderCatalogSource implements ModelCatalogSource {
 /// v1 is account-only — no API key, no OpenAI-compatible endpoint.
 final class QoderProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
-    implements ProviderCapability, InteractiveCliLoginCapability {
+    implements
+        ProviderCapability,
+        InteractiveCliLoginCapability,
+        ModelDisplayNameCapability,
+        ModelDescriptionCapability {
   const QoderProviderCapability({this.storage, this.modelsService});
 
   final HomeStorage? storage;
@@ -140,8 +182,34 @@ final class QoderProviderCapability extends CatalogModelCapability
   ];
 
   @override
+  String? modelDisplayName({
+    required String providerId,
+    required String modelId,
+  }) {
+    final live = modelsService?.modelNameFor(
+      providerId: providerId,
+      modelId: modelId,
+    );
+    if (live != null && live.trim().isNotEmpty) return live;
+    return QoderModelCatalog.fallbackNames[modelId.trim()];
+  }
+
+  @override
+  String? modelDescription({
+    required String providerId,
+    required String modelId,
+  }) {
+    final live = modelsService?.modelDescriptionFor(
+      providerId: providerId,
+      modelId: modelId,
+    );
+    if (live != null && live.trim().isNotEmpty) return live;
+    return QoderModelCatalog.fallbackDescriptions[modelId.trim()];
+  }
+
+  @override
   ProviderModelPickerMode pickerMode(AppProviderConfig provider) =>
-      ProviderModelPickerMode.catalogWithCustomEntry;
+      ProviderModelPickerMode.catalogDropdown;
 
   @override
   Listenable get catalogUpdates =>
