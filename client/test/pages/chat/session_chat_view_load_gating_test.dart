@@ -54,6 +54,9 @@ import '../../support/post_frame_test_harness.dart';
 class _MockChatCubit extends Mock implements ChatCubit {
   @override
   final Map<String, double> sessionScrollAnchors = {};
+
+  @override
+  bool rewindActionsAllowed(AppSession session, String memberId) => false;
 }
 
 class _MockAiHistoryCubit extends Mock implements AiHistoryCubit {}

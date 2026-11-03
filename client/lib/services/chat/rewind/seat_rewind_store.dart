@@ -138,6 +138,7 @@ final class SeatRewindStore {
   }
 
   Future<String?> checkedOut() async {
+    if (!Directory(gitDir).existsSync()) return null;
     final result = await _runGit([
       ..._repoArgs,
       'rev-parse',
@@ -150,6 +151,7 @@ final class SeatRewindStore {
   }
 
   Future<List<RewindCheckpoint>> checkpoints() async {
+    if (!Directory(gitDir).existsSync()) return const [];
     final listed = await _runGit([
       ..._repoArgs,
       'for-each-ref',

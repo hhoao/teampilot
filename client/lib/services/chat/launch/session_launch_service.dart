@@ -966,14 +966,11 @@ class SessionLaunchService
     tab.membersPendingConnect.remove(mid);
     tab.memberAcpRuntimes.remove(mid);
     tab.reclaimedMemberIds.add(mid);
-    try {
-      await cubit.close();
-    } finally {
-      unawaited(tab.closeMemberRemotePlane(mid));
-      _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: mid);
-      _h.clearLaunchError(tab.info.id);
-      _h.updateTabRunning(tab.info.id);
-    }
+    unawaited(tab.closeMemberRemotePlane(mid));
+    _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: mid);
+    _h.clearLaunchError(tab.info.id);
+    _h.updateTabRunning(tab.info.id);
+    await cubit.close();
   }
 
   /// Reclaims the personal ACP runtime (`isAcpChatSession`) for idle.
@@ -995,17 +992,14 @@ class SessionLaunchService
     if (cubit == null) return;
     tab.acpRuntime = null;
     tab.reclaimedAcpRuntime = true;
-    try {
-      await cubit.close();
-    } finally {
-      _h.clearAgentStatusSeat(
-        sessionId: tab.info.id,
-        memberId: AcpChatRuntimeCubit.acpMemberId,
-      );
-      _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: id);
-      _h.clearLaunchError(tab.info.id);
-      _h.updateTabRunning(tab.info.id);
-    }
+    _h.clearAgentStatusSeat(
+      sessionId: tab.info.id,
+      memberId: AcpChatRuntimeCubit.acpMemberId,
+    );
+    _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: id);
+    _h.clearLaunchError(tab.info.id);
+    _h.updateTabRunning(tab.info.id);
+    await cubit.close();
   }
 
   /// Lazy-spawn / restore entry for "member selected + terminal view visible".

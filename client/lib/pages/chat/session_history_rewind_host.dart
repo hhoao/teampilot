@@ -81,9 +81,10 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
     final cubit = context.read<ChatCubit>();
     final token = widget.liveMessages;
     _liveToken = token;
-    final gitOk = await cubit.gitAvailableForRewind();
-    final allowed =
-        gitOk && cubit.rewindActionsAllowed(widget.session, widget.memberId);
+    final allowed = cubit.rewindActionsAllowed(
+      widget.session,
+      widget.memberId,
+    );
     var history = const SeatRewindHistory.empty();
     if (allowed) {
       try {

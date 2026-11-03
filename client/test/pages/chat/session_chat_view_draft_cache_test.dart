@@ -60,6 +60,9 @@ import '../../support/compose_field_test_utils.dart';
 class _MockChatCubit extends Mock implements ChatCubit {
   @override
   final Map<String, double> sessionScrollAnchors = {};
+
+  @override
+  bool rewindActionsAllowed(AppSession session, String memberId) => false;
 }
 
 class _MockAiHistoryCubit extends Mock implements AiHistoryCubit {}

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io' show Platform, Process;
+import 'dart:io' show Directory, Platform;
 
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
@@ -39,6 +39,7 @@ import '../services/chat/conversation/history/session_history_context_builder.da
 import '../services/chat/rewind/rewind_fork_service.dart';
 import '../services/chat/rewind/seat_rewind_paths.dart';
 import '../services/chat/rewind/seat_rewind_store.dart';
+import '../services/cli/git_on_path.dart';
 import '../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../services/chat/runtime/session_activity_reduce.dart';
 import '../services/chat/conversation/history/failed_message_store.dart';
@@ -3029,21 +3030,12 @@ class ChatCubit extends Cubit<ChatState>
     return hydrateSessionDocument(source.workspaceId, createdId);
   }
 
-  Future<bool> gitAvailableForRewind() async {
-    if (Platform.isAndroid) return false;
-    final cached = _gitOnPath;
-    if (cached != null) return cached;
-    try {
-      final result = await Process.run('git', ['--version']);
-      _gitOnPath = result.exitCode == 0;
-    } on Object {
-      _gitOnPath = false;
-    }
-    return _gitOnPath!;
-  }
-
   bool rewindActionsAllowed(AppSession session, String memberId) {
     if (Platform.isAndroid) return false;
+    final cached = _gitOnPath;
+    final gitOk = cached ?? gitOnPath();
+    _gitOnPath = gitOk;
+    if (!gitOk) return false;
     final workTarget = _lifecycle.launchWorkTarget(
       _launchService.launchContextFor(session),
       memberId: session.isSimple ? null : memberId,
@@ -3058,6 +3050,9 @@ class ChatCubit extends Cubit<ChatState>
   }) async {
     final store = _seatRewindStore(session, memberId);
     if (store == null) return const SeatRewindHistory.empty();
+    if (!Directory(store.gitDir).existsSync()) {
+      return const SeatRewindHistory.empty();
+    }
     final acp = isAcpChatSession(session) || isAcpChatSeat(session, memberId);
     final cli = _cliForRewindSeat(session, memberId);
     final history = acp
@@ -3082,8 +3077,9 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   CliTool _cliForRewindSeat(AppSession session, String memberId) {
-    if (session.isSimple)
+    if (session.isSimple) {
       return session.cli ?? _cliForPtySeat(session, memberId);
+    }
     return _cliForPtySeat(session, memberId);
   }
 

@@ -116,9 +116,6 @@ final class _FakeRewindCubit extends ChatCubit {
   var forkStarts = 0;
 
   @override
-  Future<bool> gitAvailableForRewind() async => true;
-
-  @override
   bool rewindActionsAllowed(AppSession session, String memberId) => true;
 
   @override
