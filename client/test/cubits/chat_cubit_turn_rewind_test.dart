@@ -68,18 +68,6 @@ void main() {
         'native-1',
       );
       const lastId = 'msg-last';
-      loader.debugSetCachedMessages(
-        sessionId: session.sessionId,
-        memberId: '',
-        messages: [
-          AiMessage(
-            id: lastId,
-            role: AiRole.assistant,
-            parts: const [AiTextPart(text: 'done')],
-          ),
-        ],
-        cli: CliTool.claude,
-      );
 
       final commits = <RewindCheckpoint>[];
       final storeArgs =
@@ -110,6 +98,19 @@ void main() {
           hookEventName: 'afterAgentResponse',
         ),
         skipPermissions: false,
+      );
+      await drainPendingAsyncWork();
+      loader.debugSetCachedMessages(
+        sessionId: session.sessionId,
+        memberId: '',
+        messages: [
+          AiMessage(
+            id: lastId,
+            role: AiRole.assistant,
+            parts: const [AiTextPart(text: 'done')],
+          ),
+        ],
+        cli: CliTool.claude,
       );
       attention.applyEvent(
         sessionId: session.sessionId,
@@ -143,6 +144,127 @@ void main() {
           session.sessionId,
         ),
       );
+
+      await cubit.close();
+      await attention.close();
+      await postFrame.flush();
+      await deleteTempDirBestEffort(tmp);
+    },
+  );
+
+  test(
+    'a stale cached id is not kept until history observes the closing message',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('cubit_turn_rewind_');
+      final storage = fakeHomeStorage();
+      final repo = SessionRepository(rootDir: tmp.path, storage: storage);
+      final attention = AgentAttentionCubit(pruneInterval: null);
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+        agentAttentionCubit: attention,
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                RunningConnectedFakeShell(executable: executable),
+        storage: storage,
+      );
+      final loader = AiHistoryLoader(
+        contextBuilder: const SessionHistoryContextBuilder(),
+        resolveWorkContext: (_, {String? memberId}) async => storage.context,
+      );
+      cubit.historyLoader = loader;
+
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
+      final session = (await repo.createSession(
+        workspace.workspaceId,
+        cli: CliTool.claude,
+      )).session;
+      await cubit.loadWorkspaceData(repo);
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          repo: repo,
+          connectImmediately: false,
+        ),
+      );
+      await drainPendingAsyncWork();
+      final memberId = cubit.activeTab!.memberShells.keys.single;
+      final commits = <String>[];
+      cubit.debugCommitPtyTurn =
+          ({
+            required gitDir,
+            required workTree,
+            required target,
+            required messageId,
+            nativeSessionId,
+          }) async {
+            commits.add(messageId);
+            return RewindCheckpoint(
+              commit: 'c-$messageId',
+              messageId: messageId,
+              nativeSessionId: nativeSessionId,
+            );
+          };
+
+      loader.debugSetCachedMessages(
+        sessionId: session.sessionId,
+        memberId: '',
+        messages: const [
+          AiMessage(
+            id: 'm-old',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: 'old')],
+          ),
+        ],
+        cli: CliTool.claude,
+      );
+      attention.applyEvent(
+        sessionId: session.sessionId,
+        memberId: memberId,
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.working,
+          hookEventName: 'afterAgentResponse',
+        ),
+        skipPermissions: false,
+      );
+      attention.applyEvent(
+        sessionId: session.sessionId,
+        memberId: memberId,
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.done,
+          hookEventName: 'Stop',
+        ),
+        skipPermissions: false,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(commits, isEmpty);
+
+      loader.debugSetCachedMessages(
+        sessionId: session.sessionId,
+        memberId: '',
+        messages: const [
+          AiMessage(
+            id: 'm-old',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: 'old')],
+          ),
+          AiMessage(
+            id: 'm-new',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: 'new')],
+          ),
+        ],
+        cli: CliTool.claude,
+      );
+      await drainPendingAsyncWork();
+
+      expect(commits, ['m-new']);
 
       await cubit.close();
       await attention.close();

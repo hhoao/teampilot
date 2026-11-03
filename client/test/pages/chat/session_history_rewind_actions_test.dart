@@ -101,6 +101,106 @@ void main() {
       await tester.pump(const Duration(milliseconds: 250));
     },
   );
+
+  testWidgets(
+    'checkpoint generation shows rewind actions without a new live list',
+    (tester) async {
+      final cubit = _GenerationCubit();
+      addTearDown(() async {
+        if (!cubit.isClosed) await cubit.close();
+      });
+      const message = AiMessage(
+        id: 'm1',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'live one')],
+      );
+      final runtime = ExternalStoreAiThreadRuntime()..setMessages([message]);
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        createdAt: 1,
+      );
+      final workspace = Workspace(workspaceId: 'w1', createdAt: 1);
+
+      await tester.pumpWidget(
+        BlocProvider<ChatCubit>.value(
+          value: cubit,
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('en'),
+            theme: ThemeData(extensions: [AiMessageTheme.test()]),
+            home: Scaffold(
+              body: SizedBox(
+                width: 600,
+                height: 400,
+                child: SessionHistoryRewindHost(
+                  session: session,
+                  workspace: workspace,
+                  memberId: session.sessionId,
+                  liveMessages: const [message],
+                  builder: (context, binding) {
+                    return SessionHistoryThread(
+                      runtime: runtime,
+                      hasOlder: false,
+                      isLoadingOlder: false,
+                      checkpointCommits: binding.history.checkpointCommits,
+                      checkedOutCommit: binding.history.checkedOutCommit,
+                      laterMessages: binding.history.laterMessages,
+                      onRewindTo: binding.onRewindTo,
+                      onForkFrom: binding.onForkFrom,
+                      turnInFlight: binding.busy,
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await pumpUntilSettled(tester);
+      expect(find.byTooltip('Fork from here'), findsNothing);
+      expect(cubit.state.rewindHistoryGeneration, 0);
+
+      cubit.landed = true;
+      cubit.debugPublishRewindHistory();
+      expect(cubit.state.rewindHistoryGeneration, 1);
+      await tester.pump();
+      await tester.pump();
+      await pumpUntilSettled(tester);
+
+      expect(find.byTooltip('Fork from here'), findsOneWidget);
+      expect(find.byTooltip('Rewind to here'), findsOneWidget);
+    },
+  );
+}
+
+final class _GenerationCubit extends ChatCubit {
+  _GenerationCubit()
+    : super(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
+      );
+
+  var landed = false;
+
+  @override
+  bool rewindActionsAllowed(AppSession session, String memberId) => true;
+
+  @override
+  Future<SeatRewindHistory> loadSeatRewindHistory({
+    required AppSession session,
+    required String memberId,
+    required List<AiMessage> live,
+  }) async {
+    if (!landed) return const SeatRewindHistory.empty();
+    return const SeatRewindHistory(
+      checkpointCommits: {'m1': 'c1'},
+      checkedOutCommit: 'c-other',
+      laterMessages: [],
+    );
+  }
 }
 
 final class _FakeRewindCubit extends ChatCubit {

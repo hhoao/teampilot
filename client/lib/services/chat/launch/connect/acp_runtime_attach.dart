@@ -28,6 +28,7 @@ import '../../team_bus/mcp/member_bus_mcp_transport_resolver.dart';
 import '../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../team_bus/mcp/teammate_bus_mcp_gateway_port.dart';
 import '../../runtime/runtime_extra_mcp_servers.dart';
+import '../../rewind/rewind_work_gate.dart';
 import '../../rewind/seat_rewind_paths.dart';
 import '../../rewind/seat_rewind_store.dart';
 import '../../../../cubits/session/acp/acp_chat_runtime_cubit.dart';
@@ -91,6 +92,7 @@ class AcpRuntimeAttach {
     this.prepareRemoteStaging,
     this.sshLaunchFactory,
     this.touchUserActivity,
+    this.rewindGate,
   }) : _host = host,
        _storage = storage;
 
@@ -116,6 +118,10 @@ class AcpRuntimeAttach {
 
   /// Test seam: skip opening a real member SSH session.
   final AcpSshLaunchFactory? sshLaunchFactory;
+
+  /// Shared with [RewindForkService] so a snapshot skips an in-progress
+  /// rewind or fork, and rewind waits for this callback's commit.
+  final RewindWorkGate? rewindGate;
 
   /// Terminal-less personal ACP: attach a cubit and spawn `session.cli`
   /// locally, or on the remote host when the launch target uses SSH.
@@ -611,19 +617,42 @@ class AcpRuntimeAttach {
         memberId: personal ? null : memberId,
       );
       final layout = _storage.context.layout;
-      final store = SeatRewindStore(
-        gitDir: layout.pathContext.join(
-          layout.workspace.sessionDir(session.workspaceId, session.sessionId),
-          'rewind',
-          target.seatKey,
-        ),
-        workTree: layout.workspace.sessionRuntimeDir(
-          session.workspaceId,
-          session.sessionId,
-        ),
-        target: target,
+      final gitDir = layout.pathContext.join(
+        layout.workspace.sessionDir(session.workspaceId, session.sessionId),
+        'rewind',
+        target.seatKey,
       );
-      await store.commitTurn(messageId: messageId);
+      final workTree = layout.workspace.sessionRuntimeDir(
+        session.workspaceId,
+        session.sessionId,
+      );
+      final gate = rewindGate;
+      Future<void> commit() async {
+        if (gate != null && gate.isInProgress(gitDir)) {
+          appLogger.d(
+            '[rewind] acp checkpoint skipped: rewind or fork in progress '
+            'session=${session.sessionId}',
+          );
+          return;
+        }
+        final store = SeatRewindStore(
+          gitDir: gitDir,
+          workTree: workTree,
+          target: target,
+        );
+        try {
+          await store.commitTurn(messageId: messageId, gate: gate);
+        } on RewindTurnSkipped {
+          return;
+        }
+        gate?.noteHistoryChanged();
+      }
+
+      if (gate == null) {
+        await commit();
+        return;
+      }
+      await gate.runSnapshot(gitDir, commit);
     };
   }
 

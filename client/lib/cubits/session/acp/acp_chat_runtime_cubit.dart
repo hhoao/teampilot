@@ -1038,8 +1038,25 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     if (_closing || isClosed) return;
     final wasInTurn = state.inTurn;
     final hadBackground = _turnHadBackgroundToolCall;
+    final callback = onTurnCheckpoint;
+    final messageId = state.messages.isEmpty ? '' : state.messages.last.id;
+    // Snapshot before idle. Attention done and inTurn false start the
+    // follow-up drain, which must not write the next turn into this commit.
+    if (wasInTurn && callback != null && messageId.isNotEmpty) {
+      try {
+        await callback(messageId);
+      } on Object catch (error, stackTrace) {
+        appLogger.e(
+          '[acp-chat] session $sessionId turn checkpoint failed: $error',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+    if (_closing || isClosed) return;
     _resetTurnTrackers();
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
+    if (_closing || isClosed) return;
     emit(
       state.copyWith(
         inTurn: false,
@@ -1058,17 +1075,6 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       _backgroundBaselineTextLen = _assistantTextLen(state.messages);
     }
     if (hadBackground) _armBackgroundWatch();
-    final callback = onTurnCheckpoint;
-    if (!wasInTurn || callback == null || state.messages.isEmpty) return;
-    try {
-      await callback(state.messages.last.id);
-    } on Object catch (error, stackTrace) {
-      appLogger.e(
-        '[acp-chat] session $sessionId turn checkpoint failed: $error',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
   }
 
   // ----- out-of-turn history reconciliation -----

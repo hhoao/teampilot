@@ -994,7 +994,18 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                         // so the ring moves even though the message list
                         // instance is unchanged (see VirtualThreadViewport.buildKey).
                         buildKey: widget.highlightMessageId,
-                        bodyCacheKey: widget.turnInFlight,
+                        // Checkpoint maps and fork/rewind callbacks can land
+                        // after the first mount (generation bump, same live
+                        // list). Drop cached turn bodies so action buttons
+                        // appear without a new message list instance.
+                        bodyCacheKey: (
+                          widget.turnInFlight,
+                          widget.checkedOutCommit,
+                          widget.checkpointCommits,
+                          widget.laterMessages,
+                          widget.onRewindTo != null,
+                          widget.onForkFrom != null,
+                        ),
                         revealMessageId: _revealTargetId,
                         revealEpoch: _revealEpoch,
                         onRevealOffset: (offset) {

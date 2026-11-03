@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:teampilot/services/chat/rewind/rewind_work_gate.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_paths.dart';
 import 'package:teampilot/utils/logging/logger.dart';
 
@@ -15,6 +16,11 @@ String personalize(SeatRewindTarget source, String path) {
   if (path == 'acp-transcript-$member.jsonl') return 'acp-transcript.jsonl';
   if (path == 'acp-session-$member.json') return 'acp-session.json';
   return path;
+}
+
+/// [commitTurn] refused because a rewind or fork already owns this git dir.
+final class RewindTurnSkipped implements Exception {
+  const RewindTurnSkipped();
 }
 
 /// One recorded turn in a seat's private rewind repository.
@@ -70,7 +76,15 @@ final class SeatRewindStore {
   Future<RewindCheckpoint> commitTurn({
     required String messageId,
     String? nativeSessionId,
+    RewindWorkGate? gate,
   }) async {
+    if (gate != null && gate.isInProgress(gitDir)) {
+      AppLogger.instance.d(
+        '[rewind] commitTurn skipped; rewind or fork in progress '
+        'gitDir=$gitDir',
+      );
+      throw const RewindTurnSkipped();
+    }
     await ensureRepo();
     await _dropStaleSeatIndexEntries();
     await for (final entity in Directory(
@@ -208,26 +222,37 @@ final class SeatRewindStore {
     return dest;
   }
 
-  /// `git show <commit>:<path>` bytes decoded as UTF-8, or null when missing.
+  /// `git show <commit>:<path>` bytes decoded as UTF-8, or null when missing
+  /// or not valid UTF-8 (binary CLI files such as `opencode.db`).
   Future<String?> showFile(String commit, String path) async {
     final result = await Process.run(
       gitExecutable,
       [..._repoArgs, 'show', '$commit:$path'],
-      stdoutEncoding: utf8,
+      stdoutEncoding: null,
       stderrEncoding: utf8,
     );
-    if (result.exitCode == 0) return result.stdout as String;
+    if (result.exitCode == 0) return _utf8OrNull(result.stdout);
     if (target.seatKey != 'personal') return null;
     final sourcePath = await _personalizedSourcePath(commit, path);
     if (sourcePath == null) return null;
     final mapped = await Process.run(
       gitExecutable,
       [..._repoArgs, 'show', '$commit:$sourcePath'],
-      stdoutEncoding: utf8,
+      stdoutEncoding: null,
       stderrEncoding: utf8,
     );
     if (mapped.exitCode != 0) return null;
-    return mapped.stdout as String;
+    return _utf8OrNull(mapped.stdout);
+  }
+
+  String? _utf8OrNull(Object? stdout) {
+    if (stdout is String) return stdout;
+    if (stdout is! List<int>) return null;
+    try {
+      return utf8.decode(stdout);
+    } on FormatException {
+      return null;
+    }
   }
 
   Future<void> _writeSeatFromCommit(String commit) async {

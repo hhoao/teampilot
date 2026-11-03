@@ -6,6 +6,7 @@ import 'package:teampilot/services/acp/acp_chat_transcript_replay.dart';
 import 'package:teampilot/services/chat/conversation/history/later_checkpoint_messages.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_paths.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_store.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/history/ai_history_capability.dart';
 
 void main() {
   late Directory tmpDir;
@@ -46,6 +47,47 @@ void main() {
         history.laterMessages,
         isNot(contains(predicate<AiMessage>((m) => m.id == m1.id))),
       );
+    },
+  );
+
+  test(
+    'showFile on opencode.db does not clear checkpoint commits',
+    () async {
+      final tmp = tmpDir.path;
+      await Directory('$tmp/work/opencode').create(recursive: true);
+      await File('$tmp/work/opencode/opencode.db').writeAsBytes([
+        ... 'SQLite format 3'.codeUnits,
+        0x00,
+        0xFF,
+        0xFE,
+        0x80,
+      ]);
+      final store = SeatRewindStore(
+        gitDir: '$tmp/repo.git',
+        workTree: '$tmp/work',
+        target: const SeatRewindTarget(
+          kind: SeatRewindKind.personalPty,
+          tool: 'opencode',
+        ),
+      );
+      final checkpoint = await store.commitTurn(messageId: 'm1');
+
+      Object? error;
+      SeatRewindHistory? history;
+      try {
+        history = await readSeatRewindHistory(
+          store: store,
+          acp: false,
+          history: const OpencodeAiHistoryCapability(),
+          ptyRelativePath: 'opencode/opencode.db',
+        );
+      } on Object catch (caught) {
+        error = caught;
+      }
+
+      expect(error, isNull);
+      expect(history?.checkpointCommits['m1'], checkpoint.commit);
+      expect(history?.laterMessages, isEmpty);
     },
   );
 }

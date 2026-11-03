@@ -353,6 +353,62 @@ final class AiHistoryLoader {
     return _fullIndexes[key]?.messages;
   }
 
+  /// Full index when it exists, otherwise the page or incremental list.
+  ///
+  /// Page-first loads fill [_messages] before the background full index.
+  List<AiMessage>? visibleMessages({
+    required String sessionId,
+    required String memberId,
+    required String token,
+  }) {
+    final key = _cacheKey(sessionId, memberId);
+    if (_tokens[key] != token) return null;
+    return _fullIndexes[key]?.messages ?? _messages[key];
+  }
+
+  final _visibleWaiters = <String, List<Completer<void>>>{};
+
+  void _publishVisible(String cacheKey) {
+    final waiters = _visibleWaiters.remove(cacheKey);
+    if (waiters == null) return;
+    for (final waiter in waiters) {
+      if (!waiter.isCompleted) waiter.complete();
+    }
+  }
+
+  /// Completes when a missing full index lands, or when the visible list is
+  /// replaced. Used so a PTY checkpoint can retry a stale message id.
+  Future<void> waitForVisibleMessages({
+    required String sessionId,
+    required String memberId,
+  }) async {
+    final key = _cacheKey(sessionId, memberId);
+    final pendingFull = _fullIndexes[key] == null
+        ? _fullIndexFutures[key]
+        : null;
+    if (pendingFull != null) {
+      try {
+        await pendingFull.timeout(const Duration(seconds: 2));
+      } on TimeoutException {
+        // The index did not land. The caller re-reads and skips if still stale.
+      }
+      return;
+    }
+    final completer = Completer<void>();
+    (_visibleWaiters[key] ??= []).add(completer);
+    try {
+      await completer.future.timeout(const Duration(seconds: 2));
+    } on TimeoutException {
+      // No incremental update. The caller keeps the previous anchor.
+    } finally {
+      final waiters = _visibleWaiters[key];
+      waiters?.remove(completer);
+      if (waiters != null && waiters.isEmpty) {
+        _visibleWaiters.remove(key);
+      }
+    }
+  }
+
   /// Token from the last successful load for this seat, if any.
   String? cacheToken({required String sessionId, required String memberId}) =>
       _tokens[_cacheKey(sessionId, memberId)];
@@ -376,6 +432,7 @@ final class AiHistoryLoader {
     _fullIndexes[key] = result;
     _fullIndexFutures[key] = Future.value(result);
     _messages[key] = messages;
+    _publishVisible(key);
   }
 
   /// Per-CLI tail reader for JSONL-style transcripts. Returns null when the
@@ -498,11 +555,15 @@ final class AiHistoryLoader {
     );
     _fullIndexes[cacheKey] = complete;
     _fullIndexFutures[cacheKey] = Future.value(complete);
-    if (indexOnly) return complete;
+    if (indexOnly) {
+      _publishVisible(cacheKey);
+      return complete;
+    }
     _messages[cacheKey] = result;
     _attachments[cacheKey] = attachments;
     _tokens[cacheKey] = token ?? 'changed-$cacheKey';
     _markComplete(cacheKey);
+    _publishVisible(cacheKey);
     return complete;
   }
 
@@ -988,6 +1049,7 @@ final class AiHistoryLoader {
       _fullIndexFutures[cacheKey] = Future.value(complete);
       if (skipPaging) {
         _tokens[cacheKey] = token ?? 'changed-$cacheKey';
+        _publishVisible(cacheKey);
         return complete;
       }
       _messages[cacheKey] = messages;
@@ -1004,6 +1066,7 @@ final class AiHistoryLoader {
       if (sideToken != null) _sideTokens[cacheKey] = sideToken;
       _markComplete(cacheKey);
       _timings?.record(AiHistoryLoadPhase.firstPublish, Duration.zero);
+      _publishVisible(cacheKey);
       return complete;
     } on Object catch (e, st) {
       appLogger.e(
@@ -1291,6 +1354,7 @@ final class AiHistoryLoader {
         isComplete: pageComplete,
       );
       _timings?.record(AiHistoryLoadPhase.firstPublish, Duration.zero);
+      _publishVisible(cacheKey);
       if (kDebugMode) {
         appLogger.i(
           '[ai-history-timing] page-first hit cli=${cli.name} '

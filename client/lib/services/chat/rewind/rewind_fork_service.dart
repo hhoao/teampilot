@@ -1,4 +1,5 @@
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/chat/rewind/rewind_work_gate.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_paths.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_store.dart';
 
@@ -26,7 +27,9 @@ abstract interface class ForkSessionCreator {
 /// Stops a seat around [SeatRewindStore.restore] and creates a session around
 /// [SeatRewindStore.forkAt]. Does not shell out to Git.
 final class RewindForkService {
-  final Set<String> _inProgress = {};
+  RewindForkService({RewindWorkGate? gate}) : gate = gate ?? RewindWorkGate();
+
+  final RewindWorkGate gate;
 
   /// Restore [commit] into [store] after stopping [seat], then relaunch.
   Future<void> rewind({
@@ -40,10 +43,11 @@ final class RewindForkService {
     if (!seat.localRuntime) {
       throw StateError('Cannot rewind a remote runtime');
     }
-    if (_inProgress.contains(store.gitDir)) {
+    await gate.waitForSnapshot(store.gitDir);
+    if (gate.isInProgress(store.gitDir)) {
       throw StateError('Cannot rewind while another rewind or fork is running');
     }
-    _inProgress.add(store.gitDir);
+    gate.begin(store.gitDir);
     try {
       await seat.stopAndWait();
       await store.restore(commit);
@@ -57,7 +61,7 @@ final class RewindForkService {
       await seat.recordNativeSessionId(nativeSessionId);
       await seat.relaunch();
     } finally {
-      _inProgress.remove(store.gitDir);
+      gate.end(store.gitDir);
     }
   }
 
@@ -74,10 +78,11 @@ final class RewindForkService {
     required String display,
     required String? workingDirectory,
   }) async {
-    if (_inProgress.contains(source.gitDir)) {
+    await gate.waitForSnapshot(source.gitDir);
+    if (gate.isInProgress(source.gitDir)) {
       throw StateError('Cannot fork while another rewind or fork is running');
     }
-    _inProgress.add(source.gitDir);
+    gate.begin(source.gitDir);
     try {
       String? nativeSessionId;
       for (final checkpoint in await source.checkpoints()) {
@@ -106,7 +111,7 @@ final class RewindForkService {
       }
       return sessionId;
     } finally {
-      _inProgress.remove(source.gitDir);
+      gate.end(source.gitDir);
     }
   }
 }

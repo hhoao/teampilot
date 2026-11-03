@@ -22,6 +22,7 @@ class ChatState extends Equatable {
     this.sessionActivities = const {},
     this.rewindForkInProgress = false,
     this.rewindForkError,
+    this.rewindHistoryGeneration = 0,
   });
 
   final List<Workspace> workspaces;
@@ -64,6 +65,10 @@ class ChatState extends Equatable {
   /// l10n key for a rewind/fork failure (`sessionRewindFailed` / `sessionForkFailed`).
   final String? rewindForkError;
 
+  /// Bumped when a checkpoint, rewind, or fork for a seat finishes.
+  /// History hosts reload actions from this, not only from the live list.
+  final int rewindHistoryGeneration;
+
   Set<String> get busySessionIds => {
     for (final e in sessionActivities.entries)
       if (e.value.isBusy) e.key,
@@ -89,6 +94,7 @@ class ChatState extends Equatable {
     bool? rewindForkInProgress,
     String? rewindForkError,
     bool clearRewindForkError = false,
+    int? rewindHistoryGeneration,
   }) {
     return ChatState(
       workspaces: workspaces ?? this.workspaces,
@@ -113,6 +119,8 @@ class ChatState extends Equatable {
       rewindForkError: clearRewindForkError
           ? null
           : (rewindForkError ?? this.rewindForkError),
+      rewindHistoryGeneration:
+          rewindHistoryGeneration ?? this.rewindHistoryGeneration,
     );
   }
 
@@ -131,5 +139,6 @@ class ChatState extends Equatable {
     sessionActivities,
     rewindForkInProgress,
     rewindForkError,
+    rewindHistoryGeneration,
   ];
 }

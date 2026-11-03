@@ -33,10 +33,10 @@ import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/home_storage.dart';
 import '../services/chat/conversation/history/ai_history_loader.dart';
-import '../services/chat/conversation/history/ai_history_watch_meta.dart';
 import '../services/chat/conversation/history/later_checkpoint_messages.dart';
 import '../services/chat/conversation/history/session_history_context_builder.dart';
 import '../services/chat/rewind/rewind_fork_service.dart';
+import '../services/chat/rewind/rewind_work_gate.dart';
 import '../services/chat/rewind/seat_rewind_paths.dart';
 import '../services/chat/rewind/seat_rewind_store.dart';
 import '../services/cli/git_on_path.dart';
@@ -230,15 +230,23 @@ class ChatCubit extends Cubit<ChatState>
           store: _followUpQueue,
           deliver: (seat, content) => _deliverFollowUpAtSeat(seat, content),
         );
+    _rewindGate.onHistoryChanged = _publishRewindHistory;
     final attention = _agentAttentionCubit;
     if (attention != null) {
       var previous = attention.state;
       _agentAttentionSub = attention.stream.listen((next) {
-        if (!isClosed) {
-          _endMemberTurnsForNewlyDoneSeats(previous, next);
-          _updateSessionActivities();
-        }
+        final prior = previous;
         previous = next;
+        if (isClosed) return;
+        _capturePtyTurnBaselines(prior, next);
+        final run = _attentionChain ?? Future<void>.value();
+        _attentionChain = run.catchError((Object _, StackTrace _) {}).then((
+          _,
+        ) async {
+          if (isClosed) return;
+          await _endMemberTurnsForNewlyDoneSeats(prior, next);
+          if (!isClosed) _updateSessionActivities();
+        });
       });
     }
   }
@@ -366,17 +374,22 @@ class ChatCubit extends Cubit<ChatState>
   /// until then.
   AiHistoryLoader? historyLoader;
 
-  /// Serializes [SeatRewindStore.commitTurn] per rewind git dir so quiet-end
-  /// and a later done event cannot overlap unawaited writes.
-  final _ptyCommitByGitDir = <String, Future<void>>{};
-
   /// One instance per cubit so overlapping rewind/fork on the same gitDir
-  /// are rejected by [RewindForkService].
-  final RewindForkService _rewindFork = RewindForkService();
+  /// are rejected by [RewindForkService], and so an in-flight snapshot is
+  /// visible to rewind, fork, and [SeatRewindStore.commitTurn].
+  late final RewindWorkGate _rewindGate = RewindWorkGate();
+  late final RewindForkService _rewindFork = RewindForkService(
+    gate: _rewindGate,
+  );
   bool? _gitOnPath;
 
   /// Last message id committed for a PTY seat (`sessionId\0memberId`).
   final _ptyCommittedMessageBySeat = <String, String>{};
+
+  /// Latest history id seen when the seat entered working.
+  final _ptyTurnBaseline = <String, String>{};
+
+  Future<void>? _attentionChain;
 
   static const _continueOverridesController =
       SessionContinueOverridesController();
@@ -386,6 +399,7 @@ class ChatCubit extends Cubit<ChatState>
     storage: _storage,
     termuxWorkOpsBlockFor: _termuxWorkOpsBlockFor,
     onSessionTabOpened: _forwardSessionTabOpened,
+    rewindGate: _rewindGate,
   );
 
   /// Forwards to [onSessionTabOpened], resolved at call time so wiring set by
@@ -1335,17 +1349,26 @@ class ChatCubit extends Cubit<ChatState>
     final tab = _tabStore.getOpenTabBySessionId(sessionId);
     final session = tab?.persistedSession;
     if (tab == null || session == null) return;
+    unawaited(_finishPtyTurn(sessionId, memberId));
+  }
 
-    final cli = _cliForPtySeat(session, memberId);
-    unawaited(_checkpointPtyTurn(sessionId, memberId));
+  /// Snapshot the seat before publishing idle. A follow-up drain reads that
+  /// idle edge, so it must not start while [commitTurn] is still walking the
+  /// work tree.
+  Future<void> _finishPtyTurn(String sessionId, String memberId) async {
+    await _checkpointPtyTurn(sessionId, memberId);
+    if (isClosed) return;
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
+    final session = tab?.persistedSession;
+    if (tab == null || session == null) return;
     final attention = _agentAttentionCubit;
     if (attention == null) return;
+    final cli = _cliForPtySeat(session, memberId);
     final cap = cliRegistry.capability<TeamBehaviorCapability>(cli);
     if (cap == null || !cap.requiresPtyFallback) return;
     final bus = tab.teamBus;
     if (bus != null && bus.hasPendingDoorbell(memberId)) return;
     attention.clearWorkingIfWorking(sessionId: sessionId, memberId: memberId);
-    _updateSessionActivities();
   }
 
   CliTool _cliForPtySeat(AppSession session, String memberId) {
@@ -1380,38 +1403,6 @@ class ChatCubit extends Cubit<ChatState>
     if (workTarget.kind == RuntimeKind.ssh) return;
 
     final cli = _cliForPtySeat(session, memberId);
-    final loader = historyLoader;
-    final historyMemberId = session.isSimple ? '' : memberId;
-    final token = loader?.cacheToken(
-      sessionId: sessionId,
-      memberId: historyMemberId,
-    );
-    final messages = token == null || loader == null
-        ? null
-        : loader.messagesIfCached(
-            sessionId: sessionId,
-            memberId: historyMemberId,
-            token: token,
-          );
-    if (messages == null || messages.isEmpty) {
-      appLogger.w(
-        '[rewind] pty checkpoint skipped: no cached history '
-        'session=$sessionId member=$memberId',
-      );
-      return;
-    }
-    final messageId = messages.last.id.trim();
-    if (messageId.isEmpty) {
-      appLogger.w(
-        '[rewind] pty checkpoint skipped: no cached history '
-        'session=$sessionId member=$memberId',
-      );
-      return;
-    }
-
-    final nativeSessionId = session.isSimple
-        ? session.nativeSessionIds[cli.value]
-        : session.bindingFor(memberId)?.nativeSessionIds[cli.value];
     final personal = session.isSimple;
     final target = SeatRewindTarget(
       kind: personal ? SeatRewindKind.personalPty : SeatRewindKind.mixedPty,
@@ -1428,15 +1419,19 @@ class ChatCubit extends Cubit<ChatState>
       session.workspaceId,
       session.sessionId,
     );
+    final historyMemberId = personal ? '' : memberId;
     final seatKey = '$sessionId\u0000$memberId';
-    if (_ptyCommittedMessageBySeat[seatKey] == messageId) return;
-
-    final previous = _ptyCommitByGitDir[gitDir] ?? Future<void>.value();
-    late final Future<void> chained;
-    chained = () async {
-      try {
-        await previous;
-      } catch (_) {}
+    final nativeSessionId = personal
+        ? session.nativeSessionIds[cli.value]
+        : session.bindingFor(memberId)?.nativeSessionIds[cli.value];
+    await _rewindGate.runSnapshot(gitDir, () async {
+      final messageId = await _closingPtyMessageId(
+        sessionId: sessionId,
+        memberId: memberId,
+        historyMemberId: historyMemberId,
+        seatKey: seatKey,
+      );
+      if (messageId == null) return;
       await _commitPtyTurnOnce(
         gitDir: gitDir,
         workTree: workTree,
@@ -1447,15 +1442,141 @@ class ChatCubit extends Cubit<ChatState>
         sessionId: sessionId,
         memberId: memberId,
       );
-    }();
-    _ptyCommitByGitDir[gitDir] = chained;
-    try {
-      await chained;
-    } finally {
-      if (identical(_ptyCommitByGitDir[gitDir], chained)) {
-        _ptyCommitByGitDir.remove(gitDir);
+    });
+  }
+
+  void _capturePtyTurnBaselines(
+    AgentAttentionState previous,
+    AgentAttentionState next,
+  ) {
+    for (final entry in next.seats.entries) {
+      if (entry.value.attention != AgentSeatAttention.working) continue;
+      if (previous.seats[entry.key]?.attention == AgentSeatAttention.working) {
+        continue;
+      }
+      final sep = entry.key.indexOf('\u0000');
+      if (sep <= 0) continue;
+      final sessionId = entry.key.substring(0, sep);
+      final memberId = entry.key.substring(sep + 1);
+      if (memberId.isEmpty) continue;
+      final session = _tabStore
+          .getOpenTabBySessionId(sessionId)
+          ?.persistedSession;
+      final historyMemberId = session == null || session.isSimple
+          ? ''
+          : memberId;
+      _ptyTurnBaseline[entry.key] =
+          _observedPtyMessageId(
+            sessionId: sessionId,
+            historyMemberId: historyMemberId,
+          ) ??
+          '';
+    }
+  }
+
+  /// The history seat's latest id, or the loader's full index / incremental
+  /// list when that seat has not been opened.
+  String? _observedPtyMessageId({
+    required String sessionId,
+    required String historyMemberId,
+  }) {
+    final seat = podRuntime(sessionId)?.history?.seatOf(
+      sessionId: sessionId,
+      memberId: historyMemberId,
+    );
+    final fromSeat = _latestMessageId(seat?.loadedMessages);
+    if (fromSeat != null) return fromSeat;
+    return _latestMessageId(_loaderVisible(sessionId, historyMemberId));
+  }
+
+  List<AiMessage>? _loaderVisible(String sessionId, String historyMemberId) {
+    final loader = historyLoader;
+    if (loader == null) return null;
+    final token = loader.cacheToken(
+      sessionId: sessionId,
+      memberId: historyMemberId,
+    );
+    if (token == null) return null;
+    return loader.visibleMessages(
+      sessionId: sessionId,
+      memberId: historyMemberId,
+      token: token,
+    );
+  }
+
+  String? _latestMessageId(List<AiMessage>? messages) {
+    if (messages == null || messages.isEmpty) return null;
+    final id = messages.last.id.trim();
+    return id.isEmpty ? null : id;
+  }
+
+  /// Id of the message that closed this turn.
+  ///
+  /// A keep ref is not moved onto the new tree when the only id on hand is
+  /// the one already committed, or the one visible when the turn started.
+  /// Missing and stale caches retry once the full index or incremental list
+  /// catches up.
+  Future<String?> _closingPtyMessageId({
+    required String sessionId,
+    required String memberId,
+    required String historyMemberId,
+    required String seatKey,
+  }) async {
+    final observed = _observedPtyMessageId(
+      sessionId: sessionId,
+      historyMemberId: historyMemberId,
+    );
+    if (observed != null && _ptyCommittedMessageBySeat[seatKey] == observed) {
+      return null;
+    }
+    final ready = _idThatClosedTurn(seatKey, observed);
+    if (ready != null) return ready;
+
+    final seat = podRuntime(sessionId)?.history?.seatOf(
+      sessionId: sessionId,
+      memberId: historyMemberId,
+    );
+    if (seat != null) {
+      try {
+        await seat.softReload(force: true);
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '[rewind] history seat reload failed session=$sessionId '
+          'member=$memberId: $error',
+          error: error,
+          stackTrace: stackTrace,
+        );
       }
     }
+    final loader = historyLoader;
+    if (loader != null) {
+      await loader.waitForVisibleMessages(
+        sessionId: sessionId,
+        memberId: historyMemberId,
+      );
+    }
+    final retried = _observedPtyMessageId(
+      sessionId: sessionId,
+      historyMemberId: historyMemberId,
+    );
+    if (retried != null && _ptyCommittedMessageBySeat[seatKey] == retried) {
+      return null;
+    }
+    final closing = _idThatClosedTurn(seatKey, retried);
+    if (closing != null) return closing;
+    appLogger.w(
+      '[rewind] pty checkpoint skipped: history has not observed this turn '
+      'session=$sessionId member=$memberId',
+    );
+    return null;
+  }
+
+  String? _idThatClosedTurn(String seatKey, String? id) {
+    if (id == null || id.isEmpty) return null;
+    if (_ptyCommittedMessageBySeat[seatKey] == id) return null;
+    final baseline = _ptyTurnBaseline[seatKey];
+    if (baseline != null && id == baseline) return null;
+    return id;
   }
 
   Future<void> _commitPtyTurnOnce({
@@ -1469,6 +1590,13 @@ class ChatCubit extends Cubit<ChatState>
     required String memberId,
   }) async {
     if (_ptyCommittedMessageBySeat[seatKey] == messageId) return;
+    if (_rewindGate.isInProgress(gitDir)) {
+      appLogger.d(
+        '[rewind] pty checkpoint skipped: rewind or fork in progress '
+        'session=$sessionId member=$memberId',
+      );
+      return;
+    }
     try {
       final hook = debugCommitPtyTurn;
       if (hook != null) {
@@ -1488,9 +1616,13 @@ class ChatCubit extends Cubit<ChatState>
         await store.commitTurn(
           messageId: messageId,
           nativeSessionId: nativeSessionId,
+          gate: _rewindGate,
         );
       }
       _ptyCommittedMessageBySeat[seatKey] = messageId;
+      _rewindGate.noteHistoryChanged();
+    } on RewindTurnSkipped {
+      return;
     } on Object catch (error, stackTrace) {
       appLogger.e(
         '[rewind] pty checkpoint failed session=$sessionId '
@@ -1531,10 +1663,11 @@ class ChatCubit extends Cubit<ChatState>
   /// Seat attention just became [AgentSeatAttention.done] — end that member's
   /// turn latch. PTY quiet no longer ends Claude/Codex/OpenCode/flashskyai;
   /// Cursor still ends on quiet, and this path is idempotent if quiet won.
-  void _endMemberTurnsForNewlyDoneSeats(
+  Future<void> _endMemberTurnsForNewlyDoneSeats(
     AgentAttentionState previous,
     AgentAttentionState next,
-  ) {
+  ) async {
+    final pending = <Future<void>>[];
     for (final entry in next.seats.entries) {
       if (entry.value.attention != AgentSeatAttention.done) continue;
       if (previous.seats[entry.key]?.attention == AgentSeatAttention.done) {
@@ -1546,8 +1679,10 @@ class ChatCubit extends Cubit<ChatState>
       final memberId = entry.key.substring(sep + 1);
       if (memberId.isEmpty) continue;
       _sessionRuntime.endMemberTurn(sessionId, memberId);
-      unawaited(_checkpointPtyTurn(sessionId, memberId));
+      pending.add(_checkpointPtyTurn(sessionId, memberId));
     }
+    if (pending.isEmpty) return;
+    await Future.wait(pending);
   }
 
   @visibleForTesting
@@ -1569,6 +1704,9 @@ class ChatCubit extends Cubit<ChatState>
   @visibleForTesting
   void debugOnTurnEnded(String sessionId, String memberId) =>
       _onTurnEnded(sessionId, memberId);
+
+  @visibleForTesting
+  void debugPublishRewindHistory() => _publishRewindHistory();
 
   @visibleForTesting
   void debugTickIdleWatch() => _sessionRuntime.debugTickIdleWatch();
@@ -2908,6 +3046,15 @@ class ChatCubit extends Cubit<ChatState>
     return created;
   }
 
+  void _publishRewindHistory() {
+    if (isClosed) return;
+    emit(
+      state.copyWith(
+        rewindHistoryGeneration: state.rewindHistoryGeneration + 1,
+      ),
+    );
+  }
+
   /// Restore [commit] into this seat, stop the process, then relaunch.
   Future<void> rewindSeatTo({
     required String sessionId,
@@ -2928,6 +3075,7 @@ class ChatCubit extends Cubit<ChatState>
         commit: commit,
       );
       onSessionHistoryStale?.call(sessionId);
+      _publishRewindHistory();
     } on Object catch (error, stackTrace) {
       appLogger.e(
         '[rewind] rewindSeatTo failed session=$sessionId: $error',
@@ -2960,13 +3108,15 @@ class ChatCubit extends Cubit<ChatState>
       state.copyWith(rewindForkInProgress: true, clearRewindForkError: true),
     );
     try {
-      return await _forkSeatFromUnlocked(
+      final created = await _forkSeatFromUnlocked(
         source: source,
         store: store,
         repo: repo,
         memberId: memberId,
         commit: commit,
       );
+      if (created != null) _publishRewindHistory();
+      return created;
     } on Object catch (error, stackTrace) {
       appLogger.e(
         '[rewind] forkSeatFrom failed session=$sessionId: $error',
@@ -3125,16 +3275,7 @@ class ChatCubit extends Cubit<ChatState>
       memberId: session.isSimple ? '' : memberId,
       cli: cli,
     );
-    var abs = await cap.resolveParentTranscriptPath(ctx);
-    if (abs == null || abs.isEmpty) {
-      final bundle = await cap.locate(ctx);
-      final meta = bundle == null
-          ? null
-          : AiHistoryWatchMeta.fromHints(bundle.hints);
-      abs = meta != null && meta.cacheTokenPaths.isNotEmpty
-          ? meta.cacheTokenPaths.first
-          : null;
-    }
+    final abs = await cap.resolveParentTranscriptPath(ctx);
     if (abs == null || abs.isEmpty) return null;
     final relative = p
         .relative(p.normalize(abs), from: p.normalize(store.workTree))

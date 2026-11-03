@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:acpd/acpd.dart' as acpd;
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/chat_cubit.dart';
@@ -14,6 +15,8 @@ import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
+import 'package:teampilot/services/chat/conversation/history/ai_history_loader.dart';
+import 'package:teampilot/services/chat/conversation/history/session_history_context_builder.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_paths.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_store.dart';
 import 'package:teampilot/services/chat/session/chat_tab.dart';
@@ -37,6 +40,106 @@ TeamProfile _withBuiltinMembers(TeamProfile team) =>
 void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
+
+  test(
+    'in-flight commitTurn keeps the keep ref and work tree on one turn when rewind starts',
+    () async {
+      final env = await _openPersonal(cli: CliTool.claude);
+      final layout = testHomeStorage.context.layout;
+      final workTree = layout.workspace.sessionRuntimeDir(
+        env.session.workspaceId,
+        env.session.sessionId,
+      );
+      final gitDir = layout.pathContext.join(
+        layout.workspace.sessionDir(
+          env.session.workspaceId,
+          env.session.sessionId,
+        ),
+        'rewind',
+        'personal',
+      );
+      await Directory('$workTree/claude/projects').create(recursive: true);
+      final live = File('$workTree/claude/projects/a.jsonl');
+      await live.writeAsString('turn-one');
+      final store = SeatRewindStore(
+        gitDir: gitDir,
+        workTree: workTree,
+        target: const SeatRewindTarget(
+          kind: SeatRewindKind.personalPty,
+          tool: 'claude',
+        ),
+      );
+      final first = await store.commitTurn(
+        messageId: 'm1',
+        nativeSessionId: 'native-1',
+      );
+      await live.writeAsString('turn-two');
+
+      final loader = AiHistoryLoader(
+        contextBuilder: const SessionHistoryContextBuilder(),
+        resolveWorkContext: (_, {String? memberId}) async =>
+            testHomeStorage.context,
+      );
+      env.cubit.historyLoader = loader;
+      loader.debugSetCachedMessages(
+        sessionId: env.session.sessionId,
+        memberId: '',
+        messages: const [
+          AiMessage(
+            id: 'm2',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: 'two')],
+          ),
+        ],
+        cli: CliTool.claude,
+      );
+
+      final started = Completer<void>();
+      final release = Completer<void>();
+      env.cubit.debugCommitPtyTurn =
+          ({
+            required gitDir,
+            required workTree,
+            required target,
+            required messageId,
+            nativeSessionId,
+          }) async {
+            started.complete();
+            await release.future;
+            final committed = await store.commitTurn(
+              messageId: messageId,
+              nativeSessionId: nativeSessionId,
+            );
+            return committed;
+          };
+
+      env.cubit.debugOnTurnEnded(
+        env.session.sessionId,
+        env.session.sessionId,
+      );
+      await started.future;
+
+      final rewind = env.cubit.rewindSeatTo(
+        sessionId: env.session.sessionId,
+        memberId: env.session.sessionId,
+        commit: first.commit,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(await live.readAsString(), 'turn-two');
+
+      release.complete();
+      await rewind;
+
+      expect(await live.readAsString(), 'turn-one');
+      expect(await store.checkedOut(), first.commit);
+      final kept = await store.checkpoints();
+      final turnTwo = kept.singleWhere((checkpoint) => checkpoint.messageId == 'm2');
+      expect(
+        await store.showFile(turnTwo.commit, 'claude/projects/a.jsonl'),
+        'turn-two',
+      );
+    },
+  );
 
   test(
     'ACP rewind closes the runtime once and restores only after close finishes',

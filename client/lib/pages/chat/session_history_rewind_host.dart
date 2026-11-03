@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -57,13 +59,18 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   var _allowed = false;
   var _started = false;
   var _busy = false;
-  Object? _liveToken;
+  var _reloadSerial = 0;
+  var _seenGeneration = 0;
+  StreamSubscription<ChatState>? _generationSub;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
+    final cubit = context.read<ChatCubit>();
+    _seenGeneration = cubit.state.rewindHistoryGeneration;
+    _generationSub = cubit.stream.listen(_onCubitState);
     _reload();
   }
 
@@ -77,10 +84,22 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
     }
   }
 
+  @override
+  void dispose() {
+    unawaited(_generationSub?.cancel());
+    super.dispose();
+  }
+
+  void _onCubitState(ChatState next) {
+    if (!mounted) return;
+    if (next.rewindHistoryGeneration == _seenGeneration) return;
+    _seenGeneration = next.rewindHistoryGeneration;
+    _reload();
+  }
+
   Future<void> _reload() async {
+    final serial = ++_reloadSerial;
     final cubit = context.read<ChatCubit>();
-    final token = widget.liveMessages;
-    _liveToken = token;
     final allowed = cubit.rewindActionsAllowed(
       widget.session,
       widget.memberId,
@@ -102,7 +121,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         );
       }
     }
-    if (!mounted || !identical(_liveToken, token)) return;
+    if (!mounted || serial != _reloadSerial) return;
     setState(() {
       _allowed = allowed;
       _history = history;

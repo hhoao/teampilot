@@ -1771,6 +1771,33 @@ void main() {
     },
   );
 
+  test('turn stays in flight until the checkpoint callback finishes', () async {
+    final release = Completer<void>();
+    final started = Completer<void>();
+    final cubit = bootCubit(
+      onTurnCheckpoint: (_) async {
+        if (!started.isCompleted) started.complete();
+        await release.future;
+      },
+    );
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    cubit.sendPrompt('hi');
+    await pumpEventQueue();
+    runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+    await started.future;
+
+    expect(cubit.state.inTurn, isTrue);
+
+    release.complete();
+    await pumpEventQueue();
+    expect(cubit.state.inTurn, isFalse);
+    await cubit.close();
+  });
+
   test('process exit → inline crash message + ended phase', () async {
     final cubit = bootCubit();
     await cubit.start(
