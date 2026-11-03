@@ -88,11 +88,12 @@ final class _WorkPathProjector {
             target: target,
             entryIndex: entryIndex,
           );
-        case ManifestCopyFile(:final source, :final destination):
+        case ManifestCopyFile(:final source, :final destination, :final private):
           await _addCopyFile(
             source: source,
             destination: destination,
             entryIndex: entryIndex,
+            private: private,
           );
         case ManifestCopyTree(:final source, :final destination):
           await _addCopyTree(
@@ -222,6 +223,7 @@ final class _WorkPathProjector {
     required String source,
     required String destination,
     required int entryIndex,
+    bool private = false,
   }) async {
     final projectedDest = _projectRequired(destination);
     final candidate = _project(source);
@@ -238,7 +240,11 @@ final class _WorkPathProjector {
       throw StateError('copy file source missing: $source');
     }
     _ops.add(
-      ApplyWriteBlob(path: projectedDest, sha256: await _storeBlob(bytes)),
+      ApplyWriteBlob(
+        path: projectedDest,
+        sha256: await _storeBlob(bytes),
+        mode: private ? applyPlanPrivateFileMode : null,
+      ),
     );
   }
 

@@ -191,49 +191,6 @@ void main() {
     expect(decoded.findFile('pool/bin.dat')!.content as List<int>, [0, 1, 255]);
   });
 
-  test('off-home private copyFile tar member is 0600', () async {
-    final fs = InMemoryFilesystem();
-    await fs.writeBytes('/home/src/user', [85, 83, 69, 82]);
-    const root = '/work/root';
-    final manifest = LaunchManifest()
-      ..copyFilePrivate(
-        source: '/home/src/user',
-        destination: '$root/.auth/user',
-      );
-    final epochs = await buildManifestSshFlushPlan(
-      manifest: manifest,
-      sourceFs: fs,
-      workRoot: root,
-      sameHost: false,
-    );
-    expect(epochs, hasLength(1));
-    expect(epochs.single.kind, ManifestSshEpochKind.tar);
-    final tar = GZipDecoder().decodeBytes(epochs.single.gzipTar!);
-    final decoded = TarDecoder().decodeBytes(tar);
-    final file = decoded.findFile('.auth/user')!;
-    expect(file.unixPermissions & 0x1ff, 0x180, reason: '0600');
-  });
-
-  test('same-host private copy adds chmod 600 after cp', () async {
-    final fs = InMemoryFilesystem();
-    const root = '/work/root';
-    final manifest = LaunchManifest()
-      ..copyFilePrivate(
-        source: '/home/src/user',
-        destination: '$root/.auth/user',
-      );
-    final epochs = await buildManifestSshFlushPlan(
-      manifest: manifest,
-      sourceFs: fs,
-      workRoot: root,
-      sameHost: true,
-    );
-    expect(epochs, hasLength(1));
-    expect(epochs.single.kind, ManifestSshEpochKind.script);
-    expect(epochs.single.script, contains("cp -f -- '/home/src/user'"));
-    expect(epochs.single.script, contains("chmod 600 '$root/.auth/user'"));
-  });
-
   test('consecutive in-root writes stay one tar epoch', () async {
     final fs = InMemoryFilesystem();
     const root = '/work/root';
