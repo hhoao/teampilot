@@ -1,6 +1,9 @@
 // client/lib/services/vault/vault_service.dart
+import 'dart:async';
+
 import '../../models/vault_document.dart';
 import '../../models/vault_entry.dart';
+import '../../repositories/ssh_credential_store.dart';
 import 'encrypted_vault_backend.dart';
 import 'keychain_vault_backend.dart';
 import 'vault_errors.dart';
@@ -9,16 +12,22 @@ class VaultService {
   VaultService({
     required KeychainVaultBackend keychainBackend,
     required EncryptedVaultBackend encryptedBackend,
+    SecureKeyValueStore? masterKeyStore,
   }) : _keychainBackend = keychainBackend,
-       _encryptedBackend = encryptedBackend;
+       _encryptedBackend = encryptedBackend,
+       _masterKeyStore = masterKeyStore;
+
+  static const _masterKey = 'teampilot.vault.v1.master';
 
   final KeychainVaultBackend _keychainBackend;
   final EncryptedVaultBackend _encryptedBackend;
+  final SecureKeyValueStore? _masterKeyStore;
 
   VaultDocument? _document;
   bool _encrypted = false;
   bool _locked = false;
   bool _initialized = false;
+  String? _masterPassphrase;
   Future<void>? _writeTail;
 
   bool get isEncrypted => _encrypted;
@@ -68,6 +77,7 @@ class VaultService {
     if (_initialized) return;
     _encrypted = await _encryptedBackend.isInitialized;
     if (_encrypted) {
+      _masterPassphrase = await _readRememberedPassphrase();
       _locked = true;
       _document = null;
       _initialized = true;
@@ -78,11 +88,36 @@ class VaultService {
     _initialized = true;
   }
 
-  Future<void> unlock(String passphrase) async {
+  /// Unlocks silently with the remembered master password when available.
+  ///
+  /// Used at boot and by functional read paths; it never prompts. The UI still
+  /// requires a fresh password before revealing a stored value.
+  Future<bool> tryAutoUnlock() async {
+    if (!_encrypted || !_locked) return true;
+    final passphrase = _masterPassphrase ?? await _readRememberedPassphrase();
+    if (passphrase == null || passphrase.isEmpty) return false;
+    try {
+      await unlock(passphrase, remember: false);
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
+  /// Verifies a password entered for an explicit reveal.
+  Future<bool> verifyMasterPassphrase(String passphrase) async {
+    final expected = _masterPassphrase ?? await _readRememberedPassphrase();
+    if (expected == null || expected.isEmpty) return false;
+    return expected == passphrase;
+  }
+
+  Future<void> unlock(String passphrase, {bool remember = true}) async {
     if (!_encrypted) return;
     await _encryptedBackend.unlock(passphrase);
     _document = await _encryptedBackend.load();
     _locked = false;
+    _masterPassphrase = passphrase;
+    if (remember) await _writeRememberedPassphrase(passphrase);
   }
 
   void lock() {
@@ -90,6 +125,10 @@ class VaultService {
     _encryptedBackend.lock();
     _document = null;
     _locked = true;
+    _masterPassphrase = null;
+    // An explicit lock forgets the remembered password so the next functional
+    // read prompts instead of silently re-unlocking.
+    unawaited(_deleteRememberedPassphrase());
   }
 
   Future<List<VaultEntry>> list({
@@ -200,6 +239,8 @@ class VaultService {
     _document = document;
     _encrypted = true;
     _locked = false;
+    _masterPassphrase = passphrase;
+    await _writeRememberedPassphrase(passphrase);
   }
 
   Future<void> disableEncryptedBackend() async {
@@ -214,6 +255,32 @@ class VaultService {
     _document = verified;
     _encrypted = false;
     _locked = false;
+    _masterPassphrase = null;
+    await _deleteRememberedPassphrase();
+  }
+
+  Future<String?> _readRememberedPassphrase() async {
+    try {
+      return await _masterKeyStore?.read(_masterKey);
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<void> _writeRememberedPassphrase(String passphrase) async {
+    try {
+      await _masterKeyStore?.write(_masterKey, passphrase);
+    } on Object {
+      // Auto-unlock is best-effort; the session still works after an unlock.
+    }
+  }
+
+  Future<void> _deleteRememberedPassphrase() async {
+    try {
+      await _masterKeyStore?.delete(_masterKey);
+    } on Object {
+      // Ignore: the in-memory password is already cleared.
+    }
   }
 
   VaultDocument _requireDocument() {

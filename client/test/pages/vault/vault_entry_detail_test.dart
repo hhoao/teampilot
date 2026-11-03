@@ -51,4 +51,45 @@ void main() {
     expect(find.byIcon(Icons.visibility_outlined), findsNothing);
     expect(find.byIcon(Icons.copy_outlined), findsOneWidget);
   });
+
+  testWidgets('a denied authorization keeps the value masked', (tester) async {
+    var calls = 0;
+    await tester.pumpWidget(
+      _host(
+        VaultSecretField(
+          label: 'Password',
+          value: 'hunter2',
+          secret: true,
+          onAuthorizeReveal: () async {
+            calls++;
+            return false;
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.visibility_outlined));
+    await tester.pumpAndSettle();
+
+    expect(calls, 1);
+    expect(find.text('hunter2'), findsNothing);
+  });
+
+  testWidgets('an allowed authorization reveals the value', (tester) async {
+    await tester.pumpWidget(
+      _host(
+        VaultSecretField(
+          label: 'Password',
+          value: 'hunter2',
+          secret: true,
+          onAuthorizeReveal: () async => true,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.visibility_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text('hunter2'), findsOneWidget);
+  });
 }

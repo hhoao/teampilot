@@ -809,9 +809,13 @@ Future<AppShell> buildAppShell({
     encryptedBackend: EncryptedVaultBackend(
       repository: deviceLocalVaultRepository(nativeAppDataPath),
     ),
+    masterKeyStore: const FlutterSecureKeyValueStore(),
   );
   try {
     await vaultService.initialize();
+    // Functional reads (SSH, providers, usage, GitHub) unlock silently with
+    // the remembered master password; only an explicit reveal prompts.
+    await vaultService.tryAutoUnlock();
   } on Object catch (error, stackTrace) {
     appLogger.w(
       '[vault] initialize failed: $error',

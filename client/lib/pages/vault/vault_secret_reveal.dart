@@ -1,13 +1,42 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../services/vault/vault_service.dart';
-import '../../services/vault/vault_unlock_gate.dart';
+import 'vault_status_section.dart';
 
-/// Reads a stored vault field for an on-demand reveal.
+/// Re-authenticates before an explicit reveal.
 ///
-/// Prompts for the vault passphrase when the encrypted vault is locked.
-/// Returns null when the entry id/field is empty or the prompt is cancelled.
+/// Keychain-backed vaults return true immediately. Encrypted vaults always ask
+/// for the master password again, even when functional reads are unlocked.
+Future<bool> authorizeVaultReveal(BuildContext context) async {
+  final vault = context.read<VaultService>();
+  if (!vault.isEncrypted) return true;
+  final l10n = AppLocalizations.of(context);
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final passphrase = await showVaultPassphrasePrompt(context);
+  if (passphrase == null) return false;
+  if (!vault.isUnlocked) {
+    try {
+      await vault.unlock(passphrase);
+      return true;
+    } on Object {
+      messenger?.showSnackBar(
+        SnackBar(content: Text(l10n.vaultUnlockFailed)),
+      );
+      return false;
+    }
+  }
+  if (await vault.verifyMasterPassphrase(passphrase)) return true;
+  messenger?.showSnackBar(
+    SnackBar(content: Text(l10n.vaultUnlockFailed)),
+  );
+  return false;
+}
+
+/// Reads a stored vault field for an explicit reveal.
+///
+/// Returns null when the entry id/field is empty or re-authentication fails.
 Future<String?> revealVaultSecret(
   BuildContext context,
   String? entryId,
@@ -16,8 +45,9 @@ Future<String?> revealVaultSecret(
   final id = entryId?.trim() ?? '';
   if (id.isEmpty || field.isEmpty) return null;
   final vault = context.read<VaultService>();
-  final unlocked = await context.read<VaultUnlockGate>().ensureUnlocked();
-  if (!unlocked) return null;
+  if (vault.isEncrypted && !await authorizeVaultReveal(context)) {
+    return null;
+  }
   try {
     return await vault.readField(id, field);
   } on Object {
