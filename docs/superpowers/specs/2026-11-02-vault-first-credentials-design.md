@@ -321,3 +321,26 @@ Logging never includes secret values; `VaultEntry.toString` already redacts them
   `ManagedProvider` gains an optional field.
 - Old clients opening a new document ignore the extra marker field.
 - The importer is idempotent, so an interrupted upgrade simply continues next launch.
+
+## 14. Unlock policy (follow-up)
+
+Functional reads and explicit reveals have different requirements:
+
+- **Remembered master (functional reads).** When the user enables encryption or
+  unlocks manually, the passphrase is written to the OS keychain under
+  `teampilot.vault.v1.master`. At boot, `VaultService.tryAutoUnlock()` reads it
+  and unlocks silently, so SSH, providers, balance/usage queries, CLI config
+  generation and GitHub work without any prompt. Background work never
+  prompts.
+- **Explicit reveal (re-authentication).** Clicking the eye on a password/key
+  input, or revealing a value in the vault detail view, always asks for the
+  master password again, even when the vault is auto-unlocked. A wrong or
+  cancelled password leaves the value masked. Keychain-backed vaults reveal
+  without a prompt.
+- **Lock.** The Lock action clears the in-memory document and deletes the
+  remembered passphrase, so the next functional read requires the password
+  again (or a restart with a fresh manual unlock). Restarting after a normal
+  auto-unlock does not prompt.
+- **Refresh.** After an unlock or background import, the vault page reloads its
+  entry rows without changing status, avoiding re-entrant page rebuilds while
+  a dialog is closing.
