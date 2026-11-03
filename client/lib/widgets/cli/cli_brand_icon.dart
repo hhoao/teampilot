@@ -14,8 +14,7 @@ String? cliBrandIconKey(CliTool cli) => switch (cli) {
   CliTool.flashskyai => 'claude',
   CliTool.gemini => 'gemini',
   CliTool.codebuddy => 'codebuddy',
-  // No Qoder asset is bundled; null falls back to the TeamPilot mark.
-  CliTool.qoder => null,
+  CliTool.qoder => 'qoder',
 };
 
 IconData cliToolIconData(CliTool cli) => switch (cli) {
