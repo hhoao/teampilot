@@ -19,15 +19,6 @@ abstract interface class CursorAccountDirectory {
 
   Future<CursorAccountCredentials?> credentialFor(String accountId);
 
-  /// Adds or re-keys a manual account. Only the credential and any explicitly
-  /// passed [label] / [teamId] change; a re-paste keeps the stored `enabled`,
-  /// `teamId`, `owningUser`, and label.
-  Future<void> upsertManual(
-    CursorAccountCredentials credentials, {
-    String? label,
-    int? teamId,
-  });
-
   Future<void> remove(String accountId);
 
   Future<void> update(
@@ -157,29 +148,6 @@ final class CursorAccountRegistry implements CursorAccountDirectory {
       token: match.token,
       expiresAtMs: match.expiresAtMs,
     );
-  }
-
-  @override
-  Future<void> upsertManual(
-    CursorAccountCredentials credentials, {
-    String? label,
-    int? teamId,
-  }) async {
-    await _credentials.write(credentials);
-    await _mutate((accounts) {
-      final previous = accounts[credentials.accountId];
-      accounts[credentials.accountId] = CursorUsageAccount(
-        accountId: credentials.accountId,
-        userId: credentials.userId,
-        label: label ?? previous?.label ?? _defaultLabel(credentials.accountId),
-        source: CursorAccountSource.manual,
-        enabled: previous?.enabled ?? true,
-        expiresAtMs: credentials.expiresAtMs,
-        owningUser: previous?.owningUser,
-        teamId: teamId ?? previous?.teamId ?? 0,
-        hasCredential: true,
-      );
-    });
   }
 
   @override

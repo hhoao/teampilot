@@ -25,7 +25,6 @@ import '../cubits/chat_cubit.dart';
 import '../cubits/session_groups_cubit.dart';
 import '../cubits/session_usage_cubit.dart';
 import 'session_usage_services.dart';
-import '../cubits/cursor_usage_cubit.dart';
 import '../models/cursor_usage_account.dart';
 import '../models/cursor_usage_range.dart';
 import '../models/cursor_usage_report.dart';
@@ -501,7 +500,6 @@ class AppShell {
     required this.identityRepository,
     required this.teamCubit,
     required this.sessionUsageCubit,
-    required this.cursorUsageCubit,
     required this.cursorUsageApiClient,
     required this.configCubit,
     required this.connectCubit,
@@ -614,8 +612,6 @@ class AppShell {
   final LaunchProfileCubit teamCubit;
   final SessionUsageCubit sessionUsageCubit;
 
-  /// Home-shell-held Cursor usage state; the page reads it from the provider.
-  final CursorUsageCubit cursorUsageCubit;
 
   /// Owned by the shell so its HTTP client is closed with the shell.
   final CursorUsageApiClient cursorUsageApiClient;
@@ -1714,53 +1710,6 @@ Future<AppShell> buildAppShell({
     );
     unawaited(sessionUsageCubit.ensureLoaded());
 
-    final cursorUsageCubit = CursorUsageCubit(
-      loadAccounts: () => cursorStack().registry.list(),
-      // Credential refresh already happens inside the registry's
-      // `credentialFor`, so the cubit's hook stays a no-op.
-      refreshAccount: (accountId) async {},
-      billingCycleFor: (accountId) =>
-          cursorStack().coordinator.billingCycleFor(accountId),
-      loadReport:
-          ({
-            required accountId,
-            required range,
-            billingCycle,
-            mode = CursorUsageSyncMode.auto,
-          }) => cursorStack().coordinator.load(
-            accountId: accountId,
-            range: range,
-            billingCycle: billingCycle,
-            mode: mode,
-          ),
-      saveRange: (range) => cursorStack().rangePreference.save(range),
-      loadRange: () => cursorStack().rangePreference.load(),
-      peekReport:
-          ({
-            required accountId,
-            required range,
-            billingCycle,
-          }) => cursorStack().coordinator.peek(
-            accountId: accountId,
-            range: range,
-            billingCycle: billingCycle,
-          ),
-      addAccount: (raw, label) async {
-        final credentials = parseCursorSessionToken(raw);
-        if (credentials == null) return false;
-        await cursorStack().registry.upsertManual(credentials, label: label);
-        return true;
-      },
-      removeAccount: (accountId) async {
-        await cursorStack().registry.remove(accountId);
-        await cursorStack().cacheStore.delete(accountId);
-      },
-      setAccountEnabled: (accountId, enabled) =>
-          cursorStack().registry.update(accountId, enabled: enabled),
-      initialRange: const CursorUsagePresetRange(
-        CursorUsagePreset.billingCycle,
-      ),
-    );
     // Warm the caches once at boot so the session usage dashboard has account
     // rows even when the Cursor page is never opened.
     unawaited(
@@ -3404,7 +3353,6 @@ Future<AppShell> buildAppShell({
       identityRepository: identityRepository,
       teamCubit: teamCubit,
       sessionUsageCubit: sessionUsageCubit,
-      cursorUsageCubit: cursorUsageCubit,
       cursorUsageApiClient: cursorUsageApiClient,
       configCubit: configCubit,
       connectCubit: connectCubit,
@@ -3764,7 +3712,6 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         await shell.memberPresenceCubit.close();
         await _teardownConnect(shell);
         await shell.managedProviderControlPlane.close();
-        await shell.cursorUsageCubit.close();
         shell.cursorUsageApiClient.close();
         return;
       }
@@ -3775,7 +3722,6 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         await shell.memberPresenceCubit.close();
         await _teardownConnect(shell);
         await shell.managedProviderControlPlane.close();
-        await shell.cursorUsageCubit.close();
         shell.cursorUsageApiClient.close();
         return;
       }
@@ -3810,7 +3756,6 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       // the buildAppShell failure path). The presence cubit is closed for the
       // same reason: it subscribes to the app-lifetime presence projection.
       await builtShell?.memberPresenceCubit.close();
-      await builtShell?.cursorUsageCubit.close();
       builtShell?.cursorUsageApiClient.close();
       await builtShell?.catalogRuntime?.bus.close();
       await _eventTransportController.apply(EventTransportRole.none);
@@ -3861,7 +3806,6 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       unawaited(_teardownConnect(shell));
       unawaited(shell.managedProviderControlPlane.close());
       unawaited(shell.sessionUsageCubit.close());
-      unawaited(shell.cursorUsageCubit.close());
       shell.cursorUsageApiClient.close();
     }
     // Drain queued events; dispose() is synchronous, so stop() is
@@ -3916,7 +3860,6 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         BlocProvider.value(value: shell.managedProviderCubit),
         BlocProvider.value(value: shell.managedProviderUsageCubit),
         BlocProvider.value(value: shell.sessionUsageCubit),
-        BlocProvider.value(value: shell.cursorUsageCubit),
         if (shell.connectCubit != null)
           BlocProvider<ConnectCubit>.value(value: shell.connectCubit!),
       ],

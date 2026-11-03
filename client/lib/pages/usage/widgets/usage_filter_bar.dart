@@ -66,7 +66,7 @@ class _CursorAccountFilter extends StatelessWidget {
           entries: [
             (_allAccounts, context.l10n.sessionUsageAccountAll),
             for (final account in state.cursorAccounts)
-              (account.accountId, account.label),
+              (account.accountId, account.providerName ?? account.label),
           ],
           onChanged: (value) =>
               cubit.setCursorAccount(value == _allAccounts ? null : value),
