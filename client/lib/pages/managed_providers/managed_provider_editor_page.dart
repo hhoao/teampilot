@@ -189,7 +189,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               ManagedProviderEditorSectionShell(
                 key: const Key('managed-provider-section-basics'),
                 title: l10n.managedProvidersBasicsSectionTitle,
-                subtitle: l10n.managedProvidersBasicsSectionSubtitle,
                 initiallyExpanded: true,
                 child: ManagedProviderBasicsSection(
                   schema: _schema,
@@ -210,7 +209,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 ManagedProviderEditorSectionShell(
                   key: const Key('managed-provider-section-query'),
                   title: l10n.managedProvidersQuerySectionTitle,
-                  subtitle: l10n.managedProvidersQuerySectionSubtitle,
                   referenceTip: managedProviderHttpJsonReferenceTip(l10n),
                   initiallyExpanded: _queryInitiallyExpanded,
                   child: ManagedProviderQuerySection(
@@ -232,14 +230,10 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               ManagedProviderEditorSectionShell(
                 key: const Key('managed-provider-section-credentials'),
                 title: l10n.managedProvidersCredentialsSectionTitle,
-                subtitle: l10n.managedProvidersCredentialsSectionSubtitle,
                 referenceTip: _isCliCredentialSource
                     ? null
                     : managedProviderHttpJsonReferenceTip(l10n),
                 initiallyExpanded: _credentialsInitiallyExpanded,
-                badge: _credentialsInitiallyExpanded
-                    ? l10n.managedProvidersSectionConfiguredBadge
-                    : null,
                 child: _isCliCredentialSource
                     ? ManagedProviderOfficialCredentials(
                         credentialSource: _credentialSource.text.trim(),
@@ -288,7 +282,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               ManagedProviderEditorSectionShell(
                 key: const Key('managed-provider-section-display'),
                 title: l10n.managedProvidersDisplaySectionTitle,
-                subtitle: l10n.managedProvidersDisplaySectionSubtitle,
                 initiallyExpanded: _displayInitiallyExpanded,
                 badge: _displayInitiallyExpanded
                     ? l10n.managedProvidersSectionConfiguredBadge
@@ -308,7 +301,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 ManagedProviderEditorSectionShell(
                   key: const Key('managed-provider-section-advanced'),
                   title: l10n.managedProvidersAdvancedSectionTitle,
-                  subtitle: l10n.managedProvidersAdvancedSectionSubtitle,
                   initiallyExpanded: _advancedInitiallyExpanded,
                   badge: _advancedInitiallyExpanded
                       ? l10n.managedProvidersSectionConfiguredBadge
@@ -320,7 +312,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                     onKindChanged: _setKind,
                   ),
                 ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(

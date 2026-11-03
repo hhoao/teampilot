@@ -30,6 +30,7 @@ import '../../services/acp/acp_model_ref.dart';
 import '../../services/acp/acp_session.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/native_command_capability.dart';
+import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
@@ -259,7 +260,11 @@ class SessionChatComposeSection extends StatelessWidget {
             presetName: selectedPreset?.name,
             cli: lockedCli,
             provider: session.provider,
-            model: session.model,
+            model: providerModelLabel(
+              registry.capability<ProviderCapability>(lockedCli),
+              providerId: session.provider,
+              modelId: session.model,
+            ),
             emptyLabel: l10n.workspaceChatLandingUsePreset,
           )
         : (selectedPreset?.name.trim().isNotEmpty == true
@@ -406,7 +411,7 @@ class SessionChatComposeSection extends StatelessWidget {
                           : const <ComposeCascadeCliGroup>[];
                       final launchSpecs = session.isSimple
                           ? buildComposeModelCascadeMenuSpecs(
-                              presets: sameCliPresets,
+                              presets: presetsByRecentUse(sameCliPresets),
                               selectedPresetId: selectedPresetId,
                               emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
                               emptyProvidersLabel:
@@ -422,6 +427,22 @@ class SessionChatComposeSection extends StatelessWidget {
                                   l10n.workspaceCliAddPresetTitle,
                               cliGroups: cascadeGroups,
                               groupByCli: false,
+                              modelLabel: (cli, providerId, modelId) =>
+                                  providerModelLabel(
+                                    registry.capability<ProviderCapability>(
+                                      cli,
+                                    ),
+                                    providerId: providerId,
+                                    modelId: modelId,
+                                  ),
+                              modelTooltip: (cli, providerId, modelId) =>
+                                  providerModelDescription(
+                                    registry.capability<ProviderCapability>(
+                                      cli,
+                                    ),
+                                    providerId: providerId,
+                                    modelId: modelId,
+                                  ),
                               onModelsOpened: (cli, pid, config) => unawaited(
                                 refreshComposeCascadeCatalog(
                                   context,
@@ -907,6 +928,7 @@ class SessionChatComposeSection extends StatelessWidget {
         return;
       }
       if (context.mounted) {
+        unawaited(context.read<CliPresetsCubit>().markPresetUsed(presetId));
         await _offerRestartAfterIdentitySwitch(
           context,
           session: live,

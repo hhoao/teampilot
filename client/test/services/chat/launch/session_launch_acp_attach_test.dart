@@ -1,4 +1,5 @@
 import 'package:acpd/acpd.dart' as acpd;
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -121,6 +122,64 @@ void main() {
       expect(runtime.baseEnv['CLAUDE_CONFIG_DIR'], '/runtime/s1/claude');
       expect(runtime.baseEnv['CLAUDE_CODE_NO_FLICKER'], '1');
       expect(tab.acpRuntime, isNotNull);
+    },
+  );
+
+  test(
+    'attachAcpRuntime dispatches the request first prompt before the launch replay',
+    () async {
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())
+        ..setActiveWorkspaceId('w1');
+      final tab = ChatTab(
+        info: ChatTabInfo(id: 's1', title: 'S', subtitle: ''),
+        cliTeamName: '',
+      );
+      tabStore.registerSession(tab);
+      final runtime = _RecordingAcpRuntime();
+      final service = SessionLaunchService(
+        _Host(tabStore),
+        storage: fakeHomeStorage(),
+        acpRuntimeFactory: ({required logger, required tool}) => runtime,
+        prepareAcpContribution: (session, workspace) async => const {},
+      );
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        cli: CliTool.codex,
+        acp: true,
+        createdAt: 1,
+      );
+      final workspace = Workspace(workspaceId: 'w1', createdAt: 1);
+      final job = SessionConnectJob(
+        session: session,
+        request: SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          firstPrompt: 'continue please',
+        ),
+        generation: 1,
+        workspace: workspace,
+        reason: LaunchReason.retry,
+      );
+
+      await service.attachAcpRuntime(job, session);
+      await pumpEventQueue();
+
+      // The prompt owns the connection as soon as the cubit exists: it was
+      // dispatched by `start()` instead of waiting behind a launch reconcile.
+      expect(runtime.prompts, ['continue please']);
+      expect(runtime.loadHistoryCalls, 0);
+      final cubit = tab.acpRuntime!;
+      expect(cubit.state.inTurn, isTrue);
+      expect(
+        [
+          for (final message in cubit.state.messages)
+            if (message.role == AiRole.user)
+              message.parts.whereType<AiTextPart>().map((p) => p.text).join(),
+        ],
+        ['continue please'],
+      );
+      await cubit.close();
     },
   );
 
@@ -401,12 +460,20 @@ class _Host implements SessionLaunchHost {
   }
 }
 
-class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
+class _RecordingAcpRuntime implements AcpSessionRuntimeApi, AcpHistorySyncApi {
   var started = false;
+  final prompts = <String>[];
+  int loadHistoryCalls = 0;
   Map<String, String> baseEnv = const {};
   String workingDirectory = '';
   List<acpd.McpServer> mcpServers = const [];
   LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess;
+
+  @override
+  Future<List<AcpSessionUpdate>> loadHistory() async {
+    loadHistoryCalls++;
+    return const [];
+  }
 
   @override
   Future<void> start({
@@ -438,7 +505,7 @@ class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
   String get sessionId => 'acp-session-1';
 
   @override
-  Future<void> prompt(String text) async {}
+  Future<void> prompt(String text) async => prompts.add(text);
 
   @override
   Stream<AcpSessionUpdate> get updates => const Stream.empty();

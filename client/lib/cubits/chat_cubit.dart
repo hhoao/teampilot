@@ -385,16 +385,27 @@ class ChatCubit extends Cubit<ChatState>
         sessionBusyFromAttention: (sessionId) {
           final attention = _agentAttentionCubit;
           if (attention == null) return false;
-          final bus = _tabStore.getOpenTabBySessionId(sessionId)?.teamBus;
+          final tab = _tabStore.getOpenTabBySessionId(sessionId);
+          final bus = tab?.teamBus;
           // Why: WaitEntered clears hook working, but a late PreToolUse can
           // re-stamp attention while the member is still bus-parked.
-          if (bus != null) {
-            return attention.state.sessionIsAgentActive(
-              sessionId,
-              includeMember: (id) => !bus.isWaitingForMessage(id),
-            );
-          }
-          return attention.state.sessionIsAgentActive(sessionId);
+          // ACP cubits own their turn via inTurn/pendingClient. Cursor hooks
+          // (afterAgentResponse, postToolUse) still POST working after
+          // session/prompt returns, and there is no PTY-quiet fallback, so a
+          // leftover stamp would pin History 运行中 for 30 minutes.
+          return attention.state.sessionIsAgentActive(
+            sessionId,
+            includeMember: (id) {
+              if (bus != null && bus.isWaitingForMessage(id)) return false;
+              final cubit = tab?.acpRuntimeForSeatMember(id);
+              if (cubit != null &&
+                  !cubit.state.inTurn &&
+                  cubit.state.pendingClient == null) {
+                return false;
+              }
+              return true;
+            },
+          );
         },
         sessionBusyFromDeliveryInFlight: (sessionId) =>
             _operatorDeliveryInFlight.isInFlight(sessionId),
@@ -605,6 +616,38 @@ class ChatCubit extends Cubit<ChatState>
   void Function(String sessionId, String memberId, String text)?
   onSeedHistoryPending;
   void Function(String sessionId, String text)? onCancelSeedHistoryPending;
+
+  /// Publishes the landing first prompt so Chat can paint the user bubble
+  /// before the seat exists (connect / first delivery window).
+  ///
+  /// UI-only: nothing is persisted or seeded into the history store. The
+  /// bubble disappears once [clearPendingLandingPrompt] runs (the real turn
+  /// lives in the seat runtime by then) or as soon as the runtime owns a user
+  /// turn with the same text.
+  void beginPendingLandingPrompt({
+    required String sessionId,
+    required String text,
+  }) {
+    if (isClosed) return;
+    final id = sessionId.trim();
+    final trimmed = text.trim();
+    if (id.isEmpty || trimmed.isEmpty) return;
+    if (state.pendingLandingPrompts[id] == trimmed) return;
+    emit(
+      state.copyWith(
+        pendingLandingPrompts: {...state.pendingLandingPrompts, id: trimmed},
+      ),
+    );
+  }
+
+  /// Drops the transient landing bubble (success, failure, or cancel).
+  void clearPendingLandingPrompt(String sessionId) {
+    if (isClosed) return;
+    final id = sessionId.trim();
+    if (id.isEmpty || !state.pendingLandingPrompts.containsKey(id)) return;
+    final next = {...state.pendingLandingPrompts}..remove(id);
+    emit(state.copyWith(pendingLandingPrompts: next));
+  }
 
   /// Seeds an optimistic user bubble on the pod's HistoryStore (or the global
   /// cubit as fallback) so Chat shows the user turn before connect/deliver.
@@ -2547,7 +2590,16 @@ class ChatCubit extends Cubit<ChatState>
 
   /// Rebuilds and replays the connect request for a failed/disconnected
   /// session — used by the launch-failure banner's Retry action.
-  Future<void> retrySessionLaunch(String sessionId) async {
+  ///
+  /// [firstPrompt] is the lazy attach-then-send path: a terminal-less ACP seat
+  /// with no runtime passes the message it is about to send so the cubit can
+  /// display it immediately and dispatch it as soon as the handshake settles
+  /// (skipping the launch-time history reconcile that would otherwise own the
+  /// update stream).
+  Future<void> retrySessionLaunch(
+    String sessionId, {
+    String? firstPrompt,
+  }) async {
     final id = sessionId.trim();
     if (id.isEmpty) return;
     final tab = _tabStore.getOpenTabBySessionId(id);
@@ -2579,6 +2631,7 @@ class ChatCubit extends Cubit<ChatState>
       );
       return;
     }
+    final prompt = firstPrompt?.trim() ?? '';
     await requestOpenSession(
       SessionOpenRequest(
         session: request.session,
@@ -2587,6 +2640,7 @@ class ChatCubit extends Cubit<ChatState>
         member: request.member,
         repo: _sessionRepository,
         preserveWorkbenchView: request.preserveWorkbenchView,
+        firstPrompt: prompt.isEmpty ? null : prompt,
       ),
       reason: LaunchReason.retry,
     );

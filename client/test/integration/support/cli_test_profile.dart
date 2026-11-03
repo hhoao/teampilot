@@ -159,6 +159,7 @@ abstract final class CliTestProfiles {
       CliTool.gemini => _gemini,
       CliTool.codebuddy => _codebuddy,
       CliTool.antigravity => _antigravity,
+      CliTool.qoder => _qoder,
     };
   }
 
@@ -318,6 +319,22 @@ abstract final class CliTestProfiles {
     dismissBootGates: dismissBootGatesStub,
     gatewayRedirectNotes:
         'N/A: antigravity targets ACP (`agy_acp_server`), not the '
+        'mock-gateway matrix.',
+  );
+
+  /// Qoder is ACP-only (`qodercli --acp`), so like CodeBuddy it stays outside
+  /// the mock-gateway matrix until an ACP harness lands.
+  static final CliTestProfile _qoder = CliTestProfile(
+    tool: CliTool.qoder,
+    wire: CliTestWire.openaiChat,
+    binaryName: 'qodercli',
+    resolveBinary: () => whichOnPath('qodercli'),
+    toolName: mapShortMcpToolRef,
+    assistantVisibleMarkers: const [markA1, markA2, markA3],
+    bootToPrompt: bootToPromptStub,
+    dismissBootGates: dismissBootGatesStub,
+    gatewayRedirectNotes:
+        'N/A: qoder targets ACP (`qodercli --acp`), not the '
         'mock-gateway matrix.',
   );
 }

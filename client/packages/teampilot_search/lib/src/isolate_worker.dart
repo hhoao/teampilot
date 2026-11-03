@@ -251,12 +251,15 @@ class _FileIndexCloseRequest {
 }
 
 class _FileIndexBuildReply {
-  const _FileIndexBuildReply(this.id, this.error);
+  const _FileIndexBuildReply(this.id, this.error, {this.size = 0});
 
   final int id;
 
   /// Null on success, otherwise the failure message.
   final String? error;
+
+  /// Number of indexed files once the build succeeded.
+  final int size;
 }
 
 class _FileIndexQueryReply {
@@ -352,7 +355,7 @@ Future<void> _runFileIndexBuild(
 ) async {
   try {
     await index.build(root, options);
-    reply.send(_FileIndexBuildReply(id, null));
+    reply.send(_FileIndexBuildReply(id, null, size: index.length));
   } on Object catch (error) {
     reply.send(_FileIndexBuildReply(id, '$error'));
   }
@@ -369,15 +372,19 @@ class IsolatedFileIndex {
   SendPort? _control;
   Future<void>? _starting;
   Completer<void>? _ready;
-  final Map<int, Completer<String?>> _builds = {};
+  final Map<int, Completer<_FileIndexBuildReply>> _builds = {};
   final Map<int, Completer<List<TpFileHit>>> _queries = {};
   final Map<int, Completer<List<String>>> _dirQueries = {};
   int _nextId = 0;
   bool _built = false;
   bool _truncated = false;
+  int _size = 0;
 
   bool get isBuilt => _built;
   bool get truncated => _truncated;
+
+  /// Number of files in the built index (0 before a build).
+  int get size => _size;
 
   /// Builds (or rebuilds) the index rooted at [root] on the worker isolate.
   Future<void> build(
@@ -386,13 +393,15 @@ class IsolatedFileIndex {
   ]) async {
     await _ensureStarted();
     final id = ++_nextId;
-    final completer = Completer<String?>();
+    final completer = Completer<_FileIndexBuildReply>();
     _builds[id] = completer;
     _control!.send(
       _FileIndexBuildRequest(id: id, root: root, options: options),
     );
-    final error = await completer.future;
+    final reply = await completer.future;
+    final error = reply.error;
     if (error != null) throw StateError(error);
+    _size = reply.size;
     _built = true;
   }
 
@@ -428,6 +437,7 @@ class IsolatedFileIndex {
   void dispose() {
     _built = false;
     _truncated = false;
+    _size = 0;
     _control?.send(const _FileIndexCloseRequest());
     _control = null;
     _releaseWorker();
@@ -474,10 +484,10 @@ class IsolatedFileIndex {
         _control = control;
         final ready = _ready;
         if (ready != null && !ready.isCompleted) ready.complete();
-      case _FileIndexBuildReply(:final id, :final error):
+      case _FileIndexBuildReply(:final id, :final error, :final size):
         final completer = _builds.remove(id);
         if (completer == null || completer.isCompleted) return;
-        completer.complete(error);
+        completer.complete(_FileIndexBuildReply(id, error, size: size));
       case _FileIndexQueryReply(
         :final id,
         :final hits,

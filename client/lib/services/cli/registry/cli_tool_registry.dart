@@ -86,9 +86,9 @@ class CliToolRegistry {
   bool supportsMemberAgentPreset(CliTool id) =>
       memberAgentPresetStyle(id) != null;
 
-  /// Whether [id] can only launch over ACP (no PTY fallback) — Gemini and
-  /// CodeBuddy. Session create and compose treat these as ACP without a
-  /// user opt-in; a null [id] is never ACP-only.
+  /// Whether [id] can only launch over ACP (no PTY fallback) — Gemini,
+  /// CodeBuddy and Qoder. Session create and compose treat these as ACP
+  /// without a user opt-in; a null [id] is never ACP-only.
   bool launchesAcpOnly(CliTool? id) {
     if (id == null) return false;
     return capability<CliTransportCapability>(id)?.acpOnly ?? false;

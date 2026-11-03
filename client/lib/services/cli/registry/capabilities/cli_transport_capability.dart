@@ -16,8 +16,8 @@ enum CliTransport {
 /// containing [CliTransport.acp] must match the definition registering an
 /// `AcpCapability` (asserted when the built-in registry is assembled).
 ///
-/// A singleton `{acp}` set marks an ACP-only CLI (Gemini, CodeBuddy); call
-/// sites read that through `CliToolRegistry.launchesAcpOnly` and must not
+/// A singleton `{acp}` set marks an ACP-only CLI (Gemini, CodeBuddy, Qoder);
+/// call sites read that through `CliToolRegistry.launchesAcpOnly` and must not
 /// compare `CliTool` values.
 final class CliTransportCapability implements CliCapability {
   const CliTransportCapability({

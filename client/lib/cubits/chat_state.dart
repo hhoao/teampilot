@@ -20,6 +20,7 @@ class ChatState extends Equatable {
     this.sessionLaunchError,
     this.teamConfigValidation,
     this.sessionActivities = const {},
+    this.pendingLandingPrompts = const {},
   });
 
   final List<Workspace> workspaces;
@@ -56,6 +57,14 @@ class ChatState extends Equatable {
   /// idle-notify uses [SessionActivity.isReadyToChat].
   final Map<String, SessionActivity> sessionActivities;
 
+  /// sessionId → first prompt text of a landing create+send while it is still
+  /// connecting / delivering.
+  ///
+  /// UI-only transport for the transient in-thread user bubble: never
+  /// persisted and never written to the history store. Cleared once the
+  /// delivery call settles — by then the real user turn lives in the runtime.
+  final Map<String, String> pendingLandingPrompts;
+
   Set<String> get busySessionIds => {
     for (final e in sessionActivities.entries)
       if (e.value.isBusy) e.key,
@@ -78,6 +87,7 @@ class ChatState extends Equatable {
     TeamConfigValidation? teamConfigValidation,
     bool clearTeamConfigValidation = false,
     Map<String, SessionActivity>? sessionActivities,
+    Map<String, String>? pendingLandingPrompts,
   }) {
     return ChatState(
       workspaces: workspaces ?? this.workspaces,
@@ -98,6 +108,8 @@ class ChatState extends Equatable {
           ? null
           : (teamConfigValidation ?? this.teamConfigValidation),
       sessionActivities: sessionActivities ?? this.sessionActivities,
+      pendingLandingPrompts:
+          pendingLandingPrompts ?? this.pendingLandingPrompts,
     );
   }
 
@@ -114,5 +126,6 @@ class ChatState extends Equatable {
     sessionLaunchError,
     teamConfigValidation,
     sessionActivities,
+    pendingLandingPrompts,
   ];
 }

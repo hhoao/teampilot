@@ -10736,6 +10736,12 @@ abstract class AppLocalizations {
   /// **'Antigravity'**
   String get appProviderToolAntigravity;
 
+  /// No description provided for @appProviderToolQoder.
+  ///
+  /// In en, this message translates to:
+  /// **'Qoder'**
+  String get appProviderToolQoder;
+
   /// No description provided for @codebuddyCredentialsLogin.
   ///
   /// In en, this message translates to:
@@ -10879,6 +10885,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Antigravity sign-in failed.'**
   String get antigravityCredentialsActionFailed;
+
+  /// No description provided for @qoderCredentialsLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get qoderCredentialsLogin;
+
+  /// No description provided for @qoderCredentialsLoginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to Qoder'**
+  String get qoderCredentialsLoginTitle;
+
+  /// No description provided for @qoderCredentialsLoginIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the sign-in in the terminal below. The CLI opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.'**
+  String get qoderCredentialsLoginIntro;
+
+  /// No description provided for @qoderCredentialsLoginStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting Qoder CLI…'**
+  String get qoderCredentialsLoginStarting;
+
+  /// No description provided for @qoderCredentialsLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the login terminal: {error}'**
+  String qoderCredentialsLoginFailed(String error);
+
+  /// No description provided for @qoderCredentialsLoginExited.
+  ///
+  /// In en, this message translates to:
+  /// **'Qoder CLI exited. Close this dialog and start the sign-in again.'**
+  String get qoderCredentialsLoginExited;
+
+  /// No description provided for @qoderCredentialsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get qoderCredentialsDone;
+
+  /// No description provided for @qoderCredentialsCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get qoderCredentialsCancel;
+
+  /// No description provided for @qoderCredentialsRelaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Relaunch'**
+  String get qoderCredentialsRelaunch;
+
+  /// No description provided for @qoderCredentialsSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in'**
+  String get qoderCredentialsSignedIn;
+
+  /// No description provided for @qoderContextWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Context window (tokens)'**
+  String get qoderContextWindow;
+
+  /// No description provided for @qoderContextWindowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to use the model default.'**
+  String get qoderContextWindowHint;
+
+  /// No description provided for @qoderCredentialsActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The Qoder action failed'**
+  String get qoderCredentialsActionFailed;
 
   /// No description provided for @appProviderTeamToolSection.
   ///
@@ -14957,7 +15041,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersBasicsSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Basics'**
+  /// **'Name and API key'**
   String get managedProvidersBasicsSectionTitle;
 
   /// No description provided for @managedProvidersBasicsSectionSubtitle.
@@ -14975,7 +15059,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersQuerySectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Query'**
+  /// **'Usage API and JSON parsing'**
   String get managedProvidersQuerySectionTitle;
 
   /// No description provided for @managedProvidersQuerySectionSubtitle.
@@ -14987,7 +15071,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersCredentialsSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Credential details'**
+  /// **'Credential source and delivery'**
   String get managedProvidersCredentialsSectionTitle;
 
   /// No description provided for @managedProvidersCredentialsSectionSubtitle.
@@ -14999,7 +15083,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersDisplaySectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Display'**
+  /// **'Balance and quota display'**
   String get managedProvidersDisplaySectionTitle;
 
   /// No description provided for @managedProvidersDisplaySectionSubtitle.
@@ -15011,7 +15095,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersAdvancedSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Advanced'**
+  /// **'Adapter, kind, and reference'**
   String get managedProvidersAdvancedSectionTitle;
 
   /// No description provided for @managedProvidersAdvancedSectionSubtitle.
@@ -15221,19 +15305,19 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersJsonPathSeeAlso.
   ///
   /// In en, this message translates to:
-  /// **'See \$ syntax in Query ℹ️'**
+  /// **'See \$ syntax in Usage API and JSON parsing ℹ️'**
   String get managedProvidersJsonPathSeeAlso;
 
   /// No description provided for @managedProvidersTemplateVariablesSeeAlsoQuery.
   ///
   /// In en, this message translates to:
-  /// **'See brace syntax in Query ℹ️'**
+  /// **'See brace syntax in Usage API and JSON parsing ℹ️'**
   String get managedProvidersTemplateVariablesSeeAlsoQuery;
 
   /// No description provided for @managedProvidersTemplateVariablesSeeAlsoCredentials.
   ///
   /// In en, this message translates to:
-  /// **'See brace syntax in Credentials ℹ️'**
+  /// **'See brace syntax in Credential source and delivery ℹ️'**
   String get managedProvidersTemplateVariablesSeeAlsoCredentials;
 
   /// No description provided for @managedProvidersReferenceSyntaxHelper.

@@ -79,8 +79,7 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   Future<AgentPermissionReplyKind?> answerPermission(
     AgentPermissionReplyKind reply, {
     AgentPermissionAlwaysOption? always,
-  }) async =>
-      reply;
+  }) async => reply;
 
   @override
   Future<void> answerAsk(AcpAskHoldReply reply) async {}
@@ -101,7 +100,10 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   }
 }
 
-AcpChatRuntimeCubit _cubitFor(_FakeAcpRuntime runtime, {String sessionId = 's1'}) {
+AcpChatRuntimeCubit _cubitFor(
+  _FakeAcpRuntime runtime, {
+  String sessionId = 's1',
+}) {
   return AcpChatRuntimeCubit(
     runtime: runtime,
     sessionId: sessionId,
@@ -124,6 +126,22 @@ void main() {
 
     expect(tab.memberAcpRuntimes['s1'], same(cubit));
     expect(tab.acpRuntime, same(cubit));
+  });
+
+  test('acpRuntimeForSeatMember finds personal ACP via seatMemberId', () {
+    final tab = ChatTab(
+      info: const ChatTabInfo(id: 's1', title: 't', subtitle: ''),
+      cliTeamName: '',
+    );
+    final cubit = _cubitFor(_FakeAcpRuntime());
+    tab.acpRuntime = cubit;
+
+    expect(tab.acpRuntimeForSeatMember('s1'), same(cubit));
+    expect(
+      tab.acpRuntimeForSeatMember(AcpChatRuntimeCubit.acpMemberId),
+      same(cubit),
+    );
+    expect(tab.acpRuntimeForSeatMember('other'), isNull);
   });
 
   test('acpRuntime alias keys by persistedSession.sessionId when set', () {

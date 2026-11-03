@@ -45,6 +45,7 @@ extension AppLocalizationsX on AppLocalizations {
       CliTool.gemini => appProviderToolGemini,
       CliTool.codebuddy => appProviderToolCodebuddy,
       CliTool.antigravity => appProviderToolAntigravity,
+      CliTool.qoder => appProviderToolQoder,
     };
   }
 

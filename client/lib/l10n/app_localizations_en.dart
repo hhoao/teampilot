@@ -6027,6 +6027,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderToolAntigravity => 'Antigravity';
 
   @override
+  String get appProviderToolQoder => 'Qoder';
+
+  @override
   String get codebuddyCredentialsLogin => 'Sign in';
 
   @override
@@ -6107,6 +6110,49 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get antigravityCredentialsActionFailed =>
       'Antigravity sign-in failed.';
+
+  @override
+  String get qoderCredentialsLogin => 'Sign in';
+
+  @override
+  String get qoderCredentialsLoginTitle => 'Sign in to Qoder';
+
+  @override
+  String get qoderCredentialsLoginIntro =>
+      'Complete the sign-in in the terminal below. The CLI opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.';
+
+  @override
+  String get qoderCredentialsLoginStarting => 'Starting Qoder CLI…';
+
+  @override
+  String qoderCredentialsLoginFailed(String error) {
+    return 'Could not start the login terminal: $error';
+  }
+
+  @override
+  String get qoderCredentialsLoginExited =>
+      'Qoder CLI exited. Close this dialog and start the sign-in again.';
+
+  @override
+  String get qoderCredentialsDone => 'Done';
+
+  @override
+  String get qoderCredentialsCancel => 'Cancel';
+
+  @override
+  String get qoderCredentialsRelaunch => 'Relaunch';
+
+  @override
+  String get qoderCredentialsSignedIn => 'Signed in';
+
+  @override
+  String get qoderContextWindow => 'Context window (tokens)';
+
+  @override
+  String get qoderContextWindowHint => 'Leave empty to use the model default.';
+
+  @override
+  String get qoderCredentialsActionFailed => 'The Qoder action failed';
 
   @override
   String get appProviderTeamToolSection => 'Tool providers for this team';
@@ -8405,7 +8451,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Configure endpoint, credentials, and display from scratch.';
 
   @override
-  String get managedProvidersBasicsSectionTitle => 'Basics';
+  String get managedProvidersBasicsSectionTitle => 'Name and API key';
 
   @override
   String get managedProvidersBasicsSectionSubtitle =>
@@ -8416,28 +8462,30 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pick a preset, name the provider, and add a secret if needed.';
 
   @override
-  String get managedProvidersQuerySectionTitle => 'Query';
+  String get managedProvidersQuerySectionTitle => 'Usage API and JSON parsing';
 
   @override
   String get managedProvidersQuerySectionSubtitle =>
       'Usage API and JSON parsing.';
 
   @override
-  String get managedProvidersCredentialsSectionTitle => 'Credential details';
+  String get managedProvidersCredentialsSectionTitle =>
+      'Credential source and delivery';
 
   @override
   String get managedProvidersCredentialsSectionSubtitle =>
       'Credential source and how it is sent.';
 
   @override
-  String get managedProvidersDisplaySectionTitle => 'Display';
+  String get managedProvidersDisplaySectionTitle => 'Balance and quota display';
 
   @override
   String get managedProvidersDisplaySectionSubtitle =>
       'How balances and quotas are shown.';
 
   @override
-  String get managedProvidersAdvancedSectionTitle => 'Advanced';
+  String get managedProvidersAdvancedSectionTitle =>
+      'Adapter, kind, and reference';
 
   @override
   String get managedProvidersAdvancedSectionSubtitle =>
@@ -8552,15 +8600,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get managedProvidersFieldExampleLabel => 'Example';
 
   @override
-  String get managedProvidersJsonPathSeeAlso => 'See \$ syntax in Query ℹ️';
+  String get managedProvidersJsonPathSeeAlso =>
+      'See \$ syntax in Usage API and JSON parsing ℹ️';
 
   @override
   String get managedProvidersTemplateVariablesSeeAlsoQuery =>
-      'See brace syntax in Query ℹ️';
+      'See brace syntax in Usage API and JSON parsing ℹ️';
 
   @override
   String get managedProvidersTemplateVariablesSeeAlsoCredentials =>
-      'See brace syntax in Credentials ℹ️';
+      'See brace syntax in Credential source and delivery ℹ️';
 
   @override
   String get managedProvidersReferenceSyntaxHelper =>

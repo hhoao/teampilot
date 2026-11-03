@@ -92,6 +92,7 @@ final class WorkspaceCliCache {
     CliTool.flashskyai ||
     CliTool.gemini ||
     CliTool.codebuddy ||
-    CliTool.antigravity => const [],
+    CliTool.antigravity ||
+    CliTool.qoder => const [],
   };
 }

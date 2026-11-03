@@ -32,6 +32,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     this.visibleOwnerId,
     this.scrollAnchorKey,
     this.scrollAnchors,
+    this.suppressEmptyPane = false,
+    this.pendingUserText = '',
     super.key,
   });
 
@@ -62,15 +64,46 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   /// `ChatCubit.sessionScrollAnchors`.
   final Map<String, double>? scrollAnchors;
 
+  /// True while a fresh session is still launching / delivering its first turn.
+  ///
+  /// The seat defaults to [AiHistoryViewStatus.empty], so a brand-new seat
+  /// would paint "no prior messages" for the whole connect window (ACP landing
+  /// sends wait on the cubit attach). Keep the loading pane during that window
+  /// — a genuine empty result is only meaningful once launch settles.
+  final bool suppressEmptyPane;
+
+  /// Transient landing first prompt, painted as a user bubble plus the
+  /// [SessionHistoryLiveChrome.starting] footer until the runtime owns it.
+  final String pendingUserText;
+
+  AiHistoryViewStatus get _status =>
+      state.status == AiHistoryViewStatus.empty && suppressEmptyPane
+      ? AiHistoryViewStatus.loading
+      : state.status;
+
   bool get _showThread {
-    if (state.status == AiHistoryViewStatus.ready) return true;
-    if (state.status == AiHistoryViewStatus.refreshing) return true;
+    if (_status == AiHistoryViewStatus.refreshing) return true;
     // Optimistic pendings may land while status is still empty/loading, and a
     // refresh failure keeps content under an error status — any content keeps
     // the thread mounted (never the full-pane spinner or a blanked error pane).
     if (runtime.messages.isNotEmpty) return true;
+    // Landing create+send: the transient bubble is the only content yet, but
+    // the thread (bubble + Starting footer) is exactly the normal chat shape.
+    // A history error still owns the pane — never hide it behind a bubble.
+    if (pendingUserText.trim().isNotEmpty &&
+        _status != AiHistoryViewStatus.error) {
+      return true;
+    }
+    // A `ready` status with an empty runtime (dropped pending, cleared window)
+    // would otherwise mount an empty scroll view: a blank pane with only the
+    // composer below. Let it fall through to the status panes.
     return false;
   }
+
+  /// Status used for the full-pane fallback when the thread has no content.
+  AiHistoryViewStatus get _paneStatus => _status == AiHistoryViewStatus.ready
+      ? AiHistoryViewStatus.empty
+      : _status;
 
   @override
   Widget build(BuildContext context) {
@@ -96,13 +129,14 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               visibleOwnerId: visibleOwnerId,
               scrollAnchorKey: scrollAnchorKey,
               scrollAnchors: scrollAnchors,
+              pendingUserText: pendingUserText,
             ),
           ),
         ],
       );
     }
 
-    return switch (state.status) {
+    return switch (_paneStatus) {
       // Unreachable (refreshing always shows the thread via _showThread), but
       // required for exhaustiveness.
       AiHistoryViewStatus.refreshing => const SizedBox.shrink(),

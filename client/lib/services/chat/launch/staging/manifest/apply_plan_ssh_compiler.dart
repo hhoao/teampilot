@@ -36,6 +36,7 @@ Future<ApplyPlanSshPayload> compileApplyPlanForSsh({
       archive,
       relativePath: member.relativePath,
       bytes: await blobs.open(member.sha256),
+      mode: member.mode,
     );
   }
   return ApplyPlanSshPayload(
@@ -95,12 +96,13 @@ Map<String, _BlobMember> _compactedBlobMembers(ApplyPlan plan) {
   for (var opIndex = 0; opIndex < plan.ops.length; opIndex++) {
     final op = plan.ops[opIndex];
     switch (op) {
-      case ApplyWriteBlob(:final path, :final sha256):
+      case ApplyWriteBlob(:final path, :final sha256, :final mode):
         candidates.add(
           _blobMember(
             plan: plan,
             destination: path,
             sha256: sha256,
+            mode: mode,
             opIndex: opIndex,
           ),
         );
@@ -111,6 +113,7 @@ Map<String, _BlobMember> _compactedBlobMembers(ApplyPlan plan) {
               plan: plan,
               destination: p.posix.join(dest, entry.rel),
               sha256: entry.sha256,
+              mode: entry.mode,
               opIndex: opIndex,
             ),
           );
@@ -126,6 +129,18 @@ Map<String, _BlobMember> _compactedBlobMembers(ApplyPlan plan) {
 
   final lastWrites = <String, _BlobMember>{};
   for (final candidate in candidates) {
+    final existing = lastWrites[candidate.relativePath];
+    if (existing == null) {
+      lastWrites[candidate.relativePath] = candidate;
+      continue;
+    }
+    if (existing.sha256 == candidate.sha256) {
+      // Same bytes written twice: keep one member but never widen the mode.
+      lastWrites[candidate.relativePath] = candidate.withMode(
+        _mostRestrictiveMode(existing.mode, candidate.mode),
+      );
+      continue;
+    }
     lastWrites[candidate.relativePath] = candidate;
   }
   lastWrites.removeWhere((_, member) {
@@ -162,6 +177,7 @@ _BlobMember _blobMember({
   required String destination,
   required String sha256,
   required int opIndex,
+  int? mode,
 }) {
   final relativePath = manifestOverlayRelativePath(
     absolutePath: destination,
@@ -176,7 +192,17 @@ _BlobMember _blobMember({
     relativePath: relativePath,
     sha256: sha256,
     opIndex: opIndex,
+    mode: mode,
   );
+}
+
+/// Narrower of two optional permission modes. A `null` mode means the archive
+/// default (0644), so any explicit mode wins; two explicit modes intersect
+/// their bits, which drops group/world access for `0600`.
+int? _mostRestrictiveMode(int? a, int? b) {
+  if (a == null) return b;
+  if (b == null) return a;
+  return a & b;
 }
 
 final class _BlobMember {
@@ -185,12 +211,22 @@ final class _BlobMember {
     required this.relativePath,
     required this.sha256,
     required this.opIndex,
+    this.mode,
   });
 
   final String destination;
   final String relativePath;
   final String sha256;
   final int opIndex;
+  final int? mode;
+
+  _BlobMember withMode(int? next) => _BlobMember(
+    destination: destination,
+    relativePath: relativePath,
+    sha256: sha256,
+    opIndex: opIndex,
+    mode: next,
+  );
 }
 
 String _posixDirname(String path) {

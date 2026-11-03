@@ -299,6 +299,17 @@ class SessionChatMessageArea extends StatelessWidget {
                                             memberId: shellMemberId,
                                           ),
                                         );
+                                    // Landing create+send paints its first
+                                    // prompt before the seat owns a turn.
+                                    final pendingUserText =
+                                        seatSelect<ChatCubit, String>(
+                                          context,
+                                          (c) =>
+                                              c
+                                                  .state
+                                                  .pendingLandingPrompts[sid] ??
+                                              '',
+                                        );
                                     Widget buildChrome(bool sessionHasLeases) {
                                       final liveChrome =
                                           SessionHistoryLiveChromeX.resolve(
@@ -338,6 +349,14 @@ class SessionChatMessageArea extends StatelessWidget {
                                           scrollAnchors: context
                                               .read<ChatCubit>()
                                               .sessionScrollAnchors,
+                                          // A fresh seat paints "no prior
+                                          // messages" until its first turn
+                                          // lands — never during connect /
+                                          // first-prompt delivery.
+                                          suppressEmptyPane:
+                                              sessionConnecting ||
+                                              activity.isDelivering,
+                                          pendingUserText: pendingUserText,
                                         ),
                                       );
                                     }

@@ -1,6 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
+import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 
 void main() {
@@ -233,4 +234,118 @@ void main() {
       expect(note.merge, isFalse);
     },
   );
+
+  test(
+    'acks update_todos request with accepted todos so the prompt can end',
+    () {
+      final params = {
+        'todos': [
+          {'id': '1', 'content': 'A', 'status': 'pending'},
+        ],
+        'merge': true,
+      };
+      expect(encodeCursorNotificationAck('cursor/update_todos', params), {
+        'outcome': {
+          'outcome': 'accepted',
+          'todos': [
+            {'id': '1', 'content': 'A', 'status': 'pending'},
+          ],
+        },
+      });
+    },
+  );
+
+  test('acks task request with completed outcome', () {
+    expect(
+      encodeCursorNotificationAck('cursor/task', {
+        'toolCallId': 't1',
+        'description': 'Explore',
+        'subagentType': 'explore',
+        'agentId': 'ag-1',
+        'durationMs': 12,
+      }),
+      {
+        'outcome': {
+          'outcome': 'completed',
+          'agentId': 'ag-1',
+          'durationMs': 12,
+        },
+      },
+    );
+  });
+
+  test('acks generate_image request with generated filePath', () {
+    expect(
+      encodeCursorNotificationAck('cursor/generate_image', {
+        'toolCallId': 'img-1',
+        'description': 'icon',
+        'filePath': '/tmp/icon.png',
+      }),
+      {
+        'outcome': {'outcome': 'generated', 'filePath': '/tmp/icon.png'},
+      },
+    );
+  });
+
+  test('malformed notification request acks cancelled instead of hanging', () {
+    expect(
+      encodeCursorNotificationAck('cursor/update_todos', const {
+        'todos': 'nope',
+      }),
+      {
+        'outcome': {'outcome': 'cancelled'},
+      },
+    );
+    expect(encodeCursorNotificationAck('cursor/task', const {}), {
+      'outcome': {'outcome': 'cancelled'},
+    });
+    expect(encodeCursorNotificationAck('cursor/unknown', const {}), {
+      'outcome': {'outcome': 'cancelled'},
+    });
+  });
+
+  test('notification request folds the update and returns the ack', () {
+    final updates = <AcpSessionUpdate>[];
+    final result = handleCursorNotificationRequest(
+      method: 'cursor/update_todos',
+      params: {
+        'todos': [
+          {'id': '1', 'content': 'A', 'status': 'pending'},
+        ],
+        'merge': true,
+      },
+      disposed: false,
+      emitUpdate: updates.add,
+    );
+    expect(updates, hasLength(1));
+    expect(updates.single, isA<AcpTodoListUpdate>());
+    expect(result, {
+      'outcome': {
+        'outcome': 'accepted',
+        'todos': [
+          {'id': '1', 'content': 'A', 'status': 'pending'},
+        ],
+      },
+    });
+  });
+
+  test('disposed notification request acks cancelled and emits nothing', () {
+    final updates = <AcpSessionUpdate>[];
+    expect(
+      handleCursorNotificationRequest(
+        method: 'cursor/task',
+        params: {
+          'toolCallId': 't1',
+          'description': 'Explore',
+          'subagentType': 'explore',
+        },
+        disposed: true,
+        emitUpdate: updates.add,
+      ),
+      {
+        'outcome': {'outcome': 'cancelled'},
+      },
+    );
+    expect(updates, isEmpty);
+  });
 }

@@ -5782,6 +5782,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderToolAntigravity => 'Antigravity';
 
   @override
+  String get appProviderToolQoder => 'Qoder';
+
+  @override
   String get codebuddyCredentialsLogin => '登录';
 
   @override
@@ -5860,6 +5863,48 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get antigravityCredentialsActionFailed => 'Antigravity 登录失败。';
+
+  @override
+  String get qoderCredentialsLogin => '登录';
+
+  @override
+  String get qoderCredentialsLoginTitle => '登录 Qoder';
+
+  @override
+  String get qoderCredentialsLoginIntro =>
+      '在下方终端完成登录。CLI 会打开浏览器；如果没有打开，请手动访问它输出的链接。也可以在这里切换账号。';
+
+  @override
+  String get qoderCredentialsLoginStarting => '正在启动 Qoder CLI…';
+
+  @override
+  String qoderCredentialsLoginFailed(String error) {
+    return '无法启动登录终端：$error';
+  }
+
+  @override
+  String get qoderCredentialsLoginExited => 'Qoder CLI 已退出。请关闭此对话框后重新登录。';
+
+  @override
+  String get qoderCredentialsDone => '完成';
+
+  @override
+  String get qoderCredentialsCancel => '取消';
+
+  @override
+  String get qoderCredentialsRelaunch => '重新启动';
+
+  @override
+  String get qoderCredentialsSignedIn => '已登录';
+
+  @override
+  String get qoderContextWindow => '上下文窗口（tokens）';
+
+  @override
+  String get qoderContextWindowHint => '留空则使用模型默认值。';
+
+  @override
+  String get qoderCredentialsActionFailed => 'Qoder 操作失败';
 
   @override
   String get appProviderTeamToolSection => '团队默认服务商';
@@ -8075,7 +8120,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersQuickPresetCustomHint => '从零配置接口、凭据与显示格式。';
 
   @override
-  String get managedProvidersBasicsSectionTitle => '基本信息';
+  String get managedProvidersBasicsSectionTitle => '名称与密钥';
 
   @override
   String get managedProvidersBasicsSectionSubtitle => '命名与必要密钥。';
@@ -8084,25 +8129,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersBasicsSummary => '选择预设、命名，并按需填写密钥。';
 
   @override
-  String get managedProvidersQuerySectionTitle => '查询';
+  String get managedProvidersQuerySectionTitle => '用量 API 与 JSON 解析';
 
   @override
   String get managedProvidersQuerySectionSubtitle => '用量 API 与 JSON 解析。';
 
   @override
-  String get managedProvidersCredentialsSectionTitle => '凭据详情';
+  String get managedProvidersCredentialsSectionTitle => '凭据来源与请求写入';
 
   @override
   String get managedProvidersCredentialsSectionSubtitle => '凭据来源及写入请求的方式。';
 
   @override
-  String get managedProvidersDisplaySectionTitle => '显示';
+  String get managedProvidersDisplaySectionTitle => '余额与额度显示';
 
   @override
   String get managedProvidersDisplaySectionSubtitle => '余额与额度的显示格式。';
 
   @override
-  String get managedProvidersAdvancedSectionTitle => '高级';
+  String get managedProvidersAdvancedSectionTitle => '适配器、类型与引用';
 
   @override
   String get managedProvidersAdvancedSectionSubtitle => '适配器、类型与内部引用。';
@@ -8208,14 +8253,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersFieldExampleLabel => '示例';
 
   @override
-  String get managedProvidersJsonPathSeeAlso => '\$ 用法详见「查询」ℹ️';
+  String get managedProvidersJsonPathSeeAlso => '\$ 用法详见「用量 API 与 JSON 解析」ℹ️';
 
   @override
-  String get managedProvidersTemplateVariablesSeeAlsoQuery => '花括号用法详见「查询」ℹ️';
+  String get managedProvidersTemplateVariablesSeeAlsoQuery =>
+      '花括号用法详见「用量 API 与 JSON 解析」ℹ️';
 
   @override
   String get managedProvidersTemplateVariablesSeeAlsoCredentials =>
-      '花括号用法详见「凭据详情」ℹ️';
+      '花括号用法详见「凭据来源与请求写入」ℹ️';
 
   @override
   String get managedProvidersReferenceSyntaxHelper =>

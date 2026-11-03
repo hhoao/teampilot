@@ -50,6 +50,7 @@ import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/pages/chat/operator_history_send.dart'
     show OperatorMailboxQueuedEvent;
 import 'package:teampilot/pages/chat/session_chat_view.dart';
+import 'package:teampilot/pages/chat/session_history_thread.dart';
 import '../../support/compose_field_test_utils.dart';
 import 'package:teampilot/services/acp/acp_chat_transcript_replay.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
@@ -733,6 +734,56 @@ void main() {
     },
   );
 
+  testWidgets('attaching the ACP runtime keeps the history thread mounted', (
+    tester,
+  ) async {
+    final threadRuntime = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        const AiMessage(
+          id: 'm1',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'kept history')],
+        ),
+      ]);
+    when(() => seat.runtime).thenReturn(threadRuntime);
+    when(() => seat.loadedMessages).thenReturn(threadRuntime.messages);
+    _stubCubit(
+      seat,
+      const AiHistoryState(
+        status: AiHistoryViewStatus.ready,
+        totalMessageCount: 1,
+      ),
+    );
+
+    await pumpSession(tester, session: session('s1'));
+    await tester.pump();
+    final before = tester.state(find.byType(SessionHistoryThread));
+
+    // The lazily attached runtime inserts a BlocProvider for the compose.
+    // That provider must not sit above the history thread: a widget-type
+    // change there remounts the whole chat body on the first send.
+    final runtime = _FakeAcpRuntime();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.gemini,
+    );
+    addTearDown(() async {
+      await cubit.close();
+      await runtime.permissionsController.close();
+      await runtime.clientRequestsController.close();
+    });
+
+    await pumpSession(tester, session: session('s1'), acpRuntime: cubit);
+    await tester.pump();
+
+    expect(
+      identical(tester.state(find.byType(SessionHistoryThread)), before),
+      isTrue,
+      reason: 'the history thread must survive the runtime attach',
+    );
+  });
+
   testWidgets(
     'ACP compose without an attached runtime delegates to the host submit hook',
     (tester) async {
@@ -756,6 +807,10 @@ void main() {
 
       expect(hostSubmissions, 1);
       expect(submitted, 'continue please');
+      // The optimistic bubble lands before the host attach starts, so the send
+      // is not silent while the lazy attach stages/spawns.
+      verify(() => seat.enqueuePendingUser('continue please')).called(1);
+      verifyNever(() => seat.removePendingMatching(any()));
       // Terminal-less seats never write PTY pending records.
       verifyNever(
         () => seat.persistPendingUser(
@@ -767,6 +822,22 @@ void main() {
       );
     },
   );
+
+  testWidgets('a rejected lazy attach rolls the optimistic bubble back', (
+    tester,
+  ) async {
+    await pumpSession(
+      tester,
+      session: session('s-acp', acp: true),
+      onSubmit: (message) async => const HistoryContinueSubmitResult.failed(),
+    );
+
+    await enterCompose(tester, 'continue please');
+    await submitCompose(tester);
+
+    verify(() => seat.enqueuePendingUser('continue please')).called(1);
+    verify(() => seat.removePendingMatching('continue please')).called(1);
+  });
 
   testWidgets('ACP compose Stop cancels the in-flight turn via the runtime', (
     tester,

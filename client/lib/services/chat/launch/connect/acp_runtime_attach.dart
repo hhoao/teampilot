@@ -123,8 +123,10 @@ class AcpRuntimeAttach {
   ) async {
     final tab = _host.tabStore.getOpenTabBySessionId(session.sessionId);
     if (tab == null) return false;
+    final firstPrompt = job.request.firstPrompt?.trim() ?? '';
     final existing = tab.acpRuntime;
     if (existing != null) {
+      if (firstPrompt.isNotEmpty) existing.sendPrompt(firstPrompt);
       tab.reclaimedAcpRuntime = false;
       _host.updateTabRunning(tab.info.id);
       return true;
@@ -220,6 +222,11 @@ class AcpRuntimeAttach {
     tab.acpRuntime = cubit;
     tab.reclaimedAcpRuntime = false;
     _host.updateTabRunning(tab.info.id);
+    // A lazy attach-then-send owns the very first turn: queue the prompt on the
+    // cubit *before* the handshake so its bubble is visible immediately and
+    // `start()` dispatches it instead of running a launch-time history replay
+    // (`session/load`), which would swallow the turn's live updates.
+    if (firstPrompt.isNotEmpty) cubit.sendPrompt(firstPrompt);
     await cubit.start(
       executable: executable,
       sessionToolDir: sessionToolDir,

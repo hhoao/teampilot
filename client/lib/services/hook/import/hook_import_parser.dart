@@ -59,6 +59,7 @@ class HookImportParser {
   static final Map<CliTool, HookJsonDialect> _dialects = {
     CliTool.claude: const ClaudeFamilyHooksJsonDialect(),
     CliTool.codebuddy: const ClaudeFamilyHooksJsonDialect(),
+    CliTool.qoder: const ClaudeFamilyHooksJsonDialect(),
     CliTool.flashskyai: const ClaudeFamilyHooksJsonDialect(),
     CliTool.codex: const CodexHooksJsonDialect(),
     CliTool.cursor: const CursorHooksJsonDialect(),

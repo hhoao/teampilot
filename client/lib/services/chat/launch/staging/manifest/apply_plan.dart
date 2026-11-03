@@ -6,6 +6,9 @@ import 'package:teampilot/services/storage/windows_cli_runtime_junction.dart';
 const applyPlanProtocolVersion = 1;
 const applyPlanInlineLimitBytes = 4096;
 
+/// `0600`: owner read/write only (credential files).
+const int applyPlanPrivateFileMode = 0x180;
+
 String contentSha256Hex(List<int> bytes) => sha256.convert(bytes).toString();
 
 void assertApplyPath({
