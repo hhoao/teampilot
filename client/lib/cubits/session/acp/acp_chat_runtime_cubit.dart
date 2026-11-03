@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../../models/team_config.dart';
 import '../../../services/acp/acp_agent_session_store.dart';
 import '../../../services/acp/acp_agent_translator.dart';
+import '../../../services/acp/acp_background_liveness.dart';
 import '../../../services/acp/acp_background_transcript.dart';
 import '../../../services/acp/acp_chat_extension_fold.dart';
 import '../../../services/acp/acp_chat_strings.dart';
@@ -170,6 +171,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     AcpAgentSessionStore? agentSession,
     SeatBackgroundLeasePort? seatLeases,
     AcpBackgroundTranscriptSourceFactory? backgroundTranscriptFactory,
+    AcpBackgroundLivenessProbeFactory? backgroundLivenessFactory,
     Duration? backgroundSyncInterval,
     this.backgroundSyncWindow = defaultBackgroundSyncWindow,
   }) : _runtime = runtime,
@@ -178,6 +180,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
        _agentSession = agentSession,
        _seatLeases = seatLeases,
        _backgroundTranscriptFactory = backgroundTranscriptFactory,
+       _backgroundLivenessFactory = backgroundLivenessFactory,
        _backgroundSyncInterval = backgroundSyncInterval,
        super(const AcpChatRuntimeState());
 
@@ -231,6 +234,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   final AcpAgentSessionStore? _agentSession;
   final SeatBackgroundLeasePort? _seatLeases;
   final AcpBackgroundTranscriptSourceFactory? _backgroundTranscriptFactory;
+  final AcpBackgroundLivenessProbeFactory? _backgroundLivenessFactory;
+
+  /// Polls the agent's own metadata for out-of-turn work, built once the agent
+  /// session id is known. Null when this CLI keeps no readable evidence.
+  AcpBackgroundLivenessProbe? _backgroundLiveness;
 
   /// Incremental reader of the agent's own transcript, built once the agent
   /// session id is known. Null when this CLI keeps no readable transcript.
@@ -287,6 +295,18 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// [endTurn] arms the watch when this is set.
   bool _turnHadBackgroundToolCall = false;
 
+  /// Cursor child agents still running after the parent tool returned.
+  /// Keyed by `subagentSessionId`. Empty values mean "alive, no label yet".
+  final Map<String, String> _liveSubagents = {};
+
+  /// Every Cursor child spawned this watch has already reported a terminal
+  /// state. Stops [endTurn] from arming a lease for work that already finished.
+  bool _cursorSubagentsSettled = false;
+
+  /// Human-readable description of the background tool call opened this turn,
+  /// surfaced on the seat lease so the sidebar can say what is still running.
+  String? _turnBackgroundLabel;
+
   /// A background watch is live (lease held, polling scheduled).
   bool _backgroundWorkActive = false;
 
@@ -322,6 +342,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     _seenChunkThisTurn = false;
     _runningToolCalls.clear();
     _turnHadBackgroundToolCall = false;
+    _turnBackgroundLabel = null;
   }
 
   /// Injects localized copy; must run before [start].
@@ -553,10 +574,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       // their sessions re-discover the current cwd on every resume (a session
       // can move), so this is the fallback for agents without `session/list`.
       unawaited(_agentSession?.write(liveId, cwd: effectiveWorkingDirectory));
-      _bindBackgroundTranscript(
-        sessionToolDir: sessionToolDir,
-        agentId: liveId,
-      );
+      _bindBackgroundProbes(sessionToolDir: sessionToolDir, agentId: liveId);
     }
     await _applyLaunchModel();
     emit(
@@ -875,6 +893,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         // already-captured samples (duplicates the collector cannot dedupe),
         // so only live updates are persisted.
         if (!replaying) unawaited(_appendUsage(update));
+      case AcpSubagentUpdate():
+        if (isClosed || replaying) return;
+        _applySubagent(update);
       case AcpPlan() ||
           AcpTodoListUpdate() ||
           AcpTaskUpdate() ||
@@ -928,10 +949,14 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   void _applyToolCall(AcpToolCallUpdate update) {
     final replaying = _replayMessages != null;
+    // Cursor's Task tool reports the background launch as a *completed*
+    // update whose result is `{isBackground: true}` — the child is still
+    // running, the parent tool is not.
     final launchesBackground =
         update.background &&
         (update.status == AcpToolCallStatus.pending ||
-            update.status == AcpToolCallStatus.inProgress);
+            update.status == AcpToolCallStatus.inProgress ||
+            update.status == AcpToolCallStatus.completed);
     if (!replaying) {
       switch (update.status) {
         case AcpToolCallStatus.pending:
@@ -943,8 +968,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         case null:
           break;
       }
-      if (launchesBackground) {
+      if (launchesBackground && !_cursorSubagentsSettled) {
         _turnHadBackgroundToolCall = true;
+        _cursorSubagentsSettled = false;
+        _turnBackgroundLabel = _backgroundLabelOf(update);
       }
     } else if (launchesBackground) {
       _replayedBackgroundToolCalls.add(update.toolCallId);
@@ -1055,6 +1082,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   void _endTurn() {
     if (_closing || isClosed) return;
     final hadBackground = _turnHadBackgroundToolCall;
+    final backgroundLabel = _turnBackgroundLabel;
     _resetTurnTrackers();
     emit(
       state.copyWith(
@@ -1084,14 +1112,62 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       unawaited(
         _runDeferredHistorySync().whenComplete(() {
           if (_closing || isClosed) return;
-          if (hadBackground && !_backgroundWorkActive) {
-            _armBackgroundWatch();
+          if (hadBackground &&
+              !_cursorSubagentsSettled &&
+              !_backgroundWorkActive) {
+            _armBackgroundWatch(label: backgroundLabel);
           }
         }),
       );
       return;
     }
-    if (hadBackground) _armBackgroundWatch();
+    if (hadBackground && !_cursorSubagentsSettled) {
+      _armBackgroundWatch(label: backgroundLabel);
+    }
+  }
+
+  /// Tracks a Cursor child agent so the session stays visibly running after
+  /// the parent turn ends, and drops that signal once the child finishes.
+  void _applySubagent(AcpSubagentUpdate update) {
+    final id = update.subagentSessionId;
+    if (update.terminal) {
+      if (!_liveSubagents.containsKey(id)) return;
+      _liveSubagents.remove(id);
+      if (_liveSubagents.isNotEmpty) {
+        _armBackgroundWatch(label: _liveSubagentLabel());
+        return;
+      }
+      _cursorSubagentsSettled = true;
+      _turnHadBackgroundToolCall = false;
+      _stopBackgroundSync();
+      return;
+    }
+    final label = _subagentLabel(update);
+    _liveSubagents[id] = label ?? _liveSubagents[id] ?? '';
+    _cursorSubagentsSettled = false;
+    if (_replayMessages != null) return;
+    if (state.inTurn) {
+      _turnHadBackgroundToolCall = true;
+      if (label != null && label.isNotEmpty) _turnBackgroundLabel = label;
+      return;
+    }
+    _armBackgroundWatch(label: label ?? _liveSubagentLabel());
+  }
+
+  String? _subagentLabel(AcpSubagentUpdate update) {
+    final task = update.task?.trim();
+    if (task != null && task.isNotEmpty) return task;
+    final name = update.name?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    return null;
+  }
+
+  String? _liveSubagentLabel() {
+    for (final label in _liveSubagents.values) {
+      final trimmed = label.trim();
+      if (trimmed.isNotEmpty) return trimmed;
+    }
+    return _turnBackgroundLabel;
   }
 
   /// Runs the launch reconcile that [start] skipped for a queued first prompt.
@@ -1185,7 +1261,34 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     unawaited(_persist());
   }
 
-  /// Binds the agent's own transcript once its session id is known.
+  /// Binds the optional out-of-turn evidence sources once the agent session id
+  /// is known: the transcript tail reader (Claude) and the liveness probe
+  /// (Cursor), both scoped to the CLI's isolated config dir.
+  void _bindBackgroundProbes({
+    required String sessionToolDir,
+    required String agentId,
+  }) {
+    _bindBackgroundTranscript(
+      sessionToolDir: sessionToolDir,
+      agentId: agentId,
+    );
+    if (_backgroundLiveness != null) return;
+    final livenessFactory = _backgroundLivenessFactory;
+    if (livenessFactory == null) return;
+    try {
+      _backgroundLiveness = livenessFactory(
+        sessionToolDir: sessionToolDir,
+        sessionId: agentId,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[acp-chat] session $sessionId liveness probe failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
   void _bindBackgroundTranscript({
     required String sessionToolDir,
     required String agentId,
@@ -1251,6 +1354,30 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     return true;
   }
 
+  /// A short description of a background tool call, preferring the tool's own
+  /// `description` (Cursor / Claude Shell) and falling back to its title.
+  String? _backgroundLabelOf(AcpToolCallUpdate update) {
+    final description = update.args?['description'];
+    if (description is String && description.trim().isNotEmpty) {
+      return description.trim();
+    }
+    final title = update.title?.trim();
+    return (title == null || title.isEmpty) ? null : title;
+  }
+
+  /// True when the tool part launched work that outlives the parent turn.
+  ///
+  /// Cursor Task puts `isBackground` on the result, not the args.
+  bool _toolPartIsBackground(AiToolCallPart part) {
+    final args = part.args;
+    if (args != null &&
+        (args['run_in_background'] == true || args['background'] == true)) {
+      return true;
+    }
+    final result = part.result;
+    return result is Map && result['isBackground'] == true;
+  }
+
   /// Background tool-call ids carried by transcript messages, so the
   /// multi-task heuristic in [_noteBackgroundProgress] works without an ACP
   /// replay buffer.
@@ -1259,11 +1386,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     for (final message in messages) {
       for (final part in message.parts) {
         if (part is! AiToolCallPart) continue;
-        final args = part.args;
-        if (args == null) continue;
-        if (args['run_in_background'] != true && args['background'] != true) {
-          continue;
-        }
+        if (!_toolPartIsBackground(part)) continue;
         ids.add(part.toolCallId);
       }
     }
@@ -1273,7 +1396,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// Arms the out-of-turn watch and the seat keep-alive after a turn that
   /// launched a background tool call. Idempotent while a watch is live.
   /// Ticks read the agent transcript when one is bound, else replay history.
-  void _armBackgroundWatch() {
+  void _armBackgroundWatch({String? label}) {
     if (_closing || isClosed) return;
     if (!_backgroundWorkActive) {
       _backgroundWorkActive = true;
@@ -1283,13 +1406,14 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       // only differ by text the agent wrote after the shell finished.
       _backgroundBaselineTextLen = _assistantTextLen(state.messages);
       _backgroundKnownBgIds.clear();
-      _seatLeases?.acquireBackgroundTask(
-        sessionId: sessionId,
-        memberId: seatMemberId,
-        leaseId: backgroundLeaseId,
-        acquiredAt: DateTime.now(),
-      );
     }
+    _seatLeases?.acquireBackgroundTask(
+      sessionId: sessionId,
+      memberId: seatMemberId,
+      leaseId: backgroundLeaseId,
+      acquiredAt: DateTime.now(),
+      label: label ?? _liveSubagentLabel(),
+    );
     _backgroundSyncStartedAt ??= DateTime.now();
     _scheduleBackgroundSyncTick();
   }
@@ -1314,7 +1438,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         _backgroundBaselineTextLen = textLen;
         return;
       }
-      if (baseline != null && textLen > baseline) _stopBackgroundSync();
+      if (baseline != null && textLen > baseline && _liveSubagents.isEmpty) {
+        _stopBackgroundSync();
+      }
       return;
     }
 
@@ -1327,7 +1453,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       _backgroundBaselineTextLen = textLen;
       return;
     }
-    if (textLen > baseline) _stopBackgroundSync();
+    if (textLen > baseline && _liveSubagents.isEmpty) _stopBackgroundSync();
   }
 
   int _assistantTextLen(List<AiMessage> messages) {
@@ -1380,8 +1506,38 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       _stopBackgroundSync();
       return;
     }
+    unawaited(_runBackgroundSyncTick(started));
+  }
+
+  Future<void> _runBackgroundSyncTick(DateTime started) async {
+    // The agent's own on-disk evidence is authoritative: Cursor never reports a
+    // background child's completion over ACP, so waiting for replayed text
+    // would hold the lease for the whole window after the work is already gone.
+    if (await _backgroundWorkSettled(started)) return;
+    if (_closing || isClosed) {
+      _stopBackgroundSync();
+      return;
+    }
     // A turn or an in-flight reconciliation owns the connection; retry later.
-    unawaited(syncHistory().whenComplete(_scheduleBackgroundSyncTick));
+    try {
+      await syncHistory();
+    } finally {
+      _scheduleBackgroundSyncTick();
+    }
+  }
+
+  /// Releases the lease when the liveness probe proves the out-of-turn work is
+  /// over. Returns whether the watch was stopped.
+  Future<bool> _backgroundWorkSettled(DateTime started) async {
+    final probe = _backgroundLiveness;
+    if (probe == null || !_backgroundWorkActive) return false;
+    final verdict = await probe.probe(since: started);
+    if (verdict != AcpBackgroundLiveness.idle) return false;
+    if (_closing || isClosed || !_backgroundWorkActive) return false;
+    // A child tracked from protocol frames outranks the disk probe.
+    if (_liveSubagents.isNotEmpty) return false;
+    _stopBackgroundSync();
+    return true;
   }
 
   void _stopBackgroundSync() {

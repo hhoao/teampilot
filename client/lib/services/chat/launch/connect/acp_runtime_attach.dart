@@ -10,6 +10,7 @@ import '../../../../models/workspace_launch_context.dart';
 import '../../../acp/acp_chat_strings.dart';
 import '../../../acp/acp_chat_transcript.dart';
 import '../../../acp/acp_agent_session_store.dart';
+import '../../../acp/acp_background_liveness.dart';
 import '../../../acp/acp_background_transcript.dart';
 import '../../../acp/acp_frame_logger.dart';
 import '../../../acp/acp_mcp_servers.dart';
@@ -18,6 +19,7 @@ import '../../../acp/acp_session_runtime.dart';
 import '../../../acp/acp_ssh_transport.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../agent_status/seat_lease_port.dart';
+import '../../../cli/registry/capabilities/acp_background_liveness_capability.dart';
 import '../../../cli/registry/capabilities/acp_background_transcript_capability.dart';
 import '../../../cli/registry/capabilities/acp_capability.dart';
 import '../../../cli/registry/cli_tool_registry.dart';
@@ -576,6 +578,10 @@ class AcpRuntimeAttach {
         cli,
         remote: remote,
       ),
+      backgroundLivenessFactory: _backgroundLivenessFactory(
+        cli,
+        remote: remote,
+      ),
     )..ensureStrings(_host.acpChatStrings?.call(cli) ?? defaultAcpChatStrings);
   }
 
@@ -594,6 +600,25 @@ class AcpRuntimeAttach {
     final fs = _storage.fs;
     return ({required String sessionToolDir, required String sessionId}) =>
         capability.createBackgroundTranscriptSource(
+          fs: fs,
+          sessionToolDir: sessionToolDir,
+          sessionId: sessionId,
+        );
+  }
+
+  /// Same constraint as the transcript source: the agent's metadata lives on
+  /// the machine the CLI runs on, so a remote seat keeps the replay watch.
+  AcpBackgroundLivenessProbeFactory? _backgroundLivenessFactory(
+    CliTool cli, {
+    required bool remote,
+  }) {
+    if (remote) return null;
+    final capability = _host.cliRegistry
+        .capability<AcpBackgroundLivenessCapability>(cli);
+    if (capability == null) return null;
+    final fs = _storage.fs;
+    return ({required String sessionToolDir, required String sessionId}) =>
+        capability.createBackgroundLivenessProbe(
           fs: fs,
           sessionToolDir: sessionToolDir,
           sessionId: sessionId,

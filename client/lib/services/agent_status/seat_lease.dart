@@ -20,6 +20,7 @@ class SeatLease extends Equatable {
     required this.kind,
     required this.id,
     required this.acquiredAt,
+    this.label,
   });
 
   final SeatLeaseKind kind;
@@ -30,8 +31,13 @@ class SeatLease extends Equatable {
 
   final DateTime acquiredAt;
 
+  /// Human-readable description of the work this lease keeps alive (e.g. the
+  /// background shell's `description`). Sidebar rows show it so an out-of-turn
+  /// task reads as "still working", not "stuck".
+  final String? label;
+
   @override
-  List<Object?> get props => [kind, id, acquiredAt];
+  List<Object?> get props => [kind, id, acquiredAt, label];
 }
 
 /// Safety net for leases whose terminal event never arrives (CLI crash

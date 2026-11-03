@@ -9,6 +9,7 @@ import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/acp/acp_agent_session_store.dart';
 import 'package:teampilot/services/acp/acp_agent_translator.dart';
+import 'package:teampilot/services/acp/acp_background_liveness.dart';
 import 'package:teampilot/services/acp/acp_background_transcript.dart';
 import 'package:teampilot/services/acp/acp_chat_strings.dart';
 import 'package:teampilot/services/acp/acp_chat_transcript.dart';
@@ -71,7 +72,8 @@ class _RecordingAttention implements AgentAttentionPort {
 /// Records the background keep-alive lease the ACP cubit holds while it polls
 /// an out-of-turn shell task.
 class _RecordingSeatLeases implements SeatBackgroundLeasePort {
-  final acquires = <({String sessionId, String memberId, String leaseId})>[];
+  final acquires =
+      <({String sessionId, String memberId, String leaseId, String? label})>[];
   final releases = <({String sessionId, String memberId, String leaseId})>[];
 
   @override
@@ -80,8 +82,14 @@ class _RecordingSeatLeases implements SeatBackgroundLeasePort {
     required String memberId,
     required String leaseId,
     required DateTime acquiredAt,
+    String? label,
   }) {
-    acquires.add((sessionId: sessionId, memberId: memberId, leaseId: leaseId));
+    acquires.add((
+      sessionId: sessionId,
+      memberId: memberId,
+      leaseId: leaseId,
+      label: label,
+    ));
   }
 
   @override
@@ -104,6 +112,22 @@ class _FakeBackgroundTranscript implements AcpBackgroundTranscriptSource {
   Future<AcpBackgroundTranscriptResult?> refresh() async {
     refreshes++;
     return result;
+  }
+}
+
+/// Answers the out-of-turn liveness probe on demand.
+class _FakeLivenessProbe implements AcpBackgroundLivenessProbe {
+  _FakeLivenessProbe([this.verdict = AcpBackgroundLiveness.running]);
+
+  AcpBackgroundLiveness verdict;
+  DateTime? since;
+  int probes = 0;
+
+  @override
+  Future<AcpBackgroundLiveness> probe({DateTime? since}) async {
+    probes++;
+    this.since = since;
+    return verdict;
   }
 }
 
@@ -295,6 +319,7 @@ void main() {
     AcpAgentSessionStore? agentSession,
     SeatBackgroundLeasePort? seatLeases,
     AcpBackgroundTranscriptSourceFactory? backgroundTranscriptFactory,
+    AcpBackgroundLivenessProbeFactory? backgroundLivenessFactory,
     Duration? backgroundSyncInterval,
     String launchProvider = '',
     String launchModel = '',
@@ -312,6 +337,7 @@ void main() {
       agentSession: agentSession,
       seatLeases: seatLeases,
       backgroundTranscriptFactory: backgroundTranscriptFactory,
+      backgroundLivenessFactory: backgroundLivenessFactory,
       backgroundSyncInterval: backgroundSyncInterval,
     )..ensureStrings(_testStrings);
     return cubit;
@@ -2641,6 +2667,114 @@ void main() {
     await pumpEventQueue();
   }
 
+  test(
+    'cursor background task stays running until the subagent finishes',
+    () async {
+      final leases = _RecordingSeatLeases();
+      final cubit = bootCubit(
+        seatLeases: leases,
+        backgroundSyncInterval: const Duration(hours: 1),
+      );
+      await cubit.start(
+        executable: 'cursor-agent',
+        sessionToolDir: '/tmp/cursor',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+
+      cubit.sendPrompt('run a background subtask');
+      await pumpEventQueue();
+      runtime.emit(
+        const AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: '已在后台启动子任务',
+          isThought: false,
+        ),
+      );
+      runtime.emit(
+        const AcpToolCallUpdate(
+          toolCallId: 'call-task-bg',
+          title: 'Task: Background client peek',
+          status: AcpToolCallStatus.completed,
+          args: {'description': 'Background client peek'},
+          result: {'durationMs': 270, 'isBackground': true},
+          background: true,
+        ),
+      );
+      runtime.emit(
+        const AcpSubagentUpdate(
+          subagentSessionId: 'b178',
+          spawned: true,
+          task: 'Background client peek',
+        ),
+      );
+      await pumpEventQueue();
+      runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+      await pumpEventQueue();
+
+      expect(leases.acquires, isNotEmpty);
+      expect(leases.acquires.last.label, 'Background client peek');
+      expect(leases.releases, isEmpty);
+
+      runtime.emit(
+        const AcpSubagentUpdate(subagentSessionId: 'b178', state: 'completed'),
+      );
+      await pumpEventQueue();
+
+      expect(leases.releases, hasLength(1));
+      expect(
+        leases.releases.single.leaseId,
+        AcpChatRuntimeCubit.backgroundLeaseId,
+      );
+      await cubit.close();
+    },
+  );
+
+  test(
+    'a subagent that finishes before end_turn does not leave the session busy',
+    () async {
+      final leases = _RecordingSeatLeases();
+      final cubit = bootCubit(
+        seatLeases: leases,
+        backgroundSyncInterval: const Duration(hours: 1),
+      );
+      await cubit.start(
+        executable: 'cursor-agent',
+        sessionToolDir: '/tmp/cursor',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+
+      cubit.sendPrompt('run a background subtask');
+      await pumpEventQueue();
+      runtime.emit(
+        const AcpToolCallUpdate(
+          toolCallId: 'call-task-bg',
+          title: 'Task: Background client peek',
+          status: AcpToolCallStatus.completed,
+          background: true,
+        ),
+      );
+      runtime.emit(
+        const AcpSubagentUpdate(
+          subagentSessionId: 'b178',
+          spawned: true,
+          task: 'Background client peek',
+        ),
+      );
+      runtime.emit(
+        const AcpSubagentUpdate(subagentSessionId: 'b178', state: 'completed'),
+      );
+      await pumpEventQueue();
+      runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+      await pumpEventQueue();
+
+      expect(leases.acquires, isEmpty);
+      expect(leases.releases, isEmpty);
+      await cubit.close();
+    },
+  );
+
   /// Polls [condition] in real time (up to [timeout]) so the background-watch
   /// tests do not hinge on a fixed delay surviving full-suite load.
   Future<void> waitFor(
@@ -2755,6 +2889,68 @@ void main() {
     await cubit.close();
   });
 
+  test('on-disk liveness releases the lease once Cursor work is over', () async {
+    final probe = _FakeLivenessProbe();
+    final leases = _RecordingSeatLeases();
+    String? boundSessionId;
+    final cubit = bootCubit(
+      seatLeases: leases,
+      backgroundLivenessFactory:
+          ({required String sessionToolDir, required String sessionId}) {
+            boundSessionId = sessionId;
+            return probe;
+          },
+      backgroundSyncInterval: const Duration(milliseconds: 10),
+    );
+    await cubit.start(
+      executable: 'cursor-agent',
+      sessionToolDir: '/tmp/cursor',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+
+    await sendBackgroundTurn(cubit);
+    await waitFor(() => leases.acquires.isNotEmpty);
+    // The child agent is still alive on disk: the lease must survive.
+    await waitFor(() => probe.probes > 0);
+    expect(leases.releases, isEmpty);
+
+    probe.verdict = AcpBackgroundLiveness.idle;
+    await waitFor(() => leases.releases.isNotEmpty);
+    expect(
+      leases.releases.single.leaseId,
+      AcpChatRuntimeCubit.backgroundLeaseId,
+    );
+    expect(boundSessionId, runtime.sessionId);
+    expect(probe.since, isNotNull);
+    await cubit.close();
+  });
+
+  test('a finished Cursor child is not reported as still running', () async {
+    final probe = _FakeLivenessProbe(AcpBackgroundLiveness.unknown);
+    final leases = _RecordingSeatLeases();
+    final cubit = bootCubit(
+      seatLeases: leases,
+      backgroundLivenessFactory:
+          ({required String sessionToolDir, required String sessionId}) => probe,
+      backgroundSyncInterval: const Duration(milliseconds: 10),
+    );
+    await cubit.start(
+      executable: 'cursor-agent',
+      sessionToolDir: '/tmp/cursor',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+
+    await sendBackgroundTurn(cubit);
+    await waitFor(() => probe.probes > 0);
+    // "unknown" means no evidence either way: the watch keeps its window
+    // rather than clearing a lease it cannot justify.
+    expect(leases.acquires, isNotEmpty);
+    expect(leases.releases, isEmpty);
+    await cubit.close();
+  });
+
   test(
     'falls back to session/load when the transcript is not locatable',
     () async {
@@ -2822,6 +3018,9 @@ void main() {
         leases.acquires.single.leaseId,
         AcpChatRuntimeCubit.backgroundLeaseId,
       );
+      // The lease carries the tool title so the sidebar tooltip can say what
+      // is still running instead of only "background work running".
+      expect(leases.acquires.single.label, 'run_tests');
       expect(leases.releases, isEmpty);
 
       // First tick only establishes the arm baseline (the launch ack) — the

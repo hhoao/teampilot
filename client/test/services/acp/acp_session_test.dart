@@ -257,6 +257,135 @@ void main() {
     );
   });
 
+  test(
+    'tool_call background flag recognises cursor block_until_ms: 0',
+    () async {
+      session = await openSession();
+      final update = session.updates.first;
+      agent.connection.notify(
+        'session/update',
+        params: {
+          'sessionId': sessionId,
+          'update': {
+            'sessionUpdate': 'tool_call',
+            'toolCallId': 'call-cursor-bg',
+            'title': 'Run full client test suite as baseline',
+            'kind': 'execute',
+            'status': 'pending',
+            'rawInput': {
+              'command': 'dart run tool/run_tests.dart',
+              'description': 'Run full client test suite as baseline',
+              'block_until_ms': 0,
+            },
+          },
+        },
+      );
+
+      final mapped = await update as AcpToolCallUpdate;
+      expect(mapped.background, isTrue);
+    },
+  );
+
+  test('tool_call with a blocking block_until_ms is not background', () async {
+    session = await openSession();
+    final update = session.updates.first;
+    agent.connection.notify(
+      'session/update',
+      params: {
+        'sessionId': sessionId,
+        'update': {
+          'sessionUpdate': 'tool_call',
+          'toolCallId': 'call-cursor-fg',
+          'title': 'npm test',
+          'kind': 'execute',
+          'status': 'pending',
+          'rawInput': {'command': 'npm test', 'block_until_ms': 30000},
+        },
+      },
+    );
+
+    final mapped = await update as AcpToolCallUpdate;
+    expect(mapped.background, isFalse);
+  });
+
+  test(
+    'cursor task result isBackground marks the tool call as background',
+    () async {
+      session = await openSession();
+      final update = session.updates.first;
+      agent.connection.notify(
+        'session/update',
+        params: {
+          'sessionId': sessionId,
+          'update': {
+            'sessionUpdate': 'tool_call_update',
+            'toolCallId': 'call-task-bg',
+            'title': 'Task: Background client peek',
+            'kind': 'other',
+            'status': 'completed',
+            'rawInput': {
+              'description': 'Background client peek',
+              '_toolName': 'task',
+            },
+            'rawOutput': {'durationMs': 270, 'isBackground': true},
+          },
+        },
+      );
+
+      final mapped = await update as AcpToolCallUpdate;
+      expect(mapped.background, isTrue);
+      expect(mapped.status, AcpToolCallStatus.completed);
+      expect(mapped.result, {'durationMs': 270, 'isBackground': true});
+    },
+  );
+
+  test(
+    'cursor subagent_spawned and subagent_state_update are delivered',
+    () async {
+      session = await openSession();
+      final spawned = session.updates.first;
+      agent.connection.notify(
+        'session/update',
+        params: {
+          'sessionId': sessionId,
+          'update': {
+            'sessionUpdate': 'subagent_spawned',
+            'subagentSessionId': 'b178',
+            'name': 'generalPurpose',
+            'task': 'Background client peek',
+            '_meta': {
+              'cursor': {'toolCallId': 'call-task-bg', 'agentId': 'b178'},
+            },
+          },
+        },
+      );
+
+      final spawnedUpdate = await spawned as AcpSubagentUpdate;
+      expect(spawnedUpdate.spawned, isTrue);
+      expect(spawnedUpdate.subagentSessionId, 'b178');
+      expect(spawnedUpdate.task, 'Background client peek');
+      expect(spawnedUpdate.toolCallId, 'call-task-bg');
+      expect(spawnedUpdate.terminal, isFalse);
+
+      final finished = session.updates.first;
+      agent.connection.notify(
+        'session/update',
+        params: {
+          'sessionId': sessionId,
+          'update': {
+            'sessionUpdate': 'subagent_state_update',
+            'subagentSessionId': 'b178',
+            'state': 'completed',
+          },
+        },
+      );
+
+      final finishedUpdate = await finished as AcpSubagentUpdate;
+      expect(finishedUpdate.terminal, isTrue);
+      expect(finishedUpdate.state, 'completed');
+    },
+  );
+
   test('tool_call rawInput reaches the update as args', () async {
     session = await openSession();
     final update = session.updates.first;

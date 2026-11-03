@@ -212,11 +212,18 @@ subagent / monitor / workflow。
 且 **ACP v1 没有任何后台工作信号**（`state_update` 是 v2 draft 的东西，尚未稳定、
 零 agent 实现）。因此在 ACP 会话下：
 
-- 只能看到**在途回合**的活动（thinking / generating / toolRunning，来自 ACP 的流式更新）；
-- **看不到**后台工作（后台 shell / 子 agent）——这不是实现缺陷，是 ACP v1 的协议缺口。
+- 能直接看到**在途回合**的活动（thinking / generating / toolRunning，来自 ACP 的流式更新）；
+- 回合结束后**没有**后续更新流，后台工作只能靠「回合内 tool_call 的 rawInput 是否标记后台」
+  推断，再由 `AcpChatRuntimeCubit` 在回合结束后轮询 agent 自己的 transcript 维持租约
+  （见 `AcpBackgroundTranscriptSource`）。这不是 ACP v1 的协议缺口，而是需要在各 CLI 的
+  `rawInput` 里逐个认出「后台启动」的写法：
+  - opencode：`background: true`；
+  - claude / cursor 子 agent：`run_in_background: true`；
+  - **cursor Shell：`block_until_ms: 0`**（正数表示回合阻塞等待到超时；2026.10 实测本机
+    `cursor-agent` 的后台 shell 即此形态，之前漏认导致侧栏显示空闲）。
 
-要让 ACP 会话也有后台信号，只有三条路：等 ACP v2 落地并实现 `state_update`；或让 agent
-把它自己的后台任务通过 ACP 扩展（`_meta` / 自定义 notification）上报；或改走 PTY + plugin。
+若某 CLI 的新版本改用别的字段，仍需要补进 `AcpSession._isBackgroundToolCall`；只有等 ACP v2
+落地 `state_update`，才能完全摆脱这种逐字段猜测。
 
 - **阶段 4：cursor 已完成，gemini 待做**
   - **cursor：已做**。实测 `cursor-agent` 2026.10.14 的 hook 表含
@@ -227,9 +234,14 @@ subagent / monitor / workflow。
     未做：`beforeShellExecution` 的 `is_background`——实测载荷里没有该字段，不做猜测。
   - **gemini：待做**。它的 hook writer 目前是 no-op，需要先建整条 hook 通道，单独立项。
 - **侧栏指示器：已完成**。`SessionWorkingIndicator` 增加 `backgroundRunning`
-  （静态沙漏，优先级 `waiting > working > background > idle`），`SidebarSessionTile`
+  （优先级 `waiting > working > background > idle`），`SidebarSessionTile`
   经 `ChatCubit.seatLeaseCubit` 读取租约（不需要新 provider）；顺带修掉 `SeatLeaseCubit`
   在 `pruneInterval: null` 时仍启用 prune 定时器的真 bug（会污染 `testWidgets`）。
+  - 2026-11-03 修正：沙漏从**静态**改为**缓慢呼吸**（2.4s opacity 0.45↔1.0）。静态字形被
+    用户读成「卡死」，但仍然不是 spinner，避免与「回合运行中」混淆。
+  - 2026-11-03 新增：`SeatLease.label` 携带后台任务描述（ACP 取 tool_call 的
+    `args.description`，回退 `title`），侧栏 tooltip 显示
+    「后台任务运行中…\n<label>」，让用户知道在跑什么，而不只是「有东西在跑」。
 - **端到端集成测试：已完成**。`test/integration/background_work_live_chrome_integration_test.dart`
   串起 `seatLeaseProjection` → `SeatLeaseCubit` → `SessionHistoryLiveChrome.resolve`，
   覆盖 claude 与 opencode 两种线格式（含 `<task-id>` 释放路径）。

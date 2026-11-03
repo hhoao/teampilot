@@ -412,12 +412,18 @@ class AcpAgentConnection {
     final response = await _client.client.initialize(
       acpd.InitializeRequest(
         protocolVersion: acpd.ProtocolVersion.v1,
-        clientCapabilities: const acpd.ClientCapabilities(
-          fs: acpd.FileSystemCapabilities(
+        clientCapabilities: acpd.ClientCapabilities(
+          fs: const acpd.FileSystemCapabilities(
             readTextFile: false,
             writeTextFile: false,
           ),
           terminal: false,
+          // Cursor reads `_meta.subagents` (true or an object). Negotiating it
+          // keeps `session/prompt` open until background children finish, then
+          // starts the parent follow-up inside that same prompt.
+          meta: translator.advertisesBackgroundSubagents
+              ? const {'subagents': true}
+              : const {},
         ),
         clientInfo: acpd.Implementation(
           name: clientName,

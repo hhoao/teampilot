@@ -606,6 +606,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   !working &&
                   !waiting &&
                   leaseState.sessionHasLeases(sessionId),
+              backgroundLabel: leaseState.sessionBackgroundLabel(sessionId),
               selected: selected,
               l10n: l10n,
               cs: cs,
@@ -893,14 +894,12 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   ),
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: TpTooltip(
-                      message: paintedTitle,
-                      child: Text(
-                        paintedTitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TpTextStyles.of(context).mdColored(cs.onSurface),
-                      ),
+                    child: _SessionRowTitle(
+                      title: paintedTitle,
+                      sessionId: sessionId,
+                      working: working,
+                      waiting: waiting,
+                      leaseCubit: leaseCubit,
                     ),
                   ),
                 ),
@@ -945,12 +944,13 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   }
 
   /// Leading status slot for the row. Waiting (needs-you) wins over working,
-  /// which wins over background work — a completed turn whose CLI is still
-  /// busy gets a static hourglass, not the turn spinner.
+  /// which wins over background work. Background work uses the same spinner
+  /// as a live turn; the row subtitle names the task.
   Widget _sessionIndicator({
     required bool working,
     required bool waiting,
     required bool backgroundRunning,
+    String? backgroundLabel,
     required bool selected,
     required AppLocalizations l10n,
     required ColorScheme cs,
@@ -967,9 +967,78 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       ),
     );
     if (!backgroundRunning) return indicator;
+    final label = backgroundLabel?.trim();
     return Tooltip(
-      message: l10n.sessionHistoryBackgroundRunning,
+      message: label == null || label.isEmpty
+          ? l10n.sessionHistoryBackgroundRunning
+          : '${l10n.sessionHistoryBackgroundRunning}\n$label',
       child: indicator,
+    );
+  }
+}
+
+/// Session title plus, while background work is live, the task name.
+///
+/// The reorderable session list hides tooltips, so the task has to be text
+/// on the row or the spinner reads as a frozen session.
+class _SessionRowTitle extends StatelessWidget {
+  const _SessionRowTitle({
+    required this.title,
+    required this.sessionId,
+    required this.working,
+    required this.waiting,
+    required this.leaseCubit,
+  });
+
+  final String title;
+  final String sessionId;
+  final bool working;
+  final bool waiting;
+  final SeatLeaseCubit? leaseCubit;
+
+  @override
+  Widget build(BuildContext context) {
+    final leaseCubit = this.leaseCubit;
+    if (leaseCubit == null) return _title(context, subtitle: null);
+    return BlocBuilder<SeatLeaseCubit, SeatLeaseState>(
+      bloc: leaseCubit,
+      builder: (context, leaseState) {
+        final background =
+            !working && !waiting && leaseState.sessionHasLeases(sessionId);
+        if (!background) return _title(context, subtitle: null);
+        final label = leaseState.sessionBackgroundLabel(sessionId)?.trim();
+        final subtitle = label == null || label.isEmpty
+            ? context.l10n.sessionHistoryBackgroundRunning
+            : label;
+        return _title(context, subtitle: subtitle);
+      },
+    );
+  }
+
+  Widget _title(BuildContext context, {required String? subtitle}) {
+    final cs = Theme.of(context).colorScheme;
+    final styles = TpTextStyles.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TpTooltip(
+          message: title,
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: styles.mdColored(cs.onSurface),
+          ),
+        ),
+        if (subtitle != null)
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: styles.xsColored(cs.onSurfaceVariant),
+          ),
+      ],
     );
   }
 }

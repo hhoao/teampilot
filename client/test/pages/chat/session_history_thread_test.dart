@@ -10,6 +10,7 @@ import 'package:teampilot/pages/chat/history_scroll_cursor_lock.dart';
 import 'package:teampilot/pages/chat/session_history_live_chrome.dart';
 import 'package:teampilot/pages/chat/session_history_thread.dart';
 import 'package:teampilot/widgets/scroll_cursor_lock.dart';
+import 'package:teampilot/widgets/session_working_spinner.dart';
 import 'package:tp_markdown/tp_markdown.dart'
     show ContentDisplayMode, MarkdownDisplayModeScope;
 
@@ -31,6 +32,7 @@ Widget _harness({
   bool hasOlder = false,
   bool isLoadingOlder = false,
   SessionHistoryLiveChrome liveChrome = SessionHistoryLiveChrome.none,
+  String? backgroundLabel,
   Future<void> Function()? onLoadOlder,
   ValueNotifier<String?>? visibleOwnerId,
   bool? mobilePerformanceMode,
@@ -52,6 +54,7 @@ Widget _harness({
           hasOlder: hasOlder,
           isLoadingOlder: isLoadingOlder,
           liveChrome: liveChrome,
+          backgroundLabel: backgroundLabel,
           onLoadOlder: onLoadOlder,
           visibleOwnerId: visibleOwnerId,
           mobilePerformanceMode: mobilePerformanceMode,
@@ -718,6 +721,32 @@ void main() {
         matching: find.byType(CircularProgressIndicator),
       ),
       findsNothing,
+    );
+  });
+
+  testWidgets('background footer names the running task', (tester) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(3));
+
+    await tester.pumpWidget(
+      _harness(
+        runtime: store,
+        liveChrome: SessionHistoryLiveChrome.background,
+        backgroundLabel: 'Run full client test suite',
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.text('Background work running… · Run full client test suite'),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(kSessionHistoryRunningFooterKey),
+        matching: find.byType(SessionBackgroundWorkMarker),
+      ),
+      findsOneWidget,
     );
   });
 

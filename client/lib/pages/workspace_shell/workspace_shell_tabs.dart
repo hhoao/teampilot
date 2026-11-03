@@ -10,6 +10,7 @@ import '../../models/team_config.dart';
 
 import '../../cubits/agent_attention_cubit.dart';
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/seat_lease_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/shortcut_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
@@ -559,36 +560,52 @@ class WorkbenchStripTabChipState extends State<WorkbenchStripTabChip> {
               )
               .titleForPaint(l10n);
     final cs = Theme.of(context).colorScheme;
+    final leaseCubit = sessionId == null
+        ? null
+        : context.read<ChatCubit>().seatLeaseCubit;
     // Session tabs inject the same indicator as the sidebar list; run/other
     // tabs keep TpTabChip's default CircularProgressIndicator.
-    final Widget? workingIndicator = sessionId == null
-        ? null
-        : SessionWorkingIndicator(
-            working: working,
-            waiting: waiting,
-            size: 13,
-            color: cs.primary,
-            waitingColor: cs.tertiary,
-          );
+    Widget chip({required bool backgroundRunning}) {
+      final Widget? workingIndicator = sessionId == null
+          ? null
+          : SessionWorkingIndicator(
+              working: working,
+              waiting: waiting,
+              backgroundRunning: backgroundRunning,
+              size: 13,
+              color: cs.primary,
+              waitingColor: cs.tertiary,
+            );
+      return TpTabChip(
+        title: title,
+        tooltip: widget.filePath,
+        active: widget.active,
+        preview: widget.preview,
+        pinned: widget.pinned,
+        working: working || waiting || backgroundRunning,
+        workingIndicator: workingIndicator,
+        accentColor: widget.accentColor,
+        onTap: widget.onTap,
+        onClose: widget.onClose,
+        onUnpin: widget.onUnpin,
+        onDoubleTap: widget.onDoubleTap,
+        onSecondaryTapDown: _showTabContextMenuAtTap,
+        onLongPress: defaultTargetPlatform == TargetPlatform.android
+            ? _showTabContextMenuAtChipCenter
+            : null,
+        leading: _WorkbenchStripLeading(cli: widget.cli, icon: widget.icon),
+      );
+    }
 
-    return TpTabChip(
-      title: title,
-      tooltip: widget.filePath,
-      active: widget.active,
-      preview: widget.preview,
-      pinned: widget.pinned,
-      working: working || waiting,
-      workingIndicator: workingIndicator,
-      accentColor: widget.accentColor,
-      onTap: widget.onTap,
-      onClose: widget.onClose,
-      onUnpin: widget.onUnpin,
-      onDoubleTap: widget.onDoubleTap,
-      onSecondaryTapDown: _showTabContextMenuAtTap,
-      onLongPress: defaultTargetPlatform == TargetPlatform.android
-          ? _showTabContextMenuAtChipCenter
-          : null,
-      leading: _WorkbenchStripLeading(cli: widget.cli, icon: widget.icon),
+    if (leaseCubit == null || sessionId == null) {
+      return chip(backgroundRunning: false);
+    }
+    return BlocBuilder<SeatLeaseCubit, SeatLeaseState>(
+      bloc: leaseCubit,
+      builder: (context, leaseState) => chip(
+        backgroundRunning:
+            !working && !waiting && leaseState.sessionHasLeases(sessionId),
+      ),
     );
   }
 }

@@ -556,7 +556,7 @@ void main() {
     await _dismissContextMenu(tester);
   });
 
-  testWidgets('background lease shows the hourglass marker', (tester) async {
+  testWidgets('background lease shows the running spinner', (tester) async {
     final leases = SeatLeaseCubit(pruneInterval: null);
     final chatCubit = _RecordingChatCubit(seatLeaseCubit: leases);
     final (attention, automationCubit) = _tileCubits();
@@ -585,9 +585,13 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byKey(AppKeys.sessionBackgroundWorkMarker), findsOneWidget);
+    expect(find.byType(SessionWorkingSpinner), findsOneWidget);
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SidebarSessionTile)),
+    );
+    expect(find.text(l10n.sessionHistoryBackgroundRunning), findsOneWidget);
 
-    // Releasing the lease drops the marker back to the idle dot. The cubit
+    // Releasing the lease drops the spinner back to the idle dot. The cubit
     // delivers the state change on a microtask, so give it a frame to land
     // before the selector rebuilds.
     leases.release(
@@ -597,7 +601,41 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
-    expect(find.byKey(AppKeys.sessionBackgroundWorkMarker), findsNothing);
+    expect(find.byType(SessionWorkingSpinner), findsNothing);
+    expect(find.text(l10n.sessionHistoryBackgroundRunning), findsNothing);
+  });
+
+  testWidgets('background lease tooltip names the running task', (
+    tester,
+  ) async {
+    final leases = SeatLeaseCubit(pruneInterval: null);
+    final chatCubit = _RecordingChatCubit(seatLeaseCubit: leases);
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+    addTearDown(leases.close);
+
+    leases.acquireBackgroundTask(
+      sessionId: _session.sessionId,
+      memberId: 'm1',
+      leaseId: 'acp-background-task',
+      acquiredAt: DateTime.utc(2026, 10, 15),
+      label: 'Run full client test suite',
+    );
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(SessionWorkingSpinner), findsOneWidget);
+    expect(find.text('Run full client test suite'), findsOneWidget);
   });
 
   testWidgets('active mode archives on action tap', (tester) async {

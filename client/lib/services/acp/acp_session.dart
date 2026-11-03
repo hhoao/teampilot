@@ -194,11 +194,7 @@ final class AcpUsageUpdate extends AcpSessionUpdate {
 
   /// Maps an acpd `usage_update` onto the chat-layer variant.
   factory AcpUsageUpdate.fromAcpd(acpd.UsageSessionUpdate update) =>
-      AcpUsageUpdate(
-        used: update.used,
-        size: update.size,
-        cost: update.cost,
-      );
+      AcpUsageUpdate(used: update.used, size: update.size, cost: update.cost);
 
   final int? used;
   final int? size;
@@ -343,6 +339,76 @@ final class AcpModelStateUpdate extends AcpSessionUpdate {
 
   @override
   int get hashCode => state?.hashCode ?? 0;
+}
+
+/// Cursor ACP child-agent lifecycle (`subagent_spawned` / `subagent_state_update`).
+///
+/// A background Task returns immediately (`rawOutput.isBackground`), and the
+/// parent turn ends while the child keeps running. These frames are the only
+/// signal that the child is still alive and, later, that it finished — so the
+/// session list can stay on the running indicator and then leave it.
+final class AcpSubagentUpdate extends AcpSessionUpdate {
+  const AcpSubagentUpdate({
+    required this.subagentSessionId,
+    this.spawned = false,
+    this.name,
+    this.task,
+    this.state,
+    this.toolCallId,
+  });
+
+  final String subagentSessionId;
+
+  /// True for `subagent_spawned`. A state update leaves this false.
+  final bool spawned;
+
+  final String? name;
+  final String? task;
+
+  /// `completed` / `failed` / `cancelled` / `disconnected`, or null while the
+  /// child is still running.
+  final String? state;
+
+  final String? toolCallId;
+
+  bool get terminal => switch (state) {
+    'completed' || 'failed' || 'cancelled' || 'disconnected' => true,
+    _ => false,
+  };
+
+  /// Parses a Cursor subagent session update, or null when [json] is a
+  /// different `sessionUpdate` or is missing `subagentSessionId`.
+  static AcpSubagentUpdate? tryParse(Map<String, Object?> json) {
+    final kind = json['sessionUpdate'];
+    if (kind != 'subagent_spawned' && kind != 'subagent_state_update') {
+      return null;
+    }
+    final id = _nonEmptyString(json['subagentSessionId']);
+    if (id == null) return null;
+    String? toolCallId;
+    final meta = json['_meta'];
+    if (meta is Map) {
+      final cursor = meta['cursor'];
+      if (cursor is Map) {
+        toolCallId = _nonEmptyString(cursor['toolCallId']);
+      }
+    }
+    final spawned = kind == 'subagent_spawned';
+    return AcpSubagentUpdate(
+      subagentSessionId: id,
+      spawned: spawned,
+      name: _nonEmptyString(json['name']),
+      task: _nonEmptyString(json['task']),
+      state: spawned ? null : _nonEmptyString(json['state']),
+      toolCallId: toolCallId,
+    );
+  }
+}
+
+String? _nonEmptyString(Object? value) {
+  if (value is! String) return null;
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? null : trimmed;
 }
 
 /// Parses Claude-adapter auth notices from a JSON-RPC params map.
@@ -670,7 +736,8 @@ class AcpAgentSession {
     Duration timeout = const Duration(seconds: 30),
   }) async {
     if (_disposed) return const [];
-    if (_connection.negotiatedCapabilities?.loadSession != true) return const [];
+    if (_connection.negotiatedCapabilities?.loadSession != true)
+      return const [];
     if (_promptInFlight) {
       throw StateError(
         'Cannot load ACP history while a prompt turn is in flight.',
@@ -793,6 +860,22 @@ class AcpAgentSession {
     if (_suppressBootstrap && !collecting) return;
     if (params is! Map) return;
     final raw = Map<String, Object?>.from(params);
+    final nested = raw['update'];
+    if (nested is Map) {
+      final subagent = AcpSubagentUpdate.tryParse(
+        Map<String, Object?>.from(nested),
+      );
+      if (subagent != null) {
+        final id = raw['sessionId'];
+        if (id != null && id != sessionId) return;
+        if (collecting) {
+          _historyBuffer?.add(subagent);
+          return;
+        }
+        _emit(subagent);
+        return;
+      }
+    }
     final acpd.SessionUpdateNotification notification;
     try {
       notification = acpd.SessionUpdateNotification.fromJson(raw);
@@ -863,7 +946,9 @@ class AcpAgentSession {
     return _encodePermission(_outcomeFor(reply, request.options));
   }
 
-  Map<String, Object?> _encodePermission(acpd.RequestPermissionOutcome outcome) {
+  Map<String, Object?> _encodePermission(
+    acpd.RequestPermissionOutcome outcome,
+  ) {
     return _connection.translator.encodePermissionResponse(outcome);
   }
 
@@ -1004,7 +1089,10 @@ class AcpAgentSession {
           status: _mapToolCallStatus(toolCall.status),
           args: _toolCallArgs(toolCall.rawInput),
           result: _toolCallResult(toolCall.rawOutput),
-          background: _isBackgroundToolCall(toolCall.rawInput),
+          background: _isBackgroundToolCall(
+            toolCall.rawInput,
+            toolCall.rawOutput,
+          ),
         );
       case acpd.ToolCallStatusUpdate(:final update):
         return AcpToolCallUpdate(
@@ -1013,7 +1101,7 @@ class AcpAgentSession {
           status: _mapToolCallStatus(update.status),
           args: _toolCallArgs(update.rawInput),
           result: _toolCallResult(update.rawOutput),
-          background: _isBackgroundToolCall(update.rawInput),
+          background: _isBackgroundToolCall(update.rawInput, update.rawOutput),
         );
       case acpd.PlanUpdate(:final plan):
         return AcpPlan(
@@ -1046,11 +1134,27 @@ class AcpAgentSession {
     return '';
   }
 
-  /// OpenCode's shell tool marks out-of-turn command launches in `rawInput`.
-  bool _isBackgroundToolCall(Object? rawInput) {
-    if (rawInput is! Map) return false;
-    return rawInput['background'] == true ||
-        rawInput['run_in_background'] == true;
+  /// Marks out-of-turn command launches.
+  ///
+  /// - OpenCode: `background: true` on `rawInput`.
+  /// - Claude / Cursor subagents: `run_in_background: true` on `rawInput`.
+  /// - Cursor Task: the tool returns immediately and puts `isBackground: true`
+  ///   on `rawOutput` (the input has only `description` / prompt).
+  /// - Cursor Shell: a zero `block_until_ms` backgrounds the command; a
+  ///   positive budget keeps the turn blocked until it finishes.
+  bool _isBackgroundToolCall(Object? rawInput, [Object? rawOutput]) {
+    return _rawMarksBackground(rawInput) || _rawMarksBackground(rawOutput);
+  }
+
+  bool _rawMarksBackground(Object? raw) {
+    if (raw is! Map) return false;
+    if (raw['background'] == true ||
+        raw['run_in_background'] == true ||
+        raw['isBackground'] == true) {
+      return true;
+    }
+    final blockUntilMs = raw['block_until_ms'];
+    return blockUntilMs is num && blockUntilMs <= 0;
   }
 
   /// The tool's own input object, when the agent sent one. Kept verbatim so

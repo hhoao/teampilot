@@ -10,6 +10,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/failed_message_record.dart';
+import '../../widgets/session_working_spinner.dart';
 import 'chat_outline.dart';
 import 'chat_reveal_controller.dart';
 import 'history_scroll_cursor_lock.dart';
@@ -69,6 +70,7 @@ class SessionHistoryThread extends StatefulWidget {
     required this.isLoadingOlder,
     this.onLoadOlder,
     this.liveChrome = SessionHistoryLiveChrome.none,
+    this.backgroundLabel,
     this.pendingDeliveryStatuses = const {},
     this.onRetryFailedMessage,
     this.highlightMessageId,
@@ -88,6 +90,11 @@ class SessionHistoryThread extends StatefulWidget {
 
   /// Slim starting/running footer under the scroll surface.
   final SessionHistoryLiveChrome liveChrome;
+
+  /// What the out-of-turn background work is doing (e.g. the background shell
+  /// task's description). Appended to the background footer so the row says
+  /// what is still running, not just that something is.
+  final String? backgroundLabel;
 
   /// Transient first prompt of a landing create+send, painted as a user bubble
   /// until the runtime owns that turn (ACP `sendPrompt` / PTY pending).
@@ -834,10 +841,13 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     final scheme = Theme.of(context).colorScheme;
     final isBackground =
         widget.liveChrome == SessionHistoryLiveChrome.background;
+    final backgroundLabel = widget.backgroundLabel?.trim() ?? '';
     final label = switch (widget.liveChrome) {
       SessionHistoryLiveChrome.starting => context.l10n.sessionHistoryStarting,
-      SessionHistoryLiveChrome.background =>
-        context.l10n.sessionHistoryBackgroundRunning,
+      SessionHistoryLiveChrome.background => backgroundLabel.isEmpty
+          ? context.l10n.sessionHistoryBackgroundRunning
+          : '${context.l10n.sessionHistoryBackgroundRunning} · '
+                '$backgroundLabel',
       SessionHistoryLiveChrome.running ||
       SessionHistoryLiveChrome.none => context.l10n.sessionHistoryRunning,
     };
@@ -851,11 +861,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Background work is not a turn: show a static marker instead of
-            // the running spinner so the two states stay distinguishable.
+            // Background work is not a turn: show the breathing hourglass
+            // instead of the running spinner so the two states stay
+            // distinguishable — yet the footer still reads as alive.
             if (isBackground)
-              Icon(
-                Icons.hourglass_bottom_rounded,
+              SessionBackgroundWorkMarker(
                 size: 14,
                 color: scheme.onSurfaceVariant,
               )
@@ -866,11 +876,17 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                 color: scheme.onSurfaceVariant,
               ),
             const SizedBox(width: 10),
-            Text(
-              label,
-              style: TpTextStyles.of(
-                context,
-              ).smColored(scheme.onSurfaceVariant),
+            // The background label can be an arbitrary tool description, so
+            // clip it instead of overflowing the footer row.
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TpTextStyles.of(
+                  context,
+                ).smColored(scheme.onSurfaceVariant),
+              ),
             ),
           ],
         ),

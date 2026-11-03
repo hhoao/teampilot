@@ -25,6 +25,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     required this.onRetry,
     required this.onLoadOlder,
     this.liveChrome = SessionHistoryLiveChrome.none,
+    this.backgroundLabel,
     this.pendingDeliveryStatuses = const {},
     this.onRetryFailedMessage,
     this.highlightMessageId,
@@ -42,6 +43,10 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   final VoidCallback onRetry;
   final Future<void> Function() onLoadOlder;
   final SessionHistoryLiveChrome liveChrome;
+
+  /// What the out-of-turn background work is doing, forwarded to the thread
+  /// footer (see [SessionHistoryThread.backgroundLabel]).
+  final String? backgroundLabel;
   final Map<String, FailedMessageStatus> pendingDeliveryStatuses;
 
   /// Actions for a persisted failed optimistic bubble.
@@ -122,6 +127,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               isLoadingOlder: state.isLoadingOlder,
               onLoadOlder: onLoadOlder,
               liveChrome: liveChrome,
+              backgroundLabel: backgroundLabel,
               pendingDeliveryStatuses: pendingDeliveryStatuses,
               onRetryFailedMessage: onRetryFailedMessage,
               highlightMessageId: highlightMessageId,

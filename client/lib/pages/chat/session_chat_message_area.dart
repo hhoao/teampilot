@@ -310,7 +310,10 @@ class SessionChatMessageArea extends StatelessWidget {
                                                   .pendingLandingPrompts[sid] ??
                                               '',
                                         );
-                                    Widget buildChrome(bool sessionHasLeases) {
+                                    Widget buildChrome(
+                                      bool sessionHasLeases, [
+                                      String? backgroundLabel,
+                                    ]) {
                                       final liveChrome =
                                           SessionHistoryLiveChromeX.resolve(
                                             turnInFlight: historyTurnInFlight(
@@ -337,6 +340,7 @@ class SessionChatMessageArea extends StatelessWidget {
                                           onRetry: onRetry,
                                           onLoadOlder: historySeat.loadOlder,
                                           liveChrome: liveChrome,
+                                          backgroundLabel: backgroundLabel,
                                           pendingDeliveryStatuses: historySeat
                                               .pendingDeliveryStatuses,
                                           onRetryFailedMessage:
@@ -375,12 +379,17 @@ class SessionChatMessageArea extends StatelessWidget {
                                     return BlocSelector<
                                       SeatLeaseCubit,
                                       SeatLeaseState,
-                                      bool
+                                      ({bool hasLeases, String? label})
                                     >(
                                       bloc: leaseCubit,
-                                      selector: (s) => s.sessionHasLeases(sid),
-                                      builder: (context, hasLeases) =>
-                                          buildChrome(hasLeases),
+                                      selector: (s) => (
+                                        hasLeases: s.sessionHasLeases(sid),
+                                        label: s.sessionBackgroundLabel(sid),
+                                      ),
+                                      builder: (context, leases) => buildChrome(
+                                        leases.hasLeases,
+                                        leases.label,
+                                      ),
                                     );
                                   },
                                 ),
