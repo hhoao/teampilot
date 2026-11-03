@@ -121,15 +121,16 @@ class VaultService {
     if (remember) await _writeRememberedPassphrase(passphrase);
   }
 
-  void lock() {
+  Future<void> lock() async {
     if (!_encrypted) return;
     _encryptedBackend.lock();
     _document = null;
     _locked = true;
     _masterPassphrase = null;
     // An explicit lock forgets the remembered password so the next functional
-    // read prompts instead of silently re-unlocking.
-    unawaited(_deleteRememberedPassphrase());
+    // read prompts instead of silently re-unlocking. Await the delete so a
+    // quick unlock cannot race it and re-arm auto-unlock.
+    await _deleteRememberedPassphrase();
   }
 
   Future<List<VaultEntry>> list({

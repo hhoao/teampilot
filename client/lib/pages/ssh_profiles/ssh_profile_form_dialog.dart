@@ -353,11 +353,6 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           label: l10n.sshProfileFormPassphrase,
           hint: l10n.sshProfileFormPassphraseHint,
           obscure: true,
-          onReveal: () => revealVaultSecret(
-            context,
-            widget.initialProfile?.vaultEntryId,
-            'passphrase',
-          ),
         ),
         const SizedBox(height: 12),
         _field(

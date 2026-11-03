@@ -1048,6 +1048,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       credentialRef: _credentialRef.text.trim().isEmpty
           ? null
           : _credentialRef.text.trim(),
+      vaultEntryId: (current?.vaultEntryId?.trim().isEmpty ?? true)
+          ? null
+          : current!.vaultEntryId!.trim(),
       displayConfig: current?.displayConfig,
       enabled: _enabled,
     );

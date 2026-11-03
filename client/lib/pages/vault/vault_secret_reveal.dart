@@ -9,6 +9,8 @@ import 'vault_status_section.dart';
 ///
 /// Keychain-backed vaults return true immediately. Encrypted vaults always ask
 /// for the master password again, even when functional reads are unlocked.
+/// A locked vault is unlocked only for the duration of the caller's read and
+/// never re-arms the remembered password.
 Future<bool> authorizeVaultReveal(BuildContext context) async {
   final vault = context.read<VaultService>();
   if (!vault.isEncrypted) return true;
@@ -18,7 +20,7 @@ Future<bool> authorizeVaultReveal(BuildContext context) async {
   if (passphrase == null) return false;
   if (!vault.isUnlocked) {
     try {
-      await vault.unlock(passphrase);
+      await vault.unlock(passphrase, remember: false);
       return true;
     } on Object {
       messenger?.showSnackBar(
@@ -36,7 +38,8 @@ Future<bool> authorizeVaultReveal(BuildContext context) async {
 
 /// Reads a stored vault field for an explicit reveal.
 ///
-/// Returns null when the entry id/field is empty or re-authentication fails.
+/// Returns null when the entry id/field is empty, the entry is not revealable
+/// (for example an SSH private key), or re-authentication fails.
 Future<String?> revealVaultSecret(
   BuildContext context,
   String? entryId,
@@ -45,11 +48,30 @@ Future<String?> revealVaultSecret(
   final id = entryId?.trim() ?? '';
   if (id.isEmpty || field.isEmpty) return null;
   final vault = context.read<VaultService>();
-  if (vault.isEncrypted && !await authorizeVaultReveal(context)) {
+  if (!vault.isEncrypted) return _readAllowed(vault, id, field);
+
+  final wasLocked = vault.isLocked;
+  if (!await authorizeVaultReveal(context)) {
+    if (wasLocked && vault.isUnlocked) await vault.lock();
     return null;
   }
+  final value = await _readAllowed(vault, id, field);
+  // A locked vault was decrypted only to answer this reveal; do not leave it
+  // unlocked (and never re-remember the password).
+  if (wasLocked && vault.isUnlocked) await vault.lock();
+  return value;
+}
+
+Future<String?> _readAllowed(
+  VaultService vault,
+  String entryId,
+  String field,
+) async {
   try {
-    return await vault.readField(id, field);
+    final entry = await vault.get(entryId);
+    if (entry == null || !entry.revealAllowed) return null;
+    final value = entry.fields[field];
+    return (value == null || value.isEmpty) ? null : value;
   } on Object {
     return null;
   }
