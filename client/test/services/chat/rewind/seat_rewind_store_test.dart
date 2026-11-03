@@ -210,6 +210,57 @@ exec "$realGit" "\$@"
       );
     },
   );
+
+  test(
+    'restore and showFile map mixed commit paths onto a personal dest',
+    () async {
+      final tmp = tmpDir.path;
+      await Directory('$tmp/work/m1/claude/projects').create(recursive: true);
+      await File('$tmp/work/m1/claude/projects/a.jsonl').writeAsString('one');
+      await File('$tmp/work/acp-session-m1.json').writeAsString('{"v":1}');
+      final store = SeatRewindStore(
+        gitDir: '$tmp/repo.git',
+        workTree: '$tmp/work',
+        target: const SeatRewindTarget(
+          kind: SeatRewindKind.mixedAcp,
+          tool: 'claude',
+          memberId: 'm1',
+        ),
+      );
+      final first = await store.commitTurn(messageId: 'm1');
+      await File('$tmp/work/m1/claude/projects/a.jsonl').writeAsString('two');
+      final second = await store.commitTurn(messageId: 'm2');
+      final dest = await store.forkAt(
+        commit: second.commit,
+        destGitDir: '$tmp/dest.git',
+        destWorkTree: '$tmp/dest-work',
+        destTarget: const SeatRewindTarget(
+          kind: SeatRewindKind.personalAcp,
+          tool: 'claude',
+        ),
+      );
+      expect(
+        await File('$tmp/dest-work/claude/projects/a.jsonl').readAsString(),
+        'two',
+      );
+      await dest.restore(first.commit);
+      expect(
+        await File('$tmp/dest-work/claude/projects/a.jsonl').readAsString(),
+        'one',
+      );
+      expect(File('$tmp/dest-work/acp-session.json').existsSync(), isTrue);
+      expect(File('$tmp/dest-work/acp-session-m1.json').existsSync(), isFalse);
+      expect(
+        await File('$tmp/work/m1/claude/projects/a.jsonl').readAsString(),
+        'two',
+      );
+      expect(await dest.checkedOut(), first.commit);
+      expect(
+        await dest.showFile(first.commit, 'claude/projects/a.jsonl'),
+        'one',
+      );
+    },
+  );
 }
 
 Future<List<String>> _lsTree(SeatRewindStore store, String commit) async {

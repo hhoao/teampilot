@@ -213,41 +213,51 @@ final class SeatRewindStore {
       stdoutEncoding: utf8,
       stderrEncoding: utf8,
     );
-    if (result.exitCode != 0) return null;
-    return result.stdout as String;
+    if (result.exitCode == 0) return result.stdout as String;
+    if (target.seatKey != 'personal') return null;
+    final sourcePath = await _personalizedSourcePath(commit, path);
+    if (sourcePath == null) return null;
+    final mapped = await Process.run(
+      gitExecutable,
+      [..._repoArgs, 'show', '$commit:$sourcePath'],
+      stdoutEncoding: utf8,
+      stderrEncoding: utf8,
+    );
+    if (mapped.exitCode != 0) return null;
+    return mapped.stdout as String;
   }
 
   Future<void> _writeSeatFromCommit(String commit) async {
-    await _runGit([
-      ..._repoArgs,
-      'checkout',
-      commit,
-      '--',
-      ...target.includedPrefixes,
-    ]);
-    final listed = await _runGit([
-      ..._repoArgs,
-      'ls-tree',
-      '-r',
-      '--name-only',
-      commit,
-    ]);
-    final names = <String>{
-      for (final line in const LineSplitter().convert(listed))
-        if (line.isNotEmpty) line,
-    };
-    await for (final entity in Directory(
-      workTree,
-    ).list(recursive: true, followLinks: false)) {
-      final type = FileSystemEntity.typeSync(entity.path, followLinks: false);
-      if (type != FileSystemEntityType.file) continue;
-      final relative = _repoRelative(entity.path);
+    final treePaths = await _treePaths(commit);
+    if (treePaths.any(target.includes) || target.seatKey != 'personal') {
+      await _runGit([
+        ..._repoArgs,
+        'checkout',
+        commit,
+        '--',
+        ...target.includedPrefixes,
+      ]);
+      await _deleteIncludedFilesNotIn(treePaths.toSet());
+      return;
+    }
+    final memberId = _inferSourceMemberId(treePaths);
+    if (memberId == null) return;
+    final source = SeatRewindTarget(
+      kind: target.kind,
+      tool: target.tool,
+      memberId: memberId,
+    );
+    final names = <String>{};
+    for (final path in treePaths) {
+      final relative = personalize(source, path);
       if (!target.includes(relative) || target.isExcluded(relative)) {
         continue;
       }
-      if (names.contains(relative)) continue;
-      await File(entity.path).delete();
+      names.add(relative);
+      await _writeRawBlob(commit, path, relative);
     }
+    if (names.isEmpty) return;
+    await _deleteIncludedFilesNotIn(names);
   }
 
   /// Drops index entries for this seat that are no longer a regular work-tree
@@ -371,25 +381,110 @@ final class SeatRewindStore {
     ]);
     for (final path in const LineSplitter().convert(listed)) {
       if (path.isEmpty) continue;
-      final relative = personalize(target, path);
-      final shown = await Process.run(
-        gitExecutable,
-        ['--git-dir', gitDir, 'show', '$commit:$path'],
-        stdoutEncoding: null,
-        stderrEncoding: utf8,
-      );
-      if (shown.exitCode != 0) {
-        final stderr = shown.stderr as String;
-        AppLogger.instance.e(
-          'git show $commit:$path failed (${shown.exitCode}): $stderr',
-        );
-        throw StateError(
-          'git show $commit:$path failed (${shown.exitCode}): $stderr',
-        );
+      await dest._writeRawBlob(commit, path, personalize(target, path));
+    }
+  }
+
+  Future<List<String>> _treePaths(
+    String commit, {
+    bool allowFailure = false,
+  }) async {
+    final listed = await _runGit([
+      ..._repoArgs,
+      'ls-tree',
+      '-r',
+      '--name-only',
+      commit,
+    ], allowFailure: allowFailure);
+    return [
+      for (final line in const LineSplitter().convert(listed))
+        if (line.isNotEmpty) line,
+    ];
+  }
+
+  Future<String?> _personalizedSourcePath(String commit, String path) async {
+    final treePaths = await _treePaths(commit, allowFailure: true);
+    final memberId = _inferSourceMemberId(treePaths);
+    if (memberId == null) return null;
+    final source = SeatRewindTarget(
+      kind: target.kind,
+      tool: target.tool,
+      memberId: memberId,
+    );
+    String? unique;
+    for (final treePath in treePaths) {
+      if (personalize(source, treePath) != path) continue;
+      if (unique != null) return null;
+      unique = treePath;
+    }
+    return unique;
+  }
+
+  String? _inferSourceMemberId(Iterable<String> paths) {
+    final ids = <String>{};
+    for (final path in paths) {
+      final id = _memberIdFromTreePath(path);
+      if (id != null) ids.add(id);
+    }
+    return ids.length == 1 ? ids.single : null;
+  }
+
+  String? _memberIdFromTreePath(String path) {
+    final slash = path.indexOf('/');
+    if (slash > 0) {
+      final rest = path.substring(slash + 1);
+      if (rest == target.tool || rest.startsWith('${target.tool}/')) {
+        return path.substring(0, slash);
       }
-      final destFile = File(p.join(dest.workTree, relative));
-      await destFile.parent.create(recursive: true);
-      await destFile.writeAsBytes(shown.stdout as List<int>);
+    }
+    return _sidecarMemberId(path, 'acp-session-', '.json') ??
+        _sidecarMemberId(path, 'acp-transcript-', '.jsonl');
+  }
+
+  String? _sidecarMemberId(String path, String prefix, String suffix) {
+    if (path.contains('/')) return null;
+    if (!path.startsWith(prefix) || !path.endsWith(suffix)) return null;
+    final id = path.substring(prefix.length, path.length - suffix.length);
+    return id.isEmpty ? null : id;
+  }
+
+  Future<void> _writeRawBlob(
+    String commit,
+    String sourcePath,
+    String destRelative,
+  ) async {
+    final shown = await Process.run(
+      gitExecutable,
+      ['--git-dir', gitDir, 'show', '$commit:$sourcePath'],
+      stdoutEncoding: null,
+      stderrEncoding: utf8,
+    );
+    if (shown.exitCode != 0) {
+      final stderr = shown.stderr as String;
+      AppLogger.instance.e(
+        'git show $commit:$sourcePath failed (${shown.exitCode}): $stderr',
+      );
+      throw StateError(
+        'git show $commit:$sourcePath failed (${shown.exitCode}): $stderr',
+      );
+    }
+    final destFile = File(p.join(workTree, destRelative));
+    await destFile.parent.create(recursive: true);
+    await destFile.writeAsBytes(shown.stdout as List<int>);
+  }
+
+  Future<void> _deleteIncludedFilesNotIn(Set<String> keep) async {
+    await for (final entity in Directory(
+      workTree,
+    ).list(recursive: true, followLinks: false)) {
+      final type = FileSystemEntity.typeSync(entity.path, followLinks: false);
+      if (type != FileSystemEntityType.file) continue;
+      final relative = _repoRelative(entity.path);
+      if (!target.includes(relative) || target.isExcluded(relative)) {
+        continue;
+      }
+      if (keep.contains(relative)) continue;
+      await File(entity.path).delete();
     }
   }
 
