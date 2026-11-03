@@ -406,6 +406,7 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
             ),
             label: modelLabel?.call(group.cli, p.id, model) ?? model,
             tooltip: modelTooltip?.call(group.cli, p.id, model),
+            tooltipPlacement: TpTooltipPlacement.right,
           ),
     ];
   }

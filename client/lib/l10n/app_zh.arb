@@ -2667,6 +2667,8 @@
   "qoderCredentialsCancel": "取消",
   "qoderCredentialsRelaunch": "重新启动",
   "qoderCredentialsSignedIn": "已登录",
+  "qoderContextWindow": "上下文窗口（tokens）",
+  "qoderContextWindowHint": "留空则使用模型默认值。",
   "qoderCredentialsActionFailed": "Qoder 操作失败",
   "appProviderTeamToolSection": "团队默认服务商",
   "appProviderTeamToolSubtitle": "选择本团队启动时，各工具使用的统一服务商。",

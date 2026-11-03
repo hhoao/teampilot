@@ -3057,6 +3057,8 @@
   "qoderCredentialsCancel": "Cancel",
   "qoderCredentialsRelaunch": "Relaunch",
   "qoderCredentialsSignedIn": "Signed in",
+  "qoderContextWindow": "Context window (tokens)",
+  "qoderContextWindowHint": "Leave empty to use the model default.",
   "qoderCredentialsActionFailed": "The Qoder action failed",
   "appProviderTeamToolSection": "Tool providers for this team",
   "appProviderTeamToolSubtitle": "Select which unified provider each tool uses when this team starts.",

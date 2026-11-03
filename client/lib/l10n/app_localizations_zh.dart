@@ -5848,6 +5848,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get qoderCredentialsSignedIn => '已登录';
 
   @override
+  String get qoderContextWindow => '上下文窗口（tokens）';
+
+  @override
+  String get qoderContextWindowHint => '留空则使用模型默认值。';
+
+  @override
   String get qoderCredentialsActionFailed => 'Qoder 操作失败';
 
   @override

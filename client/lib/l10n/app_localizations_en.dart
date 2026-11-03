@@ -6095,6 +6095,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get qoderCredentialsSignedIn => 'Signed in';
 
   @override
+  String get qoderContextWindow => 'Context window (tokens)';
+
+  @override
+  String get qoderContextWindowHint => 'Leave empty to use the model default.';
+
+  @override
   String get qoderCredentialsActionFailed => 'The Qoder action failed';
 
   @override

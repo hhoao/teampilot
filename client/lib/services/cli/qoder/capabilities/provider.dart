@@ -20,9 +20,24 @@ import '../../registry/capabilities/provider_capability.dart';
 import '../provider/qoder_auth_store.dart';
 import '../provider/qoder_login_dialog.dart';
 import '../provider/qoder_models_service.dart';
+import '../provider/qoder_provider_form_section.dart';
 import '../provider/qoder_provider_settings_resolver.dart';
 import '../provider_presets.dart';
 import 'defaults.dart';
+
+abstract final class QoderFormExtraKeys {
+  const QoderFormExtraKeys._();
+
+  static const effort = 'reasoningEffort';
+  static const contextWindow = 'contextWindow';
+}
+
+int? _positiveInt(Object? raw) {
+  final value = raw is num
+      ? raw.toInt()
+      : int.tryParse(raw?.toString().trim() ?? '');
+  return value == null || value <= 0 ? null : value;
+}
 
 abstract final class QoderModelCatalog {
   const QoderModelCatalog._();
@@ -172,6 +187,68 @@ final class QoderProviderCapability extends CatalogModelCapability
 
   @override
   String defaultApiKeyField() => 'api_key';
+
+  @override
+  Map<String, Object?> extraFromExisting(AppProviderConfig? existing) {
+    final config = existing?.config ?? const <String, Object?>{};
+    return {
+      QoderFormExtraKeys.effort:
+          config['reasoningEffort']?.toString().trim() ?? '',
+      QoderFormExtraKeys.contextWindow:
+          _positiveInt(config['contextWindow'])?.toString() ?? '',
+    };
+  }
+
+  @override
+  Map<String, Object?> extraFromPreset(AppProviderPreset preset) {
+    final config = preset.template.config;
+    return {
+      QoderFormExtraKeys.effort:
+          config['reasoningEffort']?.toString().trim() ?? '',
+      QoderFormExtraKeys.contextWindow:
+          _positiveInt(config['contextWindow'])?.toString() ?? '',
+    };
+  }
+
+  @override
+  Map<String, Object?> buildConfig(ProviderFormInput input) {
+    final config = Map<String, Object?>.from(input.config);
+    final effort =
+        input.extra[QoderFormExtraKeys.effort]?.toString().trim() ?? '';
+    if (effort.isEmpty) {
+      config.remove('reasoningEffort');
+    } else {
+      config['reasoningEffort'] = effort;
+    }
+    final window = _positiveInt(input.extra[QoderFormExtraKeys.contextWindow]);
+    if (window == null) {
+      config.remove('contextWindow');
+    } else {
+      config['contextWindow'] = window;
+    }
+    return config;
+  }
+
+  @override
+  Widget buildExtraSection(
+    BuildContext context,
+    ProviderFormSectionProps props,
+  ) {
+    return QoderProviderFormSection(
+      effort: props.extra[QoderFormExtraKeys.effort]?.toString() ?? '',
+      contextWindow:
+          props.extra[QoderFormExtraKeys.contextWindow]?.toString() ?? '',
+      defaultModel: props.defaultModel,
+      onEffortChanged: (value) => props.onExtraChanged({
+        ...props.extra,
+        QoderFormExtraKeys.effort: value,
+      }),
+      onContextWindowChanged: (value) => props.onExtraChanged({
+        ...props.extra,
+        QoderFormExtraKeys.contextWindow: value,
+      }),
+    );
+  }
 
   @override
   bool get supportsModelTiers => false;
@@ -355,13 +432,22 @@ final class QoderProviderCapability extends CatalogModelCapability
       EffortPickerPlacement.hidden;
 
   @override
-  bool isApplicable({required String model}) => false;
+  bool isApplicable({required String model}) => true;
 
   @override
   List<String> effortCandidates({
     required String model,
     AppProviderConfig? provider,
-  }) => const [];
+  }) => const [
+    'auto',
+    'none',
+    'low',
+    'medium',
+    'high',
+    'xhigh',
+    'max',
+    'ultracode',
+  ];
 
   @override
   String defaultEffort({required String model, AppProviderConfig? provider}) =>
@@ -419,6 +505,8 @@ final class QoderProviderCapability extends CatalogModelCapability
     if (model.isNotEmpty) settings['model'] = model;
     final effort = provider?.config['reasoningEffort']?.toString().trim() ?? '';
     if (effort.isNotEmpty) settings['reasoningEffort'] = effort;
+    final contextWindow = _positiveInt(provider?.config['contextWindow']);
+    if (contextWindow != null) settings['contextWindow'] = contextWindow;
 
     await delegate.writeSettingsFile(
       settingsPath,

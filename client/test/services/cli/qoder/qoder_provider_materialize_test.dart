@@ -284,7 +284,10 @@ void main() {
             'cli': 'qoder',
             'name': 'Work',
             'defaultModel': 'glm-5.3',
-            'config': {'reasoningEffort': 'high'},
+            'config': {
+              'reasoningEffort': 'high',
+              'contextWindow': 300000,
+            },
           },
         },
       }),
@@ -341,6 +344,7 @@ void main() {
             as Map<String, Object?>;
     expect(settings['model'], 'glm-5.3');
     expect(settings['reasoningEffort'], 'high');
+    expect(settings['contextWindow'], 300000);
     expect(settings['telemetry'], isFalse);
   });
 

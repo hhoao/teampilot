@@ -10856,6 +10856,18 @@ abstract class AppLocalizations {
   /// **'Signed in'**
   String get qoderCredentialsSignedIn;
 
+  /// No description provided for @qoderContextWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Context window (tokens)'**
+  String get qoderContextWindow;
+
+  /// No description provided for @qoderContextWindowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to use the model default.'**
+  String get qoderContextWindowHint;
+
   /// No description provided for @qoderCredentialsActionFailed.
   ///
   /// In en, this message translates to:

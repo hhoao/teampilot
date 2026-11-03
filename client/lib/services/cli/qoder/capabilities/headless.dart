@@ -145,8 +145,14 @@ final class QoderHeadlessCapability
 
     final model = _resolveModel(ctx, provider);
     if (model.isNotEmpty) settings['model'] = model;
-    final effort = ctx.effort.trim();
+    final configuredEffort =
+        provider?.config['reasoningEffort']?.toString().trim() ?? '';
+    final effort = ctx.effort.trim().isNotEmpty
+        ? ctx.effort.trim()
+        : configuredEffort;
     if (effort.isNotEmpty) settings['reasoningEffort'] = effort;
+    final contextWindow = _positiveTokens(provider?.config['contextWindow']);
+    if (contextWindow != null) settings['contextWindow'] = contextWindow;
     await writeJson(settingsPath, settings);
 
     // No provider bound still seeds from the machine login — the same fallback
@@ -201,4 +207,11 @@ final class QoderHeadlessCapability
     // own account default applies.
     return provider?.defaultModel.trim() ?? '';
   }
+}
+
+int? _positiveTokens(Object? raw) {
+  final value = raw is num
+      ? raw.toInt()
+      : int.tryParse(raw?.toString().trim() ?? '');
+  return value == null || value <= 0 ? null : value;
 }
