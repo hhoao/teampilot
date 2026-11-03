@@ -1117,6 +1117,9 @@ Future<AppShell> buildAppShell({
       // Hydration is NOT awaited: it may hit api.github.com, and unlock/save
       // must stay responsive while it runs.
       await legacyImporter.runOnce();
+      // The vault page may already be mounted (the user just unlocked it):
+      // re-read entries so imported credentials appear without reopening it.
+      await vaultCubit.load();
       unawaited(
         githubAccountCubit.hydrate().catchError((Object error, StackTrace stack) {
           appLogger.w(
@@ -1337,6 +1340,8 @@ Future<AppShell> buildAppShell({
     try {
       await githubAccountCubit.hydrate();
       await legacyImporter.runOnce();
+      // Boot import runs in the background; refresh a possibly-open page.
+      await vaultCubit.load();
     } on Object catch (error, stackTrace) {
       appLogger.w(
         '[vault] boot hydrate/import failed: ${error.runtimeType}',
