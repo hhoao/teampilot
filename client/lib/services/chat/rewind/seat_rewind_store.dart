@@ -5,6 +5,18 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/services/chat/rewind/seat_rewind_paths.dart';
 import 'package:teampilot/utils/logging/logger.dart';
 
+String personalize(SeatRewindTarget source, String path) {
+  final member = source.memberId?.trim() ?? '';
+  if (member.isEmpty) return path;
+  final prefix = '$member/${source.tool}/';
+  if (path.startsWith(prefix)) {
+    return '${source.tool}/${path.substring(prefix.length)}';
+  }
+  if (path == 'acp-transcript-$member.jsonl') return 'acp-transcript.jsonl';
+  if (path == 'acp-session-$member.json') return 'acp-session.json';
+  return path;
+}
+
 /// One recorded turn in a seat's private rewind repository.
 final class RewindCheckpoint {
   const RewindCheckpoint({
@@ -159,6 +171,40 @@ final class SeatRewindStore {
     return checkpoints;
   }
 
+  /// Copy [commit] and its ancestors into a new store at [destTarget]'s layout.
+  Future<SeatRewindStore> forkAt({
+    required String commit,
+    required String destGitDir,
+    required String destWorkTree,
+    required SeatRewindTarget destTarget,
+  }) async {
+    final dest = SeatRewindStore(
+      gitDir: destGitDir,
+      workTree: destWorkTree,
+      target: destTarget,
+      gitExecutable: gitExecutable,
+    );
+    await dest.ensureRepo();
+    await dest._fetchCommit(gitDir, commit);
+    await dest._runGit([
+      '--git-dir',
+      destGitDir,
+      'update-ref',
+      'refs/rewind/live',
+      'FETCH_HEAD',
+    ]);
+    await dest._runGit([
+      '--git-dir',
+      destGitDir,
+      'update-ref',
+      'refs/rewind/checked-out',
+      'FETCH_HEAD',
+    ]);
+    await _copyAncestorKeepRefs(dest, commit);
+    await _writePersonalizedWorkTree(dest, commit);
+    return dest;
+  }
+
   /// `git show <commit>:<path>` bytes decoded as UTF-8, or null when missing.
   Future<String?> showFile(String commit, String path) async {
     final result = await Process.run(
@@ -257,7 +303,97 @@ final class SeatRewindStore {
     );
   }
 
-  Future<String> _runGit(
+  Future<void> _fetchCommit(String sourceGitDir, String commit) async {
+    final fetched = await _runGitResult([
+      '--git-dir',
+      gitDir,
+      'fetch',
+      sourceGitDir,
+      commit,
+    ], allowFailure: true);
+    if (fetched.exitCode == 0) return;
+    await _runGit([
+      '--git-dir',
+      gitDir,
+      'fetch',
+      Uri.file(sourceGitDir).toString(),
+      commit,
+    ]);
+  }
+
+  Future<void> _copyAncestorKeepRefs(
+    SeatRewindStore dest,
+    String commit,
+  ) async {
+    final listed = await _runGit([
+      '--git-dir',
+      gitDir,
+      'for-each-ref',
+      '--format=%(objectname) %(refname)',
+      'refs/rewind/keep',
+    ], allowFailure: true);
+    for (final line in const LineSplitter().convert(listed)) {
+      if (line.isEmpty) continue;
+      final space = line.indexOf(' ');
+      if (space <= 0) continue;
+      final keepCommit = line.substring(0, space);
+      final refName = line.substring(space + 1);
+      final ancestor = await _runGitResult([
+        '--git-dir',
+        gitDir,
+        'merge-base',
+        '--is-ancestor',
+        keepCommit,
+        commit,
+      ], allowFailure: true);
+      if (ancestor.exitCode != 0) continue;
+      await dest._runGit([
+        '--git-dir',
+        dest.gitDir,
+        'update-ref',
+        refName,
+        keepCommit,
+      ]);
+    }
+  }
+
+  Future<void> _writePersonalizedWorkTree(
+    SeatRewindStore dest,
+    String commit,
+  ) async {
+    final listed = await _runGit([
+      '--git-dir',
+      gitDir,
+      'ls-tree',
+      '-r',
+      '--name-only',
+      commit,
+    ]);
+    for (final path in const LineSplitter().convert(listed)) {
+      if (path.isEmpty) continue;
+      final relative = personalize(target, path);
+      final shown = await Process.run(
+        gitExecutable,
+        ['--git-dir', gitDir, 'show', '$commit:$path'],
+        stdoutEncoding: null,
+        stderrEncoding: utf8,
+      );
+      if (shown.exitCode != 0) {
+        final stderr = shown.stderr as String;
+        AppLogger.instance.e(
+          'git show $commit:$path failed (${shown.exitCode}): $stderr',
+        );
+        throw StateError(
+          'git show $commit:$path failed (${shown.exitCode}): $stderr',
+        );
+      }
+      final destFile = File(p.join(dest.workTree, relative));
+      await destFile.parent.create(recursive: true);
+      await destFile.writeAsBytes(shown.stdout as List<int>);
+    }
+  }
+
+  Future<({String stdout, int exitCode})> _runGitResult(
     List<String> args, {
     bool allowFailure = false,
     Map<String, String>? environment,
@@ -279,6 +415,19 @@ final class SeatRewindStore {
         'git ${args.join(' ')} failed (${result.exitCode}): $stderr',
       );
     }
-    return result.stdout as String;
+    return (stdout: result.stdout as String, exitCode: result.exitCode);
+  }
+
+  Future<String> _runGit(
+    List<String> args, {
+    bool allowFailure = false,
+    Map<String, String>? environment,
+  }) async {
+    final result = await _runGitResult(
+      args,
+      allowFailure: allowFailure,
+      environment: environment,
+    );
+    return result.stdout;
   }
 }

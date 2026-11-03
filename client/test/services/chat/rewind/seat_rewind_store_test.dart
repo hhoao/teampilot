@@ -155,6 +155,61 @@ exec "$realGit" "\$@"
     expect(await File('$work/claude/projects/a.jsonl').readAsString(), 'two');
     expect(await failing.checkedOut(), second.commit);
   });
+
+  test(
+    'forkAt copies the selected commit into a personal dest layout',
+    () async {
+      final tmp = tmpDir.path;
+      await Directory('$tmp/work/m1/claude/projects').create(recursive: true);
+      await File('$tmp/work/m1/claude/projects/a.jsonl').writeAsString('one');
+      await File('$tmp/work/acp-session-m1.json').writeAsString('{"v":1}');
+      final store = SeatRewindStore(
+        gitDir: '$tmp/repo.git',
+        workTree: '$tmp/work',
+        target: const SeatRewindTarget(
+          kind: SeatRewindKind.mixedAcp,
+          tool: 'claude',
+          memberId: 'm1',
+        ),
+      );
+      final first = await store.commitTurn(messageId: 'm1');
+      await File('$tmp/work/m1/claude/projects/a.jsonl').writeAsString('two');
+      final second = await store.commitTurn(messageId: 'm2');
+      final dest = await store.forkAt(
+        commit: first.commit,
+        destGitDir: '$tmp/dest.git',
+        destWorkTree: '$tmp/dest-work',
+        destTarget: const SeatRewindTarget(
+          kind: SeatRewindKind.personalAcp,
+          tool: 'claude',
+        ),
+      );
+      final live = await Process.run(dest.gitExecutable, [
+        '--git-dir',
+        dest.gitDir,
+        'rev-parse',
+        'refs/rewind/live',
+      ]);
+      expect((live.stdout as String).trim(), first.commit);
+      expect(
+        await File('$tmp/dest-work/claude/projects/a.jsonl').readAsString(),
+        'one',
+      );
+      expect(File('$tmp/dest-work/acp-session.json').existsSync(), isTrue);
+      expect(File('$tmp/dest-work/acp-session-m1.json').existsSync(), isFalse);
+      final listed = await Process.run(dest.gitExecutable, [
+        '--git-dir',
+        dest.gitDir,
+        'rev-list',
+        '--all',
+      ]);
+      expect(listed.stdout as String, isNot(contains(second.commit)));
+      expect(
+        await File('$tmp/work/m1/claude/projects/a.jsonl').readAsString(),
+        'two',
+      );
+    },
+  );
 }
 
 Future<List<String>> _lsTree(SeatRewindStore store, String commit) async {
