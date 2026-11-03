@@ -113,6 +113,7 @@ class VaultLegacyImportService {
     if (!_vault.isUnlocked) return;
     if (_vault.legacyImportVersion >= _version) return;
 
+    AppLogger.instance.i('[vault-import] start');
     var failed = false;
     failed = !await _guard('github', _importGithub) || failed;
     failed = !await _guard('ssh', _importSsh) || failed;
@@ -126,9 +127,13 @@ class VaultLegacyImportService {
     }
     failed = !await _guard('managedProvider', _importManaged) || failed;
 
-    if (failed) return;
+    if (failed) {
+      AppLogger.instance.w('[vault-import] finished with failures; will retry');
+      return;
+    }
     try {
       await _vault.markLegacyImported(_version);
+      AppLogger.instance.i('[vault-import] complete');
     } on Object catch (error, stackTrace) {
       // The import itself succeeded, so a retry is harmless: every step is
       // idempotent and the marker is the only thing left to persist.

@@ -21,12 +21,9 @@ class _VaultPageBodyState extends State<VaultPageBody> {
   @override
   void initState() {
     super.initState();
-    // The cubit is created at boot but not loaded: the vault may be locked,
-    // and reading the keychain is unnecessary until the page is opened.
-    final cubit = context.read<VaultCubit>();
-    if (cubit.state.status == VaultStatus.loading) {
-      unawaited(cubit.load());
-    }
+    // Reload on every mount: the background importer can add entries while
+    // the page is closed, and a previous mount may have cached a stale list.
+    unawaited(context.read<VaultCubit>().load());
   }
 
   @override
