@@ -1,23 +1,19 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 
-enum CursorAccountSource { discovered, manual }
-
 /// Metadata for one Cursor account. The session token is NOT part of this
-/// class: it lives in secure storage and is read on demand, so a list render
-/// can never leak it through `toString` or equality.
+/// class: it is rediscovered from the provider home on demand, so a list
+/// render can never leak it through `toString` or equality.
 @immutable
 final class CursorUsageAccount extends Equatable {
   const CursorUsageAccount({
     required this.accountId,
     required this.userId,
     required this.label,
-    required this.source,
     this.enabled = true,
     this.expiresAtMs,
     this.owningUser,
     this.teamId = 0,
-    this.hasCredential = false,
     this.providerId,
     this.providerName,
   });
@@ -25,12 +21,10 @@ final class CursorUsageAccount extends Equatable {
   final String accountId;
   final String userId;
   final String label;
-  final CursorAccountSource source;
   final bool enabled;
   final int? expiresAtMs;
   final String? owningUser;
   final int teamId;
-  final bool hasCredential;
 
   /// Provider-home directory the token was discovered in. Null for manual
   /// accounts; display-only and never persisted.
@@ -52,20 +46,16 @@ final class CursorUsageAccount extends Equatable {
     int? expiresAtMs,
     String? owningUser,
     int? teamId,
-    bool? hasCredential,
-    CursorAccountSource? source,
     String? providerId,
     String? providerName,
   }) => CursorUsageAccount(
     accountId: accountId,
     userId: userId,
     label: label ?? this.label,
-    source: source ?? this.source,
     enabled: enabled ?? this.enabled,
     expiresAtMs: expiresAtMs ?? this.expiresAtMs,
     owningUser: owningUser ?? this.owningUser,
     teamId: teamId ?? this.teamId,
-    hasCredential: hasCredential ?? this.hasCredential,
     providerId: providerId ?? this.providerId,
     providerName: providerName ?? this.providerName,
   );
@@ -74,7 +64,6 @@ final class CursorUsageAccount extends Equatable {
     'accountId': accountId,
     'userId': userId,
     'label': label,
-    'source': source.name,
     'enabled': enabled,
     'expiresAtMs': expiresAtMs,
     'owningUser': owningUser,
@@ -82,15 +71,10 @@ final class CursorUsageAccount extends Equatable {
   };
 
   factory CursorUsageAccount.fromJson(Map<String, Object?> json) {
-    final source = CursorAccountSource.values.firstWhere(
-      (value) => value.name == json['source'],
-      orElse: () => CursorAccountSource.manual,
-    );
     return CursorUsageAccount(
       accountId: json['accountId']?.toString() ?? '',
       userId: json['userId']?.toString() ?? '',
       label: json['label']?.toString() ?? '',
-      source: source,
       enabled: json['enabled'] != false,
       expiresAtMs: (json['expiresAtMs'] as num?)?.toInt(),
       owningUser: json['owningUser']?.toString(),
@@ -103,12 +87,10 @@ final class CursorUsageAccount extends Equatable {
     accountId,
     userId,
     label,
-    source,
     enabled,
     expiresAtMs,
     owningUser,
     teamId,
-    hasCredential,
     providerId,
     providerName,
   ];

@@ -38,14 +38,6 @@ void main() {
       expect(resolved.endMs, cursorUsageDayEndMs(ms(2026, 10, 28)));
     });
 
-    test('lastMonth covers the whole previous calendar month', () {
-      final resolved = cursorUsageResolveRange(
-        range: const CursorUsagePresetRange(CursorUsagePreset.lastMonth),
-        nowMs: ms(2026, 3, 15, 9),
-      );
-      expect(resolved.startMs, ms(2026, 2, 1));
-      expect(resolved.endMs, cursorUsageDayEndMs(ms(2026, 2, 28)));
-    });
 
     test('custom range snaps to whole local days', () {
       final resolved = cursorUsageResolveRange(

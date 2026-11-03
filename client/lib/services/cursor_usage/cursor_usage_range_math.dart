@@ -57,13 +57,6 @@ CursorUsageWindow cursorUsageResolveRange({
             todayStart,
             DateTime(now.year, now.month, now.day - 29),
           );
-        case CursorUsagePreset.lastMonth:
-          final firstOfLastMonth = DateTime(now.year, now.month - 1, 1);
-          final lastOfLastMonth = DateTime(now.year, now.month, 0);
-          return CursorUsageWindow(
-            startMs: firstOfLastMonth.millisecondsSinceEpoch,
-            endMs: _endOfDay(lastOfLastMonth),
-          );
       }
   }
 }

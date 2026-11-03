@@ -1,31 +1,16 @@
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/cursor_usage_account.dart';
-import 'package:teampilot/repositories/ssh_credential_store.dart';
-import 'package:teampilot/services/cursor_usage/cursor_account_credential_store.dart';
+import 'package:teampilot/services/cursor_usage/cursor_account_id.dart';
 import 'package:teampilot/services/cursor_usage/cursor_account_registry.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_usage_auth_resolver.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
-class _MemoryStore implements SecureKeyValueStore {
-  final values = <String, String>{};
-
-  @override
-  Future<void> delete(String key) async => values.remove(key);
-
-  @override
-  Future<String?> read(String key) async => values[key];
-
-  @override
-  Future<void> write(String key, String value) async => values[key] = value;
-}
 
 
 void main() {
   late Filesystem fs;
-  late _MemoryStore backend;
   late List<CursorUsageAuth> discovered;
   late CursorAccountRegistry registry;
   final nowMs = DateTime.utc(2026, 10, 28).millisecondsSinceEpoch;
@@ -43,38 +28,20 @@ void main() {
 
   setUp(() async {
     fs = InMemoryFilesystem();
-    backend = _MemoryStore();
     discovered = [auth('auth0|a', modifiedAtMs: 1)];
     registry = CursorAccountRegistry(
       fs: fs,
       accountsPath: '/root/cursor_usage/accounts.json',
-      // The clock that governs token validity lives in the credential store;
-      // the registry never reads one.
-      credentials: CursorAccountCredentialStore(
-        store: backend,
-        now: () => DateTime.fromMillisecondsSinceEpoch(nowMs),
-      ),
       resolveAuths: () async => discovered,
     );
   });
 
-  test('lists discovered accounts with hasCredential true', () async {
-    final accounts = await registry.list();
-    expect(accounts.length, 1);
-    expect(accounts.single.accountId, cursorAccountIdFor('auth0|a'));
-    expect(accounts.single.source, CursorAccountSource.discovered);
-    expect(accounts.single.hasCredential, isTrue);
-  });
 
 
   test('the label falls back to the provider name', () async {
     final named = CursorAccountRegistry(
       fs: fs,
       accountsPath: '/root/cursor_usage/accounts.json',
-      credentials: CursorAccountCredentialStore(
-        store: backend,
-        now: () => DateTime.fromMillisecondsSinceEpoch(nowMs),
-      ),
       resolveAuths: () async => discovered,
       providerNameFor: (providerId) async =>
           providerId == 'cursor' ? 'github account' : null,
@@ -99,7 +66,6 @@ void main() {
     await fs.writeString('/root/cursor_usage/accounts.json', '{not json');
     final accounts = await registry.list();
     expect(accounts.length, 1);
-    expect(accounts.single.source, CursorAccountSource.discovered);
   });
 
   test('an expired discovered account stays visible but cannot sync', () async {

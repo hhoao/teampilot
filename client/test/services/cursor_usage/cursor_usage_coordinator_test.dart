@@ -27,7 +27,6 @@ CursorUsageAccount accountRow({String? owningUser, int teamId = 0}) =>
       accountId: 'acct',
       userId: 'user_01ABC',
       label: 'Cursor · acct',
-      source: CursorAccountSource.manual,
       owningUser: owningUser,
       teamId: teamId,
     );

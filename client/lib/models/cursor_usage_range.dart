@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 
-enum CursorUsagePreset { billingCycle, today, sevenDays, thirtyDays, lastMonth }
+enum CursorUsagePreset { billingCycle, today, sevenDays, thirtyDays }
 
 sealed class CursorUsageRange extends Equatable {
   const CursorUsageRange();

@@ -29,7 +29,6 @@ import '../models/cursor_usage_account.dart';
 import '../models/cursor_usage_range.dart';
 import '../models/cursor_usage_report.dart';
 import '../services/cli/cursor/provider/cursor_usage_auth_resolver.dart';
-import '../services/cursor_usage/cursor_account_credential_store.dart';
 import '../services/cursor_usage/cursor_account_registry.dart';
 import '../services/cli/cursor/provider/cursor_provider_settings_resolver.dart';
 import '../services/cursor_usage/cursor_usage_api_client.dart';
@@ -1642,7 +1641,6 @@ Future<AppShell> buildAppShell({
     );
 
     final cursorUsageApiClient = CursorUsageApiClient();
-    final cursorSecureStore = const FlutterSecureKeyValueStore();
     // The Cursor stack resolves paths and the filesystem from the active home
     // plane, so it is rebuilt whenever that plane changes instead of pinning
     // the first one for the whole app lifetime.
@@ -1655,7 +1653,6 @@ Future<AppShell> buildAppShell({
         cachedCursorStack = _CursorUsageStack(
           storage: homeStorage,
           api: cursorUsageApiClient,
-          secureStore: cursorSecureStore,
         );
       }
       return cachedCursorStack!;
@@ -3468,11 +3465,9 @@ class _CursorUsageStack {
   _CursorUsageStack({
     required HomeStorage storage,
     required CursorUsageApiClient api,
-    required SecureKeyValueStore secureStore,
   }) :        registry = CursorAccountRegistry(
          fs: storage.fs,
          accountsPath: storage.paths.cursorUsageAccountsFile,
-         credentials: CursorAccountCredentialStore(store: secureStore),
          resolveAuths: () => CursorUsageAuthResolver(
            fs: storage.fs,
            basePath: storage.paths.basePath,

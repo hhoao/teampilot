@@ -9,7 +9,6 @@ const _account = CursorUsageAccount(
   accountId: 'acct1',
   userId: 'user_a',
   label: 'A',
-  source: CursorAccountSource.discovered,
 );
 
 CursorUsageCache cacheWithDays() => CursorUsageCache(
@@ -77,7 +76,6 @@ void main() {
           accountId: 'acct1',
           userId: 'user_a',
           label: 'A',
-          source: CursorAccountSource.manual,
           enabled: false,
         ),
       ],
@@ -94,7 +92,6 @@ void main() {
           accountId: 'acct2',
           userId: 'user_b',
           label: 'B',
-          source: CursorAccountSource.manual,
         ),
       ],
       loadCache: (accountId) async =>

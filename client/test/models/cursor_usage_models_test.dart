@@ -21,7 +21,6 @@ void main() {
       accountId: 'abc123',
       userId: 'user_01ABC',
       label: 'Cursor · abc123',
-      source: CursorAccountSource.manual,
       expiresAtMs: 1000000,
     );
     expect(account.isExpired(939999), isFalse);
