@@ -19,6 +19,7 @@ import '../../registry/capabilities/interactive_login_capability.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../provider/qoder_auth_store.dart';
 import '../provider/qoder_login_dialog.dart';
+import '../provider/qoder_models_service.dart';
 import '../provider/qoder_provider_settings_resolver.dart';
 import '../provider_presets.dart';
 import 'defaults.dart';
@@ -26,30 +27,52 @@ import 'defaults.dart';
 abstract final class QoderModelCatalog {
   const QoderModelCatalog._();
 
+  /// Fallback when the live ACP probe cannot run (offline, not signed in).
+  ///
+  /// These are the ids `session/set_model` accepts on qodercli 1.1.81 — the
+  /// display names from `--list-models` (`Qwen3.8-Max`) are rejected.
   static const knownModels = <String>[
     'auto',
-    'qwen3.8-max',
-    'qwen3.8-flash',
-    'kimi-k3.1-pro',
-    'glm-5.3',
-    'deepseek-v4-pro',
-    'minimax-m3.1-flash',
+    'ultimate',
+    'fast',
+    'efficient',
+    'smodel',
+    'cmodel',
+    'qmodel_38max',
+    'qfmodel',
+    'kmodel_latest',
+    'kmodel',
+    'gmodel',
+    'gfmodel',
+    'dmodel',
+    'dfmodel',
+    'mmodel',
   ];
 
   static List<String> modelsFor({
     required AppProviderConfig? provider,
     required String providerId,
-  }) => knownModels;
+    QoderModelsService? service,
+  }) {
+    final live = service?.modelIdsFor(providerId: providerId) ?? const [];
+    return live.isNotEmpty ? live : knownModels;
+  }
 }
 
 final class _QoderCatalogSource implements ModelCatalogSource {
-  const _QoderCatalogSource();
+  const _QoderCatalogSource(this.service);
+
+  final QoderModelsService? service;
 
   @override
   List<String> modelsFor({
     required AppProviderConfig? provider,
     required String providerId,
-  }) => QoderModelCatalog.modelsFor(provider: provider, providerId: providerId);
+  }) => QoderModelCatalog.modelsFor(
+    provider: provider,
+    providerId: providerId,
+    service: service,
+  );
 }
 
 /// Qoder provider stack: `settings.json` in the isolated `QODER_CONFIG_DIR`.
@@ -57,9 +80,12 @@ final class _QoderCatalogSource implements ModelCatalogSource {
 final class QoderProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
     implements ProviderCapability, InteractiveCliLoginCapability {
-  const QoderProviderCapability({this.storage});
+  const QoderProviderCapability({this.storage, this.modelsService});
 
   final HomeStorage? storage;
+
+  /// Live account catalog; absent in the pre-configure registry (tests/args).
+  final QoderModelsService? modelsService;
 
   QoderAuthStore? get _authStore {
     final home = storage;
@@ -109,14 +135,17 @@ final class QoderProviderCapability extends CatalogModelCapability
   bool get supportsModelTiers => false;
 
   @override
-  List<ModelCatalogSource> get catalogSources => const [_QoderCatalogSource()];
+  List<ModelCatalogSource> get catalogSources => [
+    _QoderCatalogSource(modelsService),
+  ];
 
   @override
   ProviderModelPickerMode pickerMode(AppProviderConfig provider) =>
       ProviderModelPickerMode.catalogWithCustomEntry;
 
   @override
-  Listenable get catalogUpdates => _emptyCatalogUpdates;
+  Listenable get catalogUpdates =>
+      modelsService?.catalogUpdates ?? _emptyCatalogUpdates;
 
   @override
   Future<void> refreshModelCatalog({
@@ -124,7 +153,15 @@ final class QoderProviderCapability extends CatalogModelCapability
     AppProviderConfig? provider,
     String? executable,
     bool forceRefresh = false,
-  }) async {}
+  }) {
+    final service = modelsService;
+    if (service == null) return Future.value();
+    return service.ensureLoaded(
+      providerId: providerId,
+      executable: executable,
+      forceRefresh: forceRefresh,
+    );
+  }
 
   @override
   bool appliesTo(AppProviderConfig provider) =>

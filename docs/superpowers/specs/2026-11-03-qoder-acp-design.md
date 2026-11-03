@@ -239,10 +239,14 @@ capability.
 
 Deliberate deviations from the text above, as shipped:
 
-- **Model catalog is static.** `QoderModelCatalog` carries a known list of
-  account models instead of calling `--list-models` / reading ACP
-  `models.availableModels`; the provider section renders that list. A live
-  catalog is a follow-up.
+- **Model catalog is live (superseded the static v1 list).**
+  `QoderModelsService` runs a short `initialize` + `session/new` ACP probe
+  with a provider-seeded config dir, reads
+  `models.availableModels[].modelId`, and caches the result per provider for
+  six hours (`cache/qoder_models/<provider>.json`). The static list is only a
+  fallback for an offline / signed-out probe. Ids are used as-is because
+  `session/set_model` rejects the `--list-models` display names (for example
+  `qwen3.8-max` fails while `qmodel_38max` works).
 - **`reasoningEffort` is a dead write.** The value is merged into
   `settings.json` but is not forwarded as a launch argument, and the effort
   pickers are hidden (`teamPickerPlacement` / `memberPickerPlacement` /
