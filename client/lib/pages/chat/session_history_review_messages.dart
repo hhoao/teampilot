@@ -32,6 +32,12 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     this.visibleOwnerId,
     this.scrollAnchorKey,
     this.scrollAnchors,
+    this.checkpointCommits = const {},
+    this.checkedOutCommit,
+    this.laterMessages = const [],
+    this.onRewindTo,
+    this.onForkFrom,
+    this.turnInFlight = false,
     super.key,
   });
 
@@ -61,6 +67,13 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   /// Host-owned anchor map (sessionId → offset), typically
   /// `ChatCubit.sessionScrollAnchors`.
   final Map<String, double>? scrollAnchors;
+
+  final Map<String, String> checkpointCommits;
+  final String? checkedOutCommit;
+  final List<AiMessage> laterMessages;
+  final void Function(String commit)? onRewindTo;
+  final void Function(String commit)? onForkFrom;
+  final bool turnInFlight;
 
   bool get _showThread {
     if (state.status == AiHistoryViewStatus.ready) return true;
@@ -96,6 +109,12 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               visibleOwnerId: visibleOwnerId,
               scrollAnchorKey: scrollAnchorKey,
               scrollAnchors: scrollAnchors,
+              checkpointCommits: checkpointCommits,
+              checkedOutCommit: checkedOutCommit,
+              laterMessages: laterMessages,
+              onRewindTo: onRewindTo,
+              onForkFrom: onForkFrom,
+              turnInFlight: turnInFlight,
             ),
           ),
         ],

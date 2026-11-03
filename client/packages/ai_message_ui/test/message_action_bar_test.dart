@@ -153,4 +153,53 @@ void main() {
     await tester.pump();
     expect(copyIcon(), findsNothing);
   });
+
+  testWidgets('rewind and fork actions fire from their tooltips', (
+    tester,
+  ) async {
+    var rewindCalls = 0;
+    var forkCalls = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMessageActionBar(
+            message: message,
+            reveal: AiActionBarReveal.always,
+            onRewind: () => rewindCalls++,
+            onFork: () => forkCalls++,
+            rewindLabel: 'Rewind to here',
+            forkLabel: 'Fork from here',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byTooltip('Rewind to here'), findsOneWidget);
+    expect(find.byTooltip('Fork from here'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Rewind to here'));
+    await tester.tap(find.byTooltip('Fork from here'));
+    expect(rewindCalls, 1);
+    expect(forkCalls, 1);
+  });
+
+  testWidgets('omitting onRewind hides rewind while fork remains', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMessageActionBar(
+            message: message,
+            reveal: AiActionBarReveal.always,
+            onFork: () {},
+            forkLabel: 'Fork from here',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byTooltip('Rewind to here'), findsNothing);
+    expect(find.byTooltip('Fork from here'), findsOneWidget);
+  });
 }

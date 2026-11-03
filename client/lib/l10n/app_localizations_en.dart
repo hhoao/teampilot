@@ -2306,6 +2306,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionTitleCopySuffix => '(copy)';
 
   @override
+  String get rewindToHere => 'Rewind to here';
+
+  @override
+  String get forkFromHere => 'Fork from here';
+
+  @override
   String get openSessionDirectory => 'Open session folder';
 
   @override

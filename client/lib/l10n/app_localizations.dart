@@ -4154,6 +4154,18 @@ abstract class AppLocalizations {
   /// **'(copy)'**
   String get sessionTitleCopySuffix;
 
+  /// No description provided for @rewindToHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Rewind to here'**
+  String get rewindToHere;
+
+  /// No description provided for @forkFromHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Fork from here'**
+  String get forkFromHere;
+
   /// No description provided for @openSessionDirectory.
   ///
   /// In en, this message translates to:

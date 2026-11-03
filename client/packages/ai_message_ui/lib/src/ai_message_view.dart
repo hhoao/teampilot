@@ -23,6 +23,11 @@ class AiMessageView extends StatefulWidget {
     this.actionBarHoverEnabled,
     this.chainOfThoughtAutoExpand = false,
     this.onRetryDelivery,
+    this.onRewind,
+    this.onFork,
+    this.rewindLabel = 'Rewind to here',
+    this.forkLabel = 'Fork from here',
+    this.rewindForkEnabled = true,
     super.key,
   });
 
@@ -33,6 +38,12 @@ class AiMessageView extends StatefulWidget {
 
   /// When set, shows a refresh icon on the action bar (failed delivery retry).
   final VoidCallback? onRetryDelivery;
+
+  final VoidCallback? onRewind;
+  final VoidCallback? onFork;
+  final String rewindLabel;
+  final String forkLabel;
+  final bool rewindForkEnabled;
 
   /// When `false`, ignore pointer-enter for hover ActionBars (history fling).
   /// Defaults to always enabled when null.
@@ -117,6 +128,11 @@ class _AiMessageViewState extends State<AiMessageView> {
             actionBarReveal: widget.actionBarReveal,
             hoverListenable: trackHover ? _hovered : null,
             onRetryDelivery: widget.onRetryDelivery,
+            onRewind: widget.onRewind,
+            onFork: widget.onFork,
+            rewindLabel: widget.rewindLabel,
+            forkLabel: widget.forkLabel,
+            rewindForkEnabled: widget.rewindForkEnabled,
           ),
           AiRole.assistant => _AssistantBlock(
             scheme: scheme,
@@ -126,6 +142,11 @@ class _AiMessageViewState extends State<AiMessageView> {
             showActionBar: widget.showActionBar,
             actionBarReveal: widget.actionBarReveal,
             hoverListenable: trackHover ? _hovered : null,
+            onRewind: widget.onRewind,
+            onFork: widget.onFork,
+            rewindLabel: widget.rewindLabel,
+            forkLabel: widget.forkLabel,
+            rewindForkEnabled: widget.rewindForkEnabled,
           ),
           AiRole.system => Align(
             alignment: Alignment.center,
@@ -214,6 +235,11 @@ class _UserBubble extends StatelessWidget {
     required this.actionBarReveal,
     this.hoverListenable,
     this.onRetryDelivery,
+    this.onRewind,
+    this.onFork,
+    this.rewindLabel = 'Rewind to here',
+    this.forkLabel = 'Fork from here',
+    this.rewindForkEnabled = true,
   });
 
   final ColorScheme scheme;
@@ -224,6 +250,11 @@ class _UserBubble extends StatelessWidget {
   final AiActionBarReveal actionBarReveal;
   final ValueListenable<bool>? hoverListenable;
   final VoidCallback? onRetryDelivery;
+  final VoidCallback? onRewind;
+  final VoidCallback? onFork;
+  final String rewindLabel;
+  final String forkLabel;
+  final bool rewindForkEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -233,7 +264,10 @@ class _UserBubble extends StatelessWidget {
         builder: (context, constraints) {
           // Reserve action-bar chrome so Row never overflows the thread width.
           final actionBarReserve =
-              80.0 + (onRetryDelivery != null ? 36.0 : 0.0);
+              80.0 +
+              (onRetryDelivery != null ? 36.0 : 0.0) +
+              (onRewind != null ? 36.0 : 0.0) +
+              (onFork != null ? 36.0 : 0.0);
           final threadMax = constraints.maxWidth.isFinite
               ? constraints.maxWidth
               : 480.0;
@@ -253,6 +287,11 @@ class _UserBubble extends StatelessWidget {
                   reveal: actionBarReveal,
                   hoverListenable: hoverListenable,
                   onRetryDelivery: onRetryDelivery,
+                  onRewind: onRewind,
+                  onFork: onFork,
+                  rewindLabel: rewindLabel,
+                  forkLabel: forkLabel,
+                  rewindForkEnabled: rewindForkEnabled,
                 ),
               ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: bubbleMax),
@@ -346,6 +385,11 @@ class _AssistantBlock extends StatelessWidget {
     required this.showActionBar,
     required this.actionBarReveal,
     this.hoverListenable,
+    this.onRewind,
+    this.onFork,
+    this.rewindLabel = 'Rewind to here',
+    this.forkLabel = 'Fork from here',
+    this.rewindForkEnabled = true,
   });
 
   final ColorScheme scheme;
@@ -355,6 +399,11 @@ class _AssistantBlock extends StatelessWidget {
   final bool showActionBar;
   final AiActionBarReveal actionBarReveal;
   final ValueListenable<bool>? hoverListenable;
+  final VoidCallback? onRewind;
+  final VoidCallback? onFork;
+  final String rewindLabel;
+  final String forkLabel;
+  final bool rewindForkEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -377,6 +426,11 @@ class _AssistantBlock extends StatelessWidget {
                   message: message,
                   reveal: actionBarReveal,
                   hoverListenable: hoverListenable,
+                  onRewind: onRewind,
+                  onFork: onFork,
+                  rewindLabel: rewindLabel,
+                  forkLabel: forkLabel,
+                  rewindForkEnabled: rewindForkEnabled,
                 ),
               ),
           ],
@@ -393,12 +447,22 @@ class _HoverScopedActionBar extends StatelessWidget {
     required this.reveal,
     this.hoverListenable,
     this.onRetryDelivery,
+    this.onRewind,
+    this.onFork,
+    this.rewindLabel = 'Rewind to here',
+    this.forkLabel = 'Fork from here',
+    this.rewindForkEnabled = true,
   });
 
   final AiMessage message;
   final AiActionBarReveal reveal;
   final ValueListenable<bool>? hoverListenable;
   final VoidCallback? onRetryDelivery;
+  final VoidCallback? onRewind;
+  final VoidCallback? onFork;
+  final String rewindLabel;
+  final String forkLabel;
+  final bool rewindForkEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -407,6 +471,11 @@ class _HoverScopedActionBar extends StatelessWidget {
       reveal: reveal,
       forceVisibleListenable: hoverListenable,
       onRetryDelivery: onRetryDelivery,
+      onRewind: onRewind,
+      onFork: onFork,
+      rewindLabel: rewindLabel,
+      forkLabel: forkLabel,
+      rewindForkEnabled: rewindForkEnabled,
     );
   }
 }

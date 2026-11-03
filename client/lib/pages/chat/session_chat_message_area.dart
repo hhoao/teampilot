@@ -39,6 +39,7 @@ import 'session_chat_markdown_link_scope.dart';
 import 'session_history_live_chrome.dart';
 import 'session_seat_working.dart';
 import 'session_history_review_messages.dart';
+import 'session_history_rewind_host.dart';
 import 'subagent_preview_controller.dart';
 
 /// The scrollable message thread area of a session chat view.
@@ -300,15 +301,16 @@ class SessionChatMessageArea extends StatelessWidget {
                                           ),
                                         );
                                     Widget buildChrome(bool sessionHasLeases) {
+                                      final turnInFlight = historyTurnInFlight(
+                                        isSubmitting: isSubmitting,
+                                        awaitingAssistant:
+                                            state.awaitingAssistant,
+                                        sessionBusy: activity.isBusy,
+                                        userStoppedTurn: userStoppedTurn,
+                                      );
                                       final liveChrome =
                                           SessionHistoryLiveChromeX.resolve(
-                                            turnInFlight: historyTurnInFlight(
-                                              isSubmitting: isSubmitting,
-                                              awaitingAssistant:
-                                                  state.awaitingAssistant,
-                                              sessionBusy: activity.isBusy,
-                                              userStoppedTurn: userStoppedTurn,
-                                            ),
+                                            turnInFlight: turnInFlight,
                                             memberRunning: memberRunning,
                                             sessionConnecting:
                                                 sessionConnecting,
@@ -320,24 +322,47 @@ class SessionChatMessageArea extends StatelessWidget {
                                       return MarkdownDisplayModeScope(
                                         userMessageMode: prefs.userMessageMode,
                                         codeBlockMode: prefs.chatCodeBlockMode,
-                                        child: SessionHistoryReviewMessages(
-                                          state: state,
-                                          runtime: historySeat.runtime,
-                                          onRetry: onRetry,
-                                          onLoadOlder: historySeat.loadOlder,
-                                          liveChrome: liveChrome,
-                                          pendingDeliveryStatuses: historySeat
-                                              .pendingDeliveryStatuses,
-                                          onRetryFailedMessage:
-                                              onRetryFailedMessage,
-                                          highlightMessageId:
-                                              highlightMessageId,
-                                          revealRequest: revealController,
-                                          visibleOwnerId: visibleOwnerId,
-                                          scrollAnchorKey: session.sessionId,
-                                          scrollAnchors: context
-                                              .read<ChatCubit>()
-                                              .sessionScrollAnchors,
+                                        child: SessionHistoryRewindHost(
+                                          session: session,
+                                          workspace: workspace,
+                                          memberId: shellMemberId,
+                                          liveMessages:
+                                              historySeat.runtime.messages,
+                                          builder: (context, rewind) {
+                                            return SessionHistoryReviewMessages(
+                                              state: state,
+                                              runtime: historySeat.runtime,
+                                              onRetry: onRetry,
+                                              onLoadOlder:
+                                                  historySeat.loadOlder,
+                                              liveChrome: liveChrome,
+                                              pendingDeliveryStatuses:
+                                                  historySeat
+                                                      .pendingDeliveryStatuses,
+                                              onRetryFailedMessage:
+                                                  onRetryFailedMessage,
+                                              highlightMessageId:
+                                                  highlightMessageId,
+                                              revealRequest: revealController,
+                                              visibleOwnerId: visibleOwnerId,
+                                              scrollAnchorKey:
+                                                  session.sessionId,
+                                              scrollAnchors: context
+                                                  .read<ChatCubit>()
+                                                  .sessionScrollAnchors,
+                                              checkpointCommits: rewind
+                                                  .history
+                                                  .checkpointCommits,
+                                              checkedOutCommit: rewind
+                                                  .history
+                                                  .checkedOutCommit,
+                                              laterMessages:
+                                                  rewind.history.laterMessages,
+                                              onRewindTo: rewind.onRewindTo,
+                                              onForkFrom: rewind.onForkFrom,
+                                              turnInFlight: turnInFlight,
+                                            );
+                                          },
                                         ),
                                       );
                                     }

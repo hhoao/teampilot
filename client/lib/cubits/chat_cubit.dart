@@ -1,6 +1,10 @@
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, Process;
 
+import 'package:path/path.dart' as p;
+import 'package:uuid/uuid.dart';
+
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:collection/collection.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -29,8 +33,13 @@ import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/home_storage.dart';
 import '../services/chat/conversation/history/ai_history_loader.dart';
+import '../services/chat/conversation/history/ai_history_watch_meta.dart';
+import '../services/chat/conversation/history/later_checkpoint_messages.dart';
+import '../services/chat/conversation/history/session_history_context_builder.dart';
+import '../services/chat/rewind/rewind_fork_service.dart';
 import '../services/chat/rewind/seat_rewind_paths.dart';
 import '../services/chat/rewind/seat_rewind_store.dart';
+import '../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../services/chat/runtime/session_activity_reduce.dart';
 import '../services/chat/conversation/history/failed_message_store.dart';
 import '../services/chat/session/session_lifecycle_service.dart';
@@ -358,6 +367,11 @@ class ChatCubit extends Cubit<ChatState>
   /// Serializes [SeatRewindStore.commitTurn] per rewind git dir so quiet-end
   /// and a later done event cannot overlap unawaited writes.
   final _ptyCommitByGitDir = <String, Future<void>>{};
+
+  /// One instance per cubit so overlapping rewind/fork on the same gitDir
+  /// are rejected by [RewindForkService].
+  final RewindForkService _rewindFork = RewindForkService();
+  bool? _gitOnPath;
 
   /// Last message id committed for a PTY seat (`sessionId\0memberId`).
   final _ptyCommittedMessageBySeat = <String, String>{};
@@ -2892,6 +2906,193 @@ class ChatCubit extends Cubit<ChatState>
     return created;
   }
 
+  /// Restore [commit] into this seat, stop the process, then relaunch.
+  Future<void> rewindSeatTo({
+    required String sessionId,
+    required String memberId,
+    required String commit,
+  }) async {
+    final session = _sessionForRewind(sessionId);
+    if (session == null) return;
+    final store = _seatRewindStore(session, memberId);
+    if (store == null) return;
+    await _rewindFork.rewind(
+      store: store,
+      seat: _CubitSeatProcess(this, session, memberId),
+      commit: commit,
+    );
+    onSessionHistoryStale?.call(sessionId);
+  }
+
+  /// Copy [commit] into a new personal session. Does not stop the source.
+  Future<AppSession?> forkSeatFrom({
+    required String sessionId,
+    required String memberId,
+    required String commit,
+  }) async {
+    final source = _sessionForRewind(sessionId);
+    if (source == null) return null;
+    final store = _seatRewindStore(source, memberId);
+    final repo = _sessionRepository;
+    if (store == null || repo == null) return null;
+    final cli = _cliForRewindSeat(source, memberId);
+    final newId = const Uuid().v4();
+    final acp = isAcpChatSession(source) || isAcpChatSeat(source, memberId);
+    final destTarget = SeatRewindTarget(
+      kind: acp ? SeatRewindKind.personalAcp : SeatRewindKind.personalPty,
+      tool: cli.value,
+    );
+    final layout = _storage.context.layout;
+    final destGitDir = layout.pathContext.join(
+      layout.workspace.sessionDir(source.workspaceId, newId),
+      'rewind',
+      destTarget.seatKey,
+    );
+    final destWorkTree = layout.workspace.sessionRuntimeDir(
+      source.workspaceId,
+      newId,
+    );
+    final createdId = await _rewindFork.fork(
+      source: store,
+      commit: commit,
+      destTarget: destTarget,
+      destGitDir: destGitDir,
+      destWorkTree: destWorkTree,
+      sessions: _CubitForkSessionCreator(
+        cubit: this,
+        repo: repo,
+        fixedSessionId: newId,
+      ),
+      workspaceId: source.workspaceId,
+      cli: cli,
+      display: '${source.display} fork',
+      workingDirectory: source.firstFolderPath,
+    );
+    for (final session in state.sessions) {
+      if (session.sessionId == createdId) return session;
+    }
+    return hydrateSessionDocument(source.workspaceId, createdId);
+  }
+
+  Future<bool> gitAvailableForRewind() async {
+    if (Platform.isAndroid) return false;
+    final cached = _gitOnPath;
+    if (cached != null) return cached;
+    try {
+      final result = await Process.run('git', ['--version']);
+      _gitOnPath = result.exitCode == 0;
+    } on Object {
+      _gitOnPath = false;
+    }
+    return _gitOnPath!;
+  }
+
+  bool rewindActionsAllowed(AppSession session, String memberId) {
+    if (Platform.isAndroid) return false;
+    final workTarget = _lifecycle.launchWorkTarget(
+      _launchService.launchContextFor(session),
+      memberId: session.isSimple ? null : memberId,
+    );
+    return workTarget.kind == RuntimeKind.local;
+  }
+
+  Future<SeatRewindHistory> loadSeatRewindHistory({
+    required AppSession session,
+    required String memberId,
+    required List<AiMessage> live,
+  }) async {
+    final store = _seatRewindStore(session, memberId);
+    if (store == null) return const SeatRewindHistory.empty();
+    final acp = isAcpChatSession(session) || isAcpChatSeat(session, memberId);
+    final cli = _cliForRewindSeat(session, memberId);
+    final history = acp
+        ? null
+        : cliRegistry.capability<AiHistoryCapability>(cli);
+    final ptyPath = acp
+        ? null
+        : await _ptyTranscriptRepoPath(session, memberId, store, cli);
+    return readSeatRewindHistory(
+      store: store,
+      live: live,
+      acp: acp,
+      history: history,
+      ptyRelativePath: ptyPath,
+    );
+  }
+
+  AppSession? _sessionForRewind(String sessionId) {
+    for (final session in state.sessions) {
+      if (session.sessionId == sessionId) return session;
+    }
+    return _tabStore.getOpenTabBySessionId(sessionId)?.persistedSession;
+  }
+
+  CliTool _cliForRewindSeat(AppSession session, String memberId) {
+    if (session.isSimple)
+      return session.cli ?? _cliForPtySeat(session, memberId);
+    return _cliForPtySeat(session, memberId);
+  }
+
+  SeatRewindStore? _seatRewindStore(AppSession session, String memberId) {
+    final cli = _cliForRewindSeat(session, memberId);
+    final acp = isAcpChatSession(session) || isAcpChatSeat(session, memberId);
+    final personal = session.isSimple;
+    final target = SeatRewindTarget(
+      kind: acp
+          ? (personal ? SeatRewindKind.personalAcp : SeatRewindKind.mixedAcp)
+          : (personal ? SeatRewindKind.personalPty : SeatRewindKind.mixedPty),
+      tool: cli.value,
+      memberId: personal ? null : memberId,
+    );
+    final layout = _storage.context.layout;
+    return SeatRewindStore(
+      gitDir: layout.pathContext.join(
+        layout.workspace.sessionDir(session.workspaceId, session.sessionId),
+        'rewind',
+        target.seatKey,
+      ),
+      workTree: layout.workspace.sessionRuntimeDir(
+        session.workspaceId,
+        session.sessionId,
+      ),
+      target: target,
+    );
+  }
+
+  Future<String?> _ptyTranscriptRepoPath(
+    AppSession session,
+    String memberId,
+    SeatRewindStore store,
+    CliTool cli,
+  ) async {
+    final cap = cliRegistry.capability<AiHistoryCapability>(cli);
+    if (cap == null) return null;
+    final ctx = const SessionHistoryContextBuilder().build(
+      fs: _storage.fs,
+      layout: _storage.context.layout,
+      appDataRoot: _storage.context.appDataRoot,
+      session: session,
+      memberId: session.isSimple ? '' : memberId,
+      cli: cli,
+    );
+    var abs = await cap.resolveParentTranscriptPath(ctx);
+    if (abs == null || abs.isEmpty) {
+      final bundle = await cap.locate(ctx);
+      final meta = bundle == null
+          ? null
+          : AiHistoryWatchMeta.fromHints(bundle.hints);
+      abs = meta != null && meta.cacheTokenPaths.isNotEmpty
+          ? meta.cacheTokenPaths.first
+          : null;
+    }
+    if (abs == null || abs.isEmpty) return null;
+    final relative = p
+        .relative(p.normalize(abs), from: p.normalize(store.workTree))
+        .replaceAll('\\', '/');
+    if (relative.startsWith('..')) return null;
+    return relative;
+  }
+
   /// Compose-landing / inject path: rename untitled session from first prompt.
   Future<void> applyFirstPromptTitle(
     String sessionId,
@@ -3170,5 +3371,117 @@ class ChatCubit extends Cubit<ChatState>
     _tabStore.clear();
     await _operatorMailboxQueued.close();
     await super.close();
+  }
+}
+
+final class _CubitSeatProcess implements SeatProcess {
+  _CubitSeatProcess(this._cubit, this._session, this._memberId);
+
+  final ChatCubit _cubit;
+  final AppSession _session;
+  final String _memberId;
+
+  @override
+  bool get turnInFlight {
+    final activity = _cubit.state.sessionActivities[_session.sessionId];
+    return activity?.isInTurn == true ||
+        activity?.isBusy == true ||
+        activity?.isDelivering == true;
+  }
+
+  @override
+  bool get localRuntime {
+    final workTarget = _cubit._lifecycle.launchWorkTarget(
+      _cubit._launchService.launchContextFor(_session),
+      memberId: _session.isSimple ? null : _memberId,
+    );
+    return workTarget.kind == RuntimeKind.local;
+  }
+
+  @override
+  Future<void> stopAndWait() async {
+    final tab = _cubit._tabStore.getOpenTabBySessionId(_session.sessionId);
+    final acpCubit = tab?.memberAcpRuntimes[_memberId] ?? tab?.acpRuntime;
+    final shell = tab?.memberShells[_memberId];
+    if (isAcpChatSession(_session)) {
+      _cubit.discardPersonalAcpRuntime(_session.sessionId);
+    } else if (isAcpChatSeat(_session, _memberId)) {
+      _cubit.discardAcpSeat(_session.sessionId, _memberId);
+    } else {
+      _cubit.disconnectMemberShell(_session.sessionId, _memberId);
+    }
+    if (acpCubit != null && !acpCubit.isClosed) {
+      await acpCubit.close();
+    }
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (shell != null &&
+        shell.isRunning &&
+        DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+  }
+
+  @override
+  Future<void> relaunch() async {
+    if (_session.isSimple) {
+      await _cubit.retrySessionLaunch(_session.sessionId);
+      return;
+    }
+    await _cubit.ensureMemberTerminalForView(_session.sessionId, _memberId);
+    if (isAcpChatSeat(_session, _memberId) || isAcpChatSession(_session)) {
+      await _cubit.retrySessionLaunch(_session.sessionId);
+    }
+  }
+}
+
+final class _CubitForkSessionCreator implements ForkSessionCreator {
+  _CubitForkSessionCreator({
+    required this.cubit,
+    required this.repo,
+    required this.fixedSessionId,
+  });
+
+  final ChatCubit cubit;
+  final SessionRepository repo;
+  final String fixedSessionId;
+
+  @override
+  Future<String> createPersonal({
+    required String workspaceId,
+    required CliTool cli,
+    required String display,
+    required String? workingDirectory,
+    required String? nativeSessionId,
+  }) async {
+    final created = await cubit._dataStore.createSession(
+      workspaceId,
+      repo,
+      sessionTeamId: '',
+      cli: cli,
+      workingDirectory: workingDirectory,
+      fixedSessionId: fixedSessionId,
+    );
+    await repo.renameSession(created.sessionId, display);
+    if (nativeSessionId != null && nativeSessionId.trim().isNotEmpty) {
+      await repo.recordNativeSessionId(
+        created.sessionId,
+        tool: cli.value,
+        nativeId: nativeSessionId.trim(),
+      );
+    }
+    var next = created.copyWith(display: display);
+    if (nativeSessionId != null && nativeSessionId.trim().isNotEmpty) {
+      next = next.withNativeSessionId(cli.value, nativeSessionId.trim());
+    }
+    cubit._dataStore.markSessionDocument(next.sessionId);
+    cubit._emitSnapshot(
+      cubit._dataStore.appendSession(cubit.stateSnapshot(), next),
+    );
+    return next.sessionId;
+  }
+
+  @override
+  Future<void> deleteSession(String sessionId) async {
+    await cubit.deleteSession(repo, sessionId);
   }
 }

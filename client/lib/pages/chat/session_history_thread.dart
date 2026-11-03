@@ -25,6 +25,11 @@ const Key kSessionHistoryRunningFooterKey = ValueKey(
   'session-history-running-footer',
 );
 
+/// Finder key for the divider above later-checkpoint ghost messages.
+const Key kSessionHistoryLaterCheckpointDividerKey = ValueKey(
+  'session-history-later-checkpoint-divider',
+);
+
 /// Synthetic tip message while continue is awaiting the assistant turn.
 const AiMessage kSessionHistoryRunningPlaceholder = AiMessage(
   id: 'pending:running',
@@ -71,6 +76,12 @@ class SessionHistoryThread extends StatefulWidget {
     this.scrollAnchorKey,
     this.scrollAnchors,
     this.mobilePerformanceMode,
+    this.checkpointCommits = const {},
+    this.checkedOutCommit,
+    this.laterMessages = const [],
+    this.onRewindTo,
+    this.onForkFrom,
+    this.turnInFlight = false,
     super.key,
   });
 
@@ -109,6 +120,21 @@ class SessionHistoryThread extends StatefulWidget {
   /// Overrides the mobile history mounting policy for deterministic tests.
   /// Defaults to the Android/iOS platform check.
   final bool? mobilePerformanceMode;
+
+  /// Checkpoint SHA for the message id that closed that turn.
+  final Map<String, String> checkpointCommits;
+
+  /// Currently restored checkpoint, or null when none is checked out.
+  final String? checkedOutCommit;
+
+  /// Messages that exist only on later checkpoints, rendered under a divider.
+  final List<AiMessage> laterMessages;
+
+  final void Function(String commit)? onRewindTo;
+  final void Function(String commit)? onForkFrom;
+
+  /// When true, rewind and fork stay visible but disabled.
+  final bool turnInFlight;
 
   @override
   State<SessionHistoryThread> createState() => _SessionHistoryThreadState();
@@ -858,11 +884,18 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   }
 
   List<AiMessage> get _displayMessages {
-    if (!widget.liveChrome.isActive) return _messages;
-    if (_messages.any((m) => m.id == kSessionHistoryRunningPlaceholder.id)) {
-      return _messages;
+    List<AiMessage> live;
+    if (!widget.liveChrome.isActive) {
+      live = _messages;
+    } else if (_messages.any(
+      (m) => m.id == kSessionHistoryRunningPlaceholder.id,
+    )) {
+      live = _messages;
+    } else {
+      live = [..._messages, kSessionHistoryRunningPlaceholder];
     }
-    return [..._messages, kSessionHistoryRunningPlaceholder];
+    if (widget.laterMessages.isEmpty) return live;
+    return [...live, ...widget.laterMessages];
   }
 
   @override
@@ -871,6 +904,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         widget.mobilePerformanceMode ?? (Platform.isAndroid || Platform.isIOS);
     final displayMessages = _displayMessages;
     final lastId = displayMessages.isEmpty ? null : displayMessages.last.id;
+    final laterIds = {for (final m in widget.laterMessages) m.id};
+    final firstLaterId = widget.laterMessages.isEmpty
+        ? null
+        : widget.laterMessages.first.id;
+    final rewindLabel = context.l10n.rewindToHere;
+    final forkLabel = context.l10n.forkFromHere;
     // Last *real* message (excludes the running footer appended to the tip).
     final realTipId = _messages.isEmpty ? null : _messages.last.id;
     final aiTheme = AiMessageTheme.of(context);
@@ -1019,6 +1058,10 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                               ai.id == realTipId &&
                               _liveTurnActive(widget.liveChrome) &&
                               _endsWithThinking(ai);
+                          final commit = widget.checkpointCommits[ai.id];
+                          final hideRewind =
+                              commit == null ||
+                              commit == widget.checkedOutCommit;
                           final messageChild = AiMessageView(
                             key: ValueKey(ai.id),
                             message: ai,
@@ -1034,6 +1077,15 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                             chainOfThoughtAutoExpand:
                                 liveThinkingTail &&
                                 aiTheme.cotExpandLatestOnOpen,
+                            onRewind: hideRewind || widget.onRewindTo == null
+                                ? null
+                                : () => widget.onRewindTo!(commit),
+                            onFork: commit == null || widget.onForkFrom == null
+                                ? null
+                                : () => widget.onForkFrom!(commit),
+                            rewindLabel: rewindLabel,
+                            forkLabel: forkLabel,
+                            rewindForkEnabled: !widget.turnInFlight,
                           );
                           var result = tightenForRunning
                               ? Theme(
@@ -1062,6 +1114,20 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                 ),
                               ),
                               child: result,
+                            );
+                          }
+                          if (laterIds.contains(ai.id)) {
+                            result = Opacity(opacity: 0.55, child: result);
+                          }
+                          if (ai.id == firstLaterId) {
+                            result = Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Divider(
+                                  key: kSessionHistoryLaterCheckpointDividerKey,
+                                ),
+                                result,
+                              ],
                             );
                           }
                           return result;

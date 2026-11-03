@@ -32,6 +32,11 @@ class AiMessageActionBar extends StatefulWidget {
     this.forceVisible = false,
     this.forceVisibleListenable,
     this.onRetryDelivery,
+    this.onRewind,
+    this.onFork,
+    this.rewindLabel = 'Rewind to here',
+    this.forkLabel = 'Fork from here',
+    this.rewindForkEnabled = true,
     super.key,
   });
 
@@ -41,6 +46,21 @@ class AiMessageActionBar extends StatefulWidget {
 
   /// When set, shows a refresh icon to retry failed delivery.
   final VoidCallback? onRetryDelivery;
+
+  /// When set, shows rewind. Null [onPressed] while [rewindForkEnabled] is false.
+  final VoidCallback? onRewind;
+
+  /// When set, shows fork. Null [onPressed] while [rewindForkEnabled] is false.
+  final VoidCallback? onFork;
+
+  /// Tooltip / semantics for rewind. Package stays free of app l10n.
+  final String rewindLabel;
+
+  /// Tooltip / semantics for fork. Package stays free of app l10n.
+  final String forkLabel;
+
+  /// When false, rewind and fork stay visible but [onPressed] is null.
+  final bool rewindForkEnabled;
 
   /// When set (history hover path), visibility toggles via Opacity without
   /// rebuilding the button row after first mount.
@@ -138,7 +158,9 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
     _markdown = markdownForExport(widget.message);
     if (_plain.isNotEmpty ||
         _markdown.isNotEmpty ||
-        widget.onRetryDelivery != null) {
+        widget.onRetryDelivery != null ||
+        widget.onRewind != null ||
+        widget.onFork != null) {
       _actionsMounted = true;
     }
   }
@@ -220,10 +242,29 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
           color: color,
           onPressed: _plain.isEmpty ? null : _copyPlain,
         ),
+        if (widget.onRewind != null)
+          Tooltip(
+            message: widget.rewindLabel,
+            child: _LiteIconAction(
+              label: widget.rewindLabel,
+              icon: Icons.history,
+              color: color,
+              onPressed: widget.rewindForkEnabled ? widget.onRewind : null,
+            ),
+          ),
+        if (widget.onFork != null)
+          Tooltip(
+            message: widget.forkLabel,
+            child: _LiteIconAction(
+              label: widget.forkLabel,
+              icon: Icons.call_split,
+              color: color,
+              onPressed: widget.rewindForkEnabled ? widget.onFork : null,
+            ),
+          ),
         _LiteIconAction(
           label: _exported ? strings.copied : strings.exportMarkdown,
-          icon:
-              _exported ? Icons.check_rounded : Icons.description_outlined,
+          icon: _exported ? Icons.check_rounded : Icons.description_outlined,
           color: color,
           onPressed: _markdown.isEmpty ? null : _copyMarkdown,
         ),
