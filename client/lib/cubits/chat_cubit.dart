@@ -606,6 +606,38 @@ class ChatCubit extends Cubit<ChatState>
   onSeedHistoryPending;
   void Function(String sessionId, String text)? onCancelSeedHistoryPending;
 
+  /// Publishes the landing first prompt so Chat can paint the user bubble
+  /// before the seat exists (connect / first delivery window).
+  ///
+  /// UI-only: nothing is persisted or seeded into the history store. The
+  /// bubble disappears once [clearPendingLandingPrompt] runs (the real turn
+  /// lives in the seat runtime by then) or as soon as the runtime owns a user
+  /// turn with the same text.
+  void beginPendingLandingPrompt({
+    required String sessionId,
+    required String text,
+  }) {
+    if (isClosed) return;
+    final id = sessionId.trim();
+    final trimmed = text.trim();
+    if (id.isEmpty || trimmed.isEmpty) return;
+    if (state.pendingLandingPrompts[id] == trimmed) return;
+    emit(
+      state.copyWith(
+        pendingLandingPrompts: {...state.pendingLandingPrompts, id: trimmed},
+      ),
+    );
+  }
+
+  /// Drops the transient landing bubble (success, failure, or cancel).
+  void clearPendingLandingPrompt(String sessionId) {
+    if (isClosed) return;
+    final id = sessionId.trim();
+    if (id.isEmpty || !state.pendingLandingPrompts.containsKey(id)) return;
+    final next = {...state.pendingLandingPrompts}..remove(id);
+    emit(state.copyWith(pendingLandingPrompts: next));
+  }
+
   /// Seeds an optimistic user bubble on the pod's HistoryStore (or the global
   /// cubit as fallback) so Chat shows the user turn before connect/deliver.
   void seedHistoryPending({

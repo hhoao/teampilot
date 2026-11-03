@@ -33,6 +33,12 @@ const AiMessage kSessionHistoryRunningPlaceholder = AiMessage(
   parts: [],
 );
 
+/// Synthetic user bubble for a landing create+send that is still connecting.
+///
+/// Rendered only from [SessionHistoryThread.pendingUserText]; never enters the
+/// runtime or the history store.
+const String kSessionHistoryPendingLandingUserId = 'pending:landing';
+
 /// Whether [chrome] means a turn is actively producing output (as opposed to
 /// idle history review or a background task that outlived the turn).
 bool _liveTurnActive(SessionHistoryLiveChrome chrome) =>
@@ -71,6 +77,7 @@ class SessionHistoryThread extends StatefulWidget {
     this.scrollAnchorKey,
     this.scrollAnchors,
     this.mobilePerformanceMode,
+    this.pendingUserText = '',
     super.key,
   });
 
@@ -81,6 +88,14 @@ class SessionHistoryThread extends StatefulWidget {
 
   /// Slim starting/running footer under the scroll surface.
   final SessionHistoryLiveChrome liveChrome;
+
+  /// Transient first prompt of a landing create+send, painted as a user bubble
+  /// until the runtime owns that turn (ACP `sendPrompt` / PTY pending).
+  ///
+  /// Memory-only: the bubble is synthesized per build and never written to the
+  /// runtime, the history store, or disk. Empty for every non-landing path.
+  final String pendingUserText;
+
   final Map<String, FailedMessageStatus> pendingDeliveryStatuses;
   final ValueChanged<String>? onRetryFailedMessage;
 
@@ -265,6 +280,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       if (widget.liveChrome.isActive && _stickToEnd) {
         _scheduleStickFrames();
       }
+    }
+    if (oldWidget.pendingUserText != widget.pendingUserText &&
+        widget.pendingUserText.trim().isNotEmpty &&
+        _stickToEnd) {
+      // Landing bubble arrives after mount (tab opens first): keep it pinned.
+      _scheduleStickFrames();
     }
     if (oldWidget.revealRequest != widget.revealRequest) {
       _boundReveal?.removeListener(_onRevealRequestChanged);
@@ -857,12 +878,37 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     );
   }
 
+  /// Appends the transient landing bubble while it is not in [messages] yet.
+  ///
+  /// Matching by role + text (not id) keeps the swap seamless: the ACP queued
+  /// prompt and the hydrated PTY pending reuse the user's own words, so the
+  /// synthetic bubble drops itself the frame the real turn lands.
+  List<AiMessage> _withPendingLandingUser(List<AiMessage> messages) {
+    final text = widget.pendingUserText.trim();
+    if (text.isEmpty) return messages;
+    final alreadyPresent = messages.any(
+      (m) =>
+          m.role == AiRole.user &&
+          m.parts.any((p) => p is AiTextPart && p.text.trim() == text),
+    );
+    if (alreadyPresent) return messages;
+    return [
+      ...messages,
+      AiMessage(
+        id: kSessionHistoryPendingLandingUserId,
+        role: AiRole.user,
+        parts: [AiTextPart(text: text)],
+      ),
+    ];
+  }
+
   List<AiMessage> get _displayMessages {
-    if (!widget.liveChrome.isActive) return _messages;
-    if (_messages.any((m) => m.id == kSessionHistoryRunningPlaceholder.id)) {
-      return _messages;
+    final messages = _withPendingLandingUser(_messages);
+    if (!widget.liveChrome.isActive) return messages;
+    if (messages.any((m) => m.id == kSessionHistoryRunningPlaceholder.id)) {
+      return messages;
     }
-    return [..._messages, kSessionHistoryRunningPlaceholder];
+    return [...messages, kSessionHistoryRunningPlaceholder];
   }
 
   @override
