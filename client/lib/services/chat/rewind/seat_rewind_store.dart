@@ -153,6 +153,7 @@ final class SeatRewindStore {
     final listed = await _runGit([
       ..._repoArgs,
       'for-each-ref',
+      '--sort=committerdate',
       '--format=%(objectname)',
       'refs/rewind/keep',
     ], allowFailure: true);

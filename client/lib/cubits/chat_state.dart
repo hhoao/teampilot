@@ -20,6 +20,8 @@ class ChatState extends Equatable {
     this.sessionLaunchError,
     this.teamConfigValidation,
     this.sessionActivities = const {},
+    this.rewindForkInProgress = false,
+    this.rewindForkError,
   });
 
   final List<Workspace> workspaces;
@@ -56,6 +58,12 @@ class ChatState extends Equatable {
   /// idle-notify uses [SessionActivity.isReadyToChat].
   final Map<String, SessionActivity> sessionActivities;
 
+  /// True while this cubit is stopping, restoring, or forking a seat.
+  final bool rewindForkInProgress;
+
+  /// l10n key for a rewind/fork failure (`sessionRewindFailed` / `sessionForkFailed`).
+  final String? rewindForkError;
+
   Set<String> get busySessionIds => {
     for (final e in sessionActivities.entries)
       if (e.value.isBusy) e.key,
@@ -78,6 +86,9 @@ class ChatState extends Equatable {
     TeamConfigValidation? teamConfigValidation,
     bool clearTeamConfigValidation = false,
     Map<String, SessionActivity>? sessionActivities,
+    bool? rewindForkInProgress,
+    String? rewindForkError,
+    bool clearRewindForkError = false,
   }) {
     return ChatState(
       workspaces: workspaces ?? this.workspaces,
@@ -98,6 +109,10 @@ class ChatState extends Equatable {
           ? null
           : (teamConfigValidation ?? this.teamConfigValidation),
       sessionActivities: sessionActivities ?? this.sessionActivities,
+      rewindForkInProgress: rewindForkInProgress ?? this.rewindForkInProgress,
+      rewindForkError: clearRewindForkError
+          ? null
+          : (rewindForkError ?? this.rewindForkError),
     );
   }
 
@@ -114,5 +129,7 @@ class ChatState extends Equatable {
     sessionLaunchError,
     teamConfigValidation,
     sessionActivities,
+    rewindForkInProgress,
+    rewindForkError,
   ];
 }

@@ -29,7 +29,6 @@ final class SeatRewindHistory {
 /// Does not parse CLI transcripts inside `services/chat/rewind/`.
 Future<SeatRewindHistory> readSeatRewindHistory({
   required SeatRewindStore store,
-  required List<AiMessage> live,
   required bool acp,
   AiHistoryCapability? history,
   String? ptyRelativePath,
@@ -41,13 +40,27 @@ Future<SeatRewindHistory> readSeatRewindHistory({
       if (checkpoint.messageId.isNotEmpty)
         checkpoint.messageId: checkpoint.commit,
   };
-  final seen = {for (final message in live) message.id};
   final later = <AiMessage>[];
   final personal = store.target.seatKey == 'personal';
   final sidecar = acpTranscriptFileName(
     memberId: store.target.memberId,
     personal: personal,
   );
+  // Membership is the checked-out commit's transcript, not the paged window.
+  final seen = <String>{};
+  if (checkedOut != null) {
+    final checkedOutMessages = acp
+        ? decodeAcpChatTranscript(await store.showFile(checkedOut, sidecar))
+        : await _decodePtyCheckpoint(
+            store: store,
+            commit: checkedOut,
+            history: history,
+            ptyRelativePath: ptyRelativePath,
+          );
+    for (final message in checkedOutMessages) {
+      seen.add(message.id);
+    }
+  }
   for (final checkpoint in checkpoints) {
     if (checkpoint.commit == checkedOut) continue;
     final decoded = acp

@@ -2195,6 +2195,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionDuplicateFailed => '复制对话失败';
 
   @override
+  String get sessionRewindFailed => '回溯对话失败';
+
+  @override
+  String get sessionForkFailed => 'Fork 对话失败';
+
+  @override
   String get sessionTitleCopySuffix => '（副本）';
 
   @override

@@ -360,7 +360,8 @@ class SessionChatMessageArea extends StatelessWidget {
                                                   rewind.history.laterMessages,
                                               onRewindTo: rewind.onRewindTo,
                                               onForkFrom: rewind.onForkFrom,
-                                              turnInFlight: turnInFlight,
+                                              turnInFlight:
+                                                  turnInFlight || rewind.busy,
                                             );
                                           },
                                         ),

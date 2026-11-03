@@ -994,6 +994,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                         // so the ring moves even though the message list
                         // instance is unchanged (see VirtualThreadViewport.buildKey).
                         buildKey: widget.highlightMessageId,
+                        bodyCacheKey: widget.turnInFlight,
                         revealMessageId: _revealTargetId,
                         revealEpoch: _revealEpoch,
                         onRevealOffset: (offset) {

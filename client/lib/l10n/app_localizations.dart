@@ -4148,6 +4148,18 @@ abstract class AppLocalizations {
   /// **'Failed to duplicate conversation'**
   String get sessionDuplicateFailed;
 
+  /// No description provided for @sessionRewindFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to rewind conversation'**
+  String get sessionRewindFailed;
+
+  /// No description provided for @sessionForkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to fork conversation'**
+  String get sessionForkFailed;
+
   /// No description provided for @sessionTitleCopySuffix.
   ///
   /// In en, this message translates to:

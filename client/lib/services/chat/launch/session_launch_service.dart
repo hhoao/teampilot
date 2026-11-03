@@ -954,7 +954,7 @@ class SessionLaunchService
   /// remote plane is closed too — with one SSH session per member, an
   /// unreleased plane would leak an idle connection per reclaimed remote seat.
   /// Local seats have no member SSH session, so the close is a no-op for them.
-  void discardAcpSeat(String sessionId, String memberId) {
+  Future<void> discardAcpSeat(String sessionId, String memberId) async {
     final id = sessionId.trim();
     final mid = memberId.trim();
     if (id.isEmpty || mid.isEmpty) return;
@@ -966,11 +966,14 @@ class SessionLaunchService
     tab.membersPendingConnect.remove(mid);
     tab.memberAcpRuntimes.remove(mid);
     tab.reclaimedMemberIds.add(mid);
-    unawaited(cubit.close());
-    unawaited(tab.closeMemberRemotePlane(mid));
-    _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: mid);
-    _h.clearLaunchError(tab.info.id);
-    _h.updateTabRunning(tab.info.id);
+    try {
+      await cubit.close();
+    } finally {
+      unawaited(tab.closeMemberRemotePlane(mid));
+      _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: mid);
+      _h.clearLaunchError(tab.info.id);
+      _h.updateTabRunning(tab.info.id);
+    }
   }
 
   /// Reclaims the personal ACP runtime (`isAcpChatSession`) for idle.
@@ -981,7 +984,7 @@ class SessionLaunchService
   /// stays open with its app-side transcript; closing the cubit persists the
   /// transcript + agent session id and kills the process, and the connect
   /// funnel re-attaches a fresh cubit on demand (resume).
-  void discardPersonalAcpRuntime(String sessionId) {
+  Future<void> discardPersonalAcpRuntime(String sessionId) async {
     final id = sessionId.trim();
     if (id.isEmpty) return;
     final tab = _tabStore.getOpenTabBySessionId(id);
@@ -992,14 +995,17 @@ class SessionLaunchService
     if (cubit == null) return;
     tab.acpRuntime = null;
     tab.reclaimedAcpRuntime = true;
-    unawaited(cubit.close());
-    _h.clearAgentStatusSeat(
-      sessionId: tab.info.id,
-      memberId: AcpChatRuntimeCubit.acpMemberId,
-    );
-    _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: id);
-    _h.clearLaunchError(tab.info.id);
-    _h.updateTabRunning(tab.info.id);
+    try {
+      await cubit.close();
+    } finally {
+      _h.clearAgentStatusSeat(
+        sessionId: tab.info.id,
+        memberId: AcpChatRuntimeCubit.acpMemberId,
+      );
+      _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: id);
+      _h.clearLaunchError(tab.info.id);
+      _h.updateTabRunning(tab.info.id);
+    }
   }
 
   /// Lazy-spawn / restore entry for "member selected + terminal view visible".

@@ -22,9 +22,12 @@ void main() {
   test('rewind stops, restores, then relaunches', () async {
     final tmp = tmpDir.path;
     final store = await _personalStore(tmp);
-    final first = await store.commitTurn(messageId: 'm1');
+    final first = await store.commitTurn(
+      messageId: 'm1',
+      nativeSessionId: 'sid-1',
+    );
     await File('$tmp/work/claude/projects/a.jsonl').writeAsString('two');
-    await store.commitTurn(messageId: 'm2');
+    await store.commitTurn(messageId: 'm2', nativeSessionId: 'sid-2');
     final seat = _FakeSeatProcess();
 
     await RewindForkService().rewind(
@@ -37,7 +40,11 @@ void main() {
       await File('$tmp/work/claude/projects/a.jsonl').readAsString(),
       'one',
     );
-    expect(seat.events, ['stopAndWait', 'relaunch']);
+    expect(seat.events, [
+      'stopAndWait',
+      'recordNativeSessionId:sid-1',
+      'relaunch',
+    ]);
   });
 
   test('rewind refuses an in-flight turn', () async {
@@ -152,6 +159,11 @@ final class _FakeSeatProcess implements SeatProcess {
   @override
   Future<void> stopAndWait() async {
     events.add('stopAndWait');
+  }
+
+  @override
+  Future<void> recordNativeSessionId(String? nativeSessionId) async {
+    events.add('recordNativeSessionId:${nativeSessionId ?? ''}');
   }
 
   @override

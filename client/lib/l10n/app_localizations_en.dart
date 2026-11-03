@@ -2303,6 +2303,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDuplicateFailed => 'Failed to duplicate conversation';
 
   @override
+  String get sessionRewindFailed => 'Failed to rewind conversation';
+
+  @override
+  String get sessionForkFailed => 'Failed to fork conversation';
+
+  @override
   String get sessionTitleCopySuffix => '(copy)';
 
   @override

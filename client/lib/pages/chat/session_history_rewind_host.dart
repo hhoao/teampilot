@@ -1,24 +1,29 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/chat_cubit.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/workspace.dart';
 import '../../pages/home_workspace/workspace/workspace_session_actions.dart';
 import '../../services/chat/conversation/history/later_checkpoint_messages.dart';
 import '../../utils/logging/logger.dart';
+import '../../widgets/app_toast/app_toast.dart';
 
 final class SessionHistoryRewindBinding {
   const SessionHistoryRewindBinding({
     required this.history,
     this.onRewindTo,
     this.onForkFrom,
+    this.busy = false,
   });
 
   final SeatRewindHistory history;
   final void Function(String commit)? onRewindTo;
   final void Function(String commit)? onForkFrom;
+  final bool busy;
 }
 
 /// Loads later-checkpoint ghosts and wires rewind/fork around a history thread.
@@ -51,6 +56,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   SeatRewindHistory _history = const SeatRewindHistory.empty();
   var _allowed = false;
   var _started = false;
+  var _busy = false;
   Object? _liveToken;
 
   @override
@@ -103,6 +109,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   }
 
   Future<void> _onRewindTo(String commit) async {
+    setState(() => _busy = true);
     try {
       await context.read<ChatCubit>().rewindSeatTo(
         sessionId: widget.session.sessionId,
@@ -116,10 +123,20 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         error: error,
         stackTrace: stackTrace,
       );
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.sessionRewindFailed,
+          variant: TpToastVariant.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _onForkFrom(String commit) async {
+    setState(() => _busy = true);
     try {
       final created = await context.read<ChatCubit>().forkSeatFrom(
         sessionId: widget.session.sessionId,
@@ -140,6 +157,15 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         error: error,
         stackTrace: stackTrace,
       );
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.sessionForkFailed,
+          variant: TpToastVariant.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -151,6 +177,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         history: _history,
         onRewindTo: _allowed ? _onRewindTo : null,
         onForkFrom: _allowed ? _onForkFrom : null,
+        busy: _busy,
       ),
     );
   }

@@ -91,6 +91,7 @@ import '../widgets/workspace_icon_picker_dialog.dart';
 import '../utils/logging/logger.dart';
 import '../services/chat/launch/session_launch_retry.dart';
 import '../services/chat/launch/connect/session_connect_settle.dart';
+import '../services/chat/launch/connect/session_personal_shell.dart';
 import 'chat_connect_state_mixin.dart';
 import '../services/chat/session/session_data_store.dart';
 import '../services/chat/launch/connect/chat_session_shell_factory.dart';
@@ -2812,13 +2813,13 @@ class ChatCubit extends Cubit<ChatState>
   /// Reclaims an ACP seat (any open tab) for [sessionId]: closes the runtime
   /// cubit, which persists the transcript/agent session and kills the agent
   /// process. Used by Resource Manager kill for `acp:` bindings.
-  void discardAcpSeat(String sessionId, String memberId) =>
+  Future<void> discardAcpSeat(String sessionId, String memberId) =>
       _launchService.discardAcpSeat(sessionId, memberId);
 
   /// Closes the personal ACP runtime for [sessionId] and marks it reclaimed so
   /// the next attach spawns a fresh agent (used when a model/provider switch
   /// must restart the seat).
-  void discardPersonalAcpRuntime(String sessionId) =>
+  Future<void> discardPersonalAcpRuntime(String sessionId) =>
       _launchService.discardPersonalAcpRuntime(sessionId);
 
   Future<void> ensureMemberTerminalForView(String sessionId, String memberId) =>
@@ -2916,12 +2917,31 @@ class ChatCubit extends Cubit<ChatState>
     if (session == null) return;
     final store = _seatRewindStore(session, memberId);
     if (store == null) return;
-    await _rewindFork.rewind(
-      store: store,
-      seat: _CubitSeatProcess(this, session, memberId),
-      commit: commit,
+    emit(
+      state.copyWith(rewindForkInProgress: true, clearRewindForkError: true),
     );
-    onSessionHistoryStale?.call(sessionId);
+    try {
+      await _rewindFork.rewind(
+        store: store,
+        seat: _CubitSeatProcess(this, session, memberId),
+        commit: commit,
+      );
+      onSessionHistoryStale?.call(sessionId);
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        '[rewind] rewindSeatTo failed session=$sessionId: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (!isClosed) {
+        emit(state.copyWith(rewindForkError: 'sessionRewindFailed'));
+      }
+      rethrow;
+    } finally {
+      if (!isClosed) {
+        emit(state.copyWith(rewindForkInProgress: false));
+      }
+    }
   }
 
   /// Copy [commit] into a new personal session. Does not stop the source.
@@ -2935,6 +2955,41 @@ class ChatCubit extends Cubit<ChatState>
     final store = _seatRewindStore(source, memberId);
     final repo = _sessionRepository;
     if (store == null || repo == null) return null;
+    emit(
+      state.copyWith(rewindForkInProgress: true, clearRewindForkError: true),
+    );
+    try {
+      return await _forkSeatFromUnlocked(
+        source: source,
+        store: store,
+        repo: repo,
+        memberId: memberId,
+        commit: commit,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        '[rewind] forkSeatFrom failed session=$sessionId: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (!isClosed) {
+        emit(state.copyWith(rewindForkError: 'sessionForkFailed'));
+      }
+      rethrow;
+    } finally {
+      if (!isClosed) {
+        emit(state.copyWith(rewindForkInProgress: false));
+      }
+    }
+  }
+
+  Future<AppSession?> _forkSeatFromUnlocked({
+    required AppSession source,
+    required SeatRewindStore store,
+    required SessionRepository repo,
+    required String memberId,
+    required String commit,
+  }) async {
     final cli = _cliForRewindSeat(source, memberId);
     final newId = const Uuid().v4();
     final acp = isAcpChatSession(source) || isAcpChatSeat(source, memberId);
@@ -3013,7 +3068,6 @@ class ChatCubit extends Cubit<ChatState>
         : await _ptyTranscriptRepoPath(session, memberId, store, cli);
     return readSeatRewindHistory(
       store: store,
-      live: live,
       acp: acp,
       history: history,
       ptyRelativePath: ptyPath,
@@ -3400,25 +3454,64 @@ final class _CubitSeatProcess implements SeatProcess {
 
   @override
   Future<void> stopAndWait() async {
-    final tab = _cubit._tabStore.getOpenTabBySessionId(_session.sessionId);
-    final acpCubit = tab?.memberAcpRuntimes[_memberId] ?? tab?.acpRuntime;
-    final shell = tab?.memberShells[_memberId];
     if (isAcpChatSession(_session)) {
-      _cubit.discardPersonalAcpRuntime(_session.sessionId);
-    } else if (isAcpChatSeat(_session, _memberId)) {
-      _cubit.discardAcpSeat(_session.sessionId, _memberId);
+      await _cubit.discardPersonalAcpRuntime(_session.sessionId);
+      return;
+    }
+    if (isAcpChatSeat(_session, _memberId)) {
+      await _cubit.discardAcpSeat(_session.sessionId, _memberId);
+      return;
+    }
+    final tab = _cubit._tabStore.getOpenTabBySessionId(_session.sessionId);
+    final TerminalSession? shell;
+    if (_session.isSimple) {
+      shell = displayedPersonalResumeShell(
+        sessionId: _session.sessionId,
+        resumeSession: tab?.resumeSession,
+        memberShells: tab?.memberShells ?? const {},
+      );
+      shell?.disconnect();
     } else {
+      shell = tab?.memberShells[_memberId];
       _cubit.disconnectMemberShell(_session.sessionId, _memberId);
     }
-    if (acpCubit != null && !acpCubit.isClosed) {
-      await acpCubit.close();
-    }
-    final deadline = DateTime.now().add(const Duration(seconds: 5));
-    while (shell != null &&
-        shell.isRunning &&
-        DateTime.now().isBefore(deadline)) {
+    while (shell != null && shell.isRunning) {
       await Future<void>.delayed(const Duration(milliseconds: 20));
     }
+  }
+
+  @override
+  Future<void> recordNativeSessionId(String? nativeSessionId) async {
+    final id = nativeSessionId?.trim() ?? '';
+    if (id.isEmpty) return;
+    final repo = _cubit._sessionRepository;
+    if (repo == null) return;
+    final cli = _cubit._cliForRewindSeat(_session, _memberId);
+    await repo.recordNativeSessionId(
+      _session.sessionId,
+      tool: cli.value,
+      nativeId: id,
+      rosterMemberId: _session.isSimple ? null : _memberId,
+    );
+    final AppSession updated;
+    if (_session.isSimple) {
+      updated = _session.withNativeSessionId(cli.value, id);
+    } else {
+      final binding = _session.bindingFor(_memberId);
+      if (binding == null) return;
+      final next = binding.withNativeSessionId(cli.value, id);
+      updated = _session.copyWith(
+        members: [
+          for (final member in _session.members)
+            if (member.rosterMemberId == _memberId) next else member,
+        ],
+      );
+    }
+    _cubit.replaceSessionSnapshot(updated);
+    _cubit._tabStore
+            .getOpenTabBySessionId(_session.sessionId)
+            ?.persistedSession =
+        updated;
   }
 
   @override
@@ -3428,9 +3521,6 @@ final class _CubitSeatProcess implements SeatProcess {
       return;
     }
     await _cubit.ensureMemberTerminalForView(_session.sessionId, _memberId);
-    if (isAcpChatSeat(_session, _memberId) || isAcpChatSession(_session)) {
-      await _cubit.retrySessionLaunch(_session.sessionId);
-    }
   }
 }
 
@@ -3461,23 +3551,32 @@ final class _CubitForkSessionCreator implements ForkSessionCreator {
       workingDirectory: workingDirectory,
       fixedSessionId: fixedSessionId,
     );
-    await repo.renameSession(created.sessionId, display);
-    if (nativeSessionId != null && nativeSessionId.trim().isNotEmpty) {
-      await repo.recordNativeSessionId(
-        created.sessionId,
-        tool: cli.value,
-        nativeId: nativeSessionId.trim(),
+    try {
+      await repo.renameSession(created.sessionId, display);
+      if (nativeSessionId != null && nativeSessionId.trim().isNotEmpty) {
+        await repo.recordNativeSessionId(
+          created.sessionId,
+          tool: cli.value,
+          nativeId: nativeSessionId.trim(),
+        );
+      }
+      var next = created.copyWith(display: display);
+      if (nativeSessionId != null && nativeSessionId.trim().isNotEmpty) {
+        next = next.withNativeSessionId(cli.value, nativeSessionId.trim());
+      }
+      cubit._dataStore.markSessionDocument(next.sessionId);
+      cubit._emitSnapshot(
+        cubit._dataStore.appendSession(cubit.stateSnapshot(), next),
       );
+      return next.sessionId;
+    } catch (_) {
+      try {
+        await cubit.deleteSession(repo, created.sessionId);
+      } on Object {
+        // Keep the original create/rename/record failure.
+      }
+      rethrow;
     }
-    var next = created.copyWith(display: display);
-    if (nativeSessionId != null && nativeSessionId.trim().isNotEmpty) {
-      next = next.withNativeSessionId(cli.value, nativeSessionId.trim());
-    }
-    cubit._dataStore.markSessionDocument(next.sessionId);
-    cubit._emitSnapshot(
-      cubit._dataStore.appendSession(cubit.stateSnapshot(), next),
-    );
-    return next.sessionId;
   }
 
   @override

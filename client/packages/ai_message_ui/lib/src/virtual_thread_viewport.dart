@@ -56,6 +56,7 @@ class VirtualThreadViewport extends StatefulWidget {
     this.onRevealOffset,
     this.onVisibleRange,
     this.buildKey,
+    this.bodyCacheKey,
     super.key,
   });
 
@@ -97,6 +98,10 @@ class VirtualThreadViewport extends StatefulWidget {
   /// re-runs — needed when the host's builder depends on external state such as
   /// a highlight id.
   final Object? buildKey;
+
+  /// Invalidates every cached turn body when it changes (e.g. rewind/fork
+  /// busy), unlike [buildKey] which only refreshes the highlighted turn.
+  final Object? bodyCacheKey;
 
   @override
   State<VirtualThreadViewport> createState() => _VirtualThreadViewportState();
@@ -696,6 +701,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     final identity = Object.hash(
       _identityByTurnId[turn.id] ?? turnContentIdentity(turn, widget.messages),
       highlightInTurn ? widget.buildKey : null,
+      widget.bodyCacheKey,
     );
     final cached = _builtTurnBody[turn.id];
     if (cached != null && cached.identity == identity) {

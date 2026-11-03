@@ -7,6 +7,7 @@ abstract interface class SeatProcess {
   bool get turnInFlight;
   bool get localRuntime;
   Future<void> stopAndWait();
+  Future<void> recordNativeSessionId(String? nativeSessionId);
   Future<void> relaunch();
 }
 
@@ -46,6 +47,14 @@ final class RewindForkService {
     try {
       await seat.stopAndWait();
       await store.restore(commit);
+      String? nativeSessionId;
+      for (final checkpoint in await store.checkpoints()) {
+        if (checkpoint.commit == commit) {
+          nativeSessionId = checkpoint.nativeSessionId;
+          break;
+        }
+      }
+      await seat.recordNativeSessionId(nativeSessionId);
       await seat.relaunch();
     } finally {
       _inProgress.remove(store.gitDir);
