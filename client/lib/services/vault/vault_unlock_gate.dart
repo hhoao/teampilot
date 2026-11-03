@@ -20,6 +20,13 @@ class VaultUnlockGate {
 
   Future<bool> ensureUnlocked() async {
     if (_vault.isUnlocked) return true;
+    // Functional paths unlock silently with the remembered master password;
+    // only an explicit reveal prompts for a fresh password.
+    try {
+      if (await _vault.tryAutoUnlock()) return true;
+    } on Object {
+      // Fall through to the prompt; a broken auto-unlock must not block saves.
+    }
     final prompted = await _prompt();
     return prompted && _vault.isUnlocked;
   }

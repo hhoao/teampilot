@@ -223,4 +223,42 @@ void main() {
     );
     expect(store.values, isEmpty);
   });
+
+  test('remembers the master password and auto-unlocks a later service', () async {
+    final vaultStore = _FakeStore();
+    final master = _FakeStore();
+    final fs = InMemoryFilesystem(
+      pathContext: p.Context(style: p.Style.posix),
+    );
+    VaultService build() => VaultService(
+      keychainBackend: KeychainVaultBackend(vaultStore),
+      encryptedBackend: EncryptedVaultBackend(
+        repository: VaultRepository(rootDir: '/root/vault', fs: fs),
+        crypto: crypto,
+      ),
+      masterKeyStore: master,
+    );
+
+    final first = build();
+    await first.initialize();
+    await first.enableEncryptedBackend('pass');
+    expect(master.values['teampilot.vault.v1.master'], 'pass');
+
+    final second = build();
+    await second.initialize();
+    expect(second.isLocked, isTrue);
+    expect(await second.tryAutoUnlock(), isTrue);
+    expect(second.isUnlocked, isTrue);
+    expect(await second.verifyMasterPassphrase('pass'), isTrue);
+    expect(await second.verifyMasterPassphrase('wrong'), isFalse);
+
+    second.lock();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(master.values.containsKey('teampilot.vault.v1.master'), isFalse);
+
+    final third = build();
+    await third.initialize();
+    expect(await third.tryAutoUnlock(), isFalse);
+    expect(third.isLocked, isTrue);
+  });
 }

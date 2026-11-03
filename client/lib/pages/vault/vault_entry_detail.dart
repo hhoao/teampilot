@@ -11,6 +11,7 @@ import '../../models/vault_entry.dart';
 import '../../models/vault_reference.dart';
 import 'vault_entry_editor.dart';
 import 'vault_entry_list.dart';
+import 'vault_secret_reveal.dart';
 
 Future<void> showVaultEntryDetail(BuildContext context, String entryId) {
   return showDialog<void>(
@@ -118,6 +119,7 @@ class _VaultEntryDetailDialogState extends State<VaultEntryDetailDialog> {
                   value: field.value,
                   secret: entry.isSecretField(field.key),
                   revealable: entry.revealAllowed,
+                  onAuthorizeReveal: () => authorizeVaultReveal(context),
                 ),
                 const SizedBox(height: 8),
               ],
@@ -165,6 +167,7 @@ class VaultSecretField extends StatefulWidget {
     required this.secret,
     this.revealable = true,
     this.revealDuration = const Duration(seconds: 30),
+    this.onAuthorizeReveal,
     super.key,
   });
 
@@ -173,6 +176,9 @@ class VaultSecretField extends StatefulWidget {
   final bool secret;
   final bool revealable;
   final Duration revealDuration;
+
+  /// Re-authentication before the first reveal; true means allowed.
+  final Future<bool> Function()? onAuthorizeReveal;
 
   @override
   State<VaultSecretField> createState() => _VaultSecretFieldState();
@@ -188,7 +194,12 @@ class _VaultSecretFieldState extends State<VaultSecretField> {
     super.dispose();
   }
 
-  void _toggleReveal() {
+  Future<void> _toggleReveal() async {
+    if (!_revealed && widget.onAuthorizeReveal != null) {
+      final allowed = await widget.onAuthorizeReveal!();
+      if (!mounted || !allowed) return;
+    }
+    if (!mounted) return;
     setState(() => _revealed = !_revealed);
     _hideTimer?.cancel();
     if (_revealed) {

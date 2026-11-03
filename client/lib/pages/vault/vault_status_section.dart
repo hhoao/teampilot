@@ -93,6 +93,35 @@ Future<bool> promptVaultUnlockFromRouter() async {
   return showVaultUnlockDialog(context);
 }
 
+/// Collects a master password for an explicit reveal without changing state.
+Future<String?> showVaultPassphrasePrompt(BuildContext context) async {
+  final l10n = AppLocalizations.of(context);
+  final controller = TextEditingController();
+  final passphrase = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(l10n.vaultUnlockTitle),
+      content: TpPasswordInput(
+        controller: controller,
+        autofocus: true,
+        decoration: InputDecoration(labelText: l10n.vaultPassphrase),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(l10n.vaultCancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+          child: Text(l10n.vaultReveal),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+  return (passphrase == null || passphrase.isEmpty) ? null : passphrase;
+}
+
 Future<void> showVaultEnableEncryptionDialog(BuildContext context) async {
   final l10n = AppLocalizations.of(context);
   final cubit = context.read<VaultCubit>();
