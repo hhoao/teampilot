@@ -4,7 +4,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/session_usage_dashboard.dart';
 import '../../models/team_config.dart';
 import '../../services/cursor_usage/cursor_usage_event_source.dart';
-import '../../services/usage/usage_aggregator.dart';
 
 String formatUsageTokens(int value) {
   if (value >= 1000000) {

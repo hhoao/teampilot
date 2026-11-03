@@ -1676,9 +1676,11 @@ Future<AppShell> buildAppShell({
         loadCache: (accountId) => cursorStack().cacheStore.load(accountId),
       ).loadEvents(),
       loadCursorAccounts: () => cursorStack().registry.list(),
-      syncCursorUsage: (range, startMs, endMs) async {
+      syncCursorUsage: (range, startMs, endMs, full) async {
         final cursorRange = _cursorUsageRangeFor(range, startMs, endMs);
-        final mode = range == UsageRange.all
+        final mode = full
+            ? CursorUsageSyncMode.full
+            : range == UsageRange.all
             ? CursorUsageSyncMode.manual
             : CursorUsageSyncMode.auto;
         for (final account in await cursorStack().registry.list()) {

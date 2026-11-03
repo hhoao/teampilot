@@ -57,7 +57,12 @@ final class SessionUsageServices {
   /// Cursor accounts offered by the usage page filter; null when the
   /// feature is not wired in a given plane.
   final Future<List<CursorUsageAccount>> Function()? loadCursorAccounts;
-  final Future<void> Function(UsageRange range, int? startMs, int? endMs)?
+  final Future<void> Function(
+    UsageRange range,
+    int? startMs,
+    int? endMs,
+    bool full,
+  )?
   syncCursorUsage;
 
   factory SessionUsageServices.forStorage({
@@ -67,7 +72,12 @@ final class SessionUsageServices {
     LaunchProfileRepository? teams,
     Future<List<AppSession>> Function()? loadSessions,
     Future<List<CursorUsageAccount>> Function()? loadCursorAccounts,
-    Future<void> Function(UsageRange range, int? startMs, int? endMs)?
+    Future<void> Function(
+      UsageRange range,
+      int? startMs,
+      int? endMs,
+      bool full,
+    )?
     syncCursorUsage,
     Future<List<TeamProfile>> Function()? loadTeams,
     Future<List<SessionUsageEvent>> Function()? loadCursorAccountUsage,

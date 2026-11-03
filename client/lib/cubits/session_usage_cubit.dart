@@ -216,7 +216,12 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   SessionUsageCubit({
     required Future<List<SessionUsageEvent>> Function() loadEvents,
     Future<List<CursorUsageAccount>> Function()? loadCursorAccounts,
-    Future<void> Function(UsageRange range, int? startMs, int? endMs)?
+    Future<void> Function(
+      UsageRange range,
+      int? startMs,
+      int? endMs,
+      bool full,
+    )?
     syncCursorUsage,
     required Future<UsageSyncResult> Function() syncAll,
     UsageSyncHandle Function()? startSync,
@@ -251,7 +256,12 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
 
   final Future<List<SessionUsageEvent>> Function() _loadEvents;
   final Future<List<CursorUsageAccount>> Function()? _loadCursorAccounts;
-  final Future<void> Function(UsageRange range, int? startMs, int? endMs)?
+  final Future<void> Function(
+    UsageRange range,
+    int? startMs,
+    int? endMs,
+    bool full,
+  )?
   _syncCursorUsage;
   int _cursorSyncGeneration = 0;
   final Future<UsageSyncResult> Function() _syncAll;
@@ -381,7 +391,11 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
 
     _syncManual = manual;
     _syncFull = full;
-    final future = _syncInternal();
+    // The sync buttons cover Cursor accounts too: the transcript scan and the
+    // account fetches run in sequence so one progress indicator covers both.
+    final future = _syncInternal().then(
+      (_) => _refreshCursorAccountUsage(full: full),
+    );
     _syncFlight = future;
     return future.whenComplete(() {
       if (identical(_syncFlight, future)) _syncFlight = null;
@@ -510,12 +524,12 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   ///
   /// Runs off the hot path: the page keeps showing cached numbers while the
   /// per-account caches fill in.
-  Future<void> _refreshCursorAccountUsage() async {
+  Future<void> _refreshCursorAccountUsage({bool full = false}) async {
     final sync = _syncCursorUsage;
     if (sync == null) return;
     final generation = ++_cursorSyncGeneration;
     try {
-      await sync(state.range, state.customStartMs, state.customEndMs);
+      await sync(state.range, state.customStartMs, state.customEndMs, full);
     } on Object {
       return;
     }

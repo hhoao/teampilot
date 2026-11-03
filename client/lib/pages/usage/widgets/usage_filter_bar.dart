@@ -46,41 +46,17 @@ class _CursorAccountFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final selected = state.cursorAccountId;
-    return Container(
-      height: usageFilterControlHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        border: Border.all(color: cs.outlineVariant),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          // A sentinel rather than null: DropdownButton treats a null value as
-          // "nothing selected" and shows the hint instead of the item.
-          value: selected ?? _allAccounts,
-          isDense: true,
-          borderRadius: BorderRadius.circular(8),
-          icon: const Icon(Icons.expand_more, size: 18),
-          items: [
-            DropdownMenuItem<String>(
-              value: _allAccounts,
-              child: Text(
-                context.l10n.sessionUsageAccountAll,
-                style: TpTextStyles.of(context).xs,
-              ),
-            ),
-            for (final account in state.cursorAccounts)
-              DropdownMenuItem<String>(
-                value: account.accountId,
-                child: Text(account.label, style: TpTextStyles.of(context).xs),
-              ),
-          ],
-          onChanged: (value) =>
-              cubit.setCursorAccount(value == _allAccounts ? null : value),
-        ),
-      ),
+    final selected = state.cursorAccountId ?? _allAccounts;
+    return TpCompactSelect<String>(
+      value: selected,
+      minWidth: 132,
+      entries: [
+        (_allAccounts, context.l10n.sessionUsageAccountAll),
+        for (final account in state.cursorAccounts)
+          (account.accountId, account.label),
+      ],
+      onChanged: (value) =>
+          cubit.setCursorAccount(value == _allAccounts ? null : value),
     );
   }
 }
