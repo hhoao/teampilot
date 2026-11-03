@@ -8321,7 +8321,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Configure endpoint, credentials, and display from scratch.';
 
   @override
-  String get managedProvidersBasicsSectionTitle => 'Basics';
+  String get managedProvidersBasicsSectionTitle => 'Name and API key';
 
   @override
   String get managedProvidersBasicsSectionSubtitle =>
@@ -8332,28 +8332,30 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pick a preset, name the provider, and add a secret if needed.';
 
   @override
-  String get managedProvidersQuerySectionTitle => 'Query';
+  String get managedProvidersQuerySectionTitle => 'Usage API and JSON parsing';
 
   @override
   String get managedProvidersQuerySectionSubtitle =>
       'Usage API and JSON parsing.';
 
   @override
-  String get managedProvidersCredentialsSectionTitle => 'Credential details';
+  String get managedProvidersCredentialsSectionTitle =>
+      'Credential source and delivery';
 
   @override
   String get managedProvidersCredentialsSectionSubtitle =>
       'Credential source and how it is sent.';
 
   @override
-  String get managedProvidersDisplaySectionTitle => 'Display';
+  String get managedProvidersDisplaySectionTitle => 'Balance and quota display';
 
   @override
   String get managedProvidersDisplaySectionSubtitle =>
       'How balances and quotas are shown.';
 
   @override
-  String get managedProvidersAdvancedSectionTitle => 'Advanced';
+  String get managedProvidersAdvancedSectionTitle =>
+      'Adapter, kind, and reference';
 
   @override
   String get managedProvidersAdvancedSectionSubtitle =>
@@ -8468,15 +8470,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get managedProvidersFieldExampleLabel => 'Example';
 
   @override
-  String get managedProvidersJsonPathSeeAlso => 'See \$ syntax in Query ℹ️';
+  String get managedProvidersJsonPathSeeAlso =>
+      'See \$ syntax in Usage API and JSON parsing ℹ️';
 
   @override
   String get managedProvidersTemplateVariablesSeeAlsoQuery =>
-      'See brace syntax in Query ℹ️';
+      'See brace syntax in Usage API and JSON parsing ℹ️';
 
   @override
   String get managedProvidersTemplateVariablesSeeAlsoCredentials =>
-      'See brace syntax in Credentials ℹ️';
+      'See brace syntax in Credential source and delivery ℹ️';
 
   @override
   String get managedProvidersReferenceSyntaxHelper =>

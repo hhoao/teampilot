@@ -14819,7 +14819,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersBasicsSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Basics'**
+  /// **'Name and API key'**
   String get managedProvidersBasicsSectionTitle;
 
   /// No description provided for @managedProvidersBasicsSectionSubtitle.
@@ -14837,7 +14837,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersQuerySectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Query'**
+  /// **'Usage API and JSON parsing'**
   String get managedProvidersQuerySectionTitle;
 
   /// No description provided for @managedProvidersQuerySectionSubtitle.
@@ -14849,7 +14849,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersCredentialsSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Credential details'**
+  /// **'Credential source and delivery'**
   String get managedProvidersCredentialsSectionTitle;
 
   /// No description provided for @managedProvidersCredentialsSectionSubtitle.
@@ -14861,7 +14861,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersDisplaySectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Display'**
+  /// **'Balance and quota display'**
   String get managedProvidersDisplaySectionTitle;
 
   /// No description provided for @managedProvidersDisplaySectionSubtitle.
@@ -14873,7 +14873,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersAdvancedSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Advanced'**
+  /// **'Adapter, kind, and reference'**
   String get managedProvidersAdvancedSectionTitle;
 
   /// No description provided for @managedProvidersAdvancedSectionSubtitle.
@@ -15083,19 +15083,19 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersJsonPathSeeAlso.
   ///
   /// In en, this message translates to:
-  /// **'See \$ syntax in Query ℹ️'**
+  /// **'See \$ syntax in Usage API and JSON parsing ℹ️'**
   String get managedProvidersJsonPathSeeAlso;
 
   /// No description provided for @managedProvidersTemplateVariablesSeeAlsoQuery.
   ///
   /// In en, this message translates to:
-  /// **'See brace syntax in Query ℹ️'**
+  /// **'See brace syntax in Usage API and JSON parsing ℹ️'**
   String get managedProvidersTemplateVariablesSeeAlsoQuery;
 
   /// No description provided for @managedProvidersTemplateVariablesSeeAlsoCredentials.
   ///
   /// In en, this message translates to:
-  /// **'See brace syntax in Credentials ℹ️'**
+  /// **'See brace syntax in Credential source and delivery ℹ️'**
   String get managedProvidersTemplateVariablesSeeAlsoCredentials;
 
   /// No description provided for @managedProvidersReferenceSyntaxHelper.

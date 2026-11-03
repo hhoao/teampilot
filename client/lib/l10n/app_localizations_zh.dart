@@ -7995,7 +7995,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersQuickPresetCustomHint => '从零配置接口、凭据与显示格式。';
 
   @override
-  String get managedProvidersBasicsSectionTitle => '基本信息';
+  String get managedProvidersBasicsSectionTitle => '名称与密钥';
 
   @override
   String get managedProvidersBasicsSectionSubtitle => '命名与必要密钥。';
@@ -8004,25 +8004,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersBasicsSummary => '选择预设、命名，并按需填写密钥。';
 
   @override
-  String get managedProvidersQuerySectionTitle => '查询';
+  String get managedProvidersQuerySectionTitle => '用量 API 与 JSON 解析';
 
   @override
   String get managedProvidersQuerySectionSubtitle => '用量 API 与 JSON 解析。';
 
   @override
-  String get managedProvidersCredentialsSectionTitle => '凭据详情';
+  String get managedProvidersCredentialsSectionTitle => '凭据来源与请求写入';
 
   @override
   String get managedProvidersCredentialsSectionSubtitle => '凭据来源及写入请求的方式。';
 
   @override
-  String get managedProvidersDisplaySectionTitle => '显示';
+  String get managedProvidersDisplaySectionTitle => '余额与额度显示';
 
   @override
   String get managedProvidersDisplaySectionSubtitle => '余额与额度的显示格式。';
 
   @override
-  String get managedProvidersAdvancedSectionTitle => '高级';
+  String get managedProvidersAdvancedSectionTitle => '适配器、类型与引用';
 
   @override
   String get managedProvidersAdvancedSectionSubtitle => '适配器、类型与内部引用。';
@@ -8128,14 +8128,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersFieldExampleLabel => '示例';
 
   @override
-  String get managedProvidersJsonPathSeeAlso => '\$ 用法详见「查询」ℹ️';
+  String get managedProvidersJsonPathSeeAlso => '\$ 用法详见「用量 API 与 JSON 解析」ℹ️';
 
   @override
-  String get managedProvidersTemplateVariablesSeeAlsoQuery => '花括号用法详见「查询」ℹ️';
+  String get managedProvidersTemplateVariablesSeeAlsoQuery =>
+      '花括号用法详见「用量 API 与 JSON 解析」ℹ️';
 
   @override
   String get managedProvidersTemplateVariablesSeeAlsoCredentials =>
-      '花括号用法详见「凭据详情」ℹ️';
+      '花括号用法详见「凭据来源与请求写入」ℹ️';
 
   @override
   String get managedProvidersReferenceSyntaxHelper =>
