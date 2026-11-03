@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:collection/collection.dart';
 import 'package:file_picker/file_picker.dart';
@@ -76,7 +77,7 @@ import '../pages/chat/session_chat_continue_seat.dart';
 import '../pages/chat/session_history_review_submit.dart';
 import '../utils/session/workspace_sessions.dart';
 import '../widgets/workspace_icon_picker_dialog.dart';
-import '../utils/logging/logger_utils.dart';
+import '../utils/logging/logger.dart';
 import '../services/chat/launch/session_launch_retry.dart';
 import '../services/chat/launch/connect/session_connect_settle.dart';
 import 'chat_connect_state_mixin.dart';
@@ -231,6 +232,15 @@ class ChatCubit extends Cubit<ChatState>
 
   /// Fired when History should drop cache / reload (disconnect or switch back).
   void Function(String sessionId)? onSessionHistoryStale;
+
+  /// Snapshots a local non-ACP PTY seat after `_onTurnEnded`. Tests inject this
+  /// directly.
+  Future<void> Function(
+    String sessionId,
+    String memberId,
+    String? nativeSessionId,
+  )?
+  onPtyTurnCheckpoint;
 
   final _operatorMailboxQueued =
       StreamController<OperatorMailboxQueuedEvent>.broadcast();
@@ -1285,14 +1295,14 @@ class ChatCubit extends Cubit<ChatState>
     _updateSessionActivities();
   }
 
-  /// PTY-quiet turn end — clears the attention working seat for CLIs whose
-  /// done event may be unreliable (requiresPtyFallback). Only fires after the
-  /// shell turn latch ends (PTY quiet after turn activity), so it never
-  /// mis-clears a `waiting` permission seat (clearWorkingIfWorking is
-  /// waiting-safe) and defers while a doorbell is still pending.
+  /// PTY-quiet turn end — checkpoints a local non-ACP seat, then clears the
+  /// attention working seat for CLIs whose done event may be unreliable
+  /// (`requiresPtyFallback`). Only fires after the shell turn latch ends
+  /// (PTY quiet after turn activity), so it never mis-clears a `waiting`
+  /// permission seat (clearWorkingIfWorking is waiting-safe) and defers
+  /// while a doorbell is still pending.
   void _onTurnEnded(String sessionId, String memberId) {
-    final attention = _agentAttentionCubit;
-    if (attention == null || memberId.trim().isEmpty) return;
+    if (memberId.trim().isEmpty) return;
     final tab = _tabStore.getOpenTabBySessionId(sessionId);
     final session = tab?.persistedSession;
     if (tab == null || session == null) return;
@@ -1309,12 +1319,54 @@ class ChatCubit extends Cubit<ChatState>
       ),
       globalPresets: _lifecycle.globalPresets,
     );
+    unawaited(
+      _checkpointPtyTurn(
+        session: session,
+        sessionId: sessionId,
+        memberId: memberId,
+        cli: cli,
+      ),
+    );
+    final attention = _agentAttentionCubit;
+    if (attention == null) return;
     final cap = cliRegistry.capability<TeamBehaviorCapability>(cli);
     if (cap == null || !cap.requiresPtyFallback) return;
     final bus = tab.teamBus;
     if (bus != null && bus.hasPendingDoorbell(memberId)) return;
     attention.clearWorkingIfWorking(sessionId: sessionId, memberId: memberId);
     _updateSessionActivities();
+  }
+
+  Future<void> _checkpointPtyTurn({
+    required AppSession session,
+    required String sessionId,
+    required String memberId,
+    required CliTool cli,
+  }) async {
+    if (isAcpChatSession(session) || isAcpChatSeat(session, memberId)) {
+      return;
+    }
+    if (Platform.isAndroid) return;
+    final workTarget = _lifecycle.launchWorkTarget(
+      _launchService.launchContextFor(session),
+      memberId: session.isSimple ? null : memberId,
+    );
+    if (workTarget.kind == RuntimeKind.ssh) return;
+    final nativeSessionId = session.isSimple
+        ? session.nativeSessionIds[cli.value]
+        : session.bindingFor(memberId)?.nativeSessionIds[cli.value];
+    final hook = onPtyTurnCheckpoint;
+    if (hook == null) return;
+    try {
+      await hook(sessionId, memberId, nativeSessionId);
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        '[rewind] pty checkpoint failed session=$sessionId '
+        'member=$memberId: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   /// Roster member by id from the active team, or null when the member is not
@@ -1380,6 +1432,10 @@ class ChatCubit extends Cubit<ChatState>
       ),
     );
   }
+
+  @visibleForTesting
+  void debugOnTurnEnded(String sessionId, String memberId) =>
+      _onTurnEnded(sessionId, memberId);
 
   @visibleForTesting
   void debugTickIdleWatch() => _sessionRuntime.debugTickIdleWatch();

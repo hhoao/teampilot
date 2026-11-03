@@ -172,6 +172,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     AcpBackgroundTranscriptSourceFactory? backgroundTranscriptFactory,
     Duration? backgroundSyncInterval,
     this.backgroundSyncWindow = defaultBackgroundSyncWindow,
+    this.onTurnCheckpoint,
   }) : _runtime = runtime,
        _attention = attention,
        _transcript = transcript,
@@ -225,6 +226,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// the conversation list's relative time and `recentlyUpdated` order move
   /// like the PTY path (which touches on every user line). Null in tests.
   final void Function(String sessionId)? onUserActivity;
+
+  /// Snapshots the local seat after a real turn's transcript flush. Null when
+  /// the runtime is remote, git is missing, or tests do not inject a hook.
+  final Future<void> Function(String messageId)? onTurnCheckpoint;
 
   final AgentAttentionPort? _attention;
   final AcpChatTranscriptWriter? _transcript;
@@ -537,7 +542,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       // their sessions re-discover the current cwd on every resume (a session
       // can move), so this is the fallback for agents without `session/list`.
       unawaited(_agentSession?.write(liveId, cwd: effectiveWorkingDirectory));
-      _bindBackgroundTranscript(sessionToolDir: sessionToolDir, agentId: liveId);
+      _bindBackgroundTranscript(
+        sessionToolDir: sessionToolDir,
+        agentId: liveId,
+      );
     }
     await _applyLaunchModel();
     emit(
@@ -663,7 +671,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         );
         // prompt() failures surface through the updates stream as an error
         // stop; a non-emitting failure still clears the turn here.
-        _endTurn();
+        return _endTurn();
       }),
     );
   }
@@ -673,7 +681,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     if (_closing || isClosed) return;
     if (serial != _turnSerial) {
       if (state.phase != AcpChatPhase.launching && state.inTurn) {
-        _endTurn();
+        await _endTurn();
       }
       return;
     }
@@ -828,7 +836,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         if (!replaying) unawaited(_persist());
       case AcpStop():
         if (isClosed || replaying) return;
-        _onStop(update);
+        await _onStop(update);
       case AcpAuthNotice():
         if (isClosed || replaying) return;
         // `_auth/status_update` is reporting-only. `kind: none` comes from an
@@ -902,7 +910,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   void _applyToolCall(AcpToolCallUpdate update) {
     final replaying = _replayMessages != null;
-    final launchesBackground = update.background &&
+    final launchesBackground =
+        update.background &&
         (update.status == AcpToolCallStatus.pending ||
             update.status == AcpToolCallStatus.inProgress);
     if (!replaying) {
@@ -1002,17 +1011,17 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         AcpToolCallStatus.failed => AiToolCallStatus.complete,
       };
 
-  void _onStop(AcpStop stop) {
+  Future<void> _onStop(AcpStop stop) async {
     switch (stop.kind) {
       case AcpStopKind.cancelled:
         // User cancel: silent (spec).
-        unawaited(_persist());
-        _endTurn();
+        await _persist();
+        await _endTurn();
       case AcpStopKind.endTurn:
       case AcpStopKind.aborted:
       case AcpStopKind.maxTokens:
-        unawaited(_persist());
-        _endTurn();
+        await _persist();
+        await _endTurn();
       case AcpStopKind.error:
         final text = stop.message == acpStopAuthRequired
             ? (_strings?.notLoggedIn ?? defaultAcpChatStrings.notLoggedIn)
@@ -1020,13 +1029,14 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
                   ? (_strings?.turnFailed ?? 'Turn failed')
                   : '${_strings?.turnFailed ?? 'Turn failed'}: ${stop.message}');
         _appendSystemMessage(text);
-        unawaited(_persist());
-        _endTurn();
+        await _persist();
+        await _endTurn();
     }
   }
 
-  void _endTurn() {
+  Future<void> _endTurn() async {
     if (_closing || isClosed) return;
+    final wasInTurn = state.inTurn;
     final hadBackground = _turnHadBackgroundToolCall;
     _resetTurnTrackers();
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
@@ -1048,6 +1058,17 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       _backgroundBaselineTextLen = _assistantTextLen(state.messages);
     }
     if (hadBackground) _armBackgroundWatch();
+    final callback = onTurnCheckpoint;
+    if (!wasInTurn || callback == null || state.messages.isEmpty) return;
+    try {
+      await callback(state.messages.last.id);
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        '[acp-chat] session $sessionId turn checkpoint failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   // ----- out-of-turn history reconciliation -----
@@ -1083,10 +1104,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     }
   }
 
-  Future<void> _runHistorySync(
-    AcpSessionRuntimeApi runtime,
-    int serial,
-  ) async {
+  Future<void> _runHistorySync(AcpSessionRuntimeApi runtime, int serial) async {
     final transcript = _backgroundTranscript;
     if (transcript != null && await _tryTranscriptSync(transcript, serial)) {
       return;

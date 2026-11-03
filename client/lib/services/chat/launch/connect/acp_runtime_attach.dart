@@ -28,6 +28,8 @@ import '../../team_bus/mcp/member_bus_mcp_transport_resolver.dart';
 import '../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../team_bus/mcp/teammate_bus_mcp_gateway_port.dart';
 import '../../runtime/runtime_extra_mcp_servers.dart';
+import '../../rewind/seat_rewind_paths.dart';
+import '../../rewind/seat_rewind_store.dart';
 import '../../../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../../../cubits/session/acp/acp_launch_wiring.dart';
 import '../../../../cubits/session/acp/acp_transport_wiring.dart';
@@ -216,6 +218,13 @@ class AcpRuntimeAttach {
       processWorkingDirectory: workingDirectory,
       launchProvider: session.provider,
       launchModel: session.model,
+      onTurnCheckpoint: await _turnCheckpointCallback(
+        session: session,
+        cli: cli,
+        personal: true,
+        memberId: null,
+        launchTarget: launchTarget,
+      ),
     );
     tab.acpRuntime = cubit;
     tab.reclaimedAcpRuntime = false;
@@ -407,14 +416,14 @@ class AcpRuntimeAttach {
         : _host.shellFactory.executableFor(cli);
     final sshLaunch = remote
         ? sshLaunchFactory?.call(
-              session: session,
-              launchTarget: launchTarget,
-            ) ??
-            productionSshLaunch(
-              session: session,
-              launchTarget: launchTarget,
-              memberId: member.id,
-            )
+                session: session,
+                launchTarget: launchTarget,
+              ) ??
+              productionSshLaunch(
+                session: session,
+                launchTarget: launchTarget,
+                memberId: member.id,
+              )
         : null;
     final remoteAdapterPath = remote
         ? await _resolveRemoteAdapterPath(cli, launchTarget)
@@ -430,6 +439,13 @@ class AcpRuntimeAttach {
       processWorkingDirectory: staged.workingDirectory,
       launchProvider: member.provider,
       launchModel: member.model,
+      onTurnCheckpoint: await _turnCheckpointCallback(
+        session: session,
+        cli: cli,
+        personal: false,
+        memberId: member.id,
+        launchTarget: launchTarget,
+      ),
     );
     tab.memberAcpRuntimes[member.id] = cubit;
     _listenForMemberIdle(tab, member.id, cubit);
@@ -519,6 +535,7 @@ class AcpRuntimeAttach {
     String launchModel = '',
     AcpSshLaunch? sshLaunch,
     String? remoteAdapterPath,
+    Future<void> Function(String messageId)? onTurnCheckpoint,
   }) {
     final remote = usesSshTransport(launchTarget.kind);
     final logger = AcpFrameLogger();
@@ -564,12 +581,59 @@ class AcpRuntimeAttach {
         memberId: memberId,
         personal: personal,
       ),
-      agentSession: _agentSessionStore(session, memberId: memberId, personal: personal),
+      agentSession: _agentSessionStore(
+        session,
+        memberId: memberId,
+        personal: personal,
+      ),
       backgroundTranscriptFactory: _backgroundTranscriptFactory(
         cli,
         remote: remote,
       ),
+      onTurnCheckpoint: onTurnCheckpoint,
     )..ensureStrings(_host.acpChatStrings?.call(cli) ?? defaultAcpChatStrings);
+  }
+
+  Future<Future<void> Function(String messageId)?> _turnCheckpointCallback({
+    required AppSession session,
+    required CliTool cli,
+    required bool personal,
+    required String? memberId,
+    required RuntimeTarget launchTarget,
+  }) async {
+    if (launchTarget.kind != RuntimeKind.local) return null;
+    if (Platform.isAndroid) return null;
+    if (!await _gitOnPath()) return null;
+    return (messageId) async {
+      final target = SeatRewindTarget(
+        kind: personal ? SeatRewindKind.personalAcp : SeatRewindKind.mixedAcp,
+        tool: cli.value,
+        memberId: personal ? null : memberId,
+      );
+      final layout = _storage.context.layout;
+      final store = SeatRewindStore(
+        gitDir: layout.pathContext.join(
+          layout.workspace.sessionDir(session.workspaceId, session.sessionId),
+          'rewind',
+          target.seatKey,
+        ),
+        workTree: layout.workspace.sessionRuntimeDir(
+          session.workspaceId,
+          session.sessionId,
+        ),
+        target: target,
+      );
+      await store.commitTurn(messageId: messageId);
+    };
+  }
+
+  Future<bool> _gitOnPath() async {
+    try {
+      final result = await Process.run('git', ['--version']);
+      return result.exitCode == 0;
+    } on Object {
+      return false;
+    }
   }
 
   /// Local agents write their transcript on this machine, so the out-of-turn
