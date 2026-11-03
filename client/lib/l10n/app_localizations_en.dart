@@ -10338,4 +10338,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vaultStoredInVault => 'Stored in vault';
+
+  @override
+  String get vaultLockedQueryBlocked => 'Unlock the vault to query usage.';
 }

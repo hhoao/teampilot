@@ -21,6 +21,7 @@ import '../../services/vault/provider_credential_link.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
 import 'brand_dropdown_rows.dart';
+import '../../pages/vault/vault_secret_reveal.dart';
 import 'cli_effort_picker_field.dart';
 import '../../services/cli/claude/provider/claude_credential_binding_field.dart';
 import 'provider_credential_action_bar.dart';
@@ -243,7 +244,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       credentialLink: _credentialLink,
       // A linked row reads its key from the referenced managed entry; the
       // draft never carries a resolved key so persistence stays clean.
-      apiKey: _credentialLink.isNotEmpty ? '' : _apiKeyCtl.text.trim(),
+      apiKey: _apiKeyCtl.text.trim(),
       apiKeyField: _apiKeyField,
       baseUrl: _baseUrlCtl.text.trim(),
       defaultModel: _defaultModelCtl.text.trim(),
@@ -507,13 +508,19 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                     const SizedBox(height: 12),
                     if (_canPickCredentialLink)
                       _buildCredentialLinkPicker(context),
-                    if (_credentialLink.isNotEmpty)
+                    if (_credentialLink.isNotEmpty &&
+                        vaultEntryIdFromCredentialLink(_credentialLink) == null)
                       _LinkedCredentialChip(
                         entryName: _linkedEntryName(context),
                       )
                     else
                       TpPasswordInput(
                         controller: _apiKeyCtl,
+                        onReveal: () => revealVaultSecret(
+                          context,
+                          vaultEntryIdFromCredentialLink(_credentialLink),
+                          'apiKey',
+                        ),
                         decoration: InputDecoration(
                           labelText: l10n.apiKey,
                           hintText: _isEditing

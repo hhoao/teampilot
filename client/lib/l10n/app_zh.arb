@@ -4495,5 +4495,6 @@
   "sshVaultBadge": "保险库",
   "vaultLockedSaveBlocked": "请先解锁保险库再保存凭据。",
   "vaultUnavailable": "凭据保险库不可用。",
-  "vaultStoredInVault": "已存入保险库"
+  "vaultStoredInVault": "已存入保险库",
+  "vaultLockedQueryBlocked": "请先解锁保险库再查询用量。"
 }

@@ -20,6 +20,7 @@ import '../../services/provider_usage/managed_provider_vault_writer.dart';
 import '../../services/vault/credential_capture.dart';
 import '../../services/vault/vault_service.dart';
 import '../../services/vault/vault_unlock_gate.dart';
+import '../vault/vault_secret_reveal.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../utils/managed_provider_error_localization.dart';
 import 'managed_provider_editor_field_examples.dart';
@@ -207,6 +208,13 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                   hideSecret: _isLinkedProviderSource,
                   onQuickPresetChanged: _handleQuickPresetChanged,
                   onEnabledChanged: _setEnabled,
+                  onRevealSecret: () => revealVaultSecret(
+                    context,
+                    _provider?.vaultEntryId,
+                    _credentialField.text.trim().isEmpty
+                        ? 'apiKey'
+                        : _credentialField.text.trim(),
+                  ),
                 ),
               ),
               if (_schema.hasSection(ManagedProviderEditorSection.query)) ...[
@@ -892,7 +900,14 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     }
     if (!mounted) return;
     if (shouldRunFirstQuery) {
-      await context.read<ManagedProviderUsageCubit>().queryProvider(persisted);
+      final vaultBacked = (persisted.vaultEntryId ?? '').trim().isNotEmpty;
+      final usageCubit = context.read<ManagedProviderUsageCubit>();
+      if (!vaultBacked ||
+          await context.read<VaultUnlockGate>().ensureUnlocked()) {
+        await usageCubit.queryProvider(persisted);
+      } else if (mounted) {
+        setState(() => _formError = context.l10n.vaultLockedQueryBlocked);
+      }
       if (!mounted) return;
     }
     setState(() => _saving = false);
@@ -938,6 +953,21 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final draft = _draftProviderForQuery();
     if (draft == null) return;
     final credentialOverride = _credentialOverrideForQuery();
+    final l10n = context.l10n;
+    var blocked = false;
+    if (credentialOverride == null &&
+        (draft.vaultEntryId ?? '').trim().isNotEmpty) {
+      blocked = !await context.read<VaultUnlockGate>().ensureUnlocked();
+    }
+    if (!mounted) return;
+    if (blocked) {
+      AppToast.show(
+        context,
+        message: l10n.vaultLockedQueryBlocked,
+        variant: TpToastVariant.error,
+      );
+      return;
+    }
     setState(() => _saving = true);
     final snapshot = await context
         .read<ManagedProviderUsageCubit>()

@@ -21,6 +21,7 @@ class ManagedProviderBasicsSection extends StatelessWidget {
     required this.onQuickPresetChanged,
     required this.onEnabledChanged,
     this.credentialSecretFocusNode,
+    this.onRevealSecret,
     this.hideSecret = false,
     super.key,
   });
@@ -31,6 +32,7 @@ class ManagedProviderBasicsSection extends StatelessWidget {
   final TextEditingController nameController;
   final TextEditingController credentialSecretController;
   final FocusNode? credentialSecretFocusNode;
+  final Future<String?> Function()? onRevealSecret;
   final bool credentialConfigured;
   final bool enabled;
   final ValueChanged<String> onQuickPresetChanged;
@@ -122,6 +124,7 @@ class ManagedProviderBasicsSection extends StatelessWidget {
               explanation: l10n.managedProvidersCredentialSecretHelper,
             ),
             obscureText: true,
+            onReveal: onRevealSecret,
           ),
         ],
       ],
@@ -633,6 +636,7 @@ class _ManagedProviderTextField extends StatelessWidget {
     this.obscureText = false,
     this.onChanged,
     this.focusNode,
+    this.onReveal,
   });
 
   final Key fieldKey;
@@ -643,6 +647,7 @@ class _ManagedProviderTextField extends StatelessWidget {
   final bool obscureText;
   final ValueChanged<String>? onChanged;
   final FocusNode? focusNode;
+  final Future<String?> Function()? onReveal;
 
   @override
   Widget build(BuildContext context) {
@@ -657,6 +662,7 @@ class _ManagedProviderTextField extends StatelessWidget {
               focusNode: focusNode,
               decoration: decoration,
               onChanged: onChanged,
+              onReveal: onReveal,
             )
           : TpInput(
               key: fieldKey,

@@ -18365,6 +18365,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stored in vault'**
   String get vaultStoredInVault;
+
+  /// No description provided for @vaultLockedQueryBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock the vault to query usage.'**
+  String get vaultLockedQueryBlocked;
 }
 
 class _AppLocalizationsDelegate

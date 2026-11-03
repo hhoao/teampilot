@@ -20,6 +20,7 @@ import '../../services/vault/credential_capture.dart';
 import '../../services/vault/vault_service.dart';
 import '../../services/vault/vault_unlock_gate.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
+import '../vault/vault_secret_reveal.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
 
 /// Desktop settings: Orca-style modal for adding/editing an SSH target.
@@ -352,6 +353,11 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           label: l10n.sshProfileFormPassphrase,
           hint: l10n.sshProfileFormPassphraseHint,
           obscure: true,
+          onReveal: () => revealVaultSecret(
+            context,
+            widget.initialProfile?.vaultEntryId,
+            'passphrase',
+          ),
         ),
         const SizedBox(height: 12),
         _field(
@@ -364,6 +370,11 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           helper: l10n.sshProfileFormPasswordHelper,
           obscure: true,
           onChanged: () => setState(() {}),
+          onReveal: () => revealVaultSecret(
+            context,
+            widget.initialProfile?.vaultEntryId,
+            'password',
+          ),
         ),
       ],
     );
@@ -450,6 +461,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     TextInputType? keyboardType,
     String? Function(String?)? validator,
     VoidCallback? onChanged,
+    Future<String?> Function()? onReveal,
   }) {
     return TpFormField<String>(
       id: id,
@@ -471,6 +483,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
             controller: controller,
             focusNode: state.focusNode,
             keyboardType: keyboardType,
+            onReveal: onReveal,
             onChanged: (value) {
               state.didChange(value);
               onChanged?.call();

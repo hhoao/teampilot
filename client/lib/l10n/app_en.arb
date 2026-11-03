@@ -5219,5 +5219,6 @@
   "sshVaultBadge": "Vault",
   "vaultLockedSaveBlocked": "Unlock the vault to save credentials.",
   "vaultUnavailable": "Credential vault is unavailable.",
-  "vaultStoredInVault": "Stored in vault"
+  "vaultStoredInVault": "Stored in vault",
+  "vaultLockedQueryBlocked": "Unlock the vault to query usage."
 }
