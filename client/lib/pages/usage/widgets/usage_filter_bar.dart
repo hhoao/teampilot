@@ -36,6 +36,8 @@ class UsageFilterBar extends StatelessWidget {
 
 /// Account picker that appears next to the CLI filter when Cursor is selected.
 /// "All accounts" is the default and yields the combined numbers.
+const _allAccounts = '*';
+
 class _CursorAccountFilter extends StatelessWidget {
   const _CursorAccountFilter({required this.state, required this.cubit});
 
@@ -54,26 +56,29 @@ class _CursorAccountFilter extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<String?>(
-          value: selected,
+        child: DropdownButton<String>(
+          // A sentinel rather than null: DropdownButton treats a null value as
+          // "nothing selected" and shows the hint instead of the item.
+          value: selected ?? _allAccounts,
           isDense: true,
           borderRadius: BorderRadius.circular(8),
           icon: const Icon(Icons.expand_more, size: 18),
           items: [
-            DropdownMenuItem<String?>(
-              value: null,
+            DropdownMenuItem<String>(
+              value: _allAccounts,
               child: Text(
                 context.l10n.sessionUsageAccountAll,
                 style: TpTextStyles.of(context).xs,
               ),
             ),
             for (final account in state.cursorAccounts)
-              DropdownMenuItem<String?>(
+              DropdownMenuItem<String>(
                 value: account.accountId,
                 child: Text(account.label, style: TpTextStyles.of(context).xs),
               ),
           ],
-          onChanged: cubit.setCursorAccount,
+          onChanged: (value) =>
+              cubit.setCursorAccount(value == _allAccounts ? null : value),
         ),
       ),
     );

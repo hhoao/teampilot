@@ -1706,6 +1706,8 @@ Future<AppShell> buildAppShell({
       compactUsage: sessionUsageServices.compactUsage,
       loadSessions: sessionUsageServices.loadSessions,
       loadTeams: sessionUsageServices.loadTeams,
+      loadCursorAccounts: sessionUsageServices.loadCursorAccounts,
+      syncCursorUsage: sessionUsageServices.syncCursorUsage,
       storageChanges: homeStorage.changes.map<void>((_) {}),
     );
     unawaited(sessionUsageCubit.ensureLoaded());
