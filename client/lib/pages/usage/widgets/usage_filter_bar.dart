@@ -25,7 +25,57 @@ class UsageFilterBar extends StatelessWidget {
         UsageDateRangePicker(state: state, cubit: cubit),
         Container(width: 1, height: 20, color: cs.outlineVariant),
         _CliFilter(state: state, cubit: cubit),
+        if (state.cli == CliTool.cursor && state.cursorAccounts.isNotEmpty) ...[
+          Container(width: 1, height: 20, color: cs.outlineVariant),
+          _CursorAccountFilter(state: state, cubit: cubit),
+        ],
       ],
+    );
+  }
+}
+
+/// Account picker that appears next to the CLI filter when Cursor is selected.
+/// "All accounts" is the default and yields the combined numbers.
+class _CursorAccountFilter extends StatelessWidget {
+  const _CursorAccountFilter({required this.state, required this.cubit});
+
+  final SessionUsageState state;
+  final SessionUsageCubit cubit;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final selected = state.cursorAccountId;
+    return Container(
+      height: usageFilterControlHeight,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        border: Border.all(color: cs.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String?>(
+          value: selected,
+          isDense: true,
+          borderRadius: BorderRadius.circular(8),
+          icon: const Icon(Icons.expand_more, size: 18),
+          items: [
+            DropdownMenuItem<String?>(
+              value: null,
+              child: Text(
+                context.l10n.sessionUsageAccountAll,
+                style: TpTextStyles.of(context).xs,
+              ),
+            ),
+            for (final account in state.cursorAccounts)
+              DropdownMenuItem<String?>(
+                value: account.accountId,
+                child: Text(account.label, style: TpTextStyles.of(context).xs),
+              ),
+          ],
+          onChanged: cubit.setCursorAccount,
+        ),
+      ),
     );
   }
 }

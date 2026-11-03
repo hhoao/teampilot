@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_session.dart';
+import '../models/cursor_usage_account.dart';
 import '../models/session_usage.dart';
 import '../models/session_usage_dashboard.dart';
 import '../models/session_usage_pricing.dart';
@@ -47,7 +48,10 @@ final class SessionUsageState extends Equatable {
     this.maintenanceBusy = false,
     this.maintenanceError,
     this.errorMessage,
-  }) : syncErrors = List.unmodifiable(syncErrors);
+    this.cursorAccountId,
+    List<CursorUsageAccount> cursorAccounts = const [],
+  }) : syncErrors = List.unmodifiable(syncErrors),
+       cursorAccounts = List.unmodifiable(cursorAccounts);
 
   final SessionUsageStatus status;
   final UsageDashboard dashboard;
@@ -76,6 +80,12 @@ final class SessionUsageState extends Equatable {
   final bool maintenanceBusy;
   final String? maintenanceError;
   final String? errorMessage;
+
+  /// Cursor account filter; null means every account combined.
+  final String? cursorAccountId;
+
+  /// Accounts offered by the cursor filter, discovered from provider homes.
+  final List<CursorUsageAccount> cursorAccounts;
 
   bool get hasData => dashboard.totalEventCount > 0;
   bool get hasSyncProblem => syncErrors.isNotEmpty || syncFailed;
@@ -115,6 +125,9 @@ final class SessionUsageState extends Equatable {
     bool clearMaintenanceError = false,
     String? errorMessage,
     bool clearError = false,
+    String? cursorAccountId,
+    bool clearCursorAccount = false,
+    List<CursorUsageAccount>? cursorAccounts,
   }) {
     return SessionUsageState(
       status: status ?? this.status,
@@ -154,6 +167,10 @@ final class SessionUsageState extends Equatable {
           ? null
           : (maintenanceError ?? this.maintenanceError),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      cursorAccountId: clearCursorAccount
+          ? null
+          : (cursorAccountId ?? this.cursorAccountId),
+      cursorAccounts: cursorAccounts ?? this.cursorAccounts,
     );
   }
 
@@ -186,6 +203,8 @@ final class SessionUsageState extends Equatable {
     maintenanceBusy,
     maintenanceError,
     errorMessage,
+    cursorAccountId,
+    cursorAccounts,
   ];
 }
 
@@ -196,6 +215,9 @@ final class SessionUsageState extends Equatable {
 final class SessionUsageCubit extends Cubit<SessionUsageState> {
   SessionUsageCubit({
     required Future<List<SessionUsageEvent>> Function() loadEvents,
+    Future<List<CursorUsageAccount>> Function()? loadCursorAccounts,
+    Future<void> Function(UsageRange range, int? startMs, int? endMs)?
+    syncCursorUsage,
     required Future<UsageSyncResult> Function() syncAll,
     UsageSyncHandle Function()? startSync,
     UsageSyncHandle Function()? startFullSync,
@@ -209,6 +231,8 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     DateTime Function()? now,
     this.isolateThreshold = 4000,
   }) : _loadEvents = loadEvents,
+       _loadCursorAccounts = loadCursorAccounts,
+       _syncCursorUsage = syncCursorUsage,
        _syncAll = syncAll,
        _startSync = startSync,
        _startFullSync = startFullSync,
@@ -226,6 +250,10 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   }
 
   final Future<List<SessionUsageEvent>> Function() _loadEvents;
+  final Future<List<CursorUsageAccount>> Function()? _loadCursorAccounts;
+  final Future<void> Function(UsageRange range, int? startMs, int? endMs)?
+  _syncCursorUsage;
+  int _cursorSyncGeneration = 0;
   final Future<UsageSyncResult> Function() _syncAll;
   final UsageSyncHandle Function()? _startSync;
   final UsageSyncHandle Function()? _startFullSync;
@@ -312,15 +340,23 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
         sessions: sessions,
         teams: teams,
       );
+      final accounts =
+          await (_loadCursorAccounts?.call() ??
+              Future<List<CursorUsageAccount>>.value(const []));
+      if (isClosed) return;
       emit(
         state.copyWith(
           status: SessionUsageStatus.ready,
           dashboard: _computeDashboard(),
           pricing: pricing,
           pricingCorrupted: pricingCorrupted,
+          cursorAccounts: accounts,
           clearError: true,
         ),
       );
+      // Cursor rows come from the account caches; refresh them for the current
+      // range in the background, then reload the events they produce.
+      unawaited(_refreshCursorAccountUsage());
     } catch (error, stackTrace) {
       AppLogger.instance.e(
         '[usage] load failed',
@@ -466,6 +502,39 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
 
   void setRange(UsageRange range) {
     _updateFilter(range: range, clearCustomRange: true, liveEnd: false);
+    unawaited(_refreshCursorAccountUsage());
+  }
+
+  /// Fetches Cursor account usage for the current range, then reloads the
+  /// events so the dashboard picks the new rows up.
+  ///
+  /// Runs off the hot path: the page keeps showing cached numbers while the
+  /// per-account caches fill in.
+  Future<void> _refreshCursorAccountUsage() async {
+    final sync = _syncCursorUsage;
+    if (sync == null) return;
+    final generation = ++_cursorSyncGeneration;
+    try {
+      await sync(state.range, state.customStartMs, state.customEndMs);
+    } on Object {
+      return;
+    }
+    if (isClosed || generation != _cursorSyncGeneration) return;
+    try {
+      final events = await _loadEvents();
+      if (isClosed || generation != _cursorSyncGeneration) return;
+      _events = events;
+      _computeGeneration++;
+      _dashboardCache.clear();
+      emit(
+        state.copyWith(
+          dashboard: _computeDashboard(),
+          isComputing: false,
+        ),
+      );
+    } on Object {
+      // Keep whatever the cache already produced.
+    }
   }
 
   void setCustomRange({
@@ -479,6 +548,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       customEndMs: endMs,
       liveEnd: liveEnd,
     );
+    unawaited(_refreshCursorAccountUsage());
   }
 
   void refreshRangeNow() {
@@ -487,6 +557,12 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   }
 
   void setCli(CliTool? cli) => _updateFilter(cli: cli, clearCli: cli == null);
+
+  /// Filters the dashboard to one Cursor account; null means all of them.
+  void setCursorAccount(String? accountId) => _updateFilter(
+    cursorAccountId: accountId,
+    clearCursorAccount: accountId == null,
+  );
 
   void setGroupBy(UsageGroupBy groupBy) => _updateFilter(groupBy: groupBy);
 
@@ -587,6 +663,8 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     int? customEndMs,
     bool clearCustomRange = false,
     bool? liveEnd,
+    String? cursorAccountId,
+    bool clearCursorAccount = false,
   }) {
     final next = state.copyWith(
       range: range,
@@ -598,6 +676,8 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       customEndMs: customEndMs,
       clearCustomRange: clearCustomRange,
       liveEnd: liveEnd,
+      cursorAccountId: cursorAccountId,
+      clearCursorAccount: clearCursorAccount,
     );
     final nowMs = _now().millisecondsSinceEpoch;
     final cached = _dashboardCache[_dashboardKey(next, nowMs)];
@@ -628,6 +708,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
           ).millisecondsSinceEpoch;
     return '${current.range.name}|${current.cli?.value}|${current.groupBy.name}|'
         '${current.query}|${current.customStartMs}|${current.customEndMs}|'
+        '${current.cursorAccountId ?? '*'}|'
         '${current.liveEnd}|$bucket';
   }
 
@@ -646,6 +727,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
         query: current.query,
         customStartMs: current.customStartMs,
         customEndMs: current.customEndMs,
+        accountId: current.cursorAccountId,
         liveEnd: current.liveEnd,
       ),
       nowMs: nowMs,
@@ -696,6 +778,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
         query: current.query,
         customStartMs: current.customStartMs,
         customEndMs: current.customEndMs,
+        accountId: current.cursorAccountId,
         liveEnd: current.liveEnd,
       ),
       nowMs: nowMs,

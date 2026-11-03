@@ -134,6 +134,7 @@ final class UsageFilter extends Equatable {
     this.customStartMs,
     this.customEndMs,
     this.liveEnd = false,
+    this.accountId,
   });
 
   final UsageRange range;
@@ -143,6 +144,9 @@ final class UsageFilter extends Equatable {
   final int? customStartMs;
   final int? customEndMs;
   final bool liveEnd;
+
+  /// Cursor account filter; null means every account combined.
+  final String? accountId;
 
   UsageFilter copyWith({
     UsageRange? range,
@@ -154,6 +158,8 @@ final class UsageFilter extends Equatable {
     int? customEndMs,
     bool clearCustomRange = false,
     bool? liveEnd,
+    String? accountId,
+    bool clearAccount = false,
   }) {
     return UsageFilter(
       range: range ?? this.range,
@@ -165,6 +171,7 @@ final class UsageFilter extends Equatable {
           : (customStartMs ?? this.customStartMs),
       customEndMs: clearCustomRange ? null : (customEndMs ?? this.customEndMs),
       liveEnd: liveEnd ?? this.liveEnd,
+      accountId: clearAccount ? null : (accountId ?? this.accountId),
     );
   }
 
@@ -177,6 +184,7 @@ final class UsageFilter extends Equatable {
     customStartMs,
     customEndMs,
     liveEnd,
+    accountId,
   ];
 }
 

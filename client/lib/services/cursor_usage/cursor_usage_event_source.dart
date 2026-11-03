@@ -45,6 +45,7 @@ final class CursorUsageEventSource {
               inputSemantics: UsageInputSemantics.fresh,
               timestampMs: day.dayMs,
               sessionId: cursorAccountUsageSessionId,
+              accountId: account.accountId,
               costMicroUsd: (totals.totalCents * 10000).round(),
             ),
           );

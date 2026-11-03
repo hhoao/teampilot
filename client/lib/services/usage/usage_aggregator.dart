@@ -91,6 +91,9 @@ UsageDashboard buildUsageDashboard({
           return false;
         }
         if (filter.cli != null && event.cli != filter.cli) return false;
+        if (filter.accountId != null && event.accountId != filter.accountId) {
+          return false;
+        }
         return true;
       })
       .toList(growable: false);

@@ -4189,6 +4189,7 @@
   "sessionUsageColumnReset": "恢复默认",
   "sessionUsageSortDescending": "降序",
   "sessionUsageSortAscending": "升序",
+  "sessionUsageAccountAll": "全部账号",
   "sessionUsageCliAll": "全部",
   "sessionUsageGroupBy": "分组",
   "sessionUsageGroupSession": "会话",

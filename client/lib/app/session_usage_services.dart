@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import '../models/app_session.dart';
+import '../models/cursor_usage_account.dart';
 import '../models/session_usage.dart';
+import '../models/session_usage_dashboard.dart';
 import '../models/session_usage_pricing.dart';
 import '../models/session_usage_sync_state.dart';
 import '../models/team_config.dart';
@@ -37,6 +39,8 @@ final class SessionUsageServices {
     required this.compactUsage,
     required this.loadSessions,
     required this.loadTeams,
+    this.loadCursorAccounts,
+    this.syncCursorUsage,
   });
 
   final Future<UsageSyncResult> Function() syncAll;
@@ -50,12 +54,21 @@ final class SessionUsageServices {
   final Future<List<AppSession>> Function() loadSessions;
   final Future<List<TeamProfile>> Function() loadTeams;
 
+  /// Cursor accounts offered by the usage page filter; null when the
+  /// feature is not wired in a given plane.
+  final Future<List<CursorUsageAccount>> Function()? loadCursorAccounts;
+  final Future<void> Function(UsageRange range, int? startMs, int? endMs)?
+  syncCursorUsage;
+
   factory SessionUsageServices.forStorage({
     required HomeStorage storage,
     CliToolRegistry? registry,
     SessionRepository? sessions,
     LaunchProfileRepository? teams,
     Future<List<AppSession>> Function()? loadSessions,
+    Future<List<CursorUsageAccount>> Function()? loadCursorAccounts,
+    Future<void> Function(UsageRange range, int? startMs, int? endMs)?
+    syncCursorUsage,
     Future<List<TeamProfile>> Function()? loadTeams,
     Future<List<SessionUsageEvent>> Function()? loadCursorAccountUsage,
   }) {
@@ -204,6 +217,8 @@ final class SessionUsageServices {
           currentStores().store.compact(retainAfterMs: retainAfterMs),
       loadSessions: loadSessionsFn,
       loadTeams: loadTeamsFn,
+      loadCursorAccounts: loadCursorAccounts,
+      syncCursorUsage: syncCursorUsage,
     );
   }
 }

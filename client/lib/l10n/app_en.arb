@@ -4913,6 +4913,7 @@
   "sessionUsageColumnReset": "Reset to default",
   "sessionUsageSortDescending": "Sort descending",
   "sessionUsageSortAscending": "Sort ascending",
+  "sessionUsageAccountAll": "All accounts",
   "sessionUsageCliAll": "All",
   "sessionUsageGroupBy": "Group by",
   "sessionUsageGroupSession": "Session",

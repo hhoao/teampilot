@@ -17372,6 +17372,12 @@ abstract class AppLocalizations {
   /// **'Sort ascending'**
   String get sessionUsageSortAscending;
 
+  /// No description provided for @sessionUsageAccountAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All accounts'**
+  String get sessionUsageAccountAll;
+
   /// No description provided for @sessionUsageCliAll.
   ///
   /// In en, this message translates to:

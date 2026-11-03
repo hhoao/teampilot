@@ -136,6 +136,7 @@ import '../cubits/managed_provider_cubit.dart';
 import '../cubits/managed_provider_usage_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../models/session_preferences.dart';
+import '../models/session_usage_dashboard.dart';
 import '../cubits/extension_cubit.dart';
 import '../cubits/hook_cubit.dart';
 import '../cubits/mcp_cubit.dart';
@@ -1674,6 +1675,25 @@ Future<AppShell> buildAppShell({
         listAccounts: () => cursorStack().registry.list(),
         loadCache: (accountId) => cursorStack().cacheStore.load(accountId),
       ).loadEvents(),
+      loadCursorAccounts: () => cursorStack().registry.list(),
+      syncCursorUsage: (range, startMs, endMs) async {
+        final cursorRange = _cursorUsageRangeFor(range, startMs, endMs);
+        final mode = range == UsageRange.all
+            ? CursorUsageSyncMode.manual
+            : CursorUsageSyncMode.auto;
+        for (final account in await cursorStack().registry.list()) {
+          if (!account.enabled) continue;
+          try {
+            await cursorStack().coordinator.load(
+              accountId: account.accountId,
+              range: cursorRange,
+              mode: mode,
+            );
+          } on Object {
+            // One account failing must not block the others.
+          }
+        }
+      },
     );
     final sessionUsageCubit = SessionUsageCubit(
       loadEvents: sessionUsageServices.loadEvents,
@@ -3533,6 +3553,47 @@ class _CursorUsageStack {
   final CursorUsageCacheStore cacheStore;
   final CursorUsageRangePreference rangePreference;
   late final CursorUsageCoordinator coordinator;
+}
+
+/// Maps the usage page's range onto the Cursor fetch range. `all` maps to the
+/// billing cycle and is fetched in manual mode, which expands to the history
+/// anchor — the page's "all" means every row available, not one cycle.
+CursorUsageRange _cursorUsageRangeFor(
+  UsageRange range,
+  int? startMs,
+  int? endMs,
+) {
+  final now = DateTime.now();
+  final nowMs = now.millisecondsSinceEpoch;
+  int daysAgo(int days) => DateTime(
+    now.year,
+    now.month,
+    now.day,
+  ).subtract(Duration(days: days - 1)).millisecondsSinceEpoch;
+  return switch (range) {
+    UsageRange.today => const CursorUsagePresetRange(CursorUsagePreset.today),
+    UsageRange.last24Hours => CursorUsageCustomRange(
+      startMs: nowMs - const Duration(days: 1).inMilliseconds,
+      endMs: nowMs,
+    ),
+    UsageRange.sevenDays => const CursorUsagePresetRange(
+      CursorUsagePreset.sevenDays,
+    ),
+    UsageRange.fourteenDays => CursorUsageCustomRange(
+      startMs: daysAgo(14),
+      endMs: nowMs,
+    ),
+    UsageRange.thirtyDays => const CursorUsagePresetRange(
+      CursorUsagePreset.thirtyDays,
+    ),
+    UsageRange.all => const CursorUsagePresetRange(
+      CursorUsagePreset.billingCycle,
+    ),
+    UsageRange.custom => CursorUsageCustomRange(
+      startMs: startMs ?? daysAgo(30),
+      endMs: endMs ?? nowMs,
+    ),
+  };
 }
 
 /// Fills each enabled account's cache so the session usage dashboard has

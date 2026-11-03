@@ -9790,6 +9790,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionUsageSortAscending => 'Sort ascending';
 
   @override
+  String get sessionUsageAccountAll => 'All accounts';
+
+  @override
   String get sessionUsageCliAll => 'All';
 
   @override

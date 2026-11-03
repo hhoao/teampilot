@@ -9370,6 +9370,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionUsageSortAscending => '升序';
 
   @override
+  String get sessionUsageAccountAll => '全部账号';
+
+  @override
   String get sessionUsageCliAll => '全部';
 
   @override
