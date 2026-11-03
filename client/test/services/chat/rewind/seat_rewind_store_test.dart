@@ -67,6 +67,25 @@ void main() {
       );
     },
   );
+
+  test('commitTurn drops a seat file deleted from the work tree', () async {
+    final tmp = tmpDir.path;
+    final store = SeatRewindStore(
+      gitDir: '$tmp/repo.git',
+      workTree: '$tmp/work',
+      target: const SeatRewindTarget(
+        kind: SeatRewindKind.personalAcp,
+        tool: 'claude',
+      ),
+    );
+    await store.commitTurn(messageId: 'm1');
+    await File('$tmp/work/claude/projects/a.jsonl').delete();
+    final second = await store.commitTurn(messageId: 'm2');
+    expect(
+      await _lsTree(store, second.commit),
+      isNot(contains('claude/projects/a.jsonl')),
+    );
+  });
 }
 
 Future<List<String>> _lsTree(SeatRewindStore store, String commit) async {

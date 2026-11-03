@@ -60,6 +60,7 @@ final class SeatRewindStore {
     String? nativeSessionId,
   }) async {
     await ensureRepo();
+    await _dropStaleSeatIndexEntries();
     await for (final entity in Directory(
       workTree,
     ).list(recursive: true, followLinks: false)) {
@@ -150,6 +151,35 @@ final class SeatRewindStore {
     );
     if (result.exitCode != 0) return null;
     return result.stdout as String;
+  }
+
+  /// Drops index entries for this seat that are no longer a regular work-tree
+  /// file. Leaves other seats, excluded paths, and never-added symlinks alone.
+  Future<void> _dropStaleSeatIndexEntries() async {
+    final listed = await _runGit([
+      ..._repoArgs,
+      'ls-files',
+      '-z',
+    ], allowFailure: true);
+    for (final relative in listed.split('\x00')) {
+      if (relative.isEmpty) continue;
+      if (!target.includes(relative) || target.isExcluded(relative)) {
+        continue;
+      }
+      final type = FileSystemEntity.typeSync(
+        p.join(workTree, relative),
+        followLinks: false,
+      );
+      if (type == FileSystemEntityType.file) continue;
+      await _runGit([
+        ..._repoArgs,
+        'rm',
+        '--cached',
+        '--ignore-unmatch',
+        '--',
+        relative,
+      ]);
+    }
   }
 
   String _repoRelative(String absolutePath) {
