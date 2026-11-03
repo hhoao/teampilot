@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -167,7 +169,7 @@ class VaultCubit extends Cubit<VaultState> {
           unlocked: true,
         ),
       );
-      await _runOnUnlocked();
+      unawaited(_runOnUnlocked());
     } on VaultException catch (error) {
       emit(state.copyWith(busy: false, errorMessage: error.code));
     }
@@ -269,7 +271,7 @@ class VaultCubit extends Cubit<VaultState> {
           unlocked: true,
         ),
       );
-      await _runOnUnlocked();
+      unawaited(_runOnUnlocked());
     } on VaultException catch (error) {
       emit(state.copyWith(busy: false, errorMessage: error.code));
     }
@@ -344,6 +346,17 @@ class VaultCubit extends Cubit<VaultState> {
     final all = await _service.list();
     emit(state.copyWith(tags: _collectTags(all)));
     await _refreshEntries();
+  }
+
+  /// Reloads entry rows without changing status/busy (safe after a background
+  /// import while the vault page is mounted).
+  Future<void> reloadEntries() async {
+    if (_service.isLocked) return;
+    try {
+      await _refreshEntries();
+    } on Object {
+      // The next explicit load will surface the error.
+    }
   }
 
   Future<void> _refreshEntries() async {
