@@ -553,7 +553,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       // their sessions re-discover the current cwd on every resume (a session
       // can move), so this is the fallback for agents without `session/list`.
       unawaited(_agentSession?.write(liveId, cwd: effectiveWorkingDirectory));
-      _bindBackgroundTranscript(sessionToolDir: sessionToolDir, agentId: liveId);
+      _bindBackgroundTranscript(
+        sessionToolDir: sessionToolDir,
+        agentId: liveId,
+      );
     }
     await _applyLaunchModel();
     emit(
@@ -732,7 +735,6 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   void _clearInTurnKeepingPhase() {
     if (_closing || isClosed) return;
     _resetTurnTrackers();
-    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     emit(
       state.copyWith(
         inTurn: false,
@@ -740,6 +742,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         activity: AcpChatActivity.none,
       ),
     );
+    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
   }
 
   /// Answers the pending permission card. Returns whether a reply was
@@ -894,7 +897,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   void _applyToolCall(AcpToolCallUpdate update) {
     final replaying = _replayMessages != null;
-    final launchesBackground = update.background &&
+    final launchesBackground =
+        update.background &&
         (update.status == AcpToolCallStatus.pending ||
             update.status == AcpToolCallStatus.inProgress);
     if (!replaying) {
@@ -1021,7 +1025,6 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     if (_closing || isClosed) return;
     final hadBackground = _turnHadBackgroundToolCall;
     _resetTurnTrackers();
-    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     emit(
       state.copyWith(
         inTurn: false,
@@ -1030,6 +1033,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         activity: AcpChatActivity.none,
       ),
     );
+    // Attention done after inTurn is false so sync consumers (and ChatCubit's
+    // attention-driven sessionActivities recompute) do not read a stale turn.
+    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     // The turn is over but a background shell it launched is still running:
     // ACP goes silent, so watch the agent's history and hold the seat lease so
     // the UI shows "background work running" instead of `done`.
@@ -1100,10 +1106,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     }
   }
 
-  Future<void> _runHistorySync(
-    AcpSessionRuntimeApi runtime,
-    int serial,
-  ) async {
+  Future<void> _runHistorySync(AcpSessionRuntimeApi runtime, int serial) async {
     final transcript = _backgroundTranscript;
     if (transcript != null && await _tryTranscriptSync(transcript, serial)) {
       return;
@@ -1726,7 +1729,6 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     _stopBackgroundSync();
     _queuedPrompt = null;
     _resetTurnTrackers();
-    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     _appendSystemMessage(message);
     emit(
       state.copyWith(
@@ -1738,6 +1740,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         modelState: null,
       ),
     );
+    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     if (kind != AcpChatErrorKind.processExited) {
       unawaited(_persist());
     }

@@ -385,16 +385,27 @@ class ChatCubit extends Cubit<ChatState>
         sessionBusyFromAttention: (sessionId) {
           final attention = _agentAttentionCubit;
           if (attention == null) return false;
-          final bus = _tabStore.getOpenTabBySessionId(sessionId)?.teamBus;
+          final tab = _tabStore.getOpenTabBySessionId(sessionId);
+          final bus = tab?.teamBus;
           // Why: WaitEntered clears hook working, but a late PreToolUse can
           // re-stamp attention while the member is still bus-parked.
-          if (bus != null) {
-            return attention.state.sessionIsAgentActive(
-              sessionId,
-              includeMember: (id) => !bus.isWaitingForMessage(id),
-            );
-          }
-          return attention.state.sessionIsAgentActive(sessionId);
+          // ACP cubits own their turn via inTurn/pendingClient. Cursor hooks
+          // (afterAgentResponse, postToolUse) still POST working after
+          // session/prompt returns, and there is no PTY-quiet fallback, so a
+          // leftover stamp would pin History 运行中 for 30 minutes.
+          return attention.state.sessionIsAgentActive(
+            sessionId,
+            includeMember: (id) {
+              if (bus != null && bus.isWaitingForMessage(id)) return false;
+              final cubit = tab?.acpRuntimeForSeatMember(id);
+              if (cubit != null &&
+                  !cubit.state.inTurn &&
+                  cubit.state.pendingClient == null) {
+                return false;
+              }
+              return true;
+            },
+          );
         },
         sessionBusyFromDeliveryInFlight: (sessionId) =>
             _operatorDeliveryInFlight.isInFlight(sessionId),
