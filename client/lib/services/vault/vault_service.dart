@@ -4,6 +4,7 @@ import 'dart:async';
 import '../../models/vault_document.dart';
 import '../../models/vault_entry.dart';
 import '../../repositories/ssh_credential_store.dart';
+import '../../utils/logging/logger.dart';
 import 'encrypted_vault_backend.dart';
 import 'keychain_vault_backend.dart';
 import 'vault_errors.dart';
@@ -234,13 +235,17 @@ class VaultService {
   Future<void> enableEncryptedBackend(String passphrase) async {
     if (_encrypted) throw const VaultStorageException('alreadyEncrypted');
     final document = _requireDocument();
+    AppLogger.instance.i('[vault] enable: encrypting');
     await _encryptedBackend.initialize(document, passphrase);
+    AppLogger.instance.i('[vault] enable: clearing keychain');
     await _keychainBackend.clear();
     _document = document;
     _encrypted = true;
     _locked = false;
     _masterPassphrase = passphrase;
+    AppLogger.instance.i('[vault] enable: remembering master');
     await _writeRememberedPassphrase(passphrase);
+    AppLogger.instance.i('[vault] enable: done');
   }
 
   Future<void> disableEncryptedBackend() async {
