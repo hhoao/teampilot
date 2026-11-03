@@ -36,7 +36,6 @@ import '../services/cursor_usage/cursor_usage_api_client.dart';
 import '../services/cursor_usage/cursor_usage_cache_store.dart';
 import '../services/cursor_usage/cursor_usage_coordinator.dart';
 import '../services/cursor_usage/cursor_usage_event_source.dart';
-import '../services/cursor_usage/cursor_usage_range_preference.dart';
 import '../services/agent_runtime/agent_event_gateway.dart';
 import '../services/agent_runtime/agent_runtime.dart';
 import '../services/agent_runtime/runtime_event_journal.dart';
@@ -3489,10 +3488,6 @@ class _CursorUsageStack {
        cacheStore = CursorUsageCacheStore(
          fs: storage.fs,
          pathFor: storage.paths.cursorUsageCacheFile,
-       ),
-       rangePreference = CursorUsageRangePreference(
-         fs: storage.fs,
-         path: storage.paths.cursorUsageUiStateFile,
        ) {
     coordinator = CursorUsageCoordinator(
       registry: registry,
@@ -3503,7 +3498,6 @@ class _CursorUsageStack {
 
   final CursorAccountRegistry registry;
   final CursorUsageCacheStore cacheStore;
-  final CursorUsageRangePreference rangePreference;
   late final CursorUsageCoordinator coordinator;
 }
 

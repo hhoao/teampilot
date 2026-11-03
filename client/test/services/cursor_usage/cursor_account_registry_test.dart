@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/cursor_usage_account.dart';
@@ -38,6 +37,7 @@ void main() {
         userId: 'user_01ABC',
         expiresAtMs: DateTime.utc(2027, 1, 1).millisecondsSinceEpoch,
         modifiedAtMs: modifiedAtMs,
+        providerId: 'cursor',
       );
 
 
@@ -66,6 +66,23 @@ void main() {
     expect(accounts.single.hasCredential, isTrue);
   });
 
+
+  test('the label falls back to the provider name', () async {
+    final named = CursorAccountRegistry(
+      fs: fs,
+      accountsPath: '/root/cursor_usage/accounts.json',
+      credentials: CursorAccountCredentialStore(
+        store: backend,
+        now: () => DateTime.fromMillisecondsSinceEpoch(nowMs),
+      ),
+      resolveAuths: () async => discovered,
+      providerNameFor: (providerId) async =>
+          providerId == 'cursor' ? 'github account' : null,
+    );
+
+    final accounts = await named.list();
+    expect(accounts.single.label, 'github account');
+  });
 
   test('a manual label wins over the discovered default', () async {
     final discoveredId = cursorAccountIdFor('auth0|a');

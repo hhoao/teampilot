@@ -105,12 +105,6 @@ class _FakeRegistry implements CursorAccountDirectory {
   @override
   Future<List<CursorUsageAccount>> list() async => accounts;
 
-  @override
-  Future<void> upsertManual(
-    CursorAccountCredentials credentials, {
-    String? label,
-    int? teamId,
-  }) async {}
 
   @override
   Future<void> remove(String accountId) async {}

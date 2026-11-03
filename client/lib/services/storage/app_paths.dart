@@ -367,8 +367,6 @@ class AppPaths {
   String get cursorUsageAccountsFile =>
       _ctx.join(cursorUsageDir, 'accounts.json');
 
-  String get cursorUsageUiStateFile =>
-      _ctx.join(cursorUsageDir, 'ui_state.json');
 
   String cursorUsageCacheFile(String accountId) =>
       _ctx.join(cursorUsageDir, 'cache', '$accountId.json');

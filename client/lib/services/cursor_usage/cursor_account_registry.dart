@@ -65,7 +65,12 @@ final class CursorAccountRegistry implements CursorAccountDirectory {
       out[auth.account] = CursorUsageAccount(
         accountId: auth.account,
         userId: auth.userId,
-        label: override?.label ?? _defaultLabel(auth.account),
+        // The catalog name is what the account picker shows; the hashed id is
+        // only a fallback for providers missing from the catalog.
+        label:
+            override?.label ??
+            (providerId == null ? null : providerNames[providerId]) ??
+            _defaultLabel(auth.account),
         source: override?.source ?? CursorAccountSource.discovered,
         enabled: override?.enabled ?? true,
         expiresAtMs: auth.expiresAtMs,
