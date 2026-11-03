@@ -589,7 +589,7 @@ void main() {
     final l10n = AppLocalizations.of(
       tester.element(find.byType(SidebarSessionTile)),
     );
-    expect(find.text(l10n.sessionHistoryBackgroundRunning), findsOneWidget);
+    expect(find.text(l10n.sessionHistoryBackgroundRunning), findsNothing);
 
     // Releasing the lease drops the spinner back to the idle dot. The cubit
     // delivers the state change on a microtask, so give it a frame to land
@@ -605,7 +605,7 @@ void main() {
     expect(find.text(l10n.sessionHistoryBackgroundRunning), findsNothing);
   });
 
-  testWidgets('background lease tooltip names the running task', (
+  testWidgets('background lease does not name the task on the session row', (
     tester,
   ) async {
     final leases = SeatLeaseCubit(pruneInterval: null);
@@ -635,7 +635,7 @@ void main() {
     await tester.pump();
 
     expect(find.byType(SessionWorkingSpinner), findsOneWidget);
-    expect(find.text('Run full client test suite'), findsOneWidget);
+    expect(find.text('Run full client test suite'), findsNothing);
   });
 
   testWidgets('active mode archives on action tap', (tester) async {
