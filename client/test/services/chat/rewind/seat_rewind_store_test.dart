@@ -86,6 +86,75 @@ void main() {
       isNot(contains('claude/projects/a.jsonl')),
     );
   });
+
+  test(
+    'restore replaces seat bytes, deletes extras, and keeps the sibling',
+    () async {
+      final tmp = tmpDir.path;
+      final work = '$tmp/work';
+      final store = SeatRewindStore(
+        gitDir: '$tmp/repo.git',
+        workTree: work,
+        target: const SeatRewindTarget(
+          kind: SeatRewindKind.personalAcp,
+          tool: 'claude',
+        ),
+      );
+      final first = await store.commitTurn(messageId: 'm1');
+      await File('$work/claude/projects/a.jsonl').writeAsString('two');
+      await File('$work/claude/projects/extra.txt').writeAsString('x');
+      await store.commitTurn(messageId: 'm2');
+      await store.restore(first.commit);
+      expect(await File('$work/claude/projects/a.jsonl').readAsString(), 'one');
+      expect(File('$work/claude/projects/extra.txt').existsSync(), isFalse);
+      expect(await File('$work/other/secret.txt').readAsString(), 'nope');
+      expect(await store.checkedOut(), first.commit);
+    },
+  );
+
+  test('failed restore puts the previous tree back', () async {
+    final tmp = tmpDir.path;
+    final work = '$tmp/work';
+    const target = SeatRewindTarget(
+      kind: SeatRewindKind.personalAcp,
+      tool: 'claude',
+    );
+    final store = SeatRewindStore(
+      gitDir: '$tmp/repo.git',
+      workTree: work,
+      target: target,
+    );
+    final first = await store.commitTurn(messageId: 'm1');
+    await File('$work/claude/projects/a.jsonl').writeAsString('two');
+    final second = await store.commitTurn(messageId: 'm2');
+    final which = await Process.run('which', ['git']);
+    final realGit = (which.stdout as String).trim();
+    final scriptPath = '$tmp/git-fail-checkout';
+    await File(scriptPath).writeAsString('''
+#!/bin/sh
+prev=""
+for arg in "\$@"; do
+  if [ "\$prev" = "checkout" ] && [ "\$arg" = "${first.commit}" ]; then
+    exit 1
+  fi
+  prev="\$arg"
+done
+exec "$realGit" "\$@"
+''');
+    await Process.run('chmod', ['+x', scriptPath]);
+    final failing = SeatRewindStore(
+      gitDir: store.gitDir,
+      workTree: store.workTree,
+      target: target,
+      gitExecutable: scriptPath,
+    );
+    await expectLater(
+      failing.restore(first.commit),
+      throwsA(isA<StateError>()),
+    );
+    expect(await File('$work/claude/projects/a.jsonl').readAsString(), 'two');
+    expect(await failing.checkedOut(), second.commit);
+  });
 }
 
 Future<List<String>> _lsTree(SeatRewindStore store, String commit) async {

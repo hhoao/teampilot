@@ -107,6 +107,24 @@ final class SeatRewindStore {
     );
   }
 
+  Future<void> restore(String commit) async {
+    final previous = await checkedOut();
+    try {
+      await _writeSeatFromCommit(commit);
+    } catch (_) {
+      if (previous != null) {
+        await _writeSeatFromCommit(previous);
+      }
+      rethrow;
+    }
+    await _runGit([
+      ..._repoArgs,
+      'update-ref',
+      'refs/rewind/checked-out',
+      commit,
+    ]);
+  }
+
   Future<String?> checkedOut() async {
     final result = await _runGit([
       ..._repoArgs,
@@ -151,6 +169,39 @@ final class SeatRewindStore {
     );
     if (result.exitCode != 0) return null;
     return result.stdout as String;
+  }
+
+  Future<void> _writeSeatFromCommit(String commit) async {
+    await _runGit([
+      ..._repoArgs,
+      'checkout',
+      commit,
+      '--',
+      ...target.includedPrefixes,
+    ]);
+    final listed = await _runGit([
+      ..._repoArgs,
+      'ls-tree',
+      '-r',
+      '--name-only',
+      commit,
+    ]);
+    final names = <String>{
+      for (final line in const LineSplitter().convert(listed))
+        if (line.isNotEmpty) line,
+    };
+    await for (final entity in Directory(
+      workTree,
+    ).list(recursive: true, followLinks: false)) {
+      final type = FileSystemEntity.typeSync(entity.path, followLinks: false);
+      if (type != FileSystemEntityType.file) continue;
+      final relative = _repoRelative(entity.path);
+      if (!target.includes(relative) || target.isExcluded(relative)) {
+        continue;
+      }
+      if (names.contains(relative)) continue;
+      await File(entity.path).delete();
+    }
   }
 
   /// Drops index entries for this seat that are no longer a regular work-tree
