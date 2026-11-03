@@ -406,7 +406,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// On [AcpLaunchException]: inline system message + ended phase.
   /// [AcpAuthenticateException] and authenticate [TimeoutException] use
   /// not-logged-in copy. [acpd.RpcError] from `session/new` uses
-  /// session-open-failed copy plus the agent's nested reason when present.
+  /// session-open-failed copy plus the agent's nested reason when present,
+  /// except auth-required (`-32000`) which uses not-logged-in copy.
   /// Any other failure is logged and ends the session.
   Future<void> start({
     required String executable,
@@ -490,6 +491,16 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         error: error,
         stackTrace: stackTrace,
       );
+      // AUTH-required from `session/new` is a sign-in problem, not a broken
+      // session: surface the same copy as a failed `authenticate` (all ACP
+      // CLIs share -32000).
+      if (error.code == acpd.ErrorCode.authRequired.code) {
+        _endWith(
+          AcpChatErrorKind.launchFailed,
+          _strings?.notLoggedIn ?? defaultAcpChatStrings.notLoggedIn,
+        );
+        return;
+      }
       _endWith(
         AcpChatErrorKind.launchFailed,
         acpSessionOpenFailedCopy(

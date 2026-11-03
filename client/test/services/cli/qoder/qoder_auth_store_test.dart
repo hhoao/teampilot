@@ -208,7 +208,7 @@ void main() {
       );
       expect(
         await fs.readString('/sessions/s1/qoder/.auth/.qoder-provider'),
-        'work',
+        startsWith('work:'),
       );
 
       // The session refreshed its own copy after materialization.
@@ -264,7 +264,7 @@ void main() {
     );
     expect(
       await fs.readString('/sessions/s1/qoder/.auth/.qoder-provider'),
-      'personal',
+      startsWith('personal:'),
     );
   });
 
@@ -282,7 +282,7 @@ void main() {
     );
     expect(
       await fs.readString('/sessions/s1/qoder/.auth/.qoder-provider'),
-      QoderAuthStore.machineMarkerValue,
+      startsWith('${QoderAuthStore.machineMarkerValue}:'),
     );
   });
 
@@ -309,6 +309,63 @@ void main() {
       'LEGACY',
       reason: 'a preexisting session without a marker is never clobbered',
     );
+  });
+
+  test('re-login on the same provider reseeds existing sessions', () async {
+    Future<void> providerAuth(String user, String machineId) async {
+      final loginConfig = store.loginConfigDir('work');
+      await fs.ensureDir('$loginConfig/.auth');
+      await fs.atomicWrite('$loginConfig/.auth/user', user);
+      await fs.atomicWrite('$loginConfig/.auth/machine_id', machineId);
+      await store.writeProviderAuthFromLogin(
+        'work',
+        loginConfigDir: loginConfig,
+      );
+    }
+
+    const sessionDir = '/sessions/s1/qoder';
+    await providerAuth('OLD', 'OLD_MID');
+    expect(
+      await store.seedSessionAuth(
+        providerId: 'work',
+        sessionConfigDir: sessionDir,
+      ),
+      isTrue,
+    );
+    expect(await fs.readString('$sessionDir/.auth/user'), 'OLD');
+    final firstMarker = await fs.readString(
+      '$sessionDir/.auth/.qoder-provider',
+    );
+
+    // Same provider row, new account: the source bytes change, so the
+    // fingerprint changes and the existing session copy is replaced.
+    await providerAuth('NEW', 'NEW_MID');
+    expect(
+      await store.seedSessionAuth(
+        providerId: 'work',
+        sessionConfigDir: sessionDir,
+      ),
+      isTrue,
+    );
+    expect(await fs.readString('$sessionDir/.auth/user'), 'NEW');
+    expect(await fs.readString('$sessionDir/.auth/machine_id'), 'NEW_MID');
+    expect(
+      await fs.readString('$sessionDir/.auth/.qoder-provider'),
+      isNot(firstMarker),
+    );
+  });
+
+  test('clearLoginAuth removes the isolated login .auth only', () async {
+    final loginConfig = store.loginConfigDir('work');
+    await fs.ensureDir('$loginConfig/.auth');
+    await fs.atomicWrite('$loginConfig/.auth/user', 'USER');
+    await fs.atomicWrite('$loginConfig/.auth/machine_id', 'MID');
+    await fs.atomicWrite('$loginConfig/settings.json', '{}');
+
+    await store.clearLoginAuth('work');
+
+    expect((await fs.stat('$loginConfig/.auth')).exists, isFalse);
+    expect(await fs.readString('$loginConfig/settings.json'), '{}');
   });
 
   test('authSourceDir resolves the provider store, then the machine', () async {

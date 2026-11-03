@@ -253,12 +253,21 @@ Deliberate deviations from the text above, as shipped:
 - **Cross-machine seats seed `.auth` through the work-plane manifest.** The
   source (provider store, else the machine `~/.qoder/.auth`) is read on the
   control plane, then both files are copied onto the work plane with
-  `copyFile` / `writeWorkString` so the manifest flushes them to the SSH
-  target. The machine-login fallback itself remains control-plane only: a
-  remote host with no seeded copy cannot authenticate from its own `~/.qoder`.
-- **Session `.auth` is reseeded only when the provider marker changes.** A
-  successful seed writes `<configDir>/.auth/.qoder-provider` (the provider id,
-  or `machine` for the fallback). Later seeds keep the session copy when the
-  marker matches or is absent (legacy/preexisting), so in-session token
-  refreshes survive; a different marker reseeds, so re-login on another
-  provider row reaches existing sessions.
+  `copyFilePrivate` so the manifest flushes them to the SSH target with mode
+  `0600`. Overlay reads fall through to the control plane, so the remote
+  `.qoder-provider` marker is not observable: a cross-machine seat cannot tell
+  whether its own copy was refreshed, and **every connect re-copies the current
+  control-plane source**. The machine-login fallback itself remains
+  control-plane only: a remote host with no seeded copy cannot authenticate
+  from its own `~/.qoder`.
+- **Session `.auth` is reseeded when the source fingerprint changes.** A
+  successful seed writes `<configDir>/.auth/.qoder-provider`
+  (`<providerId>:<sha256-12>` of the two source files, or `machine:<hash>` for
+  the fallback). Later seeds keep the session copy when the fingerprint matches
+  or is absent (legacy/preexisting), so in-session token refreshes survive; a
+  re-login or provider switch changes the source bytes, so the fingerprint
+  changes and existing sessions are reseeded.
+- **Each login attempt starts unauthenticated.** The dialog deletes the
+  isolated login `.auth` before spawning `qodercli login`, and Done stays
+  disabled until the process exits with a complete `.auth` pair, so a previous
+  attempt's files can never be reported as this attempt's success.

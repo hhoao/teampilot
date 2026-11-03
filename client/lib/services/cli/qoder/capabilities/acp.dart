@@ -28,7 +28,9 @@ final class QoderAcpTranslator extends AcpAgentTranslator {
       if (error.code == ErrorCode.authRequired.code) {
         return acpStopAuthRequired;
       }
-      return 'ACP error ${error.code}: ${error.message}';
+      final data = error.data;
+      return 'ACP error ${error.code}: ${error.message}'
+          '${data == null ? '' : ' $data'}';
     }
     return error.toString();
   }
@@ -45,8 +47,9 @@ final class QoderAcpTranslator extends AcpAgentTranslator {
     if (raw.isEmpty) return null;
     final lower = raw.toLowerCase();
     if (raw.contains('-32000') ||
-        lower.contains('auth') ||
-        lower.contains('login')) {
+        lower.contains('authentication') ||
+        lower.contains('unauthorized') ||
+        lower.contains('not logged in')) {
       return acpStopAuthRequired;
     }
     try {

@@ -328,8 +328,10 @@ final class QoderProviderCapability extends CatalogModelCapability
   /// Copies `<source>/.auth/{user,machine_id}` onto the work plane.
   ///
   /// Reads stay on the control plane ([QoderAuthStore.authSourceDir]); the
-  /// writes go through the work-plane fs so the manifest flushes them
-  /// to the SSH seat. The `.qoder-provider` marker is written next to them.
+  /// writes go through the work-plane fs so the manifest flushes them to the
+  /// SSH seat. Overlay reads fall through to the control plane, so a remote
+  /// marker/keep check is not observable — every connect re-copies the current
+  /// control-plane source.
   Future<bool> _seedCrossMachineAuth(
     SessionHomeContext ctx, {
     required QoderAuthStore store,
@@ -339,39 +341,24 @@ final class QoderProviderCapability extends CatalogModelCapability
     final source = await store.authSourceDir(providerId);
     if (source == null) return false;
     final targetDir = ctx.paths.joinWork(configDir, '.auth');
-    final marker = store.markerFor(providerId: providerId, sourceDir: source);
-    final markerPath = ctx.paths.joinWork(
-      targetDir,
-      QoderAuthStore.markerFileName,
-    );
-    if (await _hasWorkAuthPair(ctx.paths.fs, targetDir)) {
-      final existing = (await ctx.paths.fs.readString(markerPath))?.trim();
-      // No marker means a legacy/preexisting seat: keep its own refreshed copy.
-      if (existing == null || existing.isEmpty || existing == marker) {
-        return true;
-      }
-    }
-    await ensureWorkDir(ctx.paths.fs, targetDir);
+    final fs = ctx.paths.fs;
+    await ensureWorkDir(fs, targetDir);
     for (final name in const [
       QoderAuthStore.userFileName,
       QoderAuthStore.machineIdFileName,
     ]) {
-      await ctx.paths.fs.copyFile(
-        store.pathContext.join(source, name),
-        ctx.paths.joinWork(targetDir, name),
-      );
+      final from = store.pathContext.join(source, name);
+      final to = ctx.paths.joinWork(targetDir, name);
+      if (fs is OverlayFilesystem) {
+        // Staged into the tar with mode 0600.
+        await fs.copyFilePrivate(from, to);
+      } else {
+        await fs.copyFile(from, to);
+        store.restrictFile(to);
+      }
     }
-    await writeWorkString(ctx.paths.fs, markerPath, marker);
     return true;
   }
-
-  Future<bool> _hasWorkAuthPair(Filesystem fs, String dir) async =>
-      (await fs.stat(
-        fs.pathContext.join(dir, QoderAuthStore.userFileName),
-      )).isFile &&
-      (await fs.stat(
-        fs.pathContext.join(dir, QoderAuthStore.machineIdFileName),
-      )).isFile;
 
   Future<AppProviderConfig?> _resolveLaunchProvider(
     SessionHomeContext ctx,

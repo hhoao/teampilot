@@ -152,9 +152,38 @@ void main() {
       reason: 'the work-plane manifest must carry both auth files',
     );
     expect(
-      manifest.files['$configDir/.auth/.qoder-provider'],
-      'work',
-      reason: 'the account marker travels with the staged copy',
+      copies.every((c) => c.private),
+      isTrue,
+      reason: 'credential copies must flush with mode 0600',
+    );
+    expect(
+      manifest.files.containsKey('$configDir/.auth/.qoder-provider'),
+      isFalse,
+      reason: 'a cross-machine seat cannot observe a remote marker',
+    );
+    final firstCopyCount = copies.length;
+
+    // The overlay cannot observe the remote marker, so a reconnect recopies
+    // from the control-plane source instead of trusting a stale seat copy.
+    await capability.materializeSessionHome(
+      SessionHomeContext(
+        workspaceId: 'workspace-1',
+        teamId: 'team-a',
+        sessionId: scope.sessionId,
+        scope: scope,
+        tool: CliTool.qoder,
+        paths: workService,
+        catalog: catalogService,
+        members: const [member],
+        member: member,
+        workingDirectory: '/workspace/workspace',
+        crossMachine: true,
+      ),
+    );
+    expect(
+      manifest.entries.whereType<ManifestCopyFile>().length,
+      firstCopyCount * 2,
+      reason: 'every cross-machine connect re-copies the auth pair',
     );
     expect(
       homeFs.files.keys.where((k) => k.startsWith('$configDir/.auth')),

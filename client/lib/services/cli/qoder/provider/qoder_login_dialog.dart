@@ -89,6 +89,9 @@ class _QoderLoginDialogState extends State<QoderLoginDialog> {
       await store.fs.ensureDir(home);
       await store.fs.ensureDir(configDir);
       await store.fs.ensureDir(workingDirectory);
+      // Every attempt starts unauthenticated: a previous login's `.auth` must
+      // not make this attempt look signed-in before the browser flow.
+      await store.clearLoginAuth(widget.providerId);
       final transport = await defaultTransportStarter(
         widget.executable,
         arguments: widget.arguments,
@@ -266,7 +269,9 @@ class _QoderLoginDialogState extends State<QoderLoginDialog> {
                 child: Text(l10n.qoderCredentialsRelaunch),
               ),
               TpButton(
-                onPressed: () => Navigator.of(context).pop(true),
+                onPressed: _signedIn && !_starting
+                    ? () => Navigator.of(context).pop(true)
+                    : null,
                 child: Text(l10n.qoderCredentialsDone),
               ),
             ],

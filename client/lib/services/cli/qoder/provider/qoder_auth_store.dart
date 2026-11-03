@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../../utils/logging/logger_utils.dart';
@@ -13,7 +14,7 @@ import '../../../io/filesystem.dart';
 /// copies both files into a per-provider store; each session config dir is
 /// seeded from that store (or from `~/.qoder` when the provider row was never
 /// created). An already seeded session keeps its own refreshed copy unless the
-/// recorded provider marker shows the seat switched accounts.
+/// recorded source fingerprint shows the provider store changed (re-login).
 class QoderAuthStore {
   QoderAuthStore({
     required this.fs,
@@ -34,13 +35,23 @@ class QoderAuthStore {
   static const userFileName = 'user';
   static const machineIdFileName = 'machine_id';
 
-  /// Fingerprint of the account that seeded a session `.auth`. Compared on
-  /// later seeds so a provider switch reseeds while an in-session token
-  /// refresh is preserved.
+  /// Fingerprint of the source files that seeded a session `.auth`. Compared
+  /// on later seeds so a re-login (new source bytes) reseeds while an
+  /// in-session token refresh of the session copy is preserved.
   static const markerFileName = '.qoder-provider';
 
-  /// Marker value used when the machine `~/.qoder` login was the source.
+  /// Marker prefix used when the machine `~/.qoder` login was the source.
   static const machineMarkerValue = 'machine';
+
+  /// Removes a previous attempt's isolated login `.auth`, so the dialog only
+  /// reports success for a login completed in this attempt.
+  Future<void> clearLoginAuth(String providerId) async {
+    final authDir = pathContext.join(loginConfigDir(providerId), '.auth');
+    if ((await fs.stat(authDir)).exists) await fs.removeRecursive(authDir);
+  }
+
+  /// Best-effort `chmod 600` for a credential file copied to a real disk.
+  void restrictFile(String path) => _restrict(path);
 
   String loginRoot(String providerId) =>
       pathContext.join(basePath, 'cli-login', 'qoder', _safe(providerId));
@@ -74,10 +85,11 @@ class QoderAuthStore {
 
   /// Seeds `<sessionConfigDir>/.auth` from [authSourceDir].
   ///
-  /// The first seed records a [markerFileName] fingerprint. Later seeds keep
-  /// the session copy when the marker matches (a scoped login may have
-  /// refreshed it) or when no marker exists (legacy/preexisting session). A
-  /// different marker means the seat switched providers and is reseeded.
+  /// The first seed records a [markerFileName] fingerprint of the source
+  /// bytes. Later seeds keep the session copy when the marker matches (a
+  /// scoped login may have refreshed it) or when no marker exists
+  /// (legacy/preexisting session). A different marker means the provider store
+  /// changed (re-login or provider switch) and is reseeded.
   Future<bool> seedSessionAuth({
     required String providerId,
     required String sessionConfigDir,
@@ -86,7 +98,7 @@ class QoderAuthStore {
     final hasSessionAuth = await _hasAuthPair(target);
     final source = await authSourceDir(providerId);
     if (source == null) return hasSessionAuth;
-    final marker = markerFor(providerId: providerId, sourceDir: source);
+    final marker = await markerFor(providerId: providerId, sourceDir: source);
     if (hasSessionAuth) {
       final existing = await _readMarker(target);
       if (existing == null || existing == marker) return true;
@@ -119,12 +131,32 @@ class QoderAuthStore {
   }
 
   /// Marker value for a seed sourced from [sourceDir].
-  String markerFor({required String providerId, required String sourceDir}) {
+  ///
+  /// `<providerId>:<sha256-12>` for the provider store, `machine:<sha256-12>`
+  /// for the machine fallback. Hashing the source bytes means a re-login on
+  /// the same provider row changes the marker and reseeds existing sessions.
+  Future<String> markerFor({
+    required String providerId,
+    required String sourceDir,
+  }) async {
+    final digest = await _sourceFingerprint(sourceDir);
     final id = providerId.trim();
     if (id.isEmpty || sourceDir != providerAuthDir(providerId)) {
-      return machineMarkerValue;
+      return '$machineMarkerValue:$digest';
     }
-    return id;
+    return '$id:$digest';
+  }
+
+  Future<String> _sourceFingerprint(String authDir) async {
+    final bytes = <int>[];
+    for (final name in const [userFileName, machineIdFileName]) {
+      bytes.addAll(
+        await fs.readBytes(pathContext.join(authDir, name)) ?? const <int>[],
+      );
+      // Separator so moving bytes between the two files changes the digest.
+      bytes.add(0);
+    }
+    return sha256.convert(bytes).toString().substring(0, 12);
   }
 
   Future<String?> _readMarker(String authDir) async {

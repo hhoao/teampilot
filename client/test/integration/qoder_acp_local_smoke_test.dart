@@ -30,17 +30,22 @@ void main() {
     final executable = await _which('qodercli');
     final home = Platform.environment['HOME'] ?? '';
     final auth = p.join(home, '.qoder', '.auth');
-    if (executable == null || !Directory(auth).existsSync()) {
+    final hasAuthPair =
+        File(p.join(auth, 'user')).existsSync() &&
+        File(p.join(auth, 'machine_id')).existsSync();
+    if (executable == null || !hasAuthPair) {
       // ignore: avoid_print
-      print('[qoder-acp] skipped: qodercli or ~/.qoder/.auth is missing');
+      print(
+        '[qoder-acp] skipped: qodercli or ~/.qoder/.auth/{user,machine_id} '
+        'is missing',
+      );
       return;
     }
 
     final temp = Directory.systemTemp.createTempSync('qoder-acp-');
     Directory(p.join(temp.path, '.auth')).createSync(recursive: true);
     for (final name in const ['user', 'machine_id']) {
-      final source = File(p.join(auth, name));
-      if (source.existsSync()) source.copySync(p.join(temp.path, '.auth', name));
+      File(p.join(auth, name)).copySync(p.join(temp.path, '.auth', name));
     }
 
     final registry = CliToolRegistry()..register(const QoderCliTool());
