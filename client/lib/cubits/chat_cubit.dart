@@ -460,6 +460,7 @@ class ChatCubit extends Cubit<ChatState>
         onAfterIdleWatchTick: () => unawaited(_onIdleWatchTick()),
         onAfterTurnLatched: _onOperatorTurnLatched,
         onUserActivity: _launchService.touchOnUserActivity,
+        onAfterTurnStarted: _onShellTurnStarted,
         onAfterTurnEnded: _onTurnEnded,
         memberCli: (tab, memberId) {
           final session = tab.persistedSession;
@@ -1425,24 +1426,35 @@ class ChatCubit extends Cubit<ChatState>
         ? session.nativeSessionIds[cli.value]
         : session.bindingFor(memberId)?.nativeSessionIds[cli.value];
     await _rewindGate.runSnapshot(gitDir, () async {
-      final messageId = await _closingPtyMessageId(
-        sessionId: sessionId,
-        memberId: memberId,
-        historyMemberId: historyMemberId,
-        seatKey: seatKey,
-      );
-      if (messageId == null) return;
-      await _commitPtyTurnOnce(
-        gitDir: gitDir,
-        workTree: workTree,
-        target: target,
-        messageId: messageId,
-        nativeSessionId: nativeSessionId,
-        seatKey: seatKey,
-        sessionId: sessionId,
-        memberId: memberId,
-      );
+      try {
+        final messageId = await _closingPtyMessageId(
+          sessionId: sessionId,
+          memberId: memberId,
+          historyMemberId: historyMemberId,
+          seatKey: seatKey,
+        );
+        if (messageId == null) return;
+        await _commitPtyTurnOnce(
+          gitDir: gitDir,
+          workTree: workTree,
+          target: target,
+          messageId: messageId,
+          nativeSessionId: nativeSessionId,
+          seatKey: seatKey,
+          sessionId: sessionId,
+          memberId: memberId,
+        );
+      } finally {
+        // The next turn's rising edge must record a fresh start id.
+        _ptyTurnBaseline.remove(seatKey);
+      }
     });
+  }
+
+  /// Shell turn latch rose (`inTurn` false → true). That is the start of a
+  /// quiet-end turn, including Cursor where attention may never enter working.
+  void _onShellTurnStarted(String sessionId, String memberId) {
+    _rememberPtyTurnBaseline(sessionId, memberId);
   }
 
   void _capturePtyTurnBaselines(
@@ -1459,19 +1471,29 @@ class ChatCubit extends Cubit<ChatState>
       final sessionId = entry.key.substring(0, sep);
       final memberId = entry.key.substring(sep + 1);
       if (memberId.isEmpty) continue;
-      final session = _tabStore
-          .getOpenTabBySessionId(sessionId)
-          ?.persistedSession;
-      final historyMemberId = session == null || session.isSimple
-          ? ''
-          : memberId;
-      _ptyTurnBaseline[entry.key] =
-          _observedPtyMessageId(
-            sessionId: sessionId,
-            historyMemberId: historyMemberId,
-          ) ??
-          '';
+      _rememberPtyTurnBaseline(sessionId, memberId);
     }
+  }
+
+  /// Records the latest visible id at turn start. The first signal wins:
+  /// the shell latch, or attention entering working. A later signal must
+  /// not move the baseline onto a message this turn already produced.
+  void _rememberPtyTurnBaseline(String sessionId, String memberId) {
+    if (memberId.trim().isEmpty) return;
+    final seatKey = '$sessionId\u0000$memberId';
+    if (_ptyTurnBaseline.containsKey(seatKey)) return;
+    final session = _tabStore
+        .getOpenTabBySessionId(sessionId)
+        ?.persistedSession;
+    final historyMemberId = session == null || session.isSimple
+        ? ''
+        : memberId;
+    _ptyTurnBaseline[seatKey] =
+        _observedPtyMessageId(
+          sessionId: sessionId,
+          historyMemberId: historyMemberId,
+        ) ??
+        '';
   }
 
   /// The history seat's latest id, or the loader's full index / incremental
@@ -1529,6 +1551,13 @@ class ChatCubit extends Cubit<ChatState>
     if (observed != null && _ptyCommittedMessageBySeat[seatKey] == observed) {
       return null;
     }
+    if (!_ptyTurnBaseline.containsKey(seatKey)) {
+      appLogger.w(
+        '[rewind] pty checkpoint skipped: turn start was not observed '
+        'session=$sessionId member=$memberId',
+      );
+      return null;
+    }
     final ready = _idThatClosedTurn(seatKey, observed);
     if (ready != null) return ready;
 
@@ -1562,6 +1591,7 @@ class ChatCubit extends Cubit<ChatState>
     if (retried != null && _ptyCommittedMessageBySeat[seatKey] == retried) {
       return null;
     }
+    if (!_ptyTurnBaseline.containsKey(seatKey)) return null;
     final closing = _idThatClosedTurn(seatKey, retried);
     if (closing != null) return closing;
     appLogger.w(
@@ -1574,8 +1604,9 @@ class ChatCubit extends Cubit<ChatState>
   String? _idThatClosedTurn(String seatKey, String? id) {
     if (id == null || id.isEmpty) return null;
     if (_ptyCommittedMessageBySeat[seatKey] == id) return null;
-    final baseline = _ptyTurnBaseline[seatKey];
-    if (baseline != null && id == baseline) return null;
+    // No start baseline: the visible id may be the previous turn's message.
+    if (!_ptyTurnBaseline.containsKey(seatKey)) return null;
+    if (id == _ptyTurnBaseline[seatKey]) return null;
     return id;
   }
 
@@ -1704,6 +1735,10 @@ class ChatCubit extends Cubit<ChatState>
   @visibleForTesting
   void debugOnTurnEnded(String sessionId, String memberId) =>
       _onTurnEnded(sessionId, memberId);
+
+  @visibleForTesting
+  void debugNotePtyTurnStarted(String sessionId, String memberId) =>
+      _rememberPtyTurnBaseline(sessionId, memberId);
 
   @visibleForTesting
   void debugPublishRewindHistory() => _publishRewindHistory();

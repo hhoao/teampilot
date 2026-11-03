@@ -81,6 +81,10 @@ void main() {
             testHomeStorage.context,
       );
       env.cubit.historyLoader = loader;
+      env.cubit.debugNotePtyTurnStarted(
+        env.session.sessionId,
+        env.session.sessionId,
+      );
       loader.debugSetCachedMessages(
         sessionId: env.session.sessionId,
         memberId: '',

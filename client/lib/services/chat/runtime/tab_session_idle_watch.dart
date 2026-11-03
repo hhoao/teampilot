@@ -18,12 +18,14 @@ final class TabSessionIdleWatch {
     required bool Function() isClosed,
     CliTool? Function(ChatTab tab, String memberId)? memberCli,
     VoidCallback? onAfterTick,
+    void Function(String sessionId, String memberId)? onAfterTurnStarted,
     void Function(String sessionId, String memberId)? onAfterTurnEnded,
   }) : _tabStore = tabStore,
        _coordinationFactory = coordinationFactory,
        _isClosed = isClosed,
        _memberCli = memberCli,
        _onAfterTick = onAfterTick,
+       _onAfterTurnStarted = onAfterTurnStarted,
        _onAfterTurnEnded = onAfterTurnEnded;
 
   final ChatTabStore _tabStore;
@@ -31,6 +33,7 @@ final class TabSessionIdleWatch {
   final bool Function() _isClosed;
   final CliTool? Function(ChatTab tab, String memberId)? _memberCli;
   final VoidCallback? _onAfterTick;
+  final void Function(String sessionId, String memberId)? _onAfterTurnStarted;
   final void Function(String sessionId, String memberId)? _onAfterTurnEnded;
 
   Timer? _timer;
@@ -85,6 +88,8 @@ final class TabSessionIdleWatch {
           inTurn: inTurn,
           shell: shell,
           wasInTurn: _wasInTurn,
+          onTurnStarted: () =>
+              _onAfterTurnStarted?.call(tab.info.id, memberId),
           endTurn: () {
             final cli = _memberCli?.call(tab, memberId);
             if (cli == null || !ptyQuietEndsTurn(cli)) return;

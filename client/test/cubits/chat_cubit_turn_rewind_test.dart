@@ -272,4 +272,118 @@ void main() {
       await deleteTempDirBestEffort(tmp);
     },
   );
+
+  test(
+    'a quiet end keeps only an id that appears after the shell latch starts',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('cubit_turn_rewind_');
+      final storage = fakeHomeStorage();
+      final repo = SessionRepository(rootDir: tmp.path, storage: storage);
+      final attention = AgentAttentionCubit(pruneInterval: null);
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+        agentAttentionCubit: attention,
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                RunningConnectedFakeShell(executable: executable),
+        storage: storage,
+      );
+      final loader = AiHistoryLoader(
+        contextBuilder: const SessionHistoryContextBuilder(),
+        resolveWorkContext: (_, {String? memberId}) async => storage.context,
+      );
+      cubit.historyLoader = loader;
+
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
+      final session = (await repo.createSession(
+        workspace.workspaceId,
+        cli: CliTool.cursor,
+      )).session;
+      await cubit.loadWorkspaceData(repo);
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          repo: repo,
+          connectImmediately: false,
+        ),
+      );
+      await drainPendingAsyncWork();
+      final tab = cubit.activeTab!;
+      final memberId = tab.memberShells.keys.single;
+      final shell = tab.memberShells.values.single;
+      final commits = <String>[];
+      cubit.debugCommitPtyTurn =
+          ({
+            required gitDir,
+            required workTree,
+            required target,
+            required messageId,
+            nativeSessionId,
+          }) async {
+            commits.add(messageId);
+            return RewindCheckpoint(
+              commit: 'c-$messageId',
+              messageId: messageId,
+              nativeSessionId: nativeSessionId,
+            );
+          };
+
+      loader.debugSetCachedMessages(
+        sessionId: session.sessionId,
+        memberId: '',
+        messages: const [
+          AiMessage(
+            id: 'm-before',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: 'before')],
+          ),
+        ],
+        cli: CliTool.cursor,
+      );
+
+      final skipped = Stopwatch()..start();
+      cubit.debugOnTurnEnded(session.sessionId, memberId);
+      await drainPendingAsyncWork();
+      skipped.stop();
+      expect(commits, isEmpty);
+      expect(skipped.elapsed, lessThan(const Duration(milliseconds: 500)));
+
+      shell.markUserTurnStarted();
+      cubit.debugTickIdleWatch();
+      loader.debugSetCachedMessages(
+        sessionId: session.sessionId,
+        memberId: '',
+        messages: const [
+          AiMessage(
+            id: 'm-before',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: 'before')],
+          ),
+          AiMessage(
+            id: 'm-after',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: 'after')],
+          ),
+        ],
+        cli: CliTool.cursor,
+      );
+      simulateFingerprintQuietGap(shell);
+      cubit.debugTickIdleWatch();
+      await drainPendingAsyncWork();
+
+      expect(commits, ['m-after']);
+
+      await cubit.close();
+      await attention.close();
+      await postFrame.flush();
+      await deleteTempDirBestEffort(tmp);
+    },
+  );
 }

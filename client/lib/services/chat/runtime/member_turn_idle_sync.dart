@@ -15,6 +15,7 @@ abstract final class MemberTurnIdleSync {
     required TerminalSession shell,
     required Map<String, bool> wasInTurn,
     required void Function() endTurn,
+    void Function()? onTurnStarted,
   }) {
     if (!shell.isRunning) {
       wasInTurn.remove(turnKey);
@@ -23,6 +24,7 @@ abstract final class MemberTurnIdleSync {
     final was = wasInTurn[turnKey] ?? false;
     if (inTurn && !was) {
       shell.activityTracker.latchTurnQuietBaseline();
+      onTurnStarted?.call();
     }
     wasInTurn[turnKey] = inTurn;
     if (!inTurn) return false;
