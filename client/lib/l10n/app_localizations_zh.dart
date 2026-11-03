@@ -9909,4 +9909,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get vaultStoredInVault => '已存入保险库';
+
+  @override
+  String get vaultLockedQueryBlocked => '请先解锁保险库再查询用量。';
 }
