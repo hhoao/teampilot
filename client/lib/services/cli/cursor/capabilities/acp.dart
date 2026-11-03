@@ -19,6 +19,8 @@ final class CursorAcpTranslator extends AcpAgentTranslator {
     'cursor/create_plan',
   ];
 
+  /// Documented as notifications, but cursor-agent often sends them as
+  /// JSON-RPC requests. The ACP session registrar acks both shapes.
   @override
   List<String> get notificationClientMethods => const [
     'cursor/update_todos',
