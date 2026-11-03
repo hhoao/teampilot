@@ -175,8 +175,8 @@ class VaultCubit extends Cubit<VaultState> {
     }
   }
 
-  void lock() {
-    _service.lock();
+  Future<void> lock() async {
+    final locking = _service.lock();
     emit(
       state.copyWith(
         status: VaultStatus.locked,
@@ -186,6 +186,7 @@ class VaultCubit extends Cubit<VaultState> {
         unlocked: false,
       ),
     );
+    await locking;
   }
 
   Future<void> setQuery(String query) async {

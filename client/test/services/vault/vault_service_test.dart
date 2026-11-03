@@ -252,13 +252,43 @@ void main() {
     expect(await second.verifyMasterPassphrase('pass'), isTrue);
     expect(await second.verifyMasterPassphrase('wrong'), isFalse);
 
-    second.lock();
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+    await second.lock();
     expect(master.values.containsKey('teampilot.vault.v1.master'), isFalse);
 
     final third = build();
     await third.initialize();
     expect(await third.tryAutoUnlock(), isFalse);
     expect(third.isLocked, isTrue);
+  });
+
+  test('a reveal-style unlock never re-remembers the password', () async {
+    final vaultStore = _FakeStore();
+    final master = _FakeStore();
+    final fs = InMemoryFilesystem(
+      pathContext: p.Context(style: p.Style.posix),
+    );
+    VaultService build() => VaultService(
+      keychainBackend: KeychainVaultBackend(vaultStore),
+      encryptedBackend: EncryptedVaultBackend(
+        repository: VaultRepository(rootDir: '/root/vault', fs: fs),
+        crypto: crypto,
+      ),
+      masterKeyStore: master,
+    );
+
+    final first = build();
+    await first.initialize();
+    await first.enableEncryptedBackend('pass');
+    await master.delete('teampilot.vault.v1.master');
+
+    final second = build();
+    await second.initialize();
+    await second.unlock('pass', remember: false);
+    expect(second.isUnlocked, isTrue);
+    expect(master.values.containsKey('teampilot.vault.v1.master'), isFalse);
+
+    await second.lock();
+    expect(second.isLocked, isTrue);
+    expect(master.values.containsKey('teampilot.vault.v1.master'), isFalse);
   });
 }

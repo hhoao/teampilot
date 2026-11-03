@@ -9,6 +9,7 @@ import '../../cubits/vault_cubit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/vault_entry.dart';
 import '../../models/vault_reference.dart';
+import '../../services/vault/vault_service.dart';
 import 'vault_entry_editor.dart';
 import 'vault_entry_list.dart';
 import 'vault_secret_reveal.dart';
@@ -249,6 +250,8 @@ Future<void> copySecret(
 }) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
   final l10n = AppLocalizations.of(context);
+  final vault = context.read<VaultService>();
+  if (vault.isEncrypted && !await authorizeVaultReveal(context)) return;
   await Clipboard.setData(ClipboardData(text: value));
   messenger?.showSnackBar(
     SnackBar(
