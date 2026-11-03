@@ -264,6 +264,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   )?
   _syncCursorUsage;
   int _cursorSyncGeneration = 0;
+  Future<void>? _cursorSyncFlight;
   final Future<UsageSyncResult> Function() _syncAll;
   final UsageSyncHandle Function()? _startSync;
   final UsageSyncHandle Function()? _startFullSync;
@@ -366,8 +367,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       );
       // Cursor rows come from the account caches; refresh them for the current
       // range in the background, then reload the events they produce.
-      unawaited(_refreshCursorAccountUsage());
-    } catch (error, stackTrace) {
+      unawaited(_refreshCursorAccountUsage());    } catch (error, stackTrace) {
       AppLogger.instance.e(
         '[usage] load failed',
         error: error,
@@ -519,14 +519,33 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     unawaited(_refreshCursorAccountUsage());
   }
 
+  /// True when Cursor account rows can change what the page shows.
+  bool get _showsCursorRows => state.cli == null || state.cli == CliTool.cursor;
+
   /// Fetches Cursor account usage for the current range, then reloads the
   /// events so the dashboard picks the new rows up.
   ///
   /// Runs off the hot path: the page keeps showing cached numbers while the
-  /// per-account caches fill in.
-  Future<void> _refreshCursorAccountUsage({bool full = false}) async {
+  /// per-account caches fill in. Callers for the same range share one in-flight
+  /// request; a full sync may interrupt an incremental one.
+  Future<void> _refreshCursorAccountUsage({bool full = false}) {
+    if (!_showsCursorRows) return Future<void>.value();
     final sync = _syncCursorUsage;
-    if (sync == null) return;
+    if (sync == null) return Future<void>.value();
+    final inFlight = _cursorSyncFlight;
+    if (inFlight != null && !full) return inFlight;
+    final future = _runCursorRefresh(sync, full: full);
+    _cursorSyncFlight = future;
+    return future.whenComplete(() {
+      if (identical(_cursorSyncFlight, future)) _cursorSyncFlight = null;
+    });
+  }
+
+  Future<void> _runCursorRefresh(
+    Future<void> Function(UsageRange range, int? startMs, int? endMs, bool full)
+    sync, {
+    required bool full,
+  }) async {
     final generation = ++_cursorSyncGeneration;
     try {
       await sync(state.range, state.customStartMs, state.customEndMs, full);
@@ -570,7 +589,11 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     _updateFilter();
   }
 
-  void setCli(CliTool? cli) => _updateFilter(cli: cli, clearCli: cli == null);
+  void setCli(CliTool? cli) {
+    _updateFilter(cli: cli, clearCli: cli == null);
+    // Switching into (or back out of) the Cursor filter can need its rows.
+    unawaited(_refreshCursorAccountUsage());
+  }
 
   /// Filters the dashboard to one Cursor account; null means all of them.
   void setCursorAccount(String? accountId) => _updateFilter(

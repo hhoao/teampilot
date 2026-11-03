@@ -336,6 +336,7 @@ import '../services/run/run_target_resolver.dart';
 import '../services/run/workspace_run_platform_factory.dart';
 import '../services/search/workspace_search_indexes.dart';
 import '../services/workspace/workspace_worktree_registry.dart';
+import '../services/usage/cursor_usage_sync_adapter.dart';
 import '../services/workspace/workspace_session_groups_registry.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
@@ -1658,6 +1659,15 @@ Future<AppShell> buildAppShell({
       return cachedCursorStack!;
     }
 
+    final cursorAdapter = CursorUsageSyncAdapter(
+      listAccounts: () => cursorStack().registry.list(),
+      loadAccount: (accountId, range, mode) => cursorStack().coordinator.load(
+        accountId: accountId,
+        range: range,
+        mode: mode,
+      ),
+    );
+
     final sessionUsageServices = SessionUsageServices.forStorage(
       storage: homeStorage,
       registry: cliToolRegistry,
@@ -1668,26 +1678,8 @@ Future<AppShell> buildAppShell({
         loadCache: (accountId) => cursorStack().cacheStore.load(accountId),
       ).loadEvents(),
       loadCursorAccounts: () => cursorStack().registry.list(),
-      syncCursorUsage: (range, startMs, endMs, full) async {
-        final cursorRange = _cursorUsageRangeFor(range, startMs, endMs);
-        final mode = full
-            ? CursorUsageSyncMode.full
-            : range == UsageRange.all
-            ? CursorUsageSyncMode.manual
-            : CursorUsageSyncMode.auto;
-        for (final account in await cursorStack().registry.list()) {
-          if (!account.enabled) continue;
-          try {
-            await cursorStack().coordinator.load(
-              accountId: account.accountId,
-              range: cursorRange,
-              mode: mode,
-            );
-          } on Object {
-            // One account failing must not block the others.
-          }
-        }
-      },
+      syncCursorUsage: (range, startMs, endMs, full) =>
+          cursorAdapter.syncFor(range, startMs, endMs, full: full),
     );
     final sessionUsageCubit = SessionUsageCubit(
       loadEvents: sessionUsageServices.loadEvents,
@@ -3494,47 +3486,6 @@ class _CursorUsageStack {
   final CursorAccountRegistry registry;
   final CursorUsageCacheStore cacheStore;
   late final CursorUsageCoordinator coordinator;
-}
-
-/// Maps the usage page's range onto the Cursor fetch range. `all` maps to the
-/// billing cycle and is fetched in manual mode, which expands to the history
-/// anchor — the page's "all" means every row available, not one cycle.
-CursorUsageRange _cursorUsageRangeFor(
-  UsageRange range,
-  int? startMs,
-  int? endMs,
-) {
-  final now = DateTime.now();
-  final nowMs = now.millisecondsSinceEpoch;
-  int daysAgo(int days) => DateTime(
-    now.year,
-    now.month,
-    now.day,
-  ).subtract(Duration(days: days - 1)).millisecondsSinceEpoch;
-  return switch (range) {
-    UsageRange.today => const CursorUsagePresetRange(CursorUsagePreset.today),
-    UsageRange.last24Hours => CursorUsageCustomRange(
-      startMs: nowMs - const Duration(days: 1).inMilliseconds,
-      endMs: nowMs,
-    ),
-    UsageRange.sevenDays => const CursorUsagePresetRange(
-      CursorUsagePreset.sevenDays,
-    ),
-    UsageRange.fourteenDays => CursorUsageCustomRange(
-      startMs: daysAgo(14),
-      endMs: nowMs,
-    ),
-    UsageRange.thirtyDays => const CursorUsagePresetRange(
-      CursorUsagePreset.thirtyDays,
-    ),
-    UsageRange.all => const CursorUsagePresetRange(
-      CursorUsagePreset.billingCycle,
-    ),
-    UsageRange.custom => CursorUsageCustomRange(
-      startMs: startMs ?? daysAgo(30),
-      endMs: endMs ?? nowMs,
-    ),
-  };
 }
 
 /// Fills each enabled account's cache so the session usage dashboard has
