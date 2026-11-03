@@ -29,6 +29,8 @@ import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/home_storage.dart';
 import '../services/chat/conversation/history/ai_history_loader.dart';
+import '../services/chat/rewind/seat_rewind_paths.dart';
+import '../services/chat/rewind/seat_rewind_store.dart';
 import '../services/chat/runtime/session_activity_reduce.dart';
 import '../services/chat/conversation/history/failed_message_store.dart';
 import '../services/chat/session/session_lifecycle_service.dart';
@@ -233,14 +235,17 @@ class ChatCubit extends Cubit<ChatState>
   /// Fired when History should drop cache / reload (disconnect or switch back).
   void Function(String sessionId)? onSessionHistoryStale;
 
-  /// Snapshots a local non-ACP PTY seat after `_onTurnEnded`. Tests inject this
-  /// directly.
-  Future<void> Function(
-    String sessionId,
-    String memberId,
+  /// Test stand-in for [SeatRewindStore.commitTurn] so cubit tests do not
+  /// shell out to git. Production leaves this null and builds the store.
+  @visibleForTesting
+  Future<RewindCheckpoint> Function({
+    required String gitDir,
+    required String workTree,
+    required SeatRewindTarget target,
+    required String messageId,
     String? nativeSessionId,
-  )?
-  onPtyTurnCheckpoint;
+  })?
+  debugCommitPtyTurn;
 
   final _operatorMailboxQueued =
       StreamController<OperatorMailboxQueuedEvent>.broadcast();
@@ -349,6 +354,14 @@ class ChatCubit extends Cubit<ChatState>
   /// set, pods own a [HistoryStore]; consumers fall back to the global cubit
   /// until then.
   AiHistoryLoader? historyLoader;
+
+  /// Serializes [SeatRewindStore.commitTurn] per rewind git dir so quiet-end
+  /// and a later done event cannot overlap unawaited writes.
+  final _ptyCommitByGitDir = <String, Future<void>>{};
+
+  /// Last message id committed for a PTY seat (`sessionId\0memberId`).
+  final _ptyCommittedMessageBySeat = <String, String>{};
+
   static const _continueOverridesController =
       SessionContinueOverridesController();
   final Map<String, Future<void>> _sessionHydrationByWorkspace = {};
@@ -1307,7 +1320,20 @@ class ChatCubit extends Cubit<ChatState>
     final session = tab?.persistedSession;
     if (tab == null || session == null) return;
 
-    final cli = SessionMemberCliResolver.resolve(
+    final cli = _cliForPtySeat(session, memberId);
+    unawaited(_checkpointPtyTurn(sessionId, memberId));
+    final attention = _agentAttentionCubit;
+    if (attention == null) return;
+    final cap = cliRegistry.capability<TeamBehaviorCapability>(cli);
+    if (cap == null || !cap.requiresPtyFallback) return;
+    final bus = tab.teamBus;
+    if (bus != null && bus.hasPendingDoorbell(memberId)) return;
+    attention.clearWorkingIfWorking(sessionId: sessionId, memberId: memberId);
+    _updateSessionActivities();
+  }
+
+  CliTool _cliForPtySeat(AppSession session, String memberId) {
+    return SessionMemberCliResolver.resolve(
       persistedSession: session,
       team: _activeTeam,
       memberId: memberId,
@@ -1319,30 +1345,14 @@ class ChatCubit extends Cubit<ChatState>
       ),
       globalPresets: _lifecycle.globalPresets,
     );
-    unawaited(
-      _checkpointPtyTurn(
-        session: session,
-        sessionId: sessionId,
-        memberId: memberId,
-        cli: cli,
-      ),
-    );
-    final attention = _agentAttentionCubit;
-    if (attention == null) return;
-    final cap = cliRegistry.capability<TeamBehaviorCapability>(cli);
-    if (cap == null || !cap.requiresPtyFallback) return;
-    final bus = tab.teamBus;
-    if (bus != null && bus.hasPendingDoorbell(memberId)) return;
-    attention.clearWorkingIfWorking(sessionId: sessionId, memberId: memberId);
-    _updateSessionActivities();
   }
 
-  Future<void> _checkpointPtyTurn({
-    required AppSession session,
-    required String sessionId,
-    required String memberId,
-    required CliTool cli,
-  }) async {
+  Future<void> _checkpointPtyTurn(String sessionId, String memberId) async {
+    if (memberId.trim().isEmpty) return;
+    final session = _tabStore
+        .getOpenTabBySessionId(sessionId)
+        ?.persistedSession;
+    if (session == null) return;
     if (isAcpChatSession(session) || isAcpChatSeat(session, memberId)) {
       return;
     }
@@ -1352,13 +1362,119 @@ class ChatCubit extends Cubit<ChatState>
       memberId: session.isSimple ? null : memberId,
     );
     if (workTarget.kind == RuntimeKind.ssh) return;
+
+    final cli = _cliForPtySeat(session, memberId);
+    final loader = historyLoader;
+    final historyMemberId = session.isSimple ? '' : memberId;
+    final token = loader?.cacheToken(
+      sessionId: sessionId,
+      memberId: historyMemberId,
+    );
+    final messages = token == null || loader == null
+        ? null
+        : loader.messagesIfCached(
+            sessionId: sessionId,
+            memberId: historyMemberId,
+            token: token,
+          );
+    if (messages == null || messages.isEmpty) {
+      appLogger.w(
+        '[rewind] pty checkpoint skipped: no cached history '
+        'session=$sessionId member=$memberId',
+      );
+      return;
+    }
+    final messageId = messages.last.id.trim();
+    if (messageId.isEmpty) {
+      appLogger.w(
+        '[rewind] pty checkpoint skipped: no cached history '
+        'session=$sessionId member=$memberId',
+      );
+      return;
+    }
+
     final nativeSessionId = session.isSimple
         ? session.nativeSessionIds[cli.value]
         : session.bindingFor(memberId)?.nativeSessionIds[cli.value];
-    final hook = onPtyTurnCheckpoint;
-    if (hook == null) return;
+    final personal = session.isSimple;
+    final target = SeatRewindTarget(
+      kind: personal ? SeatRewindKind.personalPty : SeatRewindKind.mixedPty,
+      tool: cli.value,
+      memberId: personal ? null : memberId,
+    );
+    final layout = _storage.context.layout;
+    final gitDir = layout.pathContext.join(
+      layout.workspace.sessionDir(session.workspaceId, session.sessionId),
+      'rewind',
+      target.seatKey,
+    );
+    final workTree = layout.workspace.sessionRuntimeDir(
+      session.workspaceId,
+      session.sessionId,
+    );
+    final seatKey = '$sessionId\u0000$memberId';
+    if (_ptyCommittedMessageBySeat[seatKey] == messageId) return;
+
+    final previous = _ptyCommitByGitDir[gitDir] ?? Future<void>.value();
+    late final Future<void> chained;
+    chained = () async {
+      try {
+        await previous;
+      } catch (_) {}
+      await _commitPtyTurnOnce(
+        gitDir: gitDir,
+        workTree: workTree,
+        target: target,
+        messageId: messageId,
+        nativeSessionId: nativeSessionId,
+        seatKey: seatKey,
+        sessionId: sessionId,
+        memberId: memberId,
+      );
+    }();
+    _ptyCommitByGitDir[gitDir] = chained;
     try {
-      await hook(sessionId, memberId, nativeSessionId);
+      await chained;
+    } finally {
+      if (identical(_ptyCommitByGitDir[gitDir], chained)) {
+        _ptyCommitByGitDir.remove(gitDir);
+      }
+    }
+  }
+
+  Future<void> _commitPtyTurnOnce({
+    required String gitDir,
+    required String workTree,
+    required SeatRewindTarget target,
+    required String messageId,
+    required String? nativeSessionId,
+    required String seatKey,
+    required String sessionId,
+    required String memberId,
+  }) async {
+    if (_ptyCommittedMessageBySeat[seatKey] == messageId) return;
+    try {
+      final hook = debugCommitPtyTurn;
+      if (hook != null) {
+        await hook(
+          gitDir: gitDir,
+          workTree: workTree,
+          target: target,
+          messageId: messageId,
+          nativeSessionId: nativeSessionId,
+        );
+      } else {
+        final store = SeatRewindStore(
+          gitDir: gitDir,
+          workTree: workTree,
+          target: target,
+        );
+        await store.commitTurn(
+          messageId: messageId,
+          nativeSessionId: nativeSessionId,
+        );
+      }
+      _ptyCommittedMessageBySeat[seatKey] = messageId;
     } on Object catch (error, stackTrace) {
       appLogger.e(
         '[rewind] pty checkpoint failed session=$sessionId '
@@ -1414,6 +1530,7 @@ class ChatCubit extends Cubit<ChatState>
       final memberId = entry.key.substring(sep + 1);
       if (memberId.isEmpty) continue;
       _sessionRuntime.endMemberTurn(sessionId, memberId);
+      unawaited(_checkpointPtyTurn(sessionId, memberId));
     }
   }
 

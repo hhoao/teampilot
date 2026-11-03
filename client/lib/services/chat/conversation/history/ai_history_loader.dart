@@ -353,6 +353,31 @@ final class AiHistoryLoader {
     return _fullIndexes[key]?.messages;
   }
 
+  /// Token from the last successful load for this seat, if any.
+  String? cacheToken({required String sessionId, required String memberId}) =>
+      _tokens[_cacheKey(sessionId, memberId)];
+
+  /// Test seam: prime [messagesIfCached] without parsing a transcript.
+  @visibleForTesting
+  void debugSetCachedMessages({
+    required String sessionId,
+    required String memberId,
+    required List<AiMessage> messages,
+    required CliTool cli,
+    String token = 'cached',
+  }) {
+    final key = _cacheKey(sessionId, memberId);
+    _tokens[key] = token;
+    final result = AiHistoryLoadResult(
+      messages: messages,
+      cli: cli,
+      isComplete: true,
+    );
+    _fullIndexes[key] = result;
+    _fullIndexFutures[key] = Future.value(result);
+    _messages[key] = messages;
+  }
+
   /// Per-CLI tail reader for JSONL-style transcripts. Returns null when the
   /// capability has no [AiTranscriptLineAppend] (e.g. opencode's multi-file DB)
   /// so the loader falls back to the full adapter parse.
