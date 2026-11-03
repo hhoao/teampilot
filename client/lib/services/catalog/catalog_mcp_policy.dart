@@ -1,6 +1,7 @@
 import 'catalog_kind.dart';
 import 'catalog_kind_registry.dart';
 import 'catalog_mcp_constants.dart';
+import 'modules/automation_catalog_tools.dart';
 import 'modules/mcp_catalog_tools.dart';
 import 'modules/plugin_catalog_tools.dart';
 import 'modules/skill_catalog_tools.dart';
@@ -27,7 +28,15 @@ abstract final class CatalogMcpPolicy {
           supportsCreate: false,
         ),
       )
-      ..register(const _AdvertisedKind('mcp', mcpCatalogTools));
+      ..register(const _AdvertisedKind('mcp', mcpCatalogTools))
+      ..register(
+        const _AdvertisedKind(
+          'automation',
+          automationCatalogTools,
+          supportsImport: false,
+          supportsInstall: false,
+        ),
+      );
   }
 
   static List<String> readToolNames(CatalogKindRegistry registry) {
@@ -60,7 +69,13 @@ abstract final class CatalogMcpPolicy {
 }
 
 class _AdvertisedKind implements CatalogKindModule {
-  const _AdvertisedKind(this.kind, this._tools, {this.supportsCreate = true});
+  const _AdvertisedKind(
+    this.kind,
+    this._tools, {
+    this.supportsCreate = true,
+    this.supportsImport = true,
+    this.supportsInstall = true,
+  });
 
   @override
   final String kind;
@@ -68,9 +83,9 @@ class _AdvertisedKind implements CatalogKindModule {
   @override
   final bool supportsCreate;
   @override
-  bool get supportsImport => true;
+  final bool supportsImport;
   @override
-  bool get supportsInstall => true;
+  final bool supportsInstall;
 
   @override
   List<CatalogToolSpec> advertise() => _tools;

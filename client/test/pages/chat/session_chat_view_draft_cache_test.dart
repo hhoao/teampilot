@@ -1,6 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart'
     show AiMessage, AiRole, AiTextPart, ExternalStoreAiThreadRuntime;
 import 'dart:async';
+import 'package:extended_text_field/extended_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,8 +39,10 @@ import 'package:teampilot/pages/chat/session_chat_view.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_store.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_token_document.dart';
 import 'package:teampilot/services/chat/conversation/follow_up/follow_up_queue.dart';
 import 'package:teampilot/services/chat/conversation/history/history_awaiting_working_sync.dart';
 import 'package:teampilot/services/chat/conversation/history/failed_message_store.dart';
@@ -49,6 +52,7 @@ import 'package:teampilot/theme/app_theme.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
+import '../../support/compose_field_test_utils.dart';
 
 /// `SessionChatMessageArea` reads the non-nullable `sessionScrollAnchors`
 /// field, so the mock must provide a real empty map instead of mocktail's
@@ -363,12 +367,43 @@ void main() {
       cli: CliTool.claude,
       createdAt: 1,
     );
-    composeDraftCache.setSessionDraft('s1', 'continue this');
+    composeDraftCache.setSessionDraft('s1', ComposeDraft(text: 'continue this'));
 
     await pumpSession(tester, session: session);
 
-    final field = tester.widget<TextField>(find.byType(TextField).first);
+    final field = composeFieldWidget(tester);
     expect(field.controller!.text, 'continue this');
+  });
+
+  testWidgets('restores token chips with the cached session draft', (
+    tester,
+  ) async {
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'ws-1',
+      folders: const [WorkspaceFolder(path: '/work')],
+      cli: CliTool.claude,
+      createdAt: 1,
+    );
+    composeDraftCache.setSessionDraft(
+      's1',
+      const ComposeDraft(
+        text: '@a hi',
+        tokens: [
+          ComposeToken(
+            id: 't',
+            kind: ComposeTokenKind.fileReference,
+            start: 0,
+            end: 2,
+            payload: '@a',
+          ),
+        ],
+      ),
+    );
+
+    await pumpSession(tester, session: session);
+
+    expect(find.text('@a'), findsOneWidget);
   });
 
   testWidgets('session restores persisted draft after cache reset', (
@@ -378,7 +413,7 @@ void main() {
       () => ComposeDraftStore(
         fs: testHomeStorage.fs,
         rootPath: testHomeStorage.appDataRoot,
-      ).saveSession('ws-1', 's1', 'retry after restart'),
+      ).saveSession('ws-1', 's1', ComposeDraft(text: 'retry after restart')),
     );
     composeDraftCache.clear();
 
@@ -407,10 +442,10 @@ void main() {
     );
 
     await pumpSession(tester, session: session);
-    await tester.enterText(find.byType(TextField).first, 'draft two');
+    await enterComposeText(tester, 'draft two');
     await tester.pump();
 
-    expect(composeDraftCache.sessionDraft('s2'), 'draft two');
+    expect(composeDraftCache.sessionDraft('s2')?.text, 'draft two');
   });
 
   testWidgets('remounting after unmount restores the typed draft', (
@@ -425,14 +460,14 @@ void main() {
     );
 
     await pumpSession(tester, session: session);
-    await tester.enterText(find.byType(TextField).first, 'keep me');
+    await enterComposeText(tester, 'keep me');
     await tester.pump();
 
     await tester.pumpWidget(const SizedBox.shrink());
     await pumpSession(tester, session: session);
     await tester.pumpAndSettle();
 
-    final field = tester.widget<TextField>(find.byType(TextField).first);
+    final field = composeFieldWidget(tester);
     expect(field.controller!.text, 'keep me');
   });
 
@@ -446,7 +481,7 @@ void main() {
       onSubmit: (_) async => const HistoryContinueSubmitResult.failed(),
     );
 
-    await tester.enterText(find.byType(TextField).first, 'do not lose this');
+    await enterComposeText(tester, 'do not lose this');
     await tester.pump();
     await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
     await tester.pumpAndSettle();
@@ -483,7 +518,7 @@ void main() {
         },
       );
 
-      await tester.enterText(find.byType(TextField).first, 'in flight');
+      await enterComposeText(tester, 'in flight');
       await tester.pump();
       await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
       await tester.pump();
@@ -527,7 +562,7 @@ void main() {
       ),
     );
 
-    await tester.enterText(find.byType(TextField).first, 'delivered');
+    await enterComposeText(tester, 'delivered');
     await tester.pump();
     await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
     await tester.pumpAndSettle();
@@ -718,8 +753,7 @@ AppSession _session(String sessionId) => AppSession(
   createdAt: 1,
 );
 
-TextField _composeField(WidgetTester tester) =>
-    tester.widget<TextField>(find.byType(TextField).first);
+ExtendedTextField _composeField(WidgetTester tester) => composeFieldWidget(tester);
 
 Future<void> _flushRealIo(WidgetTester tester, {int rounds = 6}) async {
   for (var i = 0; i < rounds; i++) {

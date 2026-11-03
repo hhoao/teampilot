@@ -54,6 +54,7 @@ class AcpLaunchPlan {
     this.authenticateMethodId,
     this.forwardSessionNewMcpServers = true,
     this.sessionNewMeta,
+    this.startupTimeout = const Duration(seconds: 30),
   });
 
   /// Full argv candidates (executable + one ACP flag each), probe order.
@@ -83,6 +84,10 @@ class AcpLaunchPlan {
   /// Extra `session/new` `_meta` derived from the process env (mixed Claude
   /// `disallowedTools` / `allowedTools`). Null or empty is omitted on the wire.
   final Map<String, Object?> Function(Map<String, String> env)? sessionNewMeta;
+
+  /// Bound for the session open request (`session/new`, `session/load`,
+  /// `session/resume`). Slow-starting agents raise it through their capability.
+  final Duration startupTimeout;
 }
 
 /// The spawner reported that the candidate flag was rejected: the agent
@@ -335,6 +340,7 @@ class AcpSessionRuntime
           cwd: workingDirectory,
           mcpServers: sessionMcp,
           meta: plan.sessionNewMeta?.call(env) ?? const {},
+          timeout: plan.startupTimeout,
         );
         _connection = connection;
         _session = session;
@@ -378,6 +384,7 @@ class AcpSessionRuntime
     required String cwd,
     required List<acpd.McpServer> mcpServers,
     required Map<String, Object?> meta,
+    required Duration timeout,
   }) async {
     final resumeId = resumeSessionId?.trim() ?? '';
     if (resumeId.isEmpty) {
@@ -385,6 +392,7 @@ class AcpSessionRuntime
         cwd: cwd,
         mcpServers: mcpServers,
         meta: meta,
+        timeout: timeout,
       );
     }
     final caps = connection.negotiatedCapabilities;
@@ -399,6 +407,7 @@ class AcpSessionRuntime
         cwd: cwd,
         mcpServers: mcpServers,
         meta: meta,
+        timeout: timeout,
       );
     }
     // The launch cwd is not authoritative: the session can move after it was
@@ -420,6 +429,7 @@ class AcpSessionRuntime
         cwd: resumeCwd,
         mcpServers: mcpServers,
         meta: meta,
+        timeout: timeout,
       );
     }
     return connection.resumeSession(
@@ -427,6 +437,7 @@ class AcpSessionRuntime
       cwd: resumeCwd,
       mcpServers: mcpServers,
       meta: meta,
+      timeout: timeout,
     );
   }
 

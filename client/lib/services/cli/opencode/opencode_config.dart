@@ -2,6 +2,8 @@ import '../../../models/app_provider_config.dart';
 import '../../../models/team_config.dart';
 import '../../chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../registry/launch/cli_launch_capability_error.dart';
+import 'opencode_go_layer.dart';
+import 'provider/opencode_model_catalog.dart';
 
 /// Native OpenCode v2 `opencode.json` merge helpers.
 ///
@@ -30,10 +32,14 @@ abstract final class OpencodeProviderConfigKeys {
 /// When [OpencodeProviderConfigKeys.subscription] is set, it wins over [AppProviderConfig.id]
 /// so TeamPilot can keep stable catalog ids (`opencode-go-2`) while reusing one
 /// OpenCode provider namespace.
+String opencodeSubscriptionKey(AppProviderConfig provider) =>
+    provider.config[OpencodeProviderConfigKeys.subscription]
+        ?.toString()
+        .trim() ??
+    '';
+
 String opencodeStagingProviderKey(AppProviderConfig provider) {
-  final subscription =
-      provider.config[OpencodeProviderConfigKeys.subscription]?.toString().trim() ??
-      '';
+  final subscription = opencodeSubscriptionKey(provider);
   if (subscription.isNotEmpty) return subscription;
   return provider.id.trim();
 }
@@ -264,6 +270,18 @@ String? opencodeProviderPackage(String npm) {
   return trimmed;
 }
 
+/// Whether [modelId] can be requested from [providerKey].
+///
+/// A provider entry must not advertise a model it cannot serve: the Go entry
+/// only lists Go models, the built-in Zen provider only Zen ones. The static
+/// catalog is good enough here — it decides what to *register*, not what to
+/// allow at launch.
+bool _modelBelongsToNamespace(String providerKey, String modelId) {
+  final models = OpencodeModelCatalog.knownModelsForProvider(providerKey);
+  if (models.isEmpty) return true;
+  return models.contains(modelId.trim());
+}
+
 Map<String, Object?> mergeOpencodeProvider(
   Map<String, Object?> config,
   AppProviderConfig provider,
@@ -286,7 +304,13 @@ Map<String, Object?> mergeOpencodeProvider(
   final apiKey = provider.apiKey.trim();
   if (apiKey.isNotEmpty) settings['apiKey'] = apiKey;
   final baseUrl = provider.baseUrl.trim();
-  if (baseUrl.isNotEmpty) settings['baseURL'] = baseUrl;
+  if (baseUrl.isNotEmpty) {
+    settings['baseURL'] = baseUrl;
+  } else if (OpencodeGoLayer.isNamespace(id)) {
+    // The Go layer always needs its own endpoint; the catalog row keeps no
+    // base URL because only paid models address that namespace.
+    settings['baseURL'] = OpencodeGoLayer.baseUrl;
+  }
 
   final npm = provider.config['npm'];
   if (npm is String) {
@@ -294,10 +318,12 @@ Map<String, Object?> mergeOpencodeProvider(
     if (packageName != null && entry['package'] == null) {
       entry['package'] = packageName;
     }
+  } else if (OpencodeGoLayer.isNamespace(id) && entry['package'] == null) {
+    entry['package'] = opencodeProviderPackage(OpencodeGoLayer.npm);
   }
 
   final defaultModel = provider.defaultModel.trim();
-  if (defaultModel.isNotEmpty) {
+  if (defaultModel.isNotEmpty && _modelBelongsToNamespace(id, defaultModel)) {
     final models = <String, Object?>{
       ...((entry['models'] as Map?)?.cast<String, Object?>() ??
           const <String, Object?>{}),
@@ -320,22 +346,26 @@ Map<String, Object?> mergeOpencodeReasoningEffort(
   AppProviderConfig provider,
   String reasoningEffort, {
   String? memberModel,
+  String? providerId,
 }) {
   final effort = reasoningEffort.trim();
   if (effort.isEmpty) return config;
 
-  final providerId = opencodeStagingProviderKey(provider);
+  final override = providerId?.trim() ?? '';
+  final resolvedProviderId = override.isNotEmpty
+      ? override
+      : opencodeStagingProviderKey(provider);
   final modelId = (memberModel?.trim().isNotEmpty ?? false)
       ? memberModel!.trim()
       : provider.defaultModel.trim();
-  if (providerId.isEmpty || modelId.isEmpty) return config;
+  if (resolvedProviderId.isEmpty || modelId.isEmpty) return config;
 
   final providers = <String, Object?>{
     ...((config[opencodeProvidersKey] as Map?)?.cast<String, Object?>() ??
         const <String, Object?>{}),
   };
   final existing =
-      (providers[providerId] as Map?)?.cast<String, Object?>() ??
+      (providers[resolvedProviderId] as Map?)?.cast<String, Object?>() ??
       <String, Object?>{};
   final entry = <String, Object?>{...existing};
   final models = <String, Object?>{
@@ -354,7 +384,7 @@ Map<String, Object?> mergeOpencodeReasoningEffort(
   modelEntry['settings'] = settings;
   models[modelId] = modelEntry;
   entry['models'] = models;
-  providers[providerId] = entry;
+  providers[resolvedProviderId] = entry;
   return {...config, opencodeProvidersKey: providers};
 }
 

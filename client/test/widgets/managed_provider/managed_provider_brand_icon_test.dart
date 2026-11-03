@@ -76,6 +76,23 @@ void main() {
     );
   });
 
+  test('CodeBuddy host or name uses bundled codebuddy', () {
+    expect(
+      resolveManagedProviderBrandIcon(
+        _provider(
+          name: 'Other',
+          url:
+              'https://www.codebuddy.cn/billing/meter/get-user-resource-summary',
+        ),
+      ),
+      const ManagedProviderBrandIconSpec.bundled('codebuddy'),
+    );
+    expect(
+      resolveManagedProviderBrandIcon(_provider(name: 'CodeBuddy')),
+      const ManagedProviderBrandIconSpec.bundled('codebuddy'),
+    );
+  });
+
   test('https brand.iconUrl wins after host maps', () {
     expect(
       resolveManagedProviderBrandIcon(

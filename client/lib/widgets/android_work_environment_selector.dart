@@ -81,7 +81,7 @@ class AndroidWorkEnvironmentSelector extends StatelessWidget {
           ),
         );
       },
-      buildMenuChildren: (context, controller) {
+      buildMenuChildren: (_, controller) {
         final specs = <TpActionMenuSpec>[
           if (showTermux)
             TpActionMenuSpec.item(
@@ -122,6 +122,8 @@ class AndroidWorkEnvironmentSelector extends StatelessWidget {
           context: context,
           specs: specs,
           menuController: controller,
+          // Runs after the popover closes, so hand over this widget's
+          // context rather than the popover builder's.
           onSelect: (value) => _onSelect(context, value),
         );
       },

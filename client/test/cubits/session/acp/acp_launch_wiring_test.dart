@@ -20,7 +20,13 @@ class _FixedAuthCapability implements AcpCapability {
   final String? resolved;
 
   @override
+  Duration get startupTimeout => const Duration(seconds: 30);
+
+  @override
   bool get forwardSessionNewMcpServers => true;
+
+  @override
+  Map<String, String> get agentStatusEnvironment => const {};
 
   @override
   Map<String, Object?> sessionNewMeta(Map<String, String> env) => const {};

@@ -16,8 +16,8 @@ enum CliTransport {
 /// containing [CliTransport.acp] must match the definition registering an
 /// `AcpCapability` (asserted when the built-in registry is assembled).
 ///
-/// A singleton `{acp}` set marks an ACP-only CLI (Gemini, CodeBuddy); call
-/// sites read that through `CliToolRegistry.launchesAcpOnly` and must not
+/// A singleton `{acp}` set marks an ACP-only CLI (Gemini, CodeBuddy, Qoder);
+/// call sites read that through `CliToolRegistry.launchesAcpOnly` and must not
 /// compare `CliTool` values.
 final class CliTransportCapability implements CliCapability {
   const CliTransportCapability({
@@ -43,4 +43,9 @@ final class CliTransportCapability implements CliCapability {
 
   /// True when ACP is the only launch mode (no PTY fallback).
   bool get acpOnly => supported.length == 1 && supports(CliTransport.acp);
+
+  /// True when the user can pick between PTY and ACP: both transports are
+  /// declared. ACP-only CLIs have nothing to choose, so no personal switch.
+  bool get canChooseTransport =>
+      supports(CliTransport.pty) && supports(CliTransport.acp);
 }

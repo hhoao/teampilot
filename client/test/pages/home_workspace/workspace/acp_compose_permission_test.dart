@@ -16,19 +16,17 @@ import 'package:teampilot/widgets/compose/compose_chrome.dart';
 
 void main() {
   test(
-    'willLaunchPersonalAcp is true for Gemini and for requested Claude desktop',
+    'willLaunchAcp is true for Gemini and for requested Claude desktop',
     () {
       expect(
-        willLaunchPersonalAcp(
-          isPersonal: true,
+        willLaunchAcp(
           cli: CliTool.gemini,
           requested: false,
         ),
         isTrue,
       );
       expect(
-        willLaunchPersonalAcp(
-          isPersonal: true,
+        willLaunchAcp(
           cli: CliTool.codebuddy,
           requested: false,
         ),
@@ -36,8 +34,7 @@ void main() {
         reason: 'CodeBuddy is ACP-only on desktop',
       );
       expect(
-        willLaunchPersonalAcp(
-          isPersonal: true,
+        willLaunchAcp(
           cli: CliTool.codebuddy,
           requested: true,
           isAndroidOverride: true,
@@ -45,24 +42,37 @@ void main() {
         isFalse,
       );
       expect(
-        willLaunchPersonalAcp(
-          isPersonal: true,
+        willLaunchAcp(
+          cli: CliTool.qoder,
+          requested: false,
+        ),
+        isTrue,
+        reason: 'Qoder is ACP-only on desktop',
+      );
+      expect(
+        willLaunchAcp(
+          cli: CliTool.qoder,
+          requested: true,
+          isAndroidOverride: true,
+        ),
+        isFalse,
+      );
+      expect(
+        willLaunchAcp(
           cli: CliTool.claude,
           requested: true,
         ),
         isTrue,
       );
       expect(
-        willLaunchPersonalAcp(
-          isPersonal: true,
+        willLaunchAcp(
           cli: CliTool.claude,
           requested: false,
         ),
         isFalse,
       );
       expect(
-        willLaunchPersonalAcp(
-          isPersonal: true,
+        willLaunchAcp(
           cli: CliTool.claude,
           requested: true,
           isAndroidOverride: true,
@@ -247,7 +257,7 @@ void main() {
       );
     });
 
-    test('native team members stay PTY', () {
+    test('native team members follow the CLI preference', () {
       const team = TeamProfile(
         id: 'team-native',
         name: 'Native',
@@ -267,7 +277,7 @@ void main() {
         seedCodexMemberAcp: true,
         seedCursorMemberAcp: true,
       );
-      expect(stamped.any((m) => m.acp), isFalse);
+      expect(stamped.single.acp, isTrue);
     });
   });
 

@@ -1,7 +1,12 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:acpd/acpd.dart' as acpd;
+import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
@@ -14,6 +19,7 @@ import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/services/chat/session/chat_tab_info.dart';
 import 'package:teampilot/services/chat/session/chat_tab_store.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/ssh/ssh_member_session.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 import '../../../support/stub_tab_member_materializer.dart';
@@ -33,6 +39,16 @@ void main() {
     final readyCubit = await _readyCubit();
     tab.memberAcpRuntimes['worker-1'] = readyCubit;
     tab.membersPendingConnect.add('worker-1');
+    tab.memberSshSessions['worker-1'] = SshMemberSession.testing(
+      profile: const SshProfile(
+        id: 'p1',
+        name: 'host',
+        host: 'host',
+        username: 'u',
+        authType: SshAuthType.password,
+      ),
+      client: _InstantAuthClient(),
+    );
 
     service.discardAcpSeat('sess', 'worker-1');
 
@@ -44,6 +60,11 @@ void main() {
 
     await pumpEventQueue();
     expect(readyCubit.isClosed, isTrue);
+    expect(
+      tab.memberSshSessions.containsKey('worker-1'),
+      isFalse,
+      reason: 'a reclaimed remote ACP seat must not leak its SSH plane',
+    );
   });
 
   test('discardPersonalAcpRuntime closes the personal cubit and marks it reclaimed',
@@ -249,4 +270,69 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   Future<void> close() async {
     closed = true;
   }
+}
+
+class _InstantAuthClient extends SSHClient {
+  _InstantAuthClient() : super(_FakeSSHSocket(), username: 'test');
+
+  @override
+  Future<void> get authenticated => Future.value();
+
+  @override
+  Future<void> ping() async {}
+
+  @override
+  Future<void> disconnect() async {}
+}
+
+class _FakeSSHSocket implements SSHSocket {
+  final _inputController = StreamController<Uint8List>();
+  final _doneCompleter = Completer<void>();
+
+  @override
+  Stream<Uint8List> get stream => _inputController.stream;
+
+  @override
+  StreamSink<List<int>> get sink => _NoopSink();
+
+  @override
+  Future<void> get done => _doneCompleter.future;
+
+  @override
+  Future<void> flush() async {}
+
+  @override
+  Future<void> close() async {
+    if (!_doneCompleter.isCompleted) {
+      _doneCompleter.complete();
+    }
+    await _inputController.close();
+  }
+
+  @override
+  void destroy() {
+    if (!_doneCompleter.isCompleted) {
+      _doneCompleter.complete();
+    }
+    unawaited(_inputController.close());
+  }
+}
+
+class _NoopSink implements StreamSink<List<int>> {
+  @override
+  void add(List<int> data) {}
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {}
+
+  @override
+  Future<void> addStream(Stream<List<int>> stream) async {
+    await for (final _ in stream) {}
+  }
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  Future<void> get done async {}
 }

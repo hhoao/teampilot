@@ -31,10 +31,11 @@ const _maxConversationResults = 20;
 const _maxFileResults = 50;
 const _maxRecentSessions = 8;
 
-/// Files are queried once with this effectively-unbounded limit so the
-/// "查看更多结果" link can reveal every match without a second pass. The fuzzy
-/// index scores every entry regardless of the limit, so this is free.
-const _maxFileResultsExpanded = 100000;
+/// Files are queried once with this cap so the "查看更多结果" link can reveal
+/// more rows without a second pass. Deliberately small: the fuzzy query scores
+/// and sorts every indexed file and copies the hits through FFI, so a bigger
+/// cap multiplies work for rows the user never scrolls to.
+const _maxFileResultsExpanded = 500;
 
 /// Opens the workspace search dialog, which searches conversation sessions
 /// (by title and by transcript content), workspace files by name, and — on the
@@ -188,17 +189,44 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   /// Bumped per search; stale async results are discarded.
   var _searchSeq = 0;
 
+  /// File-index revision notifiers this dialog listens to, so a background
+  /// rebuild re-runs the active query without another keystroke.
+  final List<ValueNotifier<int>> _watchedIndexes = [];
+  late final String _refreshDebounceTag = '$_debounceTag#refresh';
+
   @override
   void initState() {
     super.initState();
+    for (final folder in widget.workspace.folders) {
+      if (folder.path.trim().isEmpty) continue;
+      final revision = widget.indexes.fileIndexFor(folder.path).revision;
+      revision.addListener(_onIndexRefreshed);
+      _watchedIndexes.add(revision);
+    }
     unawaited(_warmIndexes());
   }
 
   @override
   void dispose() {
+    for (final revision in _watchedIndexes) {
+      revision.removeListener(_onIndexRefreshed);
+    }
+    _watchedIndexes.clear();
     Debounces.cancel(_debounceTag);
+    Debounces.cancel(_refreshDebounceTag);
     _controller.dispose();
     super.dispose();
+  }
+
+  /// A file index finished a background rebuild — re-run the active query so
+  /// files that appeared after the warm show up without user input.
+  void _onIndexRefreshed() {
+    if (!mounted || _query.trim().isEmpty) return;
+    Debounces.debounce(
+      _refreshDebounceTag,
+      const Duration(milliseconds: 120),
+      () => unawaited(_runSearches(_query)),
+    );
   }
 
   /// Warm the shared file + transcript content indexes in the background so the
@@ -287,13 +315,20 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
         widget.indexes.fileIndexFor(f.path).ensureFresh(),
     ]);
     if (!mounted || seq != _searchSeq) return;
-    final groups = <_FileFolderGroup>[
+    // Queried in parallel: each folder's index answers from its own worker
+    // isolate, so the dialog never does the fuzzy scoring itself.
+    final matchesByFolder = await Future.wait([
       for (final f in folders)
+        widget.indexes
+            .fileIndexFor(f.path)
+            .query(query, limit: _maxFileResultsExpanded),
+    ]);
+    if (!mounted || seq != _searchSeq) return;
+    final groups = <_FileFolderGroup>[
+      for (var i = 0; i < folders.length; i++)
         _FileFolderGroup(
-          label: f.path.split(Platform.pathSeparator).last,
-          matches: widget.indexes
-              .fileIndexFor(f.path)
-              .query(query, limit: _maxFileResultsExpanded),
+          label: folders[i].path.split(Platform.pathSeparator).last,
+          matches: matchesByFolder[i],
         ),
     ];
     setState(() {

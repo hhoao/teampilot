@@ -27,6 +27,7 @@ import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 
 import '../../../support/post_frame_test_harness.dart';
+import '../../../support/compose_field_test_utils.dart';
 
 class _MockChatCubit extends Mock implements ChatCubit {}
 
@@ -96,8 +97,10 @@ void main() {
       sessionPreferencesCubit,
       SessionPreferencesState(
         preferences: SessionPreferences(
-          claudePersonalAcpDefault: preferenceDefault,
-          codexPersonalAcpDefault: codexPreferenceDefault,
+          personalAcpDefaults: {
+            CliTool.claude.value: preferenceDefault,
+            CliTool.codex.value: codexPreferenceDefault,
+          },
         ),
       ),
     );
@@ -155,7 +158,7 @@ void main() {
   }
 
   Future<void> submit(WidgetTester tester) async {
-    await tester.enterText(find.byType(TextField).first, 'hello');
+    await enterComposeText(tester, 'hello');
     await tester.pump();
     await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
     await tester.runAsync(

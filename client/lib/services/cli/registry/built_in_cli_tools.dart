@@ -34,6 +34,10 @@ import 'capabilities/workspace_base_info_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
 import 'cli_tool_registry.dart';
+import '../antigravity/antigravity_bootstrap_entry.dart';
+import '../antigravity/antigravity_tool.dart';
+import '../antigravity/capabilities/acp_settings.dart';
+import '../antigravity/capabilities/provider.dart';
 import '../claude/claude_tool.dart';
 import '../codebuddy/codebuddy_tool.dart';
 import '../codebuddy/capabilities/provider.dart';
@@ -43,6 +47,10 @@ import '../flashskyai/flashskyai_tool.dart';
 import '../gemini/capabilities/acp.dart';
 import '../gemini/gemini_tool.dart';
 import '../opencode/opencode_tool.dart';
+import '../qoder/capabilities/headless.dart';
+import '../qoder/capabilities/provider.dart';
+import '../qoder/provider/qoder_models_service.dart';
+import '../qoder/qoder_tool.dart';
 
 void registerBuiltInCliTools(
   CliToolRegistry registry, {
@@ -128,6 +136,29 @@ void registerBuiltInCliTools(
       // Provider catalog access needs home storage at launch time; the
       // pre-configure registry (tests / arg assembly) keeps the const default.
       provider: CodebuddyProviderCapability(storage: storage),
+    ),
+  );
+
+  final antigravityEntry = bootstrap?.entry<AntigravityBootstrapEntry>(
+    CliTool.antigravity,
+  );
+  registry.register(
+    AntigravityCliTool(
+      provider: AntigravityProviderCapability(storage: storage),
+      acpSettings: AntigravityAcpSettings(
+        installer: antigravityEntry?.acpInstaller,
+      ),
+    ),
+  );
+  registry.register(
+    QoderCliTool(
+      provider: QoderProviderCapability(
+        storage: storage,
+        modelsService: storage == null
+            ? null
+            : QoderModelsService(storage: storage),
+      ),
+      headless: QoderHeadlessCapability(storage: storage),
     ),
   );
 

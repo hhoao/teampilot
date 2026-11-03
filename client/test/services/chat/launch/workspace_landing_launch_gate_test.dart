@@ -430,7 +430,7 @@ void main() {
       expect(block.missing.single.kind, CliBinaryKind.adapter);
     });
 
-    test('native teams never require the ACP adapter', () {
+    test('native teams require the ACP adapter when the seed asks for ACP', () {
       final team = TeamProfile(
         id: 'team-1',
         name: 'Team',
@@ -453,6 +453,40 @@ void main() {
       final block = gateWithKnown(
         {'cli|claude'},
         acpSeed: (_) => true,
+      ).localBlock(
+        workspace: workspace,
+        draft: LandingLaunchContext(isPersonal: false, teamId: team.id),
+        team: team,
+      );
+
+      expect(block, isA<LocalCliMissingLaunchBlock>());
+      expect(block!.missing.single.cli, CliTool.claude);
+      expect(block.missing.single.kind, CliBinaryKind.adapter);
+    });
+
+    test('native teams skip the ACP adapter when the seed is off', () {
+      final team = TeamProfile(
+        id: 'team-1',
+        name: 'Team',
+        cli: CliTool.claude,
+        members: const [TeamMemberConfig(id: 'dev', name: 'Dev')],
+        createdAt: 1,
+      );
+      final workspace = Workspace(
+        workspaceId: 'ws-1',
+        folders: [
+          const WorkspaceFolder(path: '/local', targetId: 'local'),
+        ],
+        createdAt: 1,
+        memberTargetsByTeam: {
+          team.id: {'dev': 'local'},
+        },
+        memberPlacementInitializedByTeam: {team.id: true},
+      );
+
+      final block = gateWithKnown(
+        {'cli|claude'},
+        acpSeed: (_) => false,
       ).localBlock(
         workspace: workspace,
         draft: LandingLaunchContext(isPersonal: false, teamId: team.id),

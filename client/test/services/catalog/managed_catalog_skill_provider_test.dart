@@ -19,7 +19,7 @@ const _catalogPromptSentence =
     'To install or manage TeamPilot skills, plugins, or MCP servers, load the teampilot-catalog skill and use the teampilot MCP. Do not install into ~/.claude.';
 
 const _skillDescription =
-    'Install, import, create, update, or remove TeamPilot skills, plugins, and MCP servers. Use when the user wants to add, install, find, or import a skill, plugin, or MCP; search skills.sh or a marketplace; run npx or an install script; or mentions superpowers, context7, or community agent skills. Never write to ~/.claude/skills, .claude/skills, or ~/.claude.json — those paths are wiped on the next TeamPilot session start.';
+    'Install, import, create, update, or remove TeamPilot skills, plugins, MCP servers, and automations. Use when the user wants to add, install, find, or import a skill, plugin, or MCP; search skills.sh or a marketplace; run npx or an install script; schedule a recurring task or reminder; or mentions superpowers, context7, or community agent skills. Never write to ~/.claude/skills, .claude/skills, or ~/.claude.json — those paths are wiped on the next TeamPilot session start.';
 
 void main() {
   late Directory sourceDir;

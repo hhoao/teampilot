@@ -6,8 +6,10 @@ import 'package:teampilot/services/catalog/catalog_kind.dart';
 import 'package:teampilot/services/catalog/catalog_kind_registry.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_constants.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_handler.dart';
+import 'package:teampilot/services/catalog/catalog_mcp_policy.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/chat/team_bus/mcp/jsonrpc.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/mcp_method.dart';
 
 import 'support/fake_catalog_module.dart';
 
@@ -287,5 +289,66 @@ void main() {
       expect(generation.op, isNull, reason: name);
       expect(module.lastOp, isNull, reason: name);
     }
+  });
+
+  test('generation scope rejects automation mutations', () async {
+    final generation = _RecordingGenerationMutationHandler();
+    final module = FakeCatalogModule(kind: 'automation');
+    final h = CatalogMcpHandler(
+      registry: CatalogKindRegistry()..register(module),
+      generationMutationHandler: generation,
+    );
+
+    final res = await h.handle(
+      const JsonRpcRequest(
+        id: 9,
+        method: 'tools/call',
+        params: {
+          'name': 'create_automation',
+          'arguments': {
+            'name': 'demo',
+            'message': 'go',
+            'schedule': {'type': 'daily'},
+            'bind_to': 'generation',
+          },
+        },
+      ),
+      builderSession(),
+    );
+
+    expect(res!.result!['isError'], isTrue);
+    final text = (res.result!['content'] as List).first['text'] as String;
+    expect(text, contains('code=generation_mutation_forbidden'));
+    expect(generation.request, isNull);
+    expect(generation.op, isNull);
+    expect(module.lastOp, isNull);
+  });
+
+  test('tools/list advertises the automation tools', () async {
+    final handler = CatalogMcpHandler(
+      registry: CatalogMcpPolicy.advertisedRegistry(),
+    );
+    final response = await handler.handle(
+      const JsonRpcRequest(method: McpMethod.toolsList, id: 1),
+      CatalogMcpSession(
+        sessionId: 's',
+        workspaceId: 'w',
+        workFs: LocalFilesystem(),
+        allowedRoots: const [],
+      ),
+    );
+    final tools = (response!.result!['tools']! as List)
+        .map((tool) => (tool as Map)['name'])
+        .toList();
+    expect(
+      tools,
+      containsAll([
+        'read_automation',
+        'create_automation',
+        'update_automation',
+        'delete_automation',
+        'run_automation',
+      ]),
+    );
   });
 }

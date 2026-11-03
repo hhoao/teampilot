@@ -1,3 +1,4 @@
+import 'package:extended_text_field/extended_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,10 +18,12 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing.
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
 import '../../../support/post_frame_test_harness.dart';
+import '../../../support/compose_field_test_utils.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
 class _MockChatCubit extends Mock implements ChatCubit {}
@@ -131,7 +134,7 @@ void main() {
         );
       }
 
-      composeDraftCache.setLandingDraft(workspace.workspaceId, 'old draft');
+      composeDraftCache.setLandingDraft(workspace.workspaceId, ComposeDraft(text: 'old draft'));
 
       await tester.pumpWidget(
         landing(
@@ -142,12 +145,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      TextField field() =>
-          tester.widget<TextField>(find.byType(TextField).first);
+      ExtendedTextField field() => composeFieldWidget(tester);
       expect(field().controller!.text, seed);
       expect(field().controller!.selection.baseOffset, seed.length);
       expect(
-        composeDraftCache.landingDraft(workspace.workspaceId),
+        composeDraftCache.landingDraft(workspace.workspaceId)?.text,
         'old draft',
       );
 
@@ -158,7 +160,7 @@ void main() {
 
       expect(field().controller!.text, 'replacement');
       expect(
-        composeDraftCache.landingDraft(workspace.workspaceId),
+        composeDraftCache.landingDraft(workspace.workspaceId)?.text,
         'old draft',
       );
 
@@ -167,11 +169,11 @@ void main() {
 
       expect(field().controller!.text, isEmpty);
       expect(
-        composeDraftCache.landingDraft(workspace.workspaceId),
+        composeDraftCache.landingDraft(workspace.workspaceId)?.text,
         'old draft',
       );
 
-      await tester.enterText(find.byType(TextField).first, 'user draft');
+      await enterComposeText(tester, 'user draft');
       await tester.pumpWidget(
         landing(
           'replacement',
@@ -183,7 +185,7 @@ void main() {
 
       expect(field().controller!.text, 'replacement');
 
-      await tester.enterText(find.byType(TextField).first, 'user edit');
+      await enterComposeText(tester, 'user edit');
       await tester.pumpWidget(landing(null, initialTextRevision: 4));
       await tester.pump();
 

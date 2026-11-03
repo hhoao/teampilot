@@ -14,6 +14,8 @@ String? cliBrandIconKey(CliTool cli) => switch (cli) {
   CliTool.flashskyai => 'claude',
   CliTool.gemini => 'gemini',
   CliTool.codebuddy => 'codebuddy',
+  CliTool.antigravity => 'gemini',
+  CliTool.qoder => 'qoder',
 };
 
 IconData cliToolIconData(CliTool cli) => switch (cli) {
@@ -24,6 +26,8 @@ IconData cliToolIconData(CliTool cli) => switch (cli) {
   CliTool.cursor => Icons.mouse_outlined,
   CliTool.gemini => Icons.auto_awesome_outlined,
   CliTool.codebuddy => Icons.workspaces_outline,
+  CliTool.antigravity => Icons.rocket_launch_outlined,
+  CliTool.qoder => Icons.terminal,
 };
 
 /// Renders a CLI brand mark (TeamPilot logo, bundled vendor icon, or fallback).

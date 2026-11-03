@@ -1,8 +1,8 @@
 # 工具层覆盖矩阵
 
-**日期:** 2026-08-12（审计）；2026-08-13（Task 6 收尾回填）
+**日期:** 2026-08-12（审计）；2026-08-13（Task 6 收尾回填）；2026-11-02（Antigravity 移出预研，新增 ACP-only 行）
 **外部证据源:** [asgeirtj/system_prompts_leaks](https://github.com/asgeirtj/system_prompts_leaks)（CC0） @ `93c999115b300a6faac567830b0450a5478800cd`（下文记 `spl@93c9991`）
-**状态:** 完成（Task 6 收尾：缺口全部落结论，见「缺口清单状态」；矩阵结论为最终版）
+**状态:** 完成（Task 6 收尾 + Antigravity 接入回填：缺口全部落结论，见「缺口清单状态」；矩阵结论为最终版）
 
 > 四方证据源定义：**src** = 本仓库源码（`client/lib/`，行号可 grep 回验）；**fixture** = `client/test/fixtures/session_history/<cli>/` 夹具（工具行实测）；**本机** = 本机实测数据（`~/.local/share/opencode/opencode.db`、`~/.codex/sessions/`、`~/.cursor/projects/*/agent-transcripts/`、`~/.flashskyai/projects/` 只读扫描，见 [opencode.md](opencode.md)）；**spl** = system_prompts_leaks 固定 commit 快照（raw URL 以 `spl@93c9991` 为引用锚点，禁止"最新版"表述）。
 >
@@ -12,7 +12,7 @@
 > - **opencode**（`OpenCode/opencode.md`，329 行）：⚠️ **无 JSON schema**——`# Available Tools` 节为 markdown 定义（11 工具：bash/edit/glob/grep/question/read/skill/task/todowrite/webfetch/write），工具名与参数 key（`workdir`、`filePath` 等）均明确可归因。
 > - **cursor**（`Cursor/cursor.md`，322 行）：⚠️ **无 JSON schema**——`## Available Tools` 节为 markdown 定义（20 工具），参数 key 散见于散文（`block_until_ms`、`old_string`、`replace_all`、`allow_multiple`、`subagent_type`）。
 
-## 矩阵（5 CLI × 5 类别）
+## 矩阵（6 CLI × 5 类别）
 
 | CLI | Edit | File | Shell | Subagent | Category | 缺口数 |
 |-----|------|------|-------|----------|----------|--------|
@@ -21,6 +21,7 @@
 | opencode | ✅ 完整 + 本机/夹具实测 edit{filePath,oldString,newString}（src:opencode tool_call_resolvers.dart:21-34 加 'filePath'/'oldString'/'newString' 追加键）；spl:opencode.md edit 定义一致 | ✅ 完整 + 本机实测 read{filePath,offset,limit}、write{filePath,content}；read 规则 useOffsetLimit（src:opencode tool_call_resolvers.dart:55-69）；spl:opencode.md 同 | ✅ 完整 + fixture:prt_tool1.json 实测 bash{command}、本机实测 {command,timeout,workdir}；spl:opencode.md bash 定义（含 `workdir`） | ✅ 完整 + spl:opencode.md task 工具（description/prompt/subagent_type/task_id/command）∈ {'task'}（src:opencode ai_history_capability.dart:38） | ✅ 完整 + G-3 修复（commit d8b14868）：bash/read/edit/write/grep/glob/task/todowrite/webfetch 全在表内；skill→other 显式化；**question→askUser（Task 6 决策，跨 CLI 统一，见「Task 6 决策项」节）** | 0 |
 | cursor | ✅ 完整 + G-4 重校（Task 6）：本机实测真实键形 StrReplace{path,old_string,new_string}（25839 次中 25761 带 `path`，`file_path` 零命中）、Write{path,contents}（3902 次中 3881 带 `path`、3902 带 `contents`）、ApplyPatch 字符串 FREEFORM input（76 次）——Task 3「无 key 缺口」判定被推翻（原按 spl 散文假设 file_path/content 键形），Task 6 修复：cursor resolver 追加 `path`/`contents` 键（src:cursor tool_call_resolvers.dart:31-46）+ adapter 字符串 input 保留 argsText（src:cursor ai_transcript.dart:256-262，同 codex freeform 路径）；夹具 chat-strreplace-write.jsonl 全链路实测 | ✅ 覆盖 + fixture:agent_transcript_no_tool_id.jsonl 实测 Read{path} 命中 read 规则默认 pathKeys 含 'path'（src:ai_message_core tool_file_target.dart:22）；Read{path,offset,limit} 本机实测（18627 次）；Write 见左格 | ✅ 完整 + fixture:chat-aaaa…jsonl / chat-shell-missing-result.jsonl 实测 Shell{command,description}；cursor shellResolver 名集（src:cursor tool_call_resolvers.dart:91-101）含 'execute'（spl:codex 快照未见，**前瞻条目——Task 6 本机扫描 4040 条真实 transcript 零命中，维持前瞻**） | ✅ 完整 + spl:cursor.md Task 工具 + 7 种子代理类型(:271-282)；lowercase 'task' ∈ {'agent','task'}（src:cursor ai_history_capability.dart:33）；'agent' 为前瞻（本机扫描零命中，维持）；**观察项**：真实 transcript 出现过 `Subagent` 工具名（6 次，lowercase 'subagent' 在类别表→subagent，但不在 subagentToolNames {'agent','task'} 内，run 侧不解析） | ✅ 完整 + G-3 修复（commit 7259d414）：AskQuestion→askUser 入共享表（本机实测 60 次 AskQuestion 佐证）；SwitchMode(20)/SemanticSearch(340)/Delete(350)/GenerateImage(3) 等→other（接受差异，断言固化）；TodoWrite/WebSearch/WebFetch/Glob/Grep 已覆盖；mcp__ 前缀规则生效 | 0 |
 | flashskyai | ✅ 完整 + G-5 修复（Fix round）：复用共享 codec（src:flashskyai tool_call_resolvers.dart:4-5）；**夹具 edit_real.jsonl 全链路实测**——本机 `~/.flashskyai/projects/*/*/subagents/*.jsonl` 补扫发现 16 条真实 Edit tool_use（键 `{file_path, old_string, new_string, replace_all}`，与共享 str-replace codec 键集完全吻合），Edit 经 adapter→`FlashskyaiToolCallResolvers().editResolver` 解析出 hunk（2 条夹具断言全绿） | ⚠️ 部分 + fixture:streamed_tools.jsonl 实测 Read{file_path} 命中 read 规则；Write 无夹具证据（G-5 残余：subagents 扫描仅 Edit/Read/Bash/TaskList，无 Write/Glob/Grep 发射） | ✅ 完整 + fixture:streamed_tools.jsonl 实测 Bash{command,description}（description 实测 `"List working directory contents"`）；subagents 扫描 Bash{command,description} 3 条同键 | ⚠️ G-2 接受差异（断言固化）：subagentToolNames {'agent','task'}（src:flashskyai ai_history_capability.dart:32），无 workflow 解析（flashskyai.md:81-83 文档化；本机无 workflow 发射证据；ClaudeWorkflowResolver 依赖 Claude 专属磁盘产物）——类别表 workflow→subagent 仍在，类别/run 侧差异为已知 | ✅ 完整：Bash/Read/Edit/agent/task 全在共享表（lowercase 匹配，flashskyai.md:52-55） | 1（G-2 接受差异；G-5 已修复） |
+| antigravity（ACP-only） | ✅ 完整（src:antigravity tool_call_resolvers.dart:22-46；codecs `:88-105`）：`replace_file_content` / `multi_replace_file_content` ∈ edit 名集；`TargetFile`/`AbsolutePath`/`path` + `TargetContent`/`ReplacementContent` 键，`StrReplaceEditHunkCodec` + `UnifiedDiffEditHunkCodec`；**测试实证** antigravity_history_test.dart（TargetFile/TargetContent/ReplacementContent → hunk）；`multi_replace_file_content` 的 `ReplacementChunks` 数组**不**解析为 hunk（单 hunk 模型限制，测试固化） | ✅ 完整（src:同一 resolver）：`view_file` + 共享 read 名，`AbsolutePath`/`path` 路径键、`StartLine`/`EndLine` 行区间（offset/limit 语义）；`write_to_file` + 共享 write 名，`TargetFile`/`CodeContent`；测试实证 hunk 与行区间 | ✅ 完整（src:同一 resolver）：`run_command` + 共享 shell 名集；参数键来自 `agy` hook/tool payload（`CommandLine`）与共享 `command` 别名 | ⚠️ 类别完整、解析有限：`invoke_subagent` ∈ subagentToolNames（src:ai_history_capability.dart），但 `NullSubagentSideResolver`（Phase 1 从 ACP result 合成，不读 CLI 原生子代理 transcript）；`send_message` 归 subagent 类别 | ✅ 完整（src:同 resolver + 共享表）：`view_file`/`write_to_file`/`replace_file_content`/`multi_replace_file_content`/`list_dir`/`find_by_name`/`grep_search`/`read_url_content`/`invoke_subagent`/`send_message`/`manage_task`/`schedule`/`ask_question`/`generate_image` 全部显式归类；无 spl 工具 schema（`Google/antigravity-cli.md` 仅散文提及），键形证据来自 `agy` hook/tool payload 与单测 | 0 |
 
 ## 缺口清单状态（Task 6 收尾回填）
 
@@ -67,7 +68,8 @@
 
 ## 新 CLI 预研（非承诺）
 
-> 以下为预研要点，不是接入计划；「未来接入」仅指潜在接入点。证据源固定为 spl@93c9991 的 `Google/gemini-cli.md`（254 行）与 `Google/antigravity-cli.md`（451 行），两者均无工具 JSON schema（与 codex 同属散文级证据）。
+> 以下为预研要点，不是接入计划；「未来接入」仅指潜在接入点。证据源固定为 spl@93c9991 的 `Google/gemini-cli.md`（254 行），无工具 JSON schema（与 codex 同属散文级证据）。
+> Antigravity 已于 2026-11-02 接入（ACP-only），见上节矩阵与 [antigravity.md](antigravity.md)。
 
 ### Gemini CLI（`Google/gemini-cli.md`）
 
@@ -76,8 +78,10 @@
 3. **参数形态**：`grep_search(context/before/after/include_pattern/exclude_pattern/total_max_matches)`、`read_file(start_line/end_line)`、`run_shell_command(is_background/wait_for_previous)`、`save_memory(scope: "global"\|"project")`、`update_topic(title,summary)`——read 类工具的 `start_line/end_line` 与 claude `offset/limit` 语义等价但 key 不同，若接入需新增 startLine/endLine 键别名。
 4. **证据缺口**：提示中无 transcript 存储位置与工具 JSON schema（代码路径仅见 `~/.gemini/GEMINI.md` 的上下文片段）——未来接入需走「源码 + 本机实测」路径补证据（同本矩阵 codex 的降级路径）。
 
-### Antigravity CLI（`Google/antigravity-cli.md`）
+## Antigravity 接入记录（已落地，2026-11-02）
 
-1. **transcript 位置精确已知（最大潜在接入点）**：`<appDataDir>/brain/<conversation-id>/.system_generated/logs/transcript.jsonl`——JSONL，每行含 `step_index` / `source`（USER_EXPLICIT/MODEL/SYSTEM）/ `type`（USER_INPUT/PLANNER_RESPONSE/VIEW_FILE 等）/ `status` / `content` / `tool_calls`（数组，**含工具参数**）；提示明确可用于 grep 回溯历史（`grep '"type":"USER_INPUT"' …`）。未来接入的 transcript 定位落点可直接套 `AiTranscriptTailReader` 家族（JSONL 行式）。
-2. **子代理通信模型不同**：`invoke_subagent`（按名调用或 `define_subagent` 会话内定义）→ 返回 conversation ID → `send_message` 按 conversation ID 通信；系统自动唤醒（无需轮询）。与 TeamBus 的成员收件箱语义不同，若接入需在 side resolver 上做 conversation-ID 映射，而非复用现有 agent/task 的父子 transcript 约定。
-3. **工具名/数据形态**：snake_case（`invoke_subagent`/`define_subagent`/`send_message`/`view_file`/`generate_image`/`ask_question` + `ArtifactMetadata.request_feedback`）；planning 三件套 artifact（`task.md` / `implementation_plan.md` / `walkthrough.md`）落在 `<appDataDir>/brain/<conversation-id>/`——即 seat transcript 之外的**同一数据目录内**补充证据源，可用于 cross-check 工具调用序列。
+Antigravity 已从「新 CLI 预研」移入正式矩阵（ACP-only 行）。落地要点：
+
+1. **不解析原生 transcript**：Phase 1 历史由应用自有 `acp-transcript.jsonl` 承担，`AntigravityAiHistoryCapability.locate => null`、adapter 解析为空；原生 `<appDataDir>/brain/<conversation-id>/.system_generated/logs/transcript.jsonl`（`step_index` / `source` / `type` / `status` / `content` / `tool_calls`）留待 Phase 2（见 [antigravity.md](antigravity.md) §3）。
+2. **子代理**：`invoke_subagent` 入 `subagentToolNames`，但 Phase 1 用 `NullSubagentSideResolver`（从 ACP tool result 合成），不复用 agent/task 的父子 transcript 约定；`send_message` 仅归 subagent 类别。
+3. **工具名/键形**：snake_case 工具名 + `agy` payload 的 CamelCase 键（`TargetFile` / `AbsolutePath` / `TargetContent` / `ReplacementContent` / `CodeContent` / `CommandLine` / `StartLine` / `EndLine`），共享 snake_case 别名仍接受；证据为源码 + 单测（spl 快照无 JSON schema）。

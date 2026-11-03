@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_text_controller.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_token_document.dart';
 import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/pages/chat/session_model_menu.dart';
@@ -26,14 +28,14 @@ void main() {
   Widget pumpCard({
     required ComposeChrome chrome,
     bool deferFieldMount = false,
-    TextEditingController? controller,
+    ComposeTextController? controller,
     FocusNode? focusNode,
     ValueChanged<String>? onOpenAtFile,
     ComposeClip? clip,
     bool canSubmit = false,
     VoidCallback? onSubmit,
   }) {
-    final resolvedController = controller ?? TextEditingController();
+    final resolvedController = controller ?? ComposeTextController();
     if (controller == null) addTearDown(resolvedController.dispose);
     final resolvedFocusNode = focusNode ?? FocusNode();
     if (focusNode == null) addTearDown(resolvedFocusNode.dispose);
@@ -351,8 +353,15 @@ void main() {
   testWidgets('shows at-file chip row when controller has @ refs', (
     tester,
   ) async {
-    final controller = TextEditingController(text: '@src/main.dart hello');
+    final controller = ComposeTextController();
     addTearDown(controller.dispose);
+    controller.insertToken(
+      start: 0,
+      end: 0,
+      tokenText: '@src/main.dart',
+      kind: ComposeTokenKind.fileReference,
+      payload: '@src/main.dart',
+    );
     final opened = <String>[];
 
     await tester.pumpWidget(
@@ -402,7 +411,7 @@ void main() {
   testWidgets('empty input shows voice in trailing slot; text shows send', (
     tester,
   ) async {
-    final controller = TextEditingController();
+    final controller = ComposeTextController();
     addTearDown(controller.dispose);
 
     await tester.pumpWidget(
@@ -426,7 +435,7 @@ void main() {
   testWidgets(
     'launch-ok canSubmit enables send from local text without parent rebuild',
     (tester) async {
-      final controller = TextEditingController();
+      final controller = ComposeTextController();
       addTearDown(controller.dispose);
       var submitted = false;
 
@@ -476,7 +485,10 @@ void main() {
     expect(find.byType(ComposePasteClipBar), findsNothing);
   });
 
-  testWidgets('at-file chips scan the collapsed block text', (tester) async {
+  testWidgets('collapsed block text does not create at-file chips', (
+    tester,
+  ) async {
+    // Pasted text is plain text: only explicitly inserted tokens are refs.
     final clip = ComposeClip();
     addTearDown(clip.dispose);
 
@@ -489,13 +501,13 @@ void main() {
     clip.setPasted('see @lib/main.dart inside the block');
     await tester.pump();
 
-    expect(find.byType(ComposeAtFileChipRow), findsOneWidget);
+    expect(find.byType(ComposeAtFileChipRow), findsNothing);
   });
 
   testWidgets(
     'real oversized paste collapses into the clip and shows the bar',
     (tester) async {
-      final controller = TextEditingController();
+      final controller = ComposeTextController();
       final clip = ComposeClip();
       addTearDown(controller.dispose);
       addTearDown(clip.dispose);

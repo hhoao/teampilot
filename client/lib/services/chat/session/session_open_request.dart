@@ -23,6 +23,7 @@ class SessionOpenRequest {
     this.persistParams,
     this.preview,
     this.shellAcquisition,
+    this.firstPrompt,
   });
 
   final AppSession session;
@@ -62,6 +63,14 @@ class SessionOpenRequest {
   /// displayed shell instead of acquiring the default member shell.
   final SessionShellAcquisition? shellAcquisition;
 
+  /// Terminal-less ACP only: the prompt that triggered this lazy attach.
+  ///
+  /// Handing it to the attach (instead of sending after it settles) lets the
+  /// cubit show the user bubble before the handshake and lets `start()`
+  /// dispatch it, so the launch never runs a `session/load` reconcile over the
+  /// turn's update stream. Ignored by every other launch path.
+  final String? firstPrompt;
+
   bool get isPersonal => session.sessionTeam.trim().isEmpty;
 
   SessionOpenRequest withSession(AppSession next) {
@@ -79,6 +88,7 @@ class SessionOpenRequest {
       persistParams: persistParams,
       preview: preview,
       shellAcquisition: shellAcquisition,
+      firstPrompt: firstPrompt,
     );
   }
 }

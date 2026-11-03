@@ -22,10 +22,11 @@ import '../../services/cli/acp_adapter_discovery.dart';
 import '../../services/cli/installer_types.dart';
 import '../../services/cli/cli_executable_discovery.dart';
 import '../../services/cli/cli_version_probe.dart';
-import '../../services/cli/codex/capabilities/acp_adapter_installer.dart';
 import '../../services/cli/remote_cli_locator.dart';
 import '../../services/cli/registry/capabilities/acp_settings_capability.dart';
+import '../../services/cli/registry/capabilities/cli_transport_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
+import '../../services/cli/registry/installer/acp_adapter_installer.dart';
 import '../../services/cli/registry/installer/npm_installer_capability.dart';
 import '../../services/install/install_job_enqueue.dart';
 import '../../services/install/install_job_keys.dart';
@@ -108,6 +109,11 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
 
   bool get _separateAdapter => _settings?.usesSeparateAdapter == true;
 
+  bool get _canChooseTransport =>
+      _registry.capability<CliTransportCapability>(widget.cli)
+          ?.canChooseTransport ??
+      false;
+
   @override
   void initState() {
     super.initState();
@@ -143,7 +149,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     }
     final adapter = _settings?.adapterInstaller;
     if (adapter != null) {
-      final latest = await _probe.latestNpm(adapter.npmPackage);
+      final latest = await _adapterLatest(adapter);
       if (!mounted) return;
       if (latest != null) {
         widget.cubit.mergeBinaryVersion(
@@ -153,6 +159,13 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
         );
       }
     }
+  }
+
+  Future<String?> _adapterLatest(AcpAdapterInstaller adapter) async {
+    if (adapter is NpmInstallerCapability) {
+      return _probe.latestNpm(adapter.npmPackage);
+    }
+    return adapter.latestVersion();
   }
 
   Future<void> _probeInstalled(CliBinaryKind kind, String path) async {
@@ -206,12 +219,10 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
   }
 
   InstallJobKey _adapterJobKey(BuildContext context) {
-    final scope = installJobScopeForContext(context);
-    final installer = _settings?.adapterInstaller;
-    if (installer is CodexAcpAdapterInstaller) {
-      return InstallJobKeys.codexAcpAdapter(scope: scope);
-    }
-    return InstallJobKeys.claudeAcpAdapter(scope: scope);
+    return InstallJobKeys.acpAdapter(
+      _settings?.adapterInstaller?.adapterJobTarget ?? 'adapter:unknown',
+      scope: installJobScopeForContext(context),
+    );
   }
 
   Future<void> _pickFile() async {
@@ -436,12 +447,13 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
         await _probeInstalled(CliBinaryKind.adapter, path);
       }
 
-      final result = installer is CodexAcpAdapterInstaller
-          ? await jobs.installCodexAcpAdapter(
-              title: title,
-              onSucceeded: onSucceeded,
+      final result = installer == null
+          ? const CliInstallResult(
+              success: false,
+              message: 'No adapter installer',
             )
-          : await jobs.installClaudeAcpAdapter(
+          : await jobs.installAcpAdapter(
+              installer: installer,
               title: title,
               onSucceeded: onSucceeded,
             );
@@ -551,6 +563,17 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
                     ? TpStatusBadgeTone.success
                     : TpStatusBadgeTone.warning,
               ),
+              if (_canChooseTransport && !_isAndroid) ...[
+                const SizedBox(width: 10),
+                KeyedSubtree(
+                  key: AppKeys.personalAcpSwitchFor(widget.cli),
+                  child: _CliTransportPill(
+                    acp: cubit.acpDefaultFor(widget.cli),
+                    onChanged: (value) =>
+                        cubit.setAcpDefaultFor(widget.cli, value),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),
@@ -583,10 +606,9 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
                 : null,
             locating: _locatingCli,
           ),
-          if (_separateAdapter ||
-              _settings?.showsPersonalAcpSwitch == true) ...[
+          if (_separateAdapter) ...[
             const SizedBox(height: 12),
-            _buildAcpBlock(
+            _buildAcpAdapterRow(
               context,
               l10n: l10n,
               adapterKnown: adapterKnown,
@@ -600,7 +622,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     );
   }
 
-  Widget _buildAcpBlock(
+  Widget _buildAcpAdapterRow(
     BuildContext context, {
     required AppLocalizations l10n,
     required bool adapterKnown,
@@ -614,68 +636,80 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       cubit.installedVersion(widget.cli, CliBinaryKind.adapter),
       l10n.cliReadinessVersionUnknown,
     );
-    final showSwitch = _settings?.showsPersonalAcpSwitch == true;
     final busyAdapter = _locatingAdapter || installingAdapter;
     final showAdapterInstall =
         !adapterKnown && _settings?.adapterInstaller != null;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (_separateAdapter)
-          CliReadinessPathRow(
-            label: l10n.cliReadinessRowAcp,
-            fieldKey: AppKeys.acpAdapterPathFieldFor(widget.cli),
-            storedPath: adapterStored,
-            discoveredPath: cubit.discoveredAcpAdapterPath(widget.cli),
-            version: adapterVersion,
-            onPersist: (value) => cubit.setAcpAdapterPathFor(widget.cli, value),
-            browseKey: AppKeys.acpAdapterBrowseButtonFor(widget.cli),
-            onBrowse: (isRemote || busyAdapter) ? null : _pickAdapterFile,
-            locateOrResetKey: adapterStored.trim().isEmpty
-                ? AppKeys.acpAdapterLocateButtonFor(widget.cli)
-                : AppKeys.acpAdapterResetButtonFor(widget.cli),
-            locateLabel: l10n.cliExecutablePathLocate,
-            resetLabel: l10n.cliExecutablePathReset,
-            onLocateOrReset: busyAdapter
-                ? null
-                : (adapterStored.trim().isEmpty
-                      ? _locateAdapter
-                      : _resetAdapterPath),
-            installKey: showAdapterInstall
-                ? AppKeys.acpAdapterInstallButtonFor(widget.cli)
-                : null,
-            onInstall: showAdapterInstall
-                ? () => _installOrUpgradeAdapter(upgrading: false)
-                : null,
-            installing: installingAdapter,
-            upgradeKey: adapterUpdate
-                ? AppKeys.acpAdapterUpgradeButtonFor(widget.cli)
-                : null,
-            onUpgrade: adapterUpdate
-                ? () => _installOrUpgradeAdapter(upgrading: true)
-                : null,
-            locating: _locatingAdapter,
-            enabled: !_isAndroid,
-          ),
-        if (showSwitch)
-          TpPreferenceRow(
-            title: _isAndroid
-                ? l10n.claudePersonalAcpAndroidDisabled
-                : l10n.personalAcpSwitchLabel,
-            subtitle: _isAndroid ? null : l10n.personalAcpSwitchCaption,
-            padding: EdgeInsets.zero,
-            showDividerBelow: false,
-            trailing: Switch(
-              key: AppKeys.personalAcpSwitchFor(widget.cli),
-              value: !_isAndroid && cubit.personalAcpDefaultFor(widget.cli),
-              onChanged: _isAndroid
-                  ? null
-                  : (value) =>
-                        cubit.setPersonalAcpDefaultFor(widget.cli, value),
-            ),
-          ),
+    return CliReadinessPathRow(
+      label: l10n.cliReadinessRowAcp,
+      fieldKey: AppKeys.acpAdapterPathFieldFor(widget.cli),
+      storedPath: adapterStored,
+      discoveredPath: cubit.discoveredAcpAdapterPath(widget.cli),
+      version: adapterVersion,
+      onPersist: (value) => cubit.setAcpAdapterPathFor(widget.cli, value),
+      browseKey: AppKeys.acpAdapterBrowseButtonFor(widget.cli),
+      onBrowse: (isRemote || busyAdapter) ? null : _pickAdapterFile,
+      locateOrResetKey: adapterStored.trim().isEmpty
+          ? AppKeys.acpAdapterLocateButtonFor(widget.cli)
+          : AppKeys.acpAdapterResetButtonFor(widget.cli),
+      locateLabel: l10n.cliExecutablePathLocate,
+      resetLabel: l10n.cliExecutablePathReset,
+      onLocateOrReset: busyAdapter
+          ? null
+          : (adapterStored.trim().isEmpty ? _locateAdapter : _resetAdapterPath),
+      installKey: showAdapterInstall
+          ? AppKeys.acpAdapterInstallButtonFor(widget.cli)
+          : null,
+      onInstall: showAdapterInstall
+          ? () => _installOrUpgradeAdapter(upgrading: false)
+          : null,
+      installing: installingAdapter,
+      upgradeKey: adapterUpdate
+          ? AppKeys.acpAdapterUpgradeButtonFor(widget.cli)
+          : null,
+      onUpgrade: adapterUpdate
+          ? () => _installOrUpgradeAdapter(upgrading: true)
+          : null,
+      locating: _locatingAdapter,
+      enabled: !_isAndroid,
+    );
+  }
+}
+
+/// Default-transport pill: chat (ACP) on the left, terminal (PTY) on the right.
+///
+/// Mirrors the in-session toggle in
+/// `pages/chat/session_workbench_view_toggle.dart` so settings and session use
+/// the same visual language: 36×28 icon segments, main-colour active chip.
+class _CliTransportPill extends StatelessWidget {
+  const _CliTransportPill({required this.acp, required this.onChanged});
+
+  final bool acp;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return TpSegmentedControl(
+      totalSwitches: 2,
+      initialLabelIndex: acp ? 0 : 1,
+      labels: const ['', ''],
+      icons: const [
+        Icons.chat_bubble_outline_rounded,
+        Icons.terminal_rounded,
       ],
+      tooltips: [
+        l10n.cliTransportDefaultChat,
+        l10n.cliTransportDefaultTerminal,
+      ],
+      minHeight: 28,
+      customWidths: const [36, 36],
+      onToggle: (index) {
+        if (index == null) return;
+        final next = index == 0;
+        if (next == acp) return;
+        onChanged(next);
+      },
     );
   }
 }

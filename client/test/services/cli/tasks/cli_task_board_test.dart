@@ -53,6 +53,15 @@ void main() {
     },
   );
 
+  test('TaskCreate without a subject is dropped (no nameless "…" row)', () {
+    final board = reduceCliTaskBoard([
+      _assistant(_create(args: {})),
+      _assistant(_create(result: 'Task #2 created successfully: x')),
+      _assistant(_create(args: {'subject': 'real task'})),
+    ]);
+    expect(board.tasks.map((t) => t.subject), ['real task']);
+  });
+
   test('TaskCreate reads taskId from the correlated result', () {
     final board = reduceCliTaskBoard([
       _assistant(

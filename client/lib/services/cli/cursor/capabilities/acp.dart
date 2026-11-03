@@ -1,11 +1,14 @@
 import 'package:acpd/acpd.dart';
 
 import '../../../acp/acp_agent_translator.dart';
+import '../../../acp/acp_background_liveness.dart';
 import '../../../io/filesystem.dart';
 import '../../../io/local_filesystem.dart';
+import '../../registry/capabilities/acp_background_liveness_capability.dart';
 import '../../registry/capabilities/acp_capability.dart';
 import '../provider/cursor_auth_artifacts.dart';
 import '../provider/cursor_home_layout.dart';
+import 'acp_background_liveness.dart';
 
 final class CursorAcpTranslator extends AcpAgentTranslator {
   const CursorAcpTranslator();
@@ -19,12 +22,19 @@ final class CursorAcpTranslator extends AcpAgentTranslator {
     'cursor/create_plan',
   ];
 
+  /// Documented as notifications, but cursor-agent often sends them as
+  /// JSON-RPC requests. The ACP session registrar acks both shapes.
   @override
   List<String> get notificationClientMethods => const [
     'cursor/update_todos',
     'cursor/task',
     'cursor/generate_image',
   ];
+
+  /// Cursor's ACP agent waits for background children and resumes the parent
+  /// turn (`backgroundTaskCompletionAction`) only after this capability.
+  @override
+  bool get advertisesBackgroundSubagents => true;
 
   @override
   String translateStopError(Object error, {required bool suppressAbort}) {
@@ -35,7 +45,8 @@ final class CursorAcpTranslator extends AcpAgentTranslator {
   }
 }
 
-final class CursorAcpCapability implements AcpCapability {
+final class CursorAcpCapability
+    implements AcpCapability, AcpBackgroundLivenessCapability {
   const CursorAcpCapability({this.fs, this.platform});
 
   final Filesystem? fs;
@@ -50,10 +61,16 @@ final class CursorAcpCapability implements AcpCapability {
   ];
 
   @override
+  Duration get startupTimeout => const Duration(seconds: 30);
+
+  @override
   String? get authenticateMethodId => 'cursor_login';
 
   @override
   bool get forwardSessionNewMcpServers => false;
+
+  @override
+  Map<String, String> get agentStatusEnvironment => const {};
 
   @override
   Map<String, Object?> sessionNewMeta(Map<String, String> env) => const {};
@@ -86,4 +103,18 @@ final class CursorAcpCapability implements AcpCapability {
   }) {
     return Map<String, String>.of(baseEnv);
   }
+
+  /// Cursor reports a background launch as a *completed* tool call
+  /// (`rawOutput.isBackground`) and never reports when it ends, so the watch
+  /// polls the child-agent transcripts / terminal metadata it leaves behind.
+  @override
+  AcpBackgroundLivenessProbe? createBackgroundLivenessProbe({
+    required Filesystem fs,
+    required String sessionToolDir,
+    required String sessionId,
+  }) => CursorBackgroundLivenessProbe(
+    fs: fs,
+    sessionToolDir: sessionToolDir,
+    sessionId: sessionId,
+  );
 }

@@ -251,42 +251,228 @@ void main() {
         toolCallId: 'call-bg',
         title: 'dart run tool/run_tests.dart',
         status: AcpToolCallStatus.pending,
+        args: {'command': 'dart run tool/run_tests.dart', 'background': true},
         background: true,
       ),
     );
   });
 
-  test('loadHistory replays the session without emitting live updates', () async {
-    session = await openSession();
-    final emitted = <AcpSessionUpdate>[];
-    final sub = session.updates.listen(emitted.add);
-    agent.connection.onRequest('session/load', (params) {
+  test(
+    'tool_call background flag recognises cursor block_until_ms: 0',
+    () async {
+      session = await openSession();
+      final update = session.updates.first;
       agent.connection.notify(
         'session/update',
         params: {
           'sessionId': sessionId,
           'update': {
-            'sessionUpdate': 'agent_message_chunk',
-            'content': {'type': 'text', 'text': 'replayed'},
+            'sessionUpdate': 'tool_call',
+            'toolCallId': 'call-cursor-bg',
+            'title': 'Run full client test suite as baseline',
+            'kind': 'execute',
+            'status': 'pending',
+            'rawInput': {
+              'command': 'dart run tool/run_tests.dart',
+              'description': 'Run full client test suite as baseline',
+              'block_until_ms': 0,
+            },
           },
         },
       );
-      return acpd.LoadSessionResponse().toJson();
-    });
 
-    final history = await session.loadHistory();
+      final mapped = await update as AcpToolCallUpdate;
+      expect(mapped.background, isTrue);
+    },
+  );
 
-    expect(history, const [
-      AcpMessageChunk(
-        role: AcpRole.assistant,
-        content: 'replayed',
-        isThought: false,
-      ),
-    ]);
-    await pumpEventQueue();
-    expect(emitted, isEmpty);
-    await sub.cancel();
+  test('tool_call with a blocking block_until_ms is not background', () async {
+    session = await openSession();
+    final update = session.updates.first;
+    agent.connection.notify(
+      'session/update',
+      params: {
+        'sessionId': sessionId,
+        'update': {
+          'sessionUpdate': 'tool_call',
+          'toolCallId': 'call-cursor-fg',
+          'title': 'npm test',
+          'kind': 'execute',
+          'status': 'pending',
+          'rawInput': {'command': 'npm test', 'block_until_ms': 30000},
+        },
+      },
+    );
+
+    final mapped = await update as AcpToolCallUpdate;
+    expect(mapped.background, isFalse);
   });
+
+  test(
+    'cursor task result isBackground marks the tool call as background',
+    () async {
+      session = await openSession();
+      final update = session.updates.first;
+      agent.connection.notify(
+        'session/update',
+        params: {
+          'sessionId': sessionId,
+          'update': {
+            'sessionUpdate': 'tool_call_update',
+            'toolCallId': 'call-task-bg',
+            'title': 'Task: Background client peek',
+            'kind': 'other',
+            'status': 'completed',
+            'rawInput': {
+              'description': 'Background client peek',
+              '_toolName': 'task',
+            },
+            'rawOutput': {'durationMs': 270, 'isBackground': true},
+          },
+        },
+      );
+
+      final mapped = await update as AcpToolCallUpdate;
+      expect(mapped.background, isTrue);
+      expect(mapped.status, AcpToolCallStatus.completed);
+      expect(mapped.result, {'durationMs': 270, 'isBackground': true});
+    },
+  );
+
+  test(
+    'cursor subagent_spawned and subagent_state_update are delivered',
+    () async {
+      session = await openSession();
+      final spawned = session.updates.first;
+      agent.connection.notify(
+        'session/update',
+        params: {
+          'sessionId': sessionId,
+          'update': {
+            'sessionUpdate': 'subagent_spawned',
+            'subagentSessionId': 'b178',
+            'name': 'generalPurpose',
+            'task': 'Background client peek',
+            '_meta': {
+              'cursor': {'toolCallId': 'call-task-bg', 'agentId': 'b178'},
+            },
+          },
+        },
+      );
+
+      final spawnedUpdate = await spawned as AcpSubagentUpdate;
+      expect(spawnedUpdate.spawned, isTrue);
+      expect(spawnedUpdate.subagentSessionId, 'b178');
+      expect(spawnedUpdate.task, 'Background client peek');
+      expect(spawnedUpdate.toolCallId, 'call-task-bg');
+      expect(spawnedUpdate.terminal, isFalse);
+
+      final finished = session.updates.first;
+      agent.connection.notify(
+        'session/update',
+        params: {
+          'sessionId': sessionId,
+          'update': {
+            'sessionUpdate': 'subagent_state_update',
+            'subagentSessionId': 'b178',
+            'state': 'completed',
+          },
+        },
+      );
+
+      final finishedUpdate = await finished as AcpSubagentUpdate;
+      expect(finishedUpdate.terminal, isTrue);
+      expect(finishedUpdate.state, 'completed');
+    },
+  );
+
+  test('tool_call rawInput reaches the update as args', () async {
+    session = await openSession();
+    final update = session.updates.first;
+    agent.connection.notify(
+      'session/update',
+      params: {
+        'sessionId': sessionId,
+        'update': {
+          'sessionUpdate': 'tool_call',
+          'toolCallId': 'call-task',
+          'title': 'TaskCreate',
+          'kind': 'other',
+          'status': 'pending',
+          'rawInput': {
+            'subject': 'Wire the task board',
+            'description': 'Show task text in the ACP capsule',
+            'activeForm': 'Wiring the task board',
+          },
+        },
+      },
+    );
+
+    final mapped = await update as AcpToolCallUpdate;
+    expect(mapped.args, {
+      'subject': 'Wire the task board',
+      'description': 'Show task text in the ACP capsule',
+      'activeForm': 'Wiring the task board',
+    });
+  });
+
+  test('tool_call rawOutput text reaches the update as result', () async {
+    session = await openSession();
+    final update = session.updates.first;
+    agent.connection.notify(
+      'session/update',
+      params: {
+        'sessionId': sessionId,
+        'update': {
+          'sessionUpdate': 'tool_call_update',
+          'toolCallId': 'call-task',
+          'status': 'completed',
+          'rawOutput': {
+            'type': 'text',
+            'text': 'Task #6 created successfully: Wire the task board',
+          },
+        },
+      },
+    );
+
+    final mapped = await update as AcpToolCallUpdate;
+    expect(mapped.result, 'Task #6 created successfully: Wire the task board');
+  });
+
+  test(
+    'loadHistory replays the session without emitting live updates',
+    () async {
+      session = await openSession();
+      final emitted = <AcpSessionUpdate>[];
+      final sub = session.updates.listen(emitted.add);
+      agent.connection.onRequest('session/load', (params) {
+        agent.connection.notify(
+          'session/update',
+          params: {
+            'sessionId': sessionId,
+            'update': {
+              'sessionUpdate': 'agent_message_chunk',
+              'content': {'type': 'text', 'text': 'replayed'},
+            },
+          },
+        );
+        return acpd.LoadSessionResponse().toJson();
+      });
+
+      final history = await session.loadHistory();
+
+      expect(history, const [
+        AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: 'replayed',
+          isThought: false,
+        ),
+      ]);
+      await pumpEventQueue();
+      expect(emitted, isEmpty);
+      await sub.cancel();
+    },
+  );
 
   test(
     'loadHistory collects past bootstrap suppression on a loaded session',
@@ -326,16 +512,13 @@ void main() {
         return acpd.LoadSessionResponse().toJson();
       });
       final history = await session.loadHistory();
-      expect(
-        history,
-        const [
-          AcpMessageChunk(
-            role: AcpRole.assistant,
-            content: 'reconciled',
-            isThought: false,
-          ),
-        ],
-      );
+      expect(history, const [
+        AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: 'reconciled',
+          isThought: false,
+        ),
+      ]);
       expect(emitted, isEmpty, reason: 'reconciliation never leaks live');
       await sub.cancel();
     },
@@ -451,41 +634,45 @@ void main() {
     ]);
   });
 
-  test('a load session drops replayed updates until the first prompt',
-      () async {
-    agent.connection.onRequest('session/load', (params) {
-      return acpd.LoadSessionResponse().toJson();
-    });
-    session = await conn.loadSession(sessionId: 'agent-9', cwd: cwd);
+  test(
+    'a load session drops replayed updates until the first prompt',
+    () async {
+      agent.connection.onRequest('session/load', (params) {
+        return acpd.LoadSessionResponse().toJson();
+      });
+      session = await conn.loadSession(sessionId: 'agent-9', cwd: cwd);
 
-    final events = <AcpSessionUpdate>[];
-    final sub = session.updates.listen(events.add);
+      final events = <AcpSessionUpdate>[];
+      final sub = session.updates.listen(events.add);
 
-    // session/load makes the agent replay its whole history; the app
-    // transcript is the UI source of truth, so none of it may reach the
-    // stream (this is the whole point of suppressBootstrapUpdates).
-    agentCtx.sessionUpdate(sessionId: 'agent-9', update: message('replayed'));
-    await pumpEventQueue();
-    expect(events, isEmpty);
+      // session/load makes the agent replay its whole history; the app
+      // transcript is the UI source of truth, so none of it may reach the
+      // stream (this is the whole point of suppressBootstrapUpdates).
+      agentCtx.sessionUpdate(sessionId: 'agent-9', update: message('replayed'));
+      await pumpEventQueue();
+      expect(events, isEmpty);
 
-    // The first prompt releases the hold.
-    scriptPrompt(() {
-      agentCtx.sessionUpdate(sessionId: 'agent-9', update: message('fresh'));
-      return acpd.PromptResponse(stopReason: acpd.StopReason.endTurn).toJson();
-    });
-    await session.prompt('hi');
-    await pumpEventQueue();
-    sub.cancel();
+      // The first prompt releases the hold.
+      scriptPrompt(() {
+        agentCtx.sessionUpdate(sessionId: 'agent-9', update: message('fresh'));
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+      await session.prompt('hi');
+      await pumpEventQueue();
+      sub.cancel();
 
-    expect(events, [
-      const AcpMessageChunk(
-        role: AcpRole.assistant,
-        content: 'fresh',
-        isThought: false,
-      ),
-      const AcpStop(kind: AcpStopKind.endTurn),
-    ]);
-  });
+      expect(events, [
+        const AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: 'fresh',
+          isThought: false,
+        ),
+        const AcpStop(kind: AcpStopKind.endTurn),
+      ]);
+    },
+  );
 
   test('openSession records mcpServers on session/new', () async {
     acpd.NewSessionRequest? seenNew;
@@ -558,33 +745,35 @@ void main() {
     expect(state.options.map((option) => option.id), ['sonnet', 'opus']);
   });
 
-  test('setModel sends session/set_config_option and adopts the response',
-      () async {
-    agent.connection.onRequest('session/new', (params) {
-      return acpd.NewSessionResponse(
-        sessionId: sessionId,
-        configOptions: [_modelOption('sonnet')],
-      ).toJson();
-    });
-    acpd.SetSessionConfigOptionRequest? seen;
-    agent.connection.onRequest('session/set_config_option', (params) {
-      seen = acpd.SetSessionConfigOptionRequest.fromJson(
-        (params! as Map).cast<String, Object?>(),
-      );
-      return acpd.SetSessionConfigOptionResponse(
-        configOptions: [_modelOption('opus')],
-      ).toJson();
-    });
+  test(
+    'setModel sends session/set_config_option and adopts the response',
+    () async {
+      agent.connection.onRequest('session/new', (params) {
+        return acpd.NewSessionResponse(
+          sessionId: sessionId,
+          configOptions: [_modelOption('sonnet')],
+        ).toJson();
+      });
+      acpd.SetSessionConfigOptionRequest? seen;
+      agent.connection.onRequest('session/set_config_option', (params) {
+        seen = acpd.SetSessionConfigOptionRequest.fromJson(
+          (params! as Map).cast<String, Object?>(),
+        );
+        return acpd.SetSessionConfigOptionResponse(
+          configOptions: [_modelOption('opus')],
+        ).toJson();
+      });
 
-    await openSession();
-    await session.setModel('opus');
+      await openSession();
+      await session.setModel('opus');
 
-    expect(seen, isA<acpd.SetValueIdConfigOption>());
-    expect(seen!.sessionId, sessionId);
-    expect(seen!.configId, 'model');
-    expect((seen! as acpd.SetValueIdConfigOption).value, 'opus');
-    expect(session.modelState!.currentId, 'opus');
-  });
+      expect(seen, isA<acpd.SetValueIdConfigOption>());
+      expect(seen!.sessionId, sessionId);
+      expect(seen!.configId, 'model');
+      expect((seen! as acpd.SetValueIdConfigOption).value, 'opus');
+      expect(session.modelState!.currentId, 'opus');
+    },
+  );
 
   test('rejects a model the agent did not advertise', () async {
     agent.connection.onRequest('session/new', (params) {
@@ -621,10 +810,10 @@ void main() {
     expect(session.modelState!.currentId, 'opus');
     final update = events.whereType<AcpModelStateUpdate>().single;
     expect(update.state!.currentId, 'opus');
-    expect(
-      update.state!.options.map((option) => option.id),
-      ['sonnet', 'opus'],
-    );
+    expect(update.state!.options.map((option) => option.id), [
+      'sonnet',
+      'opus',
+    ]);
   });
 
   test('maps thought, tool call, and plan updates', () async {
@@ -708,46 +897,43 @@ void main() {
     ]);
   });
 
-  test(
-    'teammate-bus permission during session/new is auto-allowed',
-    () async {
-      acpd.RequestPermissionOutcome? outcome;
-      agent.connection.onRequest('session/new', (params) async {
-        outcome = await requestPermission(
-          acpd.RequestPermissionRequest(
-            sessionId: sessionId,
-            toolCall: const acpd.ToolCallUpdate(
-              toolCallId: 'perm-early',
-              title: 'teammate-bus-read_messages: read_messages',
-            ),
-            options: const [
-              acpd.PermissionOption(
-                optionId: 'reject-1',
-                name: 'Reject',
-                kind: acpd.PermissionOptionKind.rejectOnce,
-              ),
-              acpd.PermissionOption(
-                optionId: 'allow-1',
-                name: 'Allow once',
-                kind: acpd.PermissionOptionKind.allowOnce,
-              ),
-              acpd.PermissionOption(
-                optionId: 'always-1',
-                name: 'Allow always',
-                kind: acpd.PermissionOptionKind.allowAlways,
-              ),
-            ],
+  test('teammate-bus permission during session/new is auto-allowed', () async {
+    acpd.RequestPermissionOutcome? outcome;
+    agent.connection.onRequest('session/new', (params) async {
+      outcome = await requestPermission(
+        acpd.RequestPermissionRequest(
+          sessionId: sessionId,
+          toolCall: const acpd.ToolCallUpdate(
+            toolCallId: 'perm-early',
+            title: 'teammate-bus-read_messages: read_messages',
           ),
-        );
-        return acpd.NewSessionResponse(sessionId: sessionId).toJson();
-      });
+          options: const [
+            acpd.PermissionOption(
+              optionId: 'reject-1',
+              name: 'Reject',
+              kind: acpd.PermissionOptionKind.rejectOnce,
+            ),
+            acpd.PermissionOption(
+              optionId: 'allow-1',
+              name: 'Allow once',
+              kind: acpd.PermissionOptionKind.allowOnce,
+            ),
+            acpd.PermissionOption(
+              optionId: 'always-1',
+              name: 'Allow always',
+              kind: acpd.PermissionOptionKind.allowAlways,
+            ),
+          ],
+        ),
+      );
+      return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+    });
 
-      await openSession();
+    await openSession();
 
-      expect(outcome, isA<acpd.PermissionSelected>());
-      expect((outcome! as acpd.PermissionSelected).optionId, 'always-1');
-    },
-  );
+    expect(outcome, isA<acpd.PermissionSelected>());
+    expect((outcome! as acpd.PermissionSelected).optionId, 'always-1');
+  });
 
   test(
     'Claude MCP teammate-bus permission during session/new is auto-allowed',
@@ -769,11 +955,7 @@ void main() {
               },
             },
             'options': [
-              {
-                'optionId': 'reject-1',
-                'name': 'Reject',
-                'kind': 'reject_once',
-              },
+              {'optionId': 'reject-1', 'name': 'Reject', 'kind': 'reject_once'},
               {'optionId': 'yes-1', 'name': 'Yes', 'kind': 'selected'},
             ],
           },
@@ -835,50 +1017,45 @@ void main() {
     },
   );
 
-  test(
-    'fullAccess auto-allows bash-style permission without a card',
-    () async {
-      acpd.RequestPermissionOutcome? outcome;
-      scriptPrompt(() async {
-        outcome = await requestPermission(
-          acpd.RequestPermissionRequest(
-            sessionId: sessionId,
-            toolCall: const acpd.ToolCallUpdate(
-              toolCallId: 'perm-bash',
-              title: 'Run `npm install`',
-            ),
-            options: const [
-              acpd.PermissionOption(
-                optionId: 'allow-1',
-                name: 'Allow once',
-                kind: acpd.PermissionOptionKind.allowOnce,
-              ),
-              acpd.PermissionOption(
-                optionId: 'always-1',
-                name: 'Allow always',
-                kind: acpd.PermissionOptionKind.allowAlways,
-              ),
-            ],
+  test('fullAccess auto-allows bash-style permission without a card', () async {
+    acpd.RequestPermissionOutcome? outcome;
+    scriptPrompt(() async {
+      outcome = await requestPermission(
+        acpd.RequestPermissionRequest(
+          sessionId: sessionId,
+          toolCall: const acpd.ToolCallUpdate(
+            toolCallId: 'perm-bash',
+            title: 'Run `npm install`',
           ),
-        );
-        return acpd.PromptResponse(
-          stopReason: acpd.StopReason.endTurn,
-        ).toJson();
-      });
+          options: const [
+            acpd.PermissionOption(
+              optionId: 'allow-1',
+              name: 'Allow once',
+              kind: acpd.PermissionOptionKind.allowOnce,
+            ),
+            acpd.PermissionOption(
+              optionId: 'always-1',
+              name: 'Allow always',
+              kind: acpd.PermissionOptionKind.allowAlways,
+            ),
+          ],
+        ),
+      );
+      return acpd.PromptResponse(stopReason: acpd.StopReason.endTurn).toJson();
+    });
 
-      await openSession();
-      AgentPermissionRequest? captured;
-      final permissionSub = session.permissionRequests.listen((request) {
-        captured = request;
-      });
-      await session.prompt('go');
-      permissionSub.cancel();
+    await openSession();
+    AgentPermissionRequest? captured;
+    final permissionSub = session.permissionRequests.listen((request) {
+      captured = request;
+    });
+    await session.prompt('go');
+    permissionSub.cancel();
 
-      expect(captured, isNull);
-      expect(outcome, isA<acpd.PermissionSelected>());
-      expect((outcome! as acpd.PermissionSelected).optionId, 'always-1');
-    },
-  );
+    expect(captured, isNull);
+    expect(outcome, isA<acpd.PermissionSelected>());
+    expect((outcome! as acpd.PermissionSelected).optionId, 'always-1');
+  });
 
   test(
     'hyphenated Cursor permission kinds auto-allow without a card',
@@ -918,9 +1095,7 @@ void main() {
         ).toJson();
       });
 
-      await openSession(
-        permissionTimeout: const Duration(milliseconds: 200),
-      );
+      await openSession(permissionTimeout: const Duration(milliseconds: 200));
       AgentPermissionRequest? captured;
       final permissionSub = session.permissionRequests.listen((request) {
         captured = request;
@@ -970,9 +1145,7 @@ void main() {
         ).toJson();
       });
 
-      await openSession(
-        permissionTimeout: const Duration(milliseconds: 200),
-      );
+      await openSession(permissionTimeout: const Duration(milliseconds: 200));
       AgentPermissionRequest? captured;
       final permissionSub = session.permissionRequests.listen((request) {
         captured = request;
@@ -982,75 +1155,67 @@ void main() {
 
       expect(captured, isNull);
       expect(result, {
-        'outcome': {
-          'outcome': 'selected',
-          'optionId': 'allow-always',
-        },
+        'outcome': {'outcome': 'selected', 'optionId': 'allow-always'},
       });
     },
   );
 
-  test(
-    'reject-only permission still surfaces a card',
-    () async {
-      acpd.RequestPermissionOutcome? outcome;
-      scriptPrompt(() async {
-        outcome = await requestPermission(
-          acpd.RequestPermissionRequest(
-            sessionId: sessionId,
-            toolCall: const acpd.ToolCallUpdate(
-              toolCallId: 'perm-1',
-              title: 'Run `npm install`',
-            ),
-            options: const [
-              acpd.PermissionOption(
-                optionId: 'reject-1',
-                name: 'Reject',
-                kind: acpd.PermissionOptionKind.rejectOnce,
-              ),
-            ],
+  test('reject-only permission still surfaces a card', () async {
+    acpd.RequestPermissionOutcome? outcome;
+    scriptPrompt(() async {
+      outcome = await requestPermission(
+        acpd.RequestPermissionRequest(
+          sessionId: sessionId,
+          toolCall: const acpd.ToolCallUpdate(
+            toolCallId: 'perm-1',
+            title: 'Run `npm install`',
           ),
-        );
-        agentCtx.sessionUpdate(sessionId: sessionId, update: message('done'));
-        return acpd.PromptResponse(
-          stopReason: acpd.StopReason.endTurn,
-        ).toJson();
-      });
-
-      await openSession();
-      session.setPermissionPolicy(LaunchSecurityPolicy.ask);
-
-      AgentPermissionRequest? captured;
-      final permissionSub = session.permissionRequests.listen((request) {
-        captured = request;
-        session.answerPermission(AgentPermissionReplyKind.reject);
-      });
-      final events = <AcpSessionUpdate>[];
-      final sub = session.updates.listen(events.add);
-      await session.prompt('go');
-      await pumpEventQueue();
-      sub.cancel();
-      permissionSub.cancel();
-
-      expect(captured, isNotNull);
-      expect(captured!.id, 'perm-1');
-      expect(captured!.description, 'Run `npm install`');
-      expect(captured!.sessionID, sessionId);
-      expect(captured!.toolCallID, 'perm-1');
-      expect(captured!.always, isEmpty);
-
-      expect(outcome, isA<acpd.PermissionCancelled>());
-
-      expect(events, [
-        const AcpMessageChunk(
-          role: AcpRole.assistant,
-          content: 'done',
-          isThought: false,
+          options: const [
+            acpd.PermissionOption(
+              optionId: 'reject-1',
+              name: 'Reject',
+              kind: acpd.PermissionOptionKind.rejectOnce,
+            ),
+          ],
         ),
-        const AcpStop(kind: AcpStopKind.endTurn),
-      ]);
-    },
-  );
+      );
+      agentCtx.sessionUpdate(sessionId: sessionId, update: message('done'));
+      return acpd.PromptResponse(stopReason: acpd.StopReason.endTurn).toJson();
+    });
+
+    await openSession();
+    session.setPermissionPolicy(LaunchSecurityPolicy.ask);
+
+    AgentPermissionRequest? captured;
+    final permissionSub = session.permissionRequests.listen((request) {
+      captured = request;
+      session.answerPermission(AgentPermissionReplyKind.reject);
+    });
+    final events = <AcpSessionUpdate>[];
+    final sub = session.updates.listen(events.add);
+    await session.prompt('go');
+    await pumpEventQueue();
+    sub.cancel();
+    permissionSub.cancel();
+
+    expect(captured, isNotNull);
+    expect(captured!.id, 'perm-1');
+    expect(captured!.description, 'Run `npm install`');
+    expect(captured!.sessionID, sessionId);
+    expect(captured!.toolCallID, 'perm-1');
+    expect(captured!.always, isEmpty);
+
+    expect(outcome, isA<acpd.PermissionCancelled>());
+
+    expect(events, [
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'done',
+        isThought: false,
+      ),
+      const AcpStop(kind: AcpStopKind.endTurn),
+    ]);
+  });
 
   test(
     'always echoes the optionId payload; reject maps to cancelled',
@@ -1828,6 +1993,118 @@ void main() {
       expect(todo.notification.todos.single.id, '1');
       expect(todo.notification.todos.single.content, 'A');
       expect(events.last, const AcpStop(kind: AcpStopKind.endTurn));
+    },
+  );
+
+  test(
+    'Cursor update_todos request acks accepted and still ends the prompt',
+    () async {
+      await rebuildConnection(const CursorAcpTranslator());
+
+      Object? todosResult;
+      scriptPrompt(() async {
+        todosResult = await agent.connection.sendRequest(
+          'cursor/update_todos',
+          params: {
+            'todos': [
+              {'id': '1', 'content': 'A', 'status': 'pending'},
+            ],
+            'merge': true,
+          },
+          mapResult: (r) => r,
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession();
+
+      final events = <AcpSessionUpdate>[];
+      final sub = session.updates.listen(events.add);
+      await session.prompt('go');
+      await pumpEventQueue();
+      sub.cancel();
+
+      expect(todosResult, {
+        'outcome': {
+          'outcome': 'accepted',
+          'todos': [
+            {'id': '1', 'content': 'A', 'status': 'pending'},
+          ],
+        },
+      });
+      expect(events.whereType<AcpTodoListUpdate>(), hasLength(1));
+      expect(events.last, const AcpStop(kind: AcpStopKind.endTurn));
+    },
+  );
+
+  test(
+    'Cursor task request acks completed so session/prompt can return',
+    () async {
+      await rebuildConnection(const CursorAcpTranslator());
+
+      Object? taskResult;
+      scriptPrompt(() async {
+        taskResult = await agent.connection.sendRequest(
+          'cursor/task',
+          params: {
+            'toolCallId': 't1',
+            'description': 'Explore the repo',
+            'subagentType': 'explore',
+          },
+          mapResult: (r) => r,
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession();
+
+      final events = <AcpSessionUpdate>[];
+      final sub = session.updates.listen(events.add);
+      await session.prompt('go');
+      await pumpEventQueue();
+      sub.cancel();
+
+      expect(taskResult, {
+        'outcome': {'outcome': 'completed'},
+      });
+      expect(events.whereType<AcpTaskUpdate>(), hasLength(1));
+      expect(events.last, const AcpStop(kind: AcpStopKind.endTurn));
+    },
+  );
+
+  test(
+    'Cursor generate_image request acks generated and ends the prompt',
+    () async {
+      await rebuildConnection(const CursorAcpTranslator());
+
+      Object? imageResult;
+      scriptPrompt(() async {
+        imageResult = await agent.connection.sendRequest(
+          'cursor/generate_image',
+          params: {
+            'toolCallId': 'img-1',
+            'description': 'icon',
+            'filePath': '/tmp/icon.png',
+          },
+          mapResult: (r) => r,
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession();
+
+      await session.prompt('go');
+      await pumpEventQueue();
+
+      expect(imageResult, {
+        'outcome': {'outcome': 'generated', 'filePath': '/tmp/icon.png'},
+      });
     },
   );
 

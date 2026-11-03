@@ -82,14 +82,20 @@ String launchOverlayExtractCommand(String workRoot) {
   return 'mkdir -p $quoted && gzip -dc | tar -x -C $quoted';
 }
 
+/// File mode for overlay members that must stay private (`0600`).
+const int overlayPrivateFileMode = 0x180;
+
 void addOverlayFile(
   Archive archive, {
   required String relativePath,
   required List<int> bytes,
+  int? mode,
 }) {
   // Follow-up: copyTree file members stay 0644 (ArchiveFile default); executable
   // bits from the source tree are not preserved on tar extract.
-  archive.add(ArchiveFile(relativePath, bytes.length, bytes));
+  final entry = ArchiveFile(relativePath, bytes.length, bytes);
+  if (mode != null) entry.mode = mode;
+  archive.add(entry);
 }
 
 void addOverlayDir(Archive archive, {required String relativePath}) {

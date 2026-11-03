@@ -341,6 +341,7 @@ class AppKeys {
   );
   static const sessionUsageSyncProgress = Key('session-usage-sync-progress');
   static const sessionUsageSearchField = Key('session-usage-search-field');
+  static const sessionUsageRangeTrigger = Key('session-usage-range-trigger');
   static const sessionUsageErrorBanner = Key('session-usage-error-banner');
   static const sessionUsageEmptyState = Key('session-usage-empty-state');
   static const sessionUsageTable = Key('session-usage-table');
@@ -361,6 +362,16 @@ class AppKeys {
     'session-usage-pricing-reset',
   );
   static const sessionUsageMaintenanceButton = Key('session-usage-maintenance');
+  static const sessionUsageSettingsButton = Key('session-usage-settings');
+  static const sessionUsageSettingsDialog = Key('session-usage-settings-dialog');
+  static const sessionUsageAutoScanSwitch = Key(
+    'session-usage-auto-scan-switch',
+  );
+  static const sessionUsageScanInterval = Key('session-usage-scan-interval');
+  static const sessionUsageSyncNowButton = Key('session-usage-sync-now');
+  static const sessionUsageSettingsStorageEntry = Key(
+    'session-usage-settings-storage',
+  );
   static const sessionUsageMaintenanceDialog = Key(
     'session-usage-maintenance-dialog',
   );

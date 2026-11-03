@@ -466,7 +466,6 @@ class WorkspaceCatalog {
       rosterMembers: rosterMembers,
       memberClis: resolvedClis,
       knownWorkspace: workspace,
-      teamMode: team?.teamMode ?? TeamMode.native,
     );
     _sessions = [..._sessions, created.session];
     patchWorkspace(
@@ -499,7 +498,6 @@ class WorkspaceCatalog {
     SessionContinueOverrides? continueOverrides,
     List<SessionMemberBinding>? members,
     Map<String, String>? memberTargets,
-    TeamMode teamMode = TeamMode.native,
     bool seedClaudeMemberAcp = true,
     bool seedCodexMemberAcp = true,
     bool seedCursorMemberAcp = true,
@@ -523,7 +521,6 @@ class WorkspaceCatalog {
       members: members,
       memberTargets: memberTargets,
       knownWorkspace: ws,
-      teamMode: teamMode,
       seedClaudeMemberAcp: seedClaudeMemberAcp,
       seedCodexMemberAcp: seedCodexMemberAcp,
       seedCursorMemberAcp: seedCursorMemberAcp,

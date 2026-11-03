@@ -53,6 +53,7 @@ Widget _wrap({
             child: UsageSummaryCards(
               dashboard: _dashboard,
               nowMs: DateTime.now().millisecondsSinceEpoch,
+              onManagePricing: () {},
             ),
           ),
         ),
@@ -98,5 +99,33 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('summary details expand and collapse', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_wrap(width: 700, fontSizeFactor: 1.0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hit rate'), findsNothing);
+    expect(find.text('Cost'), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.keyboard_arrow_down));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cost'), findsOneWidget);
+    expect(find.text('Cache write'), findsOneWidget);
+    expect(find.text('Hit rate'), findsOneWidget);
+    expect(find.text('Requests'), findsOneWidget);
+    expect(find.text('Sessions'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.keyboard_arrow_up));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hit rate'), findsNothing);
+    expect(find.text('Cost'), findsNothing);
   });
 }

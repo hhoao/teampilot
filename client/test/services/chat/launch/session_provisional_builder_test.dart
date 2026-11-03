@@ -46,7 +46,30 @@ void main() {
     expect(session.acp, isTrue);
   });
 
-  test('team session is always acp false', () {
+  test('team session is always acp false, even when requested', () {
+    final requested = buildProvisionalSession(
+      sessionId: 's1',
+      workspace: workspace,
+      isPersonal: false,
+      usesPosixPaths: true,
+      cli: CliTool.claude,
+      sessionTeamId: 'team-1',
+      acp: true,
+    );
+    expect(requested.acp, isFalse);
+
+    final defaulted = buildProvisionalSession(
+      sessionId: 's2',
+      workspace: workspace,
+      isPersonal: false,
+      usesPosixPaths: true,
+      cli: CliTool.claude,
+      sessionTeamId: 'team-1',
+    );
+    expect(defaulted.acp, isFalse);
+  });
+
+  test('team session stays acp false for an ACP-only CLI', () {
     final session = buildProvisionalSession(
       sessionId: 's1',
       workspace: workspace,
@@ -54,7 +77,6 @@ void main() {
       usesPosixPaths: true,
       cli: CliTool.gemini,
       sessionTeamId: 'team-1',
-      acp: true,
     );
     expect(session.acp, isFalse);
   });

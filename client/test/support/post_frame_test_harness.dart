@@ -7,12 +7,14 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
+import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/repositories/automation_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/services/automation/automation_bus_gateway.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
+import 'package:teampilot/services/automation/automation_prompt_delivery.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 import 'package:teampilot/services/automation/automation_scheduler.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
@@ -302,11 +304,11 @@ AutomationRepository testAutomationRepository() {
 
 class _NoopAutomationBusGateway implements AutomationBusGateway {
   @override
-  Future<void> deliverUserCommandToMember(
-    String sessionId,
+  Future<AutomationDeliveryOutcome> deliverUserCommandToMember(
+    AppSession session,
     String memberId,
     String message,
-  ) async {}
+  ) async => const AutomationDeliveryOutcome.delivered();
 
   @override
   Future<void> ensureMemberReady(String sessionId, String memberId) async {}

@@ -240,7 +240,11 @@ pub unsafe extern "C" fn tp_search_next(
             if pending_bytes >= h.max_chunk_bytes {
                 break;
             }
-            match h.rx.recv_timeout(std::time::Duration::from_millis(5)) {
+            // Never block here: `tp_search_next` runs on the caller's thread
+            // (the Flutter UI isolate), so a blocking receive would freeze
+            // frames. Draining without waiting keeps every call bounded; the
+            // caller owns the poll cadence.
+            match h.rx.try_recv() {
                 Ok(SearchMsg::Line(d)) => {
                     h.pending.push(d);
                     budget -= 1;
@@ -250,8 +254,8 @@ pub unsafe extern "C" fn tp_search_next(
                     h.finished = true;
                     break;
                 }
-                Err(mpsc::RecvTimeoutError::Timeout) => break,
-                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                Err(mpsc::TryRecvError::Empty) => break,
+                Err(mpsc::TryRecvError::Disconnected) => {
                     h.finished = true;
                     break;
                 }
@@ -514,6 +518,19 @@ pub unsafe extern "C" fn tp_file_index_build_poll(handle: *mut TpFileIndexHandle
 pub unsafe extern "C" fn tp_file_index_cancel(handle: *mut TpFileIndexHandle) {
     if !handle.is_null() {
         (*handle).cancel.store(true, Ordering::Relaxed);
+    }
+}
+
+/// Number of files currently held by the index (0 before a build).
+#[no_mangle]
+pub unsafe extern "C" fn tp_file_index_len(handle: *mut TpFileIndexHandle) -> u32 {
+    if handle.is_null() {
+        return 0;
+    }
+    let handle = &*handle;
+    match handle.index.lock() {
+        Ok(index) => index.file_count() as u32,
+        Err(_) => 0,
     }
 }
 

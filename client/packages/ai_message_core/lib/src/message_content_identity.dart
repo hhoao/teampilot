@@ -3,38 +3,68 @@ import 'dart:convert';
 import 'message.dart';
 import 'subagent_attachment.dart';
 
+/// Per-instance part fingerprints.
+///
+/// Parts are immutable value objects — mutation goes through `copyWith`, which
+/// allocates a new instance — so a digest computed once for a part instance
+/// stays valid. This keeps identity cheap for the live tip, which can hold
+/// hundreds of parts and megabytes of tool output: unchanged parts hit the
+/// cache instead of re-serialising their payload.
+final Expando<String> _partDigestCache = Expando<String>('aiMessagePartDigest');
+
+/// Length + hash of a payload string.
+///
+/// `String.hashCode` is cached on the string instance by the VM, so unchanged
+/// payloads cost nothing after the first call and only the freshly built
+/// streaming string is hashed.
+String _payloadDigest(String? text) =>
+    text == null ? '-' : '${text.length}:${text.hashCode}';
+
 /// Stable fingerprint of an [AiMessage] for reuse / selective rebuild.
 ///
 /// Includes id, role, status, and part payloads. Two messages with the same
 /// identity may safely share one instance across softReload snapshots.
+///
+/// The result is a fixed-size digest, never the payload itself: hosts recompute
+/// it on every streaming chunk (see `ExternalStoreAiThreadRuntime.setMessages`),
+/// so embedding text/tool output would make each chunk O(turn size).
 String messageContentIdentity(AiMessage m) {
   final buf = StringBuffer(
     '${m.id}|${m.role.name}|${m.status.name}|${m.deliveryChannel ?? ''}',
   );
   for (final p in m.parts) {
     buf.write('|');
-    switch (p) {
-      case AiTextPart(:final text):
-        buf.write('t:$text');
-      case AiReasoningPart(:final text):
-        buf.write('r:$text');
-      case AiToolCallPart(
-        :final toolCallId,
-        :final toolName,
-        :final args,
-        :final argsText,
-        :final status,
-        :final isError,
-        :final result,
-      ):
-        final argsJson = args != null && args.isNotEmpty ? jsonEncode(args) : '';
-        buf.write(
-          'c:$toolCallId:$toolName:${argsText ?? ''}:$argsJson:'
-          '${status.name}:$isError:${result ?? ''}',
-        );
-    }
+    buf.write(_partDigest(p));
   }
   return buf.toString();
+}
+
+String _partDigest(AiMessagePart part) {
+  final cached = _partDigestCache[part];
+  if (cached != null) return cached;
+  final digest = switch (part) {
+    AiTextPart(:final text) => 't:${_payloadDigest(text)}',
+    AiReasoningPart(:final text) => 'r:${_payloadDigest(text)}',
+    AiToolCallPart(
+      :final toolCallId,
+      :final toolName,
+      :final args,
+      :final argsText,
+      :final status,
+      :final isError,
+      :final result,
+    ) =>
+      'c:$toolCallId:$toolName:${_payloadDigest(argsText)}:${_argsDigest(args)}:'
+          '${status.name}:$isError:${_payloadDigest(_toolResultText(result))}',
+  };
+  _partDigestCache[part] = digest;
+  return digest;
+}
+
+String _argsDigest(Map<String, Object?>? args) {
+  if (args == null || args.isEmpty) return '-';
+  final json = jsonEncode(args);
+  return '${json.length}:${json.hashCode}';
 }
 
 bool cheapStringEqual(String a, String b) {

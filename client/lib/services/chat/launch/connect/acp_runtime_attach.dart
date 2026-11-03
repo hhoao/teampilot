@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import '../../../../models/app_session.dart';
 import '../../../../models/runtime_target.dart';
 import '../../../../models/team_config.dart';
@@ -8,6 +10,8 @@ import '../../../../models/workspace_launch_context.dart';
 import '../../../acp/acp_chat_strings.dart';
 import '../../../acp/acp_chat_transcript.dart';
 import '../../../acp/acp_agent_session_store.dart';
+import '../../../acp/acp_background_liveness.dart';
+import '../../../acp/acp_background_transcript.dart';
 import '../../../acp/acp_frame_logger.dart';
 import '../../../acp/acp_mcp_servers.dart';
 import '../../../acp/acp_session_files.dart';
@@ -15,8 +19,10 @@ import '../../../acp/acp_session_runtime.dart';
 import '../../../acp/acp_ssh_transport.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../agent_status/seat_lease_port.dart';
-import '../../../cli/opencode/capabilities/acp.dart'
-    show opencodeEnableQuestionToolEnvKey;
+import '../../../cli/registry/capabilities/acp_background_liveness_capability.dart';
+import '../../../cli/registry/capabilities/acp_background_transcript_capability.dart';
+import '../../../cli/registry/capabilities/acp_capability.dart';
+import '../../../cli/registry/cli_tool_registry.dart';
 import '../../../ssh/ssh_member_session.dart';
 import '../../../storage/home_storage.dart';
 import '../../../storage/runtime_context.dart';
@@ -84,6 +90,7 @@ class AcpRuntimeAttach {
     this.memberLifecycleGate,
     this.prepareRemoteStaging,
     this.sshLaunchFactory,
+    this.touchUserActivity,
   }) : _host = host,
        _storage = storage;
 
@@ -96,6 +103,10 @@ class AcpRuntimeAttach {
   final AcpContributionEnvBuilder? preparePersonalContribution;
   final AcpTeamConnectPrepare? prepareTeamConnect;
   final AcpMemberExtraMcp? extraMcpForMember;
+
+  /// Debounced `session.updatedAt` bump for operator prompts (production wires
+  /// `SessionLaunchService.touchOnUserActivity`). Null in tests.
+  final void Function(String sessionId)? touchUserActivity;
 
   /// Production wires [SessionLaunchService.lifecycleGateBeforeAttach] here.
   AcpMemberLifecycleGate? memberLifecycleGate;
@@ -114,8 +125,10 @@ class AcpRuntimeAttach {
   ) async {
     final tab = _host.tabStore.getOpenTabBySessionId(session.sessionId);
     if (tab == null) return false;
+    final firstPrompt = job.request.firstPrompt?.trim() ?? '';
     final existing = tab.acpRuntime;
     if (existing != null) {
+      if (firstPrompt.isNotEmpty) existing.sendPrompt(firstPrompt);
       tab.reclaimedAcpRuntime = false;
       _host.updateTabRunning(tab.info.id);
       return true;
@@ -182,14 +195,12 @@ class AcpRuntimeAttach {
         agentStatus: agentStatus,
         extraMcpServers: extraMcpServers,
       );
-      if (agentStatus != null && cli == CliTool.opencode) {
-        env = {...env, opencodeEnableQuestionToolEnvKey: 'true'};
-      }
+      env = _withAgentStatusEnvironment(cli, agentStatus != null, env);
       baseEnv = env;
     }
 
     final sshLaunch = remote
-        ? (sshLaunchFactory ?? _productionSshLaunch)(
+        ? (sshLaunchFactory ?? productionSshLaunch)(
             session: session,
             launchTarget: launchTarget,
           )
@@ -207,10 +218,17 @@ class AcpRuntimeAttach {
       sshLaunch: sshLaunch,
       remoteAdapterPath: remoteAdapterPath,
       processWorkingDirectory: workingDirectory,
+      launchProvider: session.provider,
+      launchModel: session.model,
     );
     tab.acpRuntime = cubit;
     tab.reclaimedAcpRuntime = false;
     _host.updateTabRunning(tab.info.id);
+    // A lazy attach-then-send owns the very first turn: queue the prompt on the
+    // cubit *before* the handshake so its bubble is visible immediately and
+    // `start()` dispatches it instead of running a launch-time history replay
+    // (`session/load`), which would swallow the turn's live updates.
+    if (firstPrompt.isNotEmpty) cubit.sendPrompt(firstPrompt);
     await cubit.start(
       executable: executable,
       sessionToolDir: sessionToolDir,
@@ -263,11 +281,14 @@ class AcpRuntimeAttach {
   }
 
   /// Production SSH launch: opens (and stores on the tab) one member SSH
-  /// session, then hands out exec channels over it. Stored under
-  /// `session.sessionId` so [ChatTab.disposeBus] tears it down.
-  AcpSshLaunch _productionSshLaunch({
+  /// session, then hands out exec channels over it. Keyed by [memberId] for
+  /// team seats (matching [ChatTab.closeMemberSshSession]) and by
+  /// `session.sessionId` for a personal remote session.
+  @visibleForTesting
+  AcpSshLaunch productionSshLaunch({
     required AppSession session,
     required RuntimeTarget launchTarget,
+    String? memberId,
   }) {
     final factory = _host.shellFactory.sshClientFactory;
     final profile = _host.shellFactory.profileFor(launchTarget);
@@ -276,6 +297,7 @@ class AcpRuntimeAttach {
         'ACP remote session requires an SSH profile and client factory',
       );
     }
+    final key = memberId ?? session.sessionId;
     return (
       profile: profile,
       openChannel: (command) async {
@@ -286,9 +308,9 @@ class AcpRuntimeAttach {
           );
         }
         final memberSession =
-            tab.memberSshSessions[session.sessionId] ??
+            tab.memberSshSessions[key] ??
             await SshMemberSession.open(factory, profile);
-        tab.memberSshSessions[session.sessionId] = memberSession;
+        tab.memberSshSessions[key] = memberSession;
         return DartSsh2AcpChannel(await memberSession.openExec(command));
       },
     );
@@ -308,7 +330,6 @@ class AcpRuntimeAttach {
         !shouldAttachMemberAcp(
           session: session,
           memberId: member.id,
-          team: team,
           targetId: launchTarget.id,
         )) {
       return false;
@@ -389,14 +410,35 @@ class AcpRuntimeAttach {
         '[session-launch] acp member lifecycle gate done member=${member.id}',
       );
     }
+    final remote = usesSshTransport(launchTarget.kind);
+    final executable = remote
+        ? _remoteMemberExecutable(staged)
+        : _host.shellFactory.executableFor(cli);
+    final sshLaunch = remote
+        ? sshLaunchFactory?.call(
+              session: session,
+              launchTarget: launchTarget,
+            ) ??
+            productionSshLaunch(
+              session: session,
+              launchTarget: launchTarget,
+              memberId: member.id,
+            )
+        : null;
+    final remoteAdapterPath = remote
+        ? await _resolveRemoteAdapterPath(cli, launchTarget)
+        : null;
     final cubit = _cubit(
       session: session,
       cli: cli,
       personal: false,
       memberId: member.id,
       launchTarget: launchTarget,
-      sshLaunch: null,
+      sshLaunch: sshLaunch,
+      remoteAdapterPath: remoteAdapterPath,
       processWorkingDirectory: staged.workingDirectory,
+      launchProvider: member.provider,
+      launchModel: member.model,
     );
     tab.memberAcpRuntimes[member.id] = cubit;
     _listenForMemberIdle(tab, member.id, cubit);
@@ -408,19 +450,18 @@ class AcpRuntimeAttach {
     tab.teamBus?.markMemberRunning(member.id);
     _host.memberMaterializer.markMemberReady(session.sessionId, member.id);
     await cubit.start(
-      executable: _host.shellFactory.executableFor(cli),
+      executable: executable,
       sessionToolDir: _memberSessionToolDir(
         session,
         cli,
         staged.memberConfigDir,
       ),
       workingDirectory: staged.workingDirectory,
-      baseEnv: agentStatus != null && cli == CliTool.opencode
-          ? {
-              ...staged.env,
-              opencodeEnableQuestionToolEnvKey: 'true',
-            }
-          : staged.env,
+      baseEnv: _withAgentStatusEnvironment(
+        cli,
+        agentStatus != null,
+        staged.env,
+      ),
       mcpServers: staged.mcpServers,
       permissionPolicy:
           session.bindingFor(member.id)?.acpPermission ??
@@ -430,6 +471,19 @@ class AcpRuntimeAttach {
     _host.finishSessionConnect(session.sessionId);
     _host.updateTabRunning(tab.info.id);
     return true;
+  }
+
+  /// Remote seats must spawn the CLI that exists on the work plane. The
+  /// personal path logs and falls back to the local path; a team seat has no
+  /// equivalent safe fallback (the desktop binary is not on the remote host),
+  /// so an empty staged path fails the attach instead of spawning a missing
+  /// executable.
+  String _remoteMemberExecutable(AcpTeamLaunchStaging staged) {
+    final remoteCli = staged.remoteCliPath.trim();
+    if (remoteCli.isEmpty) {
+      throw StateError('ACP remote member requires a staged remote CLI path');
+    }
+    return remoteCli;
   }
 
   /// TeamBus idle fires when the seat becomes prompt-ready: the first
@@ -470,6 +524,8 @@ class AcpRuntimeAttach {
     required String? memberId,
     required RuntimeTarget launchTarget,
     required String processWorkingDirectory,
+    String launchProvider = '',
+    String launchModel = '',
     AcpSshLaunch? sshLaunch,
     String? remoteAdapterPath,
   }) {
@@ -503,14 +559,70 @@ class AcpRuntimeAttach {
       sessionId: session.sessionId,
       tool: cli,
       seatMemberId: personal ? AcpChatRuntimeCubit.acpMemberId : memberId!,
+      launchProvider: launchProvider,
+      launchModel: launchModel,
+      onUserActivity: touchUserActivity,
       attention: _host.agentAttentionCubit,
       seatLeases: switch (_host.seatLeaseCubit) {
         final SeatBackgroundLeasePort port => port,
         _ => null,
       },
-      transcript: _transcript(session, memberId: memberId, personal: personal),
+      transcript: _transcript(
+        session,
+        cli: cli,
+        memberId: memberId,
+        personal: personal,
+      ),
       agentSession: _agentSessionStore(session, memberId: memberId, personal: personal),
+      backgroundTranscriptFactory: _backgroundTranscriptFactory(
+        cli,
+        remote: remote,
+      ),
+      backgroundLivenessFactory: _backgroundLivenessFactory(
+        cli,
+        remote: remote,
+      ),
     )..ensureStrings(_host.acpChatStrings?.call(cli) ?? defaultAcpChatStrings);
+  }
+
+  /// Local agents write their transcript on this machine, so the out-of-turn
+  /// watch can tail it instead of replaying the session over ACP. Remote
+  /// (SSH / Termux) transcripts live on the work plane, which this watch does
+  /// not read yet — those keep the `session/load` reconciliation.
+  AcpBackgroundTranscriptSourceFactory? _backgroundTranscriptFactory(
+    CliTool cli, {
+    required bool remote,
+  }) {
+    if (remote) return null;
+    final capability = _host.cliRegistry
+        .capability<AcpBackgroundTranscriptCapability>(cli);
+    if (capability == null) return null;
+    final fs = _storage.fs;
+    return ({required String sessionToolDir, required String sessionId}) =>
+        capability.createBackgroundTranscriptSource(
+          fs: fs,
+          sessionToolDir: sessionToolDir,
+          sessionId: sessionId,
+        );
+  }
+
+  /// Same constraint as the transcript source: the agent's metadata lives on
+  /// the machine the CLI runs on, so a remote seat keeps the replay watch.
+  AcpBackgroundLivenessProbeFactory? _backgroundLivenessFactory(
+    CliTool cli, {
+    required bool remote,
+  }) {
+    if (remote) return null;
+    final capability = _host.cliRegistry
+        .capability<AcpBackgroundLivenessCapability>(cli);
+    if (capability == null) return null;
+    final fs = _storage.fs;
+    return ({required String sessionToolDir, required String sessionId}) =>
+        capability.createBackgroundLivenessProbe(
+          fs: fs,
+          sessionToolDir: sessionToolDir,
+          sessionId: sessionId,
+        );
   }
 
   /// Personal spawner captured cwd before start; member start passes cwd
@@ -626,6 +738,21 @@ class AcpRuntimeAttach {
       );
       return const {};
     }
+  }
+
+  /// Merges the CLI's declared agent-status env once the plugin is staged.
+  Map<String, String> _withAgentStatusEnvironment(
+    CliTool cli,
+    bool agentStatusStaged,
+    Map<String, String> env,
+  ) {
+    if (!agentStatusStaged) return env;
+    final extra =
+        CliToolRegistry.builtIn()
+            .capability<AcpCapability>(cli)
+            ?.agentStatusEnvironment ??
+        const <String, String>{};
+    return extra.isEmpty ? env : {...env, ...extra};
   }
 
   /// Resolve the opencode agent-status plugin endpoint for a terminal-less ACP
@@ -769,6 +896,7 @@ class AcpRuntimeAttach {
 
   AcpChatTranscriptWriter _transcript(
     AppSession session, {
+    required CliTool cli,
     required String? memberId,
     required bool personal,
   }) {
@@ -781,6 +909,20 @@ class AcpRuntimeAttach {
         ),
         acpTranscriptFileName(memberId: memberId, personal: personal),
       ),
+      // Only CLIs with an ACP usage-log capability sink samples; leaving it
+      // unwired elsewhere avoids dead I/O on every other ACP chat.
+      usagePath:
+          _host.cliRegistry.capability<AcpUsageLogCapability>(cli) == null
+          ? null
+          : _storage.context.layout.pathContext.join(
+              _storage.context.layout.sessionRuntimeToolDir(
+                session.workspaceId,
+                session.sessionId,
+                cli.value,
+                memberId: memberId,
+              ),
+              'acp-usage.jsonl',
+            ),
     );
   }
 

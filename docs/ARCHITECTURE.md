@@ -205,15 +205,35 @@ exist: `AcpProcessTransport` (local `dart:io` process) and `AcpSshTransport`
 `AcpTransportStarter` seam; `acpStarterForTarget` chooses the SSH starter when
 the launch target uses SSH transport. Remote executable / env / config-dir
 values come from the PTY staging path
-(`SessionConnectOrchestrator.prepareSimpleConnect`), selected by
-`selectAcpRemoteLaunch`.
+(`SessionConnectOrchestrator.prepareSimpleConnect` /
+`prepareTeamConnect`), selected by `selectAcpRemoteLaunch` for personal seats
+and staged directly for team seats.
 
-Phase 1 covers **personal (simple) ACP sessions on desktop SSH targets**.
-Mixed-team remote seats (`member_acp_stamp.dart` `_memberAcpGates`), remote MCP
-reachability, remote adapter install, and SSH reconnect for an in-flight ACP
-seat are not implemented. The personal-remote attach is unit-tested (injected
-staging / SSH-launch seams plus the `_Host` / `_FakeLifecycle` harness); the
-only gap is that no test opens a real channel against a real sshd.
+On desktop, **every session scope follows the CLI's transport preference**:
+personal, native team, and mixed team launches all resolve through
+`resolveLaunchAcp` / `resolveMemberBindingAcp`. Team ACP is per seat, not per
+session: `stampMemberAcp` writes `SessionMemberBinding.acp`, `isAcpChatSeat`
+reads it, and `AppSession.acp` stays personal-only (`isAcpChatSession`
+additionally requires `isSimple`). The four seeds are Claude, Codex, Cursor,
+and OpenCode; ACP-only CLIs (Gemini, CodeBuddy, Qoder) are always ACP when
+the gates pass.
+
+Remote members use the same SSH exec transport as personal remote sessions:
+`prepareTeamConnect` stages the work plane and its `remoteCliPath` becomes the
+member executable, while the staged env keeps the remote `PATH` (the desktop
+`PATH` is never injected). Each seat gets one member SSH session keyed by
+roster member id (`ChatTab.memberSshSessions`), closed on disconnect, discard,
+and tab disposal.
+
+Targets without an exec channel stay PTY: the gate whitelists
+`local | ssh | termux` (`usesSshTransport` covers the last two), so `wsl:` seats
+keep spawning a terminal. Android is still gated off (`_memberAcpGates`
+`_isAndroid` and `resolveLaunchAcp`). Remote MCP reachability, remote adapter
+install, and SSH reconnect for an in-flight ACP seat remain unimplemented. The
+remote attach paths are unit-tested with injected staging / SSH-launch seams
+plus the `_Host` / `_FakeLifecycle` harness, and the production SSH factory is
+covered through a connector-backed `SshClientFactory`; the only gap is that no
+test opens a real channel against a real sshd.
 
 The personal remote ACP working directory is the session folder's target-owned
 path (`session.folders.first.path`) — the same value the personal PTY path

@@ -31,6 +31,7 @@ import '../provider/opencode_data_layout.dart';
 import '../provider/opencode_effort_catalog.dart';
 import '../provider/opencode_live_import.dart';
 import '../provider/opencode_model_catalog.dart';
+import '../provider/opencode_model_namespace.dart';
 import '../provider/opencode_models_service.dart';
 import '../provider/opencode_provider_settings_resolver.dart';
 import '../opencode_config.dart';
@@ -66,11 +67,31 @@ final class OpencodeCatalogSource implements ModelCatalogSource {
     final catalogKey = provider != null
         ? opencodeStagingProviderKey(provider)
         : providerId;
-    final live =
-        _modelsService?.modelIdsFor(providerId: catalogKey) ?? const [];
-    if (live.isNotEmpty) return live;
-    return OpencodeModelCatalog.knownModelsForProvider(catalogKey);
+    final primary = _modelsForCatalogKey(catalogKey);
+    if (provider == null) return primary;
+    // One catalog row spans two upstream namespaces: the paid subscription and
+    // the free Zen tier. The picker lists both, grouped by `modelGroups`.
+    if (opencodeSubscriptionKey(provider).isEmpty) return primary;
+    final zen = _modelsForCatalogKey(OpencodeModelNamespace.zen);
+    return [
+      ...primary,
+      for (final model in zen)
+        if (!primary.contains(model)) model,
+    ];
   }
+
+  List<String> _modelsForCatalogKey(String catalogKey) =>
+      _catalogModelsFor(_modelsService, catalogKey);
+}
+
+/// Live `models.dev` ids for [catalogKey], falling back to the built-in table.
+List<String> _catalogModelsFor(
+  OpencodeModelsService? service,
+  String catalogKey,
+) {
+  final live = service?.modelIdsFor(providerId: catalogKey) ?? const <String>[];
+  if (live.isNotEmpty) return live;
+  return OpencodeModelCatalog.knownModelsForProvider(catalogKey);
 }
 
 /// OpenCode provider 全栈:目录/表单/模型(实时 models.dev)/凭证/effort。
@@ -138,7 +159,9 @@ final class OpencodeProviderCapability extends CatalogModelCapability
   Map<String, Object?> extraFromPreset(AppProviderPreset preset) => {
     OpencodeFormExtraKeys.effort:
         preset.template.config['reasoningEffort']?.toString() ?? '',
-    OpencodeFormExtraKeys.subscription: preset.id,
+    OpencodeFormExtraKeys.subscription: opencodeSubscriptionKey(
+      preset.template,
+    ),
   };
 
   @override
@@ -182,6 +205,29 @@ final class OpencodeProviderCapability extends CatalogModelCapability
   // ---- ProviderModelCapability (live models.dev) ----
   @override
   bool get supportsModelTiers => false;
+
+  @override
+  List<ProviderModelGroup> modelGroups({
+    required AppProviderConfig provider,
+    required String currentModel,
+  }) {
+    final subscription = opencodeSubscriptionKey(provider);
+    if (subscription.isEmpty) return const [];
+    final go = _catalogModelsFor(_modelsService, subscription);
+    final zen = [
+      for (final model in _catalogModelsFor(
+        _modelsService,
+        OpencodeModelNamespace.zen,
+      ))
+        if (!go.contains(model)) model,
+    ];
+    return [
+      if (go.isNotEmpty)
+        ProviderModelGroup(namespace: subscription, models: go),
+      if (zen.isNotEmpty)
+        ProviderModelGroup(namespace: OpencodeModelNamespace.zen, models: zen),
+    ];
+  }
 
   @override
   List<ModelCatalogSource> get catalogSources => [
@@ -416,6 +462,17 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       launchProvider ??= await resolver.resolveSole();
     }
 
+    // A custom id carries its picked namespace as a prefix (`opencode-go/<id>`)
+    // because it has no catalog entry to infer from. Catalog ids stay bare and
+    // resolve their namespace from the provider binding + model list.
+    final modelRef = parseOpencodeModelRef(member?.model);
+    final memberModel = modelRef?.modelId ?? (member?.model ?? '').trim();
+    final modelNamespace =
+        modelRef?.namespace ??
+        (launchProvider != null
+            ? _modelNamespace(launchProvider, memberModel)
+            : (member?.provider.trim() ?? ''));
+
     if (launchProvider != null) {
       config = mergeOpencodeProvider(config, launchProvider);
       final effort = _resolveOpencodeEffort(
@@ -429,20 +486,18 @@ final class OpencodeProviderCapability extends CatalogModelCapability
           config,
           launchProvider,
           effort,
-          memberModel: member?.model,
+          memberModel: memberModel,
+          providerId: modelNamespace,
         );
       }
       changed = true;
     }
 
     if (member != null) {
-      final modelNamespace = launchProvider != null
-          ? opencodeStagingProviderKey(launchProvider)
-          : member.provider.trim();
       final withModel = mergeOpencodeDefaultModel(
         config,
         providerId: modelNamespace,
-        modelId: member.model,
+        modelId: memberModel,
       );
       if (!identical(withModel, config)) {
         config = withModel;
@@ -647,6 +702,24 @@ final class OpencodeProviderCapability extends CatalogModelCapability
           storage: storage ?? _missingHomeStorage(),
         ),
       );
+
+  /// Upstream namespace for [model] under [provider].
+  ///
+  /// One "OpenCode" catalog row covers both the Go subscription and the free
+  /// Zen layer; the live `models.dev` cache tells us which ids the subscription
+  /// serves, with [OpencodeModelCatalog] as the offline fallback.
+  String _modelNamespace(AppProviderConfig provider, String model) {
+    final subscription = opencodeSubscriptionKey(provider);
+    final live = subscription.isEmpty
+        ? const <String>[]
+        : _modelsService?.modelIdsFor(providerId: subscription) ??
+              const <String>[];
+    return OpencodeModelNamespace.forModel(
+      provider: provider,
+      modelId: model,
+      subscriptionModels: live.isEmpty ? null : live,
+    );
+  }
 
   Future<void> _writeIdlePlugin({
     required ConfigProfileDelegate paths,

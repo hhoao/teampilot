@@ -592,7 +592,6 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
             waiting: waiting,
             backgroundRunning: false,
             selected: selected,
-            l10n: l10n,
             cs: cs,
           )
         : BlocBuilder<SeatLeaseCubit, SeatLeaseState>(
@@ -607,7 +606,6 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   !waiting &&
                   leaseState.sessionHasLeases(sessionId),
               selected: selected,
-              l10n: l10n,
               cs: cs,
             ),
           );
@@ -738,7 +736,10 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   icon: Icon(Icons.more_horiz, size: context.tpIconSizes.md),
                   onOpen: () => setState(() => _menuOpen = true),
                   onClose: () => setState(() => _menuOpen = false),
-                  buildMenuChildren: (context, controller) => [
+                  // Actions run after the popover closes: use the tile's own
+                  // context, never the popover builder's (that subtree is
+                  // gone by the time an awaited dialog returns).
+                  buildMenuChildren: (_, controller) => [
                     if (!widget.archiveMode)
                       TpActionMenuItem(
                         icon: Icons.vertical_split_outlined,
@@ -942,17 +943,16 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   }
 
   /// Leading status slot for the row. Waiting (needs-you) wins over working,
-  /// which wins over background work — a completed turn whose CLI is still
-  /// busy gets a static hourglass, not the turn spinner.
+  /// which wins over background work. Background work uses the same spinner
+  /// as a live turn.
   Widget _sessionIndicator({
     required bool working,
     required bool waiting,
     required bool backgroundRunning,
     required bool selected,
-    required AppLocalizations l10n,
     required ColorScheme cs,
   }) {
-    final indicator = SessionWorkingIndicator(
+    return SessionWorkingIndicator(
       working: working,
       waiting: waiting,
       backgroundRunning: backgroundRunning,
@@ -962,11 +962,6 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       idleColor: (selected ? cs.primary : cs.onSurfaceVariant).withValues(
         alpha: 0.5,
       ),
-    );
-    if (!backgroundRunning) return indicator;
-    return Tooltip(
-      message: l10n.sessionHistoryBackgroundRunning,
-      child: indicator,
     );
   }
 }

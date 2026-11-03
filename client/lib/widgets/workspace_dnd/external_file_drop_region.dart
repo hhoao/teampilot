@@ -107,37 +107,42 @@ class _ExternalFileDropRegionState extends State<ExternalFileDropRegion> {
     // the tree (only `enable` toggles) so the wrapped TerminalView never remounts.
     final enabled = TickerMode.valuesOf(context).enabled;
     final cs = Theme.of(context).colorScheme;
-    return DropTarget(
-      enable: enabled,
-      onDragEntered: (details) {
-        if (!_highlighted) setState(() => _highlighted = true);
-        widget.onDragPositionChanged?.call(details.localPosition);
-      },
-      onDragUpdated: (details) {
-        widget.onDragPositionChanged?.call(details.localPosition);
-      },
-      onDragExited: (_) {
-        if (_highlighted) setState(() => _highlighted = false);
-        widget.onDragPositionChanged?.call(null);
-      },
-      onDragDone: _onDrop,
-      child: Stack(
-        fit: StackFit.passthrough,
-        children: [
-          widget.child,
-          if (enabled && widget.showPanelHighlight && _highlighted)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: cs.primary, width: 2),
-                    color: cs.primary.withValues(alpha: 0.08),
-                  ),
+    // Keep the highlight overlay OUTSIDE the DropTarget. desktop_drop reads
+    // `context.findRenderObject().paintBounds` synchronously on every drag /
+    // drop event; when the highlight used to be a child, the enter setState
+    // marked that Stack NEEDS-LAYOUT and a drop arriving in the same frame
+    // asserted `hasSize`. The DropTarget now wraps only the stable child.
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        DropTarget(
+          enable: enabled,
+          onDragEntered: (details) {
+            if (!_highlighted) setState(() => _highlighted = true);
+            widget.onDragPositionChanged?.call(details.localPosition);
+          },
+          onDragUpdated: (details) {
+            widget.onDragPositionChanged?.call(details.localPosition);
+          },
+          onDragExited: (_) {
+            if (_highlighted) setState(() => _highlighted = false);
+            widget.onDragPositionChanged?.call(null);
+          },
+          onDragDone: _onDrop,
+          child: widget.child,
+        ),
+        if (enabled && widget.showPanelHighlight && _highlighted)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(color: cs.primary, width: 2),
+                  color: cs.primary.withValues(alpha: 0.08),
                 ),
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }

@@ -1,11 +1,10 @@
-import '../installer/npm_installer_capability.dart';
+import '../installer/acp_adapter_installer.dart';
 import '../cli_capability.dart';
 
 abstract interface class AcpSettingsCapability implements CliCapability {
   bool get usesSeparateAdapter;
   String? get adapterExecutableName;
-  NpmInstallerCapability? get adapterInstaller;
-  bool get showsPersonalAcpSwitch;
+  AcpAdapterInstaller? get adapterInstaller;
 }
 
 final class DefaultAcpSettingsCapability implements AcpSettingsCapability {
@@ -13,7 +12,6 @@ final class DefaultAcpSettingsCapability implements AcpSettingsCapability {
     this.usesSeparateAdapter = false,
     this.adapterExecutableName,
     this.adapterInstaller,
-    this.showsPersonalAcpSwitch = true,
   });
 
   @override
@@ -21,7 +19,5 @@ final class DefaultAcpSettingsCapability implements AcpSettingsCapability {
   @override
   final String? adapterExecutableName;
   @override
-  final NpmInstallerCapability? adapterInstaller;
-  @override
-  final bool showsPersonalAcpSwitch;
+  final AcpAdapterInstaller? adapterInstaller;
 }

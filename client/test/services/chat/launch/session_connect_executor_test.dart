@@ -135,6 +135,24 @@ void main() {
     expect(events, contains('connect-shell'));
   });
 
+  test(
+    'ACP-only CLI does not open a PTY when member attach declines',
+    () async {
+      job = _mixedAcpJob();
+      preparation
+        ..memberAcpHandled = false
+        ..ptySupported = false;
+
+      await executor.execute(job);
+
+      expect(events, isNot(contains('acquire-shell')));
+      expect(events, isNot(contains('connect-shell')));
+      expect(shellConnector.connectCalls, 0);
+      expect(preparation.failedMemberIds, <String>['member-1']);
+      expect(preparation.rollbackCalls, 0);
+    },
+  );
+
   test('mixed ACP attach throw does not open PTY', () async {
     job = _mixedAcpJob();
     preparation.memberAcpError = StateError('adapter missing');
@@ -422,6 +440,7 @@ class _FakePreparation implements SessionConnectPreparationPort {
   Object? persistError;
   bool memberAcpHandled = false;
   Object? memberAcpError;
+  bool ptySupported = true;
   int rollbackCalls = 0;
   final failedMemberIds = <String>[];
   final materializationSettled = Completer<void>();
@@ -520,6 +539,9 @@ class _FakePreparation implements SessionConnectPreparationPort {
 
   @override
   bool isValid(SessionConnectJob job) => valid;
+
+  @override
+  bool supportsPtyTransport(CliTool cli) => ptySupported;
 
   @override
   void rollback(SessionConnectJob job, AppSession session) {

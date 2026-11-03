@@ -11,6 +11,8 @@ import '../../../resource/assemblers/hook_assembler.dart';
 import '../../../resource/providers/hook_contribution_provider.dart';
 import '../../../io/filesystem.dart';
 import '../../../host/team_pilot_hook_scripts.dart';
+import '../capabilities/hook_capability.dart';
+import '../cli_tool_registry.dart';
 import 'config_profile_scope.dart';
 
 /// 把内部托管 hook 组装为 [HookEntry]（source: managed）。
@@ -66,18 +68,19 @@ class HookSeatContextCompleter {
   }
 
   /// Mixed TeamBus SessionStart awareness (Superpowers-style additionalContext).
-  /// Empty when [cli] has no native `sessionStart` (OpenCode uses a plugin).
+  /// Empty when [cli]'s hook capability has no native `sessionStart` (OpenCode
+  /// uses a plugin).
   List<HookEntry> busAwarenessHooks({
     required TeamMemberConfig member,
     required CliTool cli,
-    required bool pushDelivery,
   }) {
-    if (!HookEventCapability.supports(HookEvent.sessionStart, cli)) {
+    final hook = CliToolRegistry.builtIn().capability<HookCapability>(cli);
+    if (hook == null || !hook.supportsEvent(HookEvent.sessionStart)) {
       return const [];
     }
     final context = BusAwarenessPrompt.additionalContext(
       member: member,
-      pushDelivery: pushDelivery,
+      pushDelivery: hook.pushesBusProtocol,
     );
     return [
       HookEntry(
@@ -87,8 +90,9 @@ class HookSeatContextCompleter {
         action: CommandHookAction.script(
           fileName: 'hook.sh',
           scriptContent: BusAwarenessPrompt.sessionStartScript(
-            cli: cli,
-            additionalContext: context,
+            payload: hook.sessionStartStdoutPayload(
+              additionalContext: context,
+            ),
           ),
         ),
         timeout: const Duration(seconds: 5),

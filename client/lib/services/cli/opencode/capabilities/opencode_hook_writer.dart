@@ -24,7 +24,7 @@ class _OpencodeSubscription {
 ///
 /// Managed runtime plugins use [NativePluginHookAction], so their JS artifacts
 /// and `opencode.json` entries follow this same writer path as user hooks.
-class OpencodeHookWriter implements HookCapability {
+class OpencodeHookWriter with BusProtocolHookDefaults implements HookCapability {
   const OpencodeHookWriter({this.denyReason = 'TeamPilot hook policy'});
 
   final String denyReason;

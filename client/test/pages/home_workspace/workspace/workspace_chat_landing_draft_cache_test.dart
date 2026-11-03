@@ -1,3 +1,4 @@
+import 'package:extended_text_field/extended_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,10 +18,13 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing.
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_store.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_token_document.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
+import '../../../support/compose_field_test_utils.dart';
 import '../../../support/post_frame_test_harness.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
@@ -54,11 +58,11 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   testWidgets('restores the cached landing draft on mount', (tester) async {
-    composeDraftCache.setLandingDraft('workspace-1', 'my draft');
+    composeDraftCache.setLandingDraft('workspace-1', ComposeDraft(text: 'my draft'));
     await tester.pumpWidget(_landing(initialText: null));
     await tester.pumpAndSettle();
 
-    final field = tester.widget<TextField>(find.byType(TextField).first);
+    final field = composeFieldWidget(tester);
     expect(field.controller!.text, 'my draft');
     expect(field.controller!.selection.baseOffset, 'my draft'.length);
   });
@@ -70,15 +74,15 @@ void main() {
       () => ComposeDraftStore(
         fs: testHomeStorage.fs,
         rootPath: testHomeStorage.appDataRoot,
-      ).saveLanding('workspace-1', 'survive restart'),
+      ).saveLanding('workspace-1', ComposeDraft(text: 'survive restart')),
     );
     expect(
-      await tester.runAsync(
+      (await tester.runAsync(
         () => ComposeDraftStore(
           fs: testHomeStorage.fs,
           rootPath: testHomeStorage.appDataRoot,
         ).loadLanding('workspace-1'),
-      ),
+      ))?.text,
       'survive restart',
     );
     composeDraftCache.clear();
@@ -89,35 +93,66 @@ void main() {
     expect(_composeField(tester).controller!.text, 'survive restart');
   });
 
+  testWidgets('restores token chips with a persisted draft', (tester) async {
+    const text = '@src/main.dart hi';
+    await tester.runAsync(
+      () => ComposeDraftStore(
+        fs: testHomeStorage.fs,
+        rootPath: testHomeStorage.appDataRoot,
+      ).saveLanding(
+        'workspace-1',
+        const ComposeDraft(
+          text: text,
+          tokens: [
+            ComposeToken(
+              id: 't',
+              kind: ComposeTokenKind.fileReference,
+              start: 0,
+              end: 14,
+              payload: '@src/main.dart',
+            ),
+          ],
+        ),
+      ),
+    );
+    composeDraftCache.clear();
+
+    await tester.pumpWidget(_landing(initialText: null));
+    await _flushRealIo(tester);
+
+    expect(_composeField(tester).controller!.text, text);
+    expect(find.text('@src/main.dart'), findsOneWidget);
+  });
+
   testWidgets('does not restore the cache when initialText is provided', (
     tester,
   ) async {
-    composeDraftCache.setLandingDraft('workspace-1', 'cached');
+    composeDraftCache.setLandingDraft('workspace-1', ComposeDraft(text: 'cached'));
     await tester.pumpWidget(_landing(initialText: 'prefill'));
     await tester.pumpAndSettle();
 
-    final field = tester.widget<TextField>(find.byType(TextField).first);
+    final field = composeFieldWidget(tester);
     expect(field.controller!.text, 'prefill');
     // The pre-seeded cache entry is untouched by Ask AI-style mounts.
-    expect(composeDraftCache.landingDraft('workspace-1'), 'cached');
+    expect(composeDraftCache.landingDraft('workspace-1')?.text, 'cached');
   });
 
   testWidgets('typing writes the draft into the cache', (tester) async {
     await tester.pumpWidget(_landing(initialText: null));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField).first, 'typed message');
+    await enterComposeText(tester, 'typed message');
     await tester.pump();
 
-    expect(composeDraftCache.landingDraft('workspace-1'), 'typed message');
+    expect(composeDraftCache.landingDraft('workspace-1')?.text, 'typed message');
   });
 
   testWidgets('clearing the field removes the cached draft', (tester) async {
-    composeDraftCache.setLandingDraft('workspace-1', 'old');
+    composeDraftCache.setLandingDraft('workspace-1', ComposeDraft(text: 'old'));
     await tester.pumpWidget(_landing(initialText: null));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField).first, '');
+    await enterComposeText(tester, '');
     await tester.pump();
 
     expect(composeDraftCache.landingDraft('workspace-1'), isNull);
@@ -129,7 +164,7 @@ void main() {
     await tester.pumpWidget(_landing(initialText: null));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField).first, 'work in progress');
+    await enterComposeText(tester, 'work in progress');
     await tester.pump();
 
     // Simulate navigating away and back — host unmounts, then remounts.
@@ -137,13 +172,12 @@ void main() {
     await tester.pumpWidget(_landing(initialText: null));
     await tester.pumpAndSettle();
 
-    final field = tester.widget<TextField>(find.byType(TextField).first);
+    final field = composeFieldWidget(tester);
     expect(field.controller!.text, 'work in progress');
   });
 }
 
-TextField _composeField(WidgetTester tester) =>
-    tester.widget<TextField>(find.byType(TextField).first);
+ExtendedTextField _composeField(WidgetTester tester) => composeFieldWidget(tester);
 
 Future<void> _flushRealIo(WidgetTester tester, {int rounds = 6}) async {
   for (var i = 0; i < rounds; i++) {

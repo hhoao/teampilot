@@ -21,7 +21,7 @@ import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/cli/cli_installer_service.dart';
 import 'package:teampilot/services/cli/cli_version_probe.dart';
-import 'package:teampilot/services/cli/registry/installer/npm_installer_capability.dart';
+import 'package:teampilot/services/cli/registry/installer/acp_adapter_installer.dart';
 import 'package:teampilot/services/install/install_job_registry.dart';
 import 'package:teampilot/services/install/install_job_runner_registry.dart';
 import 'package:teampilot/services/install/runners/cli_install_job_runner.dart';
@@ -50,14 +50,14 @@ class _AdapterInstallerService extends CliInstallerService {
 
   @override
   Future<CliInstallResult> installAdapter({
-    required NpmInstallerCapability installer,
+    required AcpAdapterInstaller installer,
     required CliInstallMode mode,
     sshProfile,
     onProgress,
     isCancelled,
     onProcessStarted,
   }) async {
-    installs.add(installer.npmPackage);
+    installs.add(installer.executableName);
     return const CliInstallResult(
       success: true,
       message: 'Adapter installed',
@@ -356,7 +356,7 @@ void main() {
   });
 
   testWidgets(
-    'Needs setup shows adapter Install and Locate and keeps the switch',
+    'Needs setup shows adapter Install and Locate and keeps the transport pill',
     (tester) async {
       final cubit = await _makeCubit(
         locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
@@ -524,10 +524,79 @@ void main() {
     expect(cubit.configuredAcpAdapterPath(CliTool.claude), '/opt/custom-acp');
   });
 
-  testWidgets('Gemini has no personal ACP switch', (tester) async {
+  testWidgets('ACP pill toggles the CLI transport default', (tester) async {
     final cubit = await _makeCubit();
     addTearDown(cubit.close);
+    await tester.pumpWidget(_wrapCard(cubit));
+    await tester.pump();
+    expect(cubit.acpDefaultFor(CliTool.claude), isTrue);
 
+    await tester.tap(find.byIcon(Icons.terminal_rounded));
+    await tester.pumpAndSettle();
+    expect(cubit.acpDefaultFor(CliTool.claude), isFalse);
+
+    await tester.tap(find.byIcon(Icons.chat_bubble_outline_rounded));
+    await tester.pumpAndSettle();
+    expect(cubit.acpDefaultFor(CliTool.claude), isTrue);
+  });
+
+  testWidgets('stored false preference marks the terminal segment active', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await cubit.setAcpDefaultFor(CliTool.claude, false);
+
+    await tester.pumpWidget(_wrapCard(cubit));
+    await tester.pump();
+
+    expect(cubit.acpDefaultFor(CliTool.claude), isFalse);
+    final terminal = tester.widget<Icon>(
+      find.byIcon(Icons.terminal_rounded),
+    );
+    final chat = tester.widget<Icon>(
+      find.byIcon(Icons.chat_bubble_outline_rounded),
+    );
+    expect(terminal.color, Colors.white, reason: 'terminal is the active chip');
+    expect(chat.color, isNot(Colors.white));
+  });
+
+  testWidgets('tapping the active pill segment does not write again', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(_wrapCard(cubit));
+    await tester.pump();
+    expect(cubit.acpDefaultFor(CliTool.claude), isTrue);
+
+    var emissions = 0;
+    final sub = cubit.stream.listen((_) => emissions++);
+    addTearDown(sub.cancel);
+
+    await tester.tap(find.byIcon(Icons.chat_bubble_outline_rounded));
+    await tester.pumpAndSettle();
+
+    expect(emissions, 0, reason: 'an active segment is a no-op');
+    expect(cubit.acpDefaultFor(CliTool.claude), isTrue);
+  });
+
+  testWidgets('ACP pill replaces the old preference row', (tester) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(_wrapCard(cubit));
+    await tester.pump();
+
+    expect(
+      find.byKey(AppKeys.personalAcpSwitchFor(CliTool.claude)),
+      findsOneWidget,
+    );
+    expect(find.byType(Switch), findsNothing);
+  });
+
+  testWidgets('Gemini has no ACP pill', (tester) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
     await tester.pumpWidget(_wrap(cubit));
     await tester.pump();
 
@@ -558,7 +627,7 @@ void main() {
   });
 
   testWidgets(
-    'Android override disables the switch and hides adapter actions',
+    'Android override hides the ACP pill and adapter actions',
     (tester) async {
       final cubit = await _makeCubit(
         locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
@@ -569,15 +638,10 @@ void main() {
       await tester.pump();
 
       expect(find.byType(SwitchListTile), findsNothing);
-      final sw = tester.widget<Switch>(
-        find.byKey(AppKeys.claudePersonalAcpSwitch),
-      );
-      expect(sw.onChanged, isNull);
+      expect(find.byType(Switch), findsNothing);
       expect(
-        find.text(
-          'ACP chat is desktop-only until remote SSH exec is available.',
-        ),
-        findsAtLeastNWidgets(1),
+        find.byKey(AppKeys.personalAcpSwitchFor(CliTool.claude)),
+        findsNothing,
       );
       expect(find.byKey(AppKeys.claudeAcpAdapterInstallButton), findsNothing);
       expect(find.byKey(AppKeys.claudeAcpAdapterLocateButton), findsNothing);

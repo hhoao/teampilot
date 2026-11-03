@@ -118,7 +118,12 @@ class LlmProvidersTabContentState extends State<LlmProvidersTabContent> {
               onOpenEdit: _openEditProvider,
               onModelsBack: () => setState(() => _modelsProviderId = null),
               onShowModels: (selected) {
-                if (selected.cli != CliTool.flashskyai) return;
+                final canShowModels =
+                    CliToolRegistry.builtIn()
+                        .capability<ProviderCapability>(selected.cli)
+                        ?.hasModelPanel ==
+                    true;
+                if (!canShowModels) return;
                 if (useAndroidHubNavigation(context)) {
                   context.push(
                     llmProviderModelsRoute(selected.cli, selected.id),

@@ -44,6 +44,8 @@ extension AppLocalizationsX on AppLocalizations {
       CliTool.cursor => appProviderToolCursor,
       CliTool.gemini => appProviderToolGemini,
       CliTool.codebuddy => appProviderToolCodebuddy,
+      CliTool.antigravity => appProviderToolAntigravity,
+      CliTool.qoder => appProviderToolQoder,
     };
   }
 
@@ -59,6 +61,7 @@ extension AppLocalizationsX on AppLocalizations {
     'codex' => managedProvidersQuickPresetCodex,
     'claude-code' => managedProvidersQuickPresetClaudeCode,
     'cursor' => managedProvidersQuickPresetCursor,
+    'codebuddy' => managedProvidersQuickPresetCodebuddy,
     'deepseek' => managedProvidersQuickPresetDeepSeek,
     'opencode-go' => managedProvidersQuickPresetOpencodeGo,
     kManagedProviderQuickPresetCustomId => managedProvidersQuickPresetCustom,
@@ -69,6 +72,7 @@ extension AppLocalizationsX on AppLocalizations {
     'codex' => managedProvidersQuickPresetCodexHint,
     'claude-code' => managedProvidersQuickPresetClaudeCodeHint,
     'cursor' => managedProvidersQuickPresetCursorHint,
+    'codebuddy' => managedProvidersQuickPresetCodebuddyHint,
     'deepseek' => managedProvidersQuickPresetDeepSeekHint,
     'opencode-go' => managedProvidersQuickPresetOpencodeGoHint,
     kManagedProviderQuickPresetCustomId =>

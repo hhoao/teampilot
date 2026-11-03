@@ -56,6 +56,11 @@ abstract interface class SessionConnectPreparationPort {
     ResolvedLaunchMembers resolved,
   );
 
+  /// Whether [cli] can still launch over a PTY shell when member ACP attach
+  /// declines. An ACP-only CLI (no PTY transport) must not fall through to a
+  /// shell; the executor settles such a connect as failed instead.
+  bool supportsPtyTransport(CliTool cli);
+
   TerminalSession shellForLaunch(
     SessionConnectJob job,
     AppSession session,
@@ -142,6 +147,15 @@ class SessionConnectExecutor implements SessionConnectExecutorPort {
         return;
       }
       attachedMemberId = null;
+      if (!preparation.supportsPtyTransport(resolved.cli)) {
+        // No PTY fallback (ACP-only CLI): settle as failed rather than
+        // starting a shell the CLI cannot drive. Reuse the attach-failure
+        // path so the member waiter and rollback behave identically.
+        attachedMemberId = resolved.member.id;
+        throw StateError(
+          'ACP-only cli has no PTY fallback cli=${resolved.cli.value}',
+        );
+      }
       final shell = preparation.shellForLaunch(job, activeSession, resolved);
       attachedMemberId = resolved.member.id;
       attachmentStarted = true;

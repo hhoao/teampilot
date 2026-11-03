@@ -94,7 +94,6 @@ void main() {
         sessionTeam: 'team-explicit-acp',
         rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
         memberClis: const {'lead': CliTool.claude},
-        teamMode: TeamMode.mixed,
         seedClaudeMemberAcp: false,
       )).session;
       final mixedRaw = sessionJson(mixed.sessionId);
@@ -186,7 +185,6 @@ void main() {
         sessionTeam: 'team-1',
         rosterMembers: const [TeamMemberConfig(id: 'gem', name: 'Gem')],
         memberClis: const {'gem': CliTool.gemini},
-        teamMode: TeamMode.mixed,
       );
       final loaded = await repo.loadSessionsForWorkspace(workspaceId);
       final session = loaded.singleWhere(
@@ -204,7 +202,6 @@ void main() {
       sessionTeam: 'team-claude-on',
       rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
       memberClis: const {'lead': CliTool.claude},
-      teamMode: TeamMode.mixed,
     )).session;
     expect(on.acp, isFalse);
     expect(on.members.single.acp, isTrue);
@@ -214,7 +211,6 @@ void main() {
       sessionTeam: 'team-claude-off',
       rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
       memberClis: const {'lead': CliTool.claude},
-      teamMode: TeamMode.mixed,
       seedClaudeMemberAcp: false,
     )).session;
     expect(off.members.single.acp, isFalse);
@@ -226,7 +222,6 @@ void main() {
       sessionTeam: 'team-codex-on',
       rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
       memberClis: const {'lead': CliTool.codex},
-      teamMode: TeamMode.mixed,
     )).session;
     expect(on.acp, isFalse);
     expect(on.members.single.acp, isTrue);
@@ -236,7 +231,6 @@ void main() {
       sessionTeam: 'team-codex-off',
       rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
       memberClis: const {'lead': CliTool.codex},
-      teamMode: TeamMode.mixed,
       seedCodexMemberAcp: false,
     )).session;
     expect(off.members.single.acp, isFalse);
@@ -250,7 +244,6 @@ void main() {
         sessionTeam: 'team-claude-ask',
         rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
         memberClis: const {'lead': CliTool.claude},
-        teamMode: TeamMode.mixed,
         acpPermission: LaunchSecurityPolicy.ask,
       );
       expect(created.session.acp, isFalse);
@@ -271,15 +264,14 @@ void main() {
     },
   );
 
-  test('native Gemini plan path keeps binding acp false', () async {
+  test('native Gemini plan path binds acp true for the ACP-only CLI', () async {
     final session = (await repo.createSession(
       workspaceId,
       sessionTeam: 'team-1',
       rosterMembers: const [TeamMemberConfig(id: 'gem', name: 'Gem')],
       memberClis: const {'gem': CliTool.gemini},
-      teamMode: TeamMode.native,
     )).session;
     expect(session.acp, isFalse);
-    expect(session.members.single.acp, isFalse);
+    expect(session.members.single.acp, isTrue);
   });
 }

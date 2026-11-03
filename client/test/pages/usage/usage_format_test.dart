@@ -1,0 +1,32 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/session_usage_dashboard.dart';
+import 'package:teampilot/pages/usage/usage_format.dart';
+
+void main() {
+  testWidgets('range labels cover rolling 24-hour and 14-day presets', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) {
+            expect(
+              usageRangeLabel(context, UsageRange.last24Hours),
+              'Last 24 hours',
+            );
+            expect(
+              usageRangeLabel(context, UsageRange.fourteenDays),
+              'Last 14 days',
+            );
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+  });
+}

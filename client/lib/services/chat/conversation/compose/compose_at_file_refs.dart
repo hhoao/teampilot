@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../../../inline_token/inline_token_palette.dart';
+import 'compose_token_document.dart';
 import '../../../io/filesystem.dart';
 import '../../../io/local_filesystem.dart';
 import '../../../../utils/workspace/workspace_path_utils.dart';
@@ -59,36 +59,6 @@ String resolveComposeAtFileAbsolutePath(
   return normalizeWorkspacePath(joined, usesPosixPaths: usesPosixPaths);
 }
 
-List<ComposeAtFileRef> parseComposeAtFileRefs(
-  String text, {
-  required String workspaceRoot,
-  required bool usesPosixPaths,
-}) {
-  final seen = <String>{};
-  final out = <ComposeAtFileRef>[];
-  for (final match in defaultInlineTokenPattern.allMatches(text)) {
-    final token = match.group(0)!;
-    if (!token.startsWith('@')) continue;
-    final body = token.substring(1);
-    if (body.isEmpty) continue;
-    final absolute = resolveComposeAtFileAbsolutePath(
-      body,
-      workspaceRoot: workspaceRoot,
-      usesPosixPaths: usesPosixPaths,
-    );
-    if (absolute.isEmpty) continue;
-    final key = _pathKey(absolute);
-    if (!seen.add(key)) continue;
-    out.add(
-      ComposeAtFileRef(
-        absolutePath: absolute,
-        displayName: p.basename(absolute),
-      ),
-    );
-  }
-  return out;
-}
-
 /// Filesystem for opening a compose `@` absolute path in the workbench.
 ///
 /// Paste-imported images live under local `…/TeamPilot/Attachments` via
@@ -103,4 +73,36 @@ Filesystem filesystemForComposeAtFileOpen(
     return LocalFilesystem();
   }
   return workspaceFilesystem;
+}
+
+
+/// File references carried by explicit compose tokens. Pasted or typed
+/// `@path` text is plain text and intentionally produces no chips.
+List<ComposeAtFileRef> composeAtFileRefsFromTokens({
+  required List<ComposeToken> tokens,
+  required String workspaceRoot,
+  required bool usesPosixPaths,
+}) {
+  final seen = <String>{};
+  final out = <ComposeAtFileRef>[];
+  for (final token in tokens) {
+    if (token.kind != ComposeTokenKind.fileReference) continue;
+    final body = token.payload.startsWith('@')
+        ? token.payload.substring(1)
+        : token.payload;
+    final absolute = resolveComposeAtFileAbsolutePath(
+      body,
+      workspaceRoot: workspaceRoot,
+      usesPosixPaths: usesPosixPaths,
+    );
+    if (absolute.isEmpty) continue;
+    if (!seen.add(_pathKey(absolute))) continue;
+    out.add(
+      ComposeAtFileRef(
+        absolutePath: absolute,
+        displayName: p.basename(absolute),
+      ),
+    );
+  }
+  return out;
 }

@@ -231,6 +231,13 @@ class HeadlessAiService {
         'Headless mode is not supported for ${cli.value}.',
       );
     }
+    if (_registry
+            .capability<HeadlessCredentialProvisioningPendingCapability>(cli) !=
+        null) {
+      throw HeadlessAiException(
+        'Headless mode for ${cli.value} is not available yet.',
+      );
+    }
 
     final provider = await _resolveProvider(cli, setting.providerId);
     final model = setting.model.trim().isNotEmpty
@@ -387,6 +394,13 @@ class HeadlessAiService {
         'Headless mode is not supported for ${cli.value}.',
       );
     }
+    if (_registry
+            .capability<HeadlessCredentialProvisioningPendingCapability>(cli) !=
+        null) {
+      throw HeadlessAiException(
+        'Headless mode for ${cli.value} is not available yet.',
+      );
+    }
 
     final provider = await _resolveProvider(cli, setting.providerId);
     final model = setting.model.trim().isNotEmpty
@@ -517,7 +531,8 @@ class HeadlessAiService {
   String _credentialsMessage(CliTool cli, List<String> warnings) {
     if (warnings.contains('claude_credentials_missing') ||
         warnings.contains('codex_credentials_missing') ||
-        warnings.contains('opencode_credentials_missing')) {
+        warnings.contains('opencode_credentials_missing') ||
+        warnings.contains('qoder_credentials_missing')) {
       return 'Provider credentials are not linked for ${cli.value}. '
           'Open Providers and link or import credentials for this provider.';
     }

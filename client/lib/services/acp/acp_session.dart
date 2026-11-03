@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:acpd/acpd.dart' as acpd;
+import 'package:collection/collection.dart';
 
 import '../../models/launch_security_policy.dart';
 import '../../utils/logging/logger_utils.dart';
@@ -107,6 +108,8 @@ final class AcpToolCallUpdate extends AcpSessionUpdate {
     required this.toolCallId,
     this.title,
     this.status,
+    this.args,
+    this.result,
     this.background = false,
   });
 
@@ -117,6 +120,16 @@ final class AcpToolCallUpdate extends AcpSessionUpdate {
 
   /// The reported status (omitted fields keep the previous status).
   final AcpToolCallStatus? status;
+
+  /// The agent's `rawInput` object, when it reported one. Task-shaped tools
+  /// (`TaskCreate` / `TaskUpdate` / `TodoWrite`) keep their payload here, and
+  /// the task board reads the same keys PTY transcripts use.
+  final Map<String, Object?>? args;
+
+  /// The agent's `rawOutput` (or its display text), when it reported one.
+  /// `TaskCreate` returns "Task #N created successfully: …" here, which is how
+  /// later `TaskUpdate` calls find the task they belong to.
+  final Object? result;
 
   /// Whether the agent launched this shell/tool call in the background.
   ///
@@ -132,10 +145,19 @@ final class AcpToolCallUpdate extends AcpSessionUpdate {
           toolCallId == other.toolCallId &&
           title == other.title &&
           status == other.status &&
-          background == other.background;
+          background == other.background &&
+          const DeepCollectionEquality().equals(result, other.result) &&
+          const DeepCollectionEquality().equals(args, other.args);
 
   @override
-  int get hashCode => Object.hash(toolCallId, title, status, background);
+  int get hashCode => Object.hash(
+    toolCallId,
+    title,
+    status,
+    background,
+    result == null ? null : const DeepCollectionEquality().hash(result),
+    args == null ? null : DeepCollectionEquality().hash(args),
+  );
 }
 
 /// The agent's execution plan (each update replaces the previous plan).
@@ -159,6 +181,35 @@ final class AcpPlan extends AcpSessionUpdate {
     }
     return true;
   }
+}
+
+/// A context-usage sample reported by the agent (`usage_update`).
+///
+/// ACP exposes the context window as `used` / `size`. Probe 1.4.3
+/// (Antigravity) shows `used` is a per-turn context delta, not a cumulative
+/// total and not output tokens; the chat layer persists the raw sample and
+/// derives nothing from it.
+final class AcpUsageUpdate extends AcpSessionUpdate {
+  const AcpUsageUpdate({this.used, this.size, this.cost});
+
+  /// Maps an acpd `usage_update` onto the chat-layer variant.
+  factory AcpUsageUpdate.fromAcpd(acpd.UsageSessionUpdate update) =>
+      AcpUsageUpdate(used: update.used, size: update.size, cost: update.cost);
+
+  final int? used;
+  final int? size;
+  final acpd.Cost? cost;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AcpUsageUpdate &&
+          used == other.used &&
+          size == other.size &&
+          cost == other.cost;
+
+  @override
+  int get hashCode => Object.hash(used, size, cost);
 }
 
 /// The terminal event of a prompt turn.
@@ -288,6 +339,76 @@ final class AcpModelStateUpdate extends AcpSessionUpdate {
 
   @override
   int get hashCode => state?.hashCode ?? 0;
+}
+
+/// Cursor ACP child-agent lifecycle (`subagent_spawned` / `subagent_state_update`).
+///
+/// A background Task returns immediately (`rawOutput.isBackground`), and the
+/// parent turn ends while the child keeps running. These frames are the only
+/// signal that the child is still alive and, later, that it finished — so the
+/// session list can stay on the running indicator and then leave it.
+final class AcpSubagentUpdate extends AcpSessionUpdate {
+  const AcpSubagentUpdate({
+    required this.subagentSessionId,
+    this.spawned = false,
+    this.name,
+    this.task,
+    this.state,
+    this.toolCallId,
+  });
+
+  final String subagentSessionId;
+
+  /// True for `subagent_spawned`. A state update leaves this false.
+  final bool spawned;
+
+  final String? name;
+  final String? task;
+
+  /// `completed` / `failed` / `cancelled` / `disconnected`, or null while the
+  /// child is still running.
+  final String? state;
+
+  final String? toolCallId;
+
+  bool get terminal => switch (state) {
+    'completed' || 'failed' || 'cancelled' || 'disconnected' => true,
+    _ => false,
+  };
+
+  /// Parses a Cursor subagent session update, or null when [json] is a
+  /// different `sessionUpdate` or is missing `subagentSessionId`.
+  static AcpSubagentUpdate? tryParse(Map<String, Object?> json) {
+    final kind = json['sessionUpdate'];
+    if (kind != 'subagent_spawned' && kind != 'subagent_state_update') {
+      return null;
+    }
+    final id = _nonEmptyString(json['subagentSessionId']);
+    if (id == null) return null;
+    String? toolCallId;
+    final meta = json['_meta'];
+    if (meta is Map) {
+      final cursor = meta['cursor'];
+      if (cursor is Map) {
+        toolCallId = _nonEmptyString(cursor['toolCallId']);
+      }
+    }
+    final spawned = kind == 'subagent_spawned';
+    return AcpSubagentUpdate(
+      subagentSessionId: id,
+      spawned: spawned,
+      name: _nonEmptyString(json['name']),
+      task: _nonEmptyString(json['task']),
+      state: spawned ? null : _nonEmptyString(json['state']),
+      toolCallId: toolCallId,
+    );
+  }
+}
+
+String? _nonEmptyString(Object? value) {
+  if (value is! String) return null;
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? null : trimmed;
 }
 
 /// Parses Claude-adapter auth notices from a JSON-RPC params map.
@@ -615,7 +736,8 @@ class AcpAgentSession {
     Duration timeout = const Duration(seconds: 30),
   }) async {
     if (_disposed) return const [];
-    if (_connection.negotiatedCapabilities?.loadSession != true) return const [];
+    if (_connection.negotiatedCapabilities?.loadSession != true)
+      return const [];
     if (_promptInFlight) {
       throw StateError(
         'Cannot load ACP history while a prompt turn is in flight.',
@@ -738,6 +860,22 @@ class AcpAgentSession {
     if (_suppressBootstrap && !collecting) return;
     if (params is! Map) return;
     final raw = Map<String, Object?>.from(params);
+    final nested = raw['update'];
+    if (nested is Map) {
+      final subagent = AcpSubagentUpdate.tryParse(
+        Map<String, Object?>.from(nested),
+      );
+      if (subagent != null) {
+        final id = raw['sessionId'];
+        if (id != null && id != sessionId) return;
+        if (collecting) {
+          _historyBuffer?.add(subagent);
+          return;
+        }
+        _emit(subagent);
+        return;
+      }
+    }
     final acpd.SessionUpdateNotification notification;
     try {
       notification = acpd.SessionUpdateNotification.fromJson(raw);
@@ -808,7 +946,9 @@ class AcpAgentSession {
     return _encodePermission(_outcomeFor(reply, request.options));
   }
 
-  Map<String, Object?> _encodePermission(acpd.RequestPermissionOutcome outcome) {
+  Map<String, Object?> _encodePermission(
+    acpd.RequestPermissionOutcome outcome,
+  ) {
     return _connection.translator.encodePermissionResponse(outcome);
   }
 
@@ -947,14 +1087,21 @@ class AcpAgentSession {
           toolCallId: toolCall.toolCallId,
           title: toolCall.title,
           status: _mapToolCallStatus(toolCall.status),
-          background: _isBackgroundToolCall(toolCall.rawInput),
+          args: _toolCallArgs(toolCall.rawInput),
+          result: _toolCallResult(toolCall.rawOutput),
+          background: _isBackgroundToolCall(
+            toolCall.rawInput,
+            toolCall.rawOutput,
+          ),
         );
       case acpd.ToolCallStatusUpdate(:final update):
         return AcpToolCallUpdate(
           toolCallId: update.toolCallId,
           title: update.title,
           status: _mapToolCallStatus(update.status),
-          background: _isBackgroundToolCall(update.rawInput),
+          args: _toolCallArgs(update.rawInput),
+          result: _toolCallResult(update.rawOutput),
+          background: _isBackgroundToolCall(update.rawInput, update.rawOutput),
         );
       case acpd.PlanUpdate(:final plan):
         return AcpPlan(
@@ -968,9 +1115,11 @@ class AcpAgentSession {
               )
               .toList(),
         );
-      // Available-commands, mode, session-info, and usage updates have no
-      // chat-layer representation yet. Config options are handled before
-      // mapping (they update the model selector).
+      case acpd.UsageSessionUpdate():
+        return AcpUsageUpdate.fromAcpd(update);
+      // Available-commands, mode, and session-info updates have no chat-layer
+      // representation yet. Config options are handled before mapping (they
+      // update the model selector).
       default:
         return null;
     }
@@ -985,11 +1134,42 @@ class AcpAgentSession {
     return '';
   }
 
-  /// OpenCode's shell tool marks out-of-turn command launches in `rawInput`.
-  bool _isBackgroundToolCall(Object? rawInput) {
-    if (rawInput is! Map) return false;
-    return rawInput['background'] == true ||
-        rawInput['run_in_background'] == true;
+  /// Marks out-of-turn command launches.
+  ///
+  /// - OpenCode: `background: true` on `rawInput`.
+  /// - Claude / Cursor subagents: `run_in_background: true` on `rawInput`.
+  /// - Cursor Task: the tool returns immediately and puts `isBackground: true`
+  ///   on `rawOutput` (the input has only `description` / prompt).
+  /// - Cursor Shell: a zero `block_until_ms` backgrounds the command; a
+  ///   positive budget keeps the turn blocked until it finishes.
+  bool _isBackgroundToolCall(Object? rawInput, [Object? rawOutput]) {
+    return _rawMarksBackground(rawInput) || _rawMarksBackground(rawOutput);
+  }
+
+  bool _rawMarksBackground(Object? raw) {
+    if (raw is! Map) return false;
+    if (raw['background'] == true ||
+        raw['run_in_background'] == true ||
+        raw['isBackground'] == true) {
+      return true;
+    }
+    final blockUntilMs = raw['block_until_ms'];
+    return blockUntilMs is num && blockUntilMs <= 0;
+  }
+
+  /// The tool's own input object, when the agent sent one. Kept verbatim so
+  /// task tools reach the board with the same arg keys a PTY transcript uses.
+  Map<String, Object?>? _toolCallArgs(Object? rawInput) =>
+      rawInput is Map<String, Object?> ? rawInput : null;
+
+  /// The tool's own output, when the agent sent one. CodeBuddy/Cursor wrap the
+  /// text as `{type: text, text: …}`; the task tools' id lives in that text.
+  Object? _toolCallResult(Object? rawOutput) {
+    if (rawOutput is Map) {
+      final text = rawOutput['text'];
+      if (text is String && text.isNotEmpty) return text;
+    }
+    return rawOutput;
   }
 
   AcpToolCallStatus? _mapToolCallStatus(acpd.ToolCallStatus? status) {

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../../models/session_usage.dart';
 import '../../models/session_usage_dashboard.dart';
 import '../../models/session_usage_pricing.dart';
@@ -14,18 +16,48 @@ int usageTotalTokens(SessionUsageEvent event) =>
     event.cacheReadTokens +
     event.cacheCreationTokens;
 
-/// Local-midnight start of the selected window, or null for all time.
-int? usageRangeStartMs(UsageRange range, int nowMs) {
-  if (range == UsageRange.all) return null;
+/// Inclusive start/end bounds for a range selection.
+///
+/// A null bound means unbounded on that side. A custom range missing either
+/// endpoint falls back to all-time so a dirty filter cannot empty the table.
+({int? startMs, int? endMs}) usageRangeBounds({
+  required UsageRange range,
+  required int nowMs,
+  int? customStartMs,
+  int? customEndMs,
+  bool liveEnd = false,
+}) {
   final now = DateTime.fromMillisecondsSinceEpoch(nowMs).toLocal();
   final today = DateTime(now.year, now.month, now.day);
-  final days = switch (range) {
-    UsageRange.today => 0,
-    UsageRange.sevenDays => 6,
-    UsageRange.thirtyDays => 29,
-    UsageRange.all => 0,
+  return switch (range) {
+    UsageRange.today => (startMs: today.millisecondsSinceEpoch, endMs: null),
+    UsageRange.last24Hours => (
+      startMs: nowMs - const Duration(hours: 24).inMilliseconds,
+      endMs: null,
+    ),
+    UsageRange.sevenDays => (
+      startMs: today.subtract(const Duration(days: 6)).millisecondsSinceEpoch,
+      endMs: null,
+    ),
+    UsageRange.fourteenDays => (
+      startMs: today.subtract(const Duration(days: 13)).millisecondsSinceEpoch,
+      endMs: null,
+    ),
+    UsageRange.thirtyDays => (
+      startMs: today.subtract(const Duration(days: 29)).millisecondsSinceEpoch,
+      endMs: null,
+    ),
+    UsageRange.all => (startMs: null, endMs: null),
+    UsageRange.custom =>
+      customStartMs == null || customEndMs == null
+          ? (startMs: null, endMs: null)
+          : (startMs: customStartMs, endMs: liveEnd ? nowMs : customEndMs),
   };
-  return today.subtract(Duration(days: days)).millisecondsSinceEpoch;
+}
+
+/// Kept for callers that only need the start boundary.
+int? usageRangeStartMs(UsageRange range, int nowMs) {
+  return usageRangeBounds(range: range, nowMs: nowMs).startMs;
 }
 
 /// True when [dayStartMs] is the local day containing [nowMs].
@@ -41,11 +73,23 @@ UsageDashboard buildUsageDashboard({
   required UsageFilter filter,
   required int nowMs,
   UsagePricingCatalog pricing = const UsagePricingCatalog(),
+  List<UsageHeatmapDay>? heatmap,
 }) {
-  final rangeStart = usageRangeStartMs(filter.range, nowMs);
+  final bounds = usageRangeBounds(
+    range: filter.range,
+    nowMs: nowMs,
+    customStartMs: filter.customStartMs,
+    customEndMs: filter.customEndMs,
+    liveEnd: filter.liveEnd,
+  );
   final scoped = events
       .where((event) {
-        if (rangeStart != null && event.timestampMs < rangeStart) return false;
+        if (bounds.startMs != null && event.timestampMs < bounds.startMs!) {
+          return false;
+        }
+        if (bounds.endMs != null && event.timestampMs > bounds.endMs!) {
+          return false;
+        }
         if (filter.cli != null && event.cli != filter.cli) return false;
         return true;
       })
@@ -74,6 +118,7 @@ UsageDashboard buildUsageDashboard({
     rows: rows,
     chart: _chart(sevenDayEvents, nowMs),
     cliSlices: _cliSlices(sevenDayEvents),
+    heatmap: heatmap ?? _heatmap(events, filter.cli, pricing),
     matchedEventCount: rows.fold(0, (sum, row) => sum + row.requests),
     totalEventCount: events.length,
   );
@@ -289,4 +334,96 @@ final class _GroupAccumulator {
       unpricedEvents: unpricedEvents,
     );
   }
+}
+
+List<UsageHeatmapDay> buildUsageHeatmap({
+  required List<SessionUsageEvent> events,
+  CliTool? cli,
+  UsagePricingCatalog pricing = const UsagePricingCatalog(),
+}) => _heatmap(events, cli, pricing);
+
+class _HeatmapAccumulator {
+  int tokens = 0;
+  int requests = 0;
+  int costMicroUsd = 0;
+  int freshInput = 0;
+  int cacheRead = 0;
+}
+
+List<UsageHeatmapDay> _heatmap(
+  List<SessionUsageEvent> events,
+  CliTool? cli,
+  UsagePricingCatalog pricing,
+) {
+  final buckets = <int, _HeatmapAccumulator>{};
+  for (final event in events) {
+    // A corrupt timestamp (wire default 0) must not create a 1970 bucket.
+    if (event.timestampMs <= 0) continue;
+    if (cli != null && event.cli != cli) continue;
+    final local = DateTime.fromMillisecondsSinceEpoch(
+      event.timestampMs,
+    ).toLocal();
+    final dayStart = DateTime(
+      local.year,
+      local.month,
+      local.day,
+    ).millisecondsSinceEpoch;
+    final bucket = buckets.putIfAbsent(dayStart, _HeatmapAccumulator.new);
+    bucket
+      ..tokens += usageTotalTokens(event)
+      ..requests += 1
+      ..freshInput += event.freshInputTokens
+      ..cacheRead += event.cacheReadTokens;
+    final unit = calculateUsageCost(event, pricing);
+    if (unit.microUsd != null) bucket.costMicroUsd += unit.microUsd!;
+  }
+
+  final dayStarts = buckets.keys.toList()..sort();
+  return List.unmodifiable([
+    for (final dayStart in dayStarts)
+      UsageHeatmapDay(
+        dayStartMs: dayStart,
+        tokens: buckets[dayStart]!.tokens,
+        requests: buckets[dayStart]!.requests,
+        costMicroUsd: buckets[dayStart]!.costMicroUsd,
+        cacheHitRate: _heatmapHitRate(buckets[dayStart]!),
+      ),
+  ]);
+}
+
+double? _heatmapHitRate(_HeatmapAccumulator bucket) {
+  final base = bucket.freshInput + bucket.cacheRead;
+  return base == 0 ? null : bucket.cacheRead / base;
+}
+
+/// Sendable payload for computing a dashboard on a background isolate.
+@immutable
+class UsageDashboardRequest {
+  const UsageDashboardRequest({
+    required this.events,
+    required this.attribution,
+    required this.filter,
+    required this.nowMs,
+    required this.pricing,
+    this.heatmap,
+  });
+
+  final List<SessionUsageEvent> events;
+  final UsageAttribution attribution;
+  final UsageFilter filter;
+  final int nowMs;
+  final UsagePricingCatalog pricing;
+  final List<UsageHeatmapDay>? heatmap;
+}
+
+/// Top-level entry point for `compute`.
+UsageDashboard buildUsageDashboardRequest(UsageDashboardRequest request) {
+  return buildUsageDashboard(
+    events: request.events,
+    attribution: request.attribution,
+    filter: request.filter,
+    nowMs: request.nowMs,
+    pricing: request.pricing,
+    heatmap: request.heatmap,
+  );
 }

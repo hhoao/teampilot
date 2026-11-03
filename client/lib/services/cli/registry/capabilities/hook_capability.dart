@@ -53,8 +53,30 @@ abstract interface class HookCapability implements CliCapability {
 
   bool supportsEvent(HookEvent event) => nativeEvent(event) != null;
 
+  /// 该 CLI 是否在 SessionStart 主动 push TeamBus 协议（影响 role addendum）。
+  bool get pushesBusProtocol;
+
+  /// 该 CLI 的 SessionStart hook 期望的 stdout JSON 负载。
+  Map<String, Object?> sessionStartStdoutPayload({
+    required String additionalContext,
+  });
+
   HookWriteResult render({
     required List<HookEntry> entries,
     required HookRenderContext ctx,
   });
+}
+
+/// 默认的 SessionStart 契约：claude 家族负载，且不 push bus 协议。
+mixin BusProtocolHookDefaults {
+  bool get pushesBusProtocol => false;
+
+  Map<String, Object?> sessionStartStdoutPayload({
+    required String additionalContext,
+  }) => {
+    'hookSpecificOutput': {
+      'hookEventName': 'SessionStart',
+      'additionalContext': additionalContext,
+    },
+  };
 }

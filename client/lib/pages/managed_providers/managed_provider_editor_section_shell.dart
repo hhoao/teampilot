@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 class ManagedProviderEditorSectionShell extends StatelessWidget {
+  static const EdgeInsets _tilePadding = EdgeInsets.fromLTRB(16, 12, 16, 12);
+  static const EdgeInsets _childrenPadding = EdgeInsets.fromLTRB(16, 8, 16, 14);
+
   const ManagedProviderEditorSectionShell({
     required this.title,
-    required this.subtitle,
     required this.initiallyExpanded,
+    this.subtitle,
     required this.child,
     this.badge,
     this.referenceTip,
@@ -34,8 +37,8 @@ class ManagedProviderEditorSectionShell extends StatelessWidget {
         // Keep collapsed sections mounted so their TpFormField registrations
         // survive; otherwise click-time form validation silently skips them.
         maintainState: true,
-        tilePadding: const EdgeInsets.symmetric(horizontal: 14),
-        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        tilePadding: _tilePadding,
+        childrenPadding: _childrenPadding,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(8)),
         ),

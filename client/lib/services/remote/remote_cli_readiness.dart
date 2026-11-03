@@ -7,7 +7,7 @@ import '../cli/acp_adapter_discovery.dart';
 import '../cli/installer_types.dart';
 import '../cli/registry/capabilities/acp_settings_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
-import '../cli/registry/installer/npm_installer_capability.dart';
+import '../cli/registry/installer/acp_adapter_installer.dart';
 import '../cli/remote_cli_installer.dart';
 import '../cli/remote_cli_locator.dart';
 import '../ssh/ssh_client_factory.dart';
@@ -67,7 +67,7 @@ typedef RemoteRunnerForProfile =
 /// Builds the adapter install action for a profile over an existing runner.
 typedef AdapterInstallActionBuilder =
     RemoteInstallAction Function(
-      NpmInstallerCapability installer,
+      AcpAdapterInstaller installer,
       SshProfile profile,
       SshCommandRunner run,
     );

@@ -1303,6 +1303,8 @@
   "cliInstallProgressBootstrappingNode": "Installing Node.js…",
   "cliInstallProgressInstallingCli": "Installing CLI…",
   "cliInstallProgressLocatingExecutable": "Locating CLI executable…",
+  "cliInstallProgressDownloading": "Downloading adapter…",
+  "cliInstallProgressExtracting": "Extracting adapter…",
   "cliInstallProgressSyncingRemoteWorkspace": "Syncing remote workspace…",
   "sessionRemoteProvisionPreparing": "Preparing remote environment…",
   "sessionRemoteProvisionPreparingOnHost": "Preparing remote environment ({host})",
@@ -1742,6 +1744,8 @@
     }
   },
   "appProviderOpencodeSubscription": "Subscription",
+  "appProviderOpencodeSubscriptionOn": "OpenCode Go bound — subscription and free models are both available.",
+  "appProviderOpencodeSubscriptionOff": "Free models only. Bind OpenCode Go to use subscription models.",
   "renameProviderName": "Rename",
   "renameProviderTitle": "Rename provider",
   "deleteProvider": "Delete Provider",
@@ -3018,6 +3022,8 @@
   "appProviderToolCursor": "Cursor",
   "appProviderToolGemini": "Gemini CLI",
   "appProviderToolCodebuddy": "CodeBuddy",
+  "appProviderToolAntigravity": "Antigravity",
+  "appProviderToolQoder": "Qoder",
   "codebuddyCredentialsLogin": "Sign in",
   "codebuddyCredentialsLoginTitle": "Sign in to CodeBuddy",
   "codebuddyCredentialsLoginIntro": "Complete the sign-in in the terminal below. If a login-method list appears, choose one first (e.g. WeChat / enterprise domain). The CLI may open a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.",
@@ -3037,6 +3043,45 @@
   "codebuddyCredentialsSendLogin": "Send /login",
   "codebuddyCredentialsSignedIn": "Signed in to CodeBuddy.",
   "codebuddyCredentialsActionFailed": "CodeBuddy sign-in failed.",
+  "antigravityCredentialsLogin": "Sign in",
+  "antigravityCredentialsLoginTitle": "Sign in to Antigravity",
+  "antigravityCredentialsLoginIntro": "Complete the Google sign-in in the terminal below, then press Done. Antigravity keeps the account in the OS keyring, so the account is shared by all Antigravity sessions and every official Antigravity provider row.",
+  "antigravityCredentialsLoginStarting": "Starting Antigravity…",
+  "antigravityCredentialsLoginFailed": "Could not start the login terminal: {error}",
+  "@antigravityCredentialsLoginFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "antigravityCredentialsLoginExited": "Antigravity exited. Close this dialog and start the sign-in again.",
+  "antigravityCredentialsLoginVerifyFailed": "Antigravity did not confirm the sign-in (agy models failed). Finish the sign-in, then press Done again.",
+  "antigravityCredentialsDone": "Done",
+  "antigravityCredentialsCancel": "Cancel",
+  "antigravityCredentialsRetry": "Retry",
+  "antigravityCredentialsSignedIn": "Signed in to Antigravity.",
+  "antigravityCredentialsActionFailed": "Antigravity sign-in failed.",
+  "qoderCredentialsLogin": "Sign in",
+  "qoderCredentialsLoginTitle": "Sign in to Qoder",
+  "qoderCredentialsLoginIntro": "Complete the sign-in in the terminal below. The CLI opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.",
+  "qoderCredentialsLoginStarting": "Starting Qoder CLI…",
+  "qoderCredentialsLoginFailed": "Could not start the login terminal: {error}",
+  "@qoderCredentialsLoginFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "qoderCredentialsLoginExited": "Qoder CLI exited. Close this dialog and start the sign-in again.",
+  "qoderCredentialsDone": "Done",
+  "qoderCredentialsCancel": "Cancel",
+  "qoderCredentialsRelaunch": "Relaunch",
+  "qoderCredentialsSignedIn": "Signed in",
+  "qoderContextWindow": "Context window (tokens)",
+  "qoderContextWindowHint": "Leave empty to use the model default.",
+  "qoderCredentialsActionFailed": "The Qoder action failed",
   "appProviderTeamToolSection": "Tool providers for this team",
   "appProviderTeamToolSubtitle": "Select which unified provider each tool uses when this team starts.",
   "appProviderTeamNone": "None",
@@ -3677,6 +3722,54 @@
   "automationsRunStatusDispatching": "Dispatching",
   "automationsRunStatusDispatched": "Dispatched",
   "automationsRunStatusSkippedMissed": "Skipped — missed window",
+  "automationsRunStatusFailed": "Failed",
+  "automationsRunStatusTimedOut": "Timed out",
+  "automationsRunStatusSkippedOverlap": "Skipped (still running)",
+  "automationsExitCode": "Exit code {code}",
+  "@automationsExitCode": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "automationsRunStdout": "stdout",
+  "automationsRunStderr": "stderr",
+  "automationsRunError": "Error: {error}",
+  "@automationsRunError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "automationsRunDurationSeconds": "Took {seconds}s",
+  "@automationsRunDurationSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "automationsRunDurationMilliseconds": "Took {milliseconds} ms",
+  "@automationsRunDurationMilliseconds": {
+    "placeholders": {
+      "milliseconds": {
+        "type": "int"
+      }
+    }
+  },
+  "automationsRunOutputTruncated": "Output truncated",
+  "automationsCommand": "Command",
+  "automationsCommandHelp": "Runs only while TeamPilot is running. Missed runs older than the grace window are skipped unless catch-up is on.",
+  "automationsCommandTimeout": "Timeout (seconds)",
+  "automationsCommandRequired": "Command is required",
+  "automationsCommandTimeoutInvalid": "Timeout must be a whole number of seconds",
+  "automationsCommandTimeoutRange": "Timeout must be between 30 and 1800 seconds",
+  "automationsCommandTooLong": "Command must be at most 2000 characters",
+  "automationsCommandWorkingDirectory": "Working directory",
+  "automationsCommandWorkingDirectoryMain": "Workspace default folder",
+  "automationsCatchUpOnce": "Catch up once after startup",
   "automationsMaxRunCount": "Run limit",
   "@automationsMaxRunCount": {
     "description": "Label for optional max automation run count"
@@ -4249,22 +4342,24 @@
   "managedProvidersQuickPresetClaudeCodeHint": "Sign in or import credentials below, or fill the same fields manually.",
   "managedProvidersQuickPresetCursor": "Cursor",
   "managedProvidersQuickPresetCursorHint": "Sign in or import credentials below, or fill the same fields manually.",
+  "managedProvidersQuickPresetCodebuddy": "CodeBuddy",
+  "managedProvidersQuickPresetCodebuddyHint": "Query credit balance with your CodeBuddy sign-in.",
   "managedProvidersQuickPresetDeepSeek": "DeepSeek",
   "managedProvidersQuickPresetDeepSeekHint": "Balance API preset; add a secret.",
   "managedProvidersQuickPresetOpencodeGo": "OpenCode Go",
   "managedProvidersQuickPresetOpencodeGoHint": "Zen Go subscription quota preset; add your API key.",
   "managedProvidersQuickPresetCustom": "Custom",
   "managedProvidersQuickPresetCustomHint": "Configure endpoint, credentials, and display from scratch.",
-  "managedProvidersBasicsSectionTitle": "Basics",
+  "managedProvidersBasicsSectionTitle": "Name and API key",
   "managedProvidersBasicsSectionSubtitle": "Name and any required secret.",
   "managedProvidersBasicsSummary": "Pick a preset, name the provider, and add a secret if needed.",
-  "managedProvidersQuerySectionTitle": "Query",
+  "managedProvidersQuerySectionTitle": "Usage API and JSON parsing",
   "managedProvidersQuerySectionSubtitle": "Usage API and JSON parsing.",
-  "managedProvidersCredentialsSectionTitle": "Credential details",
+  "managedProvidersCredentialsSectionTitle": "Credential source and delivery",
   "managedProvidersCredentialsSectionSubtitle": "Credential source and how it is sent.",
-  "managedProvidersDisplaySectionTitle": "Display",
+  "managedProvidersDisplaySectionTitle": "Balance and quota display",
   "managedProvidersDisplaySectionSubtitle": "How balances and quotas are shown.",
-  "managedProvidersAdvancedSectionTitle": "Advanced",
+  "managedProvidersAdvancedSectionTitle": "Adapter, kind, and reference",
   "managedProvidersAdvancedSectionSubtitle": "Adapter, kind, and internal reference.",
   "managedProvidersSectionConfiguredBadge": "Configured",
   "managedProvidersIdentity": "Identity",
@@ -4299,9 +4394,9 @@
   "managedProvidersWindowsHint": "JSON array; each item has label and $ paths",
   "managedProvidersWindowsHelper": "One window per quota line. Write label and $ paths for used / total / remaining / resetsAt. For array items, hard-code the index, e.g. $.balance_infos[0].total_balance.",
   "managedProvidersFieldExampleLabel": "Example",
-  "managedProvidersJsonPathSeeAlso": "See $ syntax in Query ℹ️",
-  "managedProvidersTemplateVariablesSeeAlsoQuery": "See brace syntax in Query ℹ️",
-  "managedProvidersTemplateVariablesSeeAlsoCredentials": "See brace syntax in Credentials ℹ️",
+  "managedProvidersJsonPathSeeAlso": "See $ syntax in Usage API and JSON parsing ℹ️",
+  "managedProvidersTemplateVariablesSeeAlsoQuery": "See brace syntax in Usage API and JSON parsing ℹ️",
+  "managedProvidersTemplateVariablesSeeAlsoCredentials": "See brace syntax in Credential source and delivery ℹ️",
   "managedProvidersReferenceSyntaxHelper": "$ — read from the HTTP response JSON\n$ is the whole response; $.field descends with dots.\nE.g. $.data, $.balance_infos[0].total_balance, $.rate_limit.used_percent\n\nUse $ in response root and quota windows (used / total / remaining / resetsAt).\n\nBraces — fill dynamic values into the request (not from the response)\nPut a variable name inside braces; it is replaced when the request is sent.\n• accessToken — access token\n• accountId — account id\n• jwt.sub — JWT sub\n\nUsed in headers, cookies, and credential templates. Values come from cli:… login.",
   "managedProvidersCredentials": "Credentials",
   "managedProvidersCredentialRef": "Credential reference",
@@ -4743,15 +4838,8 @@
       }
     }
   },
-  "personalAcpSwitchLabel": "New personal / mixed sessions use ACP",
-  "personalAcpSwitchCaption": "Native teams and remote members still use the terminal",
-  "claudePersonalAcpDefaultLabel": "Personal sessions use ACP chat",
-  "claudePersonalAcpDefaultDescription": "Run new personal and mixed-team Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.",
-  "cursorPersonalAcpDefaultLabel": "Personal sessions use ACP chat",
-  "cursorPersonalAcpDefaultDescription": "Run new personal and mixed-team Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.",
-  "opencodePersonalAcpDefaultLabel": "Personal sessions use ACP chat",
-  "opencodePersonalAcpDefaultDescription": "Run new personal and mixed-team OpenCode sessions as terminal-less ACP chat via opencode acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.",
-  "claudePersonalAcpAndroidDisabled": "ACP chat is desktop-only until remote SSH exec is available.",
+  "cliTransportDefaultChat": "New sessions default to chat (ACP)",
+  "cliTransportDefaultTerminal": "New sessions default to the terminal (PTY)",
   "acpLaunchFailedAdapter": "Could not start the Claude ACP adapter (claude-agent-acp). Install it and try again.",
   "acpChatNotLoggedIn": "The agent isn't logged in. Sign in under Settings → Providers, then try again.",
   "acpChatSessionOpenFailed": "Couldn't open the {cliName} session.",
@@ -4762,9 +4850,6 @@
       }
     }
   },
-  "codexPersonalAcpDefaultLabel": "Personal sessions use ACP chat",
-  "codexPersonalAcpDefaultDescription": "Run new personal and mixed-team Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.",
-  "codexPersonalAcpAndroidDisabled": "ACP chat is desktop-only until remote SSH exec is available.",
   "codexAcpLaunchFailedAdapter": "Could not start the Codex ACP adapter (codex-acp). Install it and try again.",
   "codexAcpChatNotLoggedIn": "Codex isn't logged in. Sign in with ChatGPT under Settings → Providers, or switch to an API key.",
   "acpPermissionAskLabel": "Ask",
@@ -4774,7 +4859,6 @@
   "acpModelSectionLaunch": "Launch config",
   "sessionUsageNav": "Token usage",
   "sessionUsageTitle": "Token usage",
-  "sessionUsageSubtitle": "Usage attributed to TeamPilot sessions on local and SSH home planes.",
   "sessionUsageScopeHint": "Local + SSH · attributed by TeamPilot session",
   "sessionUsageProgressTitle": "Usage sync",
   "sessionUsageSync": "Sync",
@@ -4804,6 +4888,7 @@
     }
   },
   "sessionUsageNeverSynced": "Not synced yet",
+  "sessionUsageSyncedJustNow": "Synced just now",
   "sessionUsageLastSync": "Last sync {time}",
   "@sessionUsageLastSync": {
     "placeholders": {
@@ -4813,9 +4898,21 @@
     }
   },
   "sessionUsageRangeToday": "Today",
+  "sessionUsageRangeLast24Hours": "Last 24 hours",
   "sessionUsageRangeSevenDays": "Last 7 days",
+  "sessionUsageRangeFourteenDays": "Last 14 days",
   "sessionUsageRangeThirtyDays": "Last 30 days",
   "sessionUsageRangeAll": "All time",
+  "sessionUsageStartTime": "Start time",
+  "sessionUsageEndTime": "End time",
+  "sessionUsageLiveEnd": "End time follows now",
+  "sessionUsageRangeHint": "Date and time, up to 30 days",
+  "sessionUsageRangeInvalidOrder": "Start time cannot be later than end time",
+  "sessionUsageRangeTooLong": "Range cannot exceed 30 days",
+  "sessionUsageColumnSettings": "Columns",
+  "sessionUsageColumnReset": "Reset to default",
+  "sessionUsageSortDescending": "Sort descending",
+  "sessionUsageSortAscending": "Sort ascending",
   "sessionUsageCliAll": "All",
   "sessionUsageGroupBy": "Group by",
   "sessionUsageGroupSession": "Session",
@@ -4908,6 +5005,22 @@
   "sessionUsageLoadFailed": "Could not load usage data.",
   "sessionUsageRetry": "Retry",
   "sessionUsageDismiss": "Dismiss",
+  "sessionUsageHeatmapTitle": "Usage heatmap",
+  "sessionUsageHeatmapSubtitle": "Last 53 weeks · hover or long-press a day",
+  "sessionUsageHeatmapMetricTokens": "Tokens",
+  "sessionUsageHeatmapMetricHitRate": "Hit rate",
+  "sessionUsageHeatmapShowEarlier": "Show earlier",
+  "sessionUsageHeatmapShowLess": "Show less",
+  "sessionUsageHeatmapLess": "Less",
+  "sessionUsageHeatmapMore": "More",
+  "sessionUsageHeatmapSpanSummary": "{tokens} tokens · {requests} requests · {cost}",
+  "@sessionUsageHeatmapSpanSummary": {
+    "placeholders": {
+      "tokens": { "type": "String" },
+      "requests": { "type": "String" },
+      "cost": { "type": "String" }
+    }
+  },
   "sessionUsageNoData": "No data",
   "sessionUsageToday": "Today",
   "sessionUsageUnknownModel": "Unknown model",
@@ -4999,6 +5112,28 @@
   "sessionUsagePricingEmpty": "No custom rules. Built-in prices are active.",
   "sessionUsagePricingDelete": "Delete",
   "sessionUsageStorage": "Storage",
+  "sessionUsageSettings": "Usage settings",
+  "sessionUsageDataSource": "Data source",
+  "sessionUsageAutoScan": "Auto-scan session logs",
+  "sessionUsageAutoScanHint": "Scans when this page opens, then every {minutes} minutes in the background.",
+  "@sessionUsageAutoScanHint": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageScanInterval": "Scan interval",
+  "sessionUsageIntervalMinutes": "Every {minutes} min",
+  "@sessionUsageIntervalMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageSyncNow": "Sync now",
+  "sessionUsageMaintenanceEntry": "Storage and Cursor maintenance",
   "sessionUsageMaintenanceTitle": "Usage storage",
   "sessionUsageMaintenanceLines": "{lines} lines · {events} events",
   "@sessionUsageMaintenanceLines": {

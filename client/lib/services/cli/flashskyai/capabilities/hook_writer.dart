@@ -12,7 +12,7 @@ import 'stop_idle_hook.dart';
 /// remain neutral HTTP contributions until this target renderer converts them
 /// to FlashskyAI's command/exit-2 contract. Script IO is performed by
 /// [ManagedHookProvisioner], which consumes the returned [GeneratedScript].
-final class FlashskyaiHookWriter implements HookCapability {
+final class FlashskyaiHookWriter with BusProtocolHookDefaults implements HookCapability {
   const FlashskyaiHookWriter({this.denyReason = 'TeamPilot hook policy'});
 
   final String denyReason;

@@ -29,11 +29,24 @@ abstract class AppSettingsRepository {
   Future<bool> loadDiscoveryAutoRefreshEnabled();
   Future<void> saveDiscoveryAutoRefreshEnabled(bool value);
 
+  /// Whether the usage page scans CLI transcripts automatically (on open and
+  /// in the background). Defaults to `true`.
+  Future<bool> loadUsageAutoSyncEnabled();
+  Future<void> saveUsageAutoSyncEnabled(bool value);
+
+  /// Minutes between background usage scans. Defaults to 10.
+  Future<int> loadUsageSyncIntervalMinutes();
+  Future<void> saveUsageSyncIntervalMinutes(int value);
+
   /// Whether ACP protocol frames are mirrored into the app log (console and
   /// `{appDataRoot}/logs/`). Defaults to `false`: the frames are high-volume
   /// and drown out app logs, so they are opt-in for debugging the ACP channel.
   Future<bool> loadAcpFrameLogEnabled();
   Future<void> saveAcpFrameLogEnabled(bool value);
+
+  /// Persisted column order/visibility for a reusable table, keyed by table id.
+  Future<Map<String, dynamic>?> loadTableState(String tableId);
+  Future<void> saveTableState(String tableId, Map<String, dynamic> state);
 
   /// Legacy SkillsMP API key, kept for one-time migration to skills
   /// registry sources. Read-only: the write path was removed.
@@ -51,7 +64,10 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
   static const _skillsMpApiKey = 'skillsMpApiKey';
   static const _aiFeaturesKey = 'aiFeatures';
   static const _discoveryAutoRefreshKey = 'discoveryAutoRefresh';
+  static const _usageAutoSyncKey = 'usageAutoSync';
+  static const _usageSyncIntervalKey = 'usageSyncIntervalMinutes';
   static const _acpFrameLogKey = 'acpFrameLog';
+  static const _tableStatesKey = 'tableStates';
 
   final SharedPreferences _preferences;
 
@@ -175,6 +191,33 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
   }
 
   @override
+  Future<bool> loadUsageAutoSyncEnabled() async {
+    final value = _readMap()[_usageAutoSyncKey];
+    // Opt-out: enabled unless explicitly turned off.
+    return value != false;
+  }
+
+  @override
+  Future<void> saveUsageAutoSyncEnabled(bool value) async {
+    final current = _readMap();
+    current[_usageAutoSyncKey] = value;
+    await _writeMap(current);
+  }
+
+  @override
+  Future<int> loadUsageSyncIntervalMinutes() async {
+    final value = _readMap()[_usageSyncIntervalKey];
+    return value is int ? value : 10;
+  }
+
+  @override
+  Future<void> saveUsageSyncIntervalMinutes(int value) async {
+    final current = _readMap();
+    current[_usageSyncIntervalKey] = value;
+    await _writeMap(current);
+  }
+
+  @override
   Future<bool> loadAcpFrameLogEnabled() async {
     final value = _readMap()[_acpFrameLogKey];
     // Opt-in: disabled unless explicitly turned on.
@@ -193,6 +236,39 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
     final value = _readMap()[_skillsMpApiKey];
     if (value is String && value.isNotEmpty) return value;
     return null;
+  }
+
+  @override
+  Future<Map<String, dynamic>?> loadTableState(String tableId) async {
+    final rawStates = _readMap()[_tableStatesKey];
+    if (rawStates is! Map) return null;
+    final raw = rawStates[tableId];
+    if (raw is! Map) return null;
+    try {
+      return Map<String, dynamic>.from(raw);
+    } on Object {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> saveTableState(
+    String tableId,
+    Map<String, dynamic> state,
+  ) async {
+    final current = _readMap();
+    final rawStates = current[_tableStatesKey];
+    Map<String, Object?> states;
+    try {
+      states = rawStates is Map
+          ? Map<String, Object?>.from(rawStates)
+          : <String, Object?>{};
+    } on Object {
+      states = <String, Object?>{};
+    }
+    states[tableId] = state;
+    current[_tableStatesKey] = states;
+    await _writeMap(current);
   }
 
   Future<void> _writeMap(Map<String, Object?> current) async {
@@ -292,6 +368,25 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
     _discoveryAutoRefreshEnabled = value;
   }
 
+  bool _usageAutoSyncEnabled = true;
+  int _usageSyncIntervalMinutes = 10;
+
+  @override
+  Future<bool> loadUsageAutoSyncEnabled() async => _usageAutoSyncEnabled;
+
+  @override
+  Future<void> saveUsageAutoSyncEnabled(bool value) async {
+    _usageAutoSyncEnabled = value;
+  }
+
+  @override
+  Future<int> loadUsageSyncIntervalMinutes() async => _usageSyncIntervalMinutes;
+
+  @override
+  Future<void> saveUsageSyncIntervalMinutes(int value) async {
+    _usageSyncIntervalMinutes = value;
+  }
+
   @override
   Future<bool> loadAcpFrameLogEnabled() async => _acpFrameLogEnabled;
 
@@ -312,5 +407,21 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
     AiFeatureSetting setting,
   ) async {
     _aiFeatures[id] = setting;
+  }
+
+  final Map<String, Map<String, dynamic>> _tableStates = {};
+
+  @override
+  Future<Map<String, dynamic>?> loadTableState(String tableId) async {
+    final state = _tableStates[tableId];
+    return state == null ? null : Map<String, dynamic>.from(state);
+  }
+
+  @override
+  Future<void> saveTableState(
+    String tableId,
+    Map<String, dynamic> state,
+  ) async {
+    _tableStates[tableId] = Map<String, dynamic>.from(state);
   }
 }

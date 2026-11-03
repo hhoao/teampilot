@@ -30,10 +30,12 @@ import '../../../models/runtime_target.dart';
 import '../../../models/git_worktree.dart';
 import '../../../services/chat/conversation/compose/compose_at_file_refs.dart';
 import '../../../services/chat/conversation/compose/compose_clip.dart';
+import '../../../services/chat/conversation/compose/compose_draft.dart';
 import '../../../services/chat/conversation/compose/compose_draft_cache.dart';
 import '../../../services/chat/conversation/compose/compose_file_attach.dart';
 import '../../../services/chat/conversation/compose/compose_file_drop_ingestor.dart';
 import '../../../services/chat/conversation/compose/compose_landing_bundle.dart';
+import '../../../services/chat/conversation/compose/compose_text_controller.dart';
 import '../../../services/chat/conversation/compose/compose_text_edit.dart';
 import '../../../services/chat/conversation/compose/compose_voice_input.dart';
 import '../../../services/storage/home_storage.dart';
@@ -45,6 +47,7 @@ import '../../../services/expert_hub/expert_member_resolver.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/cli/registry/capabilities/native_command_capability.dart';
+import '../../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../../services/cli/preset_resolver.dart';
 import '../../../utils/team/team_member_naming.dart';
@@ -125,7 +128,7 @@ class UnboundComposeBody extends StatefulWidget {
 }
 
 class _UnboundComposeBodyState extends State<UnboundComposeBody> {
-  final _controller = TextEditingController();
+  final _controller = ComposeTextController();
   final _clip = ComposeClip();
   late final FocusNode _focusNode;
   late final ComposeVoiceInput _voiceInput;
@@ -174,7 +177,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     },
     // Mixed-team local members run ACP chat when the CLI settings default says
     // so; the adapter must exist on this device too.
-    localMemberAcpSeed: (cli) => readPersonalAcpDefault(context, cli),
+    localMemberAcpSeed: (cli) => readAcpDefault(context, cli),
   );
   WorkspaceLandingLaunchBlock? _launchWarningBlock;
   int _teamLaunchReadinessGeneration = 0;
@@ -246,7 +249,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         widget.workspace.workspaceId,
       );
       if (draft != null && draft.isNotEmpty) {
-        _setComposeText(draft);
+        _setComposeDraft(draft);
       }
     }
     _controller.addListener(_syncComposeDraft);
@@ -279,7 +282,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     unawaited(
       composeDraftCache.saveLanding(
         widget.workspace.workspaceId,
-        _controller.text,
+        ComposeDraft(
+          text: _controller.text,
+          tokens: _controller.document.tokens,
+        ),
         storage: _homeStorage,
       ),
     );
@@ -297,7 +303,20 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         draft.isEmpty) {
       return;
     }
-    _setComposeText(draft);
+    _setComposeDraft(draft);
+  }
+
+  void _setComposeDraft(ComposeDraft draft) {
+    _suppressDraftSync = true;
+    try {
+      _controller.value = TextEditingValue(
+        text: draft.text,
+        selection: TextSelection.collapsed(offset: draft.text.length),
+      );
+      _controller.restoreDocument(draft.tokens);
+    } finally {
+      _suppressDraftSync = false;
+    }
   }
 
   void _setComposeText(String text) {
@@ -965,10 +984,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         : null;
     return LandingLaunchContext(
       isPersonal: isSimple,
-      acp: willLaunchPersonalAcp(
-        isPersonal: isSimple,
+      acp: willLaunchAcp(
         cli: launchCli,
-        requested: readPersonalAcpDefault(context, launchCli),
+        requested: readAcpDefault(context, launchCli),
+        targetId: _homeTargetForLaunch().id,
       ),
       generateLaunch: !isSimple && _generateLaunch,
       presetId: _selectedPresetId,
@@ -1186,6 +1205,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     setState(
       () => _applyDraft(landingDraftSelectingPreset(_currentDraft(), presetId)),
     );
+    unawaited(context.read<CliPresetsCubit>().markPresetUsed(presetId));
     _persistDraft();
     _scheduleTeamLaunchReadinessCheck();
   }
@@ -1220,7 +1240,8 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       SimpleLaunchFourTuple(
         cli: request.cli,
         providerId: request.providerId,
-        modelId: modelId,
+        namespace: request.namespace,
+        modelId: composeCustomModelRef(request.namespace, modelId),
         effort: _selectedEffort ?? '',
       ),
     );
@@ -1462,11 +1483,17 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       final preset = presets
           .where((p) => p.id == _selectedPresetId)
           .firstOrNull;
+      final cli = _selectedCli;
+      final registry = CliToolRegistryScope.of(context);
       return simpleLaunchChipLabel(
         presetName: preset?.name,
-        cli: _selectedCli,
+        cli: cli,
         provider: _selectedProvider,
-        model: _selectedModel,
+        model: providerModelLabel(
+          cli == null ? null : registry.capability<ProviderCapability>(cli),
+          providerId: _selectedProvider ?? '',
+          modelId: _selectedModel ?? '',
+        ),
         emptyLabel: l10n.workspaceChatLandingUsePreset,
       );
     }
@@ -1541,7 +1568,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         cliItems: cliItems,
       );
       return buildComposeModelCascadeMenuSpecs(
-        presets: presets,
+        presets: presetsByRecentUse(presets),
         selectedPresetId: _selectedPresetId,
         emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
         emptyProvidersLabel: l10n.composeCascadeNoProviders,
@@ -1553,6 +1580,16 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         managePresetsLabel: l10n.workspaceCliAddPresetTitle,
         cliGroups: groups,
         groupByCli: true,
+        modelLabel: (cli, providerId, modelId) => providerModelLabel(
+          registry.capability<ProviderCapability>(cli),
+          providerId: providerId,
+          modelId: modelId,
+        ),
+        modelTooltip: (cli, providerId, modelId) => providerModelDescription(
+          registry.capability<ProviderCapability>(cli),
+          providerId: providerId,
+          modelId: modelId,
+        ),
         onModelsOpened: (cli, providerId, config) => unawaited(
           refreshComposeCascadeCatalog(
             context,
@@ -1601,20 +1638,14 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         int,
         Map<String, String>,
         Map<String, String>,
-        bool,
-        bool,
-        bool,
-        bool,
+        Map<String, bool>,
       )
     >(
       (c) => (
         c.state.locatedExecutablesRevision,
         c.state.preferences.cliExecutablePaths,
         c.state.preferences.acpAdapterPaths,
-        c.state.preferences.claudePersonalAcpDefault,
-        c.state.preferences.codexPersonalAcpDefault,
-        c.state.preferences.cursorPersonalAcpDefault,
-        c.state.preferences.opencodePersonalAcpDefault,
+        c.state.preferences.personalAcpDefaults,
       ),
     );
     final identities = context.select(
@@ -1681,6 +1712,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
               l10n: l10n,
               selectedTeam: selectedTeam,
               workspace: launchWorkspace,
+              targetId: _homeTargetForLaunch().id,
               presets: presets,
             ),
             autoChipLabel: _autoChipLabel(

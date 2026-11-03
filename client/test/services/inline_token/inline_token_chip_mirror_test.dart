@@ -4,23 +4,6 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/services/inline_token/inline_token_palette.dart';
 
 void main() {
-  test('defaultInlineTokenPattern requires leading whitespace or start', () {
-    String? onlyMatch(String text) {
-      final matches = defaultInlineTokenPattern.allMatches(text).toList();
-      if (matches.isEmpty) return null;
-      expect(matches, hasLength(1));
-      return matches.single.group(0);
-    }
-
-    expect(onlyMatch('@file'), '@file');
-    expect(onlyMatch('see @file'), '@file');
-    expect(onlyMatch('/skill'), '/skill');
-    expect(onlyMatch('run /skill'), '/skill');
-    expect(onlyMatch('user@host'), isNull);
-    expect(onlyMatch('https://example.com'), isNull);
-    expect(onlyMatch('a/b'), isNull);
-  });
-
   test(
     'buildTpTokenMirrorLayoutSpans paints token glyphs with palette color',
     () {
@@ -29,7 +12,10 @@ void main() {
       final spans = buildTpTokenMirrorLayoutSpans(
         text: 'use /writing-plans on @src/main.dart',
         baseStyle: style,
-        tokenPattern: defaultInlineTokenPattern,
+        tokenRanges: const [
+          TpTokenRange(start: 4, end: 18),
+          TpTokenRange(start: 22, end: 36),
+        ],
         colorScheme: scheme,
         resolvePalette: resolveSlashAtTokenPalette,
       );

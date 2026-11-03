@@ -30,6 +30,7 @@ import 'connect/session_shell_connector.dart';
 import 'session/session_launch_coordinator.dart';
 import 'session/session_launch_workspace_index.dart';
 import '../../cli/preset_resolver.dart';
+import '../../cli/registry/capabilities/acp_capability.dart';
 import 'session/session_launch_config_snapshot.dart';
 import 'session/session_member_cli_locks.dart';
 import '../../storage/home_storage.dart';
@@ -121,6 +122,7 @@ class SessionLaunchService
     memberLifecycleGate: acpMemberLifecycleGate,
     prepareRemoteStaging: prepareAcpRemoteStaging,
     sshLaunchFactory: prepareAcpSshLaunch,
+    touchUserActivity: touchOnUserActivity,
   );
 
   static const _uuid = Uuid();
@@ -129,7 +131,15 @@ class SessionLaunchService
   late final MemberConnectStage _memberConnect;
   late final SessionSshProfileReconnect _sshReconnect;
   late final SessionLifecycleConnectCoordinator _lifecycleCoordinator;
-  late final SessionPromptMetadataSync _promptMetadata;
+
+  /// Set by [configureLaunchComponents] in production. Left null by tests that
+  /// stop after the constructor, where the getter still builds the same helper
+  /// (debounce included) so prompt touches behave identically.
+  SessionPromptMetadataSync? _promptMetadataOverride;
+
+  SessionPromptMetadataSync get _promptMetadata => _promptMetadataOverride ??=
+      SessionPromptMetadataSync(host: _h, state: () => _h.stateSnapshot());
+
   late final TeamConfigLaunchValidator _teamConfigValidator;
 
   /// Called by the launch composition root after the service has been created
@@ -148,7 +158,7 @@ class SessionLaunchService
     _memberConnect = memberConnect;
     _sshReconnect = sshReconnect;
     _lifecycleCoordinator = lifecycleCoordinator;
-    _promptMetadata = promptMetadata;
+    _promptMetadataOverride = promptMetadata;
     _teamConfigValidator = teamConfigValidator;
     _acpAttach.memberLifecycleGate ??=
         ({
@@ -179,6 +189,16 @@ class SessionLaunchService
     AppSession session,
     ResolvedLaunchMembers resolved,
   ) => _acpAttach.attachMemberAcpRuntime(job, session, resolved);
+
+  /// ACP-only seats have no shell to fall back to; the executor settles the
+  /// connect as failed instead of spawning a PTY for a CLI that never uses one.
+  @override
+  bool supportsPtyTransport(CliTool cli) {
+    // Only local-only adapters (Antigravity in Phase 1) have no useful PTY
+    // fallback. Gemini/CodeBuddy are ACP-only but keep their existing
+    // attach-decline behavior.
+    return _h.cliRegistry.capability<AcpLocalOnlyCapability>(cli) == null;
+  }
 
   ChatDataSnapshot get _state => _h.stateSnapshot();
   ChatTabStore get _tabStore => _h.tabStore;
@@ -930,7 +950,10 @@ class SessionLaunchService
   /// Marks the seat discarded on the bus before tearing the runtime down, then
   /// removes the cubit and records it as reclaimed. Closing the cubit persists
   /// the transcript and the agent session id and kills the agent process; the
-  /// member-connect funnel re-attaches it on demand (resume).
+  /// member-connect funnel re-attaches it on demand (resume). The per-seat
+  /// remote plane is closed too — with one SSH session per member, an
+  /// unreleased plane would leak an idle connection per reclaimed remote seat.
+  /// Local seats have no member SSH session, so the close is a no-op for them.
   void discardAcpSeat(String sessionId, String memberId) {
     final id = sessionId.trim();
     final mid = memberId.trim();
@@ -944,6 +967,7 @@ class SessionLaunchService
     tab.memberAcpRuntimes.remove(mid);
     tab.reclaimedMemberIds.add(mid);
     unawaited(cubit.close());
+    unawaited(tab.closeMemberRemotePlane(mid));
     _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: mid);
     _h.clearLaunchError(tab.info.id);
     _h.updateTabRunning(tab.info.id);
@@ -1042,6 +1066,10 @@ class SessionLaunchService
 
   void touchOnUserActivity(String sessionId) =>
       _promptMetadata.touchOnUserActivity(sessionId);
+
+  /// Session stopped running a turn (any runtime): bump `updatedAt`.
+  void touchOnTurnEnded(String sessionId) =>
+      _promptMetadata.touchOnTurnEnded(sessionId);
 
   ChatTab _appendLocalTab(TeamProfile team, {required bool emitChange}) {
     final tab = _tabStore.appendLocalTab(team, cliTeamName: _uuid.v4());

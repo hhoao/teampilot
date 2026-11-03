@@ -1,0 +1,765 @@
+import 'dart:io';
+
+import 'package:collection/collection.dart';
+import 'package:path/path.dart' as p;
+import 'package:uuid/uuid.dart';
+
+import '../../../models/automation.dart';
+import '../../../models/workspace_folder.dart';
+import '../../../repositories/automation_repository.dart';
+import '../../automation/automation_schedule_calculator.dart';
+import '../../automation/automation_schedule_defaults.dart';
+import '../catalog_error_sanitizer.dart';
+import '../catalog_kind.dart';
+import '../catalog_mutation_bus.dart';
+import 'automation_catalog_tools.dart';
+import 'automation_schedule_args.dart';
+
+typedef AutomationRunNow =
+    Future<void> Function(String workspaceId, String automationId);
+typedef AutomationSessionExists =
+    Future<bool> Function(String sessionId, String workspaceId);
+typedef AutomationMemberExists = bool Function(String teamId, String memberId);
+
+const _createdDisabledMessage =
+    'Created disabled. Enable it in Automations, or call update_automation '
+    'with enabled:true.';
+
+class AutomationCatalogModule implements CatalogKindModule {
+  AutomationCatalogModule({
+    required this.repository,
+    required this.scheduleCalculator,
+    required this.bus,
+    required this.runNow,
+    this.sessionExists,
+    this.teamExists,
+    this.presetExists,
+    this.memberExists,
+    this.workspaceFolders,
+    int Function()? nowMs,
+    String Function()? newId,
+    String Function()? defaultTimezone,
+  }) : _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch),
+       _newId = newId ?? (() => const Uuid().v4()),
+       _defaultTimezone = defaultTimezone ?? resolveDeviceTimezoneIdentifier;
+
+  final AutomationRepository repository;
+  final AutomationScheduleCalculator scheduleCalculator;
+  final CatalogMutationBus bus;
+  final AutomationRunNow runNow;
+  final AutomationSessionExists? sessionExists;
+  final bool Function(String teamId)? teamExists;
+  final bool Function(String presetId)? presetExists;
+  final AutomationMemberExists? memberExists;
+
+  /// Folders of a workspace, used to validate `working_directory`.
+  final List<WorkspaceFolder>? Function(String workspaceId)? workspaceFolders;
+  final int Function() _nowMs;
+  final String Function() _newId;
+  final String Function() _defaultTimezone;
+
+  Future<void> _writes = Future<void>.value();
+
+  @override
+  String get kind => 'automation';
+
+  @override
+  bool get supportsCreate => true;
+
+  @override
+  bool get supportsImport => false;
+
+  @override
+  bool get supportsInstall => false;
+
+  @override
+  List<CatalogToolSpec> advertise() => automationCatalogTools;
+
+  @override
+  Future<CatalogResult> handle(CatalogOp op, CatalogRequest req) {
+    return switch (op) {
+      CatalogOp.list => _list(req),
+      CatalogOp.read => _read(req),
+      CatalogOp.create => _serialized(() => _create(req)),
+      CatalogOp.update => _serialized(() => _update(req)),
+      CatalogOp.delete => _serialized(() => _delete(req)),
+      CatalogOp.run => _serialized(() => _run(req)),
+      CatalogOp.search ||
+      CatalogOp.install ||
+      CatalogOp.importPath ||
+      CatalogOp.unbind => throw CatalogException(
+        'unsupported_op',
+        'automation does not support ${op.name}',
+      ),
+    };
+  }
+
+  Future<CatalogResult> _serialized(Future<CatalogResult> Function() action) {
+    final next = _writes.then((_) => action());
+    _writes = next.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    return next;
+  }
+
+  Future<CatalogResult> _list(CatalogRequest req) async {
+    final automations = await repository.listForWorkspace(req.workspaceId);
+    final runs = await repository.runsForWorkspace(req.workspaceId);
+    final latest = <String, AutomationRun>{};
+    for (final run in runs) {
+      final current = latest[run.automationId];
+      if (current == null ||
+          (run.startedAtMs ?? 0) >= (current.startedAtMs ?? 0)) {
+        latest[run.automationId] = run;
+      }
+    }
+    return _ok(
+      req,
+      [for (final a in automations) a.id],
+      {
+        'automation': {
+          'items': [
+            for (final automation in automations)
+              {
+                ...automation.toJson(),
+                'summary': scheduleCalculator.formatScheduleSummary(automation),
+                'last_run': latest[automation.id]?.toJson(),
+              },
+          ],
+        },
+      },
+    );
+  }
+
+  Future<CatalogResult> _read(CatalogRequest req) async {
+    final id = _optionalId(req);
+    if (id == null) return _list(req);
+    final automation = await _require(req.workspaceId, id);
+    final runs = await repository.runsFor(
+      req.workspaceId,
+      automationId: automation.id,
+    );
+    final recent = [...runs]
+      ..sort((a, b) => (b.startedAtMs ?? 0).compareTo(a.startedAtMs ?? 0));
+    return _ok(
+      req,
+      [automation.id],
+      {
+        'automation': {
+          ...automation.toJson(),
+          'summary': scheduleCalculator.formatScheduleSummary(automation),
+          'recent_runs': [for (final run in recent.take(5)) run.toJson()],
+        },
+      },
+    );
+  }
+
+  Future<CatalogResult> _create(CatalogRequest req) async {
+    final now = _nowMs();
+    final schedule = parseAutomationSchedule(
+      req.arguments['schedule'],
+      calculator: scheduleCalculator,
+      defaultTimezone: _defaultTimezone(),
+      now: now,
+    );
+    final action = _parseAction(req.arguments['action']);
+    final name = _requireText(req, 'name');
+    final message = action == AutomationAction.runCommand
+        ? (_text(req.arguments['message']) ?? '')
+        : _requireText(req, 'message');
+    final maxRunCount = _maxRunCount(req);
+    final missedRunGraceMinutes = _graceMinutes(req);
+    final reuseSession = _boolArg(req, 'reuse_session') ?? false;
+    final id = _newId();
+
+    final Automation draft;
+    if (action == AutomationAction.runCommand) {
+      final command = _requireCommand(req);
+      final workingDirectory = _workingDirectory(req);
+      final timeoutSeconds = _timeoutSeconds(req);
+      final catchUp = _catchUpPolicy(req);
+      final wantsEnabled = _boolArg(req, 'enabled') ?? false;
+      draft =
+          _baseAutomation(
+            id: id,
+            name: name,
+            action: action,
+            workspaceId: req.workspaceId,
+            message: '',
+            schedule: schedule,
+            now: now,
+            maxRunCount: maxRunCount,
+            missedRunGraceMinutes: missedRunGraceMinutes,
+          ).copyWith(
+            command: command,
+            timeoutSeconds: timeoutSeconds,
+            catchUpPolicy: catchUp,
+            workingDirectoryPath: workingDirectory,
+            enabled: wantsEnabled,
+          );
+      final (saved, preview) = await _commit(
+        draft,
+        now,
+        scheduleNextRun: wantsEnabled,
+        requireEnabled: wantsEnabled,
+      );
+      _emit(CatalogOp.create, req, [saved.id]);
+      return _ok(
+        req,
+        [saved.id],
+        {
+          'automation': saved.toJson(),
+          'summary': scheduleCalculator.formatScheduleSummary(saved),
+          'enabled': saved.enabled,
+          'next_run_at_ms': preview,
+        },
+        message: saved.enabled
+            ? 'Created and enabled. It will run on the resolved schedule.'
+            : _createdDisabledMessage,
+      );
+    }
+    if (action == AutomationAction.scheduledMessage) {
+      final sessionId = _text(req.arguments['session_id']) ?? req.sessionId;
+      final exists = sessionExists;
+      if (exists != null && !await exists(sessionId, req.workspaceId)) {
+        throw CatalogException(
+          'invalid_argument',
+          'session not found in this workspace: $sessionId',
+        );
+      }
+      draft = _baseAutomation(
+        id: id,
+        name: name,
+        action: action,
+        workspaceId: req.workspaceId,
+        message: message,
+        schedule: schedule,
+        now: now,
+        maxRunCount: maxRunCount,
+        missedRunGraceMinutes: missedRunGraceMinutes,
+      ).copyWith(sessionId: sessionId);
+    } else {
+      final teamId = _text(req.arguments['team_id']);
+      final presetId = _text(req.arguments['preset_id']);
+      if (teamId == null && presetId == null) {
+        throw CatalogException(
+          'target_invalid',
+          'launchPrompt requires team_id or preset_id',
+        );
+      }
+      final targetMemberId =
+          _text(req.arguments['target_member_id']) ?? 'team-lead';
+      if (teamId != null) {
+        final exists = teamExists;
+        if (exists != null && !exists(teamId)) {
+          throw CatalogException('target_invalid', 'unknown team: $teamId');
+        }
+        final memberCheck = memberExists;
+        if (memberCheck != null && !memberCheck(teamId, targetMemberId)) {
+          throw CatalogException(
+            'target_invalid',
+            'unknown team member: $targetMemberId',
+          );
+        }
+      } else {
+        final exists = presetExists;
+        if (exists != null && !exists(presetId!)) {
+          throw CatalogException('target_invalid', 'unknown preset: $presetId');
+        }
+      }
+      draft = _baseAutomation(
+        id: id,
+        name: name,
+        action: action,
+        workspaceId: req.workspaceId,
+        message: message,
+        schedule: schedule,
+        now: now,
+        maxRunCount: maxRunCount,
+        missedRunGraceMinutes: missedRunGraceMinutes,
+        isPersonal: teamId == null,
+        presetId: teamId == null ? presetId : null,
+        teamId: teamId,
+        targetMemberId: targetMemberId,
+        reuseSession: reuseSession,
+      );
+    }
+
+    final (saved, preview) = await _commit(draft, now);
+    _emit(CatalogOp.create, req, [saved.id]);
+    return _ok(
+      req,
+      [saved.id],
+      {
+        'automation': saved.toJson(),
+        'summary': scheduleCalculator.formatScheduleSummary(saved),
+        'enabled': saved.enabled,
+        'next_run_at_ms': preview,
+      },
+      message: _createdDisabledMessage,
+    );
+  }
+
+  Automation _baseAutomation({
+    required String id,
+    required String name,
+    required AutomationAction action,
+    required String workspaceId,
+    required String message,
+    required AutomationScheduleSpec schedule,
+    required int now,
+    required int missedRunGraceMinutes,
+    int? maxRunCount,
+    String? command,
+    int timeoutSeconds = 300,
+    AutomationCatchUpPolicy catchUpPolicy = AutomationCatchUpPolicy.none,
+    bool isPersonal = true,
+    String? presetId,
+    String? teamId,
+    String targetMemberId = 'team-lead',
+    bool reuseSession = false,
+  }) {
+    return Automation(
+      id: id,
+      name: name,
+      action: action,
+      workspaceId: workspaceId,
+      isPersonal: isPersonal,
+      presetId: presetId,
+      teamId: teamId,
+      targetMemberId: targetMemberId,
+      message: message,
+      command: command,
+      timeoutSeconds: timeoutSeconds,
+      catchUpPolicy: catchUpPolicy,
+      reuseSession: reuseSession,
+      preset: schedule.preset,
+      customCron: schedule.customCron,
+      dayOfWeek: schedule.dayOfWeek,
+      minute: schedule.minute,
+      hourMinute: schedule.hourMinute,
+      timezone: schedule.timezone,
+      dtstartMs: schedule.dtstartMs,
+      runAtMs: schedule.runAtMs,
+      enabled: false,
+      missedRunGraceMinutes: missedRunGraceMinutes,
+      maxRunCount: maxRunCount,
+      createdAtMs: now,
+      updatedAtMs: now,
+    );
+  }
+
+  /// Validates and persists [draft], translating data-layer failures so the
+  /// catalog transport never surfaces a raw `ArgumentError` as
+  /// `install_failed`.
+  ///
+  /// With [scheduleNextRun] the next run is resolved from the draft's own
+  /// `enabled` flag (update); otherwise the next run is only previewed from a
+  /// would-be enabled automation (create). Both paths run inside the same
+  /// translation boundary, so a validation failure raised by the schedule
+  /// calculator is reported exactly like one raised by [Automation.validate].
+  ///
+  /// [requireEnabled] marks a caller that explicitly asked for `enabled: true`.
+  /// Such a caller gets `schedule_invalid` instead of a silent downgrade when
+  /// the recomputed schedule has no future occurrence.
+  Future<(Automation, int?)> _commit(
+    Automation draft,
+    int now, {
+    bool scheduleNextRun = false,
+    bool requireEnabled = false,
+  }) async {
+    try {
+      draft.validate();
+      final Automation ready;
+      final int? preview;
+      if (scheduleNextRun) {
+        final nextMs = draft.enabled
+            ? scheduleCalculator.computeNextRunAtMs(draft, afterMs: now)
+            : null;
+        if (requireEnabled && nextMs == null) {
+          throw CatalogException(
+            'schedule_invalid',
+            'once schedule is in the past; set a future schedule.at',
+          );
+        }
+        ready = draft.copyWith(
+          enabled: draft.enabled && nextMs != null,
+          nextRunAtMs: nextMs,
+          clearNextRunAtMs: nextMs == null,
+        );
+        preview = nextMs;
+      } else {
+        ready = draft;
+        preview = scheduleCalculator.computeNextRunAtMs(
+          draft.copyWith(enabled: true),
+          afterMs: now,
+        );
+      }
+      ready.validate();
+      final saved = await repository.upsert(ready);
+      return (saved, preview);
+    } on CatalogException {
+      rethrow;
+    } on ArgumentError catch (error) {
+      throw CatalogException(
+        'invalid_argument',
+        error.message?.toString() ?? 'invalid automation',
+      );
+    } on FormatException catch (error) {
+      throw CatalogException('invalid_argument', error.message);
+    } on Object catch (error) {
+      throw CatalogException(
+        'write_failed',
+        CatalogErrorSanitizer.sanitize('$error'),
+      );
+    }
+  }
+
+  Future<CatalogResult> _update(CatalogRequest req) async {
+    final id = _requireId(req);
+    final existing = await _require(req.workspaceId, id);
+    final now = _nowMs();
+    var next = existing;
+
+    if (req.arguments.containsKey('name')) {
+      next = next.copyWith(name: _requireText(req, 'name'));
+    }
+    if (req.arguments.containsKey('message')) {
+      next = next.copyWith(message: _requireText(req, 'message'));
+    }
+    if (req.arguments.containsKey('command')) {
+      final command = _text(req.arguments['command']) ?? '';
+      if (command.isEmpty || command.length > 2000) {
+        throw CatalogException(
+          'command_invalid',
+          'command must be 1..2000 characters',
+        );
+      }
+      next = next.copyWith(command: command);
+    }
+    if (req.arguments.containsKey('working_directory')) {
+      final workingDirectory = _workingDirectory(req);
+      next = next.copyWith(
+        workingDirectoryPath: workingDirectory,
+        clearWorkingDirectoryPath: workingDirectory == null,
+      );
+    }
+    if (req.arguments.containsKey('timeout_seconds')) {
+      next = next.copyWith(timeoutSeconds: _timeoutSeconds(req));
+    }
+    if (req.arguments.containsKey('catch_up')) {
+      next = next.copyWith(catchUpPolicy: _catchUpPolicy(req));
+    }
+    if (req.arguments.containsKey('schedule')) {
+      final rawSchedule = req.arguments['schedule'];
+      final schedule = parseAutomationSchedule(
+        rawSchedule,
+        calculator: scheduleCalculator,
+        defaultTimezone: next.timezone,
+        now: now,
+      );
+      final overridesDtstart =
+          rawSchedule is Map && rawSchedule.containsKey('dtstart_ms');
+      next = next.copyWith(
+        preset: schedule.preset,
+        customCron: schedule.customCron,
+        clearCustomCron: schedule.customCron == null,
+        dayOfWeek: schedule.dayOfWeek,
+        clearDayOfWeek: schedule.dayOfWeek == null,
+        minute: schedule.minute,
+        hourMinute: schedule.hourMinute,
+        timezone: schedule.timezone,
+        dtstartMs: overridesDtstart ? schedule.dtstartMs : next.dtstartMs,
+        runAtMs: schedule.runAtMs,
+        clearRunAtMs: schedule.runAtMs == null,
+      );
+    }
+    if (req.arguments.containsKey('max_run_count')) {
+      final maxRunCount = _maxRunCount(req);
+      next = next.copyWith(
+        maxRunCount: maxRunCount,
+        clearMaxRunCount: maxRunCount == null,
+      );
+    }
+    if (req.arguments.containsKey('missed_run_grace_minutes')) {
+      next = next.copyWith(missedRunGraceMinutes: _graceMinutes(req));
+    }
+    if (req.arguments.containsKey('reuse_session')) {
+      next = next.copyWith(
+        reuseSession: _boolArg(req, 'reuse_session') ?? false,
+      );
+    }
+    if (req.arguments.containsKey('target_member_id')) {
+      next = next.copyWith(
+        targetMemberId: _text(req.arguments['target_member_id']) ?? 'team-lead',
+      );
+    }
+    final enableArg = _boolArg(req, 'enabled');
+    if (req.arguments.containsKey('enabled')) {
+      next = next.copyWith(enabled: enableArg ?? false);
+    }
+
+    if (enableArg == true && next.isRunLimitReached) {
+      throw CatalogException(
+        'run_limit_reached',
+        'automation has reached its run limit: $id; increase or clear '
+            'max_run_count before enabling it',
+      );
+    }
+
+    final (saved, _) = await _commit(
+      next,
+      now,
+      scheduleNextRun: true,
+      requireEnabled: enableArg == true,
+    );
+    _emit(CatalogOp.update, req, [saved.id]);
+    return _ok(
+      req,
+      [saved.id],
+      {
+        'automation': saved.toJson(),
+        'summary': scheduleCalculator.formatScheduleSummary(saved),
+        'enabled': saved.enabled,
+        'next_run_at_ms': saved.nextRunAtMs,
+      },
+    );
+  }
+
+  Future<CatalogResult> _delete(CatalogRequest req) async {
+    final id = _requireId(req);
+    final existing = await _require(req.workspaceId, id);
+    await _translateWrite(
+      () => repository.delete(existing.workspaceId, existing.id),
+    );
+    _emit(CatalogOp.delete, req, [existing.id]);
+    return _ok(
+      req,
+      [existing.id],
+      {
+        'automation': {'id': existing.id, 'deleted': true},
+      },
+      message: 'Automation deleted.',
+    );
+  }
+
+  Future<CatalogResult> _run(CatalogRequest req) async {
+    final id = _requireId(req);
+    final automation = await _require(req.workspaceId, id);
+    if (automation.isRunLimitReached) {
+      throw CatalogException(
+        'run_limit_reached',
+        'automation has reached its run limit: $id',
+      );
+    }
+    final run = await _translateWrite(() async {
+      await runNow(automation.workspaceId, automation.id);
+      final runs = await repository.runsFor(
+        automation.workspaceId,
+        automationId: automation.id,
+      );
+      final latest = [...runs]
+        ..sort((a, b) => (b.startedAtMs ?? 0).compareTo(a.startedAtMs ?? 0));
+      return latest.isEmpty ? null : latest.first;
+    });
+    _emit(CatalogOp.run, req, [automation.id]);
+    return _ok(
+      req,
+      [automation.id],
+      {
+        'run': run?.toJson(),
+        'automation': (await _require(req.workspaceId, id)).toJson(),
+      },
+    );
+  }
+
+  /// Runs a write that does not go through [_commit] (delete, dispatch) and
+  /// maps unexpected failures to the same `write_failed` code.
+  Future<T> _translateWrite<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } on CatalogException {
+      rethrow;
+    } on Object catch (error) {
+      throw CatalogException(
+        'write_failed',
+        CatalogErrorSanitizer.sanitize('$error'),
+      );
+    }
+  }
+
+  Future<Automation> _require(String workspaceId, String id) async {
+    final automations = await repository.listForWorkspace(workspaceId);
+    final match = automations.where((a) => a.id == id).firstOrNull;
+    if (match == null) {
+      throw CatalogException('not_found', 'automation not found: $id');
+    }
+    return match;
+  }
+
+  void _emit(CatalogOp op, CatalogRequest req, List<String> ids) {
+    bus.emit(
+      CatalogMutationEvent(
+        kind: kind,
+        op: op,
+        ids: ids,
+        workspaceId: req.workspaceId,
+      ),
+    );
+  }
+
+  CatalogResult _ok(
+    CatalogRequest req,
+    List<String> ids,
+    Map<String, Object?> data, {
+    String? message,
+  }) {
+    return CatalogResult.ok(
+      kind: kind,
+      ids: ids,
+      workspaceId: req.workspaceId,
+      restartRequired: false,
+      data: data,
+      message: message,
+    );
+  }
+
+  int? _maxRunCount(CatalogRequest req) {
+    final raw = req.arguments['max_run_count'];
+    if (raw == null) return null;
+    if (raw is! num) {
+      throw CatalogException(
+        'invalid_argument',
+        'max_run_count must be a number',
+      );
+    }
+    final value = raw.toInt();
+    if (value < 0) {
+      throw CatalogException('invalid_argument', 'max_run_count must be >= 0');
+    }
+    return value == 0 ? null : value;
+  }
+
+  int _graceMinutes(CatalogRequest req) {
+    final raw = req.arguments['missed_run_grace_minutes'];
+    if (raw == null) return 15;
+    if (raw is! num) {
+      throw CatalogException(
+        'invalid_argument',
+        'missed_run_grace_minutes must be a number',
+      );
+    }
+    final value = raw.toInt();
+    if (value < 0) {
+      throw CatalogException(
+        'invalid_argument',
+        'missed_run_grace_minutes must be >= 0',
+      );
+    }
+    return value;
+  }
+
+  String _requireCommand(CatalogRequest req) {
+    final command = _text(req.arguments['command']) ?? '';
+    if (command.isEmpty) {
+      throw CatalogException('command_invalid', 'command is required');
+    }
+    if (command.length > 2000) {
+      throw CatalogException(
+        'command_invalid',
+        'command must be at most 2000 characters',
+      );
+    }
+    return command;
+  }
+
+  String? _workingDirectory(CatalogRequest req) {
+    final raw = _text(req.arguments['working_directory']);
+    if (raw == null) return null;
+    final folders = workspaceFolders?.call(req.workspaceId) ?? const [];
+    if (!folders.any((folder) => _isUnder(raw, folder.path))) {
+      throw CatalogException(
+        'working_directory_invalid',
+        'working_directory must be inside this workspace: $raw',
+      );
+    }
+    return raw;
+  }
+
+  int _timeoutSeconds(CatalogRequest req) {
+    final raw = req.arguments['timeout_seconds'];
+    if (raw == null) return 300;
+    final value = raw is num ? raw.toInt() : int.tryParse('$raw');
+    if (value == null || value < 30 || value > 1800) {
+      throw CatalogException(
+        'invalid_argument',
+        'timeout_seconds must be 30..1800',
+      );
+    }
+    return value;
+  }
+
+  AutomationCatchUpPolicy _catchUpPolicy(CatalogRequest req) {
+    final raw = _text(req.arguments['catch_up']);
+    if (raw == null) return AutomationCatchUpPolicy.none;
+    for (final value in AutomationCatchUpPolicy.values) {
+      if (value.name == raw) return value;
+    }
+    throw CatalogException('invalid_argument', 'unknown catch_up: $raw');
+  }
+
+  bool _isUnder(String child, String parent) {
+    final ctx = p.Context(
+      style: Platform.isWindows && !parent.startsWith('/')
+          ? p.Style.windows
+          : p.Style.posix,
+    );
+    final normalizedChild = ctx.normalize(child);
+    final normalizedParent = ctx.normalize(parent);
+    if (normalizedChild == normalizedParent) return true;
+    final prefix = normalizedParent.endsWith(ctx.separator)
+        ? normalizedParent
+        : '$normalizedParent${ctx.separator}';
+    return normalizedChild.startsWith(prefix);
+  }
+
+  AutomationAction _parseAction(Object? raw) {
+    final name = _text(raw) ?? AutomationAction.scheduledMessage.name;
+    for (final value in AutomationAction.values) {
+      if (value.name == name) return value;
+    }
+    throw CatalogException('invalid_argument', 'unknown action: $name');
+  }
+
+  String _requireText(CatalogRequest req, String key) {
+    final value = _text(req.arguments[key]);
+    if (value == null) {
+      throw CatalogException('invalid_argument', '$key is required');
+    }
+    return value;
+  }
+
+  String _requireId(CatalogRequest req) {
+    final id = _text(req.arguments['id']);
+    if (id == null) {
+      throw CatalogException('invalid_argument', 'id is required');
+    }
+    return id;
+  }
+
+  String? _optionalId(CatalogRequest req) => _text(req.arguments['id']);
+
+  /// Missing key → null; present but not a boolean → [CatalogException].
+  bool? _boolArg(CatalogRequest req, String key) {
+    if (!req.arguments.containsKey(key)) return null;
+    final raw = req.arguments[key];
+    if (raw is! bool) {
+      throw CatalogException('invalid_argument', '$key must be a boolean');
+    }
+    return raw;
+  }
+
+  static String? _text(Object? value) {
+    if (value is! String) return null;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+}

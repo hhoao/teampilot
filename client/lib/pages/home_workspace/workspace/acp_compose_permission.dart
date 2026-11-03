@@ -10,6 +10,7 @@ import '../../../cubits/session_preferences_cubit.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/app_session.dart';
 import '../../../models/cli_preset.dart';
+import '../../../models/runtime_target.dart';
 import '../../../models/session_member_binding.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
@@ -17,6 +18,7 @@ import '../../../repositories/session_repository.dart';
 import '../../../services/chat/launch/session/session_member_cli_locks.dart';
 import '../../../services/chat/launch/session/team_session_member_plan.dart';
 import '../../../services/chat/session/chat_tab.dart';
+import '../../../services/cli/registry/capabilities/acp_capability.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../widgets/compose/compose_chrome.dart';
@@ -25,21 +27,30 @@ import 'claude_acp_launch_switch.dart';
 bool _isAndroid(bool? isAndroidOverride) =>
     isAndroidOverride ?? Platform.isAndroid;
 
-/// ACP-only personal desktop CLIs (Gemini, CodeBuddy) always launch
-/// ACP; otherwise [resolveLaunchAcp].
-bool willLaunchPersonalAcp({
-  required bool isPersonal,
+/// ACP-only CLIs (Gemini, CodeBuddy, Antigravity) always launch ACP; otherwise
+/// [resolveLaunchAcp].
+///
+/// Local-only agents are restricted to the local target: on an SSH/Termux home
+/// target they fall back to PTY semantics (the caller then refuses the launch
+/// because the CLI has no PTY transport) instead of advertising a broken ACP
+/// session. [targetId] is optional because some compose call sites do not know
+/// the runtime target.
+bool willLaunchAcp({
   required CliTool? cli,
   required bool requested,
+  String? targetId,
   bool? isAndroidOverride,
 }) {
-  if (isPersonal &&
-      CliToolRegistry.builtIn().launchesAcpOnly(cli) &&
-      !_isAndroid(isAndroidOverride)) {
-    return true;
+  if (_isAndroid(isAndroidOverride)) return false;
+  if (targetId != null &&
+      cli != null &&
+      CliToolRegistry.builtIn().capability<AcpLocalOnlyCapability>(cli) !=
+          null &&
+      runtimeKindOfId(targetId) != RuntimeKind.local) {
+    return false;
   }
+  if (CliToolRegistry.builtIn().launchesAcpOnly(cli)) return true;
   return resolveLaunchAcp(
-    isPersonal: isPersonal,
     cli: cli,
     requested: requested,
     isAndroidOverride: isAndroidOverride,
@@ -52,14 +63,15 @@ bool showLandingAcpPermissionChip({
   required CliTool? cli,
   required bool requested,
   List<SessionMemberBinding> stampedMembers = const [],
+  String? targetId,
   bool? isAndroidOverride,
 }) {
   if (_isAndroid(isAndroidOverride)) return false;
   if (isPersonal) {
-    return willLaunchPersonalAcp(
-      isPersonal: true,
+    return willLaunchAcp(
       cli: cli,
       requested: requested,
+      targetId: targetId,
       isAndroidOverride: isAndroidOverride,
     );
   }
@@ -115,7 +127,6 @@ List<SessionMemberBinding> stampedLandingMembers({
     return stampMemberAcp(
       members: plan.members,
       memberTargets: plan.memberTargets,
-      teamMode: team.teamMode,
       seedClaudeMemberAcp: seedClaudeMemberAcp,
       seedCodexMemberAcp: seedCodexMemberAcp,
       seedCursorMemberAcp: seedCursorMemberAcp,
@@ -159,6 +170,7 @@ ComposePermissionControl? buildLandingAcpComposePermissionControl({
   required CliToolRegistry registry,
   required AppLocalizations l10n,
   required ValueChanged<LaunchSecurityPolicy> onSelected,
+  String? targetId,
   bool? isAndroidOverride,
 }) {
   if (!showLandingAcpPermissionChip(
@@ -166,6 +178,7 @@ ComposePermissionControl? buildLandingAcpComposePermissionControl({
     cli: launchCli,
     requested: requested,
     stampedMembers: stampedMembers,
+    targetId: targetId,
     isAndroidOverride: isAndroidOverride,
   )) {
     return null;
@@ -193,6 +206,7 @@ ComposePermissionControl? landingAcpPermissionControl({
   required AppLocalizations l10n,
   TeamProfile? selectedTeam,
   Workspace? workspace,
+  String? targetId,
   List<CliPreset> presets = const [],
 }) {
   final current = watchAcpPermissionDefault(context);
@@ -200,13 +214,10 @@ ComposePermissionControl? landingAcpPermissionControl({
       ? stampedLandingMembers(
           team: selectedTeam,
           workspace: workspace,
-          seedClaudeMemberAcp: readPersonalAcpDefault(context, CliTool.claude),
-          seedCodexMemberAcp: readPersonalAcpDefault(context, CliTool.codex),
-          seedCursorMemberAcp: readPersonalAcpDefault(context, CliTool.cursor),
-          seedOpencodeMemberAcp: readPersonalAcpDefault(
-            context,
-            CliTool.opencode,
-          ),
+          seedClaudeMemberAcp: readAcpDefault(context, CliTool.claude),
+          seedCodexMemberAcp: readAcpDefault(context, CliTool.codex),
+          seedCursorMemberAcp: readAcpDefault(context, CliTool.cursor),
+          seedOpencodeMemberAcp: readAcpDefault(context, CliTool.opencode),
           globalPresets: presets,
           acpPermission: current,
         )
@@ -216,11 +227,12 @@ ComposePermissionControl? landingAcpPermissionControl({
   return buildLandingAcpComposePermissionControl(
     isPersonal: isPersonal,
     launchCli: launchCli,
-    requested: readPersonalAcpDefault(context, launchCli),
+    requested: readAcpDefault(context, launchCli),
     stampedMembers: stamped,
     current: current,
     registry: registry,
     l10n: l10n,
+    targetId: targetId,
     onSelected: (policy) {
       unawaited(
         context.read<SessionPreferencesCubit>().setAcpPermissionDefault(policy),

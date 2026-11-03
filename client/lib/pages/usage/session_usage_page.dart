@@ -6,18 +6,19 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/session_usage_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../repositories/app_settings_repository.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/settings/workspace_pane_insets.dart';
 import 'usage_maintenance_dialog.dart';
 import 'usage_pricing_dialog.dart';
-import 'widgets/usage_cli_breakdown.dart';
-import 'widgets/usage_cost_card.dart';
+import 'usage_settings_dialog.dart';
 import 'widgets/usage_detail_table.dart';
+import 'widgets/usage_filter_bar.dart';
+import 'widgets/usage_heatmap_card.dart';
 import 'widgets/usage_page_chrome.dart';
 import 'widgets/usage_page_states.dart';
 import 'widgets/usage_summary_cards.dart';
-import 'widgets/usage_trend_chart.dart';
 
 class SessionUsagePage extends StatefulWidget {
   const SessionUsagePage({
@@ -37,13 +38,17 @@ class SessionUsagePage extends StatefulWidget {
 }
 
 const Duration _autoSyncTtl = Duration(minutes: 5);
-const Duration _autoSyncInterval = Duration(minutes: 10);
 
 class _SessionUsagePageState extends State<SessionUsagePage>
     with WidgetsBindingObserver {
   final _searchController = TextEditingController();
   Timer? _autoSyncTimer;
+  Timer? _liveRangeTimer;
   bool _appActive = true;
+  late final AppSettingsRepository _settings;
+  late final Future<void> _settingsReady;
+  bool _autoSyncEnabled = true;
+  int _autoSyncIntervalMinutes = usageSyncIntervalDefaultMinutes;
 
   @override
   void initState() {
@@ -52,28 +57,66 @@ class _SessionUsagePageState extends State<SessionUsagePage>
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     _appActive = lifecycle == null || lifecycle == AppLifecycleState.resumed;
 
-    if (widget.autoSync) {
-      _autoSyncTimer = Timer.periodic(_autoSyncInterval, (_) {
-        if (!mounted || !_appActive) return;
-        unawaited(
-          context.read<SessionUsageCubit>().syncIfStale(ttl: _autoSyncTtl),
-        );
-      });
-    }
+    _settings = context.read<AppSettingsRepository>();
+    _settingsReady = _loadSyncSettings();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final cubit = context.read<SessionUsageCubit>();
       await cubit.ensureLoaded();
-      if (!mounted || !widget.autoSync || !_appActive) return;
+      await _settingsReady;
+      if (!mounted || !_autoSyncActive || !_appActive) return;
       await cubit.syncIfStale(ttl: _autoSyncTtl);
     });
+
+    // The cubit outlives this State, so a live range set before the page was
+    // remounted never produces a liveEnd transition to listen for.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncLiveRangeTimer(context.read<SessionUsageCubit>().state.liveEnd);
+    });
+  }
+
+  bool get _autoSyncActive => widget.autoSync && _autoSyncEnabled;
+
+  Future<void> _loadSyncSettings() async {
+    final enabled = await _settings.loadUsageAutoSyncEnabled();
+    final minutes = await _settings.loadUsageSyncIntervalMinutes();
+    if (!mounted) return;
+    setState(() {
+      _autoSyncEnabled = enabled;
+      _autoSyncIntervalMinutes = normalizeUsageSyncInterval(minutes);
+    });
+    _restartAutoSyncTimer();
+  }
+
+  void _restartAutoSyncTimer() {
+    _autoSyncTimer?.cancel();
+    _autoSyncTimer = null;
+    if (!_autoSyncActive) return;
+    final interval = Duration(minutes: _autoSyncIntervalMinutes);
+    _autoSyncTimer = Timer.periodic(interval, (_) {
+      if (!mounted || !_appActive) return;
+      unawaited(context.read<SessionUsageCubit>().syncIfStale(ttl: interval));
+    });
+  }
+
+  Future<void> _setAutoSyncEnabled(bool value) async {
+    setState(() => _autoSyncEnabled = value);
+    _restartAutoSyncTimer();
+    await _settings.saveUsageAutoSyncEnabled(value);
+  }
+
+  Future<void> _setAutoSyncInterval(int minutes) async {
+    setState(() => _autoSyncIntervalMinutes = minutes);
+    _restartAutoSyncTimer();
+    await _settings.saveUsageSyncIntervalMinutes(minutes);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _appActive = state == AppLifecycleState.resumed;
-    if (_appActive && widget.autoSync) {
+    if (_appActive && _autoSyncActive) {
       unawaited(
         context.read<SessionUsageCubit>().syncIfStale(ttl: _autoSyncTtl),
       );
@@ -84,6 +127,8 @@ class _SessionUsagePageState extends State<SessionUsagePage>
   void dispose() {
     _autoSyncTimer?.cancel();
     _autoSyncTimer = null;
+    _liveRangeTimer?.cancel();
+    _liveRangeTimer = null;
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
@@ -94,74 +139,114 @@ class _SessionUsagePageState extends State<SessionUsagePage>
     cubit.resetFilters();
   }
 
+  /// Keeps a live-end custom range moving while the page is open.
+  void _syncLiveRangeTimer(bool live) {
+    if (live && _liveRangeTimer == null) {
+      _liveRangeTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+        if (!mounted || !_appActive) return;
+        context.read<SessionUsageCubit>().refreshRangeNow();
+      });
+      return;
+    }
+    if (!live) {
+      _liveRangeTimer?.cancel();
+      _liveRangeTimer = null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final content = BlocListener<SessionUsageCubit, SessionUsageState>(
-      listenWhen: (previous, current) =>
-          previous.isSyncing && !current.isSyncing,
-      listener: (context, state) {
-        if (state.syncCancelled) {
-          AppToast.show(
-            context,
-            message: context.l10n.sessionUsageSyncCancelled,
-            variant: TpToastVariant.info,
-          );
-          return;
-        }
-        if (state.lastSyncManual &&
-            !state.syncFailed &&
-            state.syncErrors.isEmpty &&
-            state.lastSyncResult != null) {
-          AppToast.show(
-            context,
-            message: context.l10n.sessionUsageSyncedToast,
-            variant: TpToastVariant.success,
-          );
-        }
-      },
-      child: BlocBuilder<SessionUsageCubit, SessionUsageState>(
-        builder: (context, state) {
-          final cubit = context.read<SessionUsageCubit>();
-          final body = BlocBuilder<SessionUsageCubit, SessionUsageState>(
-            buildWhen: (previous, current) =>
-                previous.status != current.status ||
-                previous.dashboard != current.dashboard ||
-                previous.errorMessage != current.errorMessage ||
-                previous.pricingCorrupted != current.pricingCorrupted,
-            builder: (context, bodyState) => _buildBody(
+      listenWhen: (previous, current) => previous.liveEnd != current.liveEnd,
+      listener: (context, state) => _syncLiveRangeTimer(state.liveEnd),
+      child: BlocListener<SessionUsageCubit, SessionUsageState>(
+        listenWhen: (previous, current) =>
+            previous.isSyncing && !current.isSyncing,
+        listener: (context, state) {
+          if (state.syncCancelled) {
+            AppToast.show(
               context,
-              cubit,
-              bodyState,
-              DateTime.now().millisecondsSinceEpoch,
-            ),
-          );
-          return KeyedSubtree(
-            key: AppKeys.sessionUsagePage,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                UsagePageHeader(
-                  state: state,
-                  onIncrementalSync: () => cubit.sync(),
-                  onFullSync: cubit.fullSync,
-                  onCancel: cubit.cancelSync,
-                  onMaintenance: () => _openMaintenance(cubit),
-                ),
-                if (_errorBanner(context, cubit, state) case final banner?) ...[
-                  const SizedBox(height: 12),
-                  banner,
-                ],
-                const SizedBox(height: 16),
-                Expanded(child: body),
-              ],
-            ),
-          );
+              message: context.l10n.sessionUsageSyncCancelled,
+              variant: TpToastVariant.info,
+            );
+            return;
+          }
+          if (state.lastSyncManual &&
+              !state.syncFailed &&
+              state.syncErrors.isEmpty &&
+              state.lastSyncResult != null) {
+            AppToast.show(
+              context,
+              message: context.l10n.sessionUsageSyncedToast,
+              variant: TpToastVariant.success,
+            );
+          }
         },
+        child: BlocBuilder<SessionUsageCubit, SessionUsageState>(
+          builder: (context, state) {
+            final cubit = context.read<SessionUsageCubit>();
+            final body = BlocBuilder<SessionUsageCubit, SessionUsageState>(
+              buildWhen: (previous, current) =>
+                  previous.status != current.status ||
+                  previous.dashboard != current.dashboard ||
+                  previous.isComputing != current.isComputing ||
+                  previous.errorMessage != current.errorMessage ||
+                  previous.pricingCorrupted != current.pricingCorrupted,
+              builder: (context, bodyState) => _buildBody(
+                context,
+                cubit,
+                bodyState,
+                DateTime.now().millisecondsSinceEpoch,
+              ),
+            );
+            return KeyedSubtree(
+              key: AppKeys.sessionUsagePage,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  UsagePageHeader(
+                    state: state,
+                    onIncrementalSync: () => cubit.sync(),
+                    onFullSync: cubit.fullSync,
+                    onCancel: cubit.cancelSync,
+                    onSettings: () => _openSettings(cubit),
+                  ),
+                  if (_errorBanner(context, cubit, state)
+                      case final banner?) ...[
+                    const SizedBox(height: 12),
+                    banner,
+                  ],
+                  const SizedBox(height: 16),
+                  Expanded(child: body),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
 
     if (widget.embedded) return content;
     return Padding(padding: WorkspacePaneInsets.page, child: content);
+  }
+
+  Future<void> _openSettings(SessionUsageCubit cubit) async {
+    final action = await showDialog<UsageSettingsAction>(
+      context: context,
+      builder: (context) => UsageSettingsDialog(
+        autoSyncEnabled: _autoSyncEnabled,
+        intervalMinutes: _autoSyncIntervalMinutes,
+        onAutoSyncChanged: _setAutoSyncEnabled,
+        onIntervalChanged: _setAutoSyncInterval,
+      ),
+    );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case UsageSettingsAction.syncNow:
+        unawaited(cubit.sync());
+      case UsageSettingsAction.maintenance:
+        await _openMaintenance(cubit);
+    }
   }
 
   Future<void> _openMaintenance(SessionUsageCubit cubit) async {
@@ -261,44 +346,28 @@ class _SessionUsagePageState extends State<SessionUsagePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          UsageToolbar(state: state, cubit: cubit),
+          UsageFilterBar(state: state, cubit: cubit),
           const SizedBox(height: 14),
-          UsageSummaryCards(dashboard: dashboard, nowMs: nowMs),
-          const SizedBox(height: 12),
-          UsageCostCard(
-            summary: dashboard.summary,
-            corrupted: state.pricingCorrupted,
-            onManagePricing: () => _openPricing(cubit),
+          BlocSelector<SessionUsageCubit, SessionUsageState, int>(
+            selector: (state) => Object.hash(
+              state.dashboard.summary,
+              Object.hashAll(state.dashboard.chart),
+              state.pricingCorrupted,
+            ),
+            builder: (context, _) => UsageSummaryCards(
+              dashboard: cubit.state.dashboard,
+              nowMs: nowMs,
+              pricingCorrupted: cubit.state.pricingCorrupted,
+              onManagePricing: () => _openPricing(cubit),
+            ),
           ),
           const SizedBox(height: 14),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final chart = UsageTrendChart(
-                days: dashboard.chart,
-                nowMs: nowMs,
-                selectedCli: state.cli,
-              );
-              final breakdown = UsageCliBreakdown(
-                slices: dashboard.cliSlices,
-                summary: dashboard.summary,
-                selectedCli: state.cli,
-              );
-              if (constraints.maxWidth < 900) {
-                return Column(
-                  children: [chart, const SizedBox(height: 12), breakdown],
-                );
-              }
-              return IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(flex: 2, child: chart),
-                    const SizedBox(width: 12),
-                    SizedBox(width: 300, child: breakdown),
-                  ],
-                ),
-              );
-            },
+          BlocSelector<SessionUsageCubit, SessionUsageState, int>(
+            selector: (state) => Object.hashAll(state.dashboard.heatmap),
+            builder: (context, _) => UsageHeatmapCard(
+              days: cubit.state.dashboard.heatmap,
+              nowMs: nowMs,
+            ),
           ),
           const SizedBox(height: 14),
           UsageDetailTable(
@@ -306,13 +375,14 @@ class _SessionUsagePageState extends State<SessionUsagePage>
             groupBy: state.groupBy,
             searchController: _searchController,
             onQueryChanged: cubit.setQuery,
+            onGroupByChanged: cubit.setGroupBy,
             onResetFilters: () => _resetFilters(cubit),
+            isComputing: state.isComputing,
             resetKey:
-                '${state.range.name}|${state.cli?.name ?? ''}|'
-                '${state.groupBy.name}|${state.query}',
+                '${state.range.name}|${state.customStartMs ?? ''}|'
+                '${state.customEndMs ?? ''}|${state.liveEnd}|'
+                '${state.cli?.name ?? ''}|${state.groupBy.name}|${state.query}',
           ),
-          const SizedBox(height: 10),
-          UsageFooter(state: state),
         ],
       ),
     );

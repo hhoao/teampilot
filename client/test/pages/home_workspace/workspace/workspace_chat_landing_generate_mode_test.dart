@@ -23,6 +23,7 @@ import 'package:teampilot/services/home_workspace/landing_prefs_store.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
 import '../../../support/post_frame_test_harness.dart';
+import '../../../support/compose_field_test_utils.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
 class _MockChatCubit extends Mock implements ChatCubit {}
@@ -150,11 +151,7 @@ void main() {
       // Generation mode restored from the draft.
       expect(find.text('Generate and launch'), findsOneWidget);
 
-      await tester.enterText(
-        find.byType(TextField).first,
-        'build a team for this repo',
-      );
-      await tester.pump();
+      await enterComposeText(tester, 'build a team for this repo');
 
       // The send button must be active without a concrete team selected.
       await tester.tap(find.byIcon(Icons.arrow_upward_rounded));

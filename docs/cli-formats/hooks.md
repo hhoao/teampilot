@@ -15,36 +15,41 @@
 > team-lead delegate、扩展 settings-hook、插件 `hooks/hooks.json`）经同一管线收敛渲染——
 > 本页的格式契约对**所有来源**统一生效。UI 编辑与启用见 `/hooks` 全局库。
 
-## 1. 归一化事件目录（13 事件 × 5 CLI 支持矩阵）
+## 1. 归一化事件目录（13 事件 × 6 CLI 支持矩阵）
 
 `HookEvent`（`models/hook_event.dart`）为唯一事实源：writer 与 UI 能力矩阵共用
 `HookEventCapability.matrix`，`≈` = 近似语义（UI 矩阵以 tooltip 如实标注）。
 
-| 归一化事件 | claude | flashskyai | codex | cursor | opencode（plugin 桥） |
-|---|---|---|---|---|---|
-| `sessionStart` | `SessionStart` | `SessionStart` | `SessionStart` | `sessionStart` | – |
-| `sessionEnd` | `SessionEnd` | `SessionEnd` | `SessionEnd` | `sessionEnd` | – |
-| `userPromptSubmit` | `UserPromptSubmit` | `UserPromptSubmit` | `UserPromptSubmit` | `beforeSubmitPrompt` | `chat.message`（≈） |
-| `preToolUse` | `PreToolUse` | `PreToolUse` | `PreToolUse` | `preToolUse` | `tool.execute.before`（≈） |
-| `postToolUse` | `PostToolUse` | `PostToolUse` | `PostToolUse` | `postToolUse` | `tool.execute.after`（≈） |
-| `postToolUseFailure` | `PostToolUseFailure` | `PostToolUseFailure` | `PostToolUseFailure` | `postToolUseFailure` | – |
-| `permissionRequest` | `PermissionRequest` | `PermissionRequest` | `PermissionRequest` | – | `permission.asked`（≈） |
-| `stop` | `Stop` | `Stop` | `Stop` | `stop` | `session.idle`（≈） |
-| `stopFailure` | `StopFailure` | `StopFailure` | `StopFailure` | – | – |
-| `subagentStop` | `SubagentStop` | `SubagentStop` | `SubagentStop` | `subagentStop` | – |
-| `preCompact` | `PreCompact` | `PreCompact` | `PreCompact` | `preCompact` | – |
-| `notification` | `Notification` | `Notification` | `Notification` | – | – |
-| `shellCommandRequest` | – | – | `ShellCommandRequest` | `beforeShellExecution`（≈） | – |
+| 归一化事件 | claude | flashskyai | codex | cursor | opencode（plugin 桥） | antigravity |
+|---|---|---|---|---|---|---|
+| `sessionStart` | `SessionStart` | `SessionStart` | `SessionStart` | `sessionStart` | – | `SessionStart` |
+| `sessionEnd` | `SessionEnd` | `SessionEnd` | `SessionEnd` | `sessionEnd` | – | – |
+| `userPromptSubmit` | `UserPromptSubmit` | `UserPromptSubmit` | `UserPromptSubmit` | `beforeSubmitPrompt` | `chat.message`（≈） | `PreInvocation`（≈） |
+| `preToolUse` | `PreToolUse` | `PreToolUse` | `PreToolUse` | `preToolUse` | `tool.execute.before`（≈） | `PreToolUse` |
+| `postToolUse` | `PostToolUse` | `PostToolUse` | `PostToolUse` | `postToolUse` | `tool.execute.after`（≈） | `PostToolUse` |
+| `postToolUseFailure` | `PostToolUseFailure` | `PostToolUseFailure` | `PostToolUseFailure` | `postToolUseFailure` | – | – |
+| `permissionRequest` | `PermissionRequest` | `PermissionRequest` | `PermissionRequest` | – | `permission.asked`（≈） | – |
+| `stop` | `Stop` | `Stop` | `Stop` | `stop` | `session.idle`（≈） | `Stop` |
+| `stopFailure` | `StopFailure` | `StopFailure` | `StopFailure` | – | – | – |
+| `subagentStop` | `SubagentStop` | `SubagentStop` | `SubagentStop` | `subagentStop` | – | – |
+| `preCompact` | `PreCompact` | `PreCompact` | `PreCompact` | `preCompact` | – | – |
+| `notification` | `Notification` | `Notification` | `Notification` | – | – | – |
+| `shellCommandRequest` | – | – | `ShellCommandRequest` | `beforeShellExecution`（≈） | – | – |
 
 - **拦截类事件**（可携带静态决策 policy）：`preToolUse` / `permissionRequest` / `shellCommandRequest`
   （`HookEvent.isIntercepting`）；其余事件 policy 必须为 `none`（UI 校验 + writer 侧
   `hook_policy_ignored_<id>_<event>` 警告兜底）。
-- **matcher**（工具名/命令正则）：claude/flashskyai/codex/cursor ✓；opencode 桥仅
+- **matcher**（工具名/命令正则）：claude/flashskyai/codex/cursor ✓；antigravity 仅
+  `PreToolUse`/`PostToolUse` ✓（其余事件 matcher 原样写出但被 CLI 忽略，writer 告警
+  `hook_matcher_ignored_<id>_<event>`）；opencode 桥仅
   `tool.execute.before/after` 按 tool 键限定，其余事件上的 matcher 忽略并警告
   （`hook_matcher_ignored_<id>_<event>`）。
 - **http action**：claude/flashskyai/codex 原生 http hook ✓；cursor 渲染为 bash curl 转发脚本
-  （`teampilot-http-<id>-<event>.sh`，见 §3 末注）；opencode 不支持（`hook_http_unsupported_<id>` 警告跳过）。
+  （`teampilot-http-<id>-<event>.sh`，见 §3 末注）；antigravity 不支持
+  （`hook_http_unsupported_<id>` 警告跳过，原生插件 hook 另报 `hook_native_plugin_unsupported_<id>`）；
+  opencode 不支持（`hook_http_unsupported_<id>` 警告跳过）。
 - **policy**：claude/flashskyai/codex flat `permissionDecision`；cursor `permission` + exit 2；
+  antigravity `decision`（`{"decision":"allow"}` / `{"decision":"deny","reason":…}`）；
   opencode 桥 `decision`（≈，见 §2）。
 
 ### 1.1 Cursor 官方 docs 全集（已修正，官方 https://cursor.com/docs/hooks）
@@ -69,6 +74,7 @@ stdout 非空则原样透传（假定已是该 CLI 响应格式，CLI 按原生�
 | claude / flashskyai | `{"permissionDecision":"allow"}` / `{"permissionDecision":"deny","permissionDecisionReason":"TeamPilot hook policy"}` | flat，无嵌套；timeout 缺省 5s（settings.json `timeout` 秒） |
 | codex | 同上（flat `permissionDecision`） | `[[hooks.<Event>]]` 的 `timeout` 缺省 5s |
 | cursor | `{"permission":"allow"}` / `{"permission":"deny","user_message":"TeamPilot hook policy"}` | **exit code 2 = 阻塞**（胶水 `exit 2` 承担）；默认 fail-open（无输出 / 非 0、非 2 退出按原生默认处理） |
+| antigravity | `{"decision":"allow"}` / `{"decision":"deny","reason":"TeamPilot hook policy"}` | `hooks.json` 条目级 `timeout` 缺省 10s；HTTP / 原生插件 hook 跳过并告警 |
 | opencode（桥） | `{"decision":"allow"}` / `{"decision":"deny","reason":"TeamPilot hook policy"}` | ≈：插件内 `tool.execute.before` 对 `decision:"deny"` 抛错阻断工具调用；`event` 订阅将 stdout 原样 JSON.parse 回传——**运行时行为以 opencode 实际实现验证为准，验证待 release** |
 
 - deny reason 文案来自各 writer 的 `denyReason` 构造参数（默认 `'TeamPilot hook policy'`）。
@@ -77,7 +83,7 @@ stdout 非空则原样透传（假定已是该 CLI 响应格式，CLI 按原生�
 ## 3. 粘合脚本契约（GlueScriptBuilder，bash / powershell 双方言）
 
 所有 command 类用户 hook 的原始命令被包进生成的 `teampilot-hook-<id>-<event>.sh`（cursor /
-opencode 恒 bash；claude 家族按 `HostScriptRunner.dialect`，powershell 时 `.ps1`）。行为：
+opencode 恒 bash；claude 家族与 antigravity 按 `HostScriptRunner.dialect`，powershell 时 `.ps1`）。行为：
 
 1. **stdin 透传**：hook payload JSON 由 CLI 经 stdin 注入，脚本 stdin 沿袭给用户命令
    （`bash` 方言经 `out="$(eval $inner 2>&1)"` 继承 stdin；用户脚本可直接 `cat` 读取 payload）；
@@ -102,6 +108,7 @@ opencode 恒 bash；claude 家族按 `HostScriptRunner.dialect`，powershell 时
 | codex | `CODEX_HOME/config.toml` `[[hooks.<Event>]]`（`matcher` 在数组级；`[[hooks.<Event>.hooks]]` 条目级 `type = "http"|"command"`、`command`、`timeout`） | `CODEX_HOME/hooks/` | managed（agent-status/bus）与用户 hook 同一次 `CodexHookWriter.render`，fragment 经 `CodexTomlMerge` 并入 config.toml |
 | cursor | 成员 fake HOME `~/.cursor/hooks.json`（`{"version":1,"hooks":{<event>:[…]}}`，per-script `command` / `matcher` / `timeout` / `loop_limit`；`stop` 恒 `loop_limit: null`） | `~/.cursor/hooks/` | `mergeCursorHooksConfig` 按 `(event, command)` 去重，保留 agent-status / bus 条目 |
 | opencode | `<configDir>/opencode.json` `plugin` 数组追加 `./teampilot-user-hooks.js` | `<configDir>/hooks/` 胶水 + `<configDir>/teampilot-user-hooks.js` | `mergeOpencodePluginEntries` 按路径去重；与 `teampilot-agent-status.js` / `teampilot-idle-bus.js` 平行共存（内部托管为 opencode 特有能力，不迁移进本 writer） |
+| antigravity | `<configDir>/hooks.json`（`{"teampilot-<id>": {"<Event>": [{matcher?, hooks:[{type:"command",command,timeout}]}]}}`；6 个原生事件 `SessionStart`/`PreToolUse`/`PostToolUse`/`PreInvocation`/`PostInvocation`/`Stop`，`PostInvocation` 无归一化对应、writer 不发射） | `<configDir>/hooks/` | 通用 `_deepMerge` 并入：未知顶层键与其它来源条目保留，`teampilot-<id>` 分组按本次 render 覆盖 |
 
 **来源汇聚**（`HookSeatContextCompleter`，各 CLI config_profile 装配点调用一次统一 writer）：
 

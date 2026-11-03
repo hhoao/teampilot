@@ -350,4 +350,241 @@ void main() {
     expect(dashboard.rows.single.unpricedEvents, 1);
     expect(dashboard.rows.single.costMicroUsd, 18000000);
   });
+
+  test('heatmap buckets by local day and follows only the CLI filter', () {
+    final evening = DateTime(2026, 10, 25, 23, 30).millisecondsSinceEpoch;
+    final morning = DateTime(2026, 10, 26, 0, 10).millisecondsSinceEpoch;
+    final events = [
+      // Out of order on purpose: buckets must still come back ascending.
+      _event(id: 'c', input: 3, output: 1, cacheRead: 6, timestampMs: morning),
+      _event(id: 'a', input: 10, output: 2, timestampMs: evening),
+      _event(
+        id: 'b',
+        cli: CliTool.codex,
+        input: 5,
+        output: 1,
+        timestampMs: evening,
+      ),
+    ];
+    final dashboard = _build(
+      events,
+      // A range that excludes both days, and a search that matches nothing,
+      // must not affect the heatmap.
+      filter: const UsageFilter(
+        range: UsageRange.today,
+        cli: CliTool.claude,
+        query: 'zzz',
+      ),
+    );
+    final unrestricted = _build(
+      events,
+      filter: const UsageFilter(range: UsageRange.today, cli: CliTool.claude),
+    );
+
+    expect(dashboard.heatmap.length, 2);
+    expect(
+      dashboard.heatmap[0].dayStartMs,
+      DateTime(2026, 10, 25).millisecondsSinceEpoch,
+    );
+    expect(dashboard.heatmap[0].tokens, 12);
+    expect(dashboard.heatmap[0].requests, 1);
+    expect(
+      dashboard.heatmap[1].dayStartMs,
+      DateTime(2026, 10, 26).millisecondsSinceEpoch,
+    );
+    expect(dashboard.heatmap[1].tokens, 10);
+    expect(dashboard.heatmap[1].requests, 1);
+    expect(dashboard.heatmap[1].cacheHitRate, closeTo(6 / 9, 1e-9));
+    expect(dashboard.heatmap[0].cacheHitRate, 0);
+    expect(dashboard.heatmap, unrestricted.heatmap);
+  });
+
+  test('heatmap hit rate is null on a day without input tokens', () {
+    final dashboard = _build([
+      _event(
+        id: 'output-only',
+        input: 0,
+        output: 4,
+        timestampMs: DateTime(2026, 10, 25, 9).millisecondsSinceEpoch,
+      ),
+    ]);
+
+    expect(dashboard.heatmap.single.tokens, 4);
+    expect(dashboard.heatmap.single.cacheHitRate, isNull);
+  });
+
+  test('heatmap ignores events with a non-positive timestamp', () {
+    final dashboard = _build([
+      _event(id: 'corrupt', input: 100, output: 0, timestampMs: 0),
+      _event(
+        id: 'ok',
+        input: 3,
+        output: 1,
+        timestampMs: DateTime(2026, 10, 25, 9).millisecondsSinceEpoch,
+      ),
+    ]);
+
+    expect(dashboard.heatmap, hasLength(1));
+    expect(
+      dashboard.heatmap.single.dayStartMs,
+      DateTime(2026, 10, 25).millisecondsSinceEpoch,
+    );
+    expect(dashboard.heatmap.single.requests, 1);
+    expect(dashboard.heatmap.single.tokens, 4);
+  });
+
+  test('heatmap prices days with the same catalog as the summary', () {
+    const rule = UsagePriceRule(
+      model: 'm',
+      inputPerMillion: 3,
+      outputPerMillion: 15,
+      cacheReadPerMillion: 0.3,
+      cacheWritePerMillion: 3.75,
+      effectiveFromMs: 0,
+      source: UsagePriceSource.user,
+    );
+    final dashboard = _build([
+      _event(
+        id: 'priced',
+        model: 'm',
+        input: 1000000,
+        output: 0,
+        timestampMs: DateTime(2026, 10, 25, 9).millisecondsSinceEpoch,
+      ),
+    ], pricing: const UsagePricingCatalog(userRules: [rule]));
+
+    expect(dashboard.heatmap.single.costMicroUsd, 3000000);
+  });
+
+  test('empty events produce an empty heatmap', () {
+    expect(_build(const []).heatmap, isEmpty);
+  });
+
+  test('last24Hours and fourteenDays use rolling/local windows', () {
+    final events = [
+      _event(
+        id: 'eight-hours',
+        timestampMs: DateTime(2026, 10, 26, 10).millisecondsSinceEpoch,
+      ),
+      _event(
+        id: 'thirty-two-hours',
+        timestampMs: DateTime(2026, 10, 25, 10).millisecondsSinceEpoch,
+      ),
+      _event(
+        id: 'ten-days',
+        timestampMs: DateTime(2026, 10, 16, 10).millisecondsSinceEpoch,
+      ),
+    ];
+
+    expect(
+      _build(
+        events,
+        filter: const UsageFilter(range: UsageRange.last24Hours),
+      ).summary.requests,
+      1,
+    );
+    expect(
+      _build(
+        events,
+        filter: const UsageFilter(range: UsageRange.fourteenDays),
+      ).summary.requests,
+      3,
+    );
+  });
+
+  test('custom range filters both ends', () {
+    final events = [
+      _event(
+        id: 'inside',
+        timestampMs: DateTime(2026, 10, 25, 12).millisecondsSinceEpoch,
+      ),
+      _event(
+        id: 'outside',
+        timestampMs: DateTime(2026, 10, 24, 12).millisecondsSinceEpoch,
+      ),
+    ];
+
+    final dashboard = _build(
+      events,
+      filter: UsageFilter(
+        range: UsageRange.custom,
+        customStartMs: DateTime(2026, 10, 25).millisecondsSinceEpoch,
+        customEndMs: DateTime(2026, 10, 26).millisecondsSinceEpoch,
+      ),
+    );
+
+    expect(dashboard.summary.requests, 1);
+  });
+
+  test('custom live end uses now as the end bound', () {
+    final events = [
+      _event(
+        id: 'now',
+        timestampMs: DateTime(2026, 10, 26, 18).millisecondsSinceEpoch,
+      ),
+    ];
+
+    final dashboard = _build(
+      events,
+      filter: UsageFilter(
+        range: UsageRange.custom,
+        customStartMs: DateTime(2026, 10, 26).millisecondsSinceEpoch,
+        customEndMs: DateTime(2026, 10, 26, 10).millisecondsSinceEpoch,
+        liveEnd: true,
+      ),
+    );
+
+    expect(dashboard.summary.requests, 1);
+  });
+
+  test('custom without both bounds falls back to all', () {
+    final events = [
+      _event(id: 'old', timestampMs: DateTime(2020).millisecondsSinceEpoch),
+    ];
+
+    expect(
+      _build(
+        events,
+        filter: const UsageFilter(range: UsageRange.custom),
+      ).summary.requests,
+      1,
+    );
+  });
+
+  test('custom with only a start bound falls back to all', () {
+    final events = [
+      _event(id: 'old', timestampMs: DateTime(2020).millisecondsSinceEpoch),
+    ];
+
+    expect(
+      _build(
+        events,
+        filter: UsageFilter(
+          range: UsageRange.custom,
+          customStartMs: DateTime(2026, 10, 25).millisecondsSinceEpoch,
+        ),
+      ).summary.requests,
+      1,
+    );
+  });
+
+  test('custom with only an end bound falls back to all', () {
+    final events = [
+      _event(
+        id: 'after-end',
+        timestampMs: DateTime(2026, 10, 27).millisecondsSinceEpoch,
+      ),
+    ];
+
+    expect(
+      _build(
+        events,
+        filter: UsageFilter(
+          range: UsageRange.custom,
+          customEndMs: DateTime(2026, 10, 26).millisecondsSinceEpoch,
+        ),
+      ).summary.requests,
+      1,
+    );
+  });
 }

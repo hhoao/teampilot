@@ -151,6 +151,34 @@ void main() {
   );
 
   test(
+    'prepareTeamShellLaunchFromEnvironment keeps the CodeBuddy config dir',
+    () async {
+      const member = TeamMemberConfig(id: 'team-lead', name: 'Lead');
+      const team = TeamProfile(
+        id: 'team-a',
+        name: 'Team A',
+        cli: CliTool.codebuddy,
+        teamMode: TeamMode.mixed,
+        members: [member],
+      );
+      final spec = await service().prepareTeamShellLaunchFromEnvironment(
+        session: _session(),
+        team: team,
+        member: member,
+        environment: const {
+          'CODEBUDDY_CONFIG_DIR': '/runtime/s1/team-lead/codebuddy',
+        },
+      );
+      expect(
+        spec.plan.memberConfigDir,
+        '/runtime/s1/team-lead/codebuddy',
+        reason: 'ACP attach spawns the CLI with this dir; empty falls back to '
+            'the session-level home and loses prompt/MCP/settings',
+      );
+    },
+  );
+
+  test(
     'prepareLaunch cursor mixed mode uses HOME as memberConfigDir',
     () async {
       const member = TeamMemberConfig(id: 'planner', name: 'Planner');

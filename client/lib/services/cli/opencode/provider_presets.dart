@@ -1,4 +1,5 @@
 import '../../../models/app_provider_config.dart';
+import 'opencode_go_layer.dart';
 import 'provider/opencode_credential_kind.dart';
 
 /// Built-in opencode provider presets.
@@ -14,40 +15,30 @@ import 'provider/opencode_credential_kind.dart';
 /// `config.npm = "@ai-sdk/openai-compatible"` so a custom/proxy endpoint
 /// resolves even though its id is not in opencode's catalog. Users fill in the
 /// Base URL and API key.
+///
+/// The first preset is the **only** OpenCode row. The paid Go plan is not a
+/// second row: it is a binding on that one row, and each model resolves to the
+/// upstream namespace that actually serves it (see [OpencodeGoLayer] and
+/// `OpencodeModelNamespace.forModel`).
 class OpencodeProviderPresets {
   const OpencodeProviderPresets._();
 
   static const all = <AppProviderPreset>[
     AppProviderPreset(
       id: "opencode",
-      label: "OpenCode Zen (official)",
+      label: "OpenCode (official)",
       template: AppProviderConfig(
         id: "opencode",
         cli: CliTool.opencode,
         name: "OpenCode",
         websiteUrl: "https://opencode.ai",
-        apiKeyUrl: "https://opencode.ai/zen",
+        apiKeyUrl: "https://opencode.ai/console",
         category: AppProviderCategory.official,
-        defaultModel: "claude-sonnet-4-5",
+        defaultModel: "deepseek-v4.1-flash-free",
+        isOfficial: true,
+        // Free Zen models need no credential at all; an API key only becomes
+        // required once the provider holds one or binds the Go layer.
         config: {OpencodeCredentialConfigKeys.kind: 'none'},
-      ),
-    ),
-    AppProviderPreset(
-      id: "opencode-go",
-      label: "OpenCode Go (subscription)",
-      template: AppProviderConfig(
-        id: "opencode-go",
-        cli: CliTool.opencode,
-        name: "OpenCode Go",
-        websiteUrl: "https://opencode.ai",
-        apiKeyUrl: "https://opencode.ai/go",
-        category: AppProviderCategory.official,
-        baseUrl: "https://opencode.ai/zen/go/v1",
-        defaultModel: "deepseek-v4-flash",
-        config: {
-          OpencodeCredentialConfigKeys.kind: 'none',
-          "npm": "@ai-sdk/openai-compatible",
-        },
       ),
     ),
     AppProviderPreset(
@@ -177,9 +168,12 @@ class OpencodeProviderPresets {
   ];
 
   static AppProviderPreset? byId(String id) {
+    final key = id.trim();
     for (final preset in all) {
-      if (preset.id == id) return preset;
+      if (preset.id == key) return preset;
     }
+    // Rows saved before the Go/Zen merge carried their own `opencode-go` id.
+    if (key == OpencodeGoLayer.namespace) return all.first;
     return null;
   }
 }

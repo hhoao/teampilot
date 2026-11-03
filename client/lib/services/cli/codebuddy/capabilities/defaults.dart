@@ -13,6 +13,43 @@ import '../../registry/launch/cli_launch_arg_contribution.dart';
 import '../../registry/launch/cli_launch_context.dart';
 import '../../registry/launch/workspace_access.dart';
 
+/// CodeBuddy registers its own first-party team tools (`TeamCreate`,
+/// `SendMessage`, `Task*`, channels) in every session, including ACP. A mixed
+/// TeamPilot team coordinates over teammate-bus instead, so those tools must
+/// be removed: they only ever answer "Not in a team" and their names shadow
+/// bus tools (`SendMessage` vs `send_message`).
+///
+/// The CLI's ACP `session/new` `_meta` has no tool allow/deny channel (unlike
+/// Claude), so the deny list goes into `settings.json` `permissions.deny`.
+/// Verified against codebuddy 2.179: a denied tool disappears from both the
+/// active and the deferred tool lists.
+const codebuddyMixedNativeTeamDenyTools = <String>[
+  'TeamCreate',
+  'TeamDelete',
+  'CreateChannel',
+  'CreateColleague',
+  'ListColleagues',
+  'SendMessage',
+  'MessageColleague',
+  'SpeakInChannel',
+  'ChannelTasks',
+  'TaskCreate',
+  'TaskUpdate',
+  'TaskList',
+  'TaskGet',
+  'TaskStop',
+  'TaskOutput',
+];
+
+/// Mixed team-lead extra deny: the lead dispatches over the bus, workers keep
+/// `Agent` for their own subagents (mirrors Claude's mixed rule).
+const codebuddyMixedLeadExtraDenyTools = <String>['Agent'];
+
+List<String> mixedDenyToolsForCodebuddy({required bool isLead}) => [
+  ...codebuddyMixedNativeTeamDenyTools,
+  if (isLead) ...codebuddyMixedLeadExtraDenyTools,
+];
+
 /// CodeBuddy is ACP-only in TeamPilot: there is no PTY launch, so
 /// native team mode is not offered. Mixed TeamBus seats still attach through
 /// the registered [AcpCapability] (`shouldAttachMemberAcp`).

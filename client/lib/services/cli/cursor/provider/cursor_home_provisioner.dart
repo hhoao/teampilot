@@ -338,7 +338,6 @@ final class CursorHomeProvisioner {
         ...const HookSeatContextCompleter().busAwarenessHooks(
           member: member,
           cli: CliTool.cursor,
-          pushDelivery: true,
         ),
         ...const HookSeatContextCompleter().busIdleHooks(
           idle: busIdle,

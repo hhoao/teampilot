@@ -11,7 +11,19 @@ typedef AcpCredentialSource = String? Function();
 /// Each ACP-capable CLI exposes: the argv candidates to probe (preference
 /// order — the runtime tries the first, falls back on failure), its
 /// per-agent translator, and the isolated environment for the agent process.
+/// Marker for an ACP agent whose adapter is local-only (no remote install).
+/// Mixed seats on SSH/Termux targets stay on PTY instead of starting a broken
+/// ACP session.
+abstract interface class AcpLocalOnlyCapability implements CliCapability {}
+
+/// Marker for an ACP agent that appends `usage_update` samples to the per-seat
+/// ACP usage JSONL sink. Call sites read this instead of comparing CLI ids.
+abstract interface class AcpUsageLogCapability implements CliCapability {}
+
 abstract interface class AcpCapability implements CliCapability {
+  /// Maximum time allowed for the ACP startup handshake.
+  Duration get startupTimeout => const Duration(seconds: 30);
+
   /// Binary that speaks ACP on stdio. Gemini returns [cliExecutable].
   String agentExecutable(String cliExecutable);
 
@@ -36,6 +48,11 @@ abstract interface class AcpCapability implements CliCapability {
   /// returns "Failed to initialize session services" when the same HTTP
   /// servers are also forwarded on `session/new`.
   bool get forwardSessionNewMcpServers => true;
+
+  /// Extra spawn env needed once the agent-status plugin is staged for this
+  /// seat. Empty for every CLI that needs nothing; callers gate on "agent
+  /// status staged", never on the CLI identity.
+  Map<String, String> get agentStatusEnvironment;
 
   /// Extra `session/new` `_meta` (for example Claude mixed-seat
   /// `disallowedTools` / `allowedTools`). Default empty.

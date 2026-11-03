@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_file_attach.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_text_controller.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_image_clipboard.dart';
 
 import '../../../../support/in_memory_filesystem.dart';
@@ -25,7 +25,7 @@ void main() {
       final fs = InMemoryFilesystem();
       const root = '/repo';
       const attachmentsDir = '/docs/TeamPilot/Attachments';
-      final controller = TextEditingController();
+      final controller = ComposeTextController();
 
       final pasted = await pasteComposeImageAttachment(
         controller: controller,
@@ -55,7 +55,7 @@ void main() {
       const root = '/repo';
       const external = '/tmp/clip.png';
       await fs.writeBytes(external, [4, 5, 6]);
-      final controller = TextEditingController();
+      final controller = ComposeTextController();
 
       final pasted = await pasteComposeImageAttachment(
         controller: controller,

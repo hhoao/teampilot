@@ -1,12 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/session_usage_dashboard.dart';
-import '../../../models/team_config.dart';
+import '../../../repositories/app_settings_repository.dart';
 import '../../../theme/workspace_surface_layers.dart';
+import '../../../utils/logging/logger.dart';
 import '../../../utils/ui/app_keys.dart';
-import '../usage_format.dart';
+import 'usage_table_columns.dart';
+import 'usage_table_pagination.dart';
+import 'usage_table_toolbar.dart';
 
 class UsageDetailTable extends StatefulWidget {
   const UsageDetailTable({
@@ -14,8 +20,10 @@ class UsageDetailTable extends StatefulWidget {
     required this.groupBy,
     required this.searchController,
     required this.onQueryChanged,
+    required this.onGroupByChanged,
     required this.onResetFilters,
     this.resetKey = '',
+    this.isComputing = false,
     super.key,
   });
 
@@ -23,10 +31,12 @@ class UsageDetailTable extends StatefulWidget {
   final UsageGroupBy groupBy;
   final TextEditingController searchController;
   final ValueChanged<String> onQueryChanged;
+  final ValueChanged<UsageGroupBy> onGroupByChanged;
   final VoidCallback onResetFilters;
 
   /// Changes whenever range/CLI/group/search filters change; resets the page.
   final String resetKey;
+  final bool isComputing;
 
   @override
   State<UsageDetailTable> createState() => _UsageDetailTableState();
@@ -34,9 +44,21 @@ class UsageDetailTable extends StatefulWidget {
 
 class _UsageDetailTableState extends State<UsageDetailTable> {
   static const _pageSizeOptions = <int>[10, 20, 50, 100];
+  static const _tableId = 'usage.detail';
+  static const _defaultSort = TpTableSort(
+    columnId: usageTotalColumnId,
+    ascending: false,
+  );
 
   int _pageSize = 20;
   int _page = 0;
+  TpTableState _tableState = const TpTableState(sort: _defaultSort);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTableState();
+  }
 
   @override
   void didUpdateWidget(covariant UsageDetailTable oldWidget) {
@@ -47,101 +69,160 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
     }
   }
 
+  Future<void> _loadTableState() async {
+    final repository = context.read<AppSettingsRepository?>();
+    if (repository == null) return;
+    try {
+      final saved = await repository.loadTableState(_tableId);
+      if (!mounted || saved == null) return;
+      setState(() {
+        _tableState = TpTableState.fromJson(saved).copyWith(sort: _defaultSort);
+      });
+    } on Object catch (error, stackTrace) {
+      AppLogger.instance.w(
+        '[usage] table state load failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  void _saveTableState(TpTableState state) {
+    final repository = context.read<AppSettingsRepository?>();
+    if (repository == null) return;
+    unawaited(
+      repository
+          .saveTableState(_tableId, state.copyWith(clearSort: true).toJson())
+          .catchError((Object error, StackTrace stackTrace) {
+            AppLogger.instance.w(
+              '[usage] table state save failed: $error',
+              error: error,
+              stackTrace: stackTrace,
+            );
+          }),
+    );
+  }
+
+  void _onStateChanged(TpTableState next) {
+    final previous = _tableState;
+    setState(() {
+      _tableState = next;
+      if (previous.sort != next.sort || previous.hidden != next.hidden) {
+        _page = 0;
+      }
+    });
+    _saveTableState(next);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
     final dashboard = widget.dashboard;
-    final groupBy = widget.groupBy;
-    final groupLabel = usageGroupLabel(context, groupBy);
+    final columns = buildUsageTableColumns(
+      context: context,
+      summary: dashboard.summary,
+      groupBy: widget.groupBy,
+    );
+    final sortedRows = sortUsageRows(
+      dashboard.rows,
+      _tableState.sort ?? _defaultSort,
+      columns,
+    );
 
-    final total = dashboard.rows.length;
+    final total = sortedRows.length;
     final pageCount = total == 0 ? 1 : (total + _pageSize - 1) ~/ _pageSize;
     final page = _page.clamp(0, pageCount - 1);
     final start = page * _pageSize;
     final end = (start + _pageSize).clamp(0, total);
     final pageRows = total == 0
         ? const <UsageGroup>[]
-        : dashboard.rows.sublist(start, end);
+        : sortedRows.sublist(start, end);
     final showPager = total > _pageSizeOptions.first;
+
+    final labels = TpDataTableLabels(
+      columns: l10n.sessionUsageColumnSettings,
+      reset: l10n.sessionUsageColumnReset,
+      empty: l10n.sessionUsageTableEmpty,
+      sortAscending: l10n.sessionUsageSortAscending,
+      sortDescending: l10n.sessionUsageSortDescending,
+    );
 
     return Container(
       key: AppKeys.sessionUsageTable,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+      padding: const EdgeInsets.only(top: 14, bottom: 10),
       decoration: workspaceCardDecoration(
         cs,
         radius: 14,
       ).copyWith(color: cs.workspaceCard),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
         children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.sessionUsageGroupCount(dashboard.rows.length),
-                    style: styles.mdBold,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${l10n.sessionUsageGroupBy} · $groupLabel',
-                    style: styles.xs.copyWith(
-                      color: cs.onSurface.withValues(alpha: 0.56),
-                    ),
-                  ),
-                ],
+          TpDataTable<UsageGroup>(
+            columns: columns,
+            rows: pageRows,
+            rowKey: (row) => row.key,
+            state: _tableState,
+            defaultSort: _defaultSort,
+            onStateChanged: _onStateChanged,
+            minTableWidth: 1080,
+            rowHeight: 56,
+            showScrollbar: false,
+            horizontalScroll: true,
+            labels: labels,
+            toolbar: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: UsageTableToolbar(
+                groupBy: widget.groupBy,
+                searchController: widget.searchController,
+                onQueryChanged: widget.onQueryChanged,
+                onGroupByChanged: widget.onGroupByChanged,
+                columns: columns,
+                tableState: _tableState,
+                onTableStateChanged: _onStateChanged,
+                labels: labels,
               ),
-              SizedBox(
-                width: 240,
-                child: TextField(
-                  key: AppKeys.sessionUsageSearchField,
-                  controller: widget.searchController,
-                  onChanged: widget.onQueryChanged,
-                  style: styles.sm,
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: l10n.sessionUsageSearchHint,
-                    prefixIcon: const Icon(Icons.search, size: 18),
-                    suffixIcon: widget.searchController.text.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: l10n.sessionUsageResetFilters,
-                            iconSize: 18,
-                            onPressed: () {
-                              widget.searchController.clear();
-                              widget.onQueryChanged('');
-                            },
-                            icon: const Icon(Icons.close),
-                          ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(9),
+            ),
+            footer: showPager
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: UsageTablePagination(
+                      page: page,
+                      pageCount: pageCount,
+                      start: start,
+                      end: end,
+                      total: total,
+                      pageSize: _pageSize,
+                      pageSizeOptions: _pageSizeOptions,
+                      onPageSizeChanged: (size) {
+                        setState(() {
+                          _pageSize = size;
+                          _page = 0;
+                        });
+                      },
+                      onPrev: page == 0
+                          ? null
+                          : () => setState(() => _page = page - 1),
+                      onNext: page >= pageCount - 1
+                          ? null
+                          : () => setState(() => _page = page + 1),
                     ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Divider(color: cs.outlineVariant.withValues(alpha: 0.5), height: 1),
-          if (total == 0)
-            Padding(
+                  )
+                : null,
+            emptyState: Padding(
               padding: const EdgeInsets.symmetric(vertical: 26),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(l10n.sessionUsageTableEmpty, style: styles.smMedium),
+                  Text(
+                    l10n.sessionUsageTableEmpty,
+                    style: TpTextStyles.of(context).smMedium,
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     l10n.sessionUsageTableEmptyHint,
-                    style: styles.xs.copyWith(
-                      color: cs.onSurface.withValues(alpha: 0.56),
-                    ),
+                    style: TpTextStyles.of(
+                      context,
+                    ).xs.copyWith(color: cs.onSurface.withValues(alpha: 0.56)),
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton(
@@ -150,330 +231,17 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
                   ),
                 ],
               ),
-            )
-          else ...[
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final width = constraints.maxWidth < 1000
-                    ? 1000.0
-                    : constraints.maxWidth;
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: width,
-                    child: Column(
-                      children: [
-                        _HeaderRow(groupLabel: groupLabel),
-                        for (final row in pageRows)
-                          _UsageRow(
-                            row: row,
-                            groupBy: groupBy,
-                            summary: dashboard.summary,
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-            if (showPager)
-              _PaginationBar(
-                page: page,
-                pageCount: pageCount,
-                start: start,
-                end: end,
-                total: total,
-                pageSize: _pageSize,
-                pageSizeOptions: _pageSizeOptions,
-                onPageSizeChanged: (size) {
-                  setState(() {
-                    _pageSize = size;
-                    _page = 0;
-                  });
-                },
-                onPrev: page == 0
-                    ? null
-                    : () => setState(() => _page = page - 1),
-                onNext: page >= pageCount - 1
-                    ? null
-                    : () => setState(() => _page = page + 1),
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _HeaderRow extends StatelessWidget {
-  const _HeaderRow({required this.groupLabel});
-
-  final String groupLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final styles = TpTextStyles.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final style = styles.xs.copyWith(
-      color: cs.onSurface.withValues(alpha: 0.5),
-      fontWeight: FontWeight.w600,
-    );
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 9),
-      child: Row(
-        children: [
-          Expanded(child: Text(groupLabel, style: style)),
-          _headerCell(l10n.sessionUsageTotalShort, 90, style),
-          _headerCell(l10n.sessionUsageInputShort, 80, style),
-          _headerCell(l10n.sessionUsageOutputShort, 80, style),
-          _headerCell(l10n.sessionUsageCacheShort, 90, style),
-          _headerCell(l10n.sessionUsageCostShort, 100, style),
-          _headerCell(l10n.sessionUsageRequestsShort, 70, style),
-          _headerCell(l10n.sessionUsageSessionsShort, 70, style),
-          _headerCell(l10n.sessionUsageShareShort, 120, style),
-        ],
-      ),
-    );
-  }
-
-  Widget _headerCell(String text, double width, TextStyle style) {
-    return SizedBox(
-      width: width,
-      child: Text(text, textAlign: TextAlign.end, style: style),
-    );
-  }
-}
-
-class _UsageRow extends StatelessWidget {
-  const _UsageRow({
-    required this.row,
-    required this.groupBy,
-    required this.summary,
-  });
-
-  final UsageGroup row;
-  final UsageGroupBy groupBy;
-  final UsageSummary summary;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-    final share = summary.totalTokens == 0
-        ? 0.0
-        : row.totalTokens / summary.totalTokens;
-    final isCliGroup = groupBy == UsageGroupBy.cli;
-    final cli = isCliGroup ? CliTool.tryParse(row.label) : null;
-    final label = cli == null
-        ? usageGroupName(context, row)
-        : usageCliLabel(cli);
-    final subtitle = usageGroupSubtitle(context, row.subtitle);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: styles.smMedium,
-                ),
-                const SizedBox(height: 3),
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 2,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    for (final tool in row.clis)
-                      if (!isCliGroup)
-                        _CliBadge(cli: tool)
-                      else
-                        const SizedBox.shrink(),
-                    if (subtitle.isNotEmpty)
-                      Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: styles.xs.copyWith(
-                          color: cs.onSurface.withValues(alpha: 0.5),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
             ),
           ),
-          _numberCell(formatUsageTokens(row.totalTokens), 90, styles),
-          _numberCell(formatUsageTokens(row.freshInputTokens), 80, styles),
-          _numberCell(formatUsageTokens(row.outputTokens), 80, styles),
-          _numberCell(formatUsageTokens(row.cacheReadTokens), 90, styles),
-          _costCell(context, row, styles),
-          _numberCell('${row.requests}', 70, styles),
-          _numberCell('${row.sessions}', 70, styles),
-          SizedBox(
-            width: 120,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(formatUsagePercent(share), style: styles.smMedium),
-                const SizedBox(height: 5),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: LinearProgressIndicator(
-                    value: share,
-                    minHeight: 4,
-                    backgroundColor: cs.surfaceContainerHighest,
-                    valueColor: AlwaysStoppedAnimation(cs.primary),
-                  ),
+          if (widget.isComputing)
+            Positioned.fill(
+              child: AbsorbPointer(
+                child: ColoredBox(
+                  color: cs.surface.withValues(alpha: 0.55),
+                  child: const Center(child: CircularProgressIndicator()),
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _numberCell(String text, double width, TpTextStyles styles) {
-    return SizedBox(
-      width: width,
-      child: Text(text, textAlign: TextAlign.end, style: styles.sm),
-    );
-  }
-
-  Widget _costCell(BuildContext context, UsageGroup row, TpTextStyles styles) {
-    final l10n = context.l10n;
-    final text = row.pricedEvents == 0
-        ? l10n.sessionUsageCostUnpriced
-        : '${formatUsageCost(row.costMicroUsd)}${row.unpricedEvents > 0 ? '*' : ''}';
-    return SizedBox(
-      width: 100,
-      child: Text(text, textAlign: TextAlign.end, style: styles.sm),
-    );
-  }
-}
-
-class _CliBadge extends StatelessWidget {
-  const _CliBadge({required this.cli});
-
-  final CliTool cli;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = usageCliColor(cli);
-    final styles = TpTextStyles.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        usageCliLabel(cli),
-        style: styles.xs.copyWith(color: color, fontSize: 10),
-      ),
-    );
-  }
-}
-
-class _PaginationBar extends StatelessWidget {
-  const _PaginationBar({
-    required this.page,
-    required this.pageCount,
-    required this.start,
-    required this.end,
-    required this.total,
-    required this.pageSize,
-    required this.pageSizeOptions,
-    required this.onPageSizeChanged,
-    required this.onPrev,
-    required this.onNext,
-  });
-
-  final int page;
-  final int pageCount;
-  final int start;
-  final int end;
-  final int total;
-  final int pageSize;
-  final List<int> pageSizeOptions;
-  final ValueChanged<int> onPageSizeChanged;
-  final VoidCallback? onPrev;
-  final VoidCallback? onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-    final muted = styles.xs.copyWith(
-      color: cs.onSurface.withValues(alpha: 0.56),
-    );
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 12,
-        runSpacing: 4,
-        children: [
-          Text(
-            l10n.sessionUsagePageRange(start + 1, end, total),
-            key: AppKeys.sessionUsagePageRange,
-            style: muted,
-          ),
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 2,
-            children: [
-              Text(l10n.sessionUsageRowsPerPage, style: muted),
-              DropdownButtonHideUnderline(
-                child: DropdownButton<int>(
-                  key: AppKeys.sessionUsagePageSize,
-                  value: pageSize,
-                  isDense: true,
-                  borderRadius: BorderRadius.circular(8),
-                  style: styles.xs.copyWith(color: cs.onSurface),
-                  items: [
-                    for (final size in pageSizeOptions)
-                      DropdownMenuItem(value: size, child: Text('$size')),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) onPageSizeChanged(value);
-                  },
-                ),
-              ),
-              IconButton(
-                key: AppKeys.sessionUsagePrevPage,
-                tooltip: l10n.sessionUsagePrevPage,
-                onPressed: onPrev,
-                visualDensity: VisualDensity.compact,
-                iconSize: 20,
-                icon: const Icon(Icons.chevron_left),
-              ),
-              Text(l10n.sessionUsagePageOf(page + 1, pageCount), style: muted),
-              IconButton(
-                key: AppKeys.sessionUsageNextPage,
-                tooltip: l10n.sessionUsageNextPage,
-                onPressed: onNext,
-                visualDensity: VisualDensity.compact,
-                iconSize: 20,
-                icon: const Icon(Icons.chevron_right),
-              ),
-            ],
-          ),
         ],
       ),
     );

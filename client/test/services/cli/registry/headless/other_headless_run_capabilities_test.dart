@@ -103,7 +103,11 @@ void main() {
       run,
     );
     expect(args, containsAllInOrder(['--standalone', 'run']));
-    expect(args, containsAllInOrder(['--model', 'm', 'P']));
+    // The model selector is written once, into `opencode.json` `"model"`, by
+    // the headless config writer — never as a second `--model` argument that
+    // would have to re-derive the upstream namespace (Go vs Zen) on its own.
+    expect(args, isNot(contains('--model')));
+    expect(args, containsAllInOrder(['P']));
     expect(args, isNot(contains('--agent')));
     expect(cap.buildEnvironment(run)['OPENCODE_CONFIG_DIR'], '/tmp/c');
   });

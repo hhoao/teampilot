@@ -127,7 +127,6 @@ void main() {
     final entries = const HookSeatContextCompleter().busAwarenessHooks(
       member: worker,
       cli: CliTool.claude,
-      pushDelivery: false,
     );
     final result = writer.render(entries: entries, ctx: bashCtx('/s/hooks'));
     expect(result.warnings, isEmpty);

@@ -8,11 +8,14 @@ import 'package:uuid/uuid.dart';
 import '../../../models/team_config.dart';
 import '../../../services/acp/acp_agent_session_store.dart';
 import '../../../services/acp/acp_agent_translator.dart';
+import '../../../services/acp/acp_background_liveness.dart';
+import '../../../services/acp/acp_background_transcript.dart';
 import '../../../services/acp/acp_chat_extension_fold.dart';
 import '../../../services/acp/acp_chat_strings.dart';
 import '../../../services/acp/acp_chat_transcript.dart';
 import '../../../services/acp/acp_chat_transcript_replay.dart';
 import '../../../services/acp/acp_client_extensions.dart';
+import '../../../services/acp/acp_model_ref.dart';
 import '../../../services/acp/acp_rpc_error.dart';
 import '../../../services/acp/acp_session.dart';
 import '../../../services/acp/acp_session_runtime.dart';
@@ -160,10 +163,15 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     required this.sessionId,
     required this.tool,
     this.seatMemberId = acpMemberId,
+    this.launchProvider = '',
+    this.launchModel = '',
+    this.onUserActivity,
     AgentAttentionPort? attention,
     AcpChatTranscriptWriter? transcript,
     AcpAgentSessionStore? agentSession,
     SeatBackgroundLeasePort? seatLeases,
+    AcpBackgroundTranscriptSourceFactory? backgroundTranscriptFactory,
+    AcpBackgroundLivenessProbeFactory? backgroundLivenessFactory,
     Duration? backgroundSyncInterval,
     this.backgroundSyncWindow = defaultBackgroundSyncWindow,
   }) : _runtime = runtime,
@@ -171,6 +179,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
        _transcript = transcript,
        _agentSession = agentSession,
        _seatLeases = seatLeases,
+       _backgroundTranscriptFactory = backgroundTranscriptFactory,
+       _backgroundLivenessFactory = backgroundLivenessFactory,
        _backgroundSyncInterval = backgroundSyncInterval,
        super(const AcpChatRuntimeState());
 
@@ -192,16 +202,52 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   static const _backgroundSyncSlowInterval = Duration(seconds: 60);
   static const _backgroundSyncFastWindow = Duration(minutes: 3);
 
+  /// Poll cadence while the agent's own transcript is readable: each tick is a
+  /// stat plus (when it grew) the appended bytes, so it can stay responsive
+  /// without replaying the session over the protocol. Long waits back off to
+  /// the slow cadence — a background shell can run for the whole window.
+  static const _backgroundTranscriptInterval = Duration(seconds: 2);
+  static const _backgroundTranscriptSlowInterval = Duration(seconds: 10);
+
   static const _uuid = Uuid();
 
   final AcpSessionRuntimeApi _runtime;
   final String sessionId;
   final CliTool tool;
   final String seatMemberId;
+
+  /// Launch identity persisted on the session (provider row + model ref).
+  ///
+  /// Applied to the agent once after [start]: OpenCode v2 ignores
+  /// `opencode.json`'s `model` for ACP sessions, so without this a restart
+  /// silently falls back to the agent's default model.
+  final String launchProvider;
+  final String launchModel;
+
+  /// Bumps the session's `updatedAt` when the operator submits a prompt, so
+  /// the conversation list's relative time and `recentlyUpdated` order move
+  /// like the PTY path (which touches on every user line). Null in tests.
+  final void Function(String sessionId)? onUserActivity;
+
   final AgentAttentionPort? _attention;
   final AcpChatTranscriptWriter? _transcript;
   final AcpAgentSessionStore? _agentSession;
   final SeatBackgroundLeasePort? _seatLeases;
+  final AcpBackgroundTranscriptSourceFactory? _backgroundTranscriptFactory;
+  final AcpBackgroundLivenessProbeFactory? _backgroundLivenessFactory;
+
+  /// Polls the agent's own metadata for out-of-turn work, built once the agent
+  /// session id is known. Null when this CLI keeps no readable evidence.
+  AcpBackgroundLivenessProbe? _backgroundLiveness;
+
+  /// Incremental reader of the agent's own transcript, built once the agent
+  /// session id is known. Null when this CLI keeps no readable transcript.
+  AcpBackgroundTranscriptSource? _backgroundTranscript;
+
+  /// Whether the last transcript read located the file. Only then may the
+  /// watch tick at the transcript cadence — a bound source whose file is
+  /// missing must keep the slow `session/load` cadence.
+  bool _backgroundTranscriptActive = false;
 
   /// Test/embedding override for the history-sync poll cadence.
   final Duration? _backgroundSyncInterval;
@@ -234,6 +280,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// In-flight [syncHistory] so overlapping background ticks coalesce.
   Future<void>? _historySyncInFlight;
 
+  /// The launch-time reconcile was skipped because the first prompt arrived
+  /// before the handshake finished. Run it once that turn ends (or the queued
+  /// prompt is cancelled) instead of blocking the turn behind `session/load`.
+  bool _reconcileAfterTurn = false;
+
   /// Out-of-turn history polling: armed by a background tool call, disarmed
   /// when the session closes, the completion is observed, or
   /// [backgroundSyncWindow] elapses.
@@ -243,6 +294,18 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// A background tool call was opened during the live turn in progress.
   /// [endTurn] arms the watch when this is set.
   bool _turnHadBackgroundToolCall = false;
+
+  /// Cursor child agents still running after the parent tool returned.
+  /// Keyed by `subagentSessionId`. Empty values mean "alive, no label yet".
+  final Map<String, String> _liveSubagents = {};
+
+  /// Every Cursor child spawned this watch has already reported a terminal
+  /// state. Stops [endTurn] from arming a lease for work that already finished.
+  bool _cursorSubagentsSettled = false;
+
+  /// Human-readable description of the background tool call opened this turn,
+  /// surfaced on the seat lease so the sidebar can say what is still running.
+  String? _turnBackgroundLabel;
 
   /// A background watch is live (lease held, polling scheduled).
   bool _backgroundWorkActive = false;
@@ -279,6 +342,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     _seenChunkThisTurn = false;
     _runningToolCalls.clear();
     _turnHadBackgroundToolCall = false;
+    _turnBackgroundLabel = null;
   }
 
   /// Injects localized copy; must run before [start].
@@ -327,6 +391,35 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     }
   }
 
+  /// Aligns the just-opened agent with the session's persisted launch model.
+  ///
+  /// The CLI config is not authoritative for every agent (OpenCode v2 ignores
+  /// `opencode.json`'s `model` in ACP mode), so the launch identity is applied
+  /// explicitly. A model the agent does not advertise is left alone: the seat
+  /// keeps the agent's own selection rather than failing the launch.
+  Future<void> _applyLaunchModel() async {
+    if (launchModel.trim().isEmpty) return;
+    final modelRuntime = _runtime is AcpModelSwitchApi
+        ? _runtime as AcpModelSwitchApi
+        : null;
+    final state = modelRuntime?.modelState;
+    if (state == null) return;
+    final target = acpModelIdForLaunchRef(
+      state: state,
+      provider: launchProvider,
+      model: launchModel,
+    );
+    if (target == null || target == state.currentId) return;
+    try {
+      await modelRuntime!.setModel(target);
+      appLogger.d('[acp-chat] session $sessionId applied launch model $target');
+    } on Object catch (error) {
+      appLogger.w(
+        '[acp-chat] session $sessionId launch model $target failed: $error',
+      );
+    }
+  }
+
   /// Spawns the agent and opens the ACP session.
   ///
   /// On success: subscribes to updates + permissions (before any prompt),
@@ -334,7 +427,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// On [AcpLaunchException]: inline system message + ended phase.
   /// [AcpAuthenticateException] and authenticate [TimeoutException] use
   /// not-logged-in copy. [acpd.RpcError] from `session/new` uses
-  /// session-open-failed copy plus the agent's nested reason when present.
+  /// session-open-failed copy plus the agent's nested reason when present,
+  /// except auth-required (`-32000`) which uses not-logged-in copy.
   /// Any other failure is logged and ends the session.
   Future<void> start({
     required String executable,
@@ -418,6 +512,16 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         error: error,
         stackTrace: stackTrace,
       );
+      // AUTH-required from `session/new` is a sign-in problem, not a broken
+      // session: surface the same copy as a failed `authenticate` (all ACP
+      // CLIs share -32000).
+      if (error.code == acpd.ErrorCode.authRequired.code) {
+        _endWith(
+          AcpChatErrorKind.launchFailed,
+          _strings?.notLoggedIn ?? defaultAcpChatStrings.notLoggedIn,
+        );
+        return;
+      }
       _endWith(
         AcpChatErrorKind.launchFailed,
         acpSessionOpenFailedCopy(
@@ -470,7 +574,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       // their sessions re-discover the current cwd on every resume (a session
       // can move), so this is the fallback for agents without `session/list`.
       unawaited(_agentSession?.write(liveId, cwd: effectiveWorkingDirectory));
+      _bindBackgroundProbes(sessionToolDir: sessionToolDir, agentId: liveId);
     }
+    await _applyLaunchModel();
     emit(
       state.copyWith(phase: AcpChatPhase.ready, modelState: _readModelState()),
     );
@@ -479,10 +585,15 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     if (queued != null && queued.serial == _turnSerial) {
       // Flush before replaying handshake auth so a CLI probe `none` cannot
       // land as the first row ahead of the user's already-visible bubble.
+      // The prompt owns the connection: a launch reconcile here would take the
+      // update stream (`session/load` buffers instead of emitting) and park
+      // the turn behind the replay. Defer it to the end of this turn.
+      _reconcileAfterTurn = true;
       _dispatchPrompt(queued.text, queued.serial);
     } else {
       // A resumed session may have finished out-of-turn work after the last
       // live update; reconcile once so the reopening UI is not stale.
+      _reconcileAfterTurn = false;
       unawaited(syncHistory());
     }
     if (handshakeAuth != null) unawaited(_onUpdate(handshakeAuth));
@@ -499,6 +610,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     // Handshake `kind=none` is a CLI probe, not a confirmed logout. Drop it
     // as soon as the user sends so it never sits above the turn.
     _removeAuthNoticeMessage();
+    onUserActivity?.call(sessionId);
     _turnSerial++;
     final serial = _turnSerial;
     if (state.phase == AcpChatPhase.launching ||
@@ -627,6 +739,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       // so no stop event will arrive; clear the optimistic in-turn state now.
       _clearInTurnKeepingPhase();
       unawaited(_persist());
+      // No turn will end, so the deferred launch reconcile has to run here.
+      unawaited(_runDeferredHistorySync());
     }
   }
 
@@ -639,7 +753,6 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   void _clearInTurnKeepingPhase() {
     if (_closing || isClosed) return;
     _resetTurnTrackers();
-    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     emit(
       state.copyWith(
         inTurn: false,
@@ -647,6 +760,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         activity: AcpChatActivity.none,
       ),
     );
+    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
   }
 
   /// Answers the pending permission card. Returns whether a reply was
@@ -756,10 +870,6 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         if (isClosed) return;
         _applyToolCall(update);
         if (!replaying) unawaited(_persist());
-      case AcpPlan():
-        // Plan updates have no chat-layer rendering yet (spec: recorded but
-        // no mode-switching UI ships).
-        break;
       case AcpStop():
         if (isClosed || replaying) return;
         _onStop(update);
@@ -776,7 +886,20 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       case AcpModelStateUpdate():
         if (isClosed) return;
         emit(state.copyWith(modelState: update.state));
-      case AcpTodoListUpdate() || AcpTaskUpdate() || AcpGeneratedImageUpdate():
+      case AcpUsageUpdate():
+        // Context usage is recorded out-of-band for the usage collector; it
+        // never becomes a chat row. A history replay re-sends the session's
+        // updates, and appending those would mint fresh sequence ids for
+        // already-captured samples (duplicates the collector cannot dedupe),
+        // so only live updates are persisted.
+        if (!replaying) unawaited(_appendUsage(update));
+      case AcpSubagentUpdate():
+        if (isClosed || replaying) return;
+        _applySubagent(update);
+      case AcpPlan() ||
+          AcpTodoListUpdate() ||
+          AcpTaskUpdate() ||
+          AcpGeneratedImageUpdate():
         if (isClosed) return;
         final folded = foldAcpExtensionNotification(
           messages: _replayMessages ?? state.messages,
@@ -800,11 +923,40 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         : AiTextPart(text: chunk.content),
   ];
 
+  /// Persists one context-usage sample beside the chat transcript.
+  ///
+  /// Fire-and-forget: a failed append must never disturb the turn, so it is
+  /// logged and dropped.
+  Future<void> _appendUsage(AcpUsageUpdate update) async {
+    final transcript = _transcript;
+    if (transcript == null) return;
+    try {
+      await transcript.appendUsage(
+        sessionId: sessionId,
+        used: update.used,
+        size: update.size,
+        cost: update.cost,
+        model: _readModelState()?.currentId,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[acp-chat] session $sessionId usage append failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
   void _applyToolCall(AcpToolCallUpdate update) {
     final replaying = _replayMessages != null;
-    final launchesBackground = update.background &&
+    // Cursor's Task tool reports the background launch as a *completed*
+    // update whose result is `{isBackground: true}` — the child is still
+    // running, the parent tool is not.
+    final launchesBackground =
+        update.background &&
         (update.status == AcpToolCallStatus.pending ||
-            update.status == AcpToolCallStatus.inProgress);
+            update.status == AcpToolCallStatus.inProgress ||
+            update.status == AcpToolCallStatus.completed);
     if (!replaying) {
       switch (update.status) {
         case AcpToolCallStatus.pending:
@@ -816,8 +968,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         case null:
           break;
       }
-      if (launchesBackground) {
+      if (launchesBackground && !_cursorSubagentsSettled) {
         _turnHadBackgroundToolCall = true;
+        _cursorSubagentsSettled = false;
+        _turnBackgroundLabel = _backgroundLabelOf(update);
       }
     } else if (launchesBackground) {
       _replayedBackgroundToolCalls.add(update.toolCallId);
@@ -838,6 +992,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
             toolName: update.title ?? part.toolName,
             status: _mapToolStatus(update.status) ?? part.status,
             isError: update.status == AcpToolCallStatus.failed || part.isError,
+            args: update.args ?? part.args,
+            result: update.result ?? part.result,
           );
           matched = true;
           break;
@@ -858,6 +1014,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
               toolName: update.title ?? update.toolCallId,
               status:
                   _mapToolStatus(update.status) ?? AiToolCallStatus.incomplete,
+              args: update.args,
+              result: update.result,
             ),
           ],
         );
@@ -871,6 +1029,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         toolCallId: update.toolCallId,
         toolName: update.title ?? update.toolCallId,
         status: _mapToolStatus(update.status) ?? AiToolCallStatus.incomplete,
+        args: update.args,
+        result: update.result,
       ),
     ]);
   }
@@ -922,8 +1082,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   void _endTurn() {
     if (_closing || isClosed) return;
     final hadBackground = _turnHadBackgroundToolCall;
+    final backgroundLabel = _turnBackgroundLabel;
     _resetTurnTrackers();
-    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     emit(
       state.copyWith(
         inTurn: false,
@@ -932,6 +1092,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         activity: AcpChatActivity.none,
       ),
     );
+    // Attention done after inTurn is false so sync consumers (and ChatCubit's
+    // attention-driven sessionActivities recompute) do not read a stale turn.
+    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     // The turn is over but a background shell it launched is still running:
     // ACP goes silent, so watch the agent's history and hold the seat lease so
     // the UI shows "background work running" instead of `done`.
@@ -941,32 +1104,104 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       // prompt sent while a background task runs would otherwise end the watch).
       _backgroundBaselineTextLen = _assistantTextLen(state.messages);
     }
-    if (hadBackground) _armBackgroundWatch();
+    if (_reconcileAfterTurn) {
+      // [start] skipped the launch reconcile because the first prompt owned the
+      // connection. Run it now that the turn is over, and arm a background
+      // watch only after it settles: the reconcile replays pre-attach work, and
+      // doing it after the arm would read that text as the watched task ending.
+      unawaited(
+        _runDeferredHistorySync().whenComplete(() {
+          if (_closing || isClosed) return;
+          if (hadBackground &&
+              !_cursorSubagentsSettled &&
+              !_backgroundWorkActive) {
+            _armBackgroundWatch(label: backgroundLabel);
+          }
+        }),
+      );
+      return;
+    }
+    if (hadBackground && !_cursorSubagentsSettled) {
+      _armBackgroundWatch(label: backgroundLabel);
+    }
+  }
+
+  /// Tracks a Cursor child agent so the session stays visibly running after
+  /// the parent turn ends, and drops that signal once the child finishes.
+  void _applySubagent(AcpSubagentUpdate update) {
+    final id = update.subagentSessionId;
+    if (update.terminal) {
+      if (!_liveSubagents.containsKey(id)) return;
+      _liveSubagents.remove(id);
+      if (_liveSubagents.isNotEmpty) {
+        _armBackgroundWatch(label: _liveSubagentLabel());
+        return;
+      }
+      _cursorSubagentsSettled = true;
+      _turnHadBackgroundToolCall = false;
+      _stopBackgroundSync();
+      return;
+    }
+    final label = _subagentLabel(update);
+    _liveSubagents[id] = label ?? _liveSubagents[id] ?? '';
+    _cursorSubagentsSettled = false;
+    if (_replayMessages != null) return;
+    if (state.inTurn) {
+      _turnHadBackgroundToolCall = true;
+      if (label != null && label.isNotEmpty) _turnBackgroundLabel = label;
+      return;
+    }
+    _armBackgroundWatch(label: label ?? _liveSubagentLabel());
+  }
+
+  String? _subagentLabel(AcpSubagentUpdate update) {
+    final task = update.task?.trim();
+    if (task != null && task.isNotEmpty) return task;
+    final name = update.name?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    return null;
+  }
+
+  String? _liveSubagentLabel() {
+    for (final label in _liveSubagents.values) {
+      final trimmed = label.trim();
+      if (trimmed.isNotEmpty) return trimmed;
+    }
+    return _turnBackgroundLabel;
+  }
+
+  /// Runs the launch reconcile that [start] skipped for a queued first prompt.
+  ///
+  /// Only fires once per skipped launch, and only when nothing else owns the
+  /// connection: [syncHistory] itself no-ops while a turn is in flight or when
+  /// a reconcile is already running.
+  Future<void> _runDeferredHistorySync() {
+    _reconcileAfterTurn = false;
+    return syncHistory();
   }
 
   // ----- out-of-turn history reconciliation -----
 
-  /// Replays the agent's own session history and merges anything the app
-  /// missed after `end_turn` (background shell tasks / subagents).
+  /// Reconciles the agent's own record of the session with the app transcript.
   ///
   /// ACP v1 sends no `session/update` after a turn ends, so the agent's
-  /// summary of out-of-turn work only exists in its recorded history. Uses
-  /// `session/load` on the live connection and folds the replay into the app
-  /// transcript (idempotent: matched messages keep their ids and are replaced
-  /// with the replayed, possibly longer, parts).
+  /// summary of out-of-turn work only exists on the agent side. When the CLI
+  /// keeps a readable transcript ([AcpBackgroundTranscriptSource]) only the
+  /// appended records are parsed; otherwise this replays the session through
+  /// `session/load` (idempotent: matched messages keep their ids and are
+  /// replaced with the replayed, possibly longer, parts).
   ///
-  /// No-ops while a turn is in flight, after the session ended, or when the
-  /// runtime does not implement [AcpHistorySyncApi].
+  /// No-ops while a turn is in flight, after the session ended, or when
+  /// neither a transcript nor [AcpHistorySyncApi] is available.
   Future<void> syncHistory() async {
     final runtime = _runtime;
-    if (runtime is! AcpHistorySyncApi) return;
+    if (runtime is! AcpHistorySyncApi && _backgroundTranscript == null) return;
     if (_closing || isClosed) return;
     if (state.inTurn || state.phase == AcpChatPhase.ended) return;
     final inFlight = _historySyncInFlight;
     if (inFlight != null) return inFlight;
     final serial = _turnSerial;
-    final syncRuntime = runtime as AcpHistorySyncApi;
-    final future = _runHistorySync(syncRuntime, serial);
+    final future = _runHistorySync(runtime, serial);
     _historySyncInFlight = future;
     try {
       await future;
@@ -978,10 +1213,19 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     }
   }
 
-  Future<void> _runHistorySync(AcpHistorySyncApi runtime, int serial) async {
+  Future<void> _runHistorySync(AcpSessionRuntimeApi runtime, int serial) async {
+    final transcript = _backgroundTranscript;
+    if (transcript != null && await _tryTranscriptSync(transcript, serial)) {
+      return;
+    }
+    // [AcpHistorySyncApi] is a sibling interface, not a supertype of
+    // [AcpSessionRuntimeApi] — an `is` check alone cannot promote here.
+    if (runtime is! AcpHistorySyncApi) return;
+    final historySync = runtime as AcpHistorySyncApi;
+
     List<AcpSessionUpdate> updates;
     try {
-      updates = await runtime.loadHistory();
+      updates = await historySync.loadHistory();
     } on Object catch (error, stackTrace) {
       appLogger.w(
         '[acp-chat] session $sessionId history sync failed: $error',
@@ -1017,9 +1261,142 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     unawaited(_persist());
   }
 
-  /// Arms out-of-turn polling and the seat keep-alive after a turn that
+  /// Binds the optional out-of-turn evidence sources once the agent session id
+  /// is known: the transcript tail reader (Claude) and the liveness probe
+  /// (Cursor), both scoped to the CLI's isolated config dir.
+  void _bindBackgroundProbes({
+    required String sessionToolDir,
+    required String agentId,
+  }) {
+    _bindBackgroundTranscript(
+      sessionToolDir: sessionToolDir,
+      agentId: agentId,
+    );
+    if (_backgroundLiveness != null) return;
+    final livenessFactory = _backgroundLivenessFactory;
+    if (livenessFactory == null) return;
+    try {
+      _backgroundLiveness = livenessFactory(
+        sessionToolDir: sessionToolDir,
+        sessionId: agentId,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[acp-chat] session $sessionId liveness probe failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  void _bindBackgroundTranscript({
+    required String sessionToolDir,
+    required String agentId,
+  }) {
+    if (_backgroundTranscript != null) return;
+    final factory = _backgroundTranscriptFactory;
+    if (factory == null) return;
+    try {
+      _backgroundTranscript = factory(
+        sessionToolDir: sessionToolDir,
+        sessionId: agentId,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[acp-chat] session $sessionId transcript source failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Reads the agent's transcript incrementally.
+  ///
+  /// Returns false when this session has no readable transcript (the caller
+  /// then reconciles through `session/load`), true when the reconcile is done
+  /// — including the common "nothing changed" tick.
+  Future<bool> _tryTranscriptSync(
+    AcpBackgroundTranscriptSource source,
+    int serial,
+  ) async {
+    AcpBackgroundTranscriptResult? result;
+    try {
+      result = await source.refresh();
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[acp-chat] session $sessionId transcript sync failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+    if (result == null) {
+      // The source could not locate the file: keep the slow protocol cadence
+      // so a capability mismatch never turns into a 2 s replay loop.
+      _backgroundTranscriptActive = false;
+      return false;
+    }
+    _backgroundTranscriptActive = true;
+    if (_closing || isClosed) return true;
+    if (serial != _turnSerial || state.inTurn) return true;
+    if (!result.changed || result.messages.isEmpty) return true;
+    _replayedBackgroundToolCalls
+      ..clear()
+      ..addAll(_backgroundToolCallIdsOf(result.messages));
+    _noteBackgroundProgress(result.messages);
+    final merged = _mergeReplayedHistory(
+      current: state.messages,
+      replayed: result.messages,
+    );
+    if (_messageShapeEqual(merged, state.messages)) return true;
+    emit(state.copyWith(messages: merged));
+    unawaited(_persist());
+    return true;
+  }
+
+  /// A short description of a background tool call, preferring the tool's own
+  /// `description` (Cursor / Claude Shell) and falling back to its title.
+  String? _backgroundLabelOf(AcpToolCallUpdate update) {
+    final description = update.args?['description'];
+    if (description is String && description.trim().isNotEmpty) {
+      return description.trim();
+    }
+    final title = update.title?.trim();
+    return (title == null || title.isEmpty) ? null : title;
+  }
+
+  /// True when the tool part launched work that outlives the parent turn.
+  ///
+  /// Cursor Task puts `isBackground` on the result, not the args.
+  bool _toolPartIsBackground(AiToolCallPart part) {
+    final args = part.args;
+    if (args != null &&
+        (args['run_in_background'] == true || args['background'] == true)) {
+      return true;
+    }
+    final result = part.result;
+    return result is Map && result['isBackground'] == true;
+  }
+
+  /// Background tool-call ids carried by transcript messages, so the
+  /// multi-task heuristic in [_noteBackgroundProgress] works without an ACP
+  /// replay buffer.
+  Set<String> _backgroundToolCallIdsOf(List<AiMessage> messages) {
+    final ids = <String>{};
+    for (final message in messages) {
+      for (final part in message.parts) {
+        if (part is! AiToolCallPart) continue;
+        if (!_toolPartIsBackground(part)) continue;
+        ids.add(part.toolCallId);
+      }
+    }
+    return ids;
+  }
+
+  /// Arms the out-of-turn watch and the seat keep-alive after a turn that
   /// launched a background tool call. Idempotent while a watch is live.
-  void _armBackgroundWatch() {
+  /// Ticks read the agent transcript when one is bound, else replay history.
+  void _armBackgroundWatch({String? label}) {
     if (_closing || isClosed) return;
     if (!_backgroundWorkActive) {
       _backgroundWorkActive = true;
@@ -1029,13 +1406,14 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       // only differ by text the agent wrote after the shell finished.
       _backgroundBaselineTextLen = _assistantTextLen(state.messages);
       _backgroundKnownBgIds.clear();
-      _seatLeases?.acquireBackgroundTask(
-        sessionId: sessionId,
-        memberId: seatMemberId,
-        leaseId: backgroundLeaseId,
-        acquiredAt: DateTime.now(),
-      );
     }
+    _seatLeases?.acquireBackgroundTask(
+      sessionId: sessionId,
+      memberId: seatMemberId,
+      leaseId: backgroundLeaseId,
+      acquiredAt: DateTime.now(),
+      label: label ?? _liveSubagentLabel(),
+    );
     _backgroundSyncStartedAt ??= DateTime.now();
     _scheduleBackgroundSyncTick();
   }
@@ -1060,7 +1438,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         _backgroundBaselineTextLen = textLen;
         return;
       }
-      if (baseline != null && textLen > baseline) _stopBackgroundSync();
+      if (baseline != null && textLen > baseline && _liveSubagents.isEmpty) {
+        _stopBackgroundSync();
+      }
       return;
     }
 
@@ -1073,7 +1453,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       _backgroundBaselineTextLen = textLen;
       return;
     }
-    if (textLen > baseline) _stopBackgroundSync();
+    if (textLen > baseline && _liveSubagents.isEmpty) _stopBackgroundSync();
   }
 
   int _assistantTextLen(List<AiMessage> messages) {
@@ -1104,6 +1484,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   Duration _nextBackgroundSyncDelay(DateTime started) {
     final override = _backgroundSyncInterval;
     if (override != null) return override;
+    if (_backgroundTranscriptActive) {
+      return DateTime.now().difference(started) < _backgroundSyncFastWindow
+          ? _backgroundTranscriptInterval
+          : _backgroundTranscriptSlowInterval;
+    }
     if (DateTime.now().difference(started) < _backgroundSyncFastWindow) {
       return _backgroundSyncFastInterval;
     }
@@ -1121,8 +1506,38 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       _stopBackgroundSync();
       return;
     }
+    unawaited(_runBackgroundSyncTick(started));
+  }
+
+  Future<void> _runBackgroundSyncTick(DateTime started) async {
+    // The agent's own on-disk evidence is authoritative: Cursor never reports a
+    // background child's completion over ACP, so waiting for replayed text
+    // would hold the lease for the whole window after the work is already gone.
+    if (await _backgroundWorkSettled(started)) return;
+    if (_closing || isClosed) {
+      _stopBackgroundSync();
+      return;
+    }
     // A turn or an in-flight reconciliation owns the connection; retry later.
-    unawaited(syncHistory().whenComplete(_scheduleBackgroundSyncTick));
+    try {
+      await syncHistory();
+    } finally {
+      _scheduleBackgroundSyncTick();
+    }
+  }
+
+  /// Releases the lease when the liveness probe proves the out-of-turn work is
+  /// over. Returns whether the watch was stopped.
+  Future<bool> _backgroundWorkSettled(DateTime started) async {
+    final probe = _backgroundLiveness;
+    if (probe == null || !_backgroundWorkActive) return false;
+    final verdict = await probe.probe(since: started);
+    if (verdict != AcpBackgroundLiveness.idle) return false;
+    if (_closing || isClosed || !_backgroundWorkActive) return false;
+    // A child tracked from protocol frames outranks the disk probe.
+    if (_liveSubagents.isNotEmpty) return false;
+    _stopBackgroundSync();
+    return true;
   }
 
   void _stopBackgroundSync() {
@@ -1169,13 +1584,19 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       }
     }
     if (match < 0) {
-      // The replay does not contain the local tail (stale/foreign transcript);
-      // keep app-only system rows ahead of the authoritative replay.
+      // The replay does not contain the local tail (stale/foreign transcript).
+      // Keep app-only system rows, and reuse the local identity of every
+      // replayed message that still corresponds to one on screen: the replay
+      // is authoritative for content, but minting fresh ids for messages the
+      // user can already see rebuilds every bubble in the virtualized thread.
       final system = [
         for (final message in current)
           if (message.role == AiRole.system) message,
       ];
-      return [...system, ...replayed];
+      return [
+        ...system,
+        ..._alignReplayMessages(current: current, replayed: replayed),
+      ];
     }
     final replacement = _mergeMatchedMessage(anchor, replayed[match]);
     return [
@@ -1184,6 +1605,41 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       ...replayed.sublist(match + 1),
       ...current.sublist(lastIdx + 1),
     ];
+  }
+
+  /// Greedy forward alignment for a replay without a matching tail anchor.
+  ///
+  /// Walks both lists in order: a replayed message that matches a remaining
+  /// local message reuses that message's id/createdAt (with the fresher
+  /// replayed parts); everything else is genuinely new and keeps the replay's
+  /// id. Lookahead is bounded: a local divergence can shift the two lists by a
+  /// few rows, but scanning arbitrarily far for every replayed message turns a
+  /// long transcript into an O(n²) string comparison pass.
+  List<AiMessage> _alignReplayMessages({
+    required List<AiMessage> current,
+    required List<AiMessage> replayed,
+  }) {
+    final used = <int>{};
+    var cursor = 0;
+    final aligned = <AiMessage>[];
+    for (final message in replayed) {
+      var match = -1;
+      final limit = cursor + 24 < current.length ? cursor + 24 : current.length;
+      for (var i = cursor; i < limit; i++) {
+        if (used.contains(i)) continue;
+        if (!_messagesMatch(current[i], message)) continue;
+        match = i;
+        break;
+      }
+      if (match < 0) {
+        aligned.add(message);
+        continue;
+      }
+      used.add(match);
+      cursor = match + 1;
+      aligned.add(_mergeMatchedMessage(current[match], message));
+    }
+    return aligned;
   }
 
   bool _messagesMatch(AiMessage current, AiMessage replayed) {
@@ -1460,7 +1916,6 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     _stopBackgroundSync();
     _queuedPrompt = null;
     _resetTurnTrackers();
-    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     _appendSystemMessage(message);
     emit(
       state.copyWith(
@@ -1472,6 +1927,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         modelState: null,
       ),
     );
+    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     if (kind != AcpChatErrorKind.processExited) {
       unawaited(_persist());
     }

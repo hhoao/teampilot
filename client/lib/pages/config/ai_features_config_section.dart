@@ -10,6 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/ai_feature_setting.dart';
 import '../../models/app_provider_config.dart';
 import '../../services/ai_generation/ai_feature_setting_resolver.dart';
+import '../../services/cli/registry/capabilities/headless_capability.dart';
 import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -282,7 +283,16 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
   late String _effortId;
 
   List<CliTool> _cliItems(CliToolRegistry registry) => [
-    for (final def in registry.launchable) def.id,
+    // Temporary gate: Antigravity's headless calls cannot provision provider
+    // credentials into the isolated config dir yet, so offering it here would
+    // produce unauthenticated runs. Remove once the headless provisioning
+    // follow-up lands.
+    for (final def in registry.launchable)
+      if (registry.capability<HeadlessCredentialProvisioningPendingCapability>(
+            def.id,
+          ) ==
+          null)
+        def.id,
   ];
 
   @override

@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/services/chat/launch/staging/manifest/apply_plan.dart';
 import 'package:teampilot/services/chat/launch/staging/manifest/blob_store.dart';
 import 'package:teampilot/services/chat/launch/staging/manifest/work_plane_applier.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 
@@ -72,6 +75,39 @@ void main() {
       ),
     );
     expect(await fs.readSymlinkTarget('/w/link'), '/w/target');
+  });
+
+  test('writeBlob applies the plan mode on a real checkout', () async {
+    if (Platform.isWindows) return;
+    final tmp = await Directory.systemTemp.createTemp('work-plane-mode');
+    addTearDown(() async {
+      if (await tmp.exists()) await tmp.delete(recursive: true);
+    });
+    final fs = LocalFilesystem();
+    final blobs = MemoryBlobStore();
+    final bytes = utf8.encode('secret');
+    final hash = contentSha256Hex(bytes);
+    await blobs.put(hash, bytes);
+    final path = p.join(tmp.path, '.auth', 'user');
+
+    await WorkPlaneApplier(
+      fs: fs,
+      blobs: blobs,
+      workRoot: tmp.path,
+    ).apply(
+      ApplyPlan(
+        workRoot: tmp.path,
+        ops: [
+          ApplyWriteBlob(
+            path: path,
+            sha256: hash,
+            mode: applyPlanPrivateFileMode,
+          ),
+        ],
+      ),
+    );
+
+    expect(File(path).statSync().mode & 0x1ff, applyPlanPrivateFileMode);
   });
 
   test('middle escape fails closed before applying any ops', () async {

@@ -109,6 +109,32 @@ void main() {
     expect(outputs.single.data, 'hello\n');
   });
 
+  test('outputClosed waits for both output streams to end', () async {
+    final stdout = StreamController<List<int>>();
+    final spawner = FakeSpawner()
+      ..stdout = stdout.stream
+      ..stderr = Stream.value(utf8.encode('err'));
+    final exec = ProcessRunExecutor(spawner: spawner.call);
+    final result = await exec.start(
+      sessionId: 's1',
+      command: 'make',
+      args: const [],
+      plan: localPlan,
+      onOutput: (_) {},
+    );
+
+    expect(await result.exitCode, 0);
+    var closed = false;
+    unawaited(result.outputClosed.then((_) => closed = true));
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(closed, isFalse);
+
+    stdout.add(utf8.encode('late'));
+    await stdout.close();
+    await result.outputClosed;
+    expect(closed, isTrue);
+  });
+
   test('process executor stop kills the process', () async {
     final spawner = FakeSpawner();
     final exec = ProcessRunExecutor(spawner: spawner.call);
@@ -121,5 +147,45 @@ void main() {
     );
     await result.stop();
     expect(spawner.killCount, 1);
+  });
+
+  test('stop kills the handle before cancelling output subscriptions', () async {
+    final events = <String>[];
+    final stdout = StreamController<List<int>>(
+      onCancel: () => events.add('cancel'),
+    );
+    final stderr = StreamController<List<int>>(
+      onCancel: () => events.add('cancel'),
+    );
+    final exec = ProcessRunExecutor(
+      spawner:
+          ({
+            required executable,
+            required arguments,
+            required workingDirectory,
+            environment,
+            runInShell = false,
+            includeParentEnvironment = true,
+          }) async => FakeProcessHandle(
+            exitCode: Future<int>.value(0),
+            stdout: stdout.stream,
+            stderr: stderr.stream,
+            onKill: () => events.add('kill'),
+          ),
+    );
+    final result = await exec.start(
+      sessionId: 's1',
+      command: 'sleep',
+      args: const ['60'],
+      plan: localPlan,
+      onOutput: (_) {},
+    );
+
+    await result.stop();
+
+    expect(events.first, 'kill');
+    expect(events.where((e) => e == 'cancel'), hasLength(2));
+    await stdout.close();
+    await stderr.close();
   });
 }

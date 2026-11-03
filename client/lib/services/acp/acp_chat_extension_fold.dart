@@ -13,6 +13,7 @@ List<AiMessage> foldAcpExtensionNotification({
 }) {
   return switch (update) {
     AcpTodoListUpdate() => _foldTodos(messages, update.notification, newId),
+    AcpPlan() => _foldPlan(messages, update.entries, newId),
     AcpTaskUpdate() => _appendPart(
       messages,
       AiToolCallPart(
@@ -74,12 +75,61 @@ List<AiMessage> _foldTodos(
 AiToolCallPart _todoPart(
   AcpTodoListNotification notification,
   List<Map<String, Object?>> todos,
-) => AiToolCallPart(
+) => _todoWritePart(todos, merge: notification.merge);
+
+/// ACP `session/update` plan entries are a whole snapshot of what the agent
+/// intends to do, so they fold into the same `TodoWrite` part the task board
+/// reads, with `merge: false` (each update replaces the previous plan).
+///
+/// Cursor sends both this and `cursor/update_todos`; whichever arrives last
+/// wins the shared `TodoWrite` slot, so the board never shows two boards.
+List<AiMessage> _foldPlan(
+  List<AiMessage> messages,
+  List<AcpPlanEntry> entries,
+  String Function() newId,
+) {
+  final todos = [
+    for (var index = 0; index < entries.length; index++)
+      if (entries[index].content.trim().isNotEmpty)
+        {
+          'id': '${index + 1}',
+          'content': entries[index].content,
+          'status': _planStatusName(entries[index].status),
+        },
+  ];
+  if (todos.isEmpty) return messages;
+  final part = _todoWritePart(todos, merge: false);
+  if (messages.isNotEmpty && messages.last.role == AiRole.assistant) {
+    final tip = messages.last;
+    final parts = [...tip.parts];
+    for (var i = parts.length - 1; i >= 0; i--) {
+      if (parts[i] is! AiToolCallPart) continue;
+      if ((parts[i] as AiToolCallPart).toolName != 'TodoWrite') continue;
+      parts[i] = part;
+      return [
+        ...messages.sublist(0, messages.length - 1),
+        tip.copyWith(parts: parts),
+      ];
+    }
+  }
+  return _appendPart(messages, part, newId);
+}
+
+String _planStatusName(AcpPlanEntryStatus status) => switch (status) {
+  AcpPlanEntryStatus.pending => 'pending',
+  AcpPlanEntryStatus.inProgress => 'in_progress',
+  AcpPlanEntryStatus.completed => 'completed',
+};
+
+AiToolCallPart _todoWritePart(
+  List<Map<String, Object?>> todos, {
+  required bool merge,
+}) => AiToolCallPart(
   toolCallId: 'TodoWrite',
   toolName: 'TodoWrite',
   category: AiToolCallCategory.task,
   status: AiToolCallStatus.complete,
-  args: {'todos': todos, 'merge': notification.merge},
+  args: {'todos': todos, 'merge': merge},
 );
 
 List<AiMessage> _appendPart(

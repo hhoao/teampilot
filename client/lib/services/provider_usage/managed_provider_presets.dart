@@ -300,6 +300,31 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
         ),
       ),
       ManagedProviderPreset(
+        id: 'codebuddy',
+        labelId: 'codebuddy',
+        hintId: 'codebuddy',
+        template: ManagedProvider(
+          id: '',
+          name: 'CodeBuddy',
+          kind: ManagedProviderKind.apiBalance,
+          adapterId: 'codebuddy-credits',
+          endpointConfig: ManagedProviderEndpointConfig(
+            url:
+                'https://www.codebuddy.cn/billing/meter/'
+                'get-user-resource-summary',
+            method: 'POST',
+            credentialSource: 'cli:codebuddy',
+            credentialName: 'Authorization',
+            credentialField: 'accessToken',
+            credentialPrefix: 'Bearer ',
+          ),
+          displayConfig: ManagedProviderDisplayConfig(
+            unit: 'credits',
+            decimalPlaces: 2,
+          ),
+        ),
+      ),
+      ManagedProviderPreset(
         id: 'deepseek',
         labelId: 'deepseek',
         hintId: 'deepseek',

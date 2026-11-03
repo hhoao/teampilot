@@ -1,5 +1,4 @@
 import '../../../models/hook_event.dart';
-import '../../../models/team_config.dart';
 import '../../cli/registry/config_profile/hook_seat_context_completer.dart';
 import '../contribution/resource_origin.dart';
 import 'hook_contribution_provider.dart';
@@ -25,7 +24,6 @@ final class BusAwarenessHookContributionProvider
     final entries = const HookSeatContextCompleter().busAwarenessHooks(
       member: member,
       cli: context.cli,
-      pushDelivery: context.cli == CliTool.cursor,
     );
     return [
       for (final entry in entries)

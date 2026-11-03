@@ -207,6 +207,31 @@ void main() {
     },
   );
 
+  test('start bounds session/new by the plan startupTimeout', () async {
+    agent.connection.onRequest('session/new', (params) {
+      return Completer<Map<String, dynamic>>().future;
+    });
+    final runtime = makeRuntime(
+      (argv, env) async => conn,
+      launchPlanFor: (_) => AcpLaunchPlan(
+        launchArgCandidates: (exe) => [
+          [exe],
+        ],
+        buildEnvironment:
+            ({
+              required sessionToolDir,
+              required workingDirectory,
+              baseEnv = const {},
+            }) => baseEnv,
+        agentExecutable: (exe) => exe,
+        startupTimeout: const Duration(milliseconds: 50),
+      ),
+    );
+
+    await expectLater(startRuntime(runtime), throwsA(isA<TimeoutException>()));
+    expect(runtime.isStarted, isFalse);
+  });
+
   test('start forwards mcpServers to session/new', () async {
     acpd.NewSessionRequest? seenNew;
     agent.connection.onRequest('session/new', (params) {

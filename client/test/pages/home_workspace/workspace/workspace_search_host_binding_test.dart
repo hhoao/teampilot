@@ -127,15 +127,32 @@ void main() {
           of: find.byType(WorkspaceSearchDialog),
           matching: find.byType(TextField),
         );
-        await tester.enterText(dialogField, 'marker_file');
-        await tester.pump(const Duration(milliseconds: 400));
-        await pumpPhaseTransitions(tester);
+        // The debounced file query awaits real filesystem probes plus the
+        // index's worker isolate, and the dialog's index warm started under a
+        // fake-clock pump. Alternate real event-loop turns with frames until
+        // the results land, so both chains can finish.
+        await tester.runAsync(() async {
+          await tester.enterText(dialogField, 'marker_file');
+        });
 
         const wanted = 'beta_marker_file.dart';
         const other = 'alpha_marker_file.dart';
         final expectWanted = !expectAlpha;
+        final expected = find.text(expectWanted ? wanted : other);
+        for (
+          var round = 0;
+          round < 60 && expected.evaluate().isEmpty;
+          round++
+        ) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 50)),
+          );
+          await tester.pump();
+        }
+        await pumpPhaseTransitions(tester);
+
         expect(
-          find.text(expectWanted ? wanted : other),
+          expected,
           findsWidgets,
           reason: '$step: results must come from the active workspace',
         );

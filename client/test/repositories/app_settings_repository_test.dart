@@ -188,6 +188,39 @@ void main() {
     expect(await seeded.loadDiscoveryAutoRefreshEnabled(), isTrue);
   });
 
+  group('AppSettingsRepository.usageSync', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    test('auto scan defaults to enabled and the interval to 10 minutes', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      expect(await repo.loadUsageAutoSyncEnabled(), isTrue);
+      expect(await repo.loadUsageSyncIntervalMinutes(), 10);
+    });
+
+    test('round-trips the auto scan flag and interval', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      await repo.saveUsageAutoSyncEnabled(false);
+      await repo.saveUsageSyncIntervalMinutes(30);
+      expect(await repo.loadUsageAutoSyncEnabled(), isFalse);
+      expect(await repo.loadUsageSyncIntervalMinutes(), 30);
+    });
+  });
+
+  test('InMemory usageSync round trip', () async {
+    final repo = InMemoryAppSettingsRepository();
+    expect(await repo.loadUsageAutoSyncEnabled(), isTrue);
+    expect(await repo.loadUsageSyncIntervalMinutes(), 10);
+
+    await repo.saveUsageAutoSyncEnabled(false);
+    await repo.saveUsageSyncIntervalMinutes(1);
+    expect(await repo.loadUsageAutoSyncEnabled(), isFalse);
+    expect(await repo.loadUsageSyncIntervalMinutes(), 1);
+  });
+
   group('AppSettingsRepository.acpFrameLog', () {
     test('defaults to disabled (opt-in) when nothing stored', () async {
       final prefs = await SharedPreferences.getInstance();
@@ -216,5 +249,60 @@ void main() {
 
     final seeded = InMemoryAppSettingsRepository(acpFrameLogEnabled: true);
     expect(await seeded.loadAcpFrameLogEnabled(), isTrue);
+  });
+
+  group('AppSettingsRepository.tableState', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    test('round-trips and isolates table ids', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      await repo.saveTableState('usage.detail', {
+        'order': ['group', 'total'],
+        'hidden': ['share'],
+      });
+      await repo.saveTableState('other.table', {
+        'order': ['a'],
+      });
+
+      expect(await repo.loadTableState('usage.detail'), {
+        'order': ['group', 'total'],
+        'hidden': ['share'],
+      });
+      expect(await repo.loadTableState('other.table'), {
+        'order': ['a'],
+      });
+    });
+
+    test('returns null for missing tables', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      expect(await repo.loadTableState('missing'), isNull);
+    });
+
+    test('returns null for corrupt table state', () async {
+      SharedPreferences.setMockInitialValues({
+        SharedPrefsAppSettingsRepository.storageKey: jsonEncode({
+          'tableStates': 'not a map',
+        }),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      expect(await repo.loadTableState('usage.detail'), isNull);
+    });
+
+    test('InMemory round-trips table state', () async {
+      final repo = InMemoryAppSettingsRepository();
+      await repo.saveTableState('usage.detail', {
+        'order': ['total'],
+      });
+
+      expect(await repo.loadTableState('usage.detail'), {
+        'order': ['total'],
+      });
+    });
   });
 }

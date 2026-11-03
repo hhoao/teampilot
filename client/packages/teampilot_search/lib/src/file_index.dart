@@ -32,6 +32,17 @@ class TpFileHit {
 }
 
 const int _kMaxChunkBytes = 8 * 1024 * 1024;
+const int _kMinChunkBytes = 64 * 1024;
+
+/// Rough per-entry byte budget (absolute path + relative path + name + NULs).
+/// The FFI buffer is sized from the requested limit so a small query does not
+/// zero-fill 8 MB on the caller's (UI) isolate for every keystroke.
+const int _kBytesPerEntry = 512;
+
+/// String-buffer capacity for a query returning at most [limit] entries.
+int _chunkBytesFor(int limit) =>
+    (limit * _kBytesPerEntry).clamp(_kMinChunkBytes, _kMaxChunkBytes);
+
 const Duration _kBuildPollInterval = Duration(milliseconds: 5);
 const int _kErrRootUnreadable = -2;
 const int _kErrInternal = -3;
@@ -44,6 +55,13 @@ class TpFileIndex {
 
   bool get isBuilt => _isBuilt;
   bool get truncated => _truncated;
+
+  /// Number of files in the built index (0 before a build).
+  int get length {
+    final handle = _handle;
+    if (handle == null || !_isBuilt) return 0;
+    return bindings.tp_file_index_len(handle);
+  }
 
   /// Builds an index rooted at [root].
   Future<void> build(
@@ -195,7 +213,7 @@ class TpFileIndex {
       throw ArgumentError.value(limit, 'limit', 'must not be negative');
     }
     final entryCapacity = limit;
-    final stringCapacity = _kMaxChunkBytes;
+    final stringCapacity = _chunkBytesFor(limit);
     final strings = calloc<ffi.Uint8>(stringCapacity);
     final entries = calloc<bindings.TpFileIndexEntry>(entryCapacity);
     final chunk = calloc<bindings.TpFileIndexChunk>()

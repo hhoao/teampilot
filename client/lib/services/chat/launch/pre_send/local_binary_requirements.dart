@@ -31,10 +31,9 @@ class LocalBinaryRequirement {
 
 /// Local binaries required by [placement] (members placed on local/WSL hosts).
 ///
-/// [acpSeed] is the settings default ("this CLI uses ACP chat"); when a member
-/// will run ACP chat and its CLI needs a separate adapter binary, an extra
-/// `kind: adapter` requirement is added. Mixed teams only — native teams and
-/// remote members always use the terminal (see `resolveMemberBindingAcp`).
+/// [acpSeed] is the CLI's ACP preference; when a member will run ACP chat and
+/// its CLI needs a separate adapter binary, an extra `kind: adapter`
+/// requirement is added.
 List<LocalBinaryRequirement> localBinaryRequirementsForPlacement({
   required TeamProfile team,
   required MemberPlacementByTarget placement,
@@ -65,9 +64,8 @@ List<LocalBinaryRequirement> localBinaryRequirementsForPlacement({
       if (seen.add(cliRequirement.key)) out.add(cliRequirement);
 
       final memberAcp = resolveMemberBindingAcp(
+        targetId: target.id,
         cli: cli,
-        teamMode: team.teamMode,
-        targetId: entry.key,
         requested: acpSeed?.call(cli) ?? false,
         isAndroidOverride: isAndroidOverride,
       );

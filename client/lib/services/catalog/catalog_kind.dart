@@ -11,6 +11,7 @@ enum CatalogOp {
   update,
   unbind,
   delete,
+  run,
 }
 
 const catalogGenerationAcquisitionOps = <CatalogOp>{
@@ -18,6 +19,10 @@ const catalogGenerationAcquisitionOps = <CatalogOp>{
   CatalogOp.importPath,
   CatalogOp.create,
 };
+
+/// Kinds a Team Builder session may stage into generation scope. Other kinds
+/// (notably `automation`) are runtime objects and cannot be replayed at commit.
+const catalogGenerationKinds = <String>{'skill', 'plugin', 'mcp'};
 
 enum CatalogBindTo { workspace, team, expert, generation }
 

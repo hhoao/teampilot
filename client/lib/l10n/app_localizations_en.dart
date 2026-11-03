@@ -2705,6 +2705,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cliInstallProgressLocatingExecutable => 'Locating CLI executable…';
 
   @override
+  String get cliInstallProgressDownloading => 'Downloading adapter…';
+
+  @override
+  String get cliInstallProgressExtracting => 'Extracting adapter…';
+
+  @override
   String get cliInstallProgressSyncingRemoteWorkspace =>
       'Syncing remote workspace…';
 
@@ -3593,6 +3599,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appProviderOpencodeSubscription => 'Subscription';
+
+  @override
+  String get appProviderOpencodeSubscriptionOn =>
+      'OpenCode Go bound — subscription and free models are both available.';
+
+  @override
+  String get appProviderOpencodeSubscriptionOff =>
+      'Free models only. Bind OpenCode Go to use subscription models.';
 
   @override
   String get renameProviderName => 'Rename';
@@ -6010,6 +6024,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderToolCodebuddy => 'CodeBuddy';
 
   @override
+  String get appProviderToolAntigravity => 'Antigravity';
+
+  @override
+  String get appProviderToolQoder => 'Qoder';
+
+  @override
   String get codebuddyCredentialsLogin => 'Sign in';
 
   @override
@@ -6048,6 +6068,91 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get codebuddyCredentialsActionFailed => 'CodeBuddy sign-in failed.';
+
+  @override
+  String get antigravityCredentialsLogin => 'Sign in';
+
+  @override
+  String get antigravityCredentialsLoginTitle => 'Sign in to Antigravity';
+
+  @override
+  String get antigravityCredentialsLoginIntro =>
+      'Complete the Google sign-in in the terminal below, then press Done. Antigravity keeps the account in the OS keyring, so the account is shared by all Antigravity sessions and every official Antigravity provider row.';
+
+  @override
+  String get antigravityCredentialsLoginStarting => 'Starting Antigravity…';
+
+  @override
+  String antigravityCredentialsLoginFailed(String error) {
+    return 'Could not start the login terminal: $error';
+  }
+
+  @override
+  String get antigravityCredentialsLoginExited =>
+      'Antigravity exited. Close this dialog and start the sign-in again.';
+
+  @override
+  String get antigravityCredentialsLoginVerifyFailed =>
+      'Antigravity did not confirm the sign-in (agy models failed). Finish the sign-in, then press Done again.';
+
+  @override
+  String get antigravityCredentialsDone => 'Done';
+
+  @override
+  String get antigravityCredentialsCancel => 'Cancel';
+
+  @override
+  String get antigravityCredentialsRetry => 'Retry';
+
+  @override
+  String get antigravityCredentialsSignedIn => 'Signed in to Antigravity.';
+
+  @override
+  String get antigravityCredentialsActionFailed =>
+      'Antigravity sign-in failed.';
+
+  @override
+  String get qoderCredentialsLogin => 'Sign in';
+
+  @override
+  String get qoderCredentialsLoginTitle => 'Sign in to Qoder';
+
+  @override
+  String get qoderCredentialsLoginIntro =>
+      'Complete the sign-in in the terminal below. The CLI opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.';
+
+  @override
+  String get qoderCredentialsLoginStarting => 'Starting Qoder CLI…';
+
+  @override
+  String qoderCredentialsLoginFailed(String error) {
+    return 'Could not start the login terminal: $error';
+  }
+
+  @override
+  String get qoderCredentialsLoginExited =>
+      'Qoder CLI exited. Close this dialog and start the sign-in again.';
+
+  @override
+  String get qoderCredentialsDone => 'Done';
+
+  @override
+  String get qoderCredentialsCancel => 'Cancel';
+
+  @override
+  String get qoderCredentialsRelaunch => 'Relaunch';
+
+  @override
+  String get qoderCredentialsSignedIn => 'Signed in';
+
+  @override
+  String get qoderContextWindow => 'Context window (tokens)';
+
+  @override
+  String get qoderContextWindowHint => 'Leave empty to use the model default.';
+
+  @override
+  String get qoderCredentialsActionFailed => 'The Qoder action failed';
 
   @override
   String get appProviderTeamToolSection => 'Tool providers for this team';
@@ -7187,6 +7292,79 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsRunStatusSkippedMissed => 'Skipped — missed window';
 
   @override
+  String get automationsRunStatusFailed => 'Failed';
+
+  @override
+  String get automationsRunStatusTimedOut => 'Timed out';
+
+  @override
+  String get automationsRunStatusSkippedOverlap => 'Skipped (still running)';
+
+  @override
+  String automationsExitCode(int code) {
+    return 'Exit code $code';
+  }
+
+  @override
+  String get automationsRunStdout => 'stdout';
+
+  @override
+  String get automationsRunStderr => 'stderr';
+
+  @override
+  String automationsRunError(String error) {
+    return 'Error: $error';
+  }
+
+  @override
+  String automationsRunDurationSeconds(int seconds) {
+    return 'Took ${seconds}s';
+  }
+
+  @override
+  String automationsRunDurationMilliseconds(int milliseconds) {
+    return 'Took $milliseconds ms';
+  }
+
+  @override
+  String get automationsRunOutputTruncated => 'Output truncated';
+
+  @override
+  String get automationsCommand => 'Command';
+
+  @override
+  String get automationsCommandHelp =>
+      'Runs only while TeamPilot is running. Missed runs older than the grace window are skipped unless catch-up is on.';
+
+  @override
+  String get automationsCommandTimeout => 'Timeout (seconds)';
+
+  @override
+  String get automationsCommandRequired => 'Command is required';
+
+  @override
+  String get automationsCommandTimeoutInvalid =>
+      'Timeout must be a whole number of seconds';
+
+  @override
+  String get automationsCommandTimeoutRange =>
+      'Timeout must be between 30 and 1800 seconds';
+
+  @override
+  String get automationsCommandTooLong =>
+      'Command must be at most 2000 characters';
+
+  @override
+  String get automationsCommandWorkingDirectory => 'Working directory';
+
+  @override
+  String get automationsCommandWorkingDirectoryMain =>
+      'Workspace default folder';
+
+  @override
+  String get automationsCatchUpOnce => 'Catch up once after startup';
+
+  @override
   String get automationsMaxRunCount => 'Run limit';
 
   @override
@@ -8245,6 +8423,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Sign in or import credentials below, or fill the same fields manually.';
 
   @override
+  String get managedProvidersQuickPresetCodebuddy => 'CodeBuddy';
+
+  @override
+  String get managedProvidersQuickPresetCodebuddyHint =>
+      'Query credit balance with your CodeBuddy sign-in.';
+
+  @override
   String get managedProvidersQuickPresetDeepSeek => 'DeepSeek';
 
   @override
@@ -8266,7 +8451,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Configure endpoint, credentials, and display from scratch.';
 
   @override
-  String get managedProvidersBasicsSectionTitle => 'Basics';
+  String get managedProvidersBasicsSectionTitle => 'Name and API key';
 
   @override
   String get managedProvidersBasicsSectionSubtitle =>
@@ -8277,28 +8462,30 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pick a preset, name the provider, and add a secret if needed.';
 
   @override
-  String get managedProvidersQuerySectionTitle => 'Query';
+  String get managedProvidersQuerySectionTitle => 'Usage API and JSON parsing';
 
   @override
   String get managedProvidersQuerySectionSubtitle =>
       'Usage API and JSON parsing.';
 
   @override
-  String get managedProvidersCredentialsSectionTitle => 'Credential details';
+  String get managedProvidersCredentialsSectionTitle =>
+      'Credential source and delivery';
 
   @override
   String get managedProvidersCredentialsSectionSubtitle =>
       'Credential source and how it is sent.';
 
   @override
-  String get managedProvidersDisplaySectionTitle => 'Display';
+  String get managedProvidersDisplaySectionTitle => 'Balance and quota display';
 
   @override
   String get managedProvidersDisplaySectionSubtitle =>
       'How balances and quotas are shown.';
 
   @override
-  String get managedProvidersAdvancedSectionTitle => 'Advanced';
+  String get managedProvidersAdvancedSectionTitle =>
+      'Adapter, kind, and reference';
 
   @override
   String get managedProvidersAdvancedSectionSubtitle =>
@@ -8413,15 +8600,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get managedProvidersFieldExampleLabel => 'Example';
 
   @override
-  String get managedProvidersJsonPathSeeAlso => 'See \$ syntax in Query ℹ️';
+  String get managedProvidersJsonPathSeeAlso =>
+      'See \$ syntax in Usage API and JSON parsing ℹ️';
 
   @override
   String get managedProvidersTemplateVariablesSeeAlsoQuery =>
-      'See brace syntax in Query ℹ️';
+      'See brace syntax in Usage API and JSON parsing ℹ️';
 
   @override
   String get managedProvidersTemplateVariablesSeeAlsoCredentials =>
-      'See brace syntax in Credentials ℹ️';
+      'See brace syntax in Credential source and delivery ℹ️';
 
   @override
   String get managedProvidersReferenceSyntaxHelper =>
@@ -9443,37 +9631,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get personalAcpSwitchLabel => 'New personal / mixed sessions use ACP';
+  String get cliTransportDefaultChat => 'New sessions default to chat (ACP)';
 
   @override
-  String get personalAcpSwitchCaption =>
-      'Native teams and remote members still use the terminal';
-
-  @override
-  String get claudePersonalAcpDefaultLabel => 'Personal sessions use ACP chat';
-
-  @override
-  String get claudePersonalAcpDefaultDescription =>
-      'Run new personal and mixed-team Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
-
-  @override
-  String get cursorPersonalAcpDefaultLabel => 'Personal sessions use ACP chat';
-
-  @override
-  String get cursorPersonalAcpDefaultDescription =>
-      'Run new personal and mixed-team Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
-
-  @override
-  String get opencodePersonalAcpDefaultLabel =>
-      'Personal sessions use ACP chat';
-
-  @override
-  String get opencodePersonalAcpDefaultDescription =>
-      'Run new personal and mixed-team OpenCode sessions as terminal-less ACP chat via opencode acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
-
-  @override
-  String get claudePersonalAcpAndroidDisabled =>
-      'ACP chat is desktop-only until remote SSH exec is available.';
+  String get cliTransportDefaultTerminal =>
+      'New sessions default to the terminal (PTY)';
 
   @override
   String get acpLaunchFailedAdapter =>
@@ -9487,17 +9649,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String acpChatSessionOpenFailed(String cliName) {
     return 'Couldn\'t open the $cliName session.';
   }
-
-  @override
-  String get codexPersonalAcpDefaultLabel => 'Personal sessions use ACP chat';
-
-  @override
-  String get codexPersonalAcpDefaultDescription =>
-      'Run new personal and mixed-team Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
-
-  @override
-  String get codexPersonalAcpAndroidDisabled =>
-      'ACP chat is desktop-only until remote SSH exec is available.';
 
   @override
   String get codexAcpLaunchFailedAdapter =>
@@ -9528,10 +9679,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionUsageTitle => 'Token usage';
-
-  @override
-  String get sessionUsageSubtitle =>
-      'Usage attributed to TeamPilot sessions on local and SSH home planes.';
 
   @override
   String get sessionUsageScopeHint =>
@@ -9586,6 +9733,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionUsageNeverSynced => 'Not synced yet';
 
   @override
+  String get sessionUsageSyncedJustNow => 'Synced just now';
+
+  @override
   String sessionUsageLastSync(String time) {
     return 'Last sync $time';
   }
@@ -9594,13 +9744,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionUsageRangeToday => 'Today';
 
   @override
+  String get sessionUsageRangeLast24Hours => 'Last 24 hours';
+
+  @override
   String get sessionUsageRangeSevenDays => 'Last 7 days';
+
+  @override
+  String get sessionUsageRangeFourteenDays => 'Last 14 days';
 
   @override
   String get sessionUsageRangeThirtyDays => 'Last 30 days';
 
   @override
   String get sessionUsageRangeAll => 'All time';
+
+  @override
+  String get sessionUsageStartTime => 'Start time';
+
+  @override
+  String get sessionUsageEndTime => 'End time';
+
+  @override
+  String get sessionUsageLiveEnd => 'End time follows now';
+
+  @override
+  String get sessionUsageRangeHint => 'Date and time, up to 30 days';
+
+  @override
+  String get sessionUsageRangeInvalidOrder =>
+      'Start time cannot be later than end time';
+
+  @override
+  String get sessionUsageRangeTooLong => 'Range cannot exceed 30 days';
+
+  @override
+  String get sessionUsageColumnSettings => 'Columns';
+
+  @override
+  String get sessionUsageColumnReset => 'Reset to default';
+
+  @override
+  String get sessionUsageSortDescending => 'Sort descending';
+
+  @override
+  String get sessionUsageSortAscending => 'Sort ascending';
 
   @override
   String get sessionUsageCliAll => 'All';
@@ -9718,6 +9905,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionUsageDismiss => 'Dismiss';
+
+  @override
+  String get sessionUsageHeatmapTitle => 'Usage heatmap';
+
+  @override
+  String get sessionUsageHeatmapSubtitle =>
+      'Last 53 weeks · hover or long-press a day';
+
+  @override
+  String get sessionUsageHeatmapMetricTokens => 'Tokens';
+
+  @override
+  String get sessionUsageHeatmapMetricHitRate => 'Hit rate';
+
+  @override
+  String get sessionUsageHeatmapShowEarlier => 'Show earlier';
+
+  @override
+  String get sessionUsageHeatmapShowLess => 'Show less';
+
+  @override
+  String get sessionUsageHeatmapLess => 'Less';
+
+  @override
+  String get sessionUsageHeatmapMore => 'More';
+
+  @override
+  String sessionUsageHeatmapSpanSummary(
+    String tokens,
+    String requests,
+    String cost,
+  ) {
+    return '$tokens tokens · $requests requests · $cost';
+  }
 
   @override
   String get sessionUsageNoData => 'No data';
@@ -9854,6 +10075,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionUsageStorage => 'Storage';
+
+  @override
+  String get sessionUsageSettings => 'Usage settings';
+
+  @override
+  String get sessionUsageDataSource => 'Data source';
+
+  @override
+  String get sessionUsageAutoScan => 'Auto-scan session logs';
+
+  @override
+  String sessionUsageAutoScanHint(int minutes) {
+    return 'Scans when this page opens, then every $minutes minutes in the background.';
+  }
+
+  @override
+  String get sessionUsageScanInterval => 'Scan interval';
+
+  @override
+  String sessionUsageIntervalMinutes(int minutes) {
+    return 'Every $minutes min';
+  }
+
+  @override
+  String get sessionUsageSyncNow => 'Sync now';
+
+  @override
+  String get sessionUsageMaintenanceEntry => 'Storage and Cursor maintenance';
 
   @override
   String get sessionUsageMaintenanceTitle => 'Usage storage';

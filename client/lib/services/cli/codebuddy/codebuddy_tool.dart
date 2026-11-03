@@ -68,7 +68,6 @@ final class CodebuddyCliTool implements CliToolDefinition {
     this.acp = const CodebuddyAcpCapability(),
     this.acpSettings = const DefaultAcpSettingsCapability(
       usesSeparateAdapter: false,
-      showsPersonalAcpSwitch: false,
     ),
     this.transport = const CliTransportCapability(
       supported: {CliTransport.acp},

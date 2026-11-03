@@ -67,38 +67,33 @@ class _ProviderCredentialActionBarState
       return true;
     });
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                _sectionTitle(l10n, widget.provider.cli),
-                style: TpTextStyles.of(context).mdSemiboldTightSnug,
-              ),
-            ),
-            ProviderCredentialStatusBadge(
-              cli: widget.provider.cli,
-              ready: ready,
-            ),
-          ],
+        Text(
+          _sectionTitle(l10n, widget.provider.cli),
+          style: TpTextStyles.of(context).mdSemiboldTightSnug,
         ),
-        const SizedBox(height: 8),
-        BlocListener<AppProviderCubit, AppProviderState>(
-          listenWhen: (previous, current) =>
-              previous.credentialLoginProviderId !=
-                  current.credentialLoginProviderId ||
-              previous.credentialLoginDeviceCode !=
-                  current.credentialLoginDeviceCode,
-          listener: _onCredentialLoginState,
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final spec in specs)
-                _actionButton(context, capability: capability, spec: spec),
-            ],
+        const SizedBox(width: 8),
+        ProviderCredentialStatusBadge(cli: widget.provider.cli, ready: ready),
+        Expanded(
+          child: BlocListener<AppProviderCubit, AppProviderState>(
+            listenWhen: (previous, current) =>
+                previous.credentialLoginProviderId !=
+                    current.credentialLoginProviderId ||
+                previous.credentialLoginDeviceCode !=
+                    current.credentialLoginDeviceCode,
+            listener: _onCredentialLoginState,
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final spec in specs)
+                  _actionButton(context, capability: capability, spec: spec),
+              ],
+            ),
           ),
         ),
       ],
@@ -469,6 +464,8 @@ String _sectionTitle(AppLocalizations l10n, CliTool cli) {
     CliTool.flashskyai => l10n.appProviderToolFlashskyai,
     CliTool.gemini => l10n.appProviderToolGemini,
     CliTool.codebuddy => l10n.appProviderToolCodebuddy,
+    CliTool.antigravity => l10n.appProviderToolAntigravity,
+    CliTool.qoder => l10n.appProviderToolQoder,
   };
 }
 
@@ -486,6 +483,8 @@ String _actionLabel(
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
       CliTool.gemini => l10n.appProviderToolGemini,
       CliTool.codebuddy => l10n.codebuddyCredentialsLogin,
+      CliTool.antigravity => l10n.antigravityCredentialsLogin,
+      CliTool.qoder => l10n.qoderCredentialsLogin,
     },
     ProviderCredentialActionKind.importGlobal => switch (cli) {
       CliTool.claude => l10n.claudeOfficialCredentialsImportGlobal,
@@ -495,6 +494,8 @@ String _actionLabel(
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
       CliTool.gemini => l10n.appProviderToolGemini,
       CliTool.codebuddy => l10n.appProviderToolCodebuddy,
+      CliTool.antigravity => l10n.appProviderToolAntigravity,
+      CliTool.qoder => l10n.appProviderToolQoder,
     },
     ProviderCredentialActionKind.importFile => switch (cli) {
       CliTool.claude => l10n.claudeOfficialCredentialsImportFile,
@@ -504,6 +505,8 @@ String _actionLabel(
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
       CliTool.gemini => l10n.appProviderToolGemini,
       CliTool.codebuddy => l10n.appProviderToolCodebuddy,
+      CliTool.antigravity => l10n.appProviderToolAntigravity,
+      CliTool.qoder => l10n.appProviderToolQoder,
     },
     ProviderCredentialActionKind.importDirectory =>
       l10n.cursorCredentialsImportFile,
@@ -515,6 +518,8 @@ String _actionLabel(
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
       CliTool.gemini => l10n.appProviderToolGemini,
       CliTool.codebuddy => l10n.appProviderToolCodebuddy,
+      CliTool.antigravity => l10n.appProviderToolAntigravity,
+      CliTool.qoder => l10n.appProviderToolQoder,
     },
   };
 }
@@ -541,6 +546,8 @@ String _revokeConfirmMessage(
     CliTool.flashskyai => l10n.appProviderToolFlashskyai,
     CliTool.gemini => l10n.appProviderToolGemini,
     CliTool.codebuddy => l10n.appProviderToolCodebuddy,
+    CliTool.antigravity => l10n.appProviderToolAntigravity,
+    CliTool.qoder => l10n.appProviderToolQoder,
   };
 }
 

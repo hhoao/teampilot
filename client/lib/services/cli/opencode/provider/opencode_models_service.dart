@@ -52,11 +52,14 @@ class _ResolvedStorage {
   final String basePath;
 }
 
-/// Fetches and caches the models.dev catalog for opencode provider pickers.
+/// Fetches and caches the opencode provider model catalog used by pickers.
 ///
 /// opencode itself syncs its provider catalog from `https://models.dev/api.json`
-/// (`packages/opencode/src/cli/cmd/providers.ts`). One fetch refreshes every
-/// provider opencode can launch with (zen, go, openai, anthropic, google, …).
+/// (`packages/opencode/src/cli/cmd/providers.ts`), so one fetch covers every
+/// provider opencode can launch with (openai, anthropic, google, …).
+/// models.dev also keeps **retired** ids, though, so the two OpenCode layers
+/// (`opencode`, `opencode-go`) are overridden with each layer's own
+/// `GET /models` answer — that is the set a launch can actually request.
 /// Falls back to the built-in static catalog (see `OpencodeCatalogSource`).
 class OpencodeModelsService {
   OpencodeModelsService({
@@ -70,7 +73,17 @@ class OpencodeModelsService {
        _httpClient = httpClient ?? http.Client();
 
   static const _modelsDevUrl = 'https://models.dev/api.json';
-  static const _cacheKey = 'models';
+
+  /// The two OpenCode layers publish their *served* ids, which is what a
+  /// launch can actually request — models.dev also lists retired ids.
+  static const _servedCatalogUrls = <String, String>{
+    'opencode': 'https://opencode.ai/zen/v1/models',
+    'opencode-go': 'https://opencode.ai/zen/go/v1/models',
+  };
+
+  /// Bumped when the cached shape/source changes, so an old on-disk list is
+  /// ignored instead of being served for another TTL.
+  static const _cacheKey = 'served_models_v1';
 
   /// Home control-plane storage; the disk cache lives under its app-data root
   /// on the home filesystem. Reads go through the *current* context so home
@@ -214,13 +227,28 @@ class OpencodeModelsService {
     return ids;
   }
 
+  /// Served-model ids behind `GET /models`, which answers either
+  /// `{"data": [{"id": …}]}` or a bare list of ids.
+  static List<String> _extractServedIds(Object? decoded) {
+    final data = decoded is Map ? decoded['data'] ?? decoded['models'] : decoded;
+    if (data is! List) return const [];
+    final ids = <String>[];
+    for (final item in data) {
+      final id = item is Map
+          ? (item['id'] ?? item['model'] ?? '').toString().trim()
+          : item.toString().trim();
+      if (id.isNotEmpty) ids.add(id);
+    }
+    return ids;
+  }
+
   Future<OpencodeModelsCacheEntry?> _fetchLive() async {
     try {
-      final response = await _httpClient
-          .get(Uri.parse(_modelsDevUrl))
-          .timeout(const Duration(seconds: 10));
-      if (response.statusCode != 200) return null;
-      final decoded = jsonDecode(response.body);
+      final payloads = await Future.wait([
+        _getJson(Uri.parse(_modelsDevUrl)),
+        for (final url in _servedCatalogUrls.values) _getJson(Uri.parse(url)),
+      ]);
+      final decoded = payloads.first;
       if (decoded is! Map) return null;
       final byProvider = <String, List<String>>{};
       for (final entry in decoded.entries) {
@@ -234,11 +262,34 @@ class OpencodeModelsService {
         if (ids.isEmpty) continue;
         byProvider[providerId] = ids;
       }
+
+      // models.dev keeps retired ids (`deepseek-v4-flash-free`, …) long after
+      // the endpoint stops serving them, so a pick from it fails upstream with
+      // "Model is unavailable". The two OpenCode layers are the only providers
+      // whose served set TeamPilot can ask for directly — use it verbatim.
+      var index = 1;
+      for (final providerId in _servedCatalogUrls.keys) {
+        final served = _extractServedIds(payloads[index++]);
+        if (served.isNotEmpty) byProvider[providerId] = served;
+      }
+
       if (byProvider.isEmpty) return null;
       return OpencodeModelsCacheEntry(
         fetchedAtMs: DateTime.now().millisecondsSinceEpoch,
         modelsByProvider: byProvider,
       );
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<Object?> _getJson(Uri uri) async {
+    try {
+      final response = await _httpClient
+          .get(uri)
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return null;
+      return jsonDecode(response.body);
     } on Object {
       return null;
     }

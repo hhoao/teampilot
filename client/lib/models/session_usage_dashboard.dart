@@ -11,7 +11,28 @@ const String usageUnknownSession = '\u0000unknown-session';
 const String usageUnknownTeam = '\u0000unknown-team';
 const String usageSimpleSeat = '\u0000simple-seat';
 
-enum UsageRange { today, sevenDays, thirtyDays, all }
+enum UsageRange {
+  today('today'),
+  last24Hours('last24Hours'),
+  sevenDays('sevenDays'),
+  fourteenDays('fourteenDays'),
+  thirtyDays('thirtyDays'),
+  all('all'),
+  custom('custom');
+
+  const UsageRange(this.value);
+
+  final String value;
+
+  static UsageRange? tryParse(String? value) {
+    final normalized = value?.trim();
+    if (normalized == null || normalized.isEmpty) return null;
+    for (final range in UsageRange.values) {
+      if (range.value == normalized) return range;
+    }
+    return null;
+  }
+}
 
 enum UsageGroupBy { session, member, model, cli }
 
@@ -110,12 +131,18 @@ final class UsageFilter extends Equatable {
     this.cli,
     this.groupBy = UsageGroupBy.session,
     this.query = '',
+    this.customStartMs,
+    this.customEndMs,
+    this.liveEnd = false,
   });
 
   final UsageRange range;
   final CliTool? cli;
   final UsageGroupBy groupBy;
   final String query;
+  final int? customStartMs;
+  final int? customEndMs;
+  final bool liveEnd;
 
   UsageFilter copyWith({
     UsageRange? range,
@@ -123,17 +150,34 @@ final class UsageFilter extends Equatable {
     bool clearCli = false,
     UsageGroupBy? groupBy,
     String? query,
+    int? customStartMs,
+    int? customEndMs,
+    bool clearCustomRange = false,
+    bool? liveEnd,
   }) {
     return UsageFilter(
       range: range ?? this.range,
       cli: clearCli ? null : (cli ?? this.cli),
       groupBy: groupBy ?? this.groupBy,
       query: query ?? this.query,
+      customStartMs: clearCustomRange
+          ? null
+          : (customStartMs ?? this.customStartMs),
+      customEndMs: clearCustomRange ? null : (customEndMs ?? this.customEndMs),
+      liveEnd: liveEnd ?? this.liveEnd,
     );
   }
 
   @override
-  List<Object?> get props => [range, cli, groupBy, query];
+  List<Object?> get props => [
+    range,
+    cli,
+    groupBy,
+    query,
+    customStartMs,
+    customEndMs,
+    liveEnd,
+  ];
 }
 
 @immutable
@@ -258,6 +302,38 @@ final class UsageChartDay extends Equatable {
 }
 
 @immutable
+final class UsageHeatmapDay extends Equatable {
+  const UsageHeatmapDay({
+    required this.dayStartMs,
+    required this.tokens,
+    required this.requests,
+    required this.costMicroUsd,
+    this.cacheHitRate,
+  });
+
+  /// Local midnight of the day.
+  final int dayStartMs;
+
+  /// Billed total tokens, same definition as the rest of the page.
+  final int tokens;
+
+  final int requests;
+  final int costMicroUsd;
+
+  /// `cacheRead / (freshInput + cacheRead)`, null when there was no input.
+  final double? cacheHitRate;
+
+  @override
+  List<Object?> get props => [
+    dayStartMs,
+    tokens,
+    requests,
+    costMicroUsd,
+    cacheHitRate,
+  ];
+}
+
+@immutable
 final class UsageCliSlice extends Equatable {
   const UsageCliSlice({
     required this.cli,
@@ -284,6 +360,7 @@ final class UsageDashboard extends Equatable {
     this.rows = const [],
     this.chart = const [],
     this.cliSlices = const [],
+    this.heatmap = const [],
     this.matchedEventCount = 0,
     this.totalEventCount = 0,
   });
@@ -299,6 +376,9 @@ final class UsageDashboard extends Equatable {
   /// Fixed last-seven-local-day CLI distribution, all CLIs.
   final List<UsageCliSlice> cliSlices;
 
+  /// All-history local-day buckets, filtered by CLI only (ascending).
+  final List<UsageHeatmapDay> heatmap;
+
   final int matchedEventCount;
   final int totalEventCount;
 
@@ -308,6 +388,7 @@ final class UsageDashboard extends Equatable {
     rows,
     chart,
     cliSlices,
+    heatmap,
     matchedEventCount,
     totalEventCount,
   ];

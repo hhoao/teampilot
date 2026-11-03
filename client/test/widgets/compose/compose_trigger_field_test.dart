@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:extended_text_field/extended_text_field.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -11,6 +12,8 @@ import 'package:teampilot/services/commands/shortcut_context.dart';
 import 'package:teampilot/services/commands/shortcut_dispatcher.dart';
 import 'package:teampilot/services/cli/registry/capabilities/native_command_capability.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_clip.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_text_controller.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_token_document.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_text_edit.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
@@ -39,7 +42,7 @@ void main() {
   Future<void> pumpField(
     WidgetTester tester, {
     required CommandBus bus,
-    required TextEditingController controller,
+    required ComposeTextController controller,
     required FocusNode focusNode,
     required VoidCallback onSubmit,
     List<NativeCommand> nativeCommands = const [],
@@ -73,11 +76,22 @@ void main() {
     );
   }
 
+  Future<void> enterComposeText(WidgetTester tester, String text) async {
+    final field = tester.widget<ExtendedTextField>(
+      find.byType(ExtendedTextField),
+    );
+    field.controller!.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+    await tester.pump();
+  }
+
   testWidgets('native command shows source and inserts argument space', (
     tester,
   ) async {
     final bus = CommandBus();
-    final controller = TextEditingController();
+    final controller = ComposeTextController();
     final focusNode = FocusNode();
     addTearDown(() {
       controller.dispose();
@@ -101,7 +115,7 @@ void main() {
 
     focusNode.requestFocus();
     await tester.pump();
-    await tester.enterText(find.byType(TextField), '/go');
+    await enterComposeText(tester, '/go');
     await tester.pumpAndSettle(const Duration(milliseconds: 200));
 
     expect(find.text('/goal'), findsWidgets);
@@ -117,7 +131,7 @@ void main() {
     tester,
   ) async {
     final bus = CommandBus();
-    final controller = TextEditingController();
+    final controller = ComposeTextController();
     final focusNode = FocusNode();
     addTearDown(() {
       controller.dispose();
@@ -137,7 +151,7 @@ void main() {
 
     focusNode.requestFocus();
     await tester.pump();
-    await tester.enterText(find.byType(TextField), '/he');
+    await enterComposeText(tester, '/he');
     await tester.pumpAndSettle(const Duration(milliseconds: 200));
 
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -163,7 +177,7 @@ void main() {
     'Enter picks the suggestion instead of submitting while overlay is open',
     (tester) async {
       final bus = CommandBus();
-      final controller = TextEditingController();
+      final controller = ComposeTextController();
       final focusNode = FocusNode();
       addTearDown(() {
         controller.dispose();
@@ -184,7 +198,7 @@ void main() {
       focusNode.requestFocus();
       await tester.pump();
 
-      await tester.enterText(find.byType(TextField), '/plan');
+      await enterComposeText(tester, '/plan');
       await tester.pumpAndSettle(const Duration(milliseconds: 200));
 
       expect(find.text('/plan'), findsWidgets);
@@ -208,11 +222,56 @@ void main() {
     },
   );
 
+  testWidgets(
+    'Enter submits instead of applying a suggestion for an older query',
+    (tester) async {
+      final bus = CommandBus();
+      final controller = ComposeTextController();
+      final focusNode = FocusNode();
+      addTearDown(() {
+        controller.dispose();
+        focusNode.dispose();
+      });
+      var submitCount = 0;
+
+      await pumpField(
+        tester,
+        bus: bus,
+        controller: controller,
+        focusNode: focusNode,
+        onSubmit: () => submitCount++,
+      );
+      final dispatcher = installDispatcher(bus);
+      addTearDown(dispatcher.detach);
+
+      focusNode.requestFocus();
+      await tester.pump();
+
+      // A settled search populates the overlay for query "p".
+      await enterComposeText(tester, '/p');
+      await tester.pumpAndSettle(const Duration(milliseconds: 200));
+      expect(find.text('/plan'), findsWidgets);
+
+      // Keep typing CJK text (no whitespace, so the trigger keeps growing)
+      // and press Enter before the debounced search resolves the new query.
+      await enterComposeText(tester, '/p你好世界');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+
+      expect(
+        controller.text,
+        '/p你好世界',
+        reason: 'a suggestion for the old query must not replace the draft',
+      );
+      expect(submitCount, 1, reason: 'Enter submits the draft instead');
+    },
+  );
+
   testWidgets('tapping blank area inside the shell focuses the field', (
     tester,
   ) async {
     final bus = CommandBus();
-    final controller = TextEditingController();
+    final controller = ComposeTextController();
     final focusNode = FocusNode();
     addTearDown(() {
       controller.dispose();
@@ -241,7 +300,7 @@ void main() {
 
     expect(focusNode.hasFocus, isTrue);
 
-    await tester.enterText(find.byType(TextField), 'from blank tap');
+    await enterComposeText(tester, 'from blank tap');
     await tester.pump();
     expect(controller.text, 'from blank tap');
   });
@@ -250,7 +309,7 @@ void main() {
     'does not nest LayoutBuilder around the token field (landing open path)',
     (tester) async {
       final bus = CommandBus();
-      final controller = TextEditingController();
+      final controller = ComposeTextController();
       final focusNode = FocusNode();
       addTearDown(() {
         controller.dispose();
@@ -282,7 +341,7 @@ void main() {
 
       focusNode.requestFocus();
       await tester.pump();
-      await tester.enterText(find.byType(TextField), 'still editable');
+      await enterComposeText(tester, 'still editable');
       await tester.pump();
       expect(controller.text, 'still editable');
     },
@@ -290,7 +349,7 @@ void main() {
 
   testWidgets('typing works after dragging the resize grip', (tester) async {
     final bus = CommandBus();
-    final controller = TextEditingController();
+    final controller = ComposeTextController();
     final focusNode = FocusNode();
     addTearDown(() {
       controller.dispose();
@@ -314,17 +373,16 @@ void main() {
     focusNode.requestFocus();
     await tester.pump();
 
-    await tester.enterText(find.byType(TextField), 'hello after resize');
+    await enterComposeText(tester, 'hello after resize');
     await tester.pump();
 
     expect(controller.text, 'hello after resize');
-    expect(find.text('hello after resize'), findsWidgets);
   });
 
   group('image paste', () {
     Future<void> pumpFieldForPaste(
       WidgetTester tester, {
-      required TextEditingController controller,
+      required ComposeTextController controller,
       required FocusNode focusNode,
       required Future<bool> Function() onPasteImage,
     }) async {
@@ -382,7 +440,7 @@ void main() {
     testWidgets(
       'image paste inserts the reference and swallows the paste key',
       (tester) async {
-        final controller = TextEditingController();
+        final controller = ComposeTextController();
         final focusNode = FocusNode();
         addTearDown(controller.dispose);
         addTearDown(focusNode.dispose);
@@ -417,7 +475,7 @@ void main() {
     testWidgets('text paste falls through when the clipboard has no image', (
       tester,
     ) async {
-      final controller = TextEditingController();
+      final controller = ComposeTextController();
       final focusNode = FocusNode();
       addTearDown(controller.dispose);
       addTearDown(focusNode.dispose);
@@ -444,7 +502,7 @@ void main() {
   group('paste collapse', () {
     Future<void> pumpWithClip(
       WidgetTester tester, {
-      required TextEditingController controller,
+      required ComposeTextController controller,
       required FocusNode focusNode,
       required ComposeClip clip,
     }) async {
@@ -481,7 +539,7 @@ void main() {
     testWidgets('oversized single insert collapses into the clip and clears', (
       tester,
     ) async {
-      final controller = TextEditingController();
+      final controller = ComposeTextController();
       final focusNode = FocusNode();
       final clip = ComposeClip();
       addTearDown(controller.dispose);
@@ -512,7 +570,7 @@ void main() {
     });
 
     testWidgets('small paste does not collapse', (tester) async {
-      final controller = TextEditingController();
+      final controller = ComposeTextController();
       final focusNode = FocusNode();
       final clip = ComposeClip();
       addTearDown(controller.dispose);
@@ -532,5 +590,245 @@ void main() {
       expect(clip.collapsed, isFalse);
       expect(controller.text, 'small\npaste');
     });
+  });
+
+  testWidgets('a hand-typed @mention is never a token', (tester) async {
+    final bus = CommandBus();
+    final controller = ComposeTextController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+    );
+    focusNode.requestFocus();
+    await tester.pump();
+
+    await enterComposeText(tester, '@src/main.dart');
+    await tester.pump();
+
+    expect(controller.tokenRanges, isEmpty);
+  });
+
+  testWidgets('a pasted absolute path is not a token', (tester) async {
+    final bus = CommandBus();
+    final controller = ComposeTextController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+    );
+    focusNode.requestFocus();
+    await tester.pump();
+
+    await enterComposeText(tester, '/home/me/report.pdf 帮我总结');
+    await tester.pump();
+
+    expect(controller.tokenRanges, isEmpty);
+  });
+
+  testWidgets('a zero-argument command does not absorb following text', (
+    tester,
+  ) async {
+    final bus = CommandBus();
+    final controller = ComposeTextController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+      nativeCommands: const [
+        NativeCommand(name: 'help', description: NativeCommandDescription.help),
+      ],
+    );
+    focusNode.requestFocus();
+    await tester.pump();
+
+    await enterComposeText(tester, '/he');
+    await tester.pumpAndSettle(const Duration(milliseconds: 200));
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(controller.text, '/help');
+    expect(controller.tokenRanges, [const TextRange(start: 0, end: 5)]);
+
+    controller.text = '/help你好世界';
+    await tester.pump();
+
+    expect(controller.tokenRanges, [const TextRange(start: 0, end: 5)]);
+  });
+
+  testWidgets('backspace deletes an inserted token as one unit', (
+    tester,
+  ) async {
+    final bus = CommandBus();
+    final controller = ComposeTextController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+    );
+    focusNode.requestFocus();
+    await tester.pump();
+
+    await enterComposeText(tester, '/pl');
+    await tester.pumpAndSettle(const Duration(milliseconds: 200));
+    focusNode.requestFocus();
+    await tester.pump();
+    expect(find.text('/plan'), findsWidgets);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(controller.text, '/plan ');
+
+    controller.selection = const TextSelection.collapsed(offset: 5);
+    await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+    await tester.pump();
+
+    expect(controller.text, ' ');
+    expect(controller.tokenRanges, isEmpty);
+  });
+
+  testWidgets('token ranges follow text inserted before the token', (
+    tester,
+  ) async {
+    final bus = CommandBus();
+    final controller = ComposeTextController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+    );
+
+    controller.insertToken(
+      start: 0,
+      end: 0,
+      tokenText: '/plan',
+      suffix: ' ',
+      kind: ComposeTokenKind.skill,
+      payload: '/plan',
+    );
+    await tester.pump();
+
+    controller.text = 'x ${controller.text}';
+    await tester.pump();
+
+    expect(controller.tokenRanges, [const TextRange(start: 2, end: 7)]);
+  });
+
+  testWidgets('arrow keys cross a token and its separator in one press', (
+    tester,
+  ) async {
+    final bus = CommandBus();
+    final controller = ComposeTextController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+    );
+    final dispatcher = installDispatcher(bus);
+    addTearDown(dispatcher.detach);
+    await enterComposeText(tester, '/pl');
+    await tester.pumpAndSettle(const Duration(milliseconds: 200));
+    focusNode.requestFocus();
+    await tester.pump();
+    expect(find.text('/plan'), findsWidgets);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(controller.text, '/plan ');
+
+    controller.selection = const TextSelection.collapsed(offset: 6);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    expect(controller.selection.baseOffset, 0);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(controller.selection.baseOffset, 6);
+  });
+
+  testWidgets('selected token renders a padded inline chip', (tester) async {
+    final bus = CommandBus();
+    final controller = ComposeTextController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+    );
+    final dispatcher = installDispatcher(bus);
+    addTearDown(dispatcher.detach);
+    await enterComposeText(tester, '/pl');
+    await tester.pumpAndSettle(const Duration(milliseconds: 200));
+    focusNode.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    final label = find.text('/plan');
+    expect(label, findsWidgets);
+    final padded = find
+        .ancestor(of: label, matching: find.byType(Container))
+        .evaluate()
+        .map((element) => element.widget as Container)
+        .where(
+          (container) =>
+              container.padding ==
+              const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        );
+    expect(padded, isNotEmpty);
   });
 }

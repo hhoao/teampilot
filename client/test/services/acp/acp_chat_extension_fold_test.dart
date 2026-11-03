@@ -101,6 +101,50 @@ void main() {
     expect(_todoWriteOf(replaced).args?['merge'], isFalse);
   });
 
+  test('ACP plan entries replace the todo slot as a snapshot', () {
+    final seeded = foldAcpExtensionNotification(
+      messages: const [],
+      update: const AcpTodoListUpdate(
+        AcpTodoListNotification(
+          todos: [AcpTodoItem(id: 'a', content: 'Task A', status: 'pending')],
+          merge: false,
+        ),
+      ),
+      newId: newId,
+    );
+
+    final folded = foldAcpExtensionNotification(
+      messages: seeded,
+      update: const AcpPlan(
+        entries: [
+          AcpPlanEntry(
+            content: 'Inspect the tab layout',
+            priority: AcpPlanEntryPriority.high,
+            status: AcpPlanEntryStatus.completed,
+          ),
+          AcpPlanEntry(
+            content: 'Patch the sizing math',
+            priority: AcpPlanEntryPriority.medium,
+            status: AcpPlanEntryStatus.inProgress,
+          ),
+          AcpPlanEntry(
+            content: '   ',
+            priority: AcpPlanEntryPriority.low,
+            status: AcpPlanEntryStatus.pending,
+          ),
+        ],
+      ),
+      newId: newId,
+    );
+
+    expect(folded, hasLength(1));
+    expect(_todosOf(folded), [
+      {'id': '1', 'content': 'Inspect the tab layout', 'status': 'completed'},
+      {'id': '2', 'content': 'Patch the sizing math', 'status': 'in_progress'},
+    ]);
+    expect(_todoWriteOf(folded).args?['merge'], isFalse);
+  });
+
   test('task appends a complete subagent tool part', () {
     final existing = [
       AiMessage(

@@ -15,7 +15,6 @@ import '../../../models/runtime_target.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_topology.dart';
-import '../../../services/cli/codex/capabilities/acp_adapter_installer.dart';
 import '../../../services/cli/installer_types.dart';
 import '../../../services/cli/registry/capabilities/acp_settings_capability.dart';
 import '../../../services/cli/registry/capabilities/cli_executable_capability.dart';
@@ -180,9 +179,10 @@ class _RemoteCliMachineReadinessPanelState
           .capability<AcpSettingsCapability>(requirement.cli)
           ?.adapterInstaller;
       final key = isAdapter
-          ? (installer is CodexAcpAdapterInstaller
-                ? InstallJobKeys.codexAcpAdapter(scope: scope)
-                : InstallJobKeys.claudeAcpAdapter(scope: scope))
+          ? InstallJobKeys.acpAdapter(
+              installer?.adapterJobTarget ?? 'adapter:${requirement.cli.value}',
+              scope: scope,
+            )
           : InstallJobKeys.cli(requirement.cli.value, scope: scope);
 
       final result = await registry.enqueue(
@@ -206,6 +206,8 @@ class _RemoteCliMachineReadinessPanelState
                   CliInstallPhase.bootstrappingNode => 'Bootstrapping Node',
                   CliInstallPhase.installingCli => 'Installing CLI',
                   CliInstallPhase.locatingExecutable => 'Locating executable',
+                  CliInstallPhase.downloading => 'Downloading adapter',
+                  CliInstallPhase.extracting => 'Extracting adapter',
                   CliInstallPhase.syncingRemoteWorkspace =>
                     'Syncing remote workspace',
                 };

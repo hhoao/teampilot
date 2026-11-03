@@ -32,6 +32,13 @@ class FakeCatalogModule implements CatalogKindModule {
         inputSchema: const {'type': 'object', 'properties': {}},
         mutating: true,
       ),
+    if (kind == 'automation')
+      CatalogToolSpec(
+        name: 'run_automation',
+        description: 'Run automation now',
+        inputSchema: const {'type': 'object', 'properties': {}},
+        mutating: true,
+      ),
   ];
 
   @override

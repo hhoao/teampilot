@@ -50,4 +50,70 @@ void main() {
     expect(specs.last.value, const AcpModelPick('opus'));
     expect(specs.where((spec) => spec.isDivider), isEmpty);
   });
+
+  group('acpModelIdForLaunch', () {
+    test('uses the bare id when the agent advertises it', () {
+      expect(
+        acpModelIdForLaunch(
+          state: modelState,
+          namespace: '',
+          model: 'sonnet',
+        ),
+        'sonnet',
+      );
+    });
+
+    test('qualifies the id with the picked namespace', () {
+      const opencode = AcpModelState(
+        configId: 'model',
+        currentId: 'opencode/deepseek-v4.1-flash',
+        options: [
+          AcpModelOption(
+            id: 'opencode-go/deepseek-v4.1-flash',
+            name: 'Go Flash',
+          ),
+          AcpModelOption(
+            id: 'opencode/deepseek-v4.1-flash',
+            name: 'Zen Flash',
+          ),
+        ],
+      );
+
+      expect(
+        acpModelIdForLaunch(
+          state: opencode,
+          namespace: 'opencode-go',
+          model: 'deepseek-v4.1-flash',
+        ),
+        'opencode-go/deepseek-v4.1-flash',
+      );
+      expect(
+        acpModelIdForLaunch(
+          state: opencode,
+          namespace: 'opencode',
+          model: 'deepseek-v4.1-flash',
+        ),
+        'opencode/deepseek-v4.1-flash',
+      );
+    });
+
+    test('returns null when the agent does not advertise the pair', () {
+      expect(
+        acpModelIdForLaunch(
+          state: modelState,
+          namespace: 'opencode-go',
+          model: 'my-custom-id',
+        ),
+        isNull,
+      );
+      expect(
+        acpModelIdForLaunch(
+          state: modelState,
+          namespace: '',
+          model: '',
+        ),
+        isNull,
+      );
+    });
+  });
 }

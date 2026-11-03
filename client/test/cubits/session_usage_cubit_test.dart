@@ -112,6 +112,10 @@ void main() {
     await cubit.ensureLoaded();
     expect(loadCount, 1);
     expect(cubit.state.dashboard.rows, hasLength(2));
+    final sessionDashboard = cubit.state.dashboard;
+    cubit.setGroupBy(UsageGroupBy.model);
+    cubit.setGroupBy(UsageGroupBy.session);
+    expect(identical(cubit.state.dashboard, sessionDashboard), isTrue);
 
     cubit.setRange(UsageRange.today);
     cubit.setGroupBy(UsageGroupBy.model);
@@ -127,11 +131,52 @@ void main() {
     cubit.setCli(CliTool.codex);
     expect(cubit.state.dashboard.summary.requests, 0);
 
+    cubit.setCustomRange(
+      startMs: _now.subtract(const Duration(days: 7)).millisecondsSinceEpoch,
+      endMs: _now.millisecondsSinceEpoch,
+      liveEnd: true,
+    );
+    expect(cubit.state.liveEnd, isTrue);
+
     cubit.resetFilters();
     expect(cubit.state.range, UsageRange.all);
     expect(cubit.state.cli, isNull);
     expect(cubit.state.query, '');
+    expect(cubit.state.customStartMs, isNull);
+    expect(cubit.state.customEndMs, isNull);
+    expect(cubit.state.liveEnd, isFalse);
     expect(loadCount, 1);
+  });
+
+  test('refreshRangeNow is a no-op when live end is off', () async {
+    var now = _now;
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async => const UsageSyncResult(),
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => now,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.ensureLoaded();
+    cubit.setRange(UsageRange.today);
+    expect(cubit.state.dashboard.summary.requests, 1);
+
+    final states = <SessionUsageState>[];
+    final sub = cubit.stream.listen(states.add);
+    try {
+      // Moving the clock past the day boundary would change a recomputed
+      // dashboard, so any emit here means the live-end guard is missing.
+      now = DateTime(2026, 10, 28, 12);
+      cubit.refreshRangeNow();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(states, isEmpty);
+      expect(cubit.state.dashboard.summary.requests, 1);
+    } finally {
+      await sub.cancel();
+    }
   });
 
   test('sync reloads, records time/result, and clears errors', () async {
@@ -535,5 +580,102 @@ void main() {
     expect(loadCount, 2);
     expect(cubit.state.usageStats?.lineCount, 5);
     expect(cubit.state.maintenanceBusy, isFalse);
+  });
+
+  test('large filter changes compute off the UI thread', () async {
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [
+        _event(id: 'a', sessionId: 's1'),
+        _event(id: 'b', sessionId: 's2', input: 100),
+      ],
+      syncAll: () async => const UsageSyncResult(),
+      loadSessions: () async => [
+        _session('s1', 'Alpha'),
+        _session('s2', 'Beta'),
+      ],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => _now,
+      isolateThreshold: 1,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.ensureLoaded();
+    final done = cubit.stream.firstWhere((state) => !state.isComputing);
+    cubit.setGroupBy(UsageGroupBy.model);
+    expect(cubit.state.isComputing, isTrue);
+    await done.timeout(const Duration(seconds: 10));
+
+    expect(cubit.state.isComputing, isFalse);
+    expect(cubit.state.dashboard.rows, hasLength(1));
+    expect(cubit.state.dashboard.rows.single.label, 'claude-sonnet-4');
+  });
+
+  test(
+    'custom range filters events and clears when switching presets',
+    () async {
+      final cubit = SessionUsageCubit(
+        loadEvents: () async => [
+          _event(
+            id: 'recent',
+            timestampMs: DateTime(2026, 10, 26, 12).millisecondsSinceEpoch,
+          ),
+          _event(
+            id: 'old',
+            timestampMs: DateTime(2026, 10, 20, 12).millisecondsSinceEpoch,
+          ),
+        ],
+        syncAll: () async => const UsageSyncResult(),
+        loadSessions: () async => const <AppSession>[],
+        loadTeams: () async => const <TeamProfile>[],
+        now: () => DateTime(2026, 10, 26, 18),
+      );
+      addTearDown(cubit.close);
+
+      await cubit.ensureLoaded();
+      expect(cubit.state.dashboard.summary.requests, 2);
+
+      cubit.setCustomRange(
+        startMs: DateTime(2026, 10, 25).millisecondsSinceEpoch,
+        endMs: DateTime(2026, 10, 26, 18).millisecondsSinceEpoch,
+      );
+      expect(cubit.state.range, UsageRange.custom);
+      expect(cubit.state.dashboard.summary.requests, 1);
+
+      cubit.setRange(UsageRange.all);
+      expect(cubit.state.range, UsageRange.all);
+      expect(cubit.state.customStartMs, isNull);
+      expect(cubit.state.customEndMs, isNull);
+      expect(cubit.state.liveEnd, isFalse);
+      expect(cubit.state.dashboard.summary.requests, 2);
+    },
+  );
+
+  test('live end uses now on refresh', () async {
+    var now = DateTime(2026, 10, 26, 12);
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [
+        _event(
+          id: 'later',
+          timestampMs: DateTime(2026, 10, 26, 13).millisecondsSinceEpoch,
+        ),
+      ],
+      syncAll: () async => const UsageSyncResult(),
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => now,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.ensureLoaded();
+    cubit.setCustomRange(
+      startMs: DateTime(2026, 10, 26).millisecondsSinceEpoch,
+      endMs: DateTime(2026, 10, 26, 12).millisecondsSinceEpoch,
+      liveEnd: true,
+    );
+    expect(cubit.state.dashboard.summary.requests, 0);
+
+    now = DateTime(2026, 10, 26, 14);
+    cubit.refreshRangeNow();
+    expect(cubit.state.dashboard.summary.requests, 1);
   });
 }

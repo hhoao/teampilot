@@ -5,8 +5,10 @@
 /// `teampilot_search_bindings_generated.dart`.
 library;
 
-export 'src/fallback_search_engine.dart' show fallbackSearch, kFallbackIgnoredDirNames, kFallbackMaxLineBytes;
+export 'src/fallback_search_engine.dart'
+    show fallbackSearch, kFallbackIgnoredDirNames, kFallbackMaxLineBytes;
 export 'src/file_index.dart';
+export 'src/isolate_worker.dart' show IsolatedContentSearch, IsolatedFileIndex;
 export 'src/search_file_reader.dart' show SearchFileReader, SearchDirEntry;
 
 import 'dart:convert';
@@ -76,10 +78,7 @@ class TpSearchMatch {
 RegExp? compilePattern(TpSearchOptions options) {
   if (!options.isRegex) return null;
   try {
-    return RegExp(
-      options.pattern,
-      caseSensitive: options.caseSensitive,
-    );
+    return RegExp(options.pattern, caseSensitive: options.caseSensitive);
   } on FormatException {
     return null;
   }
@@ -95,9 +94,24 @@ const int _kErrRootUnreadable = -2;
 const int _kMaxChunkMatches = 256;
 const int _kMaxChunkBytes = 64 * 1024;
 
-int _byteToCharOffset(String line, int byteOffset) {
-  final bytes = utf8.encode(line);
-  return utf8.decode(bytes.sublist(0, byteOffset), allowMalformed: true).length;
+/// How long an empty chunk waits before the next poll. The Rust side no longer
+/// blocks inside `tp_search_next`, so the caller owns the poll cadence.
+const Duration _kEmptyChunkBackoff = Duration(milliseconds: 4);
+
+/// Converts [byteOffset] in [line]'s UTF-8 encoding to a character offset.
+///
+/// [utf8Bytes] is a pre-computed encoding of [line] (the caller converts the
+/// start and end offsets of one match, so encoding once halves the work). Pure
+/// ASCII lines skip the decode entirely: their UTF-8 length equals their UTF-16
+/// length, so byte offsets already are character offsets. Any non-ASCII
+/// character makes the encoding longer per code unit, so equality implies
+/// ASCII.
+int _byteToCharOffset(String line, int byteOffset, List<int> utf8Bytes) {
+  if (byteOffset >= utf8Bytes.length) return line.length;
+  if (utf8Bytes.length == line.length) return byteOffset;
+  return utf8
+      .decode(utf8Bytes.sublist(0, byteOffset), allowMalformed: true)
+      .length;
 }
 
 /// Rust-backed content search engine.
@@ -161,17 +175,25 @@ class TpSearchEngine {
           for (var i = 0; i < count; i++) {
             final m = matchesBuf[i];
             final lineText = _readCStringAt(stringsBuf, m.line_text);
+            final lineBytes = utf8.encode(lineText);
             yield TpSearchMatch(
               path: _readCStringAt(stringsBuf, m.path),
               relativePath: _readCStringAt(stringsBuf, m.relative_path),
               lineNumber: m.line_number,
               lineText: lineText,
-              matchStart: _byteToCharOffset(lineText, m.match_start),
-              matchEnd: _byteToCharOffset(lineText, m.match_end),
+              matchStart: _byteToCharOffset(lineText, m.match_start, lineBytes),
+              matchEnd: _byteToCharOffset(lineText, m.match_end, lineBytes),
             );
           }
           if (status == _kStatusDone) break;
+          // Hand the EVENT queue a turn after every chunk. `yield` alone only
+          // resumes the generator through microtasks, so a match-heavy search
+          // would keep the UI isolate pinned (no frames, no input) until the
+          // whole walk finished. An empty chunk instead backs off briefly so a
+          // slow (or matchless) walk does not spin the isolate.
           if (status == _kStatusMore && count == 0) {
+            await Future<void>.delayed(_kEmptyChunkBackoff);
+          } else {
             await Future<void>.delayed(Duration.zero);
           }
         }
@@ -186,11 +208,18 @@ class TpSearchEngine {
     }
   }
 
-  ffi.Pointer<bindings.TpSearchHandle> _open(String root, TpSearchOptions options) {
+  ffi.Pointer<bindings.TpSearchHandle> _open(
+    String root,
+    TpSearchOptions options,
+  ) {
     final cRoot = root.toNativeUtf8();
     final cPattern = options.pattern.toNativeUtf8();
-    final includePtrs = options.filesToInclude.map((s) => s.toNativeUtf8()).toList();
-    final excludePtrs = options.filesToExclude.map((s) => s.toNativeUtf8()).toList();
+    final includePtrs = options.filesToInclude
+        .map((s) => s.toNativeUtf8())
+        .toList();
+    final excludePtrs = options.filesToExclude
+        .map((s) => s.toNativeUtf8())
+        .toList();
     final includes = calloc<ffi.Pointer<ffi.Char>>(includePtrs.length);
     final excludes = calloc<ffi.Pointer<ffi.Char>>(excludePtrs.length);
     for (var i = 0; i < includePtrs.length; i++) {

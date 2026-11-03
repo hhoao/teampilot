@@ -1,8 +1,11 @@
 import 'package:acpd/acpd.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/acp/acp_agent_translator.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/acp.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
+import 'package:teampilot/services/cli/registry/capabilities/acp_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
   test('launchArgCandidates is opencode acp', () {
@@ -69,6 +72,18 @@ void main() {
       baseEnv: const {'OPENCODE_ENABLE_QUESTION_TOOL': 'true'},
     );
     expect(env['OPENCODE_ENABLE_QUESTION_TOOL'], 'true');
+  });
+
+  test('agentStatusEnvironment declares the question tool flag', () {
+    const cap = OpencodeAcpCapability();
+    expect(cap.agentStatusEnvironment, {
+      opencodeEnableQuestionToolEnvKey: 'true',
+    });
+    for (final cli in CliTool.values) {
+      if (cli == CliTool.opencode) continue;
+      final acp = CliToolRegistry.builtIn().capability<AcpCapability>(cli);
+      expect(acp?.agentStatusEnvironment ?? const {}, isEmpty, reason: '$cli');
+    }
   });
 
   test('buildEnvironment does not invent HOME from sessionToolDir', () {

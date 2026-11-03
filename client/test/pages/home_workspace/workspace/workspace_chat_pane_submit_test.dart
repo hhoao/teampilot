@@ -25,6 +25,7 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_pane.dar
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_store.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
@@ -71,8 +72,8 @@ class _LandingDrafts {
   final ComposeDraftCache cache;
 
   Future<void> seed(String workspaceId, String text) async {
-    cache.setLandingDraft(workspaceId, text);
-    await store.saveLanding(workspaceId, text);
+    cache.setLandingDraft(workspaceId, ComposeDraft(text: text));
+    await store.saveLanding(workspaceId, ComposeDraft(text: text));
   }
 
   Future<void> clear(String workspaceId) async {
@@ -203,8 +204,8 @@ void main() {
 
     await _submitLanding(tester, draft);
 
-    expect(drafts.cache.landingDraft(workspaceId), draft);
-    expect(await drafts.store.loadLanding(workspaceId), draft);
+    expect(drafts.cache.landingDraft(workspaceId)?.text, draft);
+    expect((await drafts.store.loadLanding(workspaceId))?.text, draft);
   });
 
   testWidgets('successful delivery clears landing drafts', (tester) async {

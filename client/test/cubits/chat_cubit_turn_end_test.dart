@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -86,6 +87,7 @@ void main() {
       isNull,
     );
     expect(cubit.state.busySessionIds, isEmpty);
+    _expectUpdatedAtAdvanced(cubit, session);
 
     await cubit.close();
     await attention.close();
@@ -156,11 +158,25 @@ void main() {
         cubit.state.sessionActivities[session.sessionId]!.isReadyToChat,
         isTrue,
       );
+      _expectUpdatedAtAdvanced(cubit, session);
 
       await cubit.close();
       await attention.close();
       await postFrame.flush();
       await deleteTempDirBestEffort(tmp);
     },
+  );
+}
+
+/// Turn end must bump the session's "last updated", whichever runtime detected
+/// it (quiet PTY latch here, hook Stop below).
+void _expectUpdatedAtAdvanced(ChatCubit cubit, AppSession before) {
+  final after = cubit.state.sessions.firstWhere(
+    (s) => s.sessionId == before.sessionId,
+  );
+  expect(
+    after.updatedAt,
+    greaterThan(before.updatedAt),
+    reason: 'a finished turn must bump the session updatedAt',
   );
 }

@@ -108,6 +108,7 @@ Map<String, Object?>? _encodePart(AiMessagePart part) {
         'status': part.status.name,
         'isError': part.isError,
         if (args != null) 'args': args,
+        if (part.result != null) 'result': _jsonSafeValue(part.result),
         if (part.category != AiToolCallCategory.other)
           'category': part.category.name,
       };
@@ -179,6 +180,7 @@ AiMessagePart? _decodePart(Map<String, Object?> entry) {
         status: _status(entry['status']),
         isError: entry['isError'] == true,
         args: _decodeArgs(entry['args']),
+        result: _normalizeJson(entry['result']),
         category: _category(entry['category']),
       );
     default:
@@ -194,6 +196,14 @@ Map<String, Object?>? _jsonSafeMap(Map<String, Object?>? args) {
     return _asStringKeyedMap(encoded);
   } on Object {
     return null;
+  }
+}
+
+Object? _jsonSafeValue(Object? value) {
+  try {
+    return _normalizeJson(jsonDecode(jsonEncode(value)));
+  } on Object {
+    return '$value';
   }
 }
 

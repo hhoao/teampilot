@@ -7,8 +7,10 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/repositories/automation_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/chat/session/session_create_request.dart';
 import 'package:teampilot/services/automation/automation_bus_gateway.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
+import 'package:teampilot/services/automation/automation_prompt_delivery.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
@@ -36,20 +38,25 @@ class _FakeSessionRepository implements SessionRepository {
 }
 
 class _RecordingBusGateway implements AutomationBusGateway {
-  _RecordingBusGateway({this.events});
+  _RecordingBusGateway({
+    this.events,
+    this.deliveryOutcome = const AutomationDeliveryOutcome.delivered(),
+  });
 
   final List<String>? events;
+  final AutomationDeliveryOutcome deliveryOutcome;
   final deliverCalls = <(String sessionId, String memberId, String message)>[];
   final ensureCalls = <(String sessionId, String memberId)>[];
 
   @override
-  Future<void> deliverUserCommandToMember(
-    String sessionId,
+  Future<AutomationDeliveryOutcome> deliverUserCommandToMember(
+    AppSession session,
     String memberId,
     String message,
   ) async {
-    events?.add('deliver:$sessionId');
-    deliverCalls.add((sessionId, memberId, message));
+    events?.add('deliver:${session.sessionId}');
+    deliverCalls.add((session.sessionId, memberId, message));
+    return deliveryOutcome;
   }
 
   @override
@@ -137,6 +144,123 @@ void main() {
     expect(result.automation.lastRunAtMs, 100);
     final runs = await repo.runsFor('ws1', automationId: 'auto-1');
     expect(runs, hasLength(1));
+  });
+
+  test('personal ACP seat skips the member-ready gate', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final session = AppSession(
+      sessionId: 'sess-acp',
+      workspaceId: 'ws1',
+      cli: CliTool.claude,
+      acp: true,
+      createdAt: 1,
+    );
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    final bus = _RecordingBusGateway();
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository([session]),
+      busGateway: bus,
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+      workspaceById: (_) => workspace,
+      teamById: (_) => null,
+      nowMs: () => 100,
+    );
+
+    final result = await dispatcher.dispatch(
+      _scheduledMessageAutomation(sessionId: 'sess-acp'),
+    );
+
+    expect(
+      bus.ensureCalls,
+      isEmpty,
+      reason: 'the gateway activation owns ACP readiness',
+    );
+    expect(bus.deliverCalls, [('sess-acp', 'sess-acp', '/clear')]);
+    expect(result.run.status, AutomationRunStatus.completed);
+  });
+
+  test('mixed non-lead ACP seat skips the member-ready gate', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final session = AppSession(
+      sessionId: 'sess-mixed-acp',
+      workspaceId: 'ws1',
+      sessionTeam: 'team-1',
+      createdAt: 1,
+      members: const [
+        SessionMemberBinding(
+          rosterMemberId: 'builder-1',
+          typeId: 'builder',
+          taskId: 'task-builder-1',
+          cli: CliTool.cursor,
+          acp: true,
+        ),
+      ],
+    );
+    final team = TeamProfile(
+      id: 'team-1',
+      name: 'Team',
+      members: const [
+        TeamMemberConfig(id: 'team-lead', name: 'Lead'),
+        TeamMemberConfig(id: 'builder', name: 'Builder', replicas: 1),
+      ],
+    );
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    final bus = _RecordingBusGateway();
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository([session]),
+      busGateway: bus,
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+      workspaceById: (_) => workspace,
+      teamById: (_) => team,
+      nowMs: () => 100,
+    );
+
+    final result = await dispatcher.dispatch(
+      Automation(
+        id: 'launch-mixed-acp',
+        name: 'Mixed ACP seat',
+        action: AutomationAction.launchPrompt,
+        workspaceId: 'ws1',
+        isPersonal: false,
+        teamId: 'team-1',
+        targetMemberId: 'builder-1',
+        sessionId: 'sess-mixed-acp',
+        message: 'continue',
+        reuseSession: true,
+        preset: AutomationSchedulePreset.daily,
+        hourMinute: '09:00',
+        timezone: 'UTC',
+        dtstartMs: 1,
+        enabled: true,
+        nextRunAtMs: 1,
+        createdAtMs: 1,
+        updatedAtMs: 1,
+      ),
+    );
+
+    expect(
+      bus.ensureCalls,
+      isEmpty,
+      reason: 'a deferred non-lead ACP seat has no runtime until activation',
+    );
+    expect(bus.deliverCalls, [('sess-mixed-acp', 'builder-1', 'continue')]);
+    expect(result.run.status, AutomationRunStatus.completed);
   });
 
   test('existing session resolves a bound member instance', () async {
@@ -564,15 +688,354 @@ void main() {
     expect(result.run.status, AutomationRunStatus.completed);
     expect(result.automation.sessionId, 'bound-sess');
   });
+
+  test('personal launchPrompt passes the CLI ACP preference to the request', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    SessionCreateRequest? captured;
+
+    Future<void> run(bool acpEnabled) async {
+      captured = null;
+      final dispatcher = AutomationDispatcher(
+        repository: repo,
+        scheduleCalculator: AutomationScheduleCalculator(),
+        sessionRepository: _FakeSessionRepository(const []),
+        busGateway: _RecordingBusGateway(),
+        requestOpenSession: (_) async => SessionOpenStatus.opened,
+        requestCreateAndOpenSession: (request) async {
+          captured = request;
+          return SessionOpenStatus.opened;
+        },
+        workspaceById: (_) => workspace,
+        teamById: (_) => null,
+        sessionById: (sessionId, workspaceId) => AppSession(
+          sessionId: sessionId,
+          workspaceId: workspaceId,
+          createdAt: 1,
+        ),
+        acpDefaultFor: (_) => acpEnabled,
+        nowMs: () => 100,
+      );
+      await dispatcher.dispatch(
+        Automation(
+          id: 'launch-acp',
+          name: 'ACP launch',
+          action: AutomationAction.launchPrompt,
+          workspaceId: 'ws1',
+          isPersonal: true,
+          presetId: 'preset-1',
+          message: 'run',
+          preset: AutomationSchedulePreset.daily,
+          hourMinute: '09:00',
+          timezone: 'UTC',
+          dtstartMs: 1,
+          enabled: true,
+          nextRunAtMs: 1,
+          createdAtMs: 1,
+          updatedAtMs: 1,
+        ),
+      );
+    }
+
+    await run(true);
+    expect(captured!.acp, isTrue);
+    expect(captured!.acpPermission, LaunchSecurityPolicy.fullAccess);
+
+    await run(false);
+    expect(captured!.acp, isFalse);
+  });
+
+  test('personal launchPrompt resolves the ACP preference at dispatch time', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    SessionCreateRequest? captured;
+    var enabled = true;
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository(const []),
+      busGateway: _RecordingBusGateway(),
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (request) async {
+        captured = request;
+        return SessionOpenStatus.opened;
+      },
+      workspaceById: (_) => workspace,
+      teamById: (_) => null,
+      sessionById: (sessionId, workspaceId) => AppSession(
+        sessionId: sessionId,
+        workspaceId: workspaceId,
+        createdAt: 1,
+      ),
+      acpDefaultFor: (_) => enabled,
+      nowMs: () => 100,
+    );
+
+    final automation = Automation(
+      id: 'launch-live-acp',
+      name: 'Live ACP launch',
+      action: AutomationAction.launchPrompt,
+      workspaceId: 'ws1',
+      isPersonal: true,
+      presetId: 'preset-1',
+      message: 'run',
+      preset: AutomationSchedulePreset.daily,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 1,
+      enabled: true,
+      nextRunAtMs: 1,
+      createdAtMs: 1,
+      updatedAtMs: 1,
+    );
+
+    await dispatcher.dispatch(automation);
+    expect(captured!.acp, isTrue);
+
+    enabled = false;
+    await dispatcher.dispatch(automation);
+    expect(captured!.acp, isFalse);
+  });
+
+  test('team launchPrompt seeds member ACP from the same preference', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    final team = TeamProfile(
+      id: 'team-1',
+      name: 'Team',
+      members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+    );
+    SessionCreateRequest? captured;
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository(const []),
+      busGateway: _RecordingBusGateway(),
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (request) async {
+        captured = request;
+        return SessionOpenStatus.opened;
+      },
+      workspaceById: (_) => workspace,
+      teamById: (id) => id == 'team-1' ? team : null,
+      sessionById: (sessionId, workspaceId) => AppSession(
+        sessionId: sessionId,
+        workspaceId: workspaceId,
+        createdAt: 1,
+      ),
+      acpDefaultFor: (cli) => cli == CliTool.codex,
+      nowMs: () => 100,
+    );
+
+    await dispatcher.dispatch(
+      Automation(
+        id: 'launch-team-acp',
+        name: 'Team ACP launch',
+        action: AutomationAction.launchPrompt,
+        workspaceId: 'ws1',
+        isPersonal: false,
+        teamId: 'team-1',
+        targetMemberId: 'team-lead',
+        message: 'run',
+        preset: AutomationSchedulePreset.daily,
+        hourMinute: '09:00',
+        timezone: 'UTC',
+        dtstartMs: 1,
+        enabled: true,
+        nextRunAtMs: 1,
+        createdAtMs: 1,
+        updatedAtMs: 1,
+      ),
+    );
+
+    expect(captured!.acp, isFalse);
+    expect(captured!.seedClaudeMemberAcp, isFalse);
+    expect(captured!.seedCodexMemberAcp, isTrue);
+    expect(captured!.seedCursorMemberAcp, isFalse);
+    expect(captured!.seedOpencodeMemberAcp, isFalse);
+  });
+
+  test('failed delivery marks the run dispatchFailed with the reason', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final session = AppSession(
+      sessionId: 'sess-1',
+      workspaceId: 'ws1',
+      sessionTeam: 'team-1',
+      createdAt: 1,
+    );
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    final team = TeamProfile(
+      id: 'team-1',
+      name: 'Team',
+      members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+    );
+    final bus = _RecordingBusGateway(
+      deliveryOutcome: const AutomationDeliveryOutcome.failed(
+        'acp_runtime_unavailable',
+      ),
+    );
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository([session]),
+      busGateway: bus,
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+      workspaceById: (_) => workspace,
+      teamById: (_) => team,
+      nowMs: () => 100,
+    );
+
+    final result = await dispatcher.dispatch(
+      _scheduledMessageAutomation(sessionId: 'sess-1'),
+    );
+
+    expect(result.run.status, AutomationRunStatus.dispatchFailed);
+    expect(result.run.error, 'acp_runtime_unavailable');
+    expect(result.run.sessionId, 'sess-1');
+    final runs = await repo.runsFor('ws1', automationId: 'auto-1');
+    expect(runs.single.status, AutomationRunStatus.dispatchFailed);
+    // The schedule must still advance so a failed delivery cannot wedge the
+    // scheduler.
+    expect(result.automation.runCount, 1);
+    expect(result.automation.lastRunAtMs, 100);
+    expect(result.automation.nextRunAtMs, isNotNull);
+  });
+
+  test('delivery failure still binds the created session for reuse', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    final bus = _RecordingBusGateway(
+      deliveryOutcome: const AutomationDeliveryOutcome.failed(
+        'acp_prompt_rejected',
+      ),
+    );
+    var createCalls = 0;
+    String? createdSessionId;
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository(const []),
+      busGateway: bus,
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (request) async {
+        createCalls++;
+        createdSessionId = request.fixedSessionId;
+        return SessionOpenStatus.opened;
+      },
+      workspaceById: (_) => workspace,
+      teamById: (_) => null,
+      sessionById: (sessionId, workspaceId) {
+        if (sessionId != createdSessionId) return null;
+        return AppSession(
+          sessionId: sessionId,
+          workspaceId: workspaceId,
+          createdAt: 1,
+        );
+      },
+      acpDefaultFor: (_) => false,
+      nowMs: () => 100,
+    );
+
+    final result = await dispatcher.dispatch(
+      Automation(
+        id: 'launch-failed-delivery',
+        name: 'Reuse after failure',
+        action: AutomationAction.launchPrompt,
+        workspaceId: 'ws1',
+        isPersonal: true,
+        presetId: 'preset-1',
+        message: 'run',
+        reuseSession: true,
+        preset: AutomationSchedulePreset.daily,
+        hourMinute: '09:00',
+        timezone: 'UTC',
+        dtstartMs: 1,
+        enabled: true,
+        nextRunAtMs: 1,
+        createdAtMs: 1,
+        updatedAtMs: 1,
+      ),
+    );
+
+    expect(createCalls, 1);
+    expect(result.run.status, AutomationRunStatus.dispatchFailed);
+    expect(result.run.error, 'acp_prompt_rejected');
+    expect(createdSessionId, isNotNull);
+    expect(result.automation.sessionId, createdSessionId);
+    final persisted = await repo.listForWorkspace('ws1');
+    expect(persisted.single.sessionId, createdSessionId);
+  });
+
+  test('rejects runCommand automations', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository(const []),
+      busGateway: _RecordingBusGateway(),
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+      workspaceById: (_) => null,
+      teamById: (_) => null,
+      nowMs: () => 100,
+    );
+    final automation = Automation(
+      id: 'a1',
+      name: 'nightly',
+      action: AutomationAction.runCommand,
+      workspaceId: 'ws1',
+      command: 'echo hi',
+      message: '',
+      preset: AutomationSchedulePreset.daily,
+      hourMinute: '02:00',
+      timezone: 'Asia/Shanghai',
+      dtstartMs: 0,
+      createdAtMs: 0,
+      updatedAtMs: 0,
+    );
+    await expectLater(
+      () => dispatcher.dispatch(automation),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
 }
 
 class _SlowBusGateway implements AutomationBusGateway {
   @override
-  Future<void> deliverUserCommandToMember(
-    String sessionId,
+  Future<AutomationDeliveryOutcome> deliverUserCommandToMember(
+    AppSession session,
     String memberId,
     String message,
-  ) async {}
+  ) async => const AutomationDeliveryOutcome.delivered();
 
   @override
   Future<void> ensureMemberReady(String sessionId, String memberId) async {

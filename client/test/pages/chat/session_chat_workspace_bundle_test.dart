@@ -52,6 +52,7 @@ import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
+import '../../support/compose_field_test_utils.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
 /// `SessionChatMessageArea` reads the non-nullable `sessionScrollAnchors`
@@ -374,7 +375,7 @@ void main() {
       projectConfigRepository: repository,
     );
 
-    await tester.enterText(find.byType(TextField).first, '/plan');
+    await enterComposeText(tester, '/plan');
     await tester.pumpAndSettle(const Duration(milliseconds: 200));
 
     expect(find.text('Plan Ws'), findsOneWidget);
@@ -398,7 +399,7 @@ void main() {
       projectConfigRepository: repository,
     );
 
-    await tester.enterText(find.byType(TextField).first, '/sec');
+    await enterComposeText(tester, '/sec');
     await tester.pumpAndSettle(const Duration(milliseconds: 200));
 
     expect(find.text('Secret Skill'), findsNothing);

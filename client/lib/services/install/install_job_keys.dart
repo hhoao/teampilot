@@ -11,6 +11,16 @@ abstract final class InstallJobKeys {
         scope: scope,
       );
 
+  /// Separate ACP adapter install (npm or binary archive; not a [CliTool]).
+  static InstallJobKey acpAdapter(
+    String target, {
+    InstallJobScope scope = const InstallJobScopeLocal(),
+  }) => InstallJobKey(
+    kind: InstallJobKind.cliExecutable,
+    target: target,
+    scope: scope,
+  );
+
   /// Claude ACP adapter npm install (not a [CliTool]).
   static InstallJobKey claudeAcpAdapter({
     InstallJobScope scope = const InstallJobScopeLocal(),

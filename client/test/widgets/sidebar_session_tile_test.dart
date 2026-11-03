@@ -213,6 +213,30 @@ Future<SessionGroupsCubit> _groupsCubit(
   return cubit;
 }
 
+/// Records renames without touching disk, so the tile's rename round-trip can
+/// complete inside [testWidgets] (real file IO only finishes in runAsync).
+class _RenameRecordingRepo extends SessionRepository {
+  _RenameRecordingRepo() : super(storage: testHomeStorage);
+
+  final renamed = <String, String>{};
+
+  @override
+  Future<void> renameSession(String sessionId, String newName) async {
+    renamed[sessionId] = newName;
+  }
+}
+
+Future<void> _openHoverOverflowMenu(WidgetTester tester) async {
+  final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+  await mouse.addPointer(location: Offset.zero);
+  addTearDown(mouse.removePointer);
+  await tester.pump();
+  await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byIcon(Icons.more_horiz));
+  await tester.pumpAndSettle();
+}
+
 Future<void> _openContextMenu(WidgetTester tester) async {
   await tester.tap(
     find.byType(SidebarSessionTile),
@@ -532,7 +556,7 @@ void main() {
     await _dismissContextMenu(tester);
   });
 
-  testWidgets('background lease shows the hourglass marker', (tester) async {
+  testWidgets('background lease shows the running spinner', (tester) async {
     final leases = SeatLeaseCubit(pruneInterval: null);
     final chatCubit = _RecordingChatCubit(seatLeaseCubit: leases);
     final (attention, automationCubit) = _tileCubits();
@@ -561,9 +585,13 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byKey(AppKeys.sessionBackgroundWorkMarker), findsOneWidget);
+    expect(find.byType(SessionWorkingSpinner), findsOneWidget);
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SidebarSessionTile)),
+    );
+    expect(find.text(l10n.sessionHistoryBackgroundRunning), findsNothing);
 
-    // Releasing the lease drops the marker back to the idle dot. The cubit
+    // Releasing the lease drops the spinner back to the idle dot. The cubit
     // delivers the state change on a microtask, so give it a frame to land
     // before the selector rebuilds.
     leases.release(
@@ -573,7 +601,41 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
-    expect(find.byKey(AppKeys.sessionBackgroundWorkMarker), findsNothing);
+    expect(find.byType(SessionWorkingSpinner), findsNothing);
+    expect(find.text(l10n.sessionHistoryBackgroundRunning), findsNothing);
+  });
+
+  testWidgets('background lease does not name the task on the session row', (
+    tester,
+  ) async {
+    final leases = SeatLeaseCubit(pruneInterval: null);
+    final chatCubit = _RecordingChatCubit(seatLeaseCubit: leases);
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+    addTearDown(leases.close);
+
+    leases.acquireBackgroundTask(
+      sessionId: _session.sessionId,
+      memberId: 'm1',
+      leaseId: 'acp-background-task',
+      acquiredAt: DateTime.utc(2026, 10, 15),
+      label: 'Run full client test suite',
+    );
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(SessionWorkingSpinner), findsOneWidget);
+    expect(find.text('Run full client test suite'), findsNothing);
   });
 
   testWidgets('active mode archives on action tap', (tester) async {
@@ -1457,5 +1519,44 @@ void main() {
     TpToast.dismiss();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
+  });
+
+  testWidgets('rename from the hover overflow menu applies the new title', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    final session = _session.copyWith(display: 'old-title');
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    chatCubit.emit(chatCubit.state.copyWith(sessions: [session]));
+    final (attention, automationCubit) = _tileCubits();
+    final repo = _RenameRecordingRepo();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: repo,
+        child: SidebarSessionTile(session: session, onTap: () {}),
+      ),
+    );
+    await tester.pump();
+
+    await _openHoverOverflowMenu(tester);
+    await tester.tap(find.text('Rename conversation'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'new-title');
+    await tester.pump();
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repo.renamed['sess-1'], 'new-title');
+    expect(chatCubit.state.sessions.single.display, 'new-title');
+    expect(find.text('new-title'), findsWidgets);
+    debugDefaultTargetPlatformOverride = null;
   });
 }

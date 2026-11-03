@@ -45,3 +45,16 @@ SessionActivity reduceSessionActivity({
     ),
   );
 }
+
+/// True on the edge where a session stops running a turn: nothing is busy any
+/// more and the turn's disposition just landed (completed / cancelled /
+/// failed). Drives the `updatedAt` touch, so it must fire once per turn — a
+/// repeated reduce of the same finished state stays false.
+bool sessionTurnJustEnded({
+  required SessionActivity previous,
+  required SessionActivity next,
+}) =>
+    next.hadTurn &&
+    !next.isBusy &&
+    next.disposition != SessionTurnDisposition.none &&
+    next.disposition != previous.disposition;

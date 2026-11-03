@@ -480,13 +480,10 @@ class _ChatWorkbenchBody extends StatelessWidget {
       );
     }
 
-    if (pod != null) {
-      return ListenableBuilder(
-        listenable: pod,
-        builder: (context, _) => buildPodDependentBody(context),
-      );
-    }
-    return buildPodDependentBody(context);
+    return wrapPodDependentBody(
+      pod: pod,
+      builder: (context) => buildPodDependentBody(context),
+    );
   }
 
   TerminalSession? _resolveSession({
@@ -909,14 +906,24 @@ class _ChatWorkbenchBody extends StatelessWidget {
         // A reclaimed personal ACP runtime activates on demand — same as a
         // simple PTY session: viewing the tab shows the stored transcript
         // without spawning the agent, and the connect happens here on send.
-        // `retrySessionLaunch` resolves after the attach settles, so the prompt
-        // is delivered to a live cubit.
+        // Hand the prompt to the attach itself: the cubit shows the user bubble
+        // before the handshake and `start()` dispatches the turn immediately,
+        // instead of parking it behind a launch-time history replay.
         if (acpRuntime == null && isAcpChatSession(appSession)) {
-          await chatCubit.retrySessionLaunch(appSession.sessionId);
+          await chatCubit.retrySessionLaunch(
+            appSession.sessionId,
+            firstPrompt: message,
+          );
           acpRuntime = _acpRuntimeForSelectedSeat(
             chatCubit: chatCubit,
             session: appSession,
             selectedMemberId: historyMemberId,
+          );
+          return HistoryContinueSubmitResult(
+            ok:
+                acpRuntime != null &&
+                acpRuntime.state.phase != AcpChatPhase.ended,
+            channel: HistoryContinueChannel.pty,
           );
         }
         if (acpRuntime != null) {
@@ -1033,4 +1040,30 @@ class _ChatWorkbenchBody extends StatelessWidget {
     }
     return '';
   }
+}
+
+/// Wraps the pod-dependent workbench body in a stable [ListenableBuilder].
+///
+/// A session's runtime pod is created lazily on the first connect. Returning
+/// the bare body while `pod == null` and a [ListenableBuilder] afterwards
+/// changes the widget type at the root of the workbench, so Flutter unmounts
+/// the whole subtree — the chat thread, compose draft, and scroll state are
+/// recreated the first time a seat connects (visible as a flash).
+Widget wrapPodDependentBody({
+  required Listenable? pod,
+  required WidgetBuilder builder,
+}) => ListenableBuilder(
+  listenable: pod ?? const _IdleListenable(),
+  builder: (context, _) => builder(context),
+);
+
+/// No-op [Listenable] for the "pod not created yet" window.
+class _IdleListenable implements Listenable {
+  const _IdleListenable();
+
+  @override
+  void addListener(VoidCallback listener) {}
+
+  @override
+  void removeListener(VoidCallback listener) {}
 }

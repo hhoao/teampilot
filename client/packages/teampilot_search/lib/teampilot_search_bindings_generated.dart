@@ -55,6 +55,9 @@ external int tp_file_index_build_poll(ffi.Pointer<TpFileIndexHandle> handle);
 @ffi.Native<ffi.Void Function(ffi.Pointer<TpFileIndexHandle>)>()
 external void tp_file_index_cancel(ffi.Pointer<TpFileIndexHandle> handle);
 
+@ffi.Native<ffi.Uint32 Function(ffi.Pointer<TpFileIndexHandle>)>()
+external int tp_file_index_len(ffi.Pointer<TpFileIndexHandle> handle);
+
 @ffi.Native<
   ffi.Int32 Function(
     ffi.Pointer<TpFileIndexHandle>,

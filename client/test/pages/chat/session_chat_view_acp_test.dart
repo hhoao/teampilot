@@ -8,6 +8,9 @@ import 'package:ai_message_core/ai_message_core.dart'
         AiMessage,
         AiRole,
         AiTextPart,
+        AiToolCallCategory,
+        AiToolCallPart,
+        AiToolCallStatus,
         ExternalStoreAiThreadRuntime;
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
@@ -47,6 +50,8 @@ import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/pages/chat/operator_history_send.dart'
     show OperatorMailboxQueuedEvent;
 import 'package:teampilot/pages/chat/session_chat_view.dart';
+import 'package:teampilot/pages/chat/session_history_thread.dart';
+import '../../support/compose_field_test_utils.dart';
 import 'package:teampilot/services/acp/acp_chat_transcript_replay.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
@@ -502,14 +507,8 @@ void main() {
   }
 
   Future<void> enterCompose(WidgetTester tester, String text) async {
-    final composeField = find.descendant(
-      of: find.byType(TpTokenTextField),
-      matching: find.byType(TextField),
-    );
-    expect(composeField, findsOneWidget);
-    await tester.enterText(composeField, text);
-    await tester.pump();
-    expect(tester.widget<TextField>(composeField).controller?.text, text);
+    await enterComposeText(tester, text);
+    expect(composeFieldWidget(tester).controller?.text, text);
     expect(
       tester
           .widget<WorkspaceComposeCard>(find.byType(WorkspaceComposeCard))
@@ -610,6 +609,41 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('ACP chat-only seat still shows the task board capsule', (
+    tester,
+  ) async {
+    when(() => seat.loadedMessages).thenReturn([
+      AiMessage(
+        id: 'a-todos',
+        role: AiRole.assistant,
+        parts: const [
+          AiToolCallPart(
+            toolCallId: 'todo-1',
+            toolName: 'TodoWrite',
+            category: AiToolCallCategory.task,
+            status: AiToolCallStatus.complete,
+            args: {
+              'todos': [
+                {'id': '1', 'content': 'wire the board', 'status': 'pending'},
+                {'id': '2', 'content': 'ship it', 'status': 'pending'},
+              ],
+            },
+          ),
+        ],
+        createdAt: DateTime.utc(2020),
+      ),
+    ]);
+
+    await pumpSession(tester, session: session('s-tasks', acp: true));
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('0/2'), findsOneWidget);
+    await tester.tap(find.text('0/2'));
+    await tester.pumpAndSettle();
+    expect(find.text('wire the board'), findsOneWidget);
+    expect(find.text('ship it'), findsOneWidget);
+  });
+
   testWidgets(
     'ACP session without a runtime yet does not load PTY transcript history',
     (tester) async {
@@ -700,6 +734,56 @@ void main() {
     },
   );
 
+  testWidgets('attaching the ACP runtime keeps the history thread mounted', (
+    tester,
+  ) async {
+    final threadRuntime = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        const AiMessage(
+          id: 'm1',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'kept history')],
+        ),
+      ]);
+    when(() => seat.runtime).thenReturn(threadRuntime);
+    when(() => seat.loadedMessages).thenReturn(threadRuntime.messages);
+    _stubCubit(
+      seat,
+      const AiHistoryState(
+        status: AiHistoryViewStatus.ready,
+        totalMessageCount: 1,
+      ),
+    );
+
+    await pumpSession(tester, session: session('s1'));
+    await tester.pump();
+    final before = tester.state(find.byType(SessionHistoryThread));
+
+    // The lazily attached runtime inserts a BlocProvider for the compose.
+    // That provider must not sit above the history thread: a widget-type
+    // change there remounts the whole chat body on the first send.
+    final runtime = _FakeAcpRuntime();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.gemini,
+    );
+    addTearDown(() async {
+      await cubit.close();
+      await runtime.permissionsController.close();
+      await runtime.clientRequestsController.close();
+    });
+
+    await pumpSession(tester, session: session('s1'), acpRuntime: cubit);
+    await tester.pump();
+
+    expect(
+      identical(tester.state(find.byType(SessionHistoryThread)), before),
+      isTrue,
+      reason: 'the history thread must survive the runtime attach',
+    );
+  });
+
   testWidgets(
     'ACP compose without an attached runtime delegates to the host submit hook',
     (tester) async {
@@ -723,6 +807,10 @@ void main() {
 
       expect(hostSubmissions, 1);
       expect(submitted, 'continue please');
+      // The optimistic bubble lands before the host attach starts, so the send
+      // is not silent while the lazy attach stages/spawns.
+      verify(() => seat.enqueuePendingUser('continue please')).called(1);
+      verifyNever(() => seat.removePendingMatching(any()));
       // Terminal-less seats never write PTY pending records.
       verifyNever(
         () => seat.persistPendingUser(
@@ -734,6 +822,22 @@ void main() {
       );
     },
   );
+
+  testWidgets('a rejected lazy attach rolls the optimistic bubble back', (
+    tester,
+  ) async {
+    await pumpSession(
+      tester,
+      session: session('s-acp', acp: true),
+      onSubmit: (message) async => const HistoryContinueSubmitResult.failed(),
+    );
+
+    await enterCompose(tester, 'continue please');
+    await submitCompose(tester);
+
+    verify(() => seat.enqueuePendingUser('continue please')).called(1);
+    verify(() => seat.removePendingMatching('continue please')).called(1);
+  });
 
   testWidgets('ACP compose Stop cancels the in-flight turn via the runtime', (
     tester,
@@ -783,6 +887,51 @@ void main() {
     // after the cancelled turn.
     verify(() => harness.chatCubit.pauseFollowUpQueue('s1', 's1')).called(1);
   });
+
+  testWidgets(
+    'ACP in-turn compose flips Stop back to Send while a follow-up is typed',
+    (tester) async {
+      final runtime = _FakeAcpRuntime();
+      final cubit = AcpChatRuntimeCubit(
+        runtime: runtime,
+        sessionId: 's1',
+        tool: CliTool.gemini,
+      );
+      addTearDown(() async {
+        await cubit.close();
+        await runtime.permissionsController.close();
+        await runtime.clientRequestsController.close();
+      });
+
+      await tester.runAsync(() async {
+        await cubit.start(
+          executable: 'gemini',
+          sessionToolDir: '/tmp/tool',
+          workingDirectory: '/w',
+        );
+      });
+      await pumpSession(tester, session: session('s1'), acpRuntime: cubit);
+
+      await tester.runAsync(() async {
+        cubit.sendPrompt('do work');
+        await Future<void>.delayed(Duration.zero);
+      });
+      await tester.pumpAndSettle();
+      expect(cubit.state.inTurn, isTrue);
+      expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_upward_rounded), findsNothing);
+
+      await enterCompose(tester, 'queued next');
+      await tester.pump();
+      expect(find.byIcon(Icons.stop_rounded), findsNothing);
+      expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
+
+      await enterCompose(tester, '');
+      await tester.pump();
+      expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_upward_rounded), findsNothing);
+    },
+  );
 
   testWidgets(
     'ACP in-turn compose submit queues the follow-up instead of dropping it',

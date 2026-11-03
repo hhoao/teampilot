@@ -28,6 +28,17 @@ class CursorHookWriter implements HookCapability {
   @override
   bool get supportsPolicy => true;
 
+  /// Cursor pushes the TeamBus protocol into the session at SessionStart, so
+  /// the prompt uses the push-delivery variant.
+  @override
+  bool get pushesBusProtocol => true;
+
+  /// Cursor's hook stdout uses a flat `additional_context` key.
+  @override
+  Map<String, Object?> sessionStartStdoutPayload({
+    required String additionalContext,
+  }) => {'additional_context': additionalContext};
+
   @override
   bool supportsEvent(HookEvent event) => nativeEvent(event) != null;
 

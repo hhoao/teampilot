@@ -10,6 +10,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_global_section.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_route.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_sidebar.dart';
+import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/services/usage/session_usage_sync_service.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 
@@ -25,11 +26,14 @@ Widget _app({required Widget child}) => TpTheme(
     ColorScheme.fromSeed(seedColor: Colors.indigo),
     scale: 1,
   ),
-  child: MaterialApp(
-    locale: const Locale('en'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    home: Scaffold(body: child),
+  child: RepositoryProvider<AppSettingsRepository>.value(
+    value: InMemoryAppSettingsRepository(),
+    child: MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(body: child),
+    ),
   ),
 );
 

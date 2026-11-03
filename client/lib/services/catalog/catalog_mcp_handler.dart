@@ -169,6 +169,12 @@ class CatalogMcpHandler {
         'generation scope accepts catalog mutations only',
       );
     }
+    if (!catalogGenerationKinds.contains(route.kind)) {
+      throw CatalogException(
+        'generation_mutation_forbidden',
+        '${route.kind} mutations are not allowed in generation scope',
+      );
+    }
     if (!catalogGenerationAcquisitionOps.contains(route.op)) {
       throw CatalogException(
         'generation_mutation_forbidden',

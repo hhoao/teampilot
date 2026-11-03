@@ -8,6 +8,12 @@ enum CliInstallPhase {
   installingCli,
   locatingExecutable,
 
+  /// Standalone adapter archive download (non-npm ACP adapters).
+  downloading,
+
+  /// Standalone adapter archive extraction (non-npm ACP adapters).
+  extracting,
+
   /// Off-home workspace materialize / config after CLI is present.
   syncingRemoteWorkspace,
 }

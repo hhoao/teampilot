@@ -189,7 +189,6 @@ class SessionLaunchCoordinator
           members: stampMemberAcp(
             members: plan.members,
             memberTargets: plan.memberTargets,
-            teamMode: request.team!.teamMode,
             seedClaudeMemberAcp: request.seedClaudeMemberAcp,
             seedCodexMemberAcp: request.seedCodexMemberAcp,
             seedCursorMemberAcp: request.seedCursorMemberAcp,

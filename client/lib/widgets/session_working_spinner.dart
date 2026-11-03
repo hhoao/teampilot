@@ -11,9 +11,9 @@ import '../utils/ui/app_keys.dart';
 /// the row background (e.g. a selected sidebar tile sits on primaryContainer).
 ///
 /// Precedence: [waiting] (permission / needs-you) wins over [working], which
-/// wins over [backgroundRunning]. The last two are deliberately different
-/// affordances — a background shell task / subagent outlived the turn, so it
-/// gets a static hourglass rather than the turn's spinner.
+/// wins over [backgroundRunning]. Background work uses the same spinner as a
+/// live turn: a still glyph reads as frozen, and the row text next to it says
+/// what is actually running.
 class SessionWorkingIndicator extends StatelessWidget {
   const SessionWorkingIndicator({
     super.key,
@@ -52,7 +52,10 @@ class SessionWorkingIndicator extends StatelessWidget {
       return SessionWorkingSpinner(size: size, color: color);
     }
     if (backgroundRunning) {
-      return SessionBackgroundWorkMarker(size: size, color: backgroundWorkColor);
+      return SessionWorkingSpinner(
+        size: size,
+        color: color ?? backgroundWorkColor,
+      );
     }
     final cs = Theme.of(context).colorScheme;
     final dot = size * 0.42;
@@ -93,24 +96,56 @@ class SessionWaitingMarker extends StatelessWidget {
   }
 }
 
-/// Static hourglass for sidebar / tab leading slots while a session has
-/// out-of-turn background work. Not a spinner: the turn is over, the CLI is
-/// just still busy, so it must not read as "running".
-class SessionBackgroundWorkMarker extends StatelessWidget {
+/// Slowly breathing hourglass for sidebar / tab leading slots while a session
+/// has out-of-turn background work. Not a spinner: the turn is over, the CLI
+/// is just still busy, so it must not read as "running" — but a dead-still
+/// glyph reads as "stuck", so the opacity breathes instead.
+class SessionBackgroundWorkMarker extends StatefulWidget {
   const SessionBackgroundWorkMarker({super.key, this.size = 13, this.color});
 
   final double size;
   final Color? color;
 
   @override
+  State<SessionBackgroundWorkMarker> createState() =>
+      _SessionBackgroundWorkMarkerState();
+}
+
+class _SessionBackgroundWorkMarkerState
+    extends State<SessionBackgroundWorkMarker>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+  )..repeat(reverse: true);
+
+  late final Animation<double> _opacity = Tween<double>(
+    begin: 0.45,
+    end: 1,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final accent = color ?? cs.onSurfaceVariant;
+    final accent = widget.color ?? cs.onSurfaceVariant;
     return SizedBox(
       key: AppKeys.sessionBackgroundWorkMarker,
-      width: size,
-      height: size,
-      child: Icon(Icons.hourglass_bottom_rounded, size: size, color: accent),
+      width: widget.size,
+      height: widget.size,
+      child: FadeTransition(
+        opacity: _opacity,
+        child: Icon(
+          Icons.hourglass_bottom_rounded,
+          size: widget.size,
+          color: accent,
+        ),
+      ),
     );
   }
 }

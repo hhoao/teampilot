@@ -11,14 +11,15 @@ import 'filesystem_search_reader.dart';
 /// - Everything else (SSH/SFTP): callers pass a [Filesystem] adapter
 ///   via [searchFilesystem] and the pure-Dart fallback engine is used.
 ///
-/// The service is stateless: each [search] call builds its own
-/// [TpSearchEngine], so concurrent searches (multiple editor panels) each own
-/// their cancel handle and cannot cross-cancel one another.
+/// The service is stateless: each [search] call starts its own worker isolate
+/// via [IsolatedContentSearch], so concurrent searches (multiple editor panels)
+/// each own their cancel handle and cannot cross-cancel one another.
 class WorkspaceContentSearchService {
   WorkspaceContentSearchService();
 
-  /// Searches [root] with the Rust engine. Throws [StateError] when [root]
-  /// is not locally readable — use [searchFilesystem] for remote paths.
+  /// Searches [root] with the Rust engine on a worker isolate. Throws
+  /// [StateError] when [root] is not locally readable — use [searchFilesystem]
+  /// for remote paths.
   Stream<TpSearchMatch> search(
     String root,
     String pattern, {
@@ -33,8 +34,7 @@ class WorkspaceContentSearchService {
     if (!_supportsPath(root)) {
       throw StateError('path not locally readable: $root');
     }
-    final engine = TpSearchEngine();
-    return engine.search(
+    return IsolatedContentSearch().run(
       root,
       TpSearchOptions(
         pattern: pattern,

@@ -1,8 +1,6 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
-
 import 'package:uuid/uuid.dart';
 
 import '../../../io/filesystem.dart';
@@ -11,7 +9,7 @@ import '../../../storage/app_paths.dart';
 import '../../../../utils/workspace/workspace_path_utils.dart';
 import 'compose_image_attachment.dart';
 import 'compose_image_clipboard.dart';
-import 'compose_text_edit.dart';
+import 'compose_text_controller.dart';
 
 bool _isWindowsStylePath(String path) =>
     RegExp(r'^[A-Za-z]:[/\\]').hasMatch(path.trim());
@@ -81,19 +79,10 @@ bool _isUnderRoot(String path, String root) {
 
 /// Inserts `@` file references at the compose cursor.
 void insertComposeReferences(
-  TextEditingController controller,
+  ComposeTextController controller,
   Iterable<String> references,
 ) {
-  final refs = references
-      .map((r) => r.trim())
-      .where((r) => r.isNotEmpty)
-      .toList();
-  if (refs.isEmpty) return;
-  controller.value = insertTextAtSelection(
-    controller,
-    '${refs.join(' ')} ',
-    separatorBefore: ' ',
-  );
+  controller.insertReferences(references);
 }
 
 Future<String?> resolveComposeFileReference({
@@ -118,7 +107,7 @@ Future<String?> resolveComposeFileReference({
 
 /// Pastes a clipboard image (or copied image file) into compose as an `@` reference.
 Future<bool> pasteComposeImageAttachment({
-  required TextEditingController controller,
+  required ComposeTextController controller,
   required String workspaceRoot,
   required bool usesPosixPaths,
   ComposeImageClipboardReader? clipboardReader,
@@ -173,7 +162,7 @@ Future<bool> pasteComposeImageAttachment({
 
 /// Opens a multi-file picker and inserts `@` references at the compose cursor.
 Future<void> pickAndInsertComposeFileReferences({
-  required TextEditingController controller,
+  required ComposeTextController controller,
   required String workspaceRoot,
   required bool usesPosixPaths,
   required Filesystem filesystem,

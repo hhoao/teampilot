@@ -12,7 +12,7 @@ import 'workspace_icon_ref.dart';
 import 'launch_profile.dart';
 
 /// Backend CLI identity (`flashskyai`, `codex`, `claude`, `opencode`,
-/// `cursor`, or `gemini`).
+/// `cursor`, `gemini`, `codebuddy`, `antigravity`, or `qoder`).
 ///
 /// Behavior (launch support, display name, provider catalog, etc.) lives in
 /// [CliToolRegistry] capabilities — not on this enum.
@@ -23,7 +23,9 @@ enum CliTool {
   opencode('opencode'),
   cursor('cursor'),
   gemini('gemini'),
-  codebuddy('codebuddy');
+  codebuddy('codebuddy'),
+  antigravity('antigravity'),
+  qoder('qoder');
 
   const CliTool(this.value);
 

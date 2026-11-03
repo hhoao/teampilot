@@ -13,6 +13,8 @@ import 'app_data_bootstrap.dart';
 import 'home_index_prefetch.dart';
 import 'team_generation_graph.dart';
 import '../cubits/app_provider_cubit.dart';
+import '../services/cli/antigravity/antigravity_bootstrap_entry.dart';
+import '../services/cli/antigravity/capabilities/acp_adapter_installer.dart';
 import '../services/cli/gemini/gemini_bootstrap_entry.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/remote_download_catalog_cubit.dart';
@@ -68,8 +70,10 @@ import '../services/chat/team_generation/mcp/team_composer_mcp_handler.dart';
 import '../models/app_provider_config.dart';
 import '../models/app_session.dart';
 import '../services/catalog/catalog_runtime.dart';
+import '../services/catalog/catalog_mutation_bus.dart';
 import '../services/catalog/catalog_production.dart';
 import '../services/catalog/catalog_workspace_binder.dart';
+import '../services/catalog/modules/automation_catalog_module.dart';
 import '../services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/chat/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/chat/team_bus/remote/remote_member_bus_setup.dart';
@@ -77,6 +81,7 @@ import '../services/remote/local_credential_exporter.dart';
 import '../services/remote/remote_cli_readiness.dart';
 import '../services/editor_platform/editor_platform.dart';
 import '../services/chat/launch/launch_factory.dart';
+import '../services/launch_profile/team/launch_profile_selectors.dart';
 import '../cubits/board_cubit.dart';
 import '../utils/session/workspace_tab_session_scope.dart';
 import '../cubits/mailbox_cubit.dart';
@@ -140,6 +145,7 @@ import '../repositories/app_provider_repository.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../services/storage/launch_profile_provisioner.dart';
 import '../cubits/cli_presets_cubit.dart';
+import '../models/cli_preset.dart';
 import '../repositories/cli_presets_repository.dart';
 import '../cubits/skill_cubit.dart';
 import '../repositories/mcp_repository.dart';
@@ -198,7 +204,10 @@ import '../services/connect/system_sshd_backend.dart';
 import '../services/perf/live_perf_driver.dart';
 import '../services/storage/workspace_layout.dart';
 import '../services/automation/automation_bus_gateway.dart';
+import '../services/automation/automation_command_executor.dart';
+import '../services/automation/automation_command_runner.dart';
 import '../services/automation/automation_dispatcher.dart';
+import '../services/automation/automation_run_accounting.dart';
 import '../services/automation/automation_schedule_calculator.dart';
 import '../services/automation/automation_scheduler.dart';
 import '../services/chat/launch/staging/session_runtime_plan_builder.dart';
@@ -243,9 +252,11 @@ import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
+import '../services/cli/registry/capabilities/acp_settings_capability.dart';
 import '../services/cli/claude/claude_bootstrap_entry.dart';
 import '../services/cli/codex/codex_bootstrap_entry.dart';
 import '../services/cli/cursor/cursor_bootstrap_entry.dart';
+import '../services/cli/registry/installer/binary_archive_installer.dart';
 import '../services/cli/opencode/opencode_bootstrap_entry.dart';
 import '../services/host/host_one_shot_runner_for_context.dart';
 import '../services/host/host_process_starter_for_context.dart';
@@ -266,7 +277,9 @@ import '../services/provider_usage/managed_provider_usage_adapter.dart';
 import '../services/provider_usage/managed_provider_usage_auto_refresh.dart';
 import '../services/provider_usage/managed_provider_usage_coordinator.dart';
 import '../services/provider_usage/managed_provider_usage_registry.dart';
+import '../services/io/filesystem.dart';
 import '../services/provider_usage/adapters/claude_official_subscription_auth.dart';
+import '../services/provider_usage/adapters/codebuddy_credits_adapter.dart';
 import '../services/provider_usage/adapters/codex_official_subscription_auth.dart';
 import '../services/provider_usage/adapters/cursor_official_subscription_auth.dart';
 import '../services/provider_usage/adapters/http_json_mapping_adapter.dart';
@@ -426,9 +439,13 @@ class ManagedProviderControlPlaneLease {
 /// readers and the official usage HTTP clients.
 ManagedProviderUsageRegistry buildDefaultManagedProviderUsageRegistry({
   CliCredentialSourceResolver? cliCredentials,
+  Filesystem? fs,
+  String? basePath,
 }) {
   return ManagedProviderUsageRegistry([
     HttpJsonMappingAdapter(cliCredentials: cliCredentials),
+    if (fs != null && basePath != null)
+      CodebuddyCreditsUsageAdapter(fs: fs, basePath: basePath),
   ]);
 }
 
@@ -664,6 +681,10 @@ class AppShell {
   final CatalogRuntime? catalogRuntime;
   final AutomationCubit automationCubit;
   final AutomationScheduler automationScheduler;
+
+  /// Refreshes the Automations page after catalog-driven writes; owned by the
+  /// shell so bootstrap teardown can cancel it.
+  StreamSubscription<CatalogMutationEvent>? _automationCatalogSub;
   final CommandBus commandBus;
   final ShortcutCubit shortcutCubit;
   final WorkspaceChromeCommands workspaceChromeCommands;
@@ -913,6 +934,10 @@ Future<AppShell> buildAppShell({
     () => remoteDownloadCatalogCubit.state.catalog,
   );
   final appUpdateHttpClient = http.Client();
+  final remoteDownloader = RemoteDownloader(
+    client: appUpdateHttpClient,
+    resolver: appUpdateResolver,
+  );
   final appUpdateService = AppUpdateService(
     httpClient: appUpdateHttpClient,
     resolver: appUpdateResolver,
@@ -920,10 +945,7 @@ Future<AppShell> buildAppShell({
       client: appUpdateHttpClient,
       resolver: appUpdateResolver,
     ),
-    downloader: RemoteDownloader(
-      client: appUpdateHttpClient,
-      resolver: appUpdateResolver,
-    ),
+    downloader: remoteDownloader,
   );
   final workspaceImportService = WorkspaceImportService();
   var termuxConfigCache = await termuxConfigStore.load();
@@ -1065,6 +1087,8 @@ Future<AppShell> buildAppShell({
   final resolvedManagedProviderUsageRegistry =
       managedProviderUsageRegistry ??
       buildDefaultManagedProviderUsageRegistry(
+        fs: homeStorage.fs,
+        basePath: homeStorage.paths.basePath,
         cliCredentials:
             managedProviderCliCredentials ??
             CliCredentialSourceResolver(
@@ -1351,6 +1375,23 @@ Future<AppShell> buildAppShell({
         ),
         CliTool.gemini: GeminiBootstrapEntry(
           credentialSource: () => cachedGeminiApiKey,
+        ),
+        CliTool.antigravity: AntigravityBootstrapEntry(
+          storage: homeStorage,
+          acpInstaller: AntigravityAcpAdapterInstaller(
+            storage: homeStorage,
+            binary: BinaryArchiveInstaller(
+              fs: homeStorage.fs,
+              fetch: (uri, {expectedSha256, onProgress, isCancelled}) =>
+                  remoteDownloader.fetch(
+                    uri,
+                    destFileName: 'antigravity-acp.zip',
+                    expectedSha256: expectedSha256,
+                    onProgress: onProgress,
+                    isCancelled: isCancelled,
+                  ),
+            ),
+          ),
         ),
       }, storage: homeStorage),
     );
@@ -1756,6 +1797,17 @@ Future<AppShell> buildAppShell({
             ),
           ),
           sshProfileById: sshProfileById,
+          adapterResolver: (target) {
+            for (final def in cliToolRegistry.launchable) {
+              final installer = cliToolRegistry
+                  .capability<AcpSettingsCapability>(def.id)
+                  ?.adapterInstaller;
+              if (installer != null && installer.adapterJobTarget == target) {
+                return installer;
+              }
+            }
+            return null;
+          },
         ),
         ToolchainInstallJobRunner(),
         PackAcquireInstallJobRunner(),
@@ -2336,6 +2388,9 @@ Future<AppShell> buildAppShell({
       ),
     );
     catalogRuntime.bus.listen().listen((event) {
+      // Automation writes are refreshed by the automation cubit's own
+      // subscription; skip the unrelated catalog reloads for them.
+      if (event.kind == 'automation') return;
       unawaited(skillCubit.loadAll());
       unawaited(pluginCubit.load());
       unawaited(mcpCubit.loadAll());
@@ -2651,7 +2706,31 @@ Future<AppShell> buildAppShell({
       relayTunnels: pairedRelayTunnels,
     );
 
+    TeamProfile? teamById(String teamId) =>
+        LaunchProfileSelectors.teamById(teamCubit.state, teamId);
+    CliPreset? resolveCliPreset(String presetId) =>
+        cliPresetsCubit.state.presetById(presetId);
+
     final scheduleCalculator = AutomationScheduleCalculator();
+    void refreshAutomations() {
+      if (!automationCubit.isClosed) {
+        unawaited(automationCubit.reloadPreservingScope());
+      }
+    }
+
+    final automationCommandRunner = HostAutomationCommandRunner(
+      workspaceById: (workspaceId) => chatCubit.state.workspaces
+          .where((w) => w.workspaceId == workspaceId)
+          .firstOrNull,
+      resolver: RunTargetResolver(homeTarget: defaultTargetResolver),
+      executor: ProcessRunExecutor(sshSpawner: repoCloneSshSpawner),
+    );
+    final automationCommandExecutor = AutomationCommandExecutor(
+      repository: automationRepo,
+      accounting: AutomationRunAccounting(scheduleCalculator),
+      runner: automationCommandRunner,
+      onAfterRun: refreshAutomations,
+    );
     final automationDispatcher = AutomationDispatcher(
       repository: automationRepo,
       scheduleCalculator: scheduleCalculator,
@@ -2659,40 +2738,68 @@ Future<AppShell> buildAppShell({
       busGateway: TabTeamBusGateway(
         memberMaterializer: chatCubit.memberMaterializer,
         sessionRuntime: chatCubit.sessionRuntime,
+        tabStore: chatCubit.tabStore,
+        activatePersonalAcp: chatCubit.retrySessionLaunch,
+        activateMemberSeat: chatCubit.ensureMemberTerminalForView,
       ),
       requestOpenSession: chatCubit.requestOpenSession,
       requestCreateAndOpenSession: chatCubit.requestCreateAndOpenSession,
       workspaceById: (workspaceId) => chatCubit.state.workspaces
           .where((w) => w.workspaceId == workspaceId)
           .firstOrNull,
-      teamById: (teamId) {
-        final profile = teamCubit.state.byId(teamId);
-        return profile is TeamProfile ? profile : null;
-      },
-      resolveCliPreset: (presetId) => cliPresetsCubit.state.presets
-          .where((preset) => preset.id == presetId.trim())
-          .firstOrNull,
+      teamById: teamById,
+      resolveCliPreset: resolveCliPreset,
       sessionById: (sessionId, workspaceId) => chatCubit.state.sessions
           .where(
             (s) => s.sessionId == sessionId && s.workspaceId == workspaceId,
           )
           .firstOrNull,
+      acpDefaultFor: sessionPreferencesCubit.acpDefaultFor,
       runDeliveryInFlight: chatCubit.withOperatorDeliveryInFlight,
     );
     automationScheduler = AutomationScheduler(
       repository: automationRepo,
       dispatcher: automationDispatcher,
       scheduleCalculator: scheduleCalculator,
+      commandExecutor: automationCommandExecutor,
     );
     automationCubit = AutomationCubit(
       repository: automationRepo,
       scheduler: automationScheduler,
       scheduleCalculator: scheduleCalculator,
     );
-    chatCubit.bindAutomationsChangeNotifier(() {
-      if (!automationCubit.isClosed) {
-        unawaited(automationCubit.reloadPreservingScope());
-      }
+    chatCubit.bindAutomationsChangeNotifier(refreshAutomations);
+    // Registered here rather than in CatalogRuntime.assemble because the
+    // automation repo, scheduler and resolver locals are constructed below
+    // that assemble call. The registry recomputes routes on every call, so
+    // these tools appear as soon as this runs; the bus subscription refreshes
+    // the Automations page after catalog-driven writes.
+    catalogRuntime.registry.register(
+      AutomationCatalogModule(
+        repository: automationRepo,
+        scheduleCalculator: scheduleCalculator,
+        bus: catalogRuntime.bus,
+        runNow: automationScheduler.runNow,
+        teamExists: (teamId) => teamById(teamId) != null,
+        presetExists: (presetId) => resolveCliPreset(presetId) != null,
+        memberExists: (teamId, memberId) {
+          final team = teamById(teamId);
+          return team != null &&
+              team.members.any((m) => m.id == memberId && m.isValid);
+        },
+        sessionExists: (sessionId, workspaceId) async {
+          final session = await sessionRepo.findById(sessionId);
+          return session != null && session.workspaceId == workspaceId;
+        },
+        workspaceFolders: (workspaceId) => chatCubit.state.workspaces
+            .where((w) => w.workspaceId == workspaceId)
+            .firstOrNull
+            ?.folders,
+      ),
+    );
+    final automationCatalogSub = catalogRuntime.bus.listen().listen((event) {
+      if (event.kind != 'automation') return;
+      refreshAutomations();
     });
 
     final mailboxCubit = MailboxCubit(
@@ -3333,6 +3440,7 @@ Future<AppShell> buildAppShell({
       workspaceContentSearchHost: workspaceContentSearchHost,
       uiZoomBaseline: uiZoomBaseline,
     );
+    shell._automationCatalogSub = automationCatalogSub;
     managedProviderControlPlaneLease.transferOwnership();
     await applyHomeEventTransport();
     return shell;
@@ -3683,6 +3791,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     _usageAutoRefresh?.dispose();
     final shell = _shell;
     if (shell != null) {
+      shell._automationCatalogSub?.cancel();
       shell.homeInvalidationService.stop();
       unawaited(_teardownConnect(shell));
       unawaited(shell.managedProviderControlPlane.close());

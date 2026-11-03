@@ -557,6 +557,15 @@ Future<bool> submitWorkspaceLandingMessage(
     team: team,
   );
 
+  // Paint the user bubble immediately (transient, memory-only) so the landing
+  // window shows "message + Starting…" instead of an empty/loading history
+  // pane. The real turn takes over from the runtime: ACP `sendPrompt` queues
+  // its own bubble, PTY hydrates the persisted pending.
+  chatCubit.beginPendingLandingPrompt(
+    sessionId: session.sessionId,
+    text: trimmed,
+  );
+
   final historyMemberId = isPersonal
       ? ''
       : (_teamLead(team, session: session)?.id ?? 'team-lead');
@@ -574,7 +583,7 @@ Future<bool> submitWorkspaceLandingMessage(
     );
   }
 
-  return chatCubit.withCancellableOperatorDelivery(session.sessionId, (
+  final delivery = chatCubit.withCancellableOperatorDelivery(session.sessionId, (
     cancelled,
   ) async {
     late final bool connected;
@@ -750,6 +759,12 @@ Future<bool> submitWorkspaceLandingMessage(
       return false;
     }
   });
+
+  // Success, failure, and Stop all drop the transient bubble here; by now the
+  // real user turn belongs to the runtime whenever it exists.
+  return delivery.whenComplete(
+    () => chatCubit.clearPendingLandingPrompt(session.sessionId),
+  );
 }
 
 Future<AppSession?> _sessionById({
@@ -810,11 +825,11 @@ Future<bool> _ensureLandingSessionConnected({
 
 /// Builds the create request for a workspace conversation.
 ///
-/// [acp] only survives for personal Claude, Cursor, Codex, or OpenCode on
-/// desktop (see [resolveLaunchAcp]);
-/// team creates and Android always get false. Mixed member ACP is copied from
-/// the Claude/Codex/Cursor settings seeds. Gemini ACP is inferred by session
-/// create, so it needs no flag here.
+/// [acp] is honoured for personal launches only; the platform and whether the
+/// CLI offers a transport choice can still veto it (see [resolveLaunchAcp]),
+/// and Android always gets false. Team ACP is seeded per member from the four
+/// CLI settings seeds (Claude / Codex / Cursor / OpenCode), never from [acp].
+/// Gemini ACP is inferred by session create, so it needs no flag here.
 SessionCreateRequest buildWorkspaceConversationCreateRequest({
   required Workspace workspace,
   required bool isPersonal,
@@ -856,7 +871,6 @@ SessionCreateRequest buildWorkspaceConversationCreateRequest({
     purpose: purpose,
     workflowId: workflowId,
     acp: resolveLaunchAcp(
-      isPersonal: isPersonal,
       cli: cli,
       requested: acp,
       isAndroidOverride: isAndroidOverride,
@@ -888,13 +902,10 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final l10n = context.l10n;
-  final seedClaudeMemberAcp = readPersonalAcpDefault(context, CliTool.claude);
-  final seedCodexMemberAcp = readPersonalAcpDefault(context, CliTool.codex);
-  final seedCursorMemberAcp = readPersonalAcpDefault(context, CliTool.cursor);
-  final seedOpencodeMemberAcp = readPersonalAcpDefault(
-    context,
-    CliTool.opencode,
-  );
+  final seedClaudeMemberAcp = readAcpDefault(context, CliTool.claude);
+  final seedCodexMemberAcp = readAcpDefault(context, CliTool.codex);
+  final seedCursorMemberAcp = readAcpDefault(context, CliTool.cursor);
+  final seedOpencodeMemberAcp = readAcpDefault(context, CliTool.opencode);
   final acpPermission = readAcpPermissionDefault(context);
   final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
 

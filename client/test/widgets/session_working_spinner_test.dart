@@ -81,25 +81,15 @@ void main() {
     });
 
     testWidgets('working outranks background', (tester) async {
-      await _pumpIndicator(
-        tester,
-        working: true,
-        backgroundRunning: true,
-      );
+      await _pumpIndicator(tester, working: true, backgroundRunning: true);
       expect(find.byType(SessionWorkingSpinner), findsOneWidget);
       expect(find.byType(SessionBackgroundWorkMarker), findsNothing);
     });
 
-    testWidgets('background alone shows a static hourglass, not a spinner', (
-      tester,
-    ) async {
-      await _pumpIndicator(
-        tester,
-        working: false,
-        backgroundRunning: true,
-      );
-      expect(find.byType(SessionBackgroundWorkMarker), findsOneWidget);
-      expect(find.byType(SessionWorkingSpinner), findsNothing);
+    testWidgets('background alone shows the running spinner', (tester) async {
+      await _pumpIndicator(tester, working: false, backgroundRunning: true);
+      expect(find.byType(SessionWorkingSpinner), findsOneWidget);
+      expect(find.byType(SessionBackgroundWorkMarker), findsNothing);
     });
 
     testWidgets('nothing active falls back to the idle dot', (tester) async {

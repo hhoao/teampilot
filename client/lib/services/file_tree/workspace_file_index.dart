@@ -31,11 +31,15 @@ class _ScoredFileMatch {
 /// Cached, VSCode-style file name index for one workspace root.
 ///
 /// Builds a flat record of every file under [root] once (streamed/chunked so
-/// the UI event loop stays responsive), then serves [query] synchronously from
-/// memory — no per-keystroke tree walk. [ensureFresh] rebuilds only when the
-/// root's mtime changed since the last build (or, when mtimes are unavailable,
-/// after [WorkspaceFileIndex.maxStale] has elapsed), so repeated queries and
-/// repeated dialog opens reuse the built index.
+/// the UI event loop stays responsive), then serves [query] without walking the
+/// tree again. On local roots the index — including its fuzzy scoring, which
+/// touches every entry — lives on a worker isolate so a query never stalls
+/// frames; elsewhere the entries are kept here and queried in memory.
+/// [ensureFresh] serves the last snapshot while a stale one rebuilds in the
+/// background (only when the root's mtime changed, or after
+/// [WorkspaceFileIndex.maxStale] when mtimes are unavailable), so repeated
+/// queries and repeated dialog opens reuse the built index and typing never
+/// waits on a rescan.
 ///
 /// Keeps the same skip rules as [searchWorkspaceFiles] (hidden entries and the
 /// `_ignoredDirNames` set), so the dialog and the pure walker agree on what is
@@ -54,16 +58,30 @@ class WorkspaceFileIndex {
   final Filesystem _fs;
   final WorkspaceFileSearchLimits _limits;
 
-  /// Entries built so far; `null` until the first [ensureFresh] completes.
+  /// Entries built so far; `null` until the first build completes.
   List<WorkspaceFileMatch>? _entries;
+
+  /// Lowercased [WorkspaceFileMatch.relativePath] for each entry, built once so
+  /// a query does not re-allocate lowercased copies of every path per keystroke.
+  List<String>? _lowerPaths;
 
   /// Distinct relative directory paths (e.g. `src/utils`) collected during the
   /// same build, used by [queryDirectories] for directory-name matches.
   List<String>? _dirs;
-  TpFileIndex? _rust;
+  IsolatedFileIndex? _rust;
   DateTime? _builtRootMtime;
   DateTime? _builtAt;
   Future<void>? _buildInFlight;
+  DateTime? _lastStaleCheckAt;
+
+  /// Bumped whenever a build replaces the served snapshot. Surfaces (the search
+  /// dialog) listen so a background refresh re-runs the active query without
+  /// the user typing again.
+  final ValueNotifier<int> revision = ValueNotifier<int>(0);
+
+  /// Minimum interval between two root-mtime stats: a query per keystroke
+  /// should not pay a filesystem round-trip each time.
+  static const _staleCheckInterval = Duration(seconds: 2);
 
   /// After this idle time (mtime unavailable) the index rebuilds on the next
   /// [ensureFresh]. Generous so a stable workspace stays cached across dialog
@@ -74,48 +92,105 @@ class WorkspaceFileIndex {
   bool get isReady => _rust?.isBuilt == true || _entries != null;
 
   /// Number of files currently indexed (0 before first build).
-  int get size => _rust?.isBuilt == true ? 0 : (_entries?.length ?? 0);
+  int get size {
+    final rust = _rust;
+    if (rust != null && rust.isBuilt) return rust.size;
+    return _entries?.length ?? 0;
+  }
 
   @visibleForTesting
   bool get usedRustBackend => _rust?.isBuilt == true;
 
-  /// Builds the index if missing or stale. Safe to call concurrently from
-  /// multiple queries — concurrent callers share the in-flight build.
+  /// Makes sure an index is available. A stale snapshot is **rebuilt in the
+  /// background** and this returns immediately, so a query is served from the
+  /// previous snapshot instead of blocking on a full rescan
+  /// (stale-while-revalidate); [revision] bumps when the rebuild lands. The
+  /// first build is awaited — there is nothing to serve yet.
   Future<void> ensureFresh() async {
-    if (isReady && !(await _isStale())) return;
-    final inFlight = _buildInFlight;
-    if (inFlight != null) return inFlight;
-    final build = _buildIndex();
-    _buildInFlight = build;
-    try {
-      await build;
-    } finally {
-      _buildInFlight = null;
-    }
+    if (!isReady) return _rebuild();
+    if (!await _isStale()) return;
+    _rebuildInBackground();
   }
 
-  /// Drops the built index; the next [ensureFresh] rebuilds.
+  /// Awaits a (re)build. Used by tests and by callers that must observe the
+  /// refreshed snapshot before reading it.
+  Future<void> refresh() => _rebuild();
+
+  Future<void> _rebuild() {
+    final inFlight = _buildInFlight;
+    if (inFlight != null) return inFlight;
+    late final Future<void> build;
+    build = _buildIndex().whenComplete(() {
+      if (identical(_buildInFlight, build)) _buildInFlight = null;
+    });
+    _buildInFlight = build;
+    return build;
+  }
+
+  /// Fire-and-forget refresh: never delays a query on a full rescan, and keeps
+  /// serving the previous snapshot if the rebuild fails.
+  void _rebuildInBackground() {
+    if (_buildInFlight != null) return;
+    unawaited(_rebuild().catchError((Object _) {}));
+  }
+
+  /// Drops the built index and notifies listeners; the next [ensureFresh]
+  /// rebuilds. Use after a known tree mutation (e.g. a file-tree refresh).
   void invalidate() {
+    _clearSnapshot();
+    revision.value++;
+  }
+
+  /// Frees resources held by the index. Does **not** notify listeners — the
+  /// index is going away, so nothing should be triggered to rebuild it.
+  void dispose() => _clearSnapshot();
+
+  void _clearSnapshot() {
     _rust?.dispose();
     _rust = null;
     _entries = null;
+    _lowerPaths = null;
     _dirs = null;
     _builtRootMtime = null;
     _builtAt = null;
+    _lastStaleCheckAt = null;
   }
-
-  /// Frees resources held by the index.
-  void dispose() => invalidate();
 
   Future<bool> _isStale() async {
     final built = _builtAt;
+    if (built == null) return true;
     final rootMtime = _builtRootMtime;
-    if (rootMtime != null) {
+    if (rootMtime != null && _shouldStatNow()) {
       final current = (await _fs.stat(root)).mtime;
       if (current != null) return !current.isAtSameMomentAs(rootMtime);
       // mtime became unavailable — fall back to the TTL check below.
     }
-    return built == null || DateTime.now().difference(built) > maxStale;
+    return DateTime.now().difference(built) > maxStale;
+  }
+
+  /// Stats the root at most once per [_staleCheckInterval], so typing does not
+  /// trigger a filesystem round-trip per character.
+  bool _shouldStatNow() {
+    final checked = _lastStaleCheckAt;
+    final now = DateTime.now();
+    if (checked != null && now.difference(checked) < _staleCheckInterval) {
+      return false;
+    }
+    _lastStaleCheckAt = now;
+    return true;
+  }
+
+  /// Records a completed build: timestamp, root mtime, and a [revision] bump so
+  /// listeners re-run their queries against the new snapshot.
+  Future<void> _stampBuilt() async {
+    _builtAt = DateTime.now();
+    _lastStaleCheckAt = _builtAt;
+    try {
+      _builtRootMtime = (await _fs.stat(root)).mtime;
+    } on Object {
+      _builtRootMtime = null;
+    }
+    revision.value++;
   }
 
   bool _shouldUseRust() {
@@ -129,7 +204,10 @@ class WorkspaceFileIndex {
 
   Future<void> _buildIndex() async {
     if (_shouldUseRust()) {
-      final rust = _rust ?? TpFileIndex();
+      // Build into a *fresh* worker and swap it in only once it is complete:
+      // queries keep being answered by the previous snapshot instead of
+      // queueing behind (or racing) a multi-second rescan on the same worker.
+      final rust = IsolatedFileIndex();
       try {
         await rust.build(
           root,
@@ -138,15 +216,16 @@ class WorkspaceFileIndex {
             useGitignore: true,
           ),
         );
+        final previous = _rust;
         _rust = rust;
         _entries = null;
+        _lowerPaths = null;
         _dirs = null;
-        _builtAt = DateTime.now();
-        _builtRootMtime = (await _fs.stat(root)).mtime;
+        await _stampBuilt();
+        previous?.dispose();
         return;
       } on Object {
         rust.dispose();
-        if (identical(_rust, rust)) _rust = null;
       }
     }
     await _build();
@@ -155,6 +234,7 @@ class WorkspaceFileIndex {
   Future<void> _build() async {
     final ctx = _fs.pathContext;
     final entries = <WorkspaceFileMatch>[];
+    final lowerPaths = <String>[];
     final dirs = <String>[];
     // BFS with O(1) pop (List.removeAt(0) is O(n) and would make a large
     // workspace build quadratic).
@@ -190,6 +270,7 @@ class WorkspaceFileIndex {
             relativePath: ctx.relative(full, from: root),
           ),
         );
+        lowerPaths.add(entries.last.relativePath.toLowerCase());
       }
       // Yield to the event loop every few directories so building a large
       // workspace does not stall the UI.
@@ -199,39 +280,46 @@ class WorkspaceFileIndex {
     }
 
     _entries = entries;
+    _lowerPaths = lowerPaths;
     _dirs = dirs;
-    _builtAt = DateTime.now();
-    _builtRootMtime = (await _fs.stat(root)).mtime;
+    await _stampBuilt();
   }
 
-  /// Synchronously filters the built index. Empty when the index is not built
-  /// yet or [query] is blank.
-  List<WorkspaceFileMatch> query(
+  /// Filters the built index. Empty when the index is not built yet or [query]
+  /// is blank. On local roots the work happens on the index's worker isolate.
+  Future<List<WorkspaceFileMatch>> query(
     String query, {
     int? limit,
     WorkspaceFileMatchMode mode = WorkspaceFileMatchMode.fuzzy,
-  }) {
+  }) async {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return const [];
     final cap = limit ?? _limits.maxResults;
     if (cap <= 0) return const [];
 
     final rust = _rust;
-    if (rust?.isBuilt == true) {
-      return [
-        for (final hit in rust!.query(
+    if (rust != null && rust.isBuilt) {
+      try {
+        final hits = await rust.query(
           q,
           mode: mode == WorkspaceFileMatchMode.fuzzy
               ? TpFileMatchMode.fuzzy
               : TpFileMatchMode.contains,
           limit: cap,
-        ))
-          WorkspaceFileMatch(
-            path: hit.path,
-            name: hit.name,
-            relativePath: hit.relativePath,
-          ),
-      ];
+        );
+        return [
+          for (final hit in hits)
+            WorkspaceFileMatch(
+              path: hit.path,
+              name: hit.name,
+              relativePath: hit.relativePath,
+            ),
+        ];
+      } on Object {
+        // The worker was disposed/rebuilt under us (tab close, storage swap).
+        // Treat it like an unbuilt index: the next ensureFresh rebuilds.
+        return const [];
+      }
     }
 
     final entries = _entries;
@@ -246,9 +334,15 @@ class WorkspaceFileIndex {
       return out;
     }
 
+    final lowerPaths = _lowerPaths;
     final scored = <_ScoredFileMatch>[];
-    for (final match in entries) {
-      final score = fuzzyMatchScore(match.relativePath, q);
+    for (var i = 0; i < entries.length; i++) {
+      final match = entries[i];
+      final score = fuzzyMatchScorePrepared(
+        match.relativePath,
+        lowerPaths?[i] ?? match.relativePath.toLowerCase(),
+        q,
+      );
       if (score < 0) continue;
       scored.add(_ScoredFileMatch(score: score, match: match));
     }
@@ -265,12 +359,16 @@ class WorkspaceFileIndex {
   /// contains [query], case-insensitively. Used by the compose `@`-mention
   /// picker to keep directory-drilling suggestions alongside file matches.
   /// Empty when the index is not built yet or [query] is blank.
-  List<String> queryDirectories(String query, {int limit = 20}) {
+  Future<List<String>> queryDirectories(String query, {int limit = 20}) async {
     final q = query.trim().toLowerCase();
     if (q.isEmpty || limit <= 0) return const [];
     final rust = _rust;
-    if (rust?.isBuilt == true) {
-      return rust!.queryDirectories(q, limit: limit);
+    if (rust != null && rust.isBuilt) {
+      try {
+        return await rust.queryDirectories(q, limit: limit);
+      } on Object {
+        return const [];
+      }
     }
 
     final dirs = _dirs;
@@ -299,9 +397,16 @@ class WorkspaceFileIndex {
 /// - a match inside the basename (and especially a basename prefix) is worth
 ///   more than a match buried in the directory portion;
 /// - a shorter relative path beats a longer one at equal match quality.
-int fuzzyMatchScore(String text, String query) {
-  final target = text.toLowerCase();
-  final q = query.toLowerCase();
+int fuzzyMatchScore(String text, String query) =>
+    fuzzyMatchScorePrepared(text, text.toLowerCase(), query.toLowerCase());
+
+/// Same as [fuzzyMatchScore] with the lowercased forms supplied by the caller.
+///
+/// The file index keeps every path lowercased after the build so a query does
+/// not re-allocate a lowercased copy of each path on every keystroke. [text]
+/// must be the original (case-preserving) path — camelCase boundary bonuses
+/// need it.
+int fuzzyMatchScorePrepared(String text, String target, String q) {
   if (q.isEmpty) return -1;
 
   var score = 0;
@@ -361,7 +466,10 @@ int _boundaryBonus(String text, int index) {
 /// App-wide cache of [WorkspaceFileIndex]es keyed by search root, so the Search
 /// dialog and the compose `@`-mention picker share one build per workspace.
 ///
-/// Freshness is handled by [WorkspaceFileIndex.ensureFresh] (root mtime + TTL).
+/// Freshness is handled by [WorkspaceFileIndex.ensureFresh]: a stale snapshot
+/// is rebuilt in the background (root mtime + TTL) while queries keep being
+/// served from the previous one, and [WorkspaceFileIndex.revision] tells
+/// listeners to re-run their query once the rebuild lands.
 /// A deliberate second recursive `FsWatcher` per root is avoided — the file
 /// tree already keeps one such watch alive per workspace root (see
 /// `WorkspaceFsWatcher`), and on Linux each watched subdirectory consumes an

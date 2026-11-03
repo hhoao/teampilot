@@ -2579,6 +2579,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cliInstallProgressLocatingExecutable => '正在定位 CLI 可执行文件…';
 
   @override
+  String get cliInstallProgressDownloading => '正在下载适配器…';
+
+  @override
+  String get cliInstallProgressExtracting => '正在解压适配器…';
+
+  @override
   String get cliInstallProgressSyncingRemoteWorkspace => '正在同步远程工作区…';
 
   @override
@@ -3435,6 +3441,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appProviderOpencodeSubscription => '订阅';
+
+  @override
+  String get appProviderOpencodeSubscriptionOn =>
+      '已绑定 OpenCode Go，订阅模型与免费模型均可用。';
+
+  @override
+  String get appProviderOpencodeSubscriptionOff =>
+      '仅免费模型。绑定 OpenCode Go 后可使用订阅模型。';
 
   @override
   String get renameProviderName => '修改名称';
@@ -5765,6 +5779,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderToolCodebuddy => 'CodeBuddy';
 
   @override
+  String get appProviderToolAntigravity => 'Antigravity';
+
+  @override
+  String get appProviderToolQoder => 'Qoder';
+
+  @override
   String get codebuddyCredentialsLogin => '登录';
 
   @override
@@ -5802,6 +5822,89 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get codebuddyCredentialsActionFailed => 'CodeBuddy 登录失败。';
+
+  @override
+  String get antigravityCredentialsLogin => '登录';
+
+  @override
+  String get antigravityCredentialsLoginTitle => '登录 Antigravity';
+
+  @override
+  String get antigravityCredentialsLoginIntro =>
+      '在下方终端完成 Google 登录，然后点击“完成”。Antigravity 将账号保存在系统钥匙串中，所有 Antigravity 会话以及所有官方 Antigravity 供应商行都会共享该账号。';
+
+  @override
+  String get antigravityCredentialsLoginStarting => '正在启动 Antigravity…';
+
+  @override
+  String antigravityCredentialsLoginFailed(String error) {
+    return '无法启动登录终端：$error';
+  }
+
+  @override
+  String get antigravityCredentialsLoginExited =>
+      'Antigravity 已退出。请关闭此对话框后重新登录。';
+
+  @override
+  String get antigravityCredentialsLoginVerifyFailed =>
+      'Antigravity 未确认登录成功（agy models 执行失败）。请完成登录后再次点击“完成”。';
+
+  @override
+  String get antigravityCredentialsDone => '完成';
+
+  @override
+  String get antigravityCredentialsCancel => '取消';
+
+  @override
+  String get antigravityCredentialsRetry => '重试';
+
+  @override
+  String get antigravityCredentialsSignedIn => '已登录 Antigravity。';
+
+  @override
+  String get antigravityCredentialsActionFailed => 'Antigravity 登录失败。';
+
+  @override
+  String get qoderCredentialsLogin => '登录';
+
+  @override
+  String get qoderCredentialsLoginTitle => '登录 Qoder';
+
+  @override
+  String get qoderCredentialsLoginIntro =>
+      '在下方终端完成登录。CLI 会打开浏览器；如果没有打开，请手动访问它输出的链接。也可以在这里切换账号。';
+
+  @override
+  String get qoderCredentialsLoginStarting => '正在启动 Qoder CLI…';
+
+  @override
+  String qoderCredentialsLoginFailed(String error) {
+    return '无法启动登录终端：$error';
+  }
+
+  @override
+  String get qoderCredentialsLoginExited => 'Qoder CLI 已退出。请关闭此对话框后重新登录。';
+
+  @override
+  String get qoderCredentialsDone => '完成';
+
+  @override
+  String get qoderCredentialsCancel => '取消';
+
+  @override
+  String get qoderCredentialsRelaunch => '重新启动';
+
+  @override
+  String get qoderCredentialsSignedIn => '已登录';
+
+  @override
+  String get qoderContextWindow => '上下文窗口（tokens）';
+
+  @override
+  String get qoderContextWindowHint => '留空则使用模型默认值。';
+
+  @override
+  String get qoderCredentialsActionFailed => 'Qoder 操作失败';
 
   @override
   String get appProviderTeamToolSection => '团队默认服务商';
@@ -6902,6 +7005,75 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsRunStatusSkippedMissed => '已跳过 — 错过窗口';
 
   @override
+  String get automationsRunStatusFailed => '失败';
+
+  @override
+  String get automationsRunStatusTimedOut => '超时';
+
+  @override
+  String get automationsRunStatusSkippedOverlap => '已跳过（上次仍在运行）';
+
+  @override
+  String automationsExitCode(int code) {
+    return '退出码 $code';
+  }
+
+  @override
+  String get automationsRunStdout => '标准输出';
+
+  @override
+  String get automationsRunStderr => '标准错误';
+
+  @override
+  String automationsRunError(String error) {
+    return '错误：$error';
+  }
+
+  @override
+  String automationsRunDurationSeconds(int seconds) {
+    return '耗时 $seconds 秒';
+  }
+
+  @override
+  String automationsRunDurationMilliseconds(int milliseconds) {
+    return '耗时 $milliseconds 毫秒';
+  }
+
+  @override
+  String get automationsRunOutputTruncated => '输出已截断';
+
+  @override
+  String get automationsCommand => '命令';
+
+  @override
+  String get automationsCommandHelp =>
+      '仅在 TeamPilot 运行时执行。超过宽限期的错过运行会被跳过，除非开启了补跑。';
+
+  @override
+  String get automationsCommandTimeout => '超时（秒）';
+
+  @override
+  String get automationsCommandRequired => '命令不能为空';
+
+  @override
+  String get automationsCommandTimeoutInvalid => '超时时间必须是整数秒';
+
+  @override
+  String get automationsCommandTimeoutRange => '超时时间须在 30 到 1800 秒之间';
+
+  @override
+  String get automationsCommandTooLong => '命令不能超过 2000 个字符';
+
+  @override
+  String get automationsCommandWorkingDirectory => '工作目录';
+
+  @override
+  String get automationsCommandWorkingDirectoryMain => '工作区默认目录';
+
+  @override
+  String get automationsCatchUpOnce => '启动后补跑一次';
+
+  @override
   String get automationsMaxRunCount => '运行次数上限';
 
   @override
@@ -7922,6 +8094,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersQuickPresetCursorHint => '登录或导入，或手填相同字段。';
 
   @override
+  String get managedProvidersQuickPresetCodebuddy => 'CodeBuddy';
+
+  @override
+  String get managedProvidersQuickPresetCodebuddyHint =>
+      '使用 CodeBuddy 登录态查询积分余额。';
+
+  @override
   String get managedProvidersQuickPresetDeepSeek => 'DeepSeek';
 
   @override
@@ -7941,7 +8120,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersQuickPresetCustomHint => '从零配置接口、凭据与显示格式。';
 
   @override
-  String get managedProvidersBasicsSectionTitle => '基本信息';
+  String get managedProvidersBasicsSectionTitle => '名称与密钥';
 
   @override
   String get managedProvidersBasicsSectionSubtitle => '命名与必要密钥。';
@@ -7950,25 +8129,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersBasicsSummary => '选择预设、命名，并按需填写密钥。';
 
   @override
-  String get managedProvidersQuerySectionTitle => '查询';
+  String get managedProvidersQuerySectionTitle => '用量 API 与 JSON 解析';
 
   @override
   String get managedProvidersQuerySectionSubtitle => '用量 API 与 JSON 解析。';
 
   @override
-  String get managedProvidersCredentialsSectionTitle => '凭据详情';
+  String get managedProvidersCredentialsSectionTitle => '凭据来源与请求写入';
 
   @override
   String get managedProvidersCredentialsSectionSubtitle => '凭据来源及写入请求的方式。';
 
   @override
-  String get managedProvidersDisplaySectionTitle => '显示';
+  String get managedProvidersDisplaySectionTitle => '余额与额度显示';
 
   @override
   String get managedProvidersDisplaySectionSubtitle => '余额与额度的显示格式。';
 
   @override
-  String get managedProvidersAdvancedSectionTitle => '高级';
+  String get managedProvidersAdvancedSectionTitle => '适配器、类型与引用';
 
   @override
   String get managedProvidersAdvancedSectionSubtitle => '适配器、类型与内部引用。';
@@ -8074,14 +8253,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersFieldExampleLabel => '示例';
 
   @override
-  String get managedProvidersJsonPathSeeAlso => '\$ 用法详见「查询」ℹ️';
+  String get managedProvidersJsonPathSeeAlso => '\$ 用法详见「用量 API 与 JSON 解析」ℹ️';
 
   @override
-  String get managedProvidersTemplateVariablesSeeAlsoQuery => '花括号用法详见「查询」ℹ️';
+  String get managedProvidersTemplateVariablesSeeAlsoQuery =>
+      '花括号用法详见「用量 API 与 JSON 解析」ℹ️';
 
   @override
   String get managedProvidersTemplateVariablesSeeAlsoCredentials =>
-      '花括号用法详见「凭据详情」ℹ️';
+      '花括号用法详见「凭据来源与请求写入」ℹ️';
 
   @override
   String get managedProvidersReferenceSyntaxHelper =>
@@ -9037,34 +9217,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get personalAcpSwitchLabel => '新建个人和混合会话使用 ACP';
+  String get cliTransportDefaultChat => '新会话默认使用对话（ACP）';
 
   @override
-  String get personalAcpSwitchCaption => '原生团队和远程成员仍用终端';
-
-  @override
-  String get claudePersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
-
-  @override
-  String get claudePersonalAcpDefaultDescription =>
-      '新建个人和混合团队 Claude 会话走无终端 ACP（claude-agent-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
-
-  @override
-  String get cursorPersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
-
-  @override
-  String get cursorPersonalAcpDefaultDescription =>
-      '新建个人和混合团队 Cursor 会话走无终端 ACP（cursor-agent acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
-
-  @override
-  String get opencodePersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
-
-  @override
-  String get opencodePersonalAcpDefaultDescription =>
-      '新建个人和混合团队 OpenCode 会话走无终端 ACP（opencode acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
-
-  @override
-  String get claudePersonalAcpAndroidDisabled => '在远程 SSH exec 就绪前，ACP 聊天仅限桌面。';
+  String get cliTransportDefaultTerminal => '新会话默认使用终端（PTY）';
 
   @override
   String get acpLaunchFailedAdapter =>
@@ -9077,16 +9233,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String acpChatSessionOpenFailed(String cliName) {
     return '无法打开 $cliName 会话。';
   }
-
-  @override
-  String get codexPersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
-
-  @override
-  String get codexPersonalAcpDefaultDescription =>
-      '新建个人和混合团队 Codex 会话走无终端 ACP（codex-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
-
-  @override
-  String get codexPersonalAcpAndroidDisabled => '在远程 SSH exec 就绪前，ACP 聊天仅限桌面。';
 
   @override
   String get codexAcpLaunchFailedAdapter =>
@@ -9116,9 +9262,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionUsageTitle => 'Token 用量';
-
-  @override
-  String get sessionUsageSubtitle => '按 TeamPilot 会话归属统计，本地与 SSH 主页面共用。';
 
   @override
   String get sessionUsageScopeHint => '本地 + SSH · 按 TeamPilot 会话归属';
@@ -9171,6 +9314,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionUsageNeverSynced => '尚未同步';
 
   @override
+  String get sessionUsageSyncedJustNow => '刚刚同步';
+
+  @override
   String sessionUsageLastSync(String time) {
     return '上次同步 $time';
   }
@@ -9179,13 +9325,49 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionUsageRangeToday => '今天';
 
   @override
+  String get sessionUsageRangeLast24Hours => '近 24 小时';
+
+  @override
   String get sessionUsageRangeSevenDays => '近 7 天';
+
+  @override
+  String get sessionUsageRangeFourteenDays => '近 14 天';
 
   @override
   String get sessionUsageRangeThirtyDays => '近 30 天';
 
   @override
   String get sessionUsageRangeAll => '全部';
+
+  @override
+  String get sessionUsageStartTime => '开始时间';
+
+  @override
+  String get sessionUsageEndTime => '结束时间';
+
+  @override
+  String get sessionUsageLiveEnd => '结束时间跟随当前时刻';
+
+  @override
+  String get sessionUsageRangeHint => '支持日期与时间，最长 30 天';
+
+  @override
+  String get sessionUsageRangeInvalidOrder => '开始时间不能晚于结束时间';
+
+  @override
+  String get sessionUsageRangeTooLong => '时间范围不能超过 30 天';
+
+  @override
+  String get sessionUsageColumnSettings => '显示的列';
+
+  @override
+  String get sessionUsageColumnReset => '恢复默认';
+
+  @override
+  String get sessionUsageSortDescending => '降序';
+
+  @override
+  String get sessionUsageSortAscending => '升序';
 
   @override
   String get sessionUsageCliAll => '全部';
@@ -9302,6 +9484,39 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionUsageDismiss => '关闭';
+
+  @override
+  String get sessionUsageHeatmapTitle => '用量热力图';
+
+  @override
+  String get sessionUsageHeatmapSubtitle => '近 53 周 · 悬停或长按查看当天明细';
+
+  @override
+  String get sessionUsageHeatmapMetricTokens => 'Token';
+
+  @override
+  String get sessionUsageHeatmapMetricHitRate => '命中率';
+
+  @override
+  String get sessionUsageHeatmapShowEarlier => '显示更早';
+
+  @override
+  String get sessionUsageHeatmapShowLess => '收起更早';
+
+  @override
+  String get sessionUsageHeatmapLess => '少';
+
+  @override
+  String get sessionUsageHeatmapMore => '多';
+
+  @override
+  String sessionUsageHeatmapSpanSummary(
+    String tokens,
+    String requests,
+    String cost,
+  ) {
+    return '$tokens Token · $requests 请求 · $cost';
+  }
 
   @override
   String get sessionUsageNoData => '暂无数据';
@@ -9434,6 +9649,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionUsageStorage => '存储';
+
+  @override
+  String get sessionUsageSettings => '用量设置';
+
+  @override
+  String get sessionUsageDataSource => '数据来源';
+
+  @override
+  String get sessionUsageAutoScan => '自动扫描会话日志';
+
+  @override
+  String sessionUsageAutoScanHint(int minutes) {
+    return '打开本页时立即扫描，之后每 $minutes 分钟在后台扫描。';
+  }
+
+  @override
+  String get sessionUsageScanInterval => '扫描间隔';
+
+  @override
+  String sessionUsageIntervalMinutes(int minutes) {
+    return '每 $minutes 分钟';
+  }
+
+  @override
+  String get sessionUsageSyncNow => '立即同步';
+
+  @override
+  String get sessionUsageMaintenanceEntry => '存储与 Cursor 维护';
 
   @override
   String get sessionUsageMaintenanceTitle => '用量存储';

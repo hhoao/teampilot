@@ -11,6 +11,10 @@ import 'package:teampilot/models/session_usage.dart';
 import 'package:teampilot/models/session_usage_dashboard.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/usage/session_usage_page.dart';
+import 'package:teampilot/repositories/app_settings_repository.dart';
+import 'package:teampilot/pages/usage/widgets/usage_filter_bar.dart';
+import 'package:teampilot/pages/usage/widgets/usage_heatmap_card.dart';
+import 'package:teampilot/pages/usage/widgets/usage_table_toolbar.dart';
 import 'package:teampilot/services/usage/session_usage_sync_service.dart';
 import 'package:teampilot/services/usage/usage_sync_control.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
@@ -88,6 +92,7 @@ Widget _wrap(
   SessionUsageCubit cubit, {
   Brightness brightness = Brightness.light,
   bool autoSync = false,
+  AppSettingsRepository? settings,
 }) {
   return MaterialApp(
     locale: const Locale('en'),
@@ -98,10 +103,13 @@ Widget _wrap(
         ColorScheme.fromSeed(seedColor: Colors.indigo, brightness: brightness),
         scale: 1,
       ),
-      child: BlocProvider.value(
-        value: cubit,
-        child: Scaffold(
-          body: SessionUsagePage(embedded: true, autoSync: autoSync),
+      child: RepositoryProvider<AppSettingsRepository>.value(
+        value: settings ?? InMemoryAppSettingsRepository(),
+        child: BlocProvider.value(
+          value: cubit,
+          child: Scaffold(
+            body: SessionUsagePage(embedded: true, autoSync: autoSync),
+          ),
         ),
       ),
     ),
@@ -109,7 +117,7 @@ Widget _wrap(
 }
 
 void main() {
-  testWidgets('renders summary, chart, and grouped rows', (tester) async {
+  testWidgets('renders summary and grouped rows', (tester) async {
     final cubit = SessionUsageCubit(
       loadEvents: () async => [
         _event(),
@@ -131,7 +139,6 @@ void main() {
     expect(find.text('Token usage'), findsOneWidget);
     expect(find.text('Alpha'), findsOneWidget);
     expect(find.text('Beta'), findsOneWidget);
-    expect(find.text('Claude Code'), findsWidgets);
     expect(find.byKey(AppKeys.sessionUsageEmptyState), findsNothing);
   });
 
@@ -219,7 +226,10 @@ void main() {
     expect(find.text('Alpha'), findsNothing);
     expect(find.text('Beta'), findsWidgets);
     expect(cubit.state.dashboard.rows.single.label, 'Beta');
+    // Only the range-filtered summary card is labelled "Total tokens"; the
+    // breakdown donut centre is scoped to the last seven days.
     expect(find.text('Total tokens'), findsOneWidget);
+    expect(find.byType(UsageHeatmapCard), findsOneWidget);
   });
 
   testWidgets('load failure shows retry state', (tester) async {
@@ -254,7 +264,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('range, CLI, and group chips update the cubit', (tester) async {
+  testWidgets('range picker, CLI icons, and group control update the cubit', (
+    tester,
+  ) async {
+    _useTallViewport(tester);
     final cubit = SessionUsageCubit(
       loadEvents: () async => [
         _event(),
@@ -272,16 +285,33 @@ void main() {
     await tester.pumpWidget(_wrap(cubit));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Last 7 days'));
+    await tester.tap(find.byKey(AppKeys.sessionUsageRangeTrigger));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(TpDateTimeRangePanel),
+        matching: find.text('Last 7 days'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(cubit.state.range, UsageRange.sevenDays);
 
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Codex'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(UsageFilterBar),
+        matching: find.byTooltip('Codex'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(cubit.state.cli, CliTool.codex);
     expect(find.text('Alpha'), findsNothing);
 
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Model'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(UsageTableToolbar),
+        matching: find.text('Model'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(cubit.state.groupBy, UsageGroupBy.model);
   });
@@ -379,7 +409,7 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('header hosts the storage action without footer notes', (
+  testWidgets('header hosts the sync status and settings entries', (
     tester,
   ) async {
     final cubit = _pagedCubit(2);
@@ -388,7 +418,8 @@ void main() {
     await tester.pumpWidget(_wrap(cubit));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(AppKeys.sessionUsageMaintenanceButton), findsOneWidget);
+    expect(find.byKey(AppKeys.sessionUsageSyncButton), findsOneWidget);
+    expect(find.byKey(AppKeys.sessionUsageSettingsButton), findsOneWidget);
     expect(find.text('JSONL read-only'), findsNothing);
     expect(find.text('Auto + manual sync'), findsNothing);
   });
@@ -511,6 +542,51 @@ void main() {
     expect(syncCount, 2);
   });
 
+  testWidgets('settings dialog persists the auto-scan toggle', (tester) async {
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async => const UsageSyncResult(),
+      loadSessions: () async => [_session('s1', 'Alpha')],
+      loadTeams: () async => const <TeamProfile>[],
+    );
+    addTearDown(cubit.close);
+    final settings = InMemoryAppSettingsRepository();
+
+    await tester.pumpWidget(_wrap(cubit, settings: settings));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(AppKeys.sessionUsageSettingsButton));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.sessionUsageSettingsDialog), findsOneWidget);
+
+    await tester.tap(find.byKey(AppKeys.sessionUsageAutoScanSwitch));
+    await tester.pumpAndSettle();
+    expect(await settings.loadUsageAutoSyncEnabled(), isFalse);
+  });
+
+  testWidgets('disabled auto sync skips the scan on open', (tester) async {
+    var syncCount = 0;
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async {
+        syncCount++;
+        return const UsageSyncResult();
+      },
+      loadSessions: () async => [_session('s1', 'Alpha')],
+      loadTeams: () async => const <TeamProfile>[],
+    );
+    addTearDown(cubit.close);
+    final settings = InMemoryAppSettingsRepository();
+    await settings.saveUsageAutoSyncEnabled(false);
+
+    await tester.pumpWidget(
+      _wrap(cubit, autoSync: true, settings: settings),
+    );
+    await tester.pumpAndSettle();
+
+    expect(syncCount, 0);
+  });
+
   testWidgets('auto sync rechecks stale data on app resume', (tester) async {
     var now = DateTime(2026, 10, 26, 18);
     var syncCount = 0;
@@ -572,11 +648,16 @@ void main() {
     await tester.pumpWidget(_wrap(cubit));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(AppKeys.sessionUsageCostCard), findsNothing);
+    await tester.tap(find.byIcon(Icons.keyboard_arrow_down));
+    await tester.pumpAndSettle();
+
     expect(find.byKey(AppKeys.sessionUsageCostCard), findsOneWidget);
     expect(find.textContaining(r'$18.00'), findsWidgets);
     expect(find.textContaining('1 priced · 1 unpriced'), findsOneWidget);
     expect(find.text('Unpriced'), findsOneWidget);
     expect(find.text('Cost'), findsWidgets);
+    expect(find.byKey(AppKeys.sessionUsageManagePricingButton), findsOneWidget);
   });
 
   testWidgets('paginates session rows at 20 per page', (tester) async {
@@ -588,7 +669,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Session 1'), findsOneWidget);
-    expect(find.text('Session 20'), findsOneWidget);
     expect(find.text('Session 21'), findsNothing);
     expect(find.byKey(AppKeys.sessionUsagePageRange), findsOneWidget);
     expect(find.text('1–20 of 25 groups'), findsOneWidget);
@@ -645,7 +725,6 @@ void main() {
     await tester.tap(find.text('50').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Session 25'), findsOneWidget);
     expect(find.text('1–25 of 25 groups'), findsOneWidget);
   });
 

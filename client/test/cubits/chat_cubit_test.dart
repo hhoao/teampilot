@@ -18,6 +18,7 @@ import 'package:teampilot/services/chat/launch/session/shell_launch_spec.dart';
 import 'package:teampilot/services/chat/runtime/pty/terminal_activity_tracker.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/chat/runtime/pty/terminal_launch_controller.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_store.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -575,6 +576,7 @@ void main() {
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+          seedClaudeMemberAcp: false,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
         )).session;
@@ -949,7 +951,7 @@ void main() {
       await composeDraftCache.saveSession(
         workspace.workspaceId,
         session.sessionId,
-        'in progress',
+        const ComposeDraft(text: 'in progress'),
         storage: testHomeStorage,
       );
 
@@ -992,7 +994,7 @@ void main() {
       _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
 
       await cubit.loadWorkspaceData(repo);
-      composeDraftCache.setLandingDraft(workspace.workspaceId, 'draft');
+      composeDraftCache.setLandingDraft(workspace.workspaceId, ComposeDraft(text: 'draft'));
 
       await cubit.deleteWorkspace(repo, workspace.workspaceId);
       await drainPendingAsyncWork();
@@ -1024,6 +1026,8 @@ void main() {
         const team = TeamProfile(
           id: 'team-a',
           name: 'A',
+          // No ACP capability, so members launch PTY shells.
+          cli: CliTool.flashskyai,
           members: [
             TeamMemberConfig(id: 'm-lead', name: 'team-lead'),
             TeamMemberConfig(id: 'm-dev', name: 'developer'),
@@ -1150,6 +1154,7 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+        seedClaudeMemberAcp: false,
 
         memberClis: {for (final m in team.members) m.id: CliTool.claude},
       )).session;
@@ -1231,6 +1236,7 @@ void main() {
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+          seedClaudeMemberAcp: false,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
         )).session;
@@ -1317,6 +1323,7 @@ void main() {
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+          seedClaudeMemberAcp: false,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
         )).session;

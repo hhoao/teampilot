@@ -4,9 +4,13 @@ import '../../registry/launch/cli_launch_arg_provider.dart';
 import '../../registry/launch/cli_launch_capability_error.dart';
 import '../../registry/launch/cli_launch_context.dart';
 
-/// Interactive TUI has no `--model` on OpenCode v2 (unknown flag dumps help).
-/// The picker selection is stamped into `opencode.json` `"model"`.
-/// Headless `opencode run` still accepts `--model`.
+/// Interactive TUI has no `--model` on OpenCode v2 (unknown flag dumps help),
+/// and headless `opencode run` reads the same `opencode.json` `"model"` key.
+///
+/// The model selector therefore lives in exactly one place — the config file —
+/// and this contribution only validates that a model was picked. Emitting
+/// `--model` here would introduce a second source of truth that has to re-derive
+/// the upstream namespace (Go vs Zen) without the provider record in hand.
 final class OpencodeModelLaunch implements CliLaunchArgProvider {
   const OpencodeModelLaunch();
 
@@ -18,10 +22,9 @@ final class OpencodeModelLaunch implements CliLaunchArgProvider {
 
   Iterable<CliLaunchArgContribution> buildHeadlessLaunchArgs(
     CliLaunchContext context,
-  ) sync* {
+  ) {
     _validate(context);
-    final contribution = _modelArgs(context);
-    if (contribution != null) yield contribution;
+    return const [];
   }
 
   void _validate(CliLaunchContext context) {
@@ -34,16 +37,5 @@ final class OpencodeModelLaunch implements CliLaunchArgProvider {
         reason: 'OpenCode requires a model when a provider is selected.',
       );
     }
-  }
-
-  CliLaunchArgContribution? _modelArgs(CliLaunchContext context) {
-    final provider = context.member.provider.trim();
-    final model = context.member.model.trim();
-    if (model.isEmpty) return null;
-    return CliLaunchArgContribution(
-      key: 'opencode-model',
-      phase: LaunchArgPhase.model,
-      args: ['--model', provider.isEmpty ? model : '$provider/$model'],
-    );
   }
 }

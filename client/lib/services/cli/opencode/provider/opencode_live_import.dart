@@ -1,11 +1,12 @@
 import 'dart:convert';
 
 import '../../../../models/app_provider_config.dart';
+import '../opencode_config.dart';
+import '../opencode_go_layer.dart';
 import '../provider_presets.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../../../io/filesystem.dart';
 import '../../codex/provider/codex_cc_switch_import.dart';
-import '../opencode_config.dart';
 import 'opencode_auth_artifacts.dart';
 import 'opencode_credential_materializer.dart';
 import 'opencode_data_layout.dart';
@@ -89,22 +90,38 @@ abstract final class OpencodeLiveImport {
     final baseUrl = _readBaseUrl(providerConfig);
     final defaultModel = _defaultModelForProvider(id, opencodeConfig);
     final presetConfig = preset?.template.config ?? const {};
-    final config = _buildConfig(providerConfig, presetConfig);
+    var config = _buildConfig(providerConfig, presetConfig);
     final catalogFields =
         OpencodeCredentialMaterializer.catalogFieldsFromAuthEntry(
           providerId: id,
           entry: entry,
           existingConfig: config,
         );
+    if (catalogFields != null) config = catalogFields.configPatch;
+
+    // A global `opencode-go` auth entry is the Go subscription layer of the
+    // merged OpenCode row; keep the id stable and record the binding instead.
+    final isGo = OpencodeGoLayer.isNamespace(id);
+    if (isGo) {
+      config = {
+        ...config,
+        OpencodeProviderConfigKeys.subscription: OpencodeGoLayer.namespace,
+        'npm': OpencodeGoLayer.npm,
+      };
+    }
 
     if (preset != null) {
+      final presetBaseUrl = preset.template.baseUrl.trim();
+      final resolvedBaseUrl = baseUrl.isNotEmpty
+          ? baseUrl
+          : (isGo ? OpencodeGoLayer.baseUrl : presetBaseUrl);
       return preset.template.copyWith(
         apiKey: catalogFields?.apiKey ?? '',
-        baseUrl: baseUrl.isNotEmpty ? baseUrl : preset.template.baseUrl,
+        baseUrl: resolvedBaseUrl,
         defaultModel: defaultModel.isNotEmpty
             ? defaultModel
             : preset.template.defaultModel,
-        config: catalogFields?.configPatch ?? config,
+        config: config,
         createdAt: now,
         updatedAt: now,
       );
@@ -122,7 +139,7 @@ abstract final class OpencodeLiveImport {
       baseUrl: baseUrl,
       defaultModel: defaultModel,
       apiKey: catalogFields?.apiKey ?? '',
-      config: catalogFields?.configPatch ?? config,
+      config: config,
       createdAt: now,
       updatedAt: now,
     );

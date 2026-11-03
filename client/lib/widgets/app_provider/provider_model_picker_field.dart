@@ -157,7 +157,11 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
         hintText: hint,
         decoration: deco,
         onChanged: (next) => widget.onChanged(next ?? ''),
-        itemLabel: (item) => item,
+        itemLabel: (item) => providerModelLabel(
+          capability,
+          providerId: widget.providerId,
+          modelId: item,
+        ),
       ),
       ProviderModelPickerMode.catalogWithCustomEntry => TpSelectWithCustomInput(
         key: ValueKey('provider-model-custom-${widget.providerId}'),

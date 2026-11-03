@@ -4868,6 +4868,18 @@ abstract class AppLocalizations {
   /// **'Locating CLI executable…'**
   String get cliInstallProgressLocatingExecutable;
 
+  /// No description provided for @cliInstallProgressDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading adapter…'**
+  String get cliInstallProgressDownloading;
+
+  /// No description provided for @cliInstallProgressExtracting.
+  ///
+  /// In en, this message translates to:
+  /// **'Extracting adapter…'**
+  String get cliInstallProgressExtracting;
+
   /// No description provided for @cliInstallProgressSyncingRemoteWorkspace.
   ///
   /// In en, this message translates to:
@@ -6421,6 +6433,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Subscription'**
   String get appProviderOpencodeSubscription;
+
+  /// No description provided for @appProviderOpencodeSubscriptionOn.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenCode Go bound — subscription and free models are both available.'**
+  String get appProviderOpencodeSubscriptionOn;
+
+  /// No description provided for @appProviderOpencodeSubscriptionOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Free models only. Bind OpenCode Go to use subscription models.'**
+  String get appProviderOpencodeSubscriptionOff;
 
   /// No description provided for @renameProviderName.
   ///
@@ -10706,6 +10730,18 @@ abstract class AppLocalizations {
   /// **'CodeBuddy'**
   String get appProviderToolCodebuddy;
 
+  /// No description provided for @appProviderToolAntigravity.
+  ///
+  /// In en, this message translates to:
+  /// **'Antigravity'**
+  String get appProviderToolAntigravity;
+
+  /// No description provided for @appProviderToolQoder.
+  ///
+  /// In en, this message translates to:
+  /// **'Qoder'**
+  String get appProviderToolQoder;
+
   /// No description provided for @codebuddyCredentialsLogin.
   ///
   /// In en, this message translates to:
@@ -10777,6 +10813,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'CodeBuddy sign-in failed.'**
   String get codebuddyCredentialsActionFailed;
+
+  /// No description provided for @antigravityCredentialsLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get antigravityCredentialsLogin;
+
+  /// No description provided for @antigravityCredentialsLoginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to Antigravity'**
+  String get antigravityCredentialsLoginTitle;
+
+  /// No description provided for @antigravityCredentialsLoginIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the Google sign-in in the terminal below, then press Done. Antigravity keeps the account in the OS keyring, so the account is shared by all Antigravity sessions and every official Antigravity provider row.'**
+  String get antigravityCredentialsLoginIntro;
+
+  /// No description provided for @antigravityCredentialsLoginStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting Antigravity…'**
+  String get antigravityCredentialsLoginStarting;
+
+  /// No description provided for @antigravityCredentialsLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the login terminal: {error}'**
+  String antigravityCredentialsLoginFailed(String error);
+
+  /// No description provided for @antigravityCredentialsLoginExited.
+  ///
+  /// In en, this message translates to:
+  /// **'Antigravity exited. Close this dialog and start the sign-in again.'**
+  String get antigravityCredentialsLoginExited;
+
+  /// No description provided for @antigravityCredentialsLoginVerifyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Antigravity did not confirm the sign-in (agy models failed). Finish the sign-in, then press Done again.'**
+  String get antigravityCredentialsLoginVerifyFailed;
+
+  /// No description provided for @antigravityCredentialsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get antigravityCredentialsDone;
+
+  /// No description provided for @antigravityCredentialsCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get antigravityCredentialsCancel;
+
+  /// No description provided for @antigravityCredentialsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get antigravityCredentialsRetry;
+
+  /// No description provided for @antigravityCredentialsSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in to Antigravity.'**
+  String get antigravityCredentialsSignedIn;
+
+  /// No description provided for @antigravityCredentialsActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Antigravity sign-in failed.'**
+  String get antigravityCredentialsActionFailed;
+
+  /// No description provided for @qoderCredentialsLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get qoderCredentialsLogin;
+
+  /// No description provided for @qoderCredentialsLoginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to Qoder'**
+  String get qoderCredentialsLoginTitle;
+
+  /// No description provided for @qoderCredentialsLoginIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the sign-in in the terminal below. The CLI opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.'**
+  String get qoderCredentialsLoginIntro;
+
+  /// No description provided for @qoderCredentialsLoginStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting Qoder CLI…'**
+  String get qoderCredentialsLoginStarting;
+
+  /// No description provided for @qoderCredentialsLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the login terminal: {error}'**
+  String qoderCredentialsLoginFailed(String error);
+
+  /// No description provided for @qoderCredentialsLoginExited.
+  ///
+  /// In en, this message translates to:
+  /// **'Qoder CLI exited. Close this dialog and start the sign-in again.'**
+  String get qoderCredentialsLoginExited;
+
+  /// No description provided for @qoderCredentialsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get qoderCredentialsDone;
+
+  /// No description provided for @qoderCredentialsCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get qoderCredentialsCancel;
+
+  /// No description provided for @qoderCredentialsRelaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Relaunch'**
+  String get qoderCredentialsRelaunch;
+
+  /// No description provided for @qoderCredentialsSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in'**
+  String get qoderCredentialsSignedIn;
+
+  /// No description provided for @qoderContextWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Context window (tokens)'**
+  String get qoderContextWindow;
+
+  /// No description provided for @qoderContextWindowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to use the model default.'**
+  String get qoderContextWindowHint;
+
+  /// No description provided for @qoderCredentialsActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The Qoder action failed'**
+  String get qoderCredentialsActionFailed;
 
   /// No description provided for @appProviderTeamToolSection.
   ///
@@ -12788,6 +12974,126 @@ abstract class AppLocalizations {
   /// **'Skipped — missed window'**
   String get automationsRunStatusSkippedMissed;
 
+  /// No description provided for @automationsRunStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get automationsRunStatusFailed;
+
+  /// No description provided for @automationsRunStatusTimedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Timed out'**
+  String get automationsRunStatusTimedOut;
+
+  /// No description provided for @automationsRunStatusSkippedOverlap.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped (still running)'**
+  String get automationsRunStatusSkippedOverlap;
+
+  /// No description provided for @automationsExitCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit code {code}'**
+  String automationsExitCode(int code);
+
+  /// No description provided for @automationsRunStdout.
+  ///
+  /// In en, this message translates to:
+  /// **'stdout'**
+  String get automationsRunStdout;
+
+  /// No description provided for @automationsRunStderr.
+  ///
+  /// In en, this message translates to:
+  /// **'stderr'**
+  String get automationsRunStderr;
+
+  /// No description provided for @automationsRunError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {error}'**
+  String automationsRunError(String error);
+
+  /// No description provided for @automationsRunDurationSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Took {seconds}s'**
+  String automationsRunDurationSeconds(int seconds);
+
+  /// No description provided for @automationsRunDurationMilliseconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Took {milliseconds} ms'**
+  String automationsRunDurationMilliseconds(int milliseconds);
+
+  /// No description provided for @automationsRunOutputTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'Output truncated'**
+  String get automationsRunOutputTruncated;
+
+  /// No description provided for @automationsCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get automationsCommand;
+
+  /// No description provided for @automationsCommandHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs only while TeamPilot is running. Missed runs older than the grace window are skipped unless catch-up is on.'**
+  String get automationsCommandHelp;
+
+  /// No description provided for @automationsCommandTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeout (seconds)'**
+  String get automationsCommandTimeout;
+
+  /// No description provided for @automationsCommandRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Command is required'**
+  String get automationsCommandRequired;
+
+  /// No description provided for @automationsCommandTimeoutInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeout must be a whole number of seconds'**
+  String get automationsCommandTimeoutInvalid;
+
+  /// No description provided for @automationsCommandTimeoutRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeout must be between 30 and 1800 seconds'**
+  String get automationsCommandTimeoutRange;
+
+  /// No description provided for @automationsCommandTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Command must be at most 2000 characters'**
+  String get automationsCommandTooLong;
+
+  /// No description provided for @automationsCommandWorkingDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Working directory'**
+  String get automationsCommandWorkingDirectory;
+
+  /// No description provided for @automationsCommandWorkingDirectoryMain.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace default folder'**
+  String get automationsCommandWorkingDirectoryMain;
+
+  /// No description provided for @automationsCatchUpOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Catch up once after startup'**
+  String get automationsCatchUpOnce;
+
   /// Label for optional max automation run count
   ///
   /// In en, this message translates to:
@@ -14684,6 +14990,18 @@ abstract class AppLocalizations {
   /// **'Sign in or import credentials below, or fill the same fields manually.'**
   String get managedProvidersQuickPresetCursorHint;
 
+  /// No description provided for @managedProvidersQuickPresetCodebuddy.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeBuddy'**
+  String get managedProvidersQuickPresetCodebuddy;
+
+  /// No description provided for @managedProvidersQuickPresetCodebuddyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Query credit balance with your CodeBuddy sign-in.'**
+  String get managedProvidersQuickPresetCodebuddyHint;
+
   /// No description provided for @managedProvidersQuickPresetDeepSeek.
   ///
   /// In en, this message translates to:
@@ -14723,7 +15041,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersBasicsSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Basics'**
+  /// **'Name and API key'**
   String get managedProvidersBasicsSectionTitle;
 
   /// No description provided for @managedProvidersBasicsSectionSubtitle.
@@ -14741,7 +15059,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersQuerySectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Query'**
+  /// **'Usage API and JSON parsing'**
   String get managedProvidersQuerySectionTitle;
 
   /// No description provided for @managedProvidersQuerySectionSubtitle.
@@ -14753,7 +15071,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersCredentialsSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Credential details'**
+  /// **'Credential source and delivery'**
   String get managedProvidersCredentialsSectionTitle;
 
   /// No description provided for @managedProvidersCredentialsSectionSubtitle.
@@ -14765,7 +15083,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersDisplaySectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Display'**
+  /// **'Balance and quota display'**
   String get managedProvidersDisplaySectionTitle;
 
   /// No description provided for @managedProvidersDisplaySectionSubtitle.
@@ -14777,7 +15095,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersAdvancedSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Advanced'**
+  /// **'Adapter, kind, and reference'**
   String get managedProvidersAdvancedSectionTitle;
 
   /// No description provided for @managedProvidersAdvancedSectionSubtitle.
@@ -14987,19 +15305,19 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersJsonPathSeeAlso.
   ///
   /// In en, this message translates to:
-  /// **'See \$ syntax in Query ℹ️'**
+  /// **'See \$ syntax in Usage API and JSON parsing ℹ️'**
   String get managedProvidersJsonPathSeeAlso;
 
   /// No description provided for @managedProvidersTemplateVariablesSeeAlsoQuery.
   ///
   /// In en, this message translates to:
-  /// **'See brace syntax in Query ℹ️'**
+  /// **'See brace syntax in Usage API and JSON parsing ℹ️'**
   String get managedProvidersTemplateVariablesSeeAlsoQuery;
 
   /// No description provided for @managedProvidersTemplateVariablesSeeAlsoCredentials.
   ///
   /// In en, this message translates to:
-  /// **'See brace syntax in Credentials ℹ️'**
+  /// **'See brace syntax in Credential source and delivery ℹ️'**
   String get managedProvidersTemplateVariablesSeeAlsoCredentials;
 
   /// No description provided for @managedProvidersReferenceSyntaxHelper.
@@ -16766,59 +17084,17 @@ abstract class AppLocalizations {
   /// **'{cliName} exited unexpectedly'**
   String acpChatProcessExited(String cliName);
 
-  /// No description provided for @personalAcpSwitchLabel.
+  /// No description provided for @cliTransportDefaultChat.
   ///
   /// In en, this message translates to:
-  /// **'New personal / mixed sessions use ACP'**
-  String get personalAcpSwitchLabel;
+  /// **'New sessions default to chat (ACP)'**
+  String get cliTransportDefaultChat;
 
-  /// No description provided for @personalAcpSwitchCaption.
+  /// No description provided for @cliTransportDefaultTerminal.
   ///
   /// In en, this message translates to:
-  /// **'Native teams and remote members still use the terminal'**
-  String get personalAcpSwitchCaption;
-
-  /// No description provided for @claudePersonalAcpDefaultLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Personal sessions use ACP chat'**
-  String get claudePersonalAcpDefaultLabel;
-
-  /// No description provided for @claudePersonalAcpDefaultDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Run new personal and mixed-team Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.'**
-  String get claudePersonalAcpDefaultDescription;
-
-  /// No description provided for @cursorPersonalAcpDefaultLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Personal sessions use ACP chat'**
-  String get cursorPersonalAcpDefaultLabel;
-
-  /// No description provided for @cursorPersonalAcpDefaultDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Run new personal and mixed-team Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.'**
-  String get cursorPersonalAcpDefaultDescription;
-
-  /// No description provided for @opencodePersonalAcpDefaultLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Personal sessions use ACP chat'**
-  String get opencodePersonalAcpDefaultLabel;
-
-  /// No description provided for @opencodePersonalAcpDefaultDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Run new personal and mixed-team OpenCode sessions as terminal-less ACP chat via opencode acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.'**
-  String get opencodePersonalAcpDefaultDescription;
-
-  /// No description provided for @claudePersonalAcpAndroidDisabled.
-  ///
-  /// In en, this message translates to:
-  /// **'ACP chat is desktop-only until remote SSH exec is available.'**
-  String get claudePersonalAcpAndroidDisabled;
+  /// **'New sessions default to the terminal (PTY)'**
+  String get cliTransportDefaultTerminal;
 
   /// No description provided for @acpLaunchFailedAdapter.
   ///
@@ -16837,24 +17113,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t open the {cliName} session.'**
   String acpChatSessionOpenFailed(String cliName);
-
-  /// No description provided for @codexPersonalAcpDefaultLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Personal sessions use ACP chat'**
-  String get codexPersonalAcpDefaultLabel;
-
-  /// No description provided for @codexPersonalAcpDefaultDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Run new personal and mixed-team Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.'**
-  String get codexPersonalAcpDefaultDescription;
-
-  /// No description provided for @codexPersonalAcpAndroidDisabled.
-  ///
-  /// In en, this message translates to:
-  /// **'ACP chat is desktop-only until remote SSH exec is available.'**
-  String get codexPersonalAcpAndroidDisabled;
 
   /// No description provided for @codexAcpLaunchFailedAdapter.
   ///
@@ -16909,12 +17167,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Token usage'**
   String get sessionUsageTitle;
-
-  /// No description provided for @sessionUsageSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Usage attributed to TeamPilot sessions on local and SSH home planes.'**
-  String get sessionUsageSubtitle;
 
   /// No description provided for @sessionUsageScopeHint.
   ///
@@ -17012,6 +17264,12 @@ abstract class AppLocalizations {
   /// **'Not synced yet'**
   String get sessionUsageNeverSynced;
 
+  /// No description provided for @sessionUsageSyncedJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced just now'**
+  String get sessionUsageSyncedJustNow;
+
   /// No description provided for @sessionUsageLastSync.
   ///
   /// In en, this message translates to:
@@ -17024,11 +17282,23 @@ abstract class AppLocalizations {
   /// **'Today'**
   String get sessionUsageRangeToday;
 
+  /// No description provided for @sessionUsageRangeLast24Hours.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 24 hours'**
+  String get sessionUsageRangeLast24Hours;
+
   /// No description provided for @sessionUsageRangeSevenDays.
   ///
   /// In en, this message translates to:
   /// **'Last 7 days'**
   String get sessionUsageRangeSevenDays;
+
+  /// No description provided for @sessionUsageRangeFourteenDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 14 days'**
+  String get sessionUsageRangeFourteenDays;
 
   /// No description provided for @sessionUsageRangeThirtyDays.
   ///
@@ -17041,6 +17311,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'All time'**
   String get sessionUsageRangeAll;
+
+  /// No description provided for @sessionUsageStartTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get sessionUsageStartTime;
+
+  /// No description provided for @sessionUsageEndTime.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get sessionUsageEndTime;
+
+  /// No description provided for @sessionUsageLiveEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End time follows now'**
+  String get sessionUsageLiveEnd;
+
+  /// No description provided for @sessionUsageRangeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Date and time, up to 30 days'**
+  String get sessionUsageRangeHint;
+
+  /// No description provided for @sessionUsageRangeInvalidOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time cannot be later than end time'**
+  String get sessionUsageRangeInvalidOrder;
+
+  /// No description provided for @sessionUsageRangeTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Range cannot exceed 30 days'**
+  String get sessionUsageRangeTooLong;
+
+  /// No description provided for @sessionUsageColumnSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get sessionUsageColumnSettings;
+
+  /// No description provided for @sessionUsageColumnReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to default'**
+  String get sessionUsageColumnReset;
+
+  /// No description provided for @sessionUsageSortDescending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort descending'**
+  String get sessionUsageSortDescending;
+
+  /// No description provided for @sessionUsageSortAscending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort ascending'**
+  String get sessionUsageSortAscending;
 
   /// No description provided for @sessionUsageCliAll.
   ///
@@ -17239,6 +17569,64 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dismiss'**
   String get sessionUsageDismiss;
+
+  /// No description provided for @sessionUsageHeatmapTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage heatmap'**
+  String get sessionUsageHeatmapTitle;
+
+  /// No description provided for @sessionUsageHeatmapSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 53 weeks · hover or long-press a day'**
+  String get sessionUsageHeatmapSubtitle;
+
+  /// No description provided for @sessionUsageHeatmapMetricTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Tokens'**
+  String get sessionUsageHeatmapMetricTokens;
+
+  /// No description provided for @sessionUsageHeatmapMetricHitRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Hit rate'**
+  String get sessionUsageHeatmapMetricHitRate;
+
+  /// No description provided for @sessionUsageHeatmapShowEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Show earlier'**
+  String get sessionUsageHeatmapShowEarlier;
+
+  /// No description provided for @sessionUsageHeatmapShowLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get sessionUsageHeatmapShowLess;
+
+  /// No description provided for @sessionUsageHeatmapLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Less'**
+  String get sessionUsageHeatmapLess;
+
+  /// No description provided for @sessionUsageHeatmapMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get sessionUsageHeatmapMore;
+
+  /// No description provided for @sessionUsageHeatmapSpanSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{tokens} tokens · {requests} requests · {cost}'**
+  String sessionUsageHeatmapSpanSummary(
+    String tokens,
+    String requests,
+    String cost,
+  );
 
   /// No description provided for @sessionUsageNoData.
   ///
@@ -17479,6 +17867,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Storage'**
   String get sessionUsageStorage;
+
+  /// No description provided for @sessionUsageSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage settings'**
+  String get sessionUsageSettings;
+
+  /// No description provided for @sessionUsageDataSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Data source'**
+  String get sessionUsageDataSource;
+
+  /// No description provided for @sessionUsageAutoScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-scan session logs'**
+  String get sessionUsageAutoScan;
+
+  /// No description provided for @sessionUsageAutoScanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scans when this page opens, then every {minutes} minutes in the background.'**
+  String sessionUsageAutoScanHint(int minutes);
+
+  /// No description provided for @sessionUsageScanInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan interval'**
+  String get sessionUsageScanInterval;
+
+  /// No description provided for @sessionUsageIntervalMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {minutes} min'**
+  String sessionUsageIntervalMinutes(int minutes);
+
+  /// No description provided for @sessionUsageSyncNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync now'**
+  String get sessionUsageSyncNow;
+
+  /// No description provided for @sessionUsageMaintenanceEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage and Cursor maintenance'**
+  String get sessionUsageMaintenanceEntry;
 
   /// No description provided for @sessionUsageMaintenanceTitle.
   ///

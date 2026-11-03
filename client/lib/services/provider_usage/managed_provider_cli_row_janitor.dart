@@ -35,7 +35,12 @@ class ManagedProviderCliRowJanitor {
   /// boot would wipe the re-added row and its OAuth credentials in a loop.
   static const _sweptMarkerFile = '.managed-provider-shared-rows-swept';
 
-  static const _clis = <CliTool>{CliTool.cursor, CliTool.claude, CliTool.codex};
+  static const _clis = <CliTool>{
+    CliTool.cursor,
+    CliTool.claude,
+    CliTool.codex,
+    CliTool.codebuddy,
+  };
 
   final Filesystem _fs;
   final String _basePath;

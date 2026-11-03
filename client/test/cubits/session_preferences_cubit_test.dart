@@ -119,54 +119,54 @@ void main() {
   test('setClaudePersonalAcpDefault persists the flag', () async {
     final cubit = await makeCubit();
     await cubit.load();
-    expect(cubit.state.preferences.claudePersonalAcpDefault, true);
+    expect(cubit.state.preferences.acpDefaultFor(CliTool.claude), true);
 
     await cubit.setClaudePersonalAcpDefault(false);
-    expect(cubit.state.preferences.claudePersonalAcpDefault, false);
+    expect(cubit.state.preferences.acpDefaultFor(CliTool.claude), false);
 
     final cubit2 = await makeCubit();
     await cubit2.load();
-    expect(cubit2.state.preferences.claudePersonalAcpDefault, false);
+    expect(cubit2.state.preferences.acpDefaultFor(CliTool.claude), false);
   });
 
   test('setCursorPersonalAcpDefault persists the flag', () async {
     final cubit = await makeCubit();
     await cubit.load();
-    expect(cubit.state.preferences.cursorPersonalAcpDefault, true);
+    expect(cubit.state.preferences.acpDefaultFor(CliTool.cursor), true);
 
     await cubit.setCursorPersonalAcpDefault(false);
-    expect(cubit.state.preferences.cursorPersonalAcpDefault, false);
+    expect(cubit.state.preferences.acpDefaultFor(CliTool.cursor), false);
 
     final cubit2 = await makeCubit();
     await cubit2.load();
-    expect(cubit2.state.preferences.cursorPersonalAcpDefault, false);
+    expect(cubit2.state.preferences.acpDefaultFor(CliTool.cursor), false);
   });
 
   test('setOpencodePersonalAcpDefault persists the flag', () async {
     final cubit = await makeCubit();
     await cubit.load();
-    expect(cubit.state.preferences.opencodePersonalAcpDefault, true);
+    expect(cubit.state.preferences.acpDefaultFor(CliTool.opencode), true);
 
     await cubit.setOpencodePersonalAcpDefault(false);
-    expect(cubit.state.preferences.opencodePersonalAcpDefault, false);
+    expect(cubit.state.preferences.acpDefaultFor(CliTool.opencode), false);
 
     final cubit2 = await makeCubit();
     await cubit2.load();
-    expect(cubit2.state.preferences.opencodePersonalAcpDefault, false);
+    expect(cubit2.state.preferences.acpDefaultFor(CliTool.opencode), false);
   });
 
   test('setCodexPersonalAcpDefault persists the flag', () async {
     final cubit = await makeCubit();
     await cubit.load();
-    expect(cubit.state.preferences.codexPersonalAcpDefault, true);
+    expect(cubit.state.preferences.acpDefaultFor(CliTool.codex), true);
 
     await cubit.setCodexPersonalAcpDefault(false);
-    expect(cubit.state.preferences.codexPersonalAcpDefault, false);
+    expect(cubit.state.preferences.acpDefaultFor(CliTool.codex), false);
 
     final cubit2 = await makeCubit();
     await cubit2.load();
-    expect(cubit2.state.preferences.codexPersonalAcpDefault, false);
-    expect(cubit2.state.preferences.claudePersonalAcpDefault, true);
+    expect(cubit2.state.preferences.acpDefaultFor(CliTool.codex), false);
+    expect(cubit2.state.preferences.acpDefaultFor(CliTool.claude), true);
   });
 
   test('setAcpPermissionDefault persists ask', () async {
@@ -491,11 +491,11 @@ void main() {
     expect(cubit.latestVersion(CliTool.claude, CliBinaryKind.cli), '2.2.0');
   });
 
-  test('setPersonalAcpDefaultFor writes the matching preference', () async {
+  test('setAcpDefaultFor writes the matching preference', () async {
     final cubit = await makeCubit();
     await cubit.load();
-    await cubit.setPersonalAcpDefaultFor(CliTool.cursor, false);
-    expect(cubit.personalAcpDefaultFor(CliTool.cursor), isFalse);
-    expect(cubit.state.preferences.cursorPersonalAcpDefault, isFalse);
+    await cubit.setAcpDefaultFor(CliTool.cursor, false);
+    expect(cubit.acpDefaultFor(CliTool.cursor), isFalse);
+    expect(cubit.state.preferences.acpDefaultFor(CliTool.cursor), isFalse);
   });
 }

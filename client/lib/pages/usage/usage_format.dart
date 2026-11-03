@@ -50,12 +50,6 @@ String formatUsageLastSync(BuildContext context, int? timestampMs) {
   );
 }
 
-String formatUsageDayLabel(BuildContext context, int dayStartMs, int nowMs) {
-  if (usageIsToday(dayStartMs, nowMs)) return context.l10n.sessionUsageToday;
-  final date = DateTime.fromMillisecondsSinceEpoch(dayStartMs).toLocal();
-  return '${date.month}/${date.day}';
-}
-
 String usageCliLabel(CliTool cli) => switch (cli) {
   CliTool.claude => 'Claude Code',
   CliTool.codex => 'Codex',
@@ -63,6 +57,8 @@ String usageCliLabel(CliTool cli) => switch (cli) {
   CliTool.cursor => 'Cursor',
   CliTool.gemini => 'Gemini',
   CliTool.codebuddy => 'CodeBuddy',
+  CliTool.antigravity => 'Antigravity',
+  CliTool.qoder => 'Qoder',
   CliTool.flashskyai => 'FlashSky',
 };
 
@@ -73,6 +69,8 @@ Color usageCliColor(CliTool cli) => switch (cli) {
   CliTool.cursor => const Color(0xFF2F80ED),
   CliTool.gemini => const Color(0xFF4285F4),
   CliTool.codebuddy => const Color(0xFF1E6FFF),
+  CliTool.antigravity => const Color(0xFF34A853),
+  CliTool.qoder => const Color(0xFF6B4EFF),
   CliTool.flashskyai => const Color(0xFFF59E0B),
 };
 
@@ -109,3 +107,23 @@ String usageGroupName(BuildContext context, UsageGroup group) {
     _ => group.label,
   };
 }
+
+/// Label for a usage range preset.
+///
+/// `UsageRange.custom` has no preset label and uses all-time as a neutral
+/// fallback.
+String usageRangeLabel(BuildContext context, UsageRange range) {
+  final l10n = context.l10n;
+  return switch (range) {
+    UsageRange.today => l10n.sessionUsageRangeToday,
+    UsageRange.last24Hours => l10n.sessionUsageRangeLast24Hours,
+    UsageRange.sevenDays => l10n.sessionUsageRangeSevenDays,
+    UsageRange.fourteenDays => l10n.sessionUsageRangeFourteenDays,
+    UsageRange.thirtyDays => l10n.sessionUsageRangeThirtyDays,
+    UsageRange.all => l10n.sessionUsageRangeAll,
+    UsageRange.custom => l10n.sessionUsageRangeAll,
+  };
+}
+
+/// Shared height for the usage filter controls and search field.
+const double usageFilterControlHeight = 40;

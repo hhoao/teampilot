@@ -9,6 +9,18 @@ import '../../support/in_memory_filesystem.dart';
 
 String _line(Map<String, Object?> entry) => jsonEncode(entry);
 
+/// Counts writes and makes them slow enough for a burst to overlap.
+class _SlowFilesystem extends InMemoryFilesystem {
+  int writes = 0;
+
+  @override
+  Future<void> atomicWrite(String path, String content) async {
+    writes++;
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    await super.atomicWrite(path, content);
+  }
+}
+
 void main() {
   test('missing or empty jsonl decodes to no messages', () {
     expect(decodeAcpChatTranscript(null), isEmpty);
@@ -140,6 +152,31 @@ void main() {
     expect(part.args, {'description': 'a cat', 'filePath': '/tmp/cat.png'});
   });
 
+  test('round-trips a tool result so task ids survive a restart', () {
+    final original = [
+      AiMessage(
+        id: 'acp-a-task',
+        role: AiRole.assistant,
+        parts: const [
+          AiToolCallPart(
+            toolCallId: 'c1',
+            toolName: 'TaskCreate',
+            status: AiToolCallStatus.complete,
+            args: {'subject': 'Write implementation plan'},
+            result: 'Task #6 created successfully: Write implementation plan',
+          ),
+        ],
+      ),
+    ];
+    final loaded = decodeAcpChatTranscript(encodeAcpChatTranscript(original));
+    final part = loaded.single.parts.single as AiToolCallPart;
+    expect(part.args, {'subject': 'Write implementation plan'});
+    expect(
+      part.result,
+      'Task #6 created successfully: Write implementation plan',
+    );
+  });
+
   test('old tool lines without args or category still decode', () {
     final jsonl = _line({
       'v': 1,
@@ -208,6 +245,47 @@ void main() {
       path: '/tp/missing.jsonl',
     );
     expect(await writer.loadMessages(), isEmpty);
+  });
+
+  test('saveMessages coalesces a burst into the newest snapshot', () async {
+    final fs = _SlowFilesystem();
+    const path = '/tp/acp-transcript.jsonl';
+    final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+
+    // ACP tool-call updates arrive far faster than a snapshot write; every
+    // call must still resolve, but only the newest state needs encoding.
+    final saves = [
+      for (var i = 0; i < 20; i++)
+        writer.saveMessages([
+          AiMessage(
+            id: 'acp-a-$i',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: 'v$i')],
+          ),
+        ]),
+    ];
+    await Future.wait(saves);
+
+    expect(fs.writes, lessThan(20));
+    final loaded = await writer.loadMessages();
+    expect((loaded.single.parts.single as AiTextPart).text, 'v19');
+  });
+
+  test('loadMessages waits for an in-flight save', () async {
+    final fs = _SlowFilesystem();
+    const path = '/tp/acp-transcript.jsonl';
+    final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+
+    final save = writer.saveMessages([
+      AiMessage(
+        id: 'acp-a-1',
+        role: AiRole.assistant,
+        parts: const [AiTextPart(text: 'streamed')],
+      ),
+    ]);
+    final loaded = await writer.loadMessages();
+    await save;
+    expect((loaded.single.parts.single as AiTextPart).text, 'streamed');
   });
 
   test('second saveMessages replaces the previous snapshot', () async {

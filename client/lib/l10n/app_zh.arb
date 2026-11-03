@@ -1203,6 +1203,8 @@
   "cliInstallProgressBootstrappingNode": "正在安装 Node.js…",
   "cliInstallProgressInstallingCli": "正在安装 CLI…",
   "cliInstallProgressLocatingExecutable": "正在定位 CLI 可执行文件…",
+  "cliInstallProgressDownloading": "正在下载适配器…",
+  "cliInstallProgressExtracting": "正在解压适配器…",
   "cliInstallProgressSyncingRemoteWorkspace": "正在同步远程工作区…",
   "sessionRemoteProvisionPreparing": "正在准备远程环境…",
   "sessionRemoteProvisionPreparingOnHost": "正在准备远程环境（{host}）",
@@ -1604,6 +1606,8 @@
     }
   },
   "appProviderOpencodeSubscription": "订阅",
+  "appProviderOpencodeSubscriptionOn": "已绑定 OpenCode Go，订阅模型与免费模型均可用。",
+  "appProviderOpencodeSubscriptionOff": "仅免费模型。绑定 OpenCode Go 后可使用订阅模型。",
   "renameProviderName": "修改名称",
   "renameProviderTitle": "修改提供商名称",
   "deleteProvider": "删除提供商",
@@ -2628,6 +2632,8 @@
   "appProviderToolCursor": "Cursor",
   "appProviderToolGemini": "Gemini CLI",
   "appProviderToolCodebuddy": "CodeBuddy",
+  "appProviderToolAntigravity": "Antigravity",
+  "appProviderToolQoder": "Qoder",
   "codebuddyCredentialsLogin": "登录",
   "codebuddyCredentialsLoginTitle": "登录 CodeBuddy",
   "codebuddyCredentialsLoginIntro": "在下方终端完成登录。如果出现登录方式选择，请先选择（如微信 / 企业域名）。CLI 可能会打开浏览器；如果没有打开，请手动访问它输出的链接。也可以在这里切换账号。",
@@ -2647,6 +2653,45 @@
   "codebuddyCredentialsSendLogin": "发送 /login",
   "codebuddyCredentialsSignedIn": "已登录 CodeBuddy。",
   "codebuddyCredentialsActionFailed": "CodeBuddy 登录失败。",
+  "antigravityCredentialsLogin": "登录",
+  "antigravityCredentialsLoginTitle": "登录 Antigravity",
+  "antigravityCredentialsLoginIntro": "在下方终端完成 Google 登录，然后点击“完成”。Antigravity 将账号保存在系统钥匙串中，所有 Antigravity 会话以及所有官方 Antigravity 供应商行都会共享该账号。",
+  "antigravityCredentialsLoginStarting": "正在启动 Antigravity…",
+  "antigravityCredentialsLoginFailed": "无法启动登录终端：{error}",
+  "@antigravityCredentialsLoginFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "antigravityCredentialsLoginExited": "Antigravity 已退出。请关闭此对话框后重新登录。",
+  "antigravityCredentialsLoginVerifyFailed": "Antigravity 未确认登录成功（agy models 执行失败）。请完成登录后再次点击“完成”。",
+  "antigravityCredentialsDone": "完成",
+  "antigravityCredentialsCancel": "取消",
+  "antigravityCredentialsRetry": "重试",
+  "antigravityCredentialsSignedIn": "已登录 Antigravity。",
+  "antigravityCredentialsActionFailed": "Antigravity 登录失败。",
+  "qoderCredentialsLogin": "登录",
+  "qoderCredentialsLoginTitle": "登录 Qoder",
+  "qoderCredentialsLoginIntro": "在下方终端完成登录。CLI 会打开浏览器；如果没有打开，请手动访问它输出的链接。也可以在这里切换账号。",
+  "qoderCredentialsLoginStarting": "正在启动 Qoder CLI…",
+  "qoderCredentialsLoginFailed": "无法启动登录终端：{error}",
+  "@qoderCredentialsLoginFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "qoderCredentialsLoginExited": "Qoder CLI 已退出。请关闭此对话框后重新登录。",
+  "qoderCredentialsDone": "完成",
+  "qoderCredentialsCancel": "取消",
+  "qoderCredentialsRelaunch": "重新启动",
+  "qoderCredentialsSignedIn": "已登录",
+  "qoderContextWindow": "上下文窗口（tokens）",
+  "qoderContextWindowHint": "留空则使用模型默认值。",
+  "qoderCredentialsActionFailed": "Qoder 操作失败",
   "appProviderTeamToolSection": "团队默认服务商",
   "appProviderTeamToolSubtitle": "选择本团队启动时，各工具使用的统一服务商。",
   "appProviderTeamNone": "无",
@@ -3095,6 +3140,26 @@
   "automationsRunStatusDispatching": "分发中",
   "automationsRunStatusDispatched": "已分发",
   "automationsRunStatusSkippedMissed": "已跳过 — 错过窗口",
+  "automationsRunStatusFailed": "失败",
+  "automationsRunStatusTimedOut": "超时",
+  "automationsRunStatusSkippedOverlap": "已跳过（上次仍在运行）",
+  "automationsExitCode": "退出码 {code}",
+  "automationsRunStdout": "标准输出",
+  "automationsRunStderr": "标准错误",
+  "automationsRunError": "错误：{error}",
+  "automationsRunDurationSeconds": "耗时 {seconds} 秒",
+  "automationsRunDurationMilliseconds": "耗时 {milliseconds} 毫秒",
+  "automationsRunOutputTruncated": "输出已截断",
+  "automationsCommand": "命令",
+  "automationsCommandHelp": "仅在 TeamPilot 运行时执行。超过宽限期的错过运行会被跳过，除非开启了补跑。",
+  "automationsCommandTimeout": "超时（秒）",
+  "automationsCommandRequired": "命令不能为空",
+  "automationsCommandTimeoutInvalid": "超时时间必须是整数秒",
+  "automationsCommandTimeoutRange": "超时时间须在 30 到 1800 秒之间",
+  "automationsCommandTooLong": "命令不能超过 2000 个字符",
+  "automationsCommandWorkingDirectory": "工作目录",
+  "automationsCommandWorkingDirectoryMain": "工作区默认目录",
+  "automationsCatchUpOnce": "启动后补跑一次",
   "automationsMaxRunCount": "运行次数上限",
   "automationsMaxRunCountHint": "留空表示无限制",
   "automationsInvalidMaxRunCount": "运行次数上限须为正整数",
@@ -3553,22 +3618,24 @@
   "managedProvidersQuickPresetClaudeCodeHint": "登录或导入，或手填相同字段。",
   "managedProvidersQuickPresetCursor": "Cursor",
   "managedProvidersQuickPresetCursorHint": "登录或导入，或手填相同字段。",
+  "managedProvidersQuickPresetCodebuddy": "CodeBuddy",
+  "managedProvidersQuickPresetCodebuddyHint": "使用 CodeBuddy 登录态查询积分余额。",
   "managedProvidersQuickPresetDeepSeek": "DeepSeek",
   "managedProvidersQuickPresetDeepSeekHint": "已配余额接口，需填密钥。",
   "managedProvidersQuickPresetOpencodeGo": "OpenCode Go",
   "managedProvidersQuickPresetOpencodeGoHint": "Zen Go 订阅用量预设，需填 API 密钥。",
   "managedProvidersQuickPresetCustom": "自定义",
   "managedProvidersQuickPresetCustomHint": "从零配置接口、凭据与显示格式。",
-  "managedProvidersBasicsSectionTitle": "基本信息",
+  "managedProvidersBasicsSectionTitle": "名称与密钥",
   "managedProvidersBasicsSectionSubtitle": "命名与必要密钥。",
   "managedProvidersBasicsSummary": "选择预设、命名，并按需填写密钥。",
-  "managedProvidersQuerySectionTitle": "查询",
+  "managedProvidersQuerySectionTitle": "用量 API 与 JSON 解析",
   "managedProvidersQuerySectionSubtitle": "用量 API 与 JSON 解析。",
-  "managedProvidersCredentialsSectionTitle": "凭据详情",
+  "managedProvidersCredentialsSectionTitle": "凭据来源与请求写入",
   "managedProvidersCredentialsSectionSubtitle": "凭据来源及写入请求的方式。",
-  "managedProvidersDisplaySectionTitle": "显示",
+  "managedProvidersDisplaySectionTitle": "余额与额度显示",
   "managedProvidersDisplaySectionSubtitle": "余额与额度的显示格式。",
-  "managedProvidersAdvancedSectionTitle": "高级",
+  "managedProvidersAdvancedSectionTitle": "适配器、类型与引用",
   "managedProvidersAdvancedSectionSubtitle": "适配器、类型与内部引用。",
   "managedProvidersSectionConfiguredBadge": "已配置",
   "managedProvidersIdentity": "基本信息",
@@ -3603,9 +3670,9 @@
   "managedProvidersWindowsHint": "JSON 数组；每项含 label 与 $ 路径",
   "managedProvidersWindowsHelper": "每条额度写一行。每项写 label 与 used / total / remaining / resetsAt 的 $ 路径。数组项请写死下标，如 $.balance_infos[0].total_balance。",
   "managedProvidersFieldExampleLabel": "示例",
-  "managedProvidersJsonPathSeeAlso": "$ 用法详见「查询」ℹ️",
-  "managedProvidersTemplateVariablesSeeAlsoQuery": "花括号用法详见「查询」ℹ️",
-  "managedProvidersTemplateVariablesSeeAlsoCredentials": "花括号用法详见「凭据详情」ℹ️",
+  "managedProvidersJsonPathSeeAlso": "$ 用法详见「用量 API 与 JSON 解析」ℹ️",
+  "managedProvidersTemplateVariablesSeeAlsoQuery": "花括号用法详见「用量 API 与 JSON 解析」ℹ️",
+  "managedProvidersTemplateVariablesSeeAlsoCredentials": "花括号用法详见「凭据来源与请求写入」ℹ️",
   "managedProvidersReferenceSyntaxHelper": "$ — 从 HTTP 响应的 JSON 里读数\n$ 表示整段响应，$.字段名 用点号一层层往下取。\n例：$.data、$.balance_infos[0].total_balance、$.rate_limit.used_percent\n\n用于「响应根路径」和额度窗口里的 used / total / remaining / resetsAt 等字段。\n\n花括号 — 往请求里填动态值（不是读响应）\n花括号内写变量名，发送时替换为凭据里的值。\n• accessToken — 访问令牌\n• accountId — 账号 ID\n• jwt.sub — JWT 的 sub\n\n用于请求头、Cookie、凭据模板。cli:… 登录后才有这些值。",
   "managedProvidersCredentials": "凭据",
   "managedProvidersCredentialRef": "凭据引用",
@@ -4047,15 +4114,8 @@
       }
     }
   },
-  "personalAcpSwitchLabel": "新建个人和混合会话使用 ACP",
-  "personalAcpSwitchCaption": "原生团队和远程成员仍用终端",
-  "claudePersonalAcpDefaultLabel": "个人会话使用 ACP 聊天",
-  "claudePersonalAcpDefaultDescription": "新建个人和混合团队 Claude 会话走无终端 ACP（claude-agent-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。",
-  "cursorPersonalAcpDefaultLabel": "个人会话使用 ACP 聊天",
-  "cursorPersonalAcpDefaultDescription": "新建个人和混合团队 Cursor 会话走无终端 ACP（cursor-agent acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。",
-  "opencodePersonalAcpDefaultLabel": "个人会话使用 ACP 聊天",
-  "opencodePersonalAcpDefaultDescription": "新建个人和混合团队 OpenCode 会话走无终端 ACP（opencode acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。",
-  "claudePersonalAcpAndroidDisabled": "在远程 SSH exec 就绪前，ACP 聊天仅限桌面。",
+  "cliTransportDefaultChat": "新会话默认使用对话（ACP）",
+  "cliTransportDefaultTerminal": "新会话默认使用终端（PTY）",
   "acpLaunchFailedAdapter": "无法启动 Claude ACP 适配器（claude-agent-acp）。请安装后重试。",
   "acpChatNotLoggedIn": "代理尚未登录。请到设置 → 服务商完成登录后重试。",
   "acpChatSessionOpenFailed": "无法打开 {cliName} 会话。",
@@ -4066,9 +4126,6 @@
       }
     }
   },
-  "codexPersonalAcpDefaultLabel": "个人会话使用 ACP 聊天",
-  "codexPersonalAcpDefaultDescription": "新建个人和混合团队 Codex 会话走无终端 ACP（codex-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。",
-  "codexPersonalAcpAndroidDisabled": "在远程 SSH exec 就绪前，ACP 聊天仅限桌面。",
   "codexAcpLaunchFailedAdapter": "无法启动 Codex ACP 适配器（codex-acp）。请安装后重试。",
   "codexAcpChatNotLoggedIn": "Codex 尚未登录。请到设置 → 服务商完成 ChatGPT 登录，或改用 API Key。",
   "acpPermissionAskLabel": "询问",
@@ -4078,7 +4135,6 @@
   "acpModelSectionLaunch": "启动配置",
   "sessionUsageNav": "Token 用量",
   "sessionUsageTitle": "Token 用量",
-  "sessionUsageSubtitle": "按 TeamPilot 会话归属统计，本地与 SSH 主页面共用。",
   "sessionUsageScopeHint": "本地 + SSH · 按 TeamPilot 会话归属",
   "sessionUsageProgressTitle": "用量同步",
   "sessionUsageSync": "同步",
@@ -4108,6 +4164,7 @@
     }
   },
   "sessionUsageNeverSynced": "尚未同步",
+  "sessionUsageSyncedJustNow": "刚刚同步",
   "sessionUsageLastSync": "上次同步 {time}",
   "@sessionUsageLastSync": {
     "placeholders": {
@@ -4117,9 +4174,21 @@
     }
   },
   "sessionUsageRangeToday": "今天",
+  "sessionUsageRangeLast24Hours": "近 24 小时",
   "sessionUsageRangeSevenDays": "近 7 天",
+  "sessionUsageRangeFourteenDays": "近 14 天",
   "sessionUsageRangeThirtyDays": "近 30 天",
   "sessionUsageRangeAll": "全部",
+  "sessionUsageStartTime": "开始时间",
+  "sessionUsageEndTime": "结束时间",
+  "sessionUsageLiveEnd": "结束时间跟随当前时刻",
+  "sessionUsageRangeHint": "支持日期与时间，最长 30 天",
+  "sessionUsageRangeInvalidOrder": "开始时间不能晚于结束时间",
+  "sessionUsageRangeTooLong": "时间范围不能超过 30 天",
+  "sessionUsageColumnSettings": "显示的列",
+  "sessionUsageColumnReset": "恢复默认",
+  "sessionUsageSortDescending": "降序",
+  "sessionUsageSortAscending": "升序",
   "sessionUsageCliAll": "全部",
   "sessionUsageGroupBy": "分组",
   "sessionUsageGroupSession": "会话",
@@ -4212,6 +4281,22 @@
   "sessionUsageLoadFailed": "无法加载用量数据。",
   "sessionUsageRetry": "重试",
   "sessionUsageDismiss": "关闭",
+  "sessionUsageHeatmapTitle": "用量热力图",
+  "sessionUsageHeatmapSubtitle": "近 53 周 · 悬停或长按查看当天明细",
+  "sessionUsageHeatmapMetricTokens": "Token",
+  "sessionUsageHeatmapMetricHitRate": "命中率",
+  "sessionUsageHeatmapShowEarlier": "显示更早",
+  "sessionUsageHeatmapShowLess": "收起更早",
+  "sessionUsageHeatmapLess": "少",
+  "sessionUsageHeatmapMore": "多",
+  "sessionUsageHeatmapSpanSummary": "{tokens} Token · {requests} 请求 · {cost}",
+  "@sessionUsageHeatmapSpanSummary": {
+    "placeholders": {
+      "tokens": { "type": "String" },
+      "requests": { "type": "String" },
+      "cost": { "type": "String" }
+    }
+  },
   "sessionUsageNoData": "暂无数据",
   "sessionUsageToday": "今天",
   "sessionUsageUnknownModel": "未知模型",
@@ -4303,6 +4388,28 @@
   "sessionUsagePricingEmpty": "没有自定义规则，当前使用内置价格。",
   "sessionUsagePricingDelete": "删除",
   "sessionUsageStorage": "存储",
+  "sessionUsageSettings": "用量设置",
+  "sessionUsageDataSource": "数据来源",
+  "sessionUsageAutoScan": "自动扫描会话日志",
+  "sessionUsageAutoScanHint": "打开本页时立即扫描，之后每 {minutes} 分钟在后台扫描。",
+  "@sessionUsageAutoScanHint": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageScanInterval": "扫描间隔",
+  "sessionUsageIntervalMinutes": "每 {minutes} 分钟",
+  "@sessionUsageIntervalMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageSyncNow": "立即同步",
+  "sessionUsageMaintenanceEntry": "存储与 Cursor 维护",
   "sessionUsageMaintenanceTitle": "用量存储",
   "sessionUsageMaintenanceLines": "{lines} 行 · {events} 条事件",
   "@sessionUsageMaintenanceLines": {

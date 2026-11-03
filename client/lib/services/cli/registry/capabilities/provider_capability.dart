@@ -263,6 +263,22 @@ String resolveDefaultProviderModel(
   return candidates.isNotEmpty ? candidates.first : '';
 }
 
+/// One bucket of [ProviderCapability.modelCandidates] for hierarchical pickers
+/// (e.g. OpenCode: `opencode-go` / `opencode`).
+///
+/// The menu level is labeled with [namespace] itself: it is the exact prefix
+/// written into `model: "<namespace>/<model>"`, so nothing is renamed between
+/// what the picker shows and what the launch writes.
+@immutable
+class ProviderModelGroup {
+  const ProviderModelGroup({required this.namespace, required this.models});
+
+  /// Upstream provider namespace these models are requested from.
+  final String namespace;
+
+  final List<String> models;
+}
+
 /// One composable source of built-in candidate model ids for a provider.
 ///
 /// The provider record itself (`defaultModel` + `config['models']`) is always
@@ -284,6 +300,20 @@ abstract base class CatalogModelCapability implements ProviderCapability {
 
   @override
   String? get launchSettingsFileEnvKey => null;
+
+  /// No config fixups by default; a CLI with a bespoke schema overrides this.
+  @override
+  Map<String, Object?> normalizeConfig({
+    required String providerId,
+    required Map<String, Object?> config,
+  }) => config;
+
+  /// Flat one-level picker by default; see [ProviderCapability.modelGroups].
+  @override
+  List<ProviderModelGroup> modelGroups({
+    required AppProviderConfig provider,
+    required String currentModel,
+  }) => const [];
 
   /// Built-in catalogs merged before the provider record. Order is irrelevant
   /// (results are deduped and sorted).
@@ -602,6 +632,13 @@ abstract interface class ProviderCapability implements CliCapability {
   String defaultApiKeyField();
   String normalizeApiKeyField(String? raw);
   Map<String, Object?> configForCliSwitch();
+
+  /// 持久化前的 per-CLI 配置修补（如把 provider id 写进模型条目）。
+  /// 默认原样返回，见 [CatalogModelCapability.normalizeConfig]。
+  Map<String, Object?> normalizeConfig({
+    required String providerId,
+    required Map<String, Object?> config,
+  });
   Map<String, Object?> extraFromExisting(AppProviderConfig? existing);
   Map<String, Object?> extraFromPreset(AppProviderPreset preset);
   Map<String, Object?> buildConfig(ProviderFormInput input);
@@ -622,6 +659,17 @@ abstract interface class ProviderCapability implements CliCapability {
     required String providerId,
   });
   bool get supportsModelTiers;
+
+  /// Optional labeled buckets of [modelCandidates] for multi-level pickers.
+  ///
+  /// Empty (the default) keeps the flat one-level list every other CLI uses.
+  /// CLIs whose one catalog row spans several upstream namespaces (e.g. a paid
+  /// subscription plus a free tier) return one group per namespace so the pick
+  /// itself carries the namespace — nothing has to be re-derived at launch.
+  List<ProviderModelGroup> modelGroups({
+    required AppProviderConfig provider,
+    required String currentModel,
+  }) => const [];
 
   /// Live catalog change notifications; no-op for non-refreshable CLIs.
   Listenable get catalogUpdates => _emptyCatalogUpdates;
@@ -688,6 +736,55 @@ abstract interface class ProviderCapability implements CliCapability {
 /// refresh affordances; non-refreshable CLIs return no-op members.
 abstract interface class RefreshableProviderModelCapability
     implements ProviderCapability {}
+
+/// Optional friendly label for a model id. The id stays the persisted value;
+/// only the picker text changes (`qfmodel` → `Qwen3.8-Flash`).
+abstract interface class ModelDisplayNameCapability {
+  String? modelDisplayName({
+    required String providerId,
+    required String modelId,
+  });
+}
+
+/// Optional capability summary shown when hovering a model row.
+abstract interface class ModelDescriptionCapability {
+  String? modelDescription({
+    required String providerId,
+    required String modelId,
+  });
+}
+
+/// Picker label for [modelId], falling back to the raw id.
+String providerModelLabel(
+  ProviderCapability? capability, {
+  required String providerId,
+  required String modelId,
+}) {
+  final display = capability is ModelDisplayNameCapability
+      ? (capability as ModelDisplayNameCapability).modelDisplayName(
+          providerId: providerId,
+          modelId: modelId,
+        )
+      : null;
+  final trimmed = display?.trim() ?? '';
+  return trimmed.isEmpty ? modelId : trimmed;
+}
+
+/// Hover text for [modelId], or null when the CLI has no description.
+String? providerModelDescription(
+  ProviderCapability? capability, {
+  required String providerId,
+  required String modelId,
+}) {
+  final text = capability is ModelDescriptionCapability
+      ? (capability as ModelDescriptionCapability).modelDescription(
+          providerId: providerId,
+          modelId: modelId,
+        )
+      : null;
+  final trimmed = text?.trim() ?? '';
+  return trimmed.isEmpty ? null : trimmed;
+}
 
 final _emptyCatalogUpdates = _EmptyListenable();
 

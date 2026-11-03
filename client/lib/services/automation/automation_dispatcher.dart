@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:uuid/uuid.dart';
 
+import '../chat/launch/session/launch_acp_policy.dart';
+import '../chat/launch/session/seat_prompt_delivery.dart';
 import '../chat/session/session_create_request.dart';
 import '../chat/session/session_open_request.dart';
 import '../chat/session/session_open_status.dart';
@@ -20,6 +22,7 @@ import '../../utils/logging/logger.dart';
 import 'automation_bus_gateway.dart';
 import 'automation_dispatch_result.dart';
 import 'automation_launch_session_binding.dart';
+import 'automation_run_accounting.dart';
 import 'automation_schedule_calculator.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 
@@ -29,6 +32,8 @@ typedef AutomationSessionLookup =
     AppSession? Function(String sessionId, String workspaceId);
 
 int _automationDefaultNowMs() => DateTime.now().millisecondsSinceEpoch;
+
+bool _defaultAcpDefaultFor(CliTool cli) => true;
 
 class AutomationDispatcher {
   AutomationDispatcher({
@@ -44,6 +49,7 @@ class AutomationDispatcher {
     required AutomationTeamResolver teamById,
     CliPreset? Function(String id)? resolveCliPreset,
     AutomationSessionLookup? sessionById,
+    bool Function(CliTool cli)? acpDefaultFor,
     int Function()? nowMs,
     Duration memberReadyTimeout = const Duration(seconds: 60),
     Future<T> Function<T>(String sessionId, Future<T> Function() action)?
@@ -58,6 +64,7 @@ class AutomationDispatcher {
        _teamById = teamById,
        _resolveCliPreset = resolveCliPreset,
        _sessionById = sessionById,
+       _acpDefaultFor = acpDefaultFor ?? _defaultAcpDefaultFor,
        _nowMs = nowMs ?? _automationDefaultNowMs,
        _memberReadyTimeout = memberReadyTimeout,
        _runDeliveryInFlight = runDeliveryInFlight;
@@ -77,6 +84,7 @@ class AutomationDispatcher {
   final AutomationTeamResolver _teamById;
   final CliPreset? Function(String id)? _resolveCliPreset;
   final AutomationSessionLookup? _sessionById;
+  final bool Function(CliTool cli) _acpDefaultFor;
   final int Function() _nowMs;
   final Duration _memberReadyTimeout;
   final Future<T> Function<T>(String sessionId, Future<T> Function() action)?
@@ -93,6 +101,11 @@ class AutomationDispatcher {
     AutomationRunTrigger trigger = AutomationRunTrigger.scheduled,
   }) async {
     automation.validate();
+    if (automation.isRunCommand) {
+      throw ArgumentError(
+        'runCommand automations are executed by AutomationCommandExecutor',
+      );
+    }
     final workspaceId = automation.workspaceId;
     final startedAtMs = _nowMs();
     final pending = _pendingRun(
@@ -179,15 +192,33 @@ class AutomationDispatcher {
         final updated = _advanceAutomationAfterRun(
           automation,
           lastRunAtMs: startedAtMs,
+          dispatchedSessionId: session.sessionId,
         );
         return (failed, updated);
       }
 
-      await _busGateway.deliverUserCommandToMember(
-        session.sessionId,
+      final outcome = await _busGateway.deliverUserCommandToMember(
+        session,
         memberId,
         automation.message,
       );
+      if (!outcome.delivered) {
+        final failed = _finishRun(
+          pending,
+          AutomationRunStatus.dispatchFailed,
+          startedAtMs: startedAtMs,
+          sessionId: session.sessionId,
+          error: outcome.reason,
+        );
+        // The session was created/opened successfully; keep reusing it even
+        // though this delivery did not land.
+        final updated = _advanceAutomationAfterRun(
+          automation,
+          lastRunAtMs: startedAtMs,
+          dispatchedSessionId: session.sessionId,
+        );
+        return (failed, updated);
+      }
       await _repository.upsertRun(
         automation.workspaceId,
         _finishRun(
@@ -258,6 +289,10 @@ class AutomationDispatcher {
         expertKey: expertKey,
         officialProviderId: CliToolRegistry.builtIn().defaultOfficialProviderId,
       );
+      final acp = resolveLaunchAcp(
+        cli: simpleIdentity.cli,
+        requested: _acpDefaultFor(simpleIdentity.cli),
+      );
       status = await _requestCreateAndOpenSession(
         SessionCreateRequest(
           workspace: workspace,
@@ -268,6 +303,8 @@ class AutomationDispatcher {
           expertKey: expertKey,
           workingDirectory: workingDirectory,
           fixedSessionId: plannedSessionId,
+          acp: acp,
+          acpPermission: LaunchSecurityPolicy.fullAccess,
         ),
       );
     } else {
@@ -285,6 +322,11 @@ class AutomationDispatcher {
           repo: _sessionRepository,
           workingDirectory: workingDirectory,
           fixedSessionId: plannedSessionId,
+          seedClaudeMemberAcp: _acpDefaultFor(CliTool.claude),
+          seedCodexMemberAcp: _acpDefaultFor(CliTool.codex),
+          seedCursorMemberAcp: _acpDefaultFor(CliTool.cursor),
+          seedOpencodeMemberAcp: _acpDefaultFor(CliTool.opencode),
+          acpPermission: LaunchSecurityPolicy.fullAccess,
         ),
       );
     }
@@ -329,6 +371,11 @@ class AutomationDispatcher {
       ),
     );
     if (status != SessionOpenStatus.opened) return false;
+
+    // ACP seats have no PTY composer: the gateway's activation + bounded
+    // readiness wait owns readiness. Gating here would wait for a runtime that
+    // only that activation can create (notably a deferred mixed non-lead seat).
+    if (seatUsesAcp(session, memberId)) return true;
 
     try {
       await _busGateway
@@ -408,28 +455,19 @@ class AutomationDispatcher {
     );
   }
 
+  late final AutomationRunAccounting _accounting = AutomationRunAccounting(
+    _scheduleCalculator,
+  );
+
   Automation _advanceAutomationAfterRun(
     Automation automation, {
     required int lastRunAtMs,
     String? dispatchedSessionId,
   }) {
-    final nextRunCount = automation.runCount + 1;
-    final max = automation.effectiveMaxRunCount;
-    final limitReached = max != null && nextRunCount >= max;
-    final stillEnabled = automation.enabled && !limitReached;
-    final nextRunAtMs = stillEnabled
-        ? _scheduleCalculator.computeNextRunAtMs(
-            automation,
-            afterMs: lastRunAtMs,
-          )
-        : null;
-    var updated = automation.copyWith(
+    var updated = _accounting.advance(
+      automation: automation,
       lastRunAtMs: lastRunAtMs,
-      runCount: nextRunCount,
-      enabled: stillEnabled,
-      nextRunAtMs: nextRunAtMs,
-      clearNextRunAtMs: nextRunAtMs == null,
-      updatedAtMs: _nowMs(),
+      nowMs: _nowMs(),
     );
     if (dispatchedSessionId != null && dispatchedSessionId.trim().isNotEmpty) {
       updated = AutomationLaunchSessionBinding.applyAfterSuccessfulDispatch(
