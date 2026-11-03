@@ -411,7 +411,7 @@ class SessionChatComposeSection extends StatelessWidget {
                           : const <ComposeCascadeCliGroup>[];
                       final launchSpecs = session.isSimple
                           ? buildComposeModelCascadeMenuSpecs(
-                              presets: sameCliPresets,
+                              presets: presetsByRecentUse(sameCliPresets),
                               selectedPresetId: selectedPresetId,
                               emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
                               emptyProvidersLabel:
@@ -928,6 +928,7 @@ class SessionChatComposeSection extends StatelessWidget {
         return;
       }
       if (context.mounted) {
+        unawaited(context.read<CliPresetsCubit>().markPresetUsed(presetId));
         await _offerRestartAfterIdentitySwitch(
           context,
           session: live,

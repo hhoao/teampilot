@@ -240,6 +240,23 @@ List<CliPreset> presetsForCli(List<CliPreset> allPresets, CliTool catalogCli) {
   return allPresets.where((p) => p.cli == catalogCli).toList(growable: false);
 }
 
+/// Compose-cascade presets submenu order: most recently used first.
+///
+/// Never-used presets (`lastUsedAt == 0`) keep their relative input order and
+/// sort after any used preset. Equal timestamps keep input order (stable).
+List<CliPreset> presetsByRecentUse(List<CliPreset> presets) {
+  if (presets.length < 2) return List<CliPreset>.from(presets);
+  final indexed = [
+    for (var i = 0; i < presets.length; i++) (index: i, preset: presets[i]),
+  ];
+  indexed.sort((a, b) {
+    final byUsed = b.preset.lastUsedAt.compareTo(a.preset.lastUsedAt);
+    if (byUsed != 0) return byUsed;
+    return a.index.compareTo(b.index);
+  });
+  return [for (final entry in indexed) entry.preset];
+}
+
 /// Presets for a team-level picker.
 ///
 /// [TeamMode.mixed]: all global presets (each carries its own CLI).

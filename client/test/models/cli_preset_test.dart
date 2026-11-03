@@ -15,6 +15,7 @@ void main() {
         effort: 'high',
         createdAt: now,
         updatedAt: now,
+        lastUsedAt: now + 1,
       );
 
       final json = preset.toJson();
@@ -28,6 +29,7 @@ void main() {
       expect(restored.effort, 'high');
       expect(restored.createdAt, now);
       expect(restored.updatedAt, now);
+      expect(restored.lastUsedAt, now + 1);
     });
 
     test('fromJson with missing optional fields uses defaults', () {
@@ -41,6 +43,20 @@ void main() {
       expect(preset.effort, '');
       expect(preset.createdAt, 0);
       expect(preset.updatedAt, 0);
+      expect(preset.lastUsedAt, 0);
+    });
+
+    test('toJson omits lastUsedAt when zero', () {
+      final preset = CliPreset(
+        id: '1',
+        name: 'A',
+        cli: CliTool.claude,
+        provider: 'p',
+        model: 'm',
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      expect(preset.toJson().containsKey('lastUsedAt'), isFalse);
     });
 
     test('copyWith updates individual fields', () {
@@ -54,9 +70,14 @@ void main() {
         createdAt: 1000,
         updatedAt: 1000,
       );
-      final updated = preset.copyWith(name: 'Updated', effort: 'high');
+      final updated = preset.copyWith(
+        name: 'Updated',
+        effort: 'high',
+        lastUsedAt: 2000,
+      );
       expect(updated.name, 'Updated');
       expect(updated.effort, 'high');
+      expect(updated.lastUsedAt, 2000);
       expect(updated.id, '1'); // unchanged
       expect(updated.cli, CliTool.claude); // unchanged
     });
@@ -71,6 +92,7 @@ void main() {
         effort: '',
         createdAt: 1,
         updatedAt: 1,
+        lastUsedAt: 5,
       );
       final b = CliPreset(
         id: '1',
@@ -81,6 +103,7 @@ void main() {
         effort: '',
         createdAt: 1,
         updatedAt: 1,
+        lastUsedAt: 5,
       );
       expect(a, b);
       expect(a.hashCode, b.hashCode);

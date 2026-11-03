@@ -5,11 +5,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/app_provider_cubit.dart';
+import '../../cubits/cli_presets_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../pages/home_workspace/workspace/config/cli_preset_edit_dialog.dart';
 import '../../pages/home_workspace/workspace/config/cli_presets_manage_dialog.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -98,6 +100,13 @@ class _LaunchFourTuplePickerState extends State<LaunchFourTuplePicker> {
       presets: availablePresets,
     );
     if (tuple != null) {
+      if (value is String && value.isNotEmpty) {
+        try {
+          unawaited(context.read<CliPresetsCubit>().markPresetUsed(value));
+        } on ProviderNotFoundException {
+          // Picker can be mounted in tests / surfaces without presets cubit.
+        }
+      }
       widget.onChanged(tuple);
       return;
     }
@@ -162,9 +171,11 @@ class _LaunchFourTuplePickerState extends State<LaunchFourTuplePicker> {
     final l10n = context.l10n;
     final registry = _registry!;
     final allowedClis = widget.cliItems.toSet();
-    final availablePresets = widget.presets
-        .where((preset) => allowedClis.contains(preset.cli))
-        .toList(growable: false);
+    final availablePresets = presetsByRecentUse(
+      widget.presets
+          .where((preset) => allowedClis.contains(preset.cli))
+          .toList(growable: false),
+    );
     final providerState = context.watch<AppProviderCubit>().state;
     final groups = resolveComposeCascadeCliGroups(
       registry: registry,

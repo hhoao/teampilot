@@ -13,6 +13,7 @@ class CliPreset {
     this.effort = '',
     required this.createdAt,
     required this.updatedAt,
+    this.lastUsedAt = 0,
   });
 
   factory CliPreset.fromJson(Map<String, Object?> json) {
@@ -25,6 +26,7 @@ class CliPreset {
       effort: json['effort'] as String? ?? '',
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
       updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
+      lastUsedAt: (json['lastUsedAt'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -37,6 +39,10 @@ class CliPreset {
   final int createdAt;
   final int updatedAt;
 
+  /// Epoch ms of the last time this preset was selected in a compose cascade
+  /// menu. `0` means never selected (or loaded from a pre-field file).
+  final int lastUsedAt;
+
   CliPreset copyWith({
     String? id,
     String? name,
@@ -46,6 +52,7 @@ class CliPreset {
     String? effort,
     int? createdAt,
     int? updatedAt,
+    int? lastUsedAt,
   }) {
     return CliPreset(
       id: id ?? this.id,
@@ -56,6 +63,7 @@ class CliPreset {
       effort: effort ?? this.effort,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      lastUsedAt: lastUsedAt ?? this.lastUsedAt,
     );
   }
 
@@ -69,6 +77,7 @@ class CliPreset {
       if (effort.isNotEmpty) 'effort': effort,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
+      if (lastUsedAt != 0) 'lastUsedAt': lastUsedAt,
     };
   }
 
@@ -84,10 +93,20 @@ class CliPreset {
             model == other.model &&
             effort == other.effort &&
             createdAt == other.createdAt &&
-            updatedAt == other.updatedAt;
+            updatedAt == other.updatedAt &&
+            lastUsedAt == other.lastUsedAt;
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, cli, provider, model, effort, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    cli,
+    provider,
+    model,
+    effort,
+    createdAt,
+    updatedAt,
+    lastUsedAt,
+  );
 }

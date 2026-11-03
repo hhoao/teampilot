@@ -1204,6 +1204,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     setState(
       () => _applyDraft(landingDraftSelectingPreset(_currentDraft(), presetId)),
     );
+    unawaited(context.read<CliPresetsCubit>().markPresetUsed(presetId));
     _persistDraft();
     _scheduleTeamLaunchReadinessCheck();
   }
@@ -1566,7 +1567,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         cliItems: cliItems,
       );
       return buildComposeModelCascadeMenuSpecs(
-        presets: presets,
+        presets: presetsByRecentUse(presets),
         selectedPresetId: _selectedPresetId,
         emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
         emptyProvidersLabel: l10n.composeCascadeNoProviders,
