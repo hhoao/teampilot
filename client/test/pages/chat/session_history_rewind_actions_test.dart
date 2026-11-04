@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -30,6 +33,59 @@ void main() {
     await tester.tap(find.byTooltip('Previous version'));
     await tester.pump();
     expect(cubit.switchedTo, ['c-first']);
+  });
+
+  testWidgets('a second tap while the switch is in flight is ignored', (
+    tester,
+  ) async {
+    final cubit = _GatedBranchCubit();
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+    await _pumpThread(tester, cubit);
+
+    // Both taps land in one frame, before the disabled bar rebuilds.
+    await tester.tap(find.byTooltip('Previous version'));
+    await tester.tap(find.byTooltip('Previous version'));
+    await tester.pump();
+    expect(cubit.switchedTo, hasLength(1));
+
+    cubit.gate.complete();
+    await tester.pump();
+  });
+
+  testWidgets('a failed switch shows the failure toast', (tester) async {
+    final cubit = _FailingBranchCubit();
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+    await _pumpThread(tester, cubit);
+
+    await tester.tap(find.byTooltip('Previous version'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('Failed to switch version'), findsOneWidget);
+
+    TpToast.dismiss();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+  });
+
+  testWidgets('a checkpoint landing without a new live list shows versions', (
+    tester,
+  ) async {
+    final cubit = _GenerationBranchCubit();
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+    await _pumpThread(tester, cubit);
+    expect(find.text('2 / 2'), findsNothing);
+
+    cubit.landed = true;
+    cubit.debugPublishRewindHistory();
+    await pumpUntilSettled(tester);
+
+    expect(find.text('2 / 2'), findsOneWidget);
   });
 }
 
@@ -87,7 +143,7 @@ Future<void> _pumpThread(WidgetTester tester, ChatCubit cubit) async {
   await pumpUntilSettled(tester);
 }
 
-final class _BranchCubit extends ChatCubit {
+class _BranchCubit extends ChatCubit {
   _BranchCubit()
     : super(
         executableResolver: () => 'true',
@@ -125,5 +181,44 @@ final class _BranchCubit extends ChatCubit {
     required String commit,
   }) async {
     switchedTo.add(commit);
+  }
+}
+
+final class _GatedBranchCubit extends _BranchCubit {
+  final gate = Completer<void>();
+
+  @override
+  Future<void> switchSeatVersion({
+    required String sessionId,
+    required String memberId,
+    required String commit,
+  }) async {
+    switchedTo.add(commit);
+    await gate.future;
+  }
+}
+
+final class _FailingBranchCubit extends _BranchCubit {
+  @override
+  Future<void> switchSeatVersion({
+    required String sessionId,
+    required String memberId,
+    required String commit,
+  }) async {
+    switchedTo.add(commit);
+    throw StateError('switch failed');
+  }
+}
+
+final class _GenerationBranchCubit extends _BranchCubit {
+  var landed = false;
+
+  @override
+  Future<SeatBranches> loadSeatBranches({
+    required AppSession session,
+    required String memberId,
+  }) async {
+    if (!landed) return const SeatBranches.empty();
+    return super.loadSeatBranches(session: session, memberId: memberId);
   }
 }
