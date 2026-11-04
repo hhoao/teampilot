@@ -356,6 +356,29 @@ exec "$realGit" "\$@"
     expect(await store.checkedOut(), versionTwo.commit);
   });
 
+  test('restoring the root clears the seat but keeps excluded paths', () async {
+    final tmp = tmpDir.path;
+    final store = SeatRewindStore(
+      gitDir: '$tmp/repo.git',
+      workTree: '$tmp/work',
+      target: const SeatRewindTarget(
+        kind: SeatRewindKind.personalAcp,
+        tool: 'claude',
+      ),
+    );
+    final root = await store.root();
+    await store.commitTurn(messageId: 'a1', userMessageId: 'u1');
+    expect(File('$tmp/work/acp-transcript.jsonl').existsSync(), isTrue);
+
+    await store.restore(root);
+
+    expect(File('$tmp/work/acp-transcript.jsonl').existsSync(), isFalse);
+    expect(File('$tmp/work/acp-session.json').existsSync(), isFalse);
+    expect(File('$tmp/work/claude/projects/a.jsonl').existsSync(), isFalse);
+    expect(Directory('$tmp/work/claude/plugins').existsSync(), isTrue);
+    expect(await store.checkedOut(), root);
+  });
+
   test('a reopened store parses the turn anchor from the commit body', () async {
     final tmp = tmpDir.path;
     final writer = SeatRewindStore(

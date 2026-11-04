@@ -372,6 +372,11 @@ final class SeatRewindStore {
 
   Future<void> _writeSeatFromCommit(String commit) async {
     final treePaths = await _treePaths(commit);
+    if (treePaths.isEmpty && target.seatKey == 'personal') {
+      // The root checkpoint: the seat had no files before its first turn.
+      await _deleteIncludedFilesNotIn(const {});
+      return;
+    }
     if (treePaths.any(target.includes) || target.seatKey != 'personal') {
       await _runGit([
         ..._repoArgs,
