@@ -25,8 +25,11 @@ void main() {
   });
 
   tearDown(() async {
-    if (tmpDir.existsSync()) {
+    if (!tmpDir.existsSync()) return;
+    try {
       await tmpDir.delete(recursive: true);
+    } on FileSystemException {
+      // A test may leave an unreadable directory behind.
     }
   });
 
@@ -67,6 +70,39 @@ void main() {
       );
     },
   );
+
+  test('an unreadable seat directory is skipped, not fatal', () async {
+    final tmp = tmpDir.path;
+    final locked = Directory('$tmp/work/claude/locked');
+    await locked.create();
+    await File('${locked.path}/x.jsonl').writeAsString('x');
+    final chmod = await Process.run('chmod', ['000', locked.path]);
+    if (chmod.exitCode != 0) return;
+    addTearDown(() => Process.run('chmod', ['755', locked.path]));
+    bool readable;
+    try {
+      locked.listSync();
+      readable = true;
+    } on FileSystemException {
+      readable = false;
+    }
+    // Root ignores the mode; there is nothing to assert on such a host.
+    if (readable) return;
+
+    final store = SeatRewindStore(
+      gitDir: '$tmp/repo.git',
+      workTree: '$tmp/work',
+      target: const SeatRewindTarget(
+        kind: SeatRewindKind.personalAcp,
+        tool: 'claude',
+      ),
+    );
+    final checkpoint = await store.commitTurn(messageId: 'm1');
+    final names = await _lsTree(store, checkpoint.commit);
+
+    expect(names, contains('claude/projects/a.jsonl'));
+    expect(names, isNot(contains('claude/locked/x.jsonl')));
+  });
 
   test('commitTurn drops a seat file deleted from the work tree', () async {
     final tmp = tmpDir.path;

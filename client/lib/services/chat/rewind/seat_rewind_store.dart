@@ -87,15 +87,7 @@ final class SeatRewindStore {
     }
     await ensureRepo();
     await _dropStaleSeatIndexEntries();
-    await for (final entity in Directory(
-      workTree,
-    ).list(recursive: true, followLinks: false)) {
-      final type = FileSystemEntity.typeSync(entity.path, followLinks: false);
-      if (type != FileSystemEntityType.file) continue;
-      final relative = _repoRelative(entity.path);
-      if (!target.includes(relative) || target.isExcluded(relative)) {
-        continue;
-      }
+    for (final relative in _includedRuntimeFiles()) {
       await _runGit([..._repoArgs, 'add', '--', relative]);
     }
     final tree = (await _runGit([..._repoArgs, 'write-tree'])).trim();
@@ -351,12 +343,6 @@ final class SeatRewindStore {
     }
   }
 
-  String _repoRelative(String absolutePath) {
-    return p
-        .relative(p.normalize(absolutePath), from: p.normalize(workTree))
-        .replaceAll('\\', '/');
-  }
-
   RewindCheckpoint _parseCheckpoint(String commit, String body) {
     String messageId = '';
     String? nativeSessionId;
@@ -536,18 +522,64 @@ final class SeatRewindStore {
   }
 
   Future<void> _deleteIncludedFilesNotIn(Set<String> keep) async {
-    await for (final entity in Directory(
-      workTree,
-    ).list(recursive: true, followLinks: false)) {
-      final type = FileSystemEntity.typeSync(entity.path, followLinks: false);
-      if (type != FileSystemEntityType.file) continue;
-      final relative = _repoRelative(entity.path);
-      if (!target.includes(relative) || target.isExcluded(relative)) {
-        continue;
-      }
+    for (final relative in _includedRuntimeFiles()) {
       if (keep.contains(relative)) continue;
-      await File(entity.path).delete();
+      await File(p.join(workTree, relative)).delete();
     }
+  }
+
+  /// Regular files of this seat under [workTree], walked from the included
+  /// prefixes only.
+  ///
+  /// Excluded names and symlinks are skipped without descending, so a shared
+  /// plugin or cache tree never enters the walk. A directory that disappears
+  /// or cannot be listed mid-walk (a marketplace refresh pruning a plugin
+  /// tree) is skipped instead of failing the whole checkpoint.
+  List<String> _includedRuntimeFiles() {
+    final found = <String>[];
+    final root = Directory(workTree);
+    if (!root.existsSync()) return found;
+
+    void visit(Directory dir, String relative) {
+      List<FileSystemEntity> entries;
+      try {
+        entries = dir.listSync(followLinks: false);
+      } on FileSystemException catch (error) {
+        AppLogger.instance.w(
+          '[rewind] skipped unreadable runtime directory ${dir.path}: $error',
+        );
+        return;
+      }
+      for (final entry in entries) {
+        final name = p.basename(entry.path);
+        final child = relative.isEmpty ? name : '$relative/$name';
+        final type = FileSystemEntity.typeSync(entry.path, followLinks: false);
+        if (type == FileSystemEntityType.directory) {
+          if (target.isExcluded(child) || !_mayIncludeUnder(child)) continue;
+          visit(Directory(entry.path), child);
+          continue;
+        }
+        if (type != FileSystemEntityType.file) continue;
+        if (!target.includes(child) || target.isExcluded(child)) continue;
+        found.add(child);
+      }
+    }
+
+    visit(root, '');
+    return found;
+  }
+
+  /// Whether [directory] can hold files this seat includes, either because it
+  /// sits under an included prefix or because it is an ancestor of one.
+  bool _mayIncludeUnder(String directory) {
+    for (final prefix in target.includedPrefixes) {
+      if (prefix == directory ||
+          directory.startsWith('$prefix/') ||
+          prefix.startsWith('$directory/')) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Future<({String stdout, int exitCode})> _runGitResult(
