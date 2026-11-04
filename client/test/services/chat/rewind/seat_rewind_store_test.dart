@@ -355,6 +355,51 @@ exec "$realGit" "\$@"
     expect(await store.branchTip(versionOne.commit), versionOne.commit);
     expect(await store.checkedOut(), versionTwo.commit);
   });
+
+  test('a reopened store parses the turn anchor from the commit body', () async {
+    final tmp = tmpDir.path;
+    final writer = SeatRewindStore(
+      gitDir: '$tmp/repo.git',
+      workTree: '$tmp/work',
+      target: const SeatRewindTarget(
+        kind: SeatRewindKind.personalAcp,
+        tool: 'claude',
+      ),
+    );
+    await writer.commitTurn(messageId: 'a1', userMessageId: 'u1');
+
+    // A fresh store instance has no in-memory record; only the commit body.
+    final reader = SeatRewindStore(
+      gitDir: '$tmp/repo.git',
+      workTree: '$tmp/work',
+      target: const SeatRewindTarget(
+        kind: SeatRewindKind.personalAcp,
+        tool: 'claude',
+      ),
+    );
+    final parsed = (await reader.checkpoints()).single;
+
+    expect(parsed.userMessageId, 'u1');
+    expect(parsed.messageId, 'a1');
+    expect(parsed.turnAt, greaterThan(0));
+  });
+
+  test('a commit without Turn-User parses as a legacy turn', () async {
+    final tmp = tmpDir.path;
+    final store = SeatRewindStore(
+      gitDir: '$tmp/repo.git',
+      workTree: '$tmp/work',
+      target: const SeatRewindTarget(
+        kind: SeatRewindKind.personalAcp,
+        tool: 'claude',
+      ),
+    );
+    final checkpoint = await store.commitTurn(messageId: 'a1');
+    final parsed = (await store.checkpoints()).single;
+
+    expect(parsed.userMessageId, isEmpty);
+    expect(parsed.turnAt, checkpoint.turnAt);
+  });
 }
 
 Future<List<String>> _lsTree(SeatRewindStore store, String commit) async {
