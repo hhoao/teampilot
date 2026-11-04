@@ -53,6 +53,7 @@ class AcpLaunchPlan {
     required this.agentExecutable,
     this.authenticateMethodId,
     this.forwardSessionNewMcpServers = true,
+    this.supportsInPlaceSessionLoad = true,
     this.sessionNewMeta,
     this.startupTimeout = const Duration(seconds: 30),
   });
@@ -80,6 +81,11 @@ class AcpLaunchPlan {
   /// When false, [AcpSessionRuntime.start] opens `session/new` with an empty
   /// MCP list even if the caller passed servers (isolated `mcp.json` remains).
   final bool forwardSessionNewMcpServers;
+
+  /// Whether an already-open session tolerates an in-place `session/load`
+  /// (history reconciliation). Qoder retires the active session instead; its
+  /// capability declares `false` and the runtime skips replays entirely.
+  final bool supportsInPlaceSessionLoad;
 
   /// Extra `session/new` `_meta` derived from the process env (mixed Claude
   /// `disallowedTools` / `allowedTools`). Null or empty is omitted on the wire.
@@ -269,6 +275,10 @@ class AcpSessionRuntime
   AcpAgentConnection? _connection;
   AcpAgentSession? _session;
 
+  /// The resolved launch plan, cached at [start] for per-CLI quirks such as
+  /// the in-place `session/load` guard in [loadHistory]. Null before start.
+  AcpLaunchPlan? _plan;
+
   /// Chip change while [start] is still in `session/new` (or hydrating
   /// before [start] is entered). Applied after [openSession] in preference
   /// to the [start] argument. Not cleared at the start of [start].
@@ -315,6 +325,7 @@ class AcpSessionRuntime
     if (plan == null) {
       throw ArgumentError.value(tool, 'tool', 'has no ACP capability');
     }
+    _plan = plan;
     final env = plan.buildEnvironment(
       sessionToolDir: sessionToolDir,
       workingDirectory: workingDirectory,
@@ -479,10 +490,22 @@ class AcpSessionRuntime
   Future<void> prompt(String text) => _session!.prompt(text);
 
   /// Replays the open session's history without emitting it on [updates].
+  ///
+  /// Skipped entirely when the CLI's launch plan declares
+  /// [AcpLaunchPlan.supportsInPlaceSessionLoad] `false`: such an agent
+  /// (qoder) retires the active session on a duplicate `session/load`,
+  /// killing every later prompt with "Session not found".
   @override
   Future<List<AcpSessionUpdate>> loadHistory() async {
     final session = _session;
     if (session == null) return const [];
+    if (!(_plan?.supportsInPlaceSessionLoad ?? true)) {
+      AppLogger.instance.d(
+        '[acp] skip in-place history replay: CLI does not support '
+        'session/load on an open session',
+      );
+      return const [];
+    }
     return session.loadHistory();
   }
 
@@ -578,6 +601,7 @@ class AcpSessionRuntime
   /// Safe to call before [start] and idempotent afterwards.
   @override
   Future<void> close() async {
+    _plan = null;
     _session?.dispose();
     _session = null;
     final connection = _connection;

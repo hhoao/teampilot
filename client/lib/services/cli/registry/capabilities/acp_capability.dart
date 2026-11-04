@@ -49,6 +49,16 @@ abstract interface class AcpCapability implements CliCapability {
   /// servers are also forwarded on `session/new`.
   bool get forwardSessionNewMcpServers => true;
 
+  /// Whether an *already open* session tolerates an in-place `session/load`
+  /// (the history-reconciliation replay on the live connection).
+  ///
+  /// Qoder 1.1.81 retires the active session when it receives `session/load`
+  /// for it ("session already open (state=active)" → session retired), so
+  /// every later `session/prompt` fails with "Session not found". CLIs with
+  /// that behavior must declare `false`; the runtime then skips protocol
+  /// history replays entirely.
+  bool get supportsInPlaceSessionLoad => true;
+
   /// Extra spawn env needed once the agent-status plugin is staged for this
   /// seat. Empty for every CLI that needs nothing; callers gate on "agent
   /// status staged", never on the CLI identity.

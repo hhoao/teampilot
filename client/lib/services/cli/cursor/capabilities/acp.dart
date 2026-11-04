@@ -70,6 +70,9 @@ final class CursorAcpCapability
   bool get forwardSessionNewMcpServers => false;
 
   @override
+  bool get supportsInPlaceSessionLoad => true;
+
+  @override
   Map<String, String> get agentStatusEnvironment => const {};
 
   @override

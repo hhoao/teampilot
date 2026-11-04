@@ -58,6 +58,9 @@ final class OpencodeAcpCapability implements AcpCapability {
   bool get forwardSessionNewMcpServers => false;
 
   @override
+  bool get supportsInPlaceSessionLoad => true;
+
+  @override
   Map<String, String> get agentStatusEnvironment => const {
     opencodeEnableQuestionToolEnvKey: 'true',
   };

@@ -34,6 +34,11 @@ void main() {
     expect(cap.sessionNewMeta(const {}), isEmpty);
   });
 
+  test('declares no in-place session/load support', () {
+    const cap = QoderAcpCapability();
+    expect(cap.supportsInPlaceSessionLoad, isFalse);
+  });
+
   test('auth-required refusal maps to the sign-in sentinel', () {
     const translator = QoderAcpTranslator();
     expect(

@@ -98,6 +98,13 @@ final class QoderAcpCapability implements AcpCapability {
   @override
   bool get forwardSessionNewMcpServers => false;
 
+  /// Qoder retires an active session when it receives `session/load` for it
+  /// (own log: "session already open" → "session channel closed, retiring"),
+  /// so the next `session/prompt` fails with "Session not found". The runtime
+  /// must skip in-place history replays for qoder sessions.
+  @override
+  bool get supportsInPlaceSessionLoad => false;
+
   @override
   Map<String, String> get agentStatusEnvironment => const {};
 

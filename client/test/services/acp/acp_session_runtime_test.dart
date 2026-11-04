@@ -1029,6 +1029,66 @@ void main() {
     expect(resumeCalls, 0);
     await runtime.close();
   });
+
+  test('loadHistory replays via in-place session/load by default', () async {
+    await stubInitialize(
+      agentCapabilities: const acpd.AgentCapabilities(loadSession: true),
+    );
+    var loadCalls = 0;
+    agent.connection.onRequest('session/load', (params) {
+      loadCalls++;
+      return acpd.LoadSessionResponse().toJson();
+    });
+
+    final runtime = makeRuntime((argv, env) async => conn);
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'gemini',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+    );
+
+    await runtime.loadHistory();
+    expect(loadCalls, 1);
+    await runtime.close();
+  });
+
+  test('loadHistory skips session/load when the plan declares no in-place '
+      'support', () async {
+    // Qoder retires the active session on a duplicate session/load, which
+    // kills every later prompt with "Session not found" — the replay must
+    // never reach the wire.
+    await stubInitialize(
+      agentCapabilities: const acpd.AgentCapabilities(loadSession: true),
+    );
+    var loadCalls = 0;
+    agent.connection.onRequest('session/load', (params) {
+      loadCalls++;
+      return acpd.LoadSessionResponse().toJson();
+    });
+    const capability = GeminiAcpCapability();
+    final plan = AcpLaunchPlan(
+      launchArgCandidates: capability.launchArgCandidates,
+      buildEnvironment: capability.buildEnvironment,
+      agentExecutable: capability.agentExecutable,
+      supportsInPlaceSessionLoad: false,
+    );
+
+    final runtime = makeRuntime(
+      (argv, env) async => conn,
+      launchPlanFor: (_) => plan,
+    );
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'gemini',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+    );
+
+    expect(await runtime.loadHistory(), isEmpty);
+    expect(loadCalls, 0);
+    await runtime.close();
+  });
 }
 
 /// Bridges an acpd_test in-memory transport into our byte-pipe [AcpTransport].
