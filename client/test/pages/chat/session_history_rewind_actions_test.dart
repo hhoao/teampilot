@@ -81,6 +81,9 @@ void main() {
       expect(find.byTooltip('Next version'), findsOneWidget);
       expect(find.byTooltip('Fork from here'), findsOneWidget);
 
+      // Two taps in one frame: the bar is still enabled when the second one
+      // lands, so the host itself has to stay single-flight.
+      await tester.tap(find.byTooltip('Next version'));
       await tester.tap(find.byTooltip('Next version'));
       await tester.pump();
       expect(cubit.rewindStarts, 1);

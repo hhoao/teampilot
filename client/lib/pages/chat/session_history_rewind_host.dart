@@ -125,6 +125,8 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   }
 
   Future<void> _onRewindTo(String commit) async {
+    // A second tap can land before the disabled bar rebuilds.
+    if (_busy) return;
     setState(() => _busy = true);
     try {
       await _cubit!.rewindSeatTo(
@@ -152,6 +154,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   }
 
   Future<void> _onForkFrom(String commit) async {
+    if (_busy) return;
     setState(() => _busy = true);
     try {
       final created = await _cubit!.forkSeatFrom(
