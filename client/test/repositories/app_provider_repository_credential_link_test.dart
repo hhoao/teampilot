@@ -43,6 +43,23 @@ void main() {
     expect(raw.contains('"credentialLink": "m1"'), isTrue);
   });
 
+  test('the static default lookup reaches repositories created elsewhere', () async {
+    AppProviderRepository.defaultLinkedCredentialLookup = (id) async =>
+        id == 'm1' ? 'sk-static' : null;
+    addTearDown(
+      () => AppProviderRepository.defaultLinkedCredentialLookup = null,
+    );
+    final r = AppProviderRepository(
+      storage: fakeHomeStorage(filesystem: fs),
+      fs: fs,
+      basePath: '/tp',
+    );
+    await r.saveProviders(CliTool.claude, [_linkedRow()]);
+    final loaded = await r.loadProviders(CliTool.claude);
+    expect(loaded.single.apiKey, 'sk-static');
+    expect(loaded.single.credentialStatus, 'ready');
+  });
+
   test('missing managed secret yields empty key and missing status', () async {
     linkedSecret = null; // entry or secret absent
     final r = repo();

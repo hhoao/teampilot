@@ -1244,6 +1244,12 @@ Future<AppShell> buildAppShell({
     return (value == null || value.isEmpty) ? null : value;
   }
 
+  // CLI launch resolvers create their own AppProviderRepository instances
+  // (OpenCode, Claude, cross-machine bridges); give them the vault-aware
+  // lookup so `vault:` links resolve outside the provider cubit too.
+  AppProviderRepository.defaultLinkedCredentialLookup =
+      appProviderLinkedCredentialLookup;
+
   // Constructed before the managed-provider control plane so
   // ManagedProviderCubit can ensure dedicated per-entry CLI provider rows;
   // only needs sessionPreferencesCubit and openCredentialLoginUrl.

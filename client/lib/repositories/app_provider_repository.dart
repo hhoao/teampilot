@@ -23,6 +23,11 @@ typedef LinkedCredentialLookup =
     Future<String?> Function(String managedProviderId);
 
 class AppProviderRepository {
+  /// Process-wide lookup used by repositories created outside the app shell
+  /// (CLI launch resolvers, cross-machine bridges). The app sets this to the
+  /// vault-aware resolver at boot.
+  static LinkedCredentialLookup? defaultLinkedCredentialLookup;
+
   AppProviderRepository({
     String? basePath,
     ToolConfigGenerator? generator,
@@ -39,7 +44,8 @@ class AppProviderRepository {
        _claudeCredentialsServiceOverride = claudeCredentialsService,
        _cursorCredentialsServiceOverride = cursorCredentialsService,
        _codexCredentialsServiceOverride = codexCredentialsService,
-       _linkedCredentialLookup = linkedCredentialLookup;
+       _linkedCredentialLookup =
+           linkedCredentialLookup ?? defaultLinkedCredentialLookup;
 
   final String? _basePathOverride;
   final Filesystem? _fsOverride;
