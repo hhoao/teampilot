@@ -264,6 +264,16 @@ class ChatCubit extends Cubit<ChatState>
   })?
   debugCommitPtyTurn;
 
+  /// Test stand-in for the send step of [editSeatTurn] so cubit tests do not
+  /// have to drive a real terminal.
+  @visibleForTesting
+  Future<HistoryContinueSubmitResult> Function({
+    required String sessionId,
+    required String memberId,
+    required String message,
+  })?
+  debugDeliverEditedMessage;
+
   final _operatorMailboxQueued =
       StreamController<OperatorMailboxQueuedEvent>.broadcast();
   Stream<OperatorMailboxQueuedEvent> get operatorMailboxQueued =>
@@ -3184,6 +3194,96 @@ class ChatCubit extends Cubit<ChatState>
       }
     }
   }
+
+  /// Restore the turn before [userMessageId] and resend [text].
+  ///
+  /// The new turn checkpoints as a sibling of the edited one, so the previous
+  /// version stays on the other branch.
+  Future<void> editSeatTurn({
+    required String sessionId,
+    required String memberId,
+    required String userMessageId,
+    required String text,
+  }) async {
+    final session = _sessionForRewind(sessionId);
+    if (session == null) return;
+    final store = _seatRewindStore(session, memberId);
+    if (store == null) return;
+    RewindCheckpoint? target;
+    for (final turn in await store.checkpoints()) {
+      if (turn.userMessageId == userMessageId) {
+        target = turn;
+        break;
+      }
+    }
+    if (target == null) {
+      throw StateError('No checkpoint for the edited user message');
+    }
+    final before = await store.checkedOut();
+    emit(
+      state.copyWith(rewindForkInProgress: true, clearRewindForkError: true),
+    );
+    try {
+      await _rewindFork.rewind(
+        store: store,
+        seat: _CubitSeatProcess(this, session, memberId),
+        commit: target.parentCommit.isEmpty
+            ? await store.root()
+            : target.parentCommit,
+      );
+      final deliver = debugDeliverEditedMessage ?? _deliverEditedMessage;
+      final result = await deliver(
+        sessionId: sessionId,
+        memberId: memberId,
+        message: text,
+      );
+      if (!result.ok) {
+        throw StateError('The edited message was not delivered');
+      }
+      onSessionHistoryStale?.call(sessionId);
+      _publishRewindHistory();
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        '[rewind] editSeatTurn failed session=$sessionId: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (before != null) {
+        try {
+          await _rewindFork.rewind(
+            store: store,
+            seat: _CubitSeatProcess(this, session, memberId),
+            commit: before,
+          );
+        } on Object catch (rollbackError, rollbackStack) {
+          appLogger.e(
+            '[rewind] edit rollback failed session=$sessionId: '
+            '$rollbackError',
+            error: rollbackError,
+            stackTrace: rollbackStack,
+          );
+        }
+      }
+      if (!isClosed) {
+        emit(state.copyWith(rewindForkError: 'branchEditFailed'));
+      }
+      rethrow;
+    } finally {
+      if (!isClosed) {
+        emit(state.copyWith(rewindForkInProgress: false));
+      }
+    }
+  }
+
+  Future<HistoryContinueSubmitResult> _deliverEditedMessage({
+    required String sessionId,
+    required String memberId,
+    required String message,
+  }) => submitSessionOperatorMessage(
+    sessionId: sessionId,
+    memberId: memberId,
+    message: message,
+  );
 
   /// Copy [commit] into a new personal session. Does not stop the source.
   Future<AppSession?> forkSeatFrom({
