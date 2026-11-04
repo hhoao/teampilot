@@ -44,11 +44,10 @@ void main() {
   });
 
   test('the static default lookup reaches repositories created elsewhere', () async {
-    AppProviderRepository.defaultLinkedCredentialLookup = (id) async =>
-        id == 'm1' ? 'sk-static' : null;
-    addTearDown(
-      () => AppProviderRepository.defaultLinkedCredentialLookup = null,
+    AppProviderRepository.installDefaultLinkedCredentialLookup(
+      (id) async => id == 'm1' ? 'sk-static' : null,
     );
+    addTearDown(AppProviderRepository.resetDefaultLinkedCredentialLookup);
     final r = AppProviderRepository(
       storage: fakeHomeStorage(filesystem: fs),
       fs: fs,

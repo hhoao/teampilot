@@ -1,5 +1,9 @@
 import 'dart:convert';
 
+import 'package:meta/meta.dart';
+
+import '../utils/logging/logger.dart';
+
 import '../models/app_provider_config.dart';
 import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
 import '../services/cli/codex/provider/codex_provider_credentials_service.dart';
@@ -24,9 +28,29 @@ typedef LinkedCredentialLookup =
 
 class AppProviderRepository {
   /// Process-wide lookup used by repositories created outside the app shell
-  /// (CLI launch resolvers, cross-machine bridges). The app sets this to the
-  /// vault-aware resolver at boot.
-  static LinkedCredentialLookup? defaultLinkedCredentialLookup;
+  /// (CLI launch resolvers, cross-machine bridges).
+  ///
+  /// Installed once by the composition root (`AppShell`) before any launch
+  /// path can read providers. Prefer the explicit constructor argument when a
+  /// caller has the lookup in hand; this default exists because several
+  /// launch-time helpers construct repositories deep in CLI capability code.
+  static LinkedCredentialLookup? get defaultLinkedCredentialLookup =>
+      _defaultLinkedCredentialLookup;
+  static LinkedCredentialLookup? _defaultLinkedCredentialLookup;
+
+  static bool get hasDefaultLinkedCredentialLookup =>
+      _defaultLinkedCredentialLookup != null;
+
+  static void installDefaultLinkedCredentialLookup(
+    LinkedCredentialLookup lookup,
+  ) {
+    _defaultLinkedCredentialLookup = lookup;
+  }
+
+  @visibleForTesting
+  static void resetDefaultLinkedCredentialLookup() {
+    _defaultLinkedCredentialLookup = null;
+  }
 
   AppProviderRepository({
     String? basePath,
@@ -55,6 +79,8 @@ class AppProviderRepository {
   final CursorProviderCredentialsService? _cursorCredentialsServiceOverride;
   final CodexProviderCredentialsService? _codexCredentialsServiceOverride;
   final LinkedCredentialLookup? _linkedCredentialLookup;
+
+  static bool _warnedMissingResolver = false;
 
   final Map<String, List<AppProviderConfig>> _diskCache = {};
 
@@ -268,7 +294,17 @@ class AppProviderRepository {
     List<AppProviderConfig> providers,
   ) async {
     final lookup = _linkedCredentialLookup;
-    if (lookup == null) return providers;
+    if (lookup == null) {
+      if (!_warnedMissingResolver &&
+          providers.any((p) => p.credentialLink.trim().isNotEmpty)) {
+        _warnedMissingResolver = true;
+        AppLogger.instance.w(
+          '[provider-credentials] no vault resolver installed; linked provider '
+          'keys cannot be resolved',
+        );
+      }
+      return providers;
+    }
     var changed = false;
     final resolved = <AppProviderConfig>[];
     for (final provider in providers) {
