@@ -12,6 +12,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/failed_message_record.dart';
 import '../../services/chat/rewind/seat_branches.dart';
 import '../../utils/logging/logger.dart';
+import 'session_history_rewind_host.dart';
 import 'chat_outline.dart';
 import 'chat_reveal_controller.dart';
 import 'history_scroll_cursor_lock.dart';
@@ -78,6 +79,8 @@ class SessionHistoryThread extends StatefulWidget {
     this.onForkFrom,
     this.onEditUserMessage,
     this.holdTranscript = false,
+    this.optimisticEdit,
+    this.onOptimisticLanded,
     this.turnInFlight = false,
     super.key,
   });
@@ -136,6 +139,12 @@ class SessionHistoryThread extends StatefulWidget {
   /// The restore replays the parent branch into the seat; rendering that
   /// intermediate state and then the new turn makes the thread flash twice.
   final bool holdTranscript;
+
+  /// Host-owned optimistic edit; survives a rebuild of this thread.
+  final PendingBranchEdit? optimisticEdit;
+
+  /// Call when the runtime publishes the resent prompt.
+  final VoidCallback? onOptimisticLanded;
 
   /// When true, the controls stay visible but disabled.
   final bool turnInFlight;
@@ -210,18 +219,16 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   /// User message currently open in the inline editor, if any.
   String? _editingMessageId;
 
-  /// Message being re-sent, shown with its new text until the turn lands.
-  String? _pendingEditId;
-  String? _pendingEditText;
+  /// Local copy set at submit time; the host owns the durable copy.
+  PendingBranchEdit? _localPendingEdit;
+
+  PendingBranchEdit? get _pendingEdit =>
+      _localPendingEdit ?? widget.optimisticEdit;
 
   /// Local hold: set the instant an edit is submitted, before the host's
   /// `holdTranscript` flag reaches us on the next frame. Without it the first
   /// runtime publish of the restore lands on top of the optimistic edit.
   var _holdForEdit = false;
-
-  /// Bounds how long the optimistic branch can outlive the resend when the
-  /// runtime never publishes the new prompt.
-  Timer? _pendingEditTimeout;
 
   /// Draft kept while an edit is in flight/failed so the editor can be
   /// reseeded instead of losing the author's text.
@@ -254,6 +261,10 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   void initState() {
     super.initState();
     _messages = widget.runtime.messages;
+    appLogger.d(
+      '[branch-edit] thread mount messages=${_messages.length} '
+      'pending=${widget.optimisticEdit?.messageId}',
+    );
     _scrollController = ScrollController()..addListener(_onScrollTick);
     _runtimeSub = widget.runtime.changes.listen((_) => _onRuntimeChanged());
     _boundReveal = widget.revealRequest;
@@ -308,9 +319,13 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       _showNewMessagesChip = false;
       _paginationArmed = true;
       _mountTurns = false;
+      appLogger.d(
+        '[branch-edit] runtime swapped pending=${_pendingEdit?.messageId} '
+        'messages=${widget.runtime.messages.length}',
+      );
       _editingMessageId = null;
       _editDraft = null;
-      if (_pendingEditId == null) {
+      if (_pendingEdit == null) {
         _messages = widget.runtime.messages;
       }
       // The restore swaps the seat runtime mid-edit; keep the optimistic
@@ -355,7 +370,6 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   @override
   void dispose() {
-    _pendingEditTimeout?.cancel();
     _writeScrollAnchor();
     _stickGeneration++;
     _hoverResumeTimer?.cancel();
@@ -434,7 +448,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     final next = widget.runtime.messages;
     // The restore replays the parent prefix before the new turn exists. Keep
     // the optimistic branch on screen until the list carries the new prompt.
-    if (_pendingEditId != null && !_listHasPendingEdit(next)) return;
+    final pending = _pendingEdit;
+    if (pending != null && !_listHasPendingEdit(next)) {
+      appLogger.d('[branch-edit] hold replayed prefix messages=${next.length}');
+      return;
+    }
+    if (pending != null) widget.onOptimisticLanded?.call();
     final wasPrepend = _isPrepend(_messages, next);
     final tipGrew = _tipGrew(_messages, next, wasPrepend: wasPrepend);
     // Sending a message appends a fresh user turn at the tip. Re-stick even if
@@ -443,18 +462,15 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     if (_newUserTip(_messages, next)) {
       _setStickToEnd(true);
     }
-    if (_pendingEditId != null) {
+    if (pending != null) {
       appLogger.d(
         '[branch-edit] adopt branch messages=${next.length} '
-        'message=$_pendingEditId',
+        'message=${pending.messageId}',
       );
     }
     setState(() {
       _messages = next;
-      _pendingEditTimeout?.cancel();
-      _pendingEditTimeout = null;
-      _pendingEditId = null;
-      _pendingEditText = null;
+      _localPendingEdit = null;
       if (!_stickToEnd && tipGrew) {
         _showNewMessagesChip = true;
       }
@@ -472,7 +488,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   /// The restored prefix ends with the parent's prompt, so matching the last
   /// user text is what tells the new branch apart from the replayed one.
   bool _listHasPendingEdit(List<AiMessage> next) {
-    final expected = _pendingEditText?.trim() ?? '';
+    final expected = _pendingEdit?.text.trim() ?? '';
     if (expected.isEmpty) return true;
     for (final message in next.reversed) {
       if (message.role != AiRole.user) continue;
@@ -953,17 +969,17 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   }
 
   List<AiMessage> get _displayMessages {
-    final pendingId = _pendingEditId;
-    if (pendingId != null) {
-      final index = _messages.indexWhere((message) => message.id == pendingId);
+    final pending = _pendingEdit;
+    if (pending != null) {
+      final index = _messages.indexWhere(
+        (message) => message.id == pending.messageId,
+      );
       final edited = index >= 0
-          ? _messages[index].copyWith(
-              parts: [AiTextPart(text: _pendingEditText ?? '')],
-            )
+          ? _messages[index].copyWith(parts: [AiTextPart(text: pending.text)])
           : AiMessage(
-              id: pendingId,
+              id: pending.messageId,
               role: AiRole.user,
-              parts: [AiTextPart(text: _pendingEditText ?? '')],
+              parts: [AiTextPart(text: pending.text)],
             );
       // The edited bubble shows its new text immediately and everything the
       // old branch had below it becomes the running row, so the thread does
@@ -1203,8 +1219,10 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                               );
                               setState(() {
                                 _editDraft = text;
-                                _pendingEditId = ai.id;
-                                _pendingEditText = text;
+                                _localPendingEdit = PendingBranchEdit(
+                                  messageId: ai.id,
+                                  text: text,
+                                );
                                 _editingMessageId = null;
                                 _holdForEdit = true;
                               });
@@ -1214,30 +1232,16 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                         text,
                                       ) ??
                                       Future.value(true));
+                              appLogger.d('[branch-edit] resolved=$accepted');
                               if (!mounted) return accepted;
                               setState(() {
                                 _holdForEdit = false;
+                                _localPendingEdit = null;
                                 if (accepted) {
-                                  // The overlay stays until the new branch
-                                  // lands; the runtime change clears it.
+                                  // The host keeps the optimistic edit until
+                                  // the new prompt lands.
                                   _editDraft = null;
-                                  _pendingEditTimeout?.cancel();
-                                  _pendingEditTimeout = Timer(
-                                    const Duration(seconds: 15),
-                                    () {
-                                      if (!mounted || _pendingEditId == null) {
-                                        return;
-                                      }
-                                      setState(() {
-                                        _pendingEditId = null;
-                                        _pendingEditText = null;
-                                      });
-                                      _onRuntimeChanged();
-                                    },
-                                  );
                                 } else {
-                                  _pendingEditId = null;
-                                  _pendingEditText = null;
                                   // Reopen the editor with the draft.
                                   _editingMessageId = ai.id;
                                 }

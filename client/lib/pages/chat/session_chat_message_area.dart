@@ -356,6 +356,10 @@ class SessionChatMessageArea extends StatelessWidget {
                                                   rewind.onEditUserMessage,
                                               holdTranscript:
                                                   rewind.holdTranscript,
+                                              optimisticEdit:
+                                                  rewind.optimisticEdit,
+                                              onOptimisticLanded:
+                                                  rewind.onOptimisticLanded,
                                               turnInFlight:
                                                   turnInFlight || rewind.busy,
                                             );

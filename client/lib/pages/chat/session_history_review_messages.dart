@@ -8,6 +8,7 @@ import '../../models/failed_message_record.dart';
 import '../../services/chat/rewind/seat_branches.dart';
 import 'chat_reveal_controller.dart';
 import 'session_history_live_chrome.dart';
+import 'session_history_rewind_host.dart';
 import 'session_history_thread.dart';
 
 /// Finder key for the soft-reload non-blocking error strip.
@@ -38,6 +39,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     this.onForkFrom,
     this.onEditUserMessage,
     this.holdTranscript = false,
+    this.optimisticEdit,
+    this.onOptimisticLanded,
     this.turnInFlight = false,
     super.key,
   });
@@ -74,6 +77,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   final void Function(String commit)? onForkFrom;
   final Future<bool> Function(String messageId, String text)? onEditUserMessage;
   final bool holdTranscript;
+  final PendingBranchEdit? optimisticEdit;
+  final VoidCallback? onOptimisticLanded;
   final bool turnInFlight;
 
   bool get _showThread {
@@ -115,6 +120,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               onForkFrom: onForkFrom,
               onEditUserMessage: onEditUserMessage,
               holdTranscript: holdTranscript,
+              optimisticEdit: optimisticEdit,
+              onOptimisticLanded: onOptimisticLanded,
               turnInFlight: turnInFlight,
             ),
           ),

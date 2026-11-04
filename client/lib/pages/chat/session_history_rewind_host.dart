@@ -13,6 +13,14 @@ import '../../services/chat/rewind/seat_branches.dart';
 import '../../utils/logging/logger.dart';
 import '../../widgets/app_toast/app_toast.dart';
 
+/// An edited user message shown in place until its new turn lands.
+final class PendingBranchEdit {
+  const PendingBranchEdit({required this.messageId, required this.text});
+
+  final String messageId;
+  final String text;
+}
+
 final class SessionHistoryRewindBinding {
   const SessionHistoryRewindBinding({
     required this.branches,
@@ -21,6 +29,8 @@ final class SessionHistoryRewindBinding {
     this.onEditUserMessage,
     this.busy = false,
     this.holdTranscript = false,
+    this.optimisticEdit,
+    this.onOptimisticLanded,
   });
 
   final SeatBranches branches;
@@ -31,6 +41,12 @@ final class SessionHistoryRewindBinding {
 
   /// Keeps the old transcript on screen while an edit restores and resends.
   final bool holdTranscript;
+
+  /// Host-owned so a thread rebuild cannot drop the optimistic bubble.
+  final PendingBranchEdit? optimisticEdit;
+
+  /// Called when the runtime finally publishes the resent prompt.
+  final VoidCallback? onOptimisticLanded;
 }
 
 /// Loads a seat's checkpoints and wires rewind/fork around a history thread.
@@ -63,6 +79,8 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   var _started = false;
   var _busy = false;
   var _editing = false;
+  PendingBranchEdit? _optimisticEdit;
+  Timer? _optimisticTimeout;
   var _reloadSerial = 0;
   var _seenGeneration = 0;
   ChatCubit? _cubit;
@@ -92,6 +110,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
 
   @override
   void dispose() {
+    _optimisticTimeout?.cancel();
     unawaited(_generationSub?.cancel());
     super.dispose();
   }
@@ -202,11 +221,24 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
 
   /// Returns true when the edited turn was accepted; false keeps the editor
   /// open with the draft so the author can retry.
+  void _clearOptimisticEdit() {
+    _optimisticTimeout?.cancel();
+    _optimisticTimeout = null;
+    if (mounted) setState(() => _optimisticEdit = null);
+  }
+
+  void _onOptimisticLanded() {
+    appLogger.d('[branch-edit] new prompt landed');
+    _clearOptimisticEdit();
+  }
+
   Future<bool> _onEditUserMessage(String messageId, String text) async {
+    appLogger.d('[branch-edit] host begin busy=$_busy message=$messageId');
     if (_busy) return false;
     setState(() {
       _busy = true;
       _editing = true;
+      _optimisticEdit = PendingBranchEdit(messageId: messageId, text: text);
     });
     try {
       await _cubit!.editSeatTurn(
@@ -215,6 +247,12 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         userMessageId: messageId,
         text: text,
       );
+      appLogger.d('[branch-edit] host end ok=true');
+      _optimisticTimeout?.cancel();
+      _optimisticTimeout = Timer(const Duration(seconds: 15), () {
+        appLogger.w('[branch-edit] watchdog dropped the optimistic bubble');
+        _clearOptimisticEdit();
+      });
       return true;
     } on Object catch (error, stackTrace) {
       appLogger.e(
@@ -230,6 +268,8 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
           variant: TpToastVariant.error,
         );
       }
+      appLogger.d('[branch-edit] host end ok=false');
+      _clearOptimisticEdit();
       return false;
     } finally {
       if (mounted) {
@@ -238,6 +278,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
           _editing = false;
         });
       }
+      appLogger.d('[branch-edit] host released');
     }
   }
 
@@ -252,6 +293,8 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         onEditUserMessage: _allowed ? _onEditUserMessage : null,
         busy: _busy,
         holdTranscript: _editing,
+        optimisticEdit: _optimisticEdit,
+        onOptimisticLanded: _onOptimisticLanded,
       ),
     );
   }

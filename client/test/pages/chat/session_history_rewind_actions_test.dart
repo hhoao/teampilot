@@ -382,6 +382,39 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
   });
 
+  testWidgets('a host-owned optimistic edit survives a thread remount', (
+    tester,
+  ) async {
+    final runtime = ExternalStoreAiThreadRuntime()..setMessages(const []);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        theme: ThemeData(extensions: [AiMessageTheme.test()]),
+        home: Scaffold(
+          body: SizedBox(
+            width: 600,
+            height: 400,
+            child: SessionHistoryThread(
+              runtime: runtime,
+              hasOlder: false,
+              isLoadingOlder: false,
+              optimisticEdit: const PendingBranchEdit(
+                messageId: 'u1',
+                text: 'edited',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('edited'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+  });
+
   testWidgets('holdTranscript keeps the old branch until it is released', (
     tester,
   ) async {
