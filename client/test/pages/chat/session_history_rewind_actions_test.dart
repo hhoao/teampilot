@@ -234,7 +234,7 @@ void main() {
     addTearDown(() async {
       if (!cubit.isClosed) await cubit.close();
     });
-    await _pumpThread(tester, cubit);
+    final runtime = await _pumpThread(tester, cubit);
 
     await tester.tap(find.byTooltip('Edit message'));
     await tester.pump();
@@ -250,8 +250,60 @@ void main() {
       reason: 'the old reply belongs to the branch being replaced',
     );
 
+    // The restore replays the parent prefix before the new turn exists.
+    runtime.setMessages(const []);
+    await tester.pump();
+    await tester.pump();
+    expect(
+      find.text('edited'),
+      findsOneWidget,
+      reason: 'the replayed prefix must not replace the optimistic bubble',
+    );
+
     cubit.finish();
-    await pumpUntilSettled(tester);
+    // The running row animates forever; bounded pumps instead of settle.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+  });
+
+  testWidgets('the optimistic bubble yields to the new branch', (tester) async {
+    final cubit = _GatedEditCubit();
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+    final runtime = await _pumpThread(tester, cubit);
+
+    await tester.tap(find.byTooltip('Edit message'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'edited');
+    await tester.tap(find.text('Send'));
+    await tester.pump();
+
+    runtime.setMessages(const [
+      AiMessage(
+        id: 'u2',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'edited')],
+      ),
+      AiMessage(
+        id: 'a2',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'fresh answer')],
+      ),
+    ]);
+    await tester.pump();
+    expect(
+      find.text('fresh answer'),
+      findsNothing,
+      reason: 'the host still holds the transcript',
+    );
+
+    cubit.finish();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('fresh answer'), findsOneWidget);
+    expect(find.text('edited'), findsOneWidget);
   });
 
   testWidgets('holdTranscript keeps the old branch until it is released', (
@@ -312,7 +364,7 @@ void main() {
 
 /// Pumps the history host around a personal session with one user message and
 /// one reply. Task 8 adds `onEditUserMessage` to the thread here.
-Future<void> _pumpThread(
+Future<ExternalStoreAiThreadRuntime> _pumpThread(
   WidgetTester tester,
   ChatCubit cubit, {
   List<AiMessage>? messages,
@@ -360,6 +412,7 @@ Future<void> _pumpThread(
                   onSwitchVersion: binding.onSwitchVersion,
                   onForkFrom: binding.onForkFrom,
                   onEditUserMessage: binding.onEditUserMessage,
+                  holdTranscript: binding.holdTranscript,
                   turnInFlight: binding.busy,
                 );
               },
@@ -370,6 +423,7 @@ Future<void> _pumpThread(
     ),
   );
   await pumpUntilSettled(tester);
+  return runtime;
 }
 
 class _BranchCubit extends ChatCubit {
