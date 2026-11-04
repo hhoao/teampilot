@@ -348,15 +348,9 @@ class SessionChatMessageArea extends StatelessWidget {
                                               scrollAnchors: context
                                                   .read<ChatCubit>()
                                                   .sessionScrollAnchors,
-                                              checkpointCommits: rewind
-                                                  .history
-                                                  .checkpointCommits,
-                                              orderedCommits:
-                                                  rewind.history.orderedCommits,
-                                              checkedOutCommit: rewind
-                                                  .history
-                                                  .checkedOutCommit,
-                                              onRewindTo: rewind.onRewindTo,
+                                              branches: rewind.branches,
+                                              onSwitchVersion:
+                                                  rewind.onSwitchVersion,
                                               onForkFrom: rewind.onForkFrom,
                                               turnInFlight:
                                                   turnInFlight || rewind.busy,

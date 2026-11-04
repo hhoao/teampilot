@@ -5,6 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/ai_history_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/failed_message_record.dart';
+import '../../services/chat/rewind/seat_branches.dart';
 import 'chat_reveal_controller.dart';
 import 'session_history_live_chrome.dart';
 import 'session_history_thread.dart';
@@ -32,10 +33,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     this.visibleOwnerId,
     this.scrollAnchorKey,
     this.scrollAnchors,
-    this.checkpointCommits = const {},
-    this.orderedCommits = const [],
-    this.checkedOutCommit,
-    this.onRewindTo,
+    this.branches = const SeatBranches.empty(),
+    this.onSwitchVersion,
     this.onForkFrom,
     this.turnInFlight = false,
     super.key,
@@ -68,10 +67,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   /// `ChatCubit.sessionScrollAnchors`.
   final Map<String, double>? scrollAnchors;
 
-  final Map<String, String> checkpointCommits;
-  final List<String> orderedCommits;
-  final String? checkedOutCommit;
-  final void Function(String commit)? onRewindTo;
+  final SeatBranches branches;
+  final void Function(String commit)? onSwitchVersion;
   final void Function(String commit)? onForkFrom;
   final bool turnInFlight;
 
@@ -109,10 +106,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               visibleOwnerId: visibleOwnerId,
               scrollAnchorKey: scrollAnchorKey,
               scrollAnchors: scrollAnchors,
-              checkpointCommits: checkpointCommits,
-              orderedCommits: orderedCommits,
-              checkedOutCommit: checkedOutCommit,
-              onRewindTo: onRewindTo,
+              branches: branches,
+              onSwitchVersion: onSwitchVersion,
               onForkFrom: onForkFrom,
               turnInFlight: turnInFlight,
             ),

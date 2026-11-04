@@ -2303,9 +2303,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDuplicateFailed => 'Failed to duplicate conversation';
 
   @override
-  String get sessionRewindFailed => 'Failed to rewind conversation';
-
-  @override
   String get sessionForkFailed => 'Failed to fork conversation';
 
   @override
@@ -2315,10 +2312,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get forkFromHere => 'Fork from here';
 
   @override
-  String get rewindPreviousVersion => 'Previous version';
+  String get branchPrevious => 'Previous version';
 
   @override
-  String get rewindNextVersion => 'Next version';
+  String get branchNext => 'Next version';
+
+  @override
+  String get branchSwitchFailed => 'Failed to switch version';
 
   @override
   String get openSessionDirectory => 'Open session folder';

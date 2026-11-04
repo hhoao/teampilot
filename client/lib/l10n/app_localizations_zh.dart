@@ -2195,9 +2195,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionDuplicateFailed => '复制对话失败';
 
   @override
-  String get sessionRewindFailed => '回溯对话失败';
-
-  @override
   String get sessionForkFailed => 'Fork 对话失败';
 
   @override
@@ -2207,10 +2204,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get forkFromHere => '从这里 fork';
 
   @override
-  String get rewindPreviousVersion => '上一版本';
+  String get branchPrevious => '上一版本';
 
   @override
-  String get rewindNextVersion => '下一版本';
+  String get branchNext => '下一版本';
+
+  @override
+  String get branchSwitchFailed => '切换版本失败';
 
   @override
   String get openSessionDirectory => '打开会话目录';

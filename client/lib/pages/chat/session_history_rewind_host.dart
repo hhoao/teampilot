@@ -9,20 +9,20 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/workspace.dart';
 import '../../pages/home_workspace/workspace/workspace_session_actions.dart';
-import '../../services/chat/rewind/seat_rewind_history.dart';
+import '../../services/chat/rewind/seat_branches.dart';
 import '../../utils/logging/logger.dart';
 import '../../widgets/app_toast/app_toast.dart';
 
 final class SessionHistoryRewindBinding {
   const SessionHistoryRewindBinding({
-    required this.history,
-    this.onRewindTo,
+    required this.branches,
+    this.onSwitchVersion,
     this.onForkFrom,
     this.busy = false,
   });
 
-  final SeatRewindHistory history;
-  final void Function(String commit)? onRewindTo;
+  final SeatBranches branches;
+  final void Function(String commit)? onSwitchVersion;
   final void Function(String commit)? onForkFrom;
   final bool busy;
 }
@@ -52,7 +52,7 @@ class SessionHistoryRewindHost extends StatefulWidget {
 }
 
 class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
-  SeatRewindHistory _history = const SeatRewindHistory.empty();
+  SeatBranches _branches = const SeatBranches.empty();
   var _allowed = false;
   var _started = false;
   var _busy = false;
@@ -101,10 +101,10 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
     if (cubit == null || !mounted) return;
     final serial = ++_reloadSerial;
     final allowed = cubit.rewindActionsAllowed(widget.session, widget.memberId);
-    var history = const SeatRewindHistory.empty();
+    var branches = const SeatBranches.empty();
     if (allowed) {
       try {
-        history = await cubit.loadSeatRewindHistory(
+        branches = await cubit.loadSeatBranches(
           session: widget.session,
           memberId: widget.memberId,
         );
@@ -120,23 +120,23 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
     if (!mounted || serial != _reloadSerial) return;
     setState(() {
       _allowed = allowed;
-      _history = history;
+      _branches = branches;
     });
   }
 
-  Future<void> _onRewindTo(String commit) async {
+  Future<void> _onSwitchVersion(String commit) async {
     // A second tap can land before the disabled bar rebuilds.
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      await _cubit!.rewindSeatTo(
+      await _cubit!.switchSeatVersion(
         sessionId: widget.session.sessionId,
         memberId: widget.memberId,
         commit: commit,
       );
     } on Object catch (error, stackTrace) {
       appLogger.e(
-        '[rewind] rewindSeatTo failed session=${widget.session.sessionId}: '
+        '[rewind] switchSeatVersion failed session=${widget.session.sessionId}: '
         '$error',
         error: error,
         stackTrace: stackTrace,
@@ -144,7 +144,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
       if (mounted) {
         AppToast.show(
           context,
-          message: context.l10n.sessionRewindFailed,
+          message: context.l10n.branchSwitchFailed,
           variant: TpToastVariant.error,
         );
       }
@@ -193,8 +193,8 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
     return widget.builder(
       context,
       SessionHistoryRewindBinding(
-        history: _history,
-        onRewindTo: _allowed ? _onRewindTo : null,
+        branches: _branches,
+        onSwitchVersion: _allowed ? _onSwitchVersion : null,
         onForkFrom: _allowed ? _onForkFrom : null,
         busy: _busy,
       ),

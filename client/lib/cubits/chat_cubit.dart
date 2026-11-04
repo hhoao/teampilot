@@ -34,7 +34,6 @@ import '../services/storage/home_storage.dart';
 import '../services/chat/conversation/history/ai_history_loader.dart';
 import '../services/chat/rewind/rewind_fork_service.dart';
 import '../services/chat/rewind/seat_branches.dart';
-import '../services/chat/rewind/seat_rewind_history.dart';
 import '../services/chat/rewind/rewind_work_gate.dart';
 import '../services/chat/rewind/seat_rewind_paths.dart';
 import '../services/chat/rewind/seat_rewind_store.dart';
@@ -3097,44 +3096,6 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
-  /// Restore [commit] into this seat, stop the process, then relaunch.
-  Future<void> rewindSeatTo({
-    required String sessionId,
-    required String memberId,
-    required String commit,
-  }) async {
-    final session = _sessionForRewind(sessionId);
-    if (session == null) return;
-    final store = _seatRewindStore(session, memberId);
-    if (store == null) return;
-    emit(
-      state.copyWith(rewindForkInProgress: true, clearRewindForkError: true),
-    );
-    try {
-      await _rewindFork.rewind(
-        store: store,
-        seat: _CubitSeatProcess(this, session, memberId),
-        commit: commit,
-      );
-      onSessionHistoryStale?.call(sessionId);
-      _publishRewindHistory();
-    } on Object catch (error, stackTrace) {
-      appLogger.e(
-        '[rewind] rewindSeatTo failed session=$sessionId: $error',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      if (!isClosed) {
-        emit(state.copyWith(rewindForkError: 'sessionRewindFailed'));
-      }
-      rethrow;
-    } finally {
-      if (!isClosed) {
-        emit(state.copyWith(rewindForkInProgress: false));
-      }
-    }
-  }
-
   /// Versions of every user message on this seat.
   Future<SeatBranches> loadSeatBranches({
     required AppSession session,
@@ -3285,18 +3246,6 @@ class ChatCubit extends Cubit<ChatState>
       memberId: session.isSimple ? null : memberId,
     );
     return workTarget.kind == RuntimeKind.local;
-  }
-
-  Future<SeatRewindHistory> loadSeatRewindHistory({
-    required AppSession session,
-    required String memberId,
-  }) async {
-    final store = _seatRewindStore(session, memberId);
-    if (store == null) return const SeatRewindHistory.empty();
-    if (!Directory(store.gitDir).existsSync()) {
-      return const SeatRewindHistory.empty();
-    }
-    return readSeatRewindHistory(store: store);
   }
 
   AppSession? _sessionForRewind(String sessionId) {

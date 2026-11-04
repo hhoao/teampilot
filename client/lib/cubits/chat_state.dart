@@ -62,7 +62,7 @@ class ChatState extends Equatable {
   /// True while this cubit is stopping, restoring, or forking a seat.
   final bool rewindForkInProgress;
 
-  /// l10n key for a rewind/fork failure (`sessionRewindFailed` / `sessionForkFailed`).
+  /// l10n key for a rewind/fork failure (`branchSwitchFailed` / `sessionForkFailed`).
   final String? rewindForkError;
 
   /// Bumped when a checkpoint, rewind, or fork for a seat finishes.

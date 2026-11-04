@@ -125,7 +125,7 @@ void main() {
       );
       await started.future;
 
-      final rewind = env.cubit.rewindSeatTo(
+      final rewind = env.cubit.switchSeatVersion(
         sessionId: env.session.sessionId,
         memberId: env.session.sessionId,
         commit: first.commit,
@@ -156,6 +156,7 @@ void main() {
       final seeded = await _seedPersonal(
         session: env.session,
         kind: SeatRewindKind.personalAcp,
+        siblingTurns: true,
       );
       final acp = _GatedAcpCubit(
         runtime: _FakeAcpRuntime(),
@@ -170,7 +171,7 @@ void main() {
       env.tab.acpRuntime = acp;
       env.tab.persistedSession = env.tab.persistedSession!.copyWith(acp: true);
 
-      final rewind = env.cubit.rewindSeatTo(
+      final rewind = env.cubit.switchSeatVersion(
         sessionId: env.session.sessionId,
         memberId: env.session.sessionId,
         commit: seeded.first.commit,
@@ -197,6 +198,7 @@ void main() {
         kind: SeatRewindKind.personalPty,
         firstNative: 'checkpoint-native',
         secondNative: 'later-native',
+        siblingTurns: true,
       );
       env.tab.persistedSession = env.tab.persistedSession!.withNativeSessionId(
         CliTool.claude.value,
@@ -204,7 +206,7 @@ void main() {
       );
       env.cubit.replaceSessionSnapshot(env.tab.persistedSession!);
 
-      await env.cubit.rewindSeatTo(
+      await env.cubit.switchSeatVersion(
         sessionId: env.session.sessionId,
         memberId: env.session.sessionId,
         commit: seeded.first.commit,
@@ -229,11 +231,12 @@ void main() {
       final seeded = await _seedPersonal(
         session: env.session,
         kind: SeatRewindKind.personalPty,
+        siblingTurns: true,
       );
       final shell = _GateStopShell();
       env.tab.resumeSession = shell;
 
-      final rewind = env.cubit.rewindSeatTo(
+      final rewind = env.cubit.switchSeatVersion(
         sessionId: env.session.sessionId,
         memberId: env.session.sessionId,
         commit: seeded.first.commit,
@@ -268,7 +271,7 @@ void main() {
         memberId: worker.id,
       );
 
-      await env.cubit.rewindSeatTo(
+      await env.cubit.switchSeatVersion(
         sessionId: env.session.sessionId,
         memberId: worker.id,
         commit: seeded.first.commit,
@@ -280,12 +283,12 @@ void main() {
     },
   );
 
-  test('rewind failure sets cubit error and busy clears', () async {
+  test('switch failure sets cubit error and busy clears', () async {
     final env = await _openPersonal(cli: CliTool.claude);
     await _seedPersonal(session: env.session, kind: SeatRewindKind.personalPty);
 
     await expectLater(
-      env.cubit.rewindSeatTo(
+      env.cubit.switchSeatVersion(
         sessionId: env.session.sessionId,
         memberId: env.session.sessionId,
         commit: 'not-a-commit',
@@ -293,7 +296,7 @@ void main() {
       throwsA(isA<Object>()),
     );
 
-    expect(env.cubit.state.rewindForkError, 'sessionRewindFailed');
+    expect(env.cubit.state.rewindForkError, 'branchSwitchFailed');
     expect(env.cubit.state.rewindForkInProgress, isFalse);
   });
 
@@ -524,6 +527,7 @@ Future<_Seeded> _seedPersonal({
   required SeatRewindKind kind,
   String firstNative = 'native-1',
   String secondNative = 'native-2',
+  bool siblingTurns = false,
 }) async {
   final layout = testHomeStorage.context.layout;
   final workTree = layout.workspace.sessionRuntimeDir(
@@ -551,6 +555,11 @@ Future<_Seeded> _seedPersonal({
     messageId: 'm1',
     nativeSessionId: firstNative,
   );
+  if (siblingTurns) {
+    // Both turns branch from the same empty seat state, so `first` stays a
+    // branch tip instead of gaining `second` as a descendant.
+    await store.restore(await store.root());
+  }
   await live.writeAsString('two');
   final second = await store.commitTurn(
     messageId: 'm2',

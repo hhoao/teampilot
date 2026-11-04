@@ -10,6 +10,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/failed_message_record.dart';
+import '../../services/chat/rewind/seat_branches.dart';
 import 'chat_outline.dart';
 import 'chat_reveal_controller.dart';
 import 'history_scroll_cursor_lock.dart';
@@ -71,10 +72,8 @@ class SessionHistoryThread extends StatefulWidget {
     this.scrollAnchorKey,
     this.scrollAnchors,
     this.mobilePerformanceMode,
-    this.checkpointCommits = const {},
-    this.orderedCommits = const [],
-    this.checkedOutCommit,
-    this.onRewindTo,
+    this.branches = const SeatBranches.empty(),
+    this.onSwitchVersion,
     this.onForkFrom,
     this.turnInFlight = false,
     super.key,
@@ -116,19 +115,16 @@ class SessionHistoryThread extends StatefulWidget {
   /// Defaults to the Android/iOS platform check.
   final bool? mobilePerformanceMode;
 
-  /// Checkpoint SHA for the message id that closed that turn.
-  final Map<String, String> checkpointCommits;
+  /// Versions of each user message on this seat.
+  final SeatBranches branches;
 
-  /// Every checkpoint of this seat, oldest first.
-  final List<String> orderedCommits;
+  /// Restores the branch that the commit belongs to.
+  final void Function(String commit)? onSwitchVersion;
 
-  /// Currently restored checkpoint, or null when none is checked out.
-  final String? checkedOutCommit;
-
-  final void Function(String commit)? onRewindTo;
+  /// Copies the branch through the commit into a new session.
   final void Function(String commit)? onForkFrom;
 
-  /// When true, rewind and fork stay visible but disabled.
+  /// When true, the controls stay visible but disabled.
   final bool turnInFlight;
 
   @override
@@ -893,19 +889,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     final displayMessages = _displayMessages;
     final lastId = displayMessages.isEmpty ? null : displayMessages.last.id;
     final forkLabel = context.l10n.forkFromHere;
-    final previousVersionLabel = context.l10n.rewindPreviousVersion;
-    final nextVersionLabel = context.l10n.rewindNextVersion;
-    final checkedOut = widget.checkedOutCommit == null
-        ? -1
-        : widget.orderedCommits.indexOf(widget.checkedOutCommit!);
-    final versionIndex = checkedOut < 0 ? null : checkedOut + 1;
-    final versionCount = widget.orderedCommits.length;
-    final previousCommit = checkedOut < 1
-        ? null
-        : widget.orderedCommits[checkedOut - 1];
-    final nextCommit = checkedOut >= 0 && checkedOut + 1 < versionCount
-        ? widget.orderedCommits[checkedOut + 1]
-        : null;
+    final previousVersionLabel = context.l10n.branchPrevious;
+    final nextVersionLabel = context.l10n.branchNext;
     // Last *real* message (excludes the running footer appended to the tip).
     final realTipId = _messages.isEmpty ? null : _messages.last.id;
     final aiTheme = AiMessageTheme.of(context);
@@ -990,16 +975,14 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                         // so the ring moves even though the message list
                         // instance is unchanged (see VirtualThreadViewport.buildKey).
                         buildKey: widget.highlightMessageId,
-                        // Checkpoint lists and fork/rewind callbacks can land
+                        // Branch versions and fork/switch callbacks can land
                         // after the first mount (generation bump, same live
                         // list). Drop cached turn bodies so the action bar
                         // appears without a new message list instance.
                         bodyCacheKey: (
                           widget.turnInFlight,
-                          widget.checkedOutCommit,
-                          widget.checkpointCommits,
-                          widget.orderedCommits,
-                          widget.onRewindTo != null,
+                          widget.branches,
+                          widget.onSwitchVersion != null,
                           widget.onForkFrom != null,
                         ),
                         revealMessageId: _revealTargetId,
@@ -1066,15 +1049,21 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                               ai.id == realTipId &&
                               _liveTurnActive(widget.liveChrome) &&
                               _endsWithThinking(ai);
-                          final commit = widget.checkpointCommits[ai.id];
+                          final version = ai.role == AiRole.user
+                              ? widget.branches.turnOf(ai.id)
+                              : null;
                           final showsVersion =
-                              commit != null &&
-                              commit == widget.checkedOutCommit;
+                              version != null && version.count > 1;
+                          final previous = version?.previous;
+                          final next = version?.next;
                           final messageChild = AiMessageView(
                             key: ValueKey(ai.id),
                             message: ai,
                             actionBarHoverEnabled: _hoverEffectsEnabled,
-                            actionBarReveal: deliveryFailed || ai.id == lastId
+                            actionBarReveal:
+                                deliveryFailed ||
+                                    ai.id == lastId ||
+                                    showsVersion
                                 ? AiActionBarReveal.always
                                 : AiActionBarReveal.hover,
                             onRetryDelivery:
@@ -1085,23 +1074,23 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                             chainOfThoughtAutoExpand:
                                 liveThinkingTail &&
                                 aiTheme.cotExpandLatestOnOpen,
-                            onFork: commit == null || widget.onForkFrom == null
+                            onFork: version == null || widget.onForkFrom == null
                                 ? null
-                                : () => widget.onForkFrom!(commit),
+                                : () => widget.onForkFrom!(version.commit),
                             forkLabel: forkLabel,
-                            versionIndex: showsVersion ? versionIndex : null,
-                            versionCount: showsVersion ? versionCount : null,
+                            versionIndex: showsVersion ? version.index : null,
+                            versionCount: showsVersion ? version.count : null,
                             onPreviousVersion:
                                 showsVersion &&
-                                    previousCommit != null &&
-                                    widget.onRewindTo != null
-                                ? () => widget.onRewindTo!(previousCommit)
+                                    previous != null &&
+                                    widget.onSwitchVersion != null
+                                ? () => widget.onSwitchVersion!(previous)
                                 : null,
                             onNextVersion:
                                 showsVersion &&
-                                    nextCommit != null &&
-                                    widget.onRewindTo != null
-                                ? () => widget.onRewindTo!(nextCommit)
+                                    next != null &&
+                                    widget.onSwitchVersion != null
+                                ? () => widget.onSwitchVersion!(next)
                                 : null,
                             previousVersionLabel: previousVersionLabel,
                             nextVersionLabel: nextVersionLabel,

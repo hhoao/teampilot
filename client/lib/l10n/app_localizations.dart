@@ -4148,12 +4148,6 @@ abstract class AppLocalizations {
   /// **'Failed to duplicate conversation'**
   String get sessionDuplicateFailed;
 
-  /// No description provided for @sessionRewindFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Failed to rewind conversation'**
-  String get sessionRewindFailed;
-
   /// No description provided for @sessionForkFailed.
   ///
   /// In en, this message translates to:
@@ -4172,17 +4166,23 @@ abstract class AppLocalizations {
   /// **'Fork from here'**
   String get forkFromHere;
 
-  /// No description provided for @rewindPreviousVersion.
+  /// No description provided for @branchPrevious.
   ///
   /// In en, this message translates to:
   /// **'Previous version'**
-  String get rewindPreviousVersion;
+  String get branchPrevious;
 
-  /// No description provided for @rewindNextVersion.
+  /// No description provided for @branchNext.
   ///
   /// In en, this message translates to:
   /// **'Next version'**
-  String get rewindNextVersion;
+  String get branchNext;
+
+  /// No description provided for @branchSwitchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to switch version'**
+  String get branchSwitchFailed;
 
   /// No description provided for @openSessionDirectory.
   ///
