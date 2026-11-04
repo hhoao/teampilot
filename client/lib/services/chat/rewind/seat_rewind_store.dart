@@ -27,12 +27,28 @@ final class RewindTurnSkipped implements Exception {
 final class RewindCheckpoint {
   const RewindCheckpoint({
     required this.commit,
+    required this.parentCommit,
     required this.messageId,
+    required this.userMessageId,
+    required this.turnAt,
     required this.nativeSessionId,
   });
 
   final String commit;
+
+  /// Empty for a root commit.
+  final String parentCommit;
+
+  /// Last message of the turn.
   final String messageId;
+
+  /// User message that opened the turn. Empty for commits written before
+  /// user-message branches existed.
+  final String userMessageId;
+
+  /// Milliseconds since epoch; orders sibling turns.
+  final int turnAt;
+
   final String? nativeSessionId;
 }
 
@@ -75,6 +91,7 @@ final class SeatRewindStore {
 
   Future<RewindCheckpoint> commitTurn({
     required String messageId,
+    String userMessageId = '',
     String? nativeSessionId,
     RewindWorkGate? gate,
   }) async {
@@ -91,17 +108,21 @@ final class SeatRewindStore {
       await _runGit([..._repoArgs, 'add', '--', relative]);
     }
     final tree = (await _runGit([..._repoArgs, 'write-tree'])).trim();
-    final parent = await checkedOut();
+    final parent = await checkedOut() ?? await root();
+    final turnAt = DateTime.now().millisecondsSinceEpoch;
     final message =
         'checkpoint\n'
         '\n'
         'Turn-Message: $messageId\n'
+        'Turn-User: $userMessageId\n'
+        'Turn-At: $turnAt\n'
         'Native-Session: ${nativeSessionId ?? ''}';
     final commit = (await _runGit([
       ..._repoArgs,
       'commit-tree',
       tree,
-      if (parent != null) ...['-p', parent],
+      '-p',
+      parent,
       '-m',
       message,
     ], environment: _gitIdentity)).trim();
@@ -120,7 +141,10 @@ final class SeatRewindStore {
     ]);
     return RewindCheckpoint(
       commit: commit,
+      parentCommit: parent,
       messageId: messageId,
+      userMessageId: userMessageId,
+      turnAt: turnAt,
       nativeSessionId: nativeSessionId,
     );
   }
@@ -154,6 +178,64 @@ final class SeatRewindStore {
     ], allowFailure: true);
     final sha = result.trim();
     return sha.isEmpty ? null : sha;
+  }
+
+  /// Empty seat state, used as the parent of the first turn.
+  ///
+  /// Written once per seat. Restoring it clears the seat's included files so
+  /// the next launch starts a fresh agent session.
+  Future<String> root() async {
+    if (!Directory(gitDir).existsSync()) await ensureRepo();
+    final existing = (await _runGit([
+      ..._repoArgs,
+      'rev-parse',
+      '--verify',
+      '--quiet',
+      'refs/rewind/root',
+    ], allowFailure: true)).trim();
+    if (existing.isNotEmpty) return existing;
+    final indexFile = p.join(gitDir, 'root-index');
+    try {
+      final tree = (await _runGit([
+        ..._repoArgs,
+        'write-tree',
+      ], environment: {'GIT_INDEX_FILE': indexFile})).trim();
+      final commit = (await _runGit([
+        ..._repoArgs,
+        'commit-tree',
+        tree,
+        '-m',
+        'root',
+      ], environment: _gitIdentity)).trim();
+      await _runGit([..._repoArgs, 'update-ref', 'refs/rewind/root', commit]);
+      return commit;
+    } finally {
+      final index = File(indexFile);
+      if (index.existsSync()) index.deleteSync();
+    }
+  }
+
+  /// Newest descendant of [commit], including [commit] itself.
+  Future<String> branchTip(String commit) async {
+    final turns = await checkpoints();
+    final byCommit = {for (final turn in turns) turn.commit: turn};
+    final start = byCommit[commit];
+    if (start == null) return commit;
+    final children = <String, List<RewindCheckpoint>>{};
+    for (final turn in turns) {
+      if (turn.parentCommit.isEmpty) continue;
+      children.putIfAbsent(turn.parentCommit, () => []).add(turn);
+    }
+    var best = start;
+    final stack = <String>[start.commit];
+    while (stack.isNotEmpty) {
+      final current = stack.removeLast();
+      for (final child in children[current] ?? const <RewindCheckpoint>[]) {
+        if (child.turnAt >= best.turnAt) best = child;
+        stack.add(child.commit);
+      }
+    }
+    return best.commit;
   }
 
   /// Checkpoints oldest first, ordered by ancestry so turns that end in the
@@ -196,21 +278,28 @@ final class SeatRewindStore {
       ..._repoArgs,
       'log',
       '--no-walk=unsorted',
-      '--format=%H%x00%B%x01',
+      '--format=%H%x00%P%x00%B%x01',
       ...ordered,
     ], allowFailure: true);
-    final bodyByCommit = <String, String>{};
+    final records = <String, ({String parents, String body})>{};
     for (final record in bodies.split('\x01')) {
       final entry = record.trimLeft();
-      final separator = entry.indexOf('\x00');
-      if (separator <= 0) continue;
-      bodyByCommit[entry.substring(0, separator).trim()] = entry.substring(
-        separator + 1,
+      final first = entry.indexOf('\x00');
+      if (first <= 0) continue;
+      final second = entry.indexOf('\x00', first + 1);
+      if (second < 0) continue;
+      records[entry.substring(0, first).trim()] = (
+        parents: entry.substring(first + 1, second).trim(),
+        body: entry.substring(second + 1),
       );
     }
     return [
       for (final commit in ordered)
-        _parseCheckpoint(commit, bodyByCommit[commit] ?? ''),
+        _parseCheckpoint(
+          commit,
+          records[commit]?.body ?? '',
+          records[commit]?.parents ?? '',
+        ),
     ];
   }
 
@@ -343,12 +432,22 @@ final class SeatRewindStore {
     }
   }
 
-  RewindCheckpoint _parseCheckpoint(String commit, String body) {
+  RewindCheckpoint _parseCheckpoint(
+    String commit,
+    String body,
+    String parents,
+  ) {
     String messageId = '';
+    String userMessageId = '';
+    var turnAt = 0;
     String? nativeSessionId;
     for (final line in const LineSplitter().convert(body)) {
       if (line.startsWith('Turn-Message:')) {
         messageId = line.substring('Turn-Message:'.length).trim();
+      } else if (line.startsWith('Turn-User:')) {
+        userMessageId = line.substring('Turn-User:'.length).trim();
+      } else if (line.startsWith('Turn-At:')) {
+        turnAt = int.tryParse(line.substring('Turn-At:'.length).trim()) ?? 0;
       } else if (line.startsWith('Native-Session:')) {
         final value = line.substring('Native-Session:'.length).trim();
         nativeSessionId = value.isEmpty ? null : value;
@@ -356,7 +455,10 @@ final class SeatRewindStore {
     }
     return RewindCheckpoint(
       commit: commit,
+      parentCommit: parents.split(' ').first.trim(),
       messageId: messageId,
+      userMessageId: userMessageId,
+      turnAt: turnAt,
       nativeSessionId: nativeSessionId,
     );
   }

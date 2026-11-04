@@ -297,6 +297,64 @@ exec "$realGit" "\$@"
       );
     },
   );
+
+  test('a turn records its user message above the root commit', () async {
+    final tmp = tmpDir.path;
+    final store = SeatRewindStore(
+      gitDir: '$tmp/repo.git',
+      workTree: '$tmp/work',
+      target: const SeatRewindTarget(
+        kind: SeatRewindKind.personalAcp,
+        tool: 'claude',
+      ),
+    );
+
+    final first = await store.commitTurn(
+      messageId: 'a1',
+      userMessageId: 'u1',
+      nativeSessionId: 's1',
+    );
+    final second = await store.commitTurn(
+      messageId: 'a2',
+      userMessageId: 'u2',
+    );
+
+    expect(first.userMessageId, 'u1');
+    expect(first.messageId, 'a1');
+    expect(first.nativeSessionId, 's1');
+    expect(first.turnAt, greaterThan(0));
+    expect(first.parentCommit, await store.root());
+    expect(second.parentCommit, first.commit);
+    expect(await store.branchTip(first.commit), second.commit);
+    expect(await store.branchTip(second.commit), second.commit);
+  });
+
+  test('a second turn from the same parent is a sibling', () async {
+    final tmp = tmpDir.path;
+    final store = SeatRewindStore(
+      gitDir: '$tmp/repo.git',
+      workTree: '$tmp/work',
+      target: const SeatRewindTarget(
+        kind: SeatRewindKind.personalAcp,
+        tool: 'claude',
+      ),
+    );
+    final root = await store.root();
+    final versionOne = await store.commitTurn(
+      messageId: 'a1',
+      userMessageId: 'u1',
+    );
+    await store.restore(root);
+    final versionTwo = await store.commitTurn(
+      messageId: 'b1',
+      userMessageId: 'u2',
+    );
+
+    expect(versionOne.parentCommit, root);
+    expect(versionTwo.parentCommit, root);
+    expect(await store.branchTip(versionOne.commit), versionOne.commit);
+    expect(await store.checkedOut(), versionTwo.commit);
+  });
 }
 
 Future<List<String>> _lsTree(SeatRewindStore store, String commit) async {

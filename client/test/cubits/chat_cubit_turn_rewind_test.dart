@@ -84,7 +84,10 @@ void main() {
             storeArgs.add((gitDir: gitDir, workTree: workTree, target: target));
             final checkpoint = RewindCheckpoint(
               commit: 'c1',
+              parentCommit: '',
               messageId: messageId,
+              userMessageId: '',
+              turnAt: 0,
               nativeSessionId: nativeSessionId,
             );
             commits.add(checkpoint);
@@ -208,7 +211,10 @@ void main() {
             commits.add(messageId);
             return RewindCheckpoint(
               commit: 'c-$messageId',
+              parentCommit: '',
               messageId: messageId,
+              userMessageId: '',
+              turnAt: 0,
               nativeSessionId: nativeSessionId,
             );
           };
@@ -331,7 +337,10 @@ void main() {
             commits.add(messageId);
             return RewindCheckpoint(
               commit: 'c-$messageId',
+              parentCommit: '',
               messageId: messageId,
+              userMessageId: '',
+              turnAt: 0,
               nativeSessionId: nativeSessionId,
             );
           };
@@ -448,7 +457,10 @@ void main() {
             await release.future;
             return RewindCheckpoint(
               commit: 'c-$messageId',
+              parentCommit: '',
               messageId: messageId,
+              userMessageId: '',
+              turnAt: 0,
               nativeSessionId: nativeSessionId,
             );
           };
