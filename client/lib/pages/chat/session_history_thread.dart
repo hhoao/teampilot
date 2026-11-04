@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
@@ -15,11 +16,7 @@ import 'chat_outline.dart';
 import 'chat_reveal_controller.dart';
 import 'history_scroll_cursor_lock.dart';
 import 'session_history_live_chrome.dart';
-
-/// Finder key for the “new messages” jump chip.
-const Key kSessionHistoryNewMessagesChipKey = ValueKey(
-  'session-history-new-messages-chip',
-);
+import 'session_history_scroll_to_bottom_button.dart';
 
 /// Finder key for the in-thread starting/running assistant placeholder.
 const Key kSessionHistoryRunningFooterKey = ValueKey(
@@ -141,6 +138,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   static const _bottomEpsilon = 1.0;
   static const _loadOlderPixelThreshold = 120.0;
 
+  /// Distance from the tip past which the jump-to-bottom button is offered.
+  static const _scrollToBottomThreshold = 80.0;
+
   /// Frames the anchor restore waits for the virtualized viewport to grow
   /// its extent toward the anchor (turns mount lazily / in chunks).
   static const _anchorRestoreFrames = 24;
@@ -182,8 +182,14 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   /// build the top of the thread under a scroll offset of 0.
   var _mountTurns = false;
 
-  /// Tip grew while stick was paused — show jump chip until user resumes.
-  var _showNewMessagesChip = false;
+  /// Tip grew while stick was paused — badge the jump button until the user
+  /// resumes following.
+  var _hasNewMessagesBelow = false;
+
+  /// Whether the transcript is far enough from the tip to show the floating
+  /// jump-to-bottom button. Kept in a notifier so scroll ticks rebuild only
+  /// the button, not the whole thread.
+  final ValueNotifier<bool> _showScrollToBottom = ValueNotifier(false);
 
   double _lastPixels = 0;
 
@@ -246,6 +252,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     final enabled = TickerMode.valuesOf(context).enabled;
     final becameForeground = enabled && !_foreground;
     _foreground = enabled;
+    _syncScrollToBottom();
     if (becameForeground) {
       _restickAfterForeground();
     }
@@ -277,7 +284,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       _cancelAnchorRestore();
       _runtimeSub?.cancel();
       _setStickToEnd(true);
-      _showNewMessagesChip = false;
+      _hasNewMessagesBelow = false;
       _paginationArmed = true;
       _mountTurns = false;
       _messages = widget.runtime.messages;
@@ -318,8 +325,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     }
     setState(() {
       _stickToEnd = value;
-      if (value) _showNewMessagesChip = false;
+      if (value) _hasNewMessagesBelow = false;
     });
+    _syncScrollToBottom();
   }
 
   @override
@@ -328,6 +336,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     _stickGeneration++;
     _hoverResumeTimer?.cancel();
     _hoverEffectsEnabled.dispose();
+    _showScrollToBottom.dispose();
     _runtimeSub?.cancel();
     _boundReveal?.removeListener(_onRevealRequestChanged);
     _scrollController
@@ -408,7 +417,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     setState(() {
       _messages = next;
       if (!_stickToEnd && tipGrew) {
-        _showNewMessagesChip = true;
+        _hasNewMessagesBelow = true;
       }
     });
     if (_stickToEnd && !wasPrepend && _foreground) {
@@ -417,6 +426,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       // heuristic. The foreground handoff re-anchors to the real tip instead.
       _scheduleStickFrames();
     }
+    // Content can grow below the viewport without changing `pixels`, so the
+    // scroll listener may not fire; re-check once layout applies the extent.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncScrollToBottom();
+    });
   }
 
   /// True when the tip of [next] is a user turn that was not the tip of
@@ -540,13 +554,14 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
           max - pixels > _bottomEpsilon) {
         _setStickToEnd(false);
       } else if (!_stickToEnd && max - pixels <= _bottomEpsilon) {
-        // Manual scroll back to tip — same as tapping the new-messages chip.
+        // Manual scroll back to tip — same as tapping the jump button.
         _resumeStickToTip();
       }
     }
 
     _lastPixels = pixels;
     _captureOlderExtentIfWaiting();
+    _syncScrollToBottom();
   }
 
   void _captureOlderExtentIfWaiting() {
@@ -676,6 +691,64 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     _scheduleStickFrames();
   }
 
+  bool get _scrollToBottomVisible {
+    if (!_foreground || _stickToEnd || !_scrollController.hasClients) {
+      return false;
+    }
+    final position = _scrollController.position;
+    return position.maxScrollExtent > 0 &&
+        position.maxScrollExtent - position.pixels > _scrollToBottomThreshold;
+  }
+
+  /// Keeps the jump-button visibility in sync with the scroll offset.
+  ///
+  /// Scroll listeners fire during layout, so a sync notifier write would
+  /// rebuild the button mid-frame ("Build scheduled during frame") — defer
+  /// those to the frame callback, same as [_setHoverEnabled].
+  void _syncScrollToBottom() {
+    final visible = _scrollToBottomVisible;
+    if (_showScrollToBottom.value == visible) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase != SchedulerPhase.idle &&
+        phase != SchedulerPhase.postFrameCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final next = _scrollToBottomVisible;
+        if (_showScrollToBottom.value != next) {
+          _showScrollToBottom.value = next;
+        }
+      });
+      return;
+    }
+    _showScrollToBottom.value = visible;
+  }
+
+  void _animateScrollToBottom() {
+    if (!_scrollController.hasClients) return;
+    // Clears the new-messages dot and hides the button immediately.
+    _setStickToEnd(true);
+    final position = _scrollController.position;
+    final distance = position.maxScrollExtent - position.pixels;
+    if (distance <= _bottomEpsilon) {
+      _scheduleStickFrames();
+      return;
+    }
+    final ms = (240 + distance * 0.12).clamp(240, 480).round();
+    unawaited(
+      _scrollController
+          .animateTo(
+            position.maxScrollExtent,
+            duration: Duration(milliseconds: ms),
+            curve: Curves.easeInOutCubic,
+          )
+          .whenComplete(() {
+            // A mid-flight user drag releases stick; re-pinning then would
+            // fight the user and snap them back down.
+            if (mounted && _stickToEnd) _scheduleStickFrames();
+          }),
+    );
+  }
+
   void _setHoverEnabled(bool enabled) {
     if (_hoverEffectsEnabled.value == enabled) return;
     // jumpTo / measure correction dispatch ScrollStart during layout; a sync
@@ -786,55 +859,6 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         _anchoringOlder = false;
       }
     }
-  }
-
-  Widget _buildNewMessagesChip(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final l10n = context.l10n;
-    return Positioned(
-      left: 0,
-      right: 0,
-      // Footer sits below this Stack (Column sibling), not overlaid — no offset.
-      bottom: 12,
-      child: Center(
-        child: SelectionContainer.disabled(
-          child: Material(
-            key: kSessionHistoryNewMessagesChipKey,
-            color: scheme.surfaceContainerHigh,
-            elevation: 2,
-            shadowColor: Colors.black.withValues(alpha: 0.12),
-            shape: const StadiumBorder(),
-            child: TpHover(
-              shape: TpPressableShape.stadium,
-              onTap: _resumeStickToTip,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 18,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      l10n.sessionHistoryNewMessages,
-                      style: TpTextStyles.of(
-                        context,
-                      ).smColored(scheme.onSurface),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildRunningInMessage(BuildContext context) {
@@ -1139,13 +1163,42 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       ),
     );
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        thread,
-        if (_showNewMessagesChip && !_stickToEnd)
-          _buildNewMessagesChip(context),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Match the composer card: both the thread and the composer center a
+        // column capped at [AiMessageTheme.threadMaxWidth] with the same
+        // horizontal padding, so this inset lands on the input box's right
+        // edge on wide windows instead of the window edge. Nudge it one
+        // spacing step inward so it reads as floating over the card corner.
+        final contentWidth = math.min(
+          math.max(
+            0.0,
+            constraints.maxWidth - 2 * aiTheme.threadHorizontalPadding,
+          ),
+          aiTheme.threadMaxWidth,
+        );
+        final rightInset =
+            (constraints.maxWidth - contentWidth) / 2 +
+            context.tpSpacing.md;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            thread,
+            ValueListenableBuilder<bool>(
+              valueListenable: _showScrollToBottom,
+              builder: (context, visible, _) {
+                if (!visible) return const SizedBox.shrink();
+                return SessionHistoryScrollToBottomButton(
+                  tooltip: context.l10n.aiMessageScrollToBottom,
+                  showNewMessagesDot: _hasNewMessagesBelow,
+                  onPressed: _animateScrollToBottom,
+                  rightInset: rightInset,
+                );
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }

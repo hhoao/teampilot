@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/chat/history_scroll_cursor_lock.dart';
 import 'package:teampilot/pages/chat/session_history_live_chrome.dart';
+import 'package:teampilot/pages/chat/session_history_scroll_to_bottom_button.dart';
 import 'package:teampilot/pages/chat/session_history_thread.dart';
 import 'package:teampilot/widgets/scroll_cursor_lock.dart';
 import 'package:teampilot/widgets/session_working_spinner.dart';
@@ -37,6 +38,8 @@ Widget _harness({
   ValueNotifier<String?>? visibleOwnerId,
   bool? mobilePerformanceMode,
   bool expandLatest = true,
+  double width = 600,
+  double height = 400,
 }) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -47,8 +50,8 @@ Widget _harness({
     ),
     home: Scaffold(
       body: SizedBox(
-        width: 600,
-        height: 400,
+        width: width,
+        height: height,
         child: SessionHistoryThread(
           runtime: runtime,
           hasOlder: hasOlder,
@@ -467,7 +470,7 @@ void main() {
   );
 
   testWidgets(
-    'when stick paused and messages grow, new-messages chip appears',
+    'jump button appears when scrolled up and badges new messages',
     (tester) async {
       final store = ExternalStoreAiThreadRuntime()
         ..setMessages(_soloUserMessages(20));
@@ -475,12 +478,16 @@ void main() {
       await tester.pumpWidget(_harness(runtime: store));
       await pumpUntilSettled(tester);
 
-      expect(find.byKey(kSessionHistoryNewMessagesChipKey), findsNothing);
+      expect(find.byKey(kSessionHistoryScrollToBottomButtonKey), findsNothing);
 
       await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
       await pumpUntilSettled(tester);
 
-      expect(find.byKey(kSessionHistoryNewMessagesChipKey), findsNothing);
+      expect(
+        find.byKey(kSessionHistoryScrollToBottomButtonKey),
+        findsOneWidget,
+      );
+      expect(find.byKey(kSessionHistoryNewMessagesDotKey), findsNothing);
 
       store.setMessages([
         ..._soloUserMessages(20),
@@ -492,10 +499,61 @@ void main() {
       ]);
       await pumpUntilSettled(tester);
 
-      expect(find.byKey(kSessionHistoryNewMessagesChipKey), findsOneWidget);
-      expect(find.text('New messages'), findsOneWidget);
+      expect(find.byKey(kSessionHistoryNewMessagesDotKey), findsOneWidget);
     },
   );
+
+  testWidgets('jump button stays hidden within the bottom threshold', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(20));
+
+    await tester.pumpWidget(_harness(runtime: store));
+    await pumpUntilSettled(tester);
+
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 40));
+    await pumpUntilSettled(tester);
+
+    expect(find.byKey(kSessionHistoryScrollToBottomButtonKey), findsNothing);
+  });
+
+  testWidgets('jump button stays hidden when the thread does not overflow', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(2));
+
+    await tester.pumpWidget(_harness(runtime: store));
+    await pumpUntilSettled(tester);
+
+    expect(find.byKey(kSessionHistoryScrollToBottomButtonKey), findsNothing);
+  });
+
+  testWidgets('jump button right edge follows the centered chat column', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(20));
+
+    // 1000px column, default 704px thread cap: the composer card and the
+    // transcript content both end at (1000 - 704) / 2 from the right, and the
+    // button sits one 12px spacing step further inward.
+    await tester.pumpWidget(_harness(runtime: store, width: 1000, height: 700));
+    await pumpUntilSettled(tester);
+
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
+    await pumpUntilSettled(tester);
+
+    final buttonRight = tester
+        .getTopRight(find.byKey(kSessionHistoryScrollToBottomButtonKey))
+        .dx;
+    expect(buttonRight, closeTo(1000 - 160, 0.5));
+  });
 
   testWidgets('sending a message after scrolling up re-sticks to the new tip', (
     tester,
@@ -533,7 +591,7 @@ void main() {
     expect(position.pixels, closeTo(position.maxScrollExtent, 2.0));
   });
 
-  testWidgets('tapping new-messages chip scrolls to tip and resumes stick', (
+  testWidgets('tapping the jump button scrolls to tip and resumes stick', (
     tester,
   ) async {
     final store = ExternalStoreAiThreadRuntime()
@@ -555,12 +613,12 @@ void main() {
     ]);
     await pumpUntilSettled(tester);
 
-    expect(find.byKey(kSessionHistoryNewMessagesChipKey), findsOneWidget);
+    expect(find.byKey(kSessionHistoryNewMessagesDotKey), findsOneWidget);
 
-    await tester.tap(find.byKey(kSessionHistoryNewMessagesChipKey));
+    await tester.tap(find.byKey(kSessionHistoryScrollToBottomButtonKey));
     await pumpUntilSettled(tester);
 
-    expect(find.byKey(kSessionHistoryNewMessagesChipKey), findsNothing);
+    expect(find.byKey(kSessionHistoryScrollToBottomButtonKey), findsNothing);
 
     final viewport = tester.widget<VirtualThreadViewport>(
       find.byType(VirtualThreadViewport),
@@ -574,7 +632,7 @@ void main() {
   });
 
   testWidgets(
-    'scrolling to tip dismisses new-messages chip and resumes stick',
+    'scrolling to tip hides the jump button and resumes stick',
     (tester) async {
       final store = ExternalStoreAiThreadRuntime()
         ..setMessages(_soloUserMessages(20));
@@ -595,7 +653,10 @@ void main() {
       ]);
       await pumpUntilSettled(tester);
 
-      expect(find.byKey(kSessionHistoryNewMessagesChipKey), findsOneWidget);
+      expect(
+        find.byKey(kSessionHistoryScrollToBottomButtonKey),
+        findsOneWidget,
+      );
 
       final position = tester
           .state<ScrollableState>(find.byType(Scrollable).first)
@@ -603,7 +664,7 @@ void main() {
       position.jumpTo(position.maxScrollExtent);
       await pumpUntilSettled(tester);
 
-      expect(find.byKey(kSessionHistoryNewMessagesChipKey), findsNothing);
+      expect(find.byKey(kSessionHistoryScrollToBottomButtonKey), findsNothing);
 
       final viewport = tester.widget<VirtualThreadViewport>(
         find.byType(VirtualThreadViewport),

@@ -815,7 +815,6 @@
   "sessionHistoryComposeStop": "Stop generating",
   "sessionHistoryContinueSaveFailed": "Couldn't save continue settings.",
   "sessionHistoryLoadOlderHint": "Scroll up for earlier messages",
-  "sessionHistoryNewMessages": "New messages",
   "sessionHistoryStarting": "Starting…",
   "sessionHistoryRunning": "Running…",
   "sessionHistoryBackgroundRunning": "Background work running…",

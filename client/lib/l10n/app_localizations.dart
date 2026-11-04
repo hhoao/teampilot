@@ -3278,12 +3278,6 @@ abstract class AppLocalizations {
   /// **'Scroll up for earlier messages'**
   String get sessionHistoryLoadOlderHint;
 
-  /// No description provided for @sessionHistoryNewMessages.
-  ///
-  /// In en, this message translates to:
-  /// **'New messages'**
-  String get sessionHistoryNewMessages;
-
   /// No description provided for @sessionHistoryStarting.
   ///
   /// In en, this message translates to:
