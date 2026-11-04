@@ -32,6 +32,8 @@ class AiMessageActionBar extends StatefulWidget {
     this.forceVisible = false,
     this.forceVisibleListenable,
     this.onRetryDelivery,
+    this.onEdit,
+    this.editLabel = 'Edit message',
     this.onFork,
     this.forkLabel = 'Fork from here',
     this.rewindForkEnabled = true,
@@ -50,6 +52,12 @@ class AiMessageActionBar extends StatefulWidget {
 
   /// When set, shows a refresh icon to retry failed delivery.
   final VoidCallback? onRetryDelivery;
+
+  /// When set, shows an edit action (user messages only).
+  final VoidCallback? onEdit;
+
+  /// Tooltip / semantics for edit. Package stays free of app l10n.
+  final String editLabel;
 
   /// When set, shows fork. Null [onPressed] while [rewindForkEnabled] is false.
   final VoidCallback? onFork;
@@ -173,6 +181,7 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
     if (_plain.isNotEmpty ||
         _markdown.isNotEmpty ||
         widget.onRetryDelivery != null ||
+        widget.onEdit != null ||
         widget.onFork != null ||
         _showsVersion) {
       _actionsMounted = true;
@@ -256,6 +265,16 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
           color: color,
           onPressed: _plain.isEmpty ? null : _copyPlain,
         ),
+        if (widget.onEdit != null)
+          Tooltip(
+            message: widget.editLabel,
+            child: _LiteIconAction(
+              label: widget.editLabel,
+              icon: Icons.edit_outlined,
+              color: color,
+              onPressed: widget.rewindForkEnabled ? widget.onEdit : null,
+            ),
+          ),
         if (widget.onFork != null)
           Tooltip(
             message: widget.forkLabel,

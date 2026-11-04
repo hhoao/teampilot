@@ -1,6 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'ai_message_parts.dart';
 import 'history_render_scope.dart';
@@ -23,6 +24,13 @@ class AiMessageView extends StatefulWidget {
     this.actionBarHoverEnabled,
     this.chainOfThoughtAutoExpand = false,
     this.onRetryDelivery,
+    this.onEdit,
+    this.editLabel = 'Edit message',
+    this.editing = false,
+    this.onSubmitEdit,
+    this.onCancelEdit,
+    this.editSendLabel = 'Send',
+    this.editCancelLabel = 'Cancel',
     this.onFork,
     this.forkLabel = 'Fork from here',
     this.rewindForkEnabled = true,
@@ -42,6 +50,19 @@ class AiMessageView extends StatefulWidget {
 
   /// When set, shows a refresh icon on the action bar (failed delivery retry).
   final VoidCallback? onRetryDelivery;
+
+  /// When set, shows an edit action on the action bar. Only user messages
+  /// render the inline editor.
+  final VoidCallback? onEdit;
+  final String editLabel;
+
+  /// When true, a user message renders [_UserMessageEditor] instead of the
+  /// bubble.
+  final bool editing;
+  final ValueChanged<String>? onSubmitEdit;
+  final VoidCallback? onCancelEdit;
+  final String editSendLabel;
+  final String editCancelLabel;
 
   final VoidCallback? onFork;
   final String forkLabel;
@@ -136,6 +157,13 @@ class _AiMessageViewState extends State<AiMessageView> {
             actionBarReveal: widget.actionBarReveal,
             hoverListenable: trackHover ? _hovered : null,
             onRetryDelivery: widget.onRetryDelivery,
+            onEdit: widget.onEdit,
+            editLabel: widget.editLabel,
+            editing: widget.editing,
+            onSubmitEdit: widget.onSubmitEdit,
+            onCancelEdit: widget.onCancelEdit,
+            editSendLabel: widget.editSendLabel,
+            editCancelLabel: widget.editCancelLabel,
             onFork: widget.onFork,
             forkLabel: widget.forkLabel,
             rewindForkEnabled: widget.rewindForkEnabled,
@@ -154,6 +182,8 @@ class _AiMessageViewState extends State<AiMessageView> {
             showActionBar: widget.showActionBar,
             actionBarReveal: widget.actionBarReveal,
             hoverListenable: trackHover ? _hovered : null,
+            onEdit: widget.onEdit,
+            editLabel: widget.editLabel,
             onFork: widget.onFork,
             forkLabel: widget.forkLabel,
             rewindForkEnabled: widget.rewindForkEnabled,
@@ -251,6 +281,13 @@ class _UserBubble extends StatelessWidget {
     required this.actionBarReveal,
     this.hoverListenable,
     this.onRetryDelivery,
+    this.onEdit,
+    this.editLabel = 'Edit message',
+    this.editing = false,
+    this.onSubmitEdit,
+    this.onCancelEdit,
+    this.editSendLabel = 'Send',
+    this.editCancelLabel = 'Cancel',
     this.onFork,
     this.forkLabel = 'Fork from here',
     this.rewindForkEnabled = true,
@@ -270,6 +307,13 @@ class _UserBubble extends StatelessWidget {
   final AiActionBarReveal actionBarReveal;
   final ValueListenable<bool>? hoverListenable;
   final VoidCallback? onRetryDelivery;
+  final VoidCallback? onEdit;
+  final String editLabel;
+  final bool editing;
+  final ValueChanged<String>? onSubmitEdit;
+  final VoidCallback? onCancelEdit;
+  final String editSendLabel;
+  final String editCancelLabel;
   final VoidCallback? onFork;
   final String forkLabel;
   final bool rewindForkEnabled;
@@ -282,6 +326,17 @@ class _UserBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (editing) {
+      return _UserMessageEditor(
+        scheme: scheme,
+        theme: aiTheme,
+        initialText: plainTextForCopy(message),
+        sendLabel: editSendLabel,
+        cancelLabel: editCancelLabel,
+        onSubmit: (text) => onSubmitEdit?.call(text),
+        onCancel: onCancelEdit,
+      );
+    }
     return Align(
       alignment: Alignment.centerRight,
       child: LayoutBuilder(
@@ -290,6 +345,7 @@ class _UserBubble extends StatelessWidget {
           final actionBarReserve =
               80.0 +
               (onRetryDelivery != null ? 36.0 : 0.0) +
+              (onEdit != null ? 36.0 : 0.0) +
               (onFork != null ? 36.0 : 0.0) +
               (versionCount != null && versionCount! > 1 ? 108.0 : 0.0);
           final threadMax = constraints.maxWidth.isFinite
@@ -311,6 +367,8 @@ class _UserBubble extends StatelessWidget {
                   reveal: actionBarReveal,
                   hoverListenable: hoverListenable,
                   onRetryDelivery: onRetryDelivery,
+                  onEdit: onEdit,
+                  editLabel: editLabel,
                   onFork: onFork,
                   forkLabel: forkLabel,
                   rewindForkEnabled: rewindForkEnabled,
@@ -413,6 +471,8 @@ class _AssistantBlock extends StatelessWidget {
     required this.showActionBar,
     required this.actionBarReveal,
     this.hoverListenable,
+    this.onEdit,
+    this.editLabel = 'Edit message',
     this.onFork,
     this.forkLabel = 'Fork from here',
     this.rewindForkEnabled = true,
@@ -431,6 +491,8 @@ class _AssistantBlock extends StatelessWidget {
   final bool showActionBar;
   final AiActionBarReveal actionBarReveal;
   final ValueListenable<bool>? hoverListenable;
+  final VoidCallback? onEdit;
+  final String editLabel;
   final VoidCallback? onFork;
   final String forkLabel;
   final bool rewindForkEnabled;
@@ -462,6 +524,8 @@ class _AssistantBlock extends StatelessWidget {
                   message: message,
                   reveal: actionBarReveal,
                   hoverListenable: hoverListenable,
+                  onEdit: onEdit,
+                  editLabel: editLabel,
                   onFork: onFork,
                   forkLabel: forkLabel,
                   rewindForkEnabled: rewindForkEnabled,
@@ -487,6 +551,8 @@ class _HoverScopedActionBar extends StatelessWidget {
     required this.reveal,
     this.hoverListenable,
     this.onRetryDelivery,
+    this.onEdit,
+    this.editLabel = 'Edit message',
     this.onFork,
     this.forkLabel = 'Fork from here',
     this.rewindForkEnabled = true,
@@ -502,6 +568,8 @@ class _HoverScopedActionBar extends StatelessWidget {
   final AiActionBarReveal reveal;
   final ValueListenable<bool>? hoverListenable;
   final VoidCallback? onRetryDelivery;
+  final VoidCallback? onEdit;
+  final String editLabel;
   final VoidCallback? onFork;
   final String forkLabel;
   final bool rewindForkEnabled;
@@ -519,6 +587,8 @@ class _HoverScopedActionBar extends StatelessWidget {
       reveal: reveal,
       forceVisibleListenable: hoverListenable,
       onRetryDelivery: onRetryDelivery,
+      onEdit: onEdit,
+      editLabel: editLabel,
       onFork: onFork,
       forkLabel: forkLabel,
       rewindForkEnabled: rewindForkEnabled,
@@ -528,6 +598,137 @@ class _HoverScopedActionBar extends StatelessWidget {
       onNextVersion: onNextVersion,
       previousVersionLabel: previousVersionLabel,
       nextVersionLabel: nextVersionLabel,
+    );
+  }
+}
+
+class _SendEditIntent extends Intent {
+  const _SendEditIntent();
+}
+
+class _CancelEditIntent extends Intent {
+  const _CancelEditIntent();
+}
+
+/// In-place editor for a user message. Enter sends, Shift+Enter is a newline.
+class _UserMessageEditor extends StatefulWidget {
+  const _UserMessageEditor({
+    required this.scheme,
+    required this.theme,
+    required this.initialText,
+    required this.sendLabel,
+    required this.cancelLabel,
+    required this.onSubmit,
+    required this.onCancel,
+  });
+
+  final ColorScheme scheme;
+  final AiMessageTheme theme;
+  final String initialText;
+  final String sendLabel;
+  final String cancelLabel;
+  final ValueChanged<String> onSubmit;
+  final VoidCallback? onCancel;
+
+  @override
+  State<_UserMessageEditor> createState() => _UserMessageEditorState();
+}
+
+class _UserMessageEditorState extends State<_UserMessageEditor> {
+  late final TextEditingController _controller;
+  late final FocusNode _focus;
+  var _submitted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialText);
+    _focus = FocusNode()..requestFocus();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_submitted) return;
+    final text = _controller.text.trim();
+    if (text.isEmpty || text == widget.initialText.trim()) {
+      widget.onCancel?.call();
+      return;
+    }
+    _submitted = true;
+    widget.onSubmit(text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: widget.theme.userBubbleMaxWidth),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Shortcuts(
+              shortcuts: const {
+                SingleActivator(LogicalKeyboardKey.enter): _SendEditIntent(),
+                SingleActivator(LogicalKeyboardKey.escape): _CancelEditIntent(),
+              },
+              child: Actions(
+                actions: {
+                  _SendEditIntent: CallbackAction<_SendEditIntent>(
+                    onInvoke: (_) {
+                      _submit();
+                      return null;
+                    },
+                  ),
+                  _CancelEditIntent: CallbackAction<_CancelEditIntent>(
+                    onInvoke: (_) {
+                      widget.onCancel?.call();
+                      return null;
+                    },
+                  ),
+                },
+                child: TextField(
+                  controller: _controller,
+                  focusNode: _focus,
+                  maxLines: null,
+                  minLines: 1,
+                  textInputAction: TextInputAction.newline,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: widget.theme.resolveUserBubble(widget.scheme),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        widget.theme.userBubbleRadius,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextButton(
+                  onPressed: widget.onCancel,
+                  child: Text(widget.cancelLabel),
+                ),
+                const SizedBox(width: 6),
+                FilledButton(
+                  onPressed: _submit,
+                  child: Text(widget.sendLabel),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
