@@ -1226,11 +1226,13 @@ void main() {
         findsOneWidget,
       );
       await tester.scrollUntilVisible(
-        find.text('Advanced'),
+        find.byKey(const Key('managed-provider-section-advanced')),
         500,
         scrollable: _verticalScrollable(),
       );
-      await tester.tap(find.text('Advanced'));
+      await tester.tap(
+        find.byKey(const Key('managed-provider-section-advanced')),
+      );
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.byKey(const Key('managed-provider-adapter'), skipOffstage: false),
