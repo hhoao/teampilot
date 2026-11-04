@@ -94,6 +94,48 @@ void main() {
     },
   );
 
+  test('a refused parent restore does not rewind the running seat', () async {
+    final env = await _openPersonal();
+    final store = env.store;
+    await store.commitTurn(messageId: 'a1', userMessageId: 'u1');
+    final second = await store.commitTurn(messageId: 'a2', userMessageId: 'u2');
+    // A tap landing on the frame a turn starts: the parent restore must be
+    // refused, and the rollback must not force-rewind the running turn.
+    env.cubit.debugMarkTurnInFlight(env.session.sessionId);
+    final sent = <String>[];
+    env.cubit.debugDeliverEditedMessage =
+        ({required sessionId, required memberId, required message}) async {
+          sent.add(message);
+          return const HistoryContinueSubmitResult(
+            ok: true,
+            channel: HistoryContinueChannel.pty,
+          );
+        };
+
+    await expectLater(
+      env.cubit.editSeatTurn(
+        sessionId: env.session.sessionId,
+        memberId: env.session.sessionId,
+        userMessageId: 'u2',
+        text: 'edited text',
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'Cannot rewind while a turn is in flight',
+        ),
+      ),
+    );
+
+    expect(sent, isEmpty);
+    // No second rewind: the seat is never stopped or relaunched.
+    expect(env.cubit.relaunchCalls, isEmpty);
+    expect(await store.checkedOut(), second.commit);
+    expect(env.cubit.state.rewindForkError, 'branchEditFailed');
+    expect(env.cubit.state.rewindForkInProgress, isFalse);
+  });
+
   test('a rejected send reports the delivery failure', () async {
     final env = await _openPersonal();
     await env.store.commitTurn(messageId: 'a1', userMessageId: 'u1');

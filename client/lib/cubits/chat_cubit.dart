@@ -391,6 +391,11 @@ class ChatCubit extends Cubit<ChatState>
   );
   bool? _gitOnPath;
 
+  /// Test override for [gitOnPath]. Skips the process probe so the
+  /// no-git branch of [rewindActionsAllowed] is testable on any host.
+  @visibleForTesting
+  bool? debugGitOnPath;
+
   /// Last message id committed for a PTY seat (`sessionId\0memberId`).
   final _ptyCommittedMessageBySeat = <String, String>{};
 
@@ -3170,6 +3175,9 @@ class ChatCubit extends Cubit<ChatState>
       state.copyWith(rewindForkInProgress: true, clearRewindForkError: true),
     );
     try {
+      // Resolve the tip only after any in-flight snapshot settles; a
+      // checkpoint landing in between would otherwise leave a stale tip.
+      await _rewindGate.waitForSnapshot(store.gitDir);
       final tip = await store.branchTip(commit);
       await _rewindFork.rewind(
         store: store,
@@ -3220,6 +3228,10 @@ class ChatCubit extends Cubit<ChatState>
       throw StateError('No checkpoint for the edited user message');
     }
     final before = await store.checkedOut();
+    // Only roll back when the parent restore actually ran; a refused restore
+    // (e.g. a turn latched) must not be force-rewound, which would stop the
+    // running turn.
+    var restored = false;
     emit(
       state.copyWith(rewindForkInProgress: true, clearRewindForkError: true),
     );
@@ -3231,6 +3243,7 @@ class ChatCubit extends Cubit<ChatState>
             ? await store.root()
             : target.parentCommit,
       );
+      restored = true;
       final deliver = debugDeliverEditedMessage ?? _deliverEditedMessage;
       final result = await deliver(
         sessionId: sessionId,
@@ -3240,15 +3253,13 @@ class ChatCubit extends Cubit<ChatState>
       if (!result.ok) {
         throw StateError('The edited message was not delivered');
       }
-      onSessionHistoryStale?.call(sessionId);
-      _publishRewindHistory();
     } on Object catch (error, stackTrace) {
       appLogger.e(
         '[rewind] editSeatTurn failed session=$sessionId: $error',
         error: error,
         stackTrace: stackTrace,
       );
-      if (before != null) {
+      if (restored && before != null) {
         try {
           // The send already failed, so a latched turn must not keep the seat
           // on the parent branch. Only this rollback skips the guard.
@@ -3270,12 +3281,21 @@ class ChatCubit extends Cubit<ChatState>
       if (!isClosed) {
         emit(state.copyWith(rewindForkError: 'branchEditFailed'));
       }
+      // Surface whichever branch the seat is actually on now: the rollback
+      // target after a failed send, or the unchanged parent after a refused
+      // restore.
+      onSessionHistoryStale?.call(sessionId);
+      _publishRewindHistory();
       rethrow;
     } finally {
       if (!isClosed) {
         emit(state.copyWith(rewindForkInProgress: false));
       }
     }
+    // Success: refresh only after the send landed, so a refresh failure
+    // cannot revert a good edit.
+    onSessionHistoryStale?.call(sessionId);
+    _publishRewindHistory();
   }
 
   Future<HistoryContinueSubmitResult> _deliverEditedMessage({
@@ -3379,7 +3399,7 @@ class ChatCubit extends Cubit<ChatState>
     if (!session.isSimple) return false;
     if (Platform.isAndroid) return false;
     final cached = _gitOnPath;
-    final gitOk = cached ?? gitOnPath();
+    final gitOk = cached ?? debugGitOnPath ?? gitOnPath();
     _gitOnPath = gitOk;
     if (!gitOk) return false;
     final workTarget = _lifecycle.launchWorkTarget(

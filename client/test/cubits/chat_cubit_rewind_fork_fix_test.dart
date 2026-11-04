@@ -42,7 +42,7 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   test(
-    'in-flight commitTurn keeps the keep ref and work tree on one turn when rewind starts',
+    'in-flight commitTurn settles before the tip is resolved and restored',
     () async {
       final env = await _openPersonal(cli: CliTool.claude);
       final layout = testHomeStorage.context.layout;
@@ -138,20 +138,29 @@ void main() {
         commit: first.commit,
       );
       await Future<void>.delayed(const Duration(milliseconds: 80));
+      // The rewind is waiting for the snapshot: nothing has been restored.
       expect(await live.readAsString(), 'turn-two');
+      expect(await store.checkedOut(), first.commit);
 
       release.complete();
       await rewind;
 
-      expect(await live.readAsString(), 'turn-one');
-      expect(await store.checkedOut(), first.commit);
+      // The tip is resolved after the snapshot, so the finished turn is the
+      // tip and the restore does not drop it.
+      expect(await live.readAsString(), 'turn-two');
       final kept = await store.checkpoints();
       final turnTwo = kept.singleWhere(
         (checkpoint) => checkpoint.messageId == 'm2',
       );
+      expect(await store.checkedOut(), turnTwo.commit);
       expect(
         await store.showFile(turnTwo.commit, 'claude/projects/a.jsonl'),
         'turn-two',
+      );
+      // The earlier turn stays reachable in history.
+      expect(
+        await store.showFile(first.commit, 'claude/projects/a.jsonl'),
+        'turn-one',
       );
     },
   );
@@ -362,6 +371,23 @@ void main() {
     expect(branches.turnOf('u-branch-2')!.commit, second.commit);
     expect(branches.turnOf('u-branch')!.next, second.commit);
     expect(branches.checkedOutCommit, second.commit);
+  });
+
+  test('rewindActionsAllowed is false for a team session', () async {
+    final env = await _openMixed();
+    expect(
+      env.cubit.rewindActionsAllowed(env.session, env.team!.members.first.id),
+      isFalse,
+    );
+  });
+
+  test('rewindActionsAllowed is false when git is not on PATH', () async {
+    final env = await _openPersonal(cli: CliTool.claude);
+    env.cubit.debugGitOnPath = false;
+    expect(
+      env.cubit.rewindActionsAllowed(env.session, env.session.sessionId),
+      isFalse,
+    );
   });
 
   test(
