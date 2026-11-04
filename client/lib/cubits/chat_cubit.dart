@@ -259,7 +259,8 @@ class ChatCubit extends Cubit<ChatState>
     required String workTree,
     required SeatRewindTarget target,
     required String messageId,
-    String? nativeSessionId,
+    required String userMessageId,
+    required String? nativeSessionId,
   })?
   debugCommitPtyTurn;
 
@@ -1425,11 +1426,19 @@ class ChatCubit extends Cubit<ChatState>
           seatKey: seatKey,
         );
         if (messageId == null) return;
+        final userMessageId = _observedPtyUserMessageId(
+          sessionId: sessionId,
+          historyMemberId: historyMemberId,
+        );
+        // A checkpoint with no anchor cannot drive the version control, and
+        // committing it would still move `live` past the turn.
+        if (userMessageId == null) return;
         await _commitPtyTurnOnce(
           gitDir: gitDir,
           workTree: workTree,
           target: target,
           messageId: messageId,
+          userMessageId: userMessageId,
           nativeSessionId: nativeSessionId,
           seatKey: seatKey,
           sessionId: sessionId,
@@ -1500,6 +1509,31 @@ class ChatCubit extends Cubit<ChatState>
     final fromSeat = _latestMessageId(seat?.loadedMessages);
     if (fromSeat != null) return fromSeat;
     return _latestMessageId(_loaderVisible(sessionId, historyMemberId));
+  }
+
+  /// User message that opened the turn: the last user-role message in the
+  /// seat's loaded history, else in the loader cache.
+  String? _observedPtyUserMessageId({
+    required String sessionId,
+    required String historyMemberId,
+  }) {
+    final seat = podRuntime(sessionId)?.history?.seatOf(
+      sessionId: sessionId,
+      memberId: historyMemberId,
+    );
+    final fromSeat = _lastUserMessageId(seat?.loadedMessages);
+    if (fromSeat != null) return fromSeat;
+    return _lastUserMessageId(_loaderVisible(sessionId, historyMemberId));
+  }
+
+  String? _lastUserMessageId(List<AiMessage>? messages) {
+    if (messages == null) return null;
+    for (final message in messages.reversed) {
+      if (message.role != AiRole.user) continue;
+      final id = message.id.trim();
+      if (id.isNotEmpty) return id;
+    }
+    return null;
   }
 
   List<AiMessage>? _loaderVisible(String sessionId, String historyMemberId) {
@@ -1614,6 +1648,7 @@ class ChatCubit extends Cubit<ChatState>
     required String workTree,
     required SeatRewindTarget target,
     required String messageId,
+    required String userMessageId,
     required String? nativeSessionId,
     required String seatKey,
     required String sessionId,
@@ -1635,6 +1670,7 @@ class ChatCubit extends Cubit<ChatState>
           workTree: workTree,
           target: target,
           messageId: messageId,
+          userMessageId: userMessageId,
           nativeSessionId: nativeSessionId,
         );
       } else {
@@ -1645,6 +1681,7 @@ class ChatCubit extends Cubit<ChatState>
         );
         await store.commitTurn(
           messageId: messageId,
+          userMessageId: userMessageId,
           nativeSessionId: nativeSessionId,
           gate: _rewindGate,
         );

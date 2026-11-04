@@ -73,20 +73,23 @@ void main() {
       final commits = <RewindCheckpoint>[];
       final storeArgs =
           <({String gitDir, String workTree, SeatRewindTarget target})>[];
+      final userIds = <String>[];
       cubit.debugCommitPtyTurn =
           ({
             required gitDir,
             required workTree,
             required target,
             required messageId,
+            required userMessageId,
             nativeSessionId,
           }) async {
             storeArgs.add((gitDir: gitDir, workTree: workTree, target: target));
+            userIds.add(userMessageId);
             final checkpoint = RewindCheckpoint(
               commit: 'c1',
               parentCommit: '',
               messageId: messageId,
-              userMessageId: '',
+              userMessageId: userMessageId,
               turnAt: 0,
               nativeSessionId: nativeSessionId,
             );
@@ -94,6 +97,18 @@ void main() {
             return checkpoint;
           };
 
+      loader.debugSetCachedMessages(
+        sessionId: session.sessionId,
+        memberId: '',
+        messages: const [
+          AiMessage(
+            id: 'msg-user',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'go')],
+          ),
+        ],
+        cli: CliTool.claude,
+      );
       attention.applyEvent(
         sessionId: session.sessionId,
         memberId: memberId,
@@ -108,6 +123,11 @@ void main() {
         sessionId: session.sessionId,
         memberId: '',
         messages: [
+          AiMessage(
+            id: 'msg-user',
+            role: AiRole.user,
+            parts: const [AiTextPart(text: 'go')],
+          ),
           AiMessage(
             id: lastId,
             role: AiRole.assistant,
@@ -129,6 +149,7 @@ void main() {
 
       expect(commits, hasLength(1));
       expect(commits.single.messageId, lastId);
+      expect(userIds, ['msg-user']);
       expect(commits.single.nativeSessionId, 'native-1');
       expect(storeArgs.single.target.kind, SeatRewindKind.personalPty);
       expect(storeArgs.single.target.seatKey, 'personal');
@@ -206,6 +227,7 @@ void main() {
             required workTree,
             required target,
             required messageId,
+            required userMessageId,
             nativeSessionId,
           }) async {
             commits.add(messageId);
@@ -213,7 +235,7 @@ void main() {
               commit: 'c-$messageId',
               parentCommit: '',
               messageId: messageId,
-              userMessageId: '',
+              userMessageId: userMessageId,
               turnAt: 0,
               nativeSessionId: nativeSessionId,
             );
@@ -223,6 +245,11 @@ void main() {
         sessionId: session.sessionId,
         memberId: '',
         messages: const [
+          AiMessage(
+            id: 'm-user',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'go')],
+          ),
           AiMessage(
             id: 'm-old',
             role: AiRole.assistant,
@@ -256,6 +283,11 @@ void main() {
         sessionId: session.sessionId,
         memberId: '',
         messages: const [
+          AiMessage(
+            id: 'm-user',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'go')],
+          ),
           AiMessage(
             id: 'm-old',
             role: AiRole.assistant,
@@ -332,6 +364,7 @@ void main() {
             required workTree,
             required target,
             required messageId,
+            required userMessageId,
             nativeSessionId,
           }) async {
             commits.add(messageId);
@@ -339,7 +372,7 @@ void main() {
               commit: 'c-$messageId',
               parentCommit: '',
               messageId: messageId,
-              userMessageId: '',
+              userMessageId: userMessageId,
               turnAt: 0,
               nativeSessionId: nativeSessionId,
             );
@@ -349,6 +382,11 @@ void main() {
         sessionId: session.sessionId,
         memberId: '',
         messages: const [
+          AiMessage(
+            id: 'm-user',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'go')],
+          ),
           AiMessage(
             id: 'm-before',
             role: AiRole.assistant,
@@ -371,6 +409,11 @@ void main() {
         sessionId: session.sessionId,
         memberId: '',
         messages: const [
+          AiMessage(
+            id: 'm-user',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'go')],
+          ),
           AiMessage(
             id: 'm-before',
             role: AiRole.assistant,
@@ -451,6 +494,7 @@ void main() {
             required workTree,
             required target,
             required messageId,
+            required userMessageId,
             nativeSessionId,
           }) async {
             started.complete();
@@ -459,7 +503,7 @@ void main() {
               commit: 'c-$messageId',
               parentCommit: '',
               messageId: messageId,
-              userMessageId: '',
+              userMessageId: userMessageId,
               turnAt: 0,
               nativeSessionId: nativeSessionId,
             );
@@ -469,6 +513,11 @@ void main() {
         sessionId: session.sessionId,
         memberId: '',
         messages: const [
+          AiMessage(
+            id: 'm-user',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'go')],
+          ),
           AiMessage(
             id: 'm-before',
             role: AiRole.assistant,
@@ -483,6 +532,11 @@ void main() {
         sessionId: session.sessionId,
         memberId: '',
         messages: const [
+          AiMessage(
+            id: 'm-user',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'go')],
+          ),
           AiMessage(
             id: 'm-before',
             role: AiRole.assistant,

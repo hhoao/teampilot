@@ -90,6 +90,11 @@ void main() {
         memberId: '',
         messages: const [
           AiMessage(
+            id: 'm-user',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'go')],
+          ),
+          AiMessage(
             id: 'm2',
             role: AiRole.assistant,
             parts: [AiTextPart(text: 'two')],
@@ -106,12 +111,14 @@ void main() {
             required workTree,
             required target,
             required messageId,
+            required userMessageId,
             nativeSessionId,
           }) async {
             started.complete();
             await release.future;
             final committed = await store.commitTurn(
               messageId: messageId,
+              userMessageId: userMessageId,
               nativeSessionId: nativeSessionId,
             );
             return committed;

@@ -541,7 +541,8 @@ class AcpRuntimeAttach {
     String launchModel = '',
     AcpSshLaunch? sshLaunch,
     String? remoteAdapterPath,
-    Future<void> Function(String messageId)? onTurnCheckpoint,
+    Future<void> Function(String messageId, String userMessageId)?
+    onTurnCheckpoint,
   }) {
     final remote = usesSshTransport(launchTarget.kind);
     final logger = AcpFrameLogger();
@@ -600,7 +601,8 @@ class AcpRuntimeAttach {
     )..ensureStrings(_host.acpChatStrings?.call(cli) ?? defaultAcpChatStrings);
   }
 
-  Future<Future<void> Function(String messageId)?> _turnCheckpointCallback({
+  Future<Future<void> Function(String messageId, String userMessageId)?>
+  _turnCheckpointCallback({
     required AppSession session,
     required CliTool cli,
     required bool personal,
@@ -610,7 +612,7 @@ class AcpRuntimeAttach {
     if (launchTarget.kind != RuntimeKind.local) return null;
     if (Platform.isAndroid) return null;
     if (!await _gitOnPath()) return null;
-    return (messageId) async {
+    return (messageId, userMessageId) async {
       final target = SeatRewindTarget(
         kind: personal ? SeatRewindKind.personalAcp : SeatRewindKind.mixedAcp,
         tool: cli.value,
@@ -641,7 +643,11 @@ class AcpRuntimeAttach {
           target: target,
         );
         try {
-          await store.commitTurn(messageId: messageId, gate: gate);
+          await store.commitTurn(
+            messageId: messageId,
+            userMessageId: userMessageId,
+            gate: gate,
+          );
         } on RewindTurnSkipped {
           return;
         }

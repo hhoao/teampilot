@@ -274,7 +274,8 @@ void main() {
     String launchProvider = '',
     String launchModel = '',
     void Function(String sessionId)? onUserActivity,
-    Future<void> Function(String messageId)? onTurnCheckpoint,
+    Future<void> Function(String messageId, String userMessageId)?
+    onTurnCheckpoint,
   }) {
     final cubit = AcpChatRuntimeCubit(
       runtime: runtime,
@@ -1737,7 +1738,7 @@ void main() {
         sessionId: 's1',
         tool: CliTool.gemini,
         transcript: transcript,
-        onTurnCheckpoint: (id) async => checkpoints.add(id),
+        onTurnCheckpoint: (id, _) async => checkpoints.add(id),
       )..ensureStrings(_testStrings);
 
       await cubit.start(
@@ -1771,11 +1772,39 @@ void main() {
     },
   );
 
+  test('the turn checkpoint carries the user message that opened it', () async {
+    final cubit = bootCubit();
+    String? seenLast;
+    String? seenUser;
+    cubit.onTurnCheckpoint = (messageId, userMessageId) async {
+      seenLast = messageId;
+      seenUser = userMessageId;
+    };
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    cubit.debugSetMessagesForTest(const [
+      AiMessage(id: 'u1', role: AiRole.user, parts: [AiTextPart(text: 'hi')]),
+      AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'yo')],
+      ),
+    ]);
+    await cubit.debugEndTurnForTest();
+
+    expect(seenLast, 'a1');
+    expect(seenUser, 'u1');
+    await cubit.close();
+  });
+
   test('turn stays in flight until the checkpoint callback finishes', () async {
     final release = Completer<void>();
     final started = Completer<void>();
     final cubit = bootCubit(
-      onTurnCheckpoint: (_) async {
+      onTurnCheckpoint: (_, _) async {
         if (!started.isCompleted) started.complete();
         await release.future;
       },

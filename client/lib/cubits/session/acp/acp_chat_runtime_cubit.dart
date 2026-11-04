@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:acpd/acpd.dart' as acpd;
 import 'package:ai_message_core/ai_message_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
@@ -229,7 +230,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   /// Snapshots the local seat after a real turn's transcript flush. Null when
   /// the runtime is remote, git is missing, or tests do not inject a hook.
-  final Future<void> Function(String messageId)? onTurnCheckpoint;
+  Future<void> Function(String messageId, String userMessageId)?
+  onTurnCheckpoint;
 
   final AgentAttentionPort? _attention;
   final AcpChatTranscriptWriter? _transcript;
@@ -1034,17 +1036,31 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     }
   }
 
+  @visibleForTesting
+  void debugSetMessagesForTest(List<AiMessage> messages) {
+    emit(state.copyWith(messages: messages, inTurn: true));
+  }
+
+  @visibleForTesting
+  Future<void> debugEndTurnForTest() => _endTurn();
+
   Future<void> _endTurn() async {
     if (_closing || isClosed) return;
     final wasInTurn = state.inTurn;
     final hadBackground = _turnHadBackgroundToolCall;
     final callback = onTurnCheckpoint;
     final messageId = state.messages.isEmpty ? '' : state.messages.last.id;
+    String userMessageId = '';
+    for (final message in state.messages.reversed) {
+      if (message.role != AiRole.user) continue;
+      userMessageId = message.id;
+      break;
+    }
     // Snapshot before idle. Attention done and inTurn false start the
     // follow-up drain, which must not write the next turn into this commit.
     if (wasInTurn && callback != null && messageId.isNotEmpty) {
       try {
-        await callback(messageId);
+        await callback(messageId, userMessageId);
       } on Object catch (error, stackTrace) {
         appLogger.e(
           '[acp-chat] session $sessionId turn checkpoint failed: $error',
