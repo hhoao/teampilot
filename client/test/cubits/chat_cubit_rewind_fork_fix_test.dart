@@ -298,6 +298,63 @@ void main() {
   });
 
   test(
+    'switchSeatVersion restores the branch tip, not the version commit',
+    () async {
+      final env = await _openPersonal(cli: CliTool.claude);
+      final seeded = await _seedPersonal(
+        session: env.session,
+        kind: SeatRewindKind.personalPty,
+      );
+      // `seeded.first` is the first turn (u-branch), `seeded.second` the next.
+      final store = seeded.store;
+      await store.restore(seeded.first.commit);
+      final extended = await store.commitTurn(
+        messageId: 'm-extended',
+        userMessageId: 'u-extended',
+      );
+      await store.restore(seeded.second.commit);
+
+      await env.cubit.switchSeatVersion(
+        sessionId: env.session.sessionId,
+        memberId: env.session.sessionId,
+        commit: seeded.first.commit,
+      );
+
+      expect(await store.checkedOut(), extended.commit);
+      expect(await store.checkedOut(), isNot(seeded.first.commit));
+    },
+  );
+
+  test('loadSeatBranches groups sibling turns into versions', () async {
+    final env = await _openPersonal(cli: CliTool.claude);
+    final seeded = await _seedPersonal(
+      session: env.session,
+      kind: SeatRewindKind.personalPty,
+    );
+    final store = seeded.store;
+    await store.restore(seeded.first.commit);
+    await store.commitTurn(messageId: 'm-a', userMessageId: 'u-branch');
+    await store.restore(seeded.first.commit);
+    final second = await store.commitTurn(
+      messageId: 'm-b',
+      userMessageId: 'u-branch-2',
+    );
+
+    final branches = await env.cubit.loadSeatBranches(
+      session: env.session,
+      memberId: env.session.sessionId,
+    );
+
+    expect(branches.turnOf('u-branch')!.index, 1);
+    expect(branches.turnOf('u-branch')!.count, 2);
+    expect(branches.turnOf('u-branch-2')!.index, 2);
+    expect(branches.turnOf('u-branch-2')!.count, 2);
+    expect(branches.turnOf('u-branch-2')!.commit, second.commit);
+    expect(branches.turnOf('u-branch')!.next, second.commit);
+    expect(branches.checkedOutCommit, second.commit);
+  });
+
+  test(
     'rename failure after create deletes the new session directory',
     () async {
       await _expectForkCleansUp(throwOn: 'rename');
@@ -495,8 +552,16 @@ Future<_Seeded> _seedPersonal({
     nativeSessionId: firstNative,
   );
   await live.writeAsString('two');
-  await store.commitTurn(messageId: 'm2', nativeSessionId: secondNative);
-  return _Seeded(first: first, liveFile: live);
+  final second = await store.commitTurn(
+    messageId: 'm2',
+    nativeSessionId: secondNative,
+  );
+  return _Seeded(
+    first: first,
+    second: second,
+    store: store,
+    liveFile: live,
+  );
 }
 
 Future<_Seeded> _seedMixedAcp({
@@ -531,8 +596,13 @@ Future<_Seeded> _seedMixedAcp({
   );
   final first = await store.commitTurn(messageId: 'm1');
   await live.writeAsString('two');
-  await store.commitTurn(messageId: 'm2');
-  return _Seeded(first: first, liveFile: live);
+  final second = await store.commitTurn(messageId: 'm2');
+  return _Seeded(
+    first: first,
+    second: second,
+    store: store,
+    liveFile: live,
+  );
 }
 
 final class _Env {
@@ -552,9 +622,16 @@ final class _Env {
 }
 
 final class _Seeded {
-  const _Seeded({required this.first, required this.liveFile});
+  const _Seeded({
+    required this.first,
+    required this.second,
+    required this.store,
+    required this.liveFile,
+  });
 
   final RewindCheckpoint first;
+  final RewindCheckpoint second;
+  final SeatRewindStore store;
   final File liveFile;
 }
 
