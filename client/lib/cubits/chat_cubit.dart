@@ -274,6 +274,33 @@ class ChatCubit extends Cubit<ChatState>
   })?
   debugDeliverEditedMessage;
 
+  /// Watchdogs for optimistic edits, keyed by session id.
+  final Map<String, Timer> _pendingBranchEditTimers = {};
+
+  void _setPendingBranchEdit(String sessionId, PendingBranchEdit edit) {
+    _pendingBranchEditTimers[sessionId]?.cancel();
+    emit(
+      state.copyWith(
+        pendingBranchEdits: {...state.pendingBranchEdits, sessionId: edit},
+      ),
+    );
+    _pendingBranchEditTimers[sessionId] = Timer(
+      const Duration(seconds: 15),
+      () => clearPendingBranchEdit(sessionId),
+    );
+  }
+
+  /// Clears the optimistic bubble once the runtime publishes the new prompt.
+  void clearPendingBranchEdit(String sessionId) {
+    _pendingBranchEditTimers.remove(sessionId)?.cancel();
+    if (isClosed || state.pendingBranchEdits[sessionId] == null) return;
+    emit(
+      state.copyWith(
+        pendingBranchEdits: Map.of(state.pendingBranchEdits)..remove(sessionId),
+      ),
+    );
+  }
+
   final _operatorMailboxQueued =
       StreamController<OperatorMailboxQueuedEvent>.broadcast();
   Stream<OperatorMailboxQueuedEvent> get operatorMailboxQueued =>
@@ -3208,6 +3235,10 @@ class ChatCubit extends Cubit<ChatState>
     required String userMessageId,
     required String text,
   }) async {
+    _setPendingBranchEdit(
+      sessionId,
+      PendingBranchEdit(messageId: userMessageId, text: text),
+    );
     final session = _sessionForRewind(sessionId);
     if (session == null) return;
     final store = _seatRewindStore(session, memberId);
@@ -3732,6 +3763,10 @@ class ChatCubit extends Cubit<ChatState>
   @override
   Future<void> close() async {
     if (isClosed) return;
+    for (final timer in _pendingBranchEditTimers.values) {
+      timer.cancel();
+    }
+    _pendingBranchEditTimers.clear();
     await _agentAttentionSub?.cancel();
     _agentAttentionSub = null;
     _sessionRuntime.disposeIdleWatch();

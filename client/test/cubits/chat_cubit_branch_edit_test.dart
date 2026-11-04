@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -189,6 +190,45 @@ void main() {
 
     expect(rootAtSend, root);
     expect(edited!.parentCommit, root);
+  });
+
+  test('the cubit owns the optimistic edit until it is cleared', () async {
+    final env = await _openPersonal();
+    final store = env.store;
+    await store.commitTurn(messageId: 'a1', userMessageId: 'u1');
+    await store.commitTurn(messageId: 'a2', userMessageId: 'u2');
+    final gate = Completer<void>();
+    env.cubit.debugDeliverEditedMessage =
+        ({required sessionId, required memberId, required message}) async {
+          await gate.future;
+          return const HistoryContinueSubmitResult(
+            ok: true,
+            channel: HistoryContinueChannel.pty,
+          );
+        };
+
+    final edit = env.cubit.editSeatTurn(
+      sessionId: env.session.sessionId,
+      memberId: env.session.sessionId,
+      userMessageId: 'u2',
+      text: 'edited text',
+    );
+
+    final pending = env.cubit.state.pendingBranchEdits[env.session.sessionId];
+    expect(pending?.messageId, 'u2');
+    expect(pending?.text, 'edited text');
+
+    gate.complete();
+    await edit;
+
+    expect(
+      env.cubit.state.pendingBranchEdits[env.session.sessionId],
+      isNotNull,
+      reason: 'the runtime has not published the new prompt yet',
+    );
+
+    env.cubit.clearPendingBranchEdit(env.session.sessionId);
+    expect(env.cubit.state.pendingBranchEdits[env.session.sessionId], isNull);
   });
 }
 

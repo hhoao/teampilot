@@ -13,14 +13,6 @@ import '../../services/chat/rewind/seat_branches.dart';
 import '../../utils/logging/logger.dart';
 import '../../widgets/app_toast/app_toast.dart';
 
-/// An edited user message shown in place until its new turn lands.
-final class PendingBranchEdit {
-  const PendingBranchEdit({required this.messageId, required this.text});
-
-  final String messageId;
-  final String text;
-}
-
 final class SessionHistoryRewindBinding {
   const SessionHistoryRewindBinding({
     required this.branches,
@@ -79,8 +71,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   var _started = false;
   var _busy = false;
   var _editing = false;
-  PendingBranchEdit? _optimisticEdit;
-  Timer? _optimisticTimeout;
+  PendingBranchEdit? _seenPendingEdit;
   var _reloadSerial = 0;
   var _seenGeneration = 0;
   ChatCubit? _cubit;
@@ -95,6 +86,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
     _started = true;
     _cubit = cubit;
     _seenGeneration = cubit.state.rewindHistoryGeneration;
+    _seenPendingEdit = cubit.state.pendingBranchEdits[widget.session.sessionId];
     _generationSub = cubit.stream.listen(_onCubitState);
     _reload();
   }
@@ -110,13 +102,17 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
 
   @override
   void dispose() {
-    _optimisticTimeout?.cancel();
     unawaited(_generationSub?.cancel());
     super.dispose();
   }
 
   void _onCubitState(ChatState next) {
     if (!mounted) return;
+    final pending = next.pendingBranchEdits[widget.session.sessionId];
+    if (!identical(pending, _seenPendingEdit)) {
+      _seenPendingEdit = pending;
+      if (mounted) setState(() {});
+    }
     if (next.rewindHistoryGeneration == _seenGeneration) return;
     _seenGeneration = next.rewindHistoryGeneration;
     _reload();
@@ -221,15 +217,9 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
 
   /// Returns true when the edited turn was accepted; false keeps the editor
   /// open with the draft so the author can retry.
-  void _clearOptimisticEdit() {
-    _optimisticTimeout?.cancel();
-    _optimisticTimeout = null;
-    if (mounted) setState(() => _optimisticEdit = null);
-  }
-
   void _onOptimisticLanded() {
     appLogger.d('[branch-edit] new prompt landed');
-    _clearOptimisticEdit();
+    context.read<ChatCubit>().clearPendingBranchEdit(widget.session.sessionId);
   }
 
   Future<bool> _onEditUserMessage(String messageId, String text) async {
@@ -238,7 +228,6 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
     setState(() {
       _busy = true;
       _editing = true;
-      _optimisticEdit = PendingBranchEdit(messageId: messageId, text: text);
     });
     try {
       await _cubit!.editSeatTurn(
@@ -248,11 +237,6 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         text: text,
       );
       appLogger.d('[branch-edit] host end ok=true');
-      _optimisticTimeout?.cancel();
-      _optimisticTimeout = Timer(const Duration(seconds: 15), () {
-        appLogger.w('[branch-edit] watchdog dropped the optimistic bubble');
-        _clearOptimisticEdit();
-      });
       return true;
     } on Object catch (error, stackTrace) {
       appLogger.e(
@@ -269,7 +253,11 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         );
       }
       appLogger.d('[branch-edit] host end ok=false');
-      _clearOptimisticEdit();
+      if (mounted) {
+        context.read<ChatCubit>().clearPendingBranchEdit(
+          widget.session.sessionId,
+        );
+      }
       return false;
     } finally {
       if (mounted) {
@@ -293,7 +281,10 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         onEditUserMessage: _allowed ? _onEditUserMessage : null,
         busy: _busy,
         holdTranscript: _editing,
-        optimisticEdit: _optimisticEdit,
+        optimisticEdit: context
+            .read<ChatCubit>()
+            .state
+            .pendingBranchEdits[widget.session.sessionId],
         onOptimisticLanded: _onOptimisticLanded,
       ),
     );

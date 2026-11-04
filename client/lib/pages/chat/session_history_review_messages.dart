@@ -8,7 +8,6 @@ import '../../models/failed_message_record.dart';
 import '../../services/chat/rewind/seat_branches.dart';
 import 'chat_reveal_controller.dart';
 import 'session_history_live_chrome.dart';
-import 'session_history_rewind_host.dart';
 import 'session_history_thread.dart';
 
 /// Finder key for the soft-reload non-blocking error strip.

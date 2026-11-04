@@ -4,6 +4,7 @@ import '../models/workspace.dart';
 import '../models/app_session.dart';
 import '../models/session_activity.dart';
 import '../services/chat/launch/session/team_config_launch_validator.dart';
+import '../services/chat/rewind/seat_branches.dart';
 
 export '../services/chat/launch/shell_launch_typedefs.dart';
 
@@ -23,6 +24,7 @@ class ChatState extends Equatable {
     this.rewindForkInProgress = false,
     this.rewindForkError,
     this.rewindHistoryGeneration = 0,
+    this.pendingBranchEdits = const {},
   });
 
   final List<Workspace> workspaces;
@@ -69,6 +71,10 @@ class ChatState extends Equatable {
   /// History hosts reload actions from this, not only from the live list.
   final int rewindHistoryGeneration;
 
+  /// Pending optimistic edits keyed by session id; survives a chat-area
+  /// rebuild caused by the restore's reconnect.
+  final Map<String, PendingBranchEdit> pendingBranchEdits;
+
   Set<String> get busySessionIds => {
     for (final e in sessionActivities.entries)
       if (e.value.isBusy) e.key,
@@ -95,6 +101,7 @@ class ChatState extends Equatable {
     String? rewindForkError,
     bool clearRewindForkError = false,
     int? rewindHistoryGeneration,
+    Map<String, PendingBranchEdit>? pendingBranchEdits,
   }) {
     return ChatState(
       workspaces: workspaces ?? this.workspaces,
@@ -121,6 +128,7 @@ class ChatState extends Equatable {
           : (rewindForkError ?? this.rewindForkError),
       rewindHistoryGeneration:
           rewindHistoryGeneration ?? this.rewindHistoryGeneration,
+      pendingBranchEdits: pendingBranchEdits ?? this.pendingBranchEdits,
     );
   }
 
@@ -140,5 +148,6 @@ class ChatState extends Equatable {
     rewindForkInProgress,
     rewindForkError,
     rewindHistoryGeneration,
+    pendingBranchEdits,
   ];
 }

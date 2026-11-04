@@ -1,5 +1,16 @@
 import 'package:teampilot/services/chat/rewind/seat_rewind_store.dart';
 
+/// An edited user message shown in place until its new turn lands.
+///
+/// Cubit-owned: the restore reconnects the session, which rebuilds the whole
+/// chat area (hosts and threads). Widget-local state cannot survive it.
+final class PendingBranchEdit {
+  const PendingBranchEdit({required this.messageId, required this.text});
+
+  final String messageId;
+  final String text;
+}
+
 /// One version of a user message: the turn it opened.
 final class SeatBranchVersion {
   const SeatBranchVersion({

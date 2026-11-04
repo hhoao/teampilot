@@ -12,7 +12,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/failed_message_record.dart';
 import '../../services/chat/rewind/seat_branches.dart';
 import '../../utils/logging/logger.dart';
-import 'session_history_rewind_host.dart';
 import 'chat_outline.dart';
 import 'chat_reveal_controller.dart';
 import 'history_scroll_cursor_lock.dart';
