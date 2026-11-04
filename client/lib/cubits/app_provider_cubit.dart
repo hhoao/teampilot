@@ -333,6 +333,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       }
     }
     final capture = _vaultCapture;
+    VaultCaptureResult? captured;
     var effectiveLink = provider.credentialLink.trim();
     var effectiveApiKey = provider.apiKey;
     // Managed links resolve their secret into apiKey in memory; probe and
@@ -346,7 +347,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       try {
         final unlock = _ensureVaultUnlocked;
         if (unlock != null && !await unlock()) return false;
-        final captured = await capture.captureProvider(
+        captured = await capture.captureProvider(
           provider,
           apiKey: provider.apiKey.isEmpty ? null : provider.apiKey,
         );
@@ -410,7 +411,19 @@ class AppProviderCubit extends Cubit<AppProviderState> {
         if (p.id != trimmedId) p,
       next,
     ]..sort((a, b) => a.name.compareTo(b.name));
-    await _repository.saveProviders(cli, list);
+    try {
+      await _repository.saveProviders(cli, list);
+    } on Object {
+      final result = captured;
+      if (result != null) {
+        try {
+          await capture?.rollback(result);
+        } on Object {
+          // Preserve the catalog error; a later cleanup can remove orphans.
+        }
+      }
+      rethrow;
+    }
     emit(
       state.copyWith(
         selectedCli: cli,

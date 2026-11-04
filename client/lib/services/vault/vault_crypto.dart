@@ -110,6 +110,70 @@ class VaultCrypto {
   final int iterations;
   final int parallelism;
 
+  /// Fresh random salt for a new vault envelope.
+  static Uint8List newSalt() => _randomBytes(_saltLength);
+
+  /// Derives the vault key once; callers cache it for the unlocked session so
+  /// saves do not re-run Argon2id on every write.
+  Future<Uint8List> deriveKey(String passphrase, Uint8List salt) {
+    return Isolate.run(
+      () => _deriveKey(
+        passphrase: passphrase,
+        salt: salt,
+        memoryKiB: memoryKiB,
+        iterations: iterations,
+        parallelism: parallelism,
+      ),
+    );
+  }
+
+  Future<VaultEnvelope> encryptWithKey(
+    VaultDocument document,
+    Uint8List key,
+    Uint8List salt,
+  ) async {
+    final nonce = _randomBytes(_nonceLength);
+    final plaintext = jsonEncode(document.toJson());
+    final payload = await Isolate.run(
+      () => _encryptWithKeySync(
+        plaintext: plaintext,
+        key: key,
+        nonce: nonce,
+      ),
+    );
+    return VaultEnvelope(
+      version: 1,
+      salt: salt,
+      nonce: nonce,
+      payload: payload,
+      memoryKiB: memoryKiB,
+      iterations: iterations,
+      parallelism: parallelism,
+    );
+  }
+
+  Future<VaultDocument> decryptWithKey(
+    VaultEnvelope envelope,
+    Uint8List key,
+  ) async {
+    final plaintext = await Isolate.run(
+      () => _decryptWithKeySync(
+        payload: envelope.payload,
+        key: key,
+        nonce: envelope.nonce,
+      ),
+    );
+    try {
+      final decoded = jsonDecode(plaintext);
+      if (decoded is! Map) throw const FormatException();
+      return VaultDocument.fromJson(Map<String, Object?>.from(decoded));
+    } on VaultFormatException {
+      rethrow;
+    } on Object {
+      throw const VaultFormatException('decrypted payload is not a vault');
+    }
+  }
+
   Future<VaultEnvelope> encrypt(
     VaultDocument document,
     String passphrase,
@@ -170,6 +234,36 @@ class VaultCrypto {
     return Uint8List.fromList(
       List<int>.generate(length, (_) => random.nextInt(256)),
     );
+  }
+}
+
+Uint8List _encryptWithKeySync({
+  required String plaintext,
+  required Uint8List key,
+  required Uint8List nonce,
+}) {
+  final cipher = GCMBlockCipher(AESEngine())
+    ..init(
+      true,
+      AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)),
+    );
+  return cipher.process(Uint8List.fromList(utf8.encode(plaintext)));
+}
+
+String _decryptWithKeySync({
+  required Uint8List payload,
+  required Uint8List key,
+  required Uint8List nonce,
+}) {
+  final cipher = GCMBlockCipher(AESEngine())
+    ..init(
+      false,
+      AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)),
+    );
+  try {
+    return utf8.decode(cipher.process(payload));
+  } on Object {
+    throw const VaultDecryptException();
   }
 }
 

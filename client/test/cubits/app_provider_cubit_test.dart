@@ -489,6 +489,36 @@ void main() {
     expect((await vault.list()).single.fields['apiKey'], 'codex-key');
   });
 
+  test('a failed catalog save rolls the provider capture back', () async {
+    final vault = await _vaultService();
+    final throwing = _ThrowingSaveRepository(
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+    );
+    final autoCubit = AppProviderCubit(
+      repository: throwing,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+    throwing.failSaves = true;
+    const draft = AppProviderConfig(
+      id: 'rollback',
+      cli: CliTool.claude,
+      name: 'Rollback',
+      apiKey: 'sk-rollback',
+    );
+
+    await expectLater(
+      autoCubit.upsertProvider(draft, captureVaultCredentials: true),
+      throwsA(isA<StateError>()),
+    );
+    expect(await vault.list(), isEmpty);
+  });
+
   test('a failed catalog save keeps the vault entry on delete', () async {
     final vault = await _vaultService();
     final throwing = _ThrowingSaveRepository(

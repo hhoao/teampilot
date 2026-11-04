@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import '../../models/vault_document.dart';
 import '../../repositories/vault_repository.dart';
@@ -24,8 +25,11 @@ class EncryptedVaultBackend implements CredentialBackend {
   /// 不需要解锁，因此单独维护该标志而不是用 `_unlocked == null` 推导。
   bool _locked = false;
 
-  /// 主密码只在解锁后短期保留，`lock()` / `clear()` 时清空。
-  String? _lastPassphrase;
+  /// 主密码派生出的密钥只在解锁期间驻留内存；锁定/停用时清空。
+  ///
+  /// 每个保存操作复用该密钥，避免每次写入都重跑 Argon2id（~1s/次）。
+  Uint8List? _key;
+  Uint8List? _salt;
 
   @override
   String get kind => 'encrypted';
@@ -49,13 +53,14 @@ class EncryptedVaultBackend implements CredentialBackend {
       throw const VaultFormatException('vault file missing');
     }
     final VaultDocument document;
+    final Uint8List key;
+    final VaultEnvelope envelope;
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! Map) throw const VaultFormatException('not an object');
-      document = await _crypto.decrypt(
-        VaultEnvelope.fromJson(Map<String, Object?>.from(decoded)),
-        passphrase,
-      );
+      envelope = VaultEnvelope.fromJson(Map<String, Object?>.from(decoded));
+      key = await _crypto.deriveKey(passphrase, envelope.salt);
+      document = await _crypto.decryptWithKey(envelope, key);
     } on VaultException {
       rethrow;
     } on Object {
@@ -63,33 +68,42 @@ class EncryptedVaultBackend implements CredentialBackend {
     }
     _unlocked = document;
     _locked = false;
-    _lastPassphrase = passphrase;
+    _key = key;
+    _salt = envelope.salt;
   }
 
   Future<void> initialize(VaultDocument document, String passphrase) async {
-    final envelope = await _crypto.encrypt(document, passphrase);
+    final salt = VaultCrypto.newSalt();
+    final key = await _crypto.deriveKey(passphrase, salt);
+    final envelope = await _crypto.encryptWithKey(document, key, salt);
     await _repository.writeRaw(jsonEncode(envelope.toJson()));
     // 回读校验：解不开就不要把用户数据留在半成品文件里。
     final raw = await _repository.readRaw();
     if (raw == null) throw const VaultStorageException('vaultWriteFailed');
-    final verified = await _crypto.decrypt(
+    final verified = await _crypto.decryptWithKey(
       VaultEnvelope.fromJson(
         Map<String, Object?>.from(jsonDecode(raw) as Map),
       ),
-      passphrase,
+      key,
     );
     if (verified.entries.length != document.entries.length) {
       throw const VaultStorageException('vaultVerifyFailed');
     }
     _unlocked = document;
     _locked = false;
-    _lastPassphrase = passphrase;
+    _key = key;
+    _salt = salt;
   }
 
   @override
   Future<void> save(VaultDocument document) async {
     if (_unlocked == null) throw const VaultLockedException();
-    final envelope = await _crypto.encrypt(document, _lastPassphrase!);
+    final key = _key;
+    final salt = _salt;
+    if (key == null || salt == null) {
+      throw const VaultLockedException();
+    }
+    final envelope = await _crypto.encryptWithKey(document, key, salt);
     await _repository.writeRaw(jsonEncode(envelope.toJson()));
     _unlocked = document;
   }
@@ -97,14 +111,16 @@ class EncryptedVaultBackend implements CredentialBackend {
   void lock() {
     _unlocked = null;
     _locked = true;
-    _lastPassphrase = null;
+    _key = null;
+    _salt = null;
   }
 
   @override
   Future<void> clear() async {
     _unlocked = null;
     _locked = false;
-    _lastPassphrase = null;
+    _key = null;
+    _salt = null;
     await _repository.archive();
   }
 }

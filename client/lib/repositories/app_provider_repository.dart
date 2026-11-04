@@ -68,8 +68,7 @@ class AppProviderRepository {
        _claudeCredentialsServiceOverride = claudeCredentialsService,
        _cursorCredentialsServiceOverride = cursorCredentialsService,
        _codexCredentialsServiceOverride = codexCredentialsService,
-       _linkedCredentialLookup =
-           linkedCredentialLookup ?? defaultLinkedCredentialLookup;
+       _linkedCredentialLookup = linkedCredentialLookup;
 
   final String? _basePathOverride;
   final Filesystem? _fsOverride;
@@ -293,7 +292,9 @@ class AppProviderRepository {
   Future<List<AppProviderConfig>> _resolveLinkedCredentials(
     List<AppProviderConfig> providers,
   ) async {
-    final lookup = _linkedCredentialLookup;
+    // Resolve the default at read time: the app installs it after some
+    // repositories (vault cubit, managed resolver) have already been built.
+    final lookup = _linkedCredentialLookup ?? defaultLinkedCredentialLookup;
     if (lookup == null) {
       if (!_warnedMissingResolver &&
           providers.any((p) => p.credentialLink.trim().isNotEmpty)) {
