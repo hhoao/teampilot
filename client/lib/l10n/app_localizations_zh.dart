@@ -2213,6 +2213,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get branchSwitchFailed => '切换版本失败';
 
   @override
+  String get editUserMessage => '编辑消息';
+
+  @override
+  String get editSend => '发送';
+
+  @override
+  String get editCancel => '取消';
+
+  @override
+  String get branchEditFailed => '改后的消息发送失败';
+
+  @override
   String get openSessionDirectory => '打开会话目录';
 
   @override

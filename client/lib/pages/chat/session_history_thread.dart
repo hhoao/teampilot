@@ -75,6 +75,7 @@ class SessionHistoryThread extends StatefulWidget {
     this.branches = const SeatBranches.empty(),
     this.onSwitchVersion,
     this.onForkFrom,
+    this.onEditUserMessage,
     this.turnInFlight = false,
     super.key,
   });
@@ -123,6 +124,9 @@ class SessionHistoryThread extends StatefulWidget {
 
   /// Copies the branch through the commit into a new session.
   final void Function(String commit)? onForkFrom;
+
+  /// Called with the user message id and the edited text.
+  final void Function(String messageId, String text)? onEditUserMessage;
 
   /// When true, the controls stay visible but disabled.
   final bool turnInFlight;
@@ -193,6 +197,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   double? _olderMaxBefore;
 
   List<AiMessage> _messages = const [];
+
+  /// User message currently open in the inline editor, if any.
+  String? _editingMessageId;
 
   /// Message to reveal in the viewport (from [ChatRevealController]).
   String? _revealTargetId;
@@ -889,6 +896,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     final displayMessages = _displayMessages;
     final lastId = displayMessages.isEmpty ? null : displayMessages.last.id;
     final forkLabel = context.l10n.forkFromHere;
+    final editLabel = context.l10n.editUserMessage;
+    final editSendLabel = context.l10n.editSend;
+    final editCancelLabel = context.l10n.editCancel;
     final previousVersionLabel = context.l10n.branchPrevious;
     final nextVersionLabel = context.l10n.branchNext;
     // Last *real* message (excludes the running footer appended to the tip).
@@ -984,6 +994,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                           widget.branches,
                           widget.onSwitchVersion != null,
                           widget.onForkFrom != null,
+                          widget.onEditUserMessage != null,
+                          _editingMessageId,
                         ),
                         revealMessageId: _revealTargetId,
                         revealEpoch: _revealEpoch,
@@ -1052,6 +1064,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                           final version = ai.role == AiRole.user
                               ? widget.branches.turnOf(ai.id)
                               : null;
+                          final editing =
+                              ai.role == AiRole.user &&
+                              _editingMessageId == ai.id;
                           final showsVersion =
                               version != null && version.count > 1;
                           final previous = version?.previous;
@@ -1078,6 +1093,22 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                 ? null
                                 : () => widget.onForkFrom!(version.commit),
                             forkLabel: forkLabel,
+                            editing: editing,
+                            onEdit:
+                                version == null ||
+                                    widget.onEditUserMessage == null
+                                ? null
+                                : () =>
+                                      setState(() => _editingMessageId = ai.id),
+                            editLabel: editLabel,
+                            onSubmitEdit: (text) {
+                              setState(() => _editingMessageId = null);
+                              widget.onEditUserMessage?.call(ai.id, text);
+                            },
+                            onCancelEdit: () =>
+                                setState(() => _editingMessageId = null),
+                            editSendLabel: editSendLabel,
+                            editCancelLabel: editCancelLabel,
                             versionIndex: showsVersion ? version.index : null,
                             versionCount: showsVersion ? version.count : null,
                             onPreviousVersion:

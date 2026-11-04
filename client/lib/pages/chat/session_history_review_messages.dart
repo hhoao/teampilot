@@ -36,6 +36,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     this.branches = const SeatBranches.empty(),
     this.onSwitchVersion,
     this.onForkFrom,
+    this.onEditUserMessage,
     this.turnInFlight = false,
     super.key,
   });
@@ -70,6 +71,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   final SeatBranches branches;
   final void Function(String commit)? onSwitchVersion;
   final void Function(String commit)? onForkFrom;
+  final void Function(String messageId, String text)? onEditUserMessage;
   final bool turnInFlight;
 
   bool get _showThread {
@@ -109,6 +111,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               branches: branches,
               onSwitchVersion: onSwitchVersion,
               onForkFrom: onForkFrom,
+              onEditUserMessage: onEditUserMessage,
               turnInFlight: turnInFlight,
             ),
           ),

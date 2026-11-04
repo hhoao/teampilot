@@ -71,6 +71,32 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
   });
 
+  testWidgets('editing a user message sends the new text', (tester) async {
+    final cubit = _BranchCubit();
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+    await _pumpThread(tester, cubit);
+    await tester.tap(find.byTooltip('Edit message'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'edited');
+    await tester.tap(find.text('Send'));
+    await tester.pump();
+
+    expect(cubit.edits, [('u1', 'edited')]);
+  });
+
+  testWidgets('a team session offers no branch controls', (tester) async {
+    final cubit = _TeamCubit();
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+    await _pumpThread(tester, cubit);
+
+    expect(find.byTooltip('Edit message'), findsNothing);
+    expect(find.byTooltip('Fork from here'), findsNothing);
+  });
+
   testWidgets('a checkpoint landing without a new live list shows versions', (
     tester,
   ) async {
@@ -131,6 +157,7 @@ Future<void> _pumpThread(WidgetTester tester, ChatCubit cubit) async {
                   branches: binding.branches,
                   onSwitchVersion: binding.onSwitchVersion,
                   onForkFrom: binding.onForkFrom,
+                  onEditUserMessage: binding.onEditUserMessage,
                   turnInFlight: binding.busy,
                 );
               },
@@ -152,9 +179,20 @@ class _BranchCubit extends ChatCubit {
       );
 
   final switchedTo = <String>[];
+  final edits = <(String, String)>[];
 
   @override
   bool rewindActionsAllowed(AppSession session, String memberId) => true;
+
+  @override
+  Future<void> editSeatTurn({
+    required String sessionId,
+    required String memberId,
+    required String userMessageId,
+    required String text,
+  }) async {
+    edits.add((userMessageId, text));
+  }
 
   @override
   Future<SeatBranches> loadSeatBranches({
@@ -221,4 +259,10 @@ final class _GenerationBranchCubit extends _BranchCubit {
     if (!landed) return const SeatBranches.empty();
     return super.loadSeatBranches(session: session, memberId: memberId);
   }
+}
+
+/// Rewind/fork is personal-session only; this stands in for a team seat.
+final class _TeamCubit extends _BranchCubit {
+  @override
+  bool rewindActionsAllowed(AppSession session, String memberId) => false;
 }

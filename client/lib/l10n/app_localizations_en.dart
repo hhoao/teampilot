@@ -2321,6 +2321,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get branchSwitchFailed => 'Failed to switch version';
 
   @override
+  String get editUserMessage => 'Edit message';
+
+  @override
+  String get editSend => 'Send';
+
+  @override
+  String get editCancel => 'Cancel';
+
+  @override
+  String get branchEditFailed => 'Failed to send the edited message';
+
+  @override
   String get openSessionDirectory => 'Open session folder';
 
   @override

@@ -4184,6 +4184,30 @@ abstract class AppLocalizations {
   /// **'Failed to switch version'**
   String get branchSwitchFailed;
 
+  /// No description provided for @editUserMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit message'**
+  String get editUserMessage;
+
+  /// No description provided for @editSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get editSend;
+
+  /// No description provided for @editCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get editCancel;
+
+  /// No description provided for @branchEditFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to send the edited message'**
+  String get branchEditFailed;
+
   /// No description provided for @openSessionDirectory.
   ///
   /// In en, this message translates to:

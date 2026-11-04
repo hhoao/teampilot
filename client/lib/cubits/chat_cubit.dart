@@ -3376,6 +3376,7 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   bool rewindActionsAllowed(AppSession session, String memberId) {
+    if (!session.isSimple) return false;
     if (Platform.isAndroid) return false;
     final cached = _gitOnPath;
     final gitOk = cached ?? gitOnPath();

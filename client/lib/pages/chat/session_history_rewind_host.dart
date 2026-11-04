@@ -18,12 +18,14 @@ final class SessionHistoryRewindBinding {
     required this.branches,
     this.onSwitchVersion,
     this.onForkFrom,
+    this.onEditUserMessage,
     this.busy = false,
   });
 
   final SeatBranches branches;
   final void Function(String commit)? onSwitchVersion;
   final void Function(String commit)? onForkFrom;
+  final void Function(String messageId, String text)? onEditUserMessage;
   final bool busy;
 }
 
@@ -188,6 +190,35 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
     }
   }
 
+  Future<void> _onEditUserMessage(String messageId, String text) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await _cubit!.editSeatTurn(
+        sessionId: widget.session.sessionId,
+        memberId: widget.memberId,
+        userMessageId: messageId,
+        text: text,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        '[rewind] editSeatTurn failed session=${widget.session.sessionId}: '
+        '$error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.branchEditFailed,
+          variant: TpToastVariant.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return widget.builder(
@@ -196,6 +227,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         branches: _branches,
         onSwitchVersion: _allowed ? _onSwitchVersion : null,
         onForkFrom: _allowed ? _onForkFrom : null,
+        onEditUserMessage: _allowed ? _onEditUserMessage : null,
         busy: _busy,
       ),
     );
