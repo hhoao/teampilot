@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -80,16 +81,6 @@ class ChatWorkbench extends StatefulWidget {
 
 class _ChatWorkbenchState extends State<ChatWorkbench> {
   TerminalController _terminalController = TerminalController();
-
-  // A rewind edit stops and relaunches the seat, which flips the workbench
-  // between its `session == null` and `session != null` body branches. Those
-  // branches place SessionChatView at different tree depths; without a stable
-  // key the whole chat subtree (scroll position, cached message bodies, the
-  // optimistic edit) is torn down and remounted — a visible flash per flip.
-  // A per-tab GlobalKey lets Flutter reparent the element instead, keeping the
-  // State alive across the reconnect. Recreate it only when the session changes.
-  GlobalKey _chatViewKey = GlobalKey(debugLabel: 'sessionChatView');
-  String? _chatViewKeySessionId;
 
   var _findVisible = false;
   var _remappingDeadTarget = false;
@@ -282,14 +273,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   Widget build(BuildContext context) {
     final slice = widget.workbenchSlice;
     final team = widget.team;
-    if (widget.sessionId != _chatViewKeySessionId) {
-      _chatViewKeySessionId = widget.sessionId;
-      _chatViewKey = GlobalKey(
-        debugLabel: 'sessionChatView:${widget.sessionId}',
-      );
-    }
     return _ChatWorkbenchBody(
-      chatViewKey: _chatViewKey,
       workspaceId: widget.workspaceId,
       tabScopeId: widget.tabScopeId ?? widget.workspaceId,
       profileId: widget.profileId,
@@ -306,9 +290,32 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   }
 }
 
+/// Stable listener used when a session has no pod yet. Keeping a single
+/// instance (and never notifying it) lets the body always be wrapped in a
+/// [ListenableBuilder] regardless of whether the pod exists.
+final ChangeNotifier _idlePodNotifier = ChangeNotifier();
+
+/// Wraps the pod-dependent body so the root widget type is constant.
+///
+/// A rewind reconnect replaces (or briefly drops) the pod. Switching between a
+/// `ListenableBuilder` root and a bare child root changes the runtimeType at
+/// that position, so Flutter deactivates the whole chat subtree
+/// (SessionChatView, the rewind host, the message thread) and remounts it —
+/// one visible flash per flip. Keeping the ListenableBuilder present while the
+/// pod is gone preserves the thread's State, scroll offset and cached bodies.
+@visibleForTesting
+Widget podBodyRoot({
+  required Listenable? pod,
+  required TransitionBuilder builder,
+}) {
+  return ListenableBuilder(
+    listenable: pod ?? _idlePodNotifier,
+    builder: builder,
+  );
+}
+
 class _ChatWorkbenchBody extends StatelessWidget {
   const _ChatWorkbenchBody({
-    required this.chatViewKey,
     required this.workspaceId,
     required this.tabScopeId,
     this.profileId,
@@ -323,7 +330,6 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required this.onRemapDeadTargetFromLaunch,
   });
 
-  final GlobalKey chatViewKey;
   final String workspaceId;
   final String tabScopeId;
   final String? profileId;
@@ -506,13 +512,10 @@ class _ChatWorkbenchBody extends StatelessWidget {
       );
     }
 
-    if (pod != null) {
-      return ListenableBuilder(
-        listenable: pod,
-        builder: (context, _) => buildPodDependentBody(context),
-      );
-    }
-    return buildPodDependentBody(context);
+    return podBodyRoot(
+      pod: pod,
+      builder: (context, _) => buildPodDependentBody(context),
+    );
   }
 
   TerminalSession? _resolveSession({
@@ -880,7 +883,6 @@ class _ChatWorkbenchBody extends StatelessWidget {
     );
 
     return SessionChatView(
-      key: chatViewKey,
       session: appSession,
       acpRuntime: acpRuntime,
       // ACP seats are chat-only — there is no terminal view to toggle to.
