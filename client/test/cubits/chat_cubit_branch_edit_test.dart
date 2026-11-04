@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/session_activity.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
@@ -53,11 +54,49 @@ void main() {
     );
   });
 
-  test('a failed send puts the previous branch back', () async {
+  test(
+    'a failed send surfaces the error and puts the previous branch back',
+    () async {
+      final env = await _openPersonal();
+      final store = env.store;
+      await store.commitTurn(messageId: 'a1', userMessageId: 'u1');
+      final second = await store.commitTurn(
+        messageId: 'a2',
+        userMessageId: 'u2',
+      );
+      env.cubit.debugDeliverEditedMessage =
+          ({required sessionId, required memberId, required message}) async {
+            // A failed send still latches a turn; the rollback must not be
+            // refused by the turn-in-flight guard.
+            env.cubit.debugMarkTurnInFlight(sessionId);
+            throw StateError('delivery exploded');
+          };
+
+      await expectLater(
+        env.cubit.editSeatTurn(
+          sessionId: env.session.sessionId,
+          memberId: env.session.sessionId,
+          userMessageId: 'u2',
+          text: 'edited text',
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            'delivery exploded',
+          ),
+        ),
+      );
+
+      expect(await store.checkedOut(), second.commit);
+      expect(env.cubit.state.rewindForkError, 'branchEditFailed');
+      expect(env.cubit.state.rewindForkInProgress, isFalse);
+    },
+  );
+
+  test('a rejected send reports the delivery failure', () async {
     final env = await _openPersonal();
-    final store = env.store;
-    await store.commitTurn(messageId: 'a1', userMessageId: 'u1');
-    final second = await store.commitTurn(messageId: 'a2', userMessageId: 'u2');
+    await env.store.commitTurn(messageId: 'a1', userMessageId: 'u1');
     env.cubit.debugDeliverEditedMessage =
         ({required sessionId, required memberId, required message}) async =>
             const HistoryContinueSubmitResult.failed();
@@ -66,15 +105,48 @@ void main() {
       env.cubit.editSeatTurn(
         sessionId: env.session.sessionId,
         memberId: env.session.sessionId,
-        userMessageId: 'u2',
+        userMessageId: 'u1',
         text: 'edited text',
       ),
-      throwsA(isA<StateError>()),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'The edited message was not delivered',
+        ),
+      ),
     );
 
-    expect(await store.checkedOut(), second.commit);
     expect(env.cubit.state.rewindForkError, 'branchEditFailed');
-    expect(env.cubit.state.rewindForkInProgress, isFalse);
+  });
+
+  test('editing the first message restores the root', () async {
+    final env = await _openPersonal();
+    final store = env.store;
+    final root = await store.root();
+    await store.commitTurn(messageId: 'a1', userMessageId: 'u1');
+    String? rootAtSend;
+    RewindCheckpoint? edited;
+    env.cubit.debugDeliverEditedMessage =
+        ({required sessionId, required memberId, required message}) async {
+          rootAtSend = await store.checkedOut();
+          // The real send is followed by the new turn's end checkpoint.
+          edited = await store.commitTurn(messageId: 'a2', userMessageId: 'u1');
+          return const HistoryContinueSubmitResult(
+            ok: true,
+            channel: HistoryContinueChannel.pty,
+          );
+        };
+
+    await env.cubit.editSeatTurn(
+      sessionId: env.session.sessionId,
+      memberId: env.session.sessionId,
+      userMessageId: 'u1',
+      text: 'edited first message',
+    );
+
+    expect(rootAtSend, root);
+    expect(edited!.parentCommit, root);
   });
 }
 
@@ -167,6 +239,19 @@ final class _HarnessCubit extends ChatCubit {
        );
 
   final relaunchCalls = <String>[];
+
+  /// Latches a busy reason the way a real send does, so the seat process
+  /// reports a turn in flight.
+  void debugMarkTurnInFlight(String sessionId) {
+    emit(
+      state.copyWith(
+        sessionActivities: {
+          ...state.sessionActivities,
+          sessionId: const SessionActivity(reasons: {SessionBusyReason.inTurn}),
+        },
+      ),
+    );
+  }
 
   @override
   Future<void> retrySessionLaunch(String sessionId) async {

@@ -3250,10 +3250,13 @@ class ChatCubit extends Cubit<ChatState>
       );
       if (before != null) {
         try {
+          // The send already failed, so a latched turn must not keep the seat
+          // on the parent branch. Only this rollback skips the guard.
           await _rewindFork.rewind(
             store: store,
             seat: _CubitSeatProcess(this, session, memberId),
             commit: before,
+            allowTurnInFlight: true,
           );
         } on Object catch (rollbackError, rollbackStack) {
           appLogger.e(

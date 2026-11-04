@@ -32,12 +32,17 @@ final class RewindForkService {
   final RewindWorkGate gate;
 
   /// Restore [commit] into [store] after stopping [seat], then relaunch.
+  ///
+  /// [allowTurnInFlight] exists only for the edit rollback: the send already
+  /// failed, so discarding whatever turn latched is correct and leaving the
+  /// seat on the parent branch would strand the user with no way back.
   Future<void> rewind({
     required SeatRewindStore store,
     required SeatProcess seat,
     required String commit,
+    bool allowTurnInFlight = false,
   }) async {
-    if (seat.turnInFlight) {
+    if (!allowTurnInFlight && seat.turnInFlight) {
       throw StateError('Cannot rewind while a turn is in flight');
     }
     if (!seat.localRuntime) {
