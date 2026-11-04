@@ -33,6 +33,7 @@ import '../services/workspace/dead_ssh_target_error.dart';
 import '../services/workspace/target_liveness.dart';
 import '../services/workspace/workspace_tools_scope.dart';
 import '../theme/workspace_surface_layers.dart';
+import '../utils/logging/logger.dart';
 import '../utils/ui/app_keys.dart';
 import '../widgets/workspace/workspace_dead_target_remap_dialog.dart';
 import 'home_workspace/workspace/workspace_route_active_scope.dart';
@@ -79,6 +80,16 @@ class ChatWorkbench extends StatefulWidget {
 
 class _ChatWorkbenchState extends State<ChatWorkbench> {
   TerminalController _terminalController = TerminalController();
+
+  // A rewind edit stops and relaunches the seat, which flips the workbench
+  // between its `session == null` and `session != null` body branches. Those
+  // branches place SessionChatView at different tree depths; without a stable
+  // key the whole chat subtree (scroll position, cached message bodies, the
+  // optimistic edit) is torn down and remounted — a visible flash per flip.
+  // A per-tab GlobalKey lets Flutter reparent the element instead, keeping the
+  // State alive across the reconnect. Recreate it only when the session changes.
+  GlobalKey _chatViewKey = GlobalKey(debugLabel: 'sessionChatView');
+  String? _chatViewKeySessionId;
 
   var _findVisible = false;
   var _remappingDeadTarget = false;
@@ -271,7 +282,14 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   Widget build(BuildContext context) {
     final slice = widget.workbenchSlice;
     final team = widget.team;
+    if (widget.sessionId != _chatViewKeySessionId) {
+      _chatViewKeySessionId = widget.sessionId;
+      _chatViewKey = GlobalKey(
+        debugLabel: 'sessionChatView:${widget.sessionId}',
+      );
+    }
     return _ChatWorkbenchBody(
+      chatViewKey: _chatViewKey,
       workspaceId: widget.workspaceId,
       tabScopeId: widget.tabScopeId ?? widget.workspaceId,
       profileId: widget.profileId,
@@ -290,6 +308,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
 class _ChatWorkbenchBody extends StatelessWidget {
   const _ChatWorkbenchBody({
+    required this.chatViewKey,
     required this.workspaceId,
     required this.tabScopeId,
     this.profileId,
@@ -304,6 +323,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required this.onRemapDeadTargetFromLaunch,
   });
 
+  final GlobalKey chatViewKey;
   final String workspaceId;
   final String tabScopeId;
   final String? profileId;
@@ -398,6 +418,12 @@ class _ChatWorkbenchBody extends StatelessWidget {
         slice: slice,
         team: team,
       );
+      if (chatCubit.state.pendingBranchEdits.containsKey(activeId)) {
+        appLogger.d(
+          '[branch-edit] workbench body sessionNull=${session == null} '
+          'view=$view connecting=$connectInProgress sid=$activeId',
+        );
+      }
       if (session == null) {
         if (view == SessionWorkbenchView.chat) {
           body = _buildSessionChatView(
@@ -854,6 +880,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     );
 
     return SessionChatView(
+      key: chatViewKey,
       session: appSession,
       acpRuntime: acpRuntime,
       // ACP seats are chat-only — there is no terminal view to toggle to.

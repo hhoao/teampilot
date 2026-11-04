@@ -369,6 +369,10 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   @override
   void dispose() {
+    appLogger.d(
+      '[branch-edit] thread dispose anchor=${widget.scrollAnchorKey} '
+      'msgs=${_messages.length} pending=${_pendingEdit?.messageId}',
+    );
     _writeScrollAnchor();
     _stickGeneration++;
     _hoverResumeTimer?.cancel();

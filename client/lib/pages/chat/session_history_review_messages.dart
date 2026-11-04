@@ -6,6 +6,7 @@ import '../../cubits/ai_history_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/failed_message_record.dart';
 import '../../services/chat/rewind/seat_branches.dart';
+import '../../utils/logging/logger.dart';
 import 'chat_reveal_controller.dart';
 import 'session_history_live_chrome.dart';
 import 'session_history_thread.dart';
@@ -81,6 +82,13 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   final bool turnInFlight;
 
   bool get _showThread {
+    // An edit rewinds and reconnects the seat, so the history status can
+    // briefly flip to loading/refreshing and the runtime can publish an empty
+    // list. Swapping the thread for a status pane there unmounts its State
+    // (scroll position, cached bodies, optimistic bubble) and paints a
+    // spinner: the visible flash. Keep it mounted for the whole edit window;
+    // holdTranscript already freezes its contents until the new turn lands.
+    if (optimisticEdit != null || holdTranscript) return true;
     if (state.status == AiHistoryViewStatus.ready) return true;
     if (state.status == AiHistoryViewStatus.refreshing) return true;
     // Optimistic pendings may land while status is still empty/loading, and a
@@ -92,15 +100,33 @@ class SessionHistoryReviewMessages extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (optimisticEdit != null || holdTranscript) {
+      appLogger.d(
+        '[branch-edit] review build showThread=$_showThread '
+        'status=${state.status.name} msgs=${runtime.messages.length} '
+        'hold=$holdTranscript pending=${optimisticEdit != null}',
+      );
+    }
     if (_showThread) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Every child carries a key. A softReload inserts/removes the
+          // refreshing strip during a rewind reconnect; without keys Flutter
+          // matches children by position and rebuilds the Expanded (and the
+          // whole thread State) whenever it shifts — the visible double flash.
           if (state.status == AiHistoryViewStatus.refreshing)
-            const _RefreshingStrip(),
+            const KeyedSubtree(
+              key: ValueKey('session-history-refreshing-strip'),
+              child: _RefreshingStrip(),
+            ),
           if ((state.softReloadError?.trim() ?? '').isNotEmpty)
-            const _SoftReloadErrorStrip(),
+            const KeyedSubtree(
+              key: ValueKey('session-history-soft-reload-error-strip'),
+              child: _SoftReloadErrorStrip(),
+            ),
           Expanded(
+            key: const ValueKey('session-history-thread'),
             child: SessionHistoryThread(
               runtime: runtime,
               hasOlder: state.hasOlder,
