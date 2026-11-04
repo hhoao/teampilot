@@ -209,6 +209,10 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   /// User message currently open in the inline editor, if any.
   String? _editingMessageId;
 
+  /// Message being re-sent, shown with its new text until the turn lands.
+  String? _pendingEditId;
+  String? _pendingEditText;
+
   /// Draft kept while an edit is in flight/failed so the editor can be
   /// reseeded instead of losing the author's text.
   String? _editDraft;
@@ -422,6 +426,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     }
     setState(() {
       _messages = next;
+      _pendingEditId = null;
+      _pendingEditText = null;
       if (!_stickToEnd && tipGrew) {
         _showNewMessagesChip = true;
       }
@@ -901,6 +907,22 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   }
 
   List<AiMessage> get _displayMessages {
+    final pendingId = _pendingEditId;
+    if (pendingId != null) {
+      final index = _messages.indexWhere((message) => message.id == pendingId);
+      if (index >= 0) {
+        // The edited bubble shows its new text immediately and everything the
+        // old branch had below it becomes the running row, so the thread does
+        // not repaint the restored branch and then the new one.
+        return [
+          ..._messages.take(index),
+          _messages[index].copyWith(
+            parts: [AiTextPart(text: _pendingEditText ?? '')],
+          ),
+          kSessionHistoryRunningPlaceholder,
+        ];
+      }
+    }
     if (!widget.liveChrome.isActive) return _messages;
     if (_messages.any((m) => m.id == kSessionHistoryRunningPlaceholder.id)) {
       return _messages;
@@ -1009,7 +1031,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                         // list). Drop cached turn bodies so the action bar
                         // appears without a new message list instance.
                         bodyCacheKey: (
-                          widget.turnInFlight,
+                          // An edit freezes the transcript; dropping every
+                          // cached body here is what made the thread flash.
+                          widget.holdTranscript ? false : widget.turnInFlight,
                           widget.branches,
                           widget.onSwitchVersion != null,
                           widget.onForkFrom != null,
@@ -1121,7 +1145,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                       setState(() => _editingMessageId = ai.id),
                             editLabel: editLabel,
                             onSubmitEdit: (text) async {
-                              setState(() => _editDraft = text);
+                              setState(() {
+                                _editDraft = text;
+                                _pendingEditId = ai.id;
+                                _pendingEditText = text;
+                                _editingMessageId = null;
+                              });
                               final accepted =
                                   await (widget.onEditUserMessage?.call(
                                         ai.id,
@@ -1129,12 +1158,16 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                       ) ??
                                       Future.value(true));
                               if (!mounted) return accepted;
-                              if (accepted) {
-                                setState(() {
-                                  _editingMessageId = null;
+                              setState(() {
+                                _pendingEditId = null;
+                                _pendingEditText = null;
+                                if (accepted) {
                                   _editDraft = null;
-                                });
-                              }
+                                } else {
+                                  // Reopen the editor with the draft.
+                                  _editingMessageId = ai.id;
+                                }
+                              });
                               return accepted;
                             },
                             onCancelEdit: () => setState(() {

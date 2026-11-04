@@ -227,6 +227,33 @@ void main() {
     expect(find.text('2 / 2'), findsOneWidget);
   });
 
+  testWidgets('the edited bubble updates in place while the resend runs', (
+    tester,
+  ) async {
+    final cubit = _GatedEditCubit();
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+    await _pumpThread(tester, cubit);
+
+    await tester.tap(find.byTooltip('Edit message'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'edited');
+    await tester.tap(find.text('Send'));
+    await tester.pump();
+
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('edited'), findsOneWidget);
+    expect(
+      find.text('answer'),
+      findsNothing,
+      reason: 'the old reply belongs to the branch being replaced',
+    );
+
+    cubit.finish();
+    await pumpUntilSettled(tester);
+  });
+
   testWidgets('holdTranscript keeps the old branch until it is released', (
     tester,
   ) async {
@@ -475,4 +502,23 @@ final class _GenerationBranchCubit extends _BranchCubit {
 final class _TeamCubit extends _BranchCubit {
   @override
   bool rewindActionsAllowed(AppSession session, String memberId) => false;
+}
+
+final class _GatedEditCubit extends _BranchCubit {
+  final _gate = Completer<void>();
+
+  void finish() {
+    if (!_gate.isCompleted) _gate.complete();
+  }
+
+  @override
+  Future<void> editSeatTurn({
+    required String sessionId,
+    required String memberId,
+    required String userMessageId,
+    required String text,
+  }) async {
+    edits.add((userMessageId, text));
+    await _gate.future;
+  }
 }
