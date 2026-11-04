@@ -182,8 +182,6 @@ class _AiMessageViewState extends State<AiMessageView> {
             showActionBar: widget.showActionBar,
             actionBarReveal: widget.actionBarReveal,
             hoverListenable: trackHover ? _hovered : null,
-            onEdit: widget.onEdit,
-            editLabel: widget.editLabel,
             onFork: widget.onFork,
             forkLabel: widget.forkLabel,
             rewindForkEnabled: widget.rewindForkEnabled,
@@ -471,8 +469,6 @@ class _AssistantBlock extends StatelessWidget {
     required this.showActionBar,
     required this.actionBarReveal,
     this.hoverListenable,
-    this.onEdit,
-    this.editLabel = 'Edit message',
     this.onFork,
     this.forkLabel = 'Fork from here',
     this.rewindForkEnabled = true,
@@ -491,8 +487,6 @@ class _AssistantBlock extends StatelessWidget {
   final bool showActionBar;
   final AiActionBarReveal actionBarReveal;
   final ValueListenable<bool>? hoverListenable;
-  final VoidCallback? onEdit;
-  final String editLabel;
   final VoidCallback? onFork;
   final String forkLabel;
   final bool rewindForkEnabled;
@@ -524,8 +518,6 @@ class _AssistantBlock extends StatelessWidget {
                   message: message,
                   reveal: actionBarReveal,
                   hoverListenable: hoverListenable,
-                  onEdit: onEdit,
-                  editLabel: editLabel,
                   onFork: onFork,
                   forkLabel: forkLabel,
                   rewindForkEnabled: rewindForkEnabled,
