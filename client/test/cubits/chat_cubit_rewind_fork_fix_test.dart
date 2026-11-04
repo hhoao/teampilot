@@ -117,9 +117,11 @@ void main() {
             return committed;
           };
 
-      env.cubit.debugOnTurnEnded(
-        env.session.sessionId,
-        env.session.sessionId,
+      unawaited(
+        env.cubit.debugCheckpointPtyTurn(
+          env.session.sessionId,
+          env.session.sessionId,
+        ),
       );
       await started.future;
 
@@ -137,7 +139,9 @@ void main() {
       expect(await live.readAsString(), 'turn-one');
       expect(await store.checkedOut(), first.commit);
       final kept = await store.checkpoints();
-      final turnTwo = kept.singleWhere((checkpoint) => checkpoint.messageId == 'm2');
+      final turnTwo = kept.singleWhere(
+        (checkpoint) => checkpoint.messageId == 'm2',
+      );
       expect(
         await store.showFile(turnTwo.commit, 'claude/projects/a.jsonl'),
         'turn-two',

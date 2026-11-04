@@ -8,6 +8,7 @@ import 'member_turn_idle_sync.dart';
 import '../../../utils/logging/logger.dart';
 import '../session/chat_tab_store.dart';
 import '../session/chat_tab.dart';
+import 'member_coordination.dart';
 import 'tab_member_coordination_factory.dart';
 
 /// Cross-tab idle watch: TeamBus reengage and turn quiet sync.
@@ -19,6 +20,7 @@ final class TabSessionIdleWatch {
     CliTool? Function(ChatTab tab, String memberId)? memberCli,
     VoidCallback? onAfterTick,
     void Function(String sessionId, String memberId)? onAfterTurnStarted,
+    Future<void> Function(String sessionId, String memberId)? onBeforeTurnEnded,
     void Function(String sessionId, String memberId)? onAfterTurnEnded,
   }) : _tabStore = tabStore,
        _coordinationFactory = coordinationFactory,
@@ -26,6 +28,7 @@ final class TabSessionIdleWatch {
        _memberCli = memberCli,
        _onAfterTick = onAfterTick,
        _onAfterTurnStarted = onAfterTurnStarted,
+       _onBeforeTurnEnded = onBeforeTurnEnded,
        _onAfterTurnEnded = onAfterTurnEnded;
 
   final ChatTabStore _tabStore;
@@ -34,12 +37,19 @@ final class TabSessionIdleWatch {
   final CliTool? Function(ChatTab tab, String memberId)? _memberCli;
   final VoidCallback? _onAfterTick;
   final void Function(String sessionId, String memberId)? _onAfterTurnStarted;
+  final Future<void> Function(String sessionId, String memberId)?
+  _onBeforeTurnEnded;
   final void Function(String sessionId, String memberId)? _onAfterTurnEnded;
 
   Timer? _timer;
 
   /// Per-member rising edge of in-turn (shell latch or bus `active`).
   final Map<String, bool> _wasInTurn = {};
+
+  /// Seats whose quiet end is still being prepared. The turn stays published
+  /// as in-flight so a queued follow-up cannot start while the preparing
+  /// step (the rewind checkpoint) is still reading the seat's runtime.
+  final Set<String> _endingTurn = {};
 
   void ensureStarted() {
     if (_timer != null) return;
@@ -53,6 +63,7 @@ final class TabSessionIdleWatch {
       _timer?.cancel();
       _timer = null;
       _wasInTurn.clear();
+      _endingTurn.clear();
       _onAfterTick?.call();
     }
   }
@@ -61,6 +72,7 @@ final class TabSessionIdleWatch {
     _timer?.cancel();
     _timer = null;
     _wasInTurn.clear();
+    _endingTurn.clear();
     _onAfterTick?.call();
   }
 
@@ -88,22 +100,48 @@ final class TabSessionIdleWatch {
           inTurn: inTurn,
           shell: shell,
           wasInTurn: _wasInTurn,
-          onTurnStarted: () =>
-              _onAfterTurnStarted?.call(tab.info.id, memberId),
+          onTurnStarted: () => _onAfterTurnStarted?.call(tab.info.id, memberId),
           endTurn: () {
             final cli = _memberCli?.call(tab, memberId);
             if (cli == null || !ptyQuietEndsTurn(cli)) return;
+            if (!_endingTurn.add(key)) return;
             appLogger.d(
               '[idle-watch] end-turn member=$memberId '
               'session=${tab.info.id} '
               'busInTurn=${bus?.isMemberInTurn(memberId)}',
             );
-            coordination.endTurn();
-            _onAfterTurnEnded?.call(tab.info.id, memberId);
+            unawaited(
+              _finishTurn(
+                sessionId: tab.info.id,
+                memberId: memberId,
+                turnKey: key,
+                coordination: coordination,
+              ),
+            );
           },
         );
       });
     }
     _onAfterTick?.call();
+  }
+
+  /// Publishes the turn end only after [TabSessionIdleWatch]'s
+  /// `onBeforeTurnEnded` work (the rewind checkpoint) has completed.
+  Future<void> _finishTurn({
+    required String sessionId,
+    required String memberId,
+    required String turnKey,
+    required MemberCoordination coordination,
+  }) async {
+    try {
+      await _onBeforeTurnEnded?.call(sessionId, memberId);
+    } finally {
+      coordination.endTurn();
+      _onAfterTurnEnded?.call(sessionId, memberId);
+      _endingTurn.remove(turnKey);
+      // The turn edge landed after this tick's post-tick pass, so recompute
+      // the working indicators (and let a queued follow-up drain).
+      _onAfterTick?.call();
+    }
   }
 }

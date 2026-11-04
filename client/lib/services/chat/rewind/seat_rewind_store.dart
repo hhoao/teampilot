@@ -164,28 +164,62 @@ final class SeatRewindStore {
     return sha.isEmpty ? null : sha;
   }
 
+  /// Checkpoints oldest first, ordered by ancestry so turns that end in the
+  /// same second still list deterministically. A commit without a keep ref is
+  /// never a checkpoint and is dropped.
+  ///
+  /// The history UI reads this on every turn end, so the bodies come back in
+  /// one `git log` rather than one process per checkpoint.
   Future<List<RewindCheckpoint>> checkpoints() async {
     if (!Directory(gitDir).existsSync()) return const [];
     final listed = await _runGit([
       ..._repoArgs,
       'for-each-ref',
-      '--sort=committerdate',
       '--format=%(objectname)',
       'refs/rewind/keep',
     ], allowFailure: true);
-    final checkpoints = <RewindCheckpoint>[];
-    for (final commit in const LineSplitter().convert(listed)) {
-      if (commit.isEmpty) continue;
-      final body = await _runGit([
+    final kept = const LineSplitter()
+        .convert(listed)
+        .where((commit) => commit.isNotEmpty)
+        .toSet();
+    if (kept.isEmpty) return const [];
+    final walked = const LineSplitter().convert(
+      await _runGit([
         ..._repoArgs,
-        'log',
-        '-1',
-        '--format=%B',
-        commit,
-      ]);
-      checkpoints.add(_parseCheckpoint(commit, body));
+        'rev-list',
+        '--reverse',
+        '--topo-order',
+        ...kept,
+      ], allowFailure: true),
+    );
+    final ordered = [
+      for (final commit in walked)
+        if (kept.contains(commit)) commit,
+      // A tip the walk cannot reach still lists after the reachable ones.
+      for (final commit in kept)
+        if (!walked.contains(commit)) commit,
+    ];
+    if (ordered.isEmpty) return const [];
+    final bodies = await _runGit([
+      ..._repoArgs,
+      'log',
+      '--no-walk=unsorted',
+      '--format=%H%x00%B%x01',
+      ...ordered,
+    ], allowFailure: true);
+    final bodyByCommit = <String, String>{};
+    for (final record in bodies.split('\x01')) {
+      final entry = record.trimLeft();
+      final separator = entry.indexOf('\x00');
+      if (separator <= 0) continue;
+      bodyByCommit[entry.substring(0, separator).trim()] = entry.substring(
+        separator + 1,
+      );
     }
-    return checkpoints;
+    return [
+      for (final commit in ordered)
+        _parseCheckpoint(commit, bodyByCommit[commit] ?? ''),
+    ];
   }
 
   /// Copy [commit] and its ancestors into a new store at [destTarget]'s layout.

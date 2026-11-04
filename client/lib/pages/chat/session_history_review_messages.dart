@@ -33,8 +33,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     this.scrollAnchorKey,
     this.scrollAnchors,
     this.checkpointCommits = const {},
+    this.orderedCommits = const [],
     this.checkedOutCommit,
-    this.laterMessages = const [],
     this.onRewindTo,
     this.onForkFrom,
     this.turnInFlight = false,
@@ -69,8 +69,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   final Map<String, double>? scrollAnchors;
 
   final Map<String, String> checkpointCommits;
+  final List<String> orderedCommits;
   final String? checkedOutCommit;
-  final List<AiMessage> laterMessages;
   final void Function(String commit)? onRewindTo;
   final void Function(String commit)? onForkFrom;
   final bool turnInFlight;
@@ -110,8 +110,8 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               scrollAnchorKey: scrollAnchorKey,
               scrollAnchors: scrollAnchors,
               checkpointCommits: checkpointCommits,
+              orderedCommits: orderedCommits,
               checkedOutCommit: checkedOutCommit,
-              laterMessages: laterMessages,
               onRewindTo: onRewindTo,
               onForkFrom: onForkFrom,
               turnInFlight: turnInFlight,

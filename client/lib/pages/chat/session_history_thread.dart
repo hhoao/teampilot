@@ -25,11 +25,6 @@ const Key kSessionHistoryRunningFooterKey = ValueKey(
   'session-history-running-footer',
 );
 
-/// Finder key for the divider above later-checkpoint ghost messages.
-const Key kSessionHistoryLaterCheckpointDividerKey = ValueKey(
-  'session-history-later-checkpoint-divider',
-);
-
 /// Synthetic tip message while continue is awaiting the assistant turn.
 const AiMessage kSessionHistoryRunningPlaceholder = AiMessage(
   id: 'pending:running',
@@ -77,8 +72,8 @@ class SessionHistoryThread extends StatefulWidget {
     this.scrollAnchors,
     this.mobilePerformanceMode,
     this.checkpointCommits = const {},
+    this.orderedCommits = const [],
     this.checkedOutCommit,
-    this.laterMessages = const [],
     this.onRewindTo,
     this.onForkFrom,
     this.turnInFlight = false,
@@ -124,11 +119,11 @@ class SessionHistoryThread extends StatefulWidget {
   /// Checkpoint SHA for the message id that closed that turn.
   final Map<String, String> checkpointCommits;
 
+  /// Every checkpoint of this seat, oldest first.
+  final List<String> orderedCommits;
+
   /// Currently restored checkpoint, or null when none is checked out.
   final String? checkedOutCommit;
-
-  /// Messages that exist only on later checkpoints, rendered under a divider.
-  final List<AiMessage> laterMessages;
 
   final void Function(String commit)? onRewindTo;
   final void Function(String commit)? onForkFrom;
@@ -884,18 +879,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   }
 
   List<AiMessage> get _displayMessages {
-    List<AiMessage> live;
-    if (!widget.liveChrome.isActive) {
-      live = _messages;
-    } else if (_messages.any(
-      (m) => m.id == kSessionHistoryRunningPlaceholder.id,
-    )) {
-      live = _messages;
-    } else {
-      live = [..._messages, kSessionHistoryRunningPlaceholder];
+    if (!widget.liveChrome.isActive) return _messages;
+    if (_messages.any((m) => m.id == kSessionHistoryRunningPlaceholder.id)) {
+      return _messages;
     }
-    if (widget.laterMessages.isEmpty) return live;
-    return [...live, ...widget.laterMessages];
+    return [..._messages, kSessionHistoryRunningPlaceholder];
   }
 
   @override
@@ -904,12 +892,20 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         widget.mobilePerformanceMode ?? (Platform.isAndroid || Platform.isIOS);
     final displayMessages = _displayMessages;
     final lastId = displayMessages.isEmpty ? null : displayMessages.last.id;
-    final laterIds = {for (final m in widget.laterMessages) m.id};
-    final firstLaterId = widget.laterMessages.isEmpty
-        ? null
-        : widget.laterMessages.first.id;
-    final rewindLabel = context.l10n.rewindToHere;
     final forkLabel = context.l10n.forkFromHere;
+    final previousVersionLabel = context.l10n.rewindPreviousVersion;
+    final nextVersionLabel = context.l10n.rewindNextVersion;
+    final checkedOut = widget.checkedOutCommit == null
+        ? -1
+        : widget.orderedCommits.indexOf(widget.checkedOutCommit!);
+    final versionIndex = checkedOut < 0 ? null : checkedOut + 1;
+    final versionCount = widget.orderedCommits.length;
+    final previousCommit = checkedOut < 1
+        ? null
+        : widget.orderedCommits[checkedOut - 1];
+    final nextCommit = checkedOut >= 0 && checkedOut + 1 < versionCount
+        ? widget.orderedCommits[checkedOut + 1]
+        : null;
     // Last *real* message (excludes the running footer appended to the tip).
     final realTipId = _messages.isEmpty ? null : _messages.last.id;
     final aiTheme = AiMessageTheme.of(context);
@@ -994,15 +990,15 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                         // so the ring moves even though the message list
                         // instance is unchanged (see VirtualThreadViewport.buildKey).
                         buildKey: widget.highlightMessageId,
-                        // Checkpoint maps and fork/rewind callbacks can land
+                        // Checkpoint lists and fork/rewind callbacks can land
                         // after the first mount (generation bump, same live
-                        // list). Drop cached turn bodies so action buttons
-                        // appear without a new message list instance.
+                        // list). Drop cached turn bodies so the action bar
+                        // appears without a new message list instance.
                         bodyCacheKey: (
                           widget.turnInFlight,
                           widget.checkedOutCommit,
                           widget.checkpointCommits,
-                          widget.laterMessages,
+                          widget.orderedCommits,
                           widget.onRewindTo != null,
                           widget.onForkFrom != null,
                         ),
@@ -1071,8 +1067,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                               _liveTurnActive(widget.liveChrome) &&
                               _endsWithThinking(ai);
                           final commit = widget.checkpointCommits[ai.id];
-                          final hideRewind =
-                              commit == null ||
+                          final showsVersion =
+                              commit != null &&
                               commit == widget.checkedOutCommit;
                           final messageChild = AiMessageView(
                             key: ValueKey(ai.id),
@@ -1089,14 +1085,26 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                             chainOfThoughtAutoExpand:
                                 liveThinkingTail &&
                                 aiTheme.cotExpandLatestOnOpen,
-                            onRewind: hideRewind || widget.onRewindTo == null
-                                ? null
-                                : () => widget.onRewindTo!(commit),
                             onFork: commit == null || widget.onForkFrom == null
                                 ? null
                                 : () => widget.onForkFrom!(commit),
-                            rewindLabel: rewindLabel,
                             forkLabel: forkLabel,
+                            versionIndex: showsVersion ? versionIndex : null,
+                            versionCount: showsVersion ? versionCount : null,
+                            onPreviousVersion:
+                                showsVersion &&
+                                    previousCommit != null &&
+                                    widget.onRewindTo != null
+                                ? () => widget.onRewindTo!(previousCommit)
+                                : null,
+                            onNextVersion:
+                                showsVersion &&
+                                    nextCommit != null &&
+                                    widget.onRewindTo != null
+                                ? () => widget.onRewindTo!(nextCommit)
+                                : null,
+                            previousVersionLabel: previousVersionLabel,
+                            nextVersionLabel: nextVersionLabel,
                             rewindForkEnabled: !widget.turnInFlight,
                           );
                           var result = tightenForRunning
@@ -1126,20 +1134,6 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                 ),
                               ),
                               child: result,
-                            );
-                          }
-                          if (laterIds.contains(ai.id)) {
-                            result = Opacity(opacity: 0.55, child: result);
-                          }
-                          if (ai.id == firstLaterId) {
-                            result = Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                const Divider(
-                                  key: kSessionHistoryLaterCheckpointDividerKey,
-                                ),
-                                result,
-                              ],
                             );
                           }
                           return result;

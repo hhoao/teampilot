@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -10,7 +9,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/workspace.dart';
 import '../../pages/home_workspace/workspace/workspace_session_actions.dart';
-import '../../services/chat/conversation/history/later_checkpoint_messages.dart';
+import '../../services/chat/rewind/seat_rewind_history.dart';
 import '../../utils/logging/logger.dart';
 import '../../widgets/app_toast/app_toast.dart';
 
@@ -28,13 +27,12 @@ final class SessionHistoryRewindBinding {
   final bool busy;
 }
 
-/// Loads later-checkpoint ghosts and wires rewind/fork around a history thread.
+/// Loads a seat's checkpoints and wires rewind/fork around a history thread.
 class SessionHistoryRewindHost extends StatefulWidget {
   const SessionHistoryRewindHost({
     required this.session,
     required this.workspace,
     required this.memberId,
-    required this.liveMessages,
     required this.builder,
     super.key,
   });
@@ -42,7 +40,6 @@ class SessionHistoryRewindHost extends StatefulWidget {
   final AppSession session;
   final Workspace workspace;
   final String memberId;
-  final List<AiMessage> liveMessages;
   final Widget Function(
     BuildContext context,
     SessionHistoryRewindBinding binding,
@@ -61,14 +58,17 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   var _busy = false;
   var _reloadSerial = 0;
   var _seenGeneration = 0;
+  ChatCubit? _cubit;
   StreamSubscription<ChatState>? _generationSub;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_started) return;
-    _started = true;
     final cubit = context.read<ChatCubit>();
+    if (_started && identical(_cubit, cubit)) return;
+    if (_started) unawaited(_generationSub?.cancel());
+    _started = true;
+    _cubit = cubit;
     _seenGeneration = cubit.state.rewindHistoryGeneration;
     _generationSub = cubit.stream.listen(_onCubitState);
     _reload();
@@ -78,8 +78,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   void didUpdateWidget(covariant SessionHistoryRewindHost oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.session.sessionId != widget.session.sessionId ||
-        oldWidget.memberId != widget.memberId ||
-        !identical(oldWidget.liveMessages, widget.liveMessages)) {
+        oldWidget.memberId != widget.memberId) {
       _reload();
     }
   }
@@ -98,23 +97,20 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   }
 
   Future<void> _reload() async {
+    final cubit = _cubit;
+    if (cubit == null || !mounted) return;
     final serial = ++_reloadSerial;
-    final cubit = context.read<ChatCubit>();
-    final allowed = cubit.rewindActionsAllowed(
-      widget.session,
-      widget.memberId,
-    );
+    final allowed = cubit.rewindActionsAllowed(widget.session, widget.memberId);
     var history = const SeatRewindHistory.empty();
     if (allowed) {
       try {
         history = await cubit.loadSeatRewindHistory(
           session: widget.session,
           memberId: widget.memberId,
-          live: widget.liveMessages,
         );
       } on Object catch (error, stackTrace) {
         appLogger.e(
-          '[rewind] load later checkpoints failed '
+          '[rewind] load checkpoints failed '
           'session=${widget.session.sessionId}: $error',
           error: error,
           stackTrace: stackTrace,
@@ -131,7 +127,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   Future<void> _onRewindTo(String commit) async {
     setState(() => _busy = true);
     try {
-      await context.read<ChatCubit>().rewindSeatTo(
+      await _cubit!.rewindSeatTo(
         sessionId: widget.session.sessionId,
         memberId: widget.memberId,
         commit: commit,
@@ -158,7 +154,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   Future<void> _onForkFrom(String commit) async {
     setState(() => _busy = true);
     try {
-      final created = await context.read<ChatCubit>().forkSeatFrom(
+      final created = await _cubit!.forkSeatFrom(
         sessionId: widget.session.sessionId,
         memberId: widget.memberId,
         commit: commit,

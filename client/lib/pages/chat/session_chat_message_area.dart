@@ -326,8 +326,6 @@ class SessionChatMessageArea extends StatelessWidget {
                                           session: session,
                                           workspace: workspace,
                                           memberId: shellMemberId,
-                                          liveMessages:
-                                              historySeat.runtime.messages,
                                           builder: (context, rewind) {
                                             return SessionHistoryReviewMessages(
                                               state: state,
@@ -353,11 +351,11 @@ class SessionChatMessageArea extends StatelessWidget {
                                               checkpointCommits: rewind
                                                   .history
                                                   .checkpointCommits,
+                                              orderedCommits:
+                                                  rewind.history.orderedCommits,
                                               checkedOutCommit: rewind
                                                   .history
                                                   .checkedOutCommit,
-                                              laterMessages:
-                                                  rewind.history.laterMessages,
                                               onRewindTo: rewind.onRewindTo,
                                               onForkFrom: rewind.onForkFrom,
                                               turnInFlight:

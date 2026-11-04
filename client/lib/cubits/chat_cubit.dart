@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Directory, Platform;
 
-import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 import 'package:ai_message_core/ai_message_core.dart';
@@ -33,14 +32,12 @@ import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/home_storage.dart';
 import '../services/chat/conversation/history/ai_history_loader.dart';
-import '../services/chat/conversation/history/later_checkpoint_messages.dart';
-import '../services/chat/conversation/history/session_history_context_builder.dart';
 import '../services/chat/rewind/rewind_fork_service.dart';
+import '../services/chat/rewind/seat_rewind_history.dart';
 import '../services/chat/rewind/rewind_work_gate.dart';
 import '../services/chat/rewind/seat_rewind_paths.dart';
 import '../services/chat/rewind/seat_rewind_store.dart';
 import '../services/cli/git_on_path.dart';
-import '../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../services/chat/runtime/session_activity_reduce.dart';
 import '../services/chat/conversation/history/failed_message_store.dart';
 import '../services/chat/session/session_lifecycle_service.dart';
@@ -461,6 +458,7 @@ class ChatCubit extends Cubit<ChatState>
         onAfterTurnLatched: _onOperatorTurnLatched,
         onUserActivity: _launchService.touchOnUserActivity,
         onAfterTurnStarted: _onShellTurnStarted,
+        onBeforeTurnEnded: _checkpointPtyTurn,
         onAfterTurnEnded: _onTurnEnded,
         memberCli: (tab, memberId) {
           final session = tab.persistedSession;
@@ -1339,26 +1337,14 @@ class ChatCubit extends Cubit<ChatState>
     _updateSessionActivities();
   }
 
-  /// PTY-quiet turn end — checkpoints a local non-ACP seat, then clears the
-  /// attention working seat for CLIs whose done event may be unreliable
-  /// (`requiresPtyFallback`). Only fires after the shell turn latch ends
-  /// (PTY quiet after turn activity), so it never mis-clears a `waiting`
-  /// permission seat (clearWorkingIfWorking is waiting-safe) and defers
-  /// while a doorbell is still pending.
+  /// PTY-quiet turn end — clears the attention working seat for CLIs whose
+  /// done event may be unreliable (`requiresPtyFallback`). The checkpoint ran
+  /// before the seat was published idle (see [TabSessionIdleWatch]). Only
+  /// fires after the shell turn latch ends (PTY quiet after turn activity), so
+  /// it never mis-clears a `waiting` permission seat (clearWorkingIfWorking is
+  /// waiting-safe) and defers while a doorbell is still pending.
   void _onTurnEnded(String sessionId, String memberId) {
     if (memberId.trim().isEmpty) return;
-    final tab = _tabStore.getOpenTabBySessionId(sessionId);
-    final session = tab?.persistedSession;
-    if (tab == null || session == null) return;
-    unawaited(_finishPtyTurn(sessionId, memberId));
-  }
-
-  /// Snapshot the seat before publishing idle. A follow-up drain reads that
-  /// idle edge, so it must not start while [commitTurn] is still walking the
-  /// work tree.
-  Future<void> _finishPtyTurn(String sessionId, String memberId) async {
-    await _checkpointPtyTurn(sessionId, memberId);
-    if (isClosed) return;
     final tab = _tabStore.getOpenTabBySessionId(sessionId);
     final session = tab?.persistedSession;
     if (tab == null || session == null) return;
@@ -1387,6 +1373,11 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  /// Snapshot this seat for the turn that just finished.
+  ///
+  /// Runs before the seat is published idle: a follow-up drain or a queued
+  /// doorbell reads that idle edge, and it must not start a new turn while
+  /// [SeatRewindStore.commitTurn] is still walking the work tree.
   Future<void> _checkpointPtyTurn(String sessionId, String memberId) async {
     if (memberId.trim().isEmpty) return;
     final session = _tabStore
@@ -1576,6 +1567,14 @@ class ChatCubit extends Cubit<ChatState>
           stackTrace: stackTrace,
         );
       }
+      // A completed reload already published the closing message; waiting for
+      // the loader's catch-up timeout on top of it would stall the checkpoint.
+      final reloaded = _observedPtyMessageId(
+        sessionId: sessionId,
+        historyMemberId: historyMemberId,
+      );
+      final closing = _idThatClosedTurn(seatKey, reloaded);
+      if (closing != null) return closing;
     }
     final loader = historyLoader;
     if (loader != null) {
@@ -1709,8 +1708,11 @@ class ChatCubit extends Cubit<ChatState>
       final sessionId = entry.key.substring(0, sep);
       final memberId = entry.key.substring(sep + 1);
       if (memberId.isEmpty) continue;
-      _sessionRuntime.endMemberTurn(sessionId, memberId);
-      pending.add(_checkpointPtyTurn(sessionId, memberId));
+      pending.add(
+        _checkpointPtyTurn(sessionId, memberId).whenComplete(
+          () => _sessionRuntime.endMemberTurn(sessionId, memberId),
+        ),
+      );
     }
     if (pending.isEmpty) return;
     await Future.wait(pending);
@@ -1735,6 +1737,10 @@ class ChatCubit extends Cubit<ChatState>
   @visibleForTesting
   void debugOnTurnEnded(String sessionId, String memberId) =>
       _onTurnEnded(sessionId, memberId);
+
+  @visibleForTesting
+  Future<void> debugCheckpointPtyTurn(String sessionId, String memberId) =>
+      _checkpointPtyTurn(sessionId, memberId);
 
   @visibleForTesting
   void debugNotePtyTurnStarted(String sessionId, String memberId) =>
@@ -3231,27 +3237,13 @@ class ChatCubit extends Cubit<ChatState>
   Future<SeatRewindHistory> loadSeatRewindHistory({
     required AppSession session,
     required String memberId,
-    required List<AiMessage> live,
   }) async {
     final store = _seatRewindStore(session, memberId);
     if (store == null) return const SeatRewindHistory.empty();
     if (!Directory(store.gitDir).existsSync()) {
       return const SeatRewindHistory.empty();
     }
-    final acp = isAcpChatSession(session) || isAcpChatSeat(session, memberId);
-    final cli = _cliForRewindSeat(session, memberId);
-    final history = acp
-        ? null
-        : cliRegistry.capability<AiHistoryCapability>(cli);
-    final ptyPath = acp
-        ? null
-        : await _ptyTranscriptRepoPath(session, memberId, store, cli);
-    return readSeatRewindHistory(
-      store: store,
-      acp: acp,
-      history: history,
-      ptyRelativePath: ptyPath,
-    );
+    return readSeatRewindHistory(store: store);
   }
 
   AppSession? _sessionForRewind(String sessionId) {
@@ -3292,31 +3284,6 @@ class ChatCubit extends Cubit<ChatState>
       ),
       target: target,
     );
-  }
-
-  Future<String?> _ptyTranscriptRepoPath(
-    AppSession session,
-    String memberId,
-    SeatRewindStore store,
-    CliTool cli,
-  ) async {
-    final cap = cliRegistry.capability<AiHistoryCapability>(cli);
-    if (cap == null) return null;
-    final ctx = const SessionHistoryContextBuilder().build(
-      fs: _storage.fs,
-      layout: _storage.context.layout,
-      appDataRoot: _storage.context.appDataRoot,
-      session: session,
-      memberId: session.isSimple ? '' : memberId,
-      cli: cli,
-    );
-    final abs = await cap.resolveParentTranscriptPath(ctx);
-    if (abs == null || abs.isEmpty) return null;
-    final relative = p
-        .relative(p.normalize(abs), from: p.normalize(store.workTree))
-        .replaceAll('\\', '/');
-    if (relative.startsWith('..')) return null;
-    return relative;
   }
 
   /// Compose-landing / inject path: rename untitled session from first prompt.

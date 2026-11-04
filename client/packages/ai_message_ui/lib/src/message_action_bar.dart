@@ -32,11 +32,15 @@ class AiMessageActionBar extends StatefulWidget {
     this.forceVisible = false,
     this.forceVisibleListenable,
     this.onRetryDelivery,
-    this.onRewind,
     this.onFork,
-    this.rewindLabel = 'Rewind to here',
     this.forkLabel = 'Fork from here',
     this.rewindForkEnabled = true,
+    this.versionIndex,
+    this.versionCount,
+    this.onPreviousVersion,
+    this.onNextVersion,
+    this.previousVersionLabel = 'Previous version',
+    this.nextVersionLabel = 'Next version',
     super.key,
   });
 
@@ -47,20 +51,24 @@ class AiMessageActionBar extends StatefulWidget {
   /// When set, shows a refresh icon to retry failed delivery.
   final VoidCallback? onRetryDelivery;
 
-  /// When set, shows rewind. Null [onPressed] while [rewindForkEnabled] is false.
-  final VoidCallback? onRewind;
-
   /// When set, shows fork. Null [onPressed] while [rewindForkEnabled] is false.
   final VoidCallback? onFork;
-
-  /// Tooltip / semantics for rewind. Package stays free of app l10n.
-  final String rewindLabel;
 
   /// Tooltip / semantics for fork. Package stays free of app l10n.
   final String forkLabel;
 
-  /// When false, rewind and fork stay visible but [onPressed] is null.
+  /// When false, fork and version controls stay visible but [onPressed] is
+  /// null.
   final bool rewindForkEnabled;
+
+  /// 1-based position among this seat's checkpoints. Shown with
+  /// [versionCount] when there is more than one.
+  final int? versionIndex;
+  final int? versionCount;
+  final VoidCallback? onPreviousVersion;
+  final VoidCallback? onNextVersion;
+  final String previousVersionLabel;
+  final String nextVersionLabel;
 
   /// When set (history hover path), visibility toggles via Opacity without
   /// rebuilding the button row after first mount.
@@ -145,6 +153,12 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
     return widget.forceVisible;
   }
 
+  bool get _showsVersion {
+    final count = widget.versionCount;
+    final index = widget.versionIndex;
+    return count != null && index != null && count > 1 && index >= 1;
+  }
+
   bool get _shouldShowNow =>
       widget.reveal == AiActionBarReveal.always ||
       _forcedVisible ||
@@ -159,8 +173,8 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
     if (_plain.isNotEmpty ||
         _markdown.isNotEmpty ||
         widget.onRetryDelivery != null ||
-        widget.onRewind != null ||
-        widget.onFork != null) {
+        widget.onFork != null ||
+        _showsVersion) {
       _actionsMounted = true;
     }
   }
@@ -242,16 +256,6 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
           color: color,
           onPressed: _plain.isEmpty ? null : _copyPlain,
         ),
-        if (widget.onRewind != null)
-          Tooltip(
-            message: widget.rewindLabel,
-            child: _LiteIconAction(
-              label: widget.rewindLabel,
-              icon: Icons.history,
-              color: color,
-              onPressed: widget.rewindForkEnabled ? widget.onRewind : null,
-            ),
-          ),
         if (widget.onFork != null)
           Tooltip(
             message: widget.forkLabel,
@@ -262,6 +266,7 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
               onPressed: widget.rewindForkEnabled ? widget.onFork : null,
             ),
           ),
+        if (_showsVersion) _versionControl(color),
         _LiteIconAction(
           label: _exported ? strings.copied : strings.exportMarkdown,
           icon: _exported ? Icons.check_rounded : Icons.description_outlined,
@@ -315,6 +320,41 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
               child: barBody,
             )
           : barBody,
+    );
+  }
+
+  Widget _versionControl(Color color) {
+    final enabled = widget.rewindForkEnabled;
+    final textStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
+      color: color,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Tooltip(
+          message: widget.previousVersionLabel,
+          child: _LiteIconAction(
+            label: widget.previousVersionLabel,
+            icon: Icons.chevron_left,
+            color: color,
+            onPressed: enabled ? widget.onPreviousVersion : null,
+          ),
+        ),
+        Text(
+          '${widget.versionIndex} / ${widget.versionCount}',
+          style: textStyle,
+        ),
+        Tooltip(
+          message: widget.nextVersionLabel,
+          child: _LiteIconAction(
+            label: widget.nextVersionLabel,
+            icon: Icons.chevron_right,
+            color: color,
+            onPressed: enabled ? widget.onNextVersion : null,
+          ),
+        ),
+      ],
     );
   }
 }

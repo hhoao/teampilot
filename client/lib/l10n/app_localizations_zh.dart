@@ -2204,10 +2204,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionTitleCopySuffix => '（副本）';
 
   @override
-  String get rewindToHere => '回溯到这里';
+  String get forkFromHere => '从这里 fork';
 
   @override
-  String get forkFromHere => '从这里 fork';
+  String get rewindPreviousVersion => '上一版本';
+
+  @override
+  String get rewindNextVersion => '下一版本';
 
   @override
   String get openSessionDirectory => '打开会话目录';

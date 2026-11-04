@@ -78,8 +78,11 @@ After a rewind these two refs differ. After a new turn they match.
 ## When the snapshot runs
 
 Hook the existing turn-ended path. ACP waits until
-`AcpChatTranscriptWriter` has persisted that turn. PTY snapshots when the seat
-is idle again at turn end; its transcript is the CLI files inside `{tool}/`.
+`AcpChatTranscriptWriter` has persisted that turn. PTY snapshots at turn end,
+**before** the seat is published idle: the shell latch and the bus turn stay
+up until the commit exists, so a queued follow-up or a doorbell delivery
+cannot start the next turn while `git add` is still walking `{tool}/`. The
+PTY transcript is the CLI files inside `{tool}/`.
 
 - Skip when a rewind or fork is in progress.
 - Skip when the seat has no local runtime directory.
@@ -118,22 +121,25 @@ Actions sit on the existing message action bar (the same bar as copy and
 export), and only on a message id that has a checkpoint. That is the last
 message of a completed turn.
 
-- **Rewind to here** is hidden when that checkpoint is `checked-out`.
-- **Fork from here** is always shown on a checkpoint message.
-- Both are disabled while a turn is in flight or a rewind/fork is running.
+- **Fork from here** is shown on a checkpoint message that is in the
+  checked-out transcript.
+- The message that closed the checked-out checkpoint shows a version control,
+  `<index / count>`, when this seat has at least two checkpoints. Previous
+  and next restore that neighboring checkpoint. The ends are disabled.
+- Fork and the version control are disabled while a turn is in flight or a
+  rewind/fork is running.
 - Both are absent when `git` is not on `PATH`, and on seats whose runtime is
   on an SSH work plane.
 
-The live thread shows the transcript of `checked-out`. Below a divider, show
-every message whose id appears in a `keep` checkpoint's transcript and does
-not appear in the checked-out transcript. Order them by the checkpoint that
-introduced them. Those messages use the same two actions and a weaker style.
-They are read from the commits, not written into the live `runtime/`.
-Activating one runs restore against the commit that contains that message.
+The live thread shows only the transcript of `checked-out`. Later checkpoints
+are not drawn as extra messages. They stay in the rewind repo. Moving the
+version control runs restore against the neighboring commit, so the thread
+grows or shrinks to that checkpoint.
 
 Sending a prompt while rewound appends a new turn whose parent is the current
 `checked-out` commit, then moves `live` and `checked-out` to that commit.
-Messages that exist only on the abandoned checkpoints stay in the divider.
+Messages that exist only on the abandoned checkpoints stay reachable through
+the version control.
 
 ## Fork
 
@@ -160,8 +166,8 @@ Messages that exist only on the abandoned checkpoints stay in the divider.
   persist) call the store. They do not shell out to Git themselves.
 - Rewind and fork operations stop or create sessions through the existing
   launch and session-repository APIs.
-- The history thread and `AiMessageActionBar` only render actions and the
-  divider. Labels go in `app_en.arb` and `app_zh.arb`.
+- The history thread and `AiMessageActionBar` only render fork and the
+  version control. Labels go in `app_en.arb` and `app_zh.arb`.
 
 ## Tests
 
@@ -182,5 +188,5 @@ Use a temporary `runtime/` fixture and a `git` on `PATH`. No per-CLI fixture.
 ## Out of scope for the first implementation
 
 Automatic deletion of old checkpoints, a checkpoint browser other than the
-message actions and the divider, and confirmation dialogs. Rewind is
+message actions and the version control, and confirmation dialogs. Rewind is
 reversible by checking out another retained commit.

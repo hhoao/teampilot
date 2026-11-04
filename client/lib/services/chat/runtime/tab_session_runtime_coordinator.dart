@@ -47,6 +47,7 @@ class TabSessionRuntimeCoordinator {
     void Function(String sessionId, String memberId)? onAfterTurnLatched,
     void Function(String sessionId)? onUserActivity,
     void Function(String sessionId, String memberId)? onAfterTurnStarted,
+    Future<void> Function(String sessionId, String memberId)? onBeforeTurnEnded,
     void Function(String sessionId, String memberId)? onAfterTurnEnded,
     CliTool? Function(ChatTab tab, String memberId)? memberCli,
     String? Function()? activeSessionId,
@@ -111,6 +112,7 @@ class TabSessionRuntimeCoordinator {
               },
           onAfterTick: onAfterIdleWatchTick,
           onAfterTurnStarted: onAfterTurnStarted,
+          onBeforeTurnEnded: onBeforeTurnEnded,
           onAfterTurnEnded: onAfterTurnEnded,
         );
     final reclaimSeconds = reclaimIdleAfterSeconds ?? () => 180;

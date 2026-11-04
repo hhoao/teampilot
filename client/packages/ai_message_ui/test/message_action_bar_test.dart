@@ -154,38 +154,41 @@ void main() {
     expect(copyIcon(), findsNothing);
   });
 
-  testWidgets('rewind and fork actions fire from their tooltips', (
+  testWidgets('fork and the version control fire from their tooltips', (
     tester,
   ) async {
-    var rewindCalls = 0;
     var forkCalls = 0;
+    var previousCalls = 0;
+    var nextCalls = 0;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: AiMessageActionBar(
             message: message,
             reveal: AiActionBarReveal.always,
-            onRewind: () => rewindCalls++,
             onFork: () => forkCalls++,
-            rewindLabel: 'Rewind to here',
             forkLabel: 'Fork from here',
+            versionIndex: 2,
+            versionCount: 3,
+            onPreviousVersion: () => previousCalls++,
+            onNextVersion: () => nextCalls++,
           ),
         ),
       ),
     );
 
-    expect(find.byTooltip('Rewind to here'), findsOneWidget);
+    expect(find.text('2 / 3'), findsOneWidget);
     expect(find.byTooltip('Fork from here'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Rewind to here'));
+    await tester.tap(find.byTooltip('Previous version'));
+    await tester.tap(find.byTooltip('Next version'));
     await tester.tap(find.byTooltip('Fork from here'));
-    expect(rewindCalls, 1);
+    expect(previousCalls, 1);
+    expect(nextCalls, 1);
     expect(forkCalls, 1);
   });
 
-  testWidgets('omitting onRewind hides rewind while fork remains', (
-    tester,
-  ) async {
+  testWidgets('a single checkpoint shows no version control', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -193,13 +196,43 @@ void main() {
             message: message,
             reveal: AiActionBarReveal.always,
             onFork: () {},
-            forkLabel: 'Fork from here',
+            versionIndex: 1,
+            versionCount: 1,
           ),
         ),
       ),
     );
 
-    expect(find.byTooltip('Rewind to here'), findsNothing);
+    expect(find.text('1 / 1'), findsNothing);
+    expect(find.byTooltip('Previous version'), findsNothing);
     expect(find.byTooltip('Fork from here'), findsOneWidget);
+  });
+
+  testWidgets('a running rewind disables fork and the version control', (
+    tester,
+  ) async {
+    var forkCalls = 0;
+    var nextCalls = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMessageActionBar(
+            message: message,
+            reveal: AiActionBarReveal.always,
+            onFork: () => forkCalls++,
+            versionIndex: 1,
+            versionCount: 2,
+            onNextVersion: () => nextCalls++,
+            rewindForkEnabled: false,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('1 / 2'), findsOneWidget);
+    await tester.tap(find.byTooltip('Next version'));
+    await tester.tap(find.byTooltip('Fork from here'));
+    expect(nextCalls, 0);
+    expect(forkCalls, 0);
   });
 }

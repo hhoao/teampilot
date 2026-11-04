@@ -717,3 +717,71 @@ git commit -m "Fix rewind and fork analyze findings."
 ```
 
 Skip the commit when the tree is clean.
+
+---
+
+### Task 9: Version control instead of the later-checkpoint divider
+
+The product decision after the first build: later checkpoints are no longer
+drawn as ghost messages under a divider. The message that closed the
+checked-out checkpoint carries `<index / count>`, and the arrows restore the
+neighbouring checkpoint.
+
+- [x] **Step 1: Read model**
+
+`services/chat/rewind/seat_rewind_history.dart` replaces
+`conversation/history/later_checkpoint_messages.dart`. It reads
+`SeatRewindStore.checkpoints()` and `checkedOut()` only: no transcript is
+decoded, and `loadSeatRewindHistory` no longer needs the live list or the
+CLI's history capability. `checkpoints()` orders by ancestry
+(`rev-list --reverse --topo-order` over the keep refs) so two turns that end
+in the same second still list in turn order.
+
+- [x] **Step 2: Action bar**
+
+`AiMessageActionBar` drops the standalone rewind action and gains
+`versionIndex`, `versionCount`, `onPreviousVersion`, `onNextVersion`. The
+control renders only with two or more checkpoints; the ends pass a null
+callback and render disabled. `rewindForkEnabled` still disables fork and the
+control while a turn or a rewind is running.
+
+- [x] **Step 3: Thread**
+
+The thread takes `orderedCommits` instead of `laterMessages`, computes the
+checked-out index, and puts the control on the message whose checkpoint equals
+`checkedOutCommit`. No ghost messages, no divider, no extra opacity.
+
+- [x] **Step 4: Tests**
+
+`seat_rewind_history_test.dart` covers ordering, the message→commit map, and
+the neighbour getters. `session_history_rewind_actions_test.dart` covers
+`<1 / 2>` on the checked-out turn only, arrow restores, and the busy
+disabled state. `message_action_bar_test.dart` covers the control on its own.
+
+---
+
+### Task 10: Publish idle after the snapshot
+
+- [x] **Step 1: Quiet end**
+
+`TabSessionIdleWatch` gains `onBeforeTurnEnded`. On a quiet end it awaits that
+callback (the checkpoint) before `coordination.endTurn()`, and keeps the seat
+in `_endingTurn` so a second tick cannot start the sequence twice. The shell
+latch therefore stays up while `commitTurn` walks the runtime directory, so a
+queued follow-up cannot drain into the middle of the snapshot.
+
+- [x] **Step 2: Attention done**
+
+`_endMemberTurnsForNewlyDoneSeats` runs `_checkpointPtyTurn` first and calls
+`_sessionRuntime.endMemberTurn` in `whenComplete`.
+
+- [x] **Step 3: Catch-up stall**
+
+`_closingPtyMessageId` re-reads the observed id after `softReload` and returns
+when it now closes the turn, instead of always waiting out the loader's
+two-second catch-up window.
+
+- [x] **Step 4: Tests**
+
+`chat_cubit_turn_rewind_test.dart` adds a gated snapshot that asserts the seat
+is still `userTurnActive` / `isMemberWorking` until the checkpoint completes.
