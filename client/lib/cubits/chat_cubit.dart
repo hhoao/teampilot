@@ -33,6 +33,7 @@ import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/home_storage.dart';
 import '../services/chat/conversation/history/ai_history_loader.dart';
 import '../services/chat/rewind/rewind_fork_service.dart';
+import '../services/chat/rewind/seat_branches.dart';
 import '../services/chat/rewind/seat_rewind_history.dart';
 import '../services/chat/rewind/rewind_work_gate.dart';
 import '../services/chat/rewind/seat_rewind_paths.dart';
@@ -3125,6 +3126,58 @@ class ChatCubit extends Cubit<ChatState>
       );
       if (!isClosed) {
         emit(state.copyWith(rewindForkError: 'sessionRewindFailed'));
+      }
+      rethrow;
+    } finally {
+      if (!isClosed) {
+        emit(state.copyWith(rewindForkInProgress: false));
+      }
+    }
+  }
+
+  /// Versions of every user message on this seat.
+  Future<SeatBranches> loadSeatBranches({
+    required AppSession session,
+    required String memberId,
+  }) async {
+    final store = _seatRewindStore(session, memberId);
+    if (store == null) return const SeatBranches.empty();
+    if (!Directory(store.gitDir).existsSync()) {
+      return const SeatBranches.empty();
+    }
+    return readSeatBranches(store: store);
+  }
+
+  /// Restore the branch that [commit] belongs to, then relaunch the seat.
+  Future<void> switchSeatVersion({
+    required String sessionId,
+    required String memberId,
+    required String commit,
+  }) async {
+    final session = _sessionForRewind(sessionId);
+    if (session == null) return;
+    final store = _seatRewindStore(session, memberId);
+    if (store == null) return;
+    emit(
+      state.copyWith(rewindForkInProgress: true, clearRewindForkError: true),
+    );
+    try {
+      final tip = await store.branchTip(commit);
+      await _rewindFork.rewind(
+        store: store,
+        seat: _CubitSeatProcess(this, session, memberId),
+        commit: tip,
+      );
+      onSessionHistoryStale?.call(sessionId);
+      _publishRewindHistory();
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        '[rewind] switchSeatVersion failed session=$sessionId: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (!isClosed) {
+        emit(state.copyWith(rewindForkError: 'branchSwitchFailed'));
       }
       rethrow;
     } finally {
