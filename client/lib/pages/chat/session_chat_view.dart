@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:acpd/acpd.dart' as acpd;
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -33,6 +35,10 @@ import '../../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/chat/session/session_member_cli_resolver.dart';
+import '../../services/acp/acp_client_extensions.dart';
+import '../../services/acp/acp_session.dart';
+import '../../services/acp/acp_session_runtime.dart';
+import '../../services/agent_status/agent_permission_request.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/cli/tasks/cli_task_board_controller.dart';
 import '../../services/chat/conversation/compose/compose_clip.dart';
@@ -229,6 +235,10 @@ class _SessionChatViewState extends State<SessionChatView> {
   @override
   void initState() {
     super.initState();
+    appLogger.d(
+      '[branch-edit] chat view mount sid=${widget.session.sessionId} '
+      'acpRuntime=${widget.acpRuntime != null}',
+    );
     _focusNode = FocusNode(debugLabel: 'session_history_review_compose');
     _voice = SessionVoiceController(composeController: _controller);
     // Restore the cached session draft before attaching the change listener so
@@ -411,6 +421,13 @@ class _SessionChatViewState extends State<SessionChatView> {
   @override
   void didUpdateWidget(covariant SessionChatView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.acpRuntime != widget.acpRuntime) {
+      appLogger.d(
+        '[branch-edit] acpRuntime flip '
+        '${oldWidget.acpRuntime != null} -> ${widget.acpRuntime != null} '
+        'sid=${widget.session.sessionId}',
+      );
+    }
     if (oldWidget.session.workspaceId != widget.session.workspaceId) {
       unawaited(_loadWorkspaceProjectBundle());
     }
@@ -1583,14 +1600,16 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// tab-scoped (owned by the ChatTabStore), not app-scoped, so — like other
   /// session-scoped cubits — it is provided as a `BlocProvider.value` from the
   /// view that receives it as a constructor arg. Nothing here owns/disposes it.
-  Widget _provideAcpRuntime(Widget child) {
-    final acpRuntime = widget.acpRuntime;
-    if (acpRuntime == null) return child;
-    return BlocProvider<AcpChatRuntimeCubit>.value(
-      value: acpRuntime,
-      child: child,
-    );
-  }
+  ///
+  /// The provider is ALWAYS present. A rewind edit stops and relaunches the
+  /// seat, which flips `tab.acpRuntime` through null; swapping this root
+  /// between a bare child and a BlocProvider would change the runtimeType at
+  /// the position and remount the whole chat subtree (message thread, scroll
+  /// offset, cached bodies) — a visible flash per flip. While no real runtime
+  /// exists the idle cubit is served instead; its state is never read because
+  /// the compose section guards on the nullable constructor arg first.
+  Widget _provideAcpRuntime(Widget child) =>
+      acpRuntimeScope(runtime: widget.acpRuntime, child: child);
 
   Widget _buildContent(BuildContext context) {
     final l10n = context.l10n;
@@ -1930,4 +1949,96 @@ List<String> _runningSubagentIds(AiHistorySeat seat, AiHistoryCapability? cap) {
     }
   }
   return out;
+}
+
+/// No-op [AcpSessionRuntimeApi] backing [idleAcpRuntimeCubit].
+///
+/// Its state is never read: the compose section (the only provider consumer)
+/// guards on the nullable `acpRuntime` constructor arg before selecting, so
+/// the idle cubit only exists to keep the provider's widget type constant
+/// while a rewind edit drops and recreates the real runtime.
+class _IdleAcpSessionRuntime implements AcpSessionRuntimeApi {
+  @override
+  bool get isStarted => false;
+
+  @override
+  String get sessionId => '';
+
+  @override
+  Future<void> start({
+    required CliTool tool,
+    required String executable,
+    required String sessionToolDir,
+    required String workingDirectory,
+    Map<String, String> baseEnv = const {},
+    List<acpd.McpServer> mcpServers = const [],
+    LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess,
+    String? resumeSessionId,
+  }) async {}
+
+  @override
+  void setPermissionPolicy(LaunchSecurityPolicy policy) {}
+
+  @override
+  Future<void> prompt(String text) async {}
+
+  @override
+  Stream<AcpSessionUpdate> get updates => const Stream.empty();
+
+  @override
+  Stream<AgentPermissionRequest> get permissionRequests => const Stream.empty();
+
+  @override
+  Stream<AcpPendingClientRequest> get clientRequests => const Stream.empty();
+
+  @override
+  AcpAuthNotice? get lastAuthNotice => null;
+
+  @override
+  Future<int>? get agentProcessExitCode => null;
+
+  @override
+  Future<AgentPermissionReplyKind?> answerPermission(
+    AgentPermissionReplyKind reply, {
+    AgentPermissionAlwaysOption? always,
+  }) async => null;
+
+  @override
+  Future<void> answerAsk(AcpAskHoldReply reply) async {}
+
+  @override
+  Future<void> answerPlan(AcpPlanHoldReply reply) async {}
+
+  @override
+  void cancel() {}
+
+  @override
+  Future<void> close() async {}
+}
+
+/// Shared idle runtime served by the provider while no real one exists.
+final AcpChatRuntimeCubit idleAcpRuntimeCubit = AcpChatRuntimeCubit(
+  runtime: _IdleAcpSessionRuntime(),
+  sessionId: '',
+  tool: CliTool.claude,
+);
+
+/// Always-present [BlocProvider] for the tab-scoped ACP runtime.
+///
+/// A rewind edit stops and relaunches the seat, flipping `tab.acpRuntime`
+/// through null. Returning a bare [child] while it is null would change the
+/// root runtimeType at this position and remount the whole chat subtree
+/// (message thread, scroll offset, cached bodies) — one visible flash per
+/// flip. Keeping the provider present with the shared idle cubit preserves
+/// the tree shape; the idle state is never read (the compose section guards
+/// on the nullable constructor arg before selecting from the provider).
+@visibleForTesting
+Widget acpRuntimeScope({
+  required AcpChatRuntimeCubit? runtime,
+  required Widget child,
+}) {
+  return BlocProvider<AcpChatRuntimeCubit>.value(
+    value: runtime ?? idleAcpRuntimeCubit,
+    child: child,
+  );
 }
