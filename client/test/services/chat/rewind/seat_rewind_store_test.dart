@@ -384,21 +384,53 @@ exec "$realGit" "\$@"
     expect(parsed.turnAt, greaterThan(0));
   });
 
-  test('a commit without Turn-User parses as a legacy turn', () async {
+  test('a commit written before the anchor parses with empty defaults', () async {
     final tmp = tmpDir.path;
+    final gitDir = '$tmp/repo.git';
     final store = SeatRewindStore(
-      gitDir: '$tmp/repo.git',
+      gitDir: gitDir,
       workTree: '$tmp/work',
       target: const SeatRewindTarget(
         kind: SeatRewindKind.personalAcp,
         tool: 'claude',
       ),
     );
-    final checkpoint = await store.commitTurn(messageId: 'a1');
-    final parsed = (await store.checkpoints()).single;
+    // Seed a tree, then write a commit body in the pre-anchor shape.
+    await store.commitTurn(messageId: 'a1');
+    final tree = (await Process.run('git', [
+      '--git-dir',
+      gitDir,
+      '--work-tree',
+      '$tmp/work',
+      'write-tree',
+    ])).stdout as String;
+    const identity = {
+      'GIT_AUTHOR_NAME': 'TeamPilot',
+      'GIT_AUTHOR_EMAIL': 'teampilot@localhost',
+      'GIT_COMMITTER_NAME': 'TeamPilot',
+      'GIT_COMMITTER_EMAIL': 'teampilot@localhost',
+    };
+    final legacy = (await Process.run('git', [
+      '--git-dir',
+      gitDir,
+      'commit-tree',
+      tree.trim(),
+      '-m',
+      'checkpoint\n\nTurn-Message: a-legacy\nNative-Session: ',
+    ], environment: identity)).stdout as String;
+    await Process.run('git', [
+      '--git-dir',
+      gitDir,
+      'update-ref',
+      'refs/rewind/keep/a-legacy',
+      legacy.trim(),
+    ]);
+
+    final parsed = (await store.checkpoints())
+        .singleWhere((turn) => turn.messageId == 'a-legacy');
 
     expect(parsed.userMessageId, isEmpty);
-    expect(parsed.turnAt, checkpoint.turnAt);
+    expect(parsed.turnAt, 0);
   });
 }
 
