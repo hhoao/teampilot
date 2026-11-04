@@ -71,7 +71,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   final SeatBranches branches;
   final void Function(String commit)? onSwitchVersion;
   final void Function(String commit)? onForkFrom;
-  final void Function(String messageId, String text)? onEditUserMessage;
+  final Future<bool> Function(String messageId, String text)? onEditUserMessage;
   final bool turnInFlight;
 
   bool get _showThread {

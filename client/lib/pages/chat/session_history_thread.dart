@@ -125,8 +125,9 @@ class SessionHistoryThread extends StatefulWidget {
   /// Copies the branch through the commit into a new session.
   final void Function(String commit)? onForkFrom;
 
-  /// Called with the user message id and the edited text.
-  final void Function(String messageId, String text)? onEditUserMessage;
+  /// Submits an edit. Returns true when the edit was accepted; false keeps
+  /// the editor open with the draft so the user can retry.
+  final Future<bool> Function(String messageId, String text)? onEditUserMessage;
 
   /// When true, the controls stay visible but disabled.
   final bool turnInFlight;
@@ -200,6 +201,10 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   /// User message currently open in the inline editor, if any.
   String? _editingMessageId;
+
+  /// Draft kept while an edit is in flight/failed so the editor can be
+  /// reseeded instead of losing the author's text.
+  String? _editDraft;
 
   /// Message to reveal in the viewport (from [ChatRevealController]).
   String? _revealTargetId;
@@ -282,6 +287,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       _showNewMessagesChip = false;
       _paginationArmed = true;
       _mountTurns = false;
+      _editingMessageId = null;
+      _editDraft = null;
       _messages = widget.runtime.messages;
       _runtimeSub = widget.runtime.changes.listen((_) => _onRuntimeChanged());
       _scheduleOpenAtEnd();
@@ -1101,14 +1108,32 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                 : () =>
                                       setState(() => _editingMessageId = ai.id),
                             editLabel: editLabel,
-                            onSubmitEdit: (text) {
-                              setState(() => _editingMessageId = null);
-                              widget.onEditUserMessage?.call(ai.id, text);
+                            onSubmitEdit: (text) async {
+                              setState(() => _editDraft = text);
+                              final accepted =
+                                  await (widget.onEditUserMessage?.call(
+                                        ai.id,
+                                        text,
+                                      ) ??
+                                      Future.value(true));
+                              if (!mounted) return accepted;
+                              if (accepted) {
+                                setState(() {
+                                  _editingMessageId = null;
+                                  _editDraft = null;
+                                });
+                              }
+                              return accepted;
                             },
-                            onCancelEdit: () =>
-                                setState(() => _editingMessageId = null),
+                            onCancelEdit: () => setState(() {
+                              _editingMessageId = null;
+                              _editDraft = null;
+                            }),
                             editSendLabel: editSendLabel,
                             editCancelLabel: editCancelLabel,
+                            editInitialText: _editingMessageId == ai.id
+                                ? _editDraft
+                                : null,
                             versionIndex: showsVersion ? version.index : null,
                             versionCount: showsVersion ? version.count : null,
                             onPreviousVersion:

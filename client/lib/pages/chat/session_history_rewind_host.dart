@@ -25,7 +25,7 @@ final class SessionHistoryRewindBinding {
   final SeatBranches branches;
   final void Function(String commit)? onSwitchVersion;
   final void Function(String commit)? onForkFrom;
-  final void Function(String messageId, String text)? onEditUserMessage;
+  final Future<bool> Function(String messageId, String text)? onEditUserMessage;
   final bool busy;
 }
 
@@ -190,8 +190,10 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
     }
   }
 
-  Future<void> _onEditUserMessage(String messageId, String text) async {
-    if (_busy) return;
+  /// Returns true when the edited turn was accepted; false keeps the editor
+  /// open with the draft so the author can retry.
+  Future<bool> _onEditUserMessage(String messageId, String text) async {
+    if (_busy) return false;
     setState(() => _busy = true);
     try {
       await _cubit!.editSeatTurn(
@@ -200,6 +202,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         userMessageId: messageId,
         text: text,
       );
+      return true;
     } on Object catch (error, stackTrace) {
       appLogger.e(
         '[rewind] editSeatTurn failed session=${widget.session.sessionId}: '
@@ -214,6 +217,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
           variant: TpToastVariant.error,
         );
       }
+      return false;
     } finally {
       if (mounted) setState(() => _busy = false);
     }

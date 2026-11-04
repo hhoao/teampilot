@@ -27,6 +27,7 @@ class AiMessageView extends StatefulWidget {
     this.onEdit,
     this.editLabel = 'Edit message',
     this.editing = false,
+    this.editInitialText,
     this.onSubmitEdit,
     this.onCancelEdit,
     this.editSendLabel = 'Send',
@@ -59,7 +60,14 @@ class AiMessageView extends StatefulWidget {
   /// When true, a user message renders [_UserMessageEditor] instead of the
   /// bubble.
   final bool editing;
-  final ValueChanged<String>? onSubmitEdit;
+
+  /// Text the editor starts with. Defaults to the message's plain text; set
+  /// this to keep a failed edit's draft when the editor reopens.
+  final String? editInitialText;
+
+  /// Returns whether the edit was accepted. A false result keeps the editor
+  /// open (and re-enables submit) so the user can retry.
+  final Future<bool> Function(String text)? onSubmitEdit;
   final VoidCallback? onCancelEdit;
   final String editSendLabel;
   final String editCancelLabel;
@@ -160,6 +168,7 @@ class _AiMessageViewState extends State<AiMessageView> {
             onEdit: widget.onEdit,
             editLabel: widget.editLabel,
             editing: widget.editing,
+            editInitialText: widget.editInitialText,
             onSubmitEdit: widget.onSubmitEdit,
             onCancelEdit: widget.onCancelEdit,
             editSendLabel: widget.editSendLabel,
@@ -282,6 +291,7 @@ class _UserBubble extends StatelessWidget {
     this.onEdit,
     this.editLabel = 'Edit message',
     this.editing = false,
+    this.editInitialText,
     this.onSubmitEdit,
     this.onCancelEdit,
     this.editSendLabel = 'Send',
@@ -308,7 +318,8 @@ class _UserBubble extends StatelessWidget {
   final VoidCallback? onEdit;
   final String editLabel;
   final bool editing;
-  final ValueChanged<String>? onSubmitEdit;
+  final String? editInitialText;
+  final Future<bool> Function(String text)? onSubmitEdit;
   final VoidCallback? onCancelEdit;
   final String editSendLabel;
   final String editCancelLabel;
@@ -328,10 +339,11 @@ class _UserBubble extends StatelessWidget {
       return _UserMessageEditor(
         scheme: scheme,
         theme: aiTheme,
-        initialText: plainTextForCopy(message),
+        initialText: editInitialText ?? plainTextForCopy(message),
+        originalText: plainTextForCopy(message),
         sendLabel: editSendLabel,
         cancelLabel: editCancelLabel,
-        onSubmit: (text) => onSubmitEdit?.call(text),
+        onSubmit: onSubmitEdit ?? (_) async => true,
         onCancel: onCancelEdit,
       );
     }
@@ -608,6 +620,7 @@ class _UserMessageEditor extends StatefulWidget {
     required this.scheme,
     required this.theme,
     required this.initialText,
+    required this.originalText,
     required this.sendLabel,
     required this.cancelLabel,
     required this.onSubmit,
@@ -616,10 +629,15 @@ class _UserMessageEditor extends StatefulWidget {
 
   final ColorScheme scheme;
   final AiMessageTheme theme;
+
+  /// Text the field starts with (a draft when reopening a failed edit).
   final String initialText;
+
+  /// Text of the message being edited, used to detect a no-op submit.
+  final String originalText;
   final String sendLabel;
   final String cancelLabel;
-  final ValueChanged<String> onSubmit;
+  final Future<bool> Function(String text) onSubmit;
   final VoidCallback? onCancel;
 
   @override
@@ -645,15 +663,19 @@ class _UserMessageEditorState extends State<_UserMessageEditor> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_submitted) return;
     final text = _controller.text.trim();
-    if (text.isEmpty || text == widget.initialText.trim()) {
+    if (text.isEmpty || text == widget.originalText.trim()) {
       widget.onCancel?.call();
       return;
     }
     _submitted = true;
-    widget.onSubmit(text);
+    final accepted = await widget.onSubmit(text);
+    if (!accepted && mounted) {
+      // Keep the editor open so a retry can send the same draft again.
+      _submitted = false;
+    }
   }
 
   @override

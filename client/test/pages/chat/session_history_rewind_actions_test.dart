@@ -84,7 +84,120 @@ void main() {
     await tester.pump();
 
     expect(cubit.edits, [('u1', 'edited')]);
+    // A successful edit closes the inline editor.
+    expect(find.byType(TextField), findsNothing);
   });
+
+  testWidgets('a failed edit keeps the editor open with the typed text', (
+    tester,
+  ) async {
+    final cubit = _FailingEditCubit();
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+    await _pumpThread(tester, cubit);
+    await tester.tap(find.byTooltip('Edit message'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'edited');
+    await tester.tap(find.text('Send'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.byType(TextField), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      'edited',
+    );
+    expect(find.text('Failed to send the edited message'), findsOneWidget);
+
+    TpToast.dismiss();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+  });
+
+  testWidgets('a failed edit can be retried with the same draft', (
+    tester,
+  ) async {
+    final cubit = _FailingEditCubit();
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+    await _pumpThread(tester, cubit);
+    await tester.tap(find.byTooltip('Edit message'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'edited');
+    await tester.tap(find.text('Send'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    TpToast.dismiss();
+    await tester.pump();
+
+    cubit.failing = false;
+    await tester.tap(find.text('Send'));
+    await tester.pump();
+
+    expect(cubit.edits, [('u1', 'edited'), ('u1', 'edited')]);
+    expect(find.byType(TextField), findsNothing);
+    await tester.pump(const Duration(milliseconds: 250));
+  });
+
+  testWidgets('an assistant message offers no edit action or version counter', (
+    tester,
+  ) async {
+    final cubit = _BranchCubit();
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+    await _pumpThread(tester, cubit);
+
+    final assistant = find.byKey(const ValueKey('a1'));
+    expect(
+      find.descendant(of: assistant, matching: find.byTooltip('Edit message')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: assistant, matching: find.textContaining(' / ')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: assistant,
+        matching: find.byTooltip('Previous version'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: assistant, matching: find.byTooltip('Next version')),
+      findsNothing,
+    );
+  });
+
+  testWidgets(
+    'a single-version user message shows edit but no version control',
+    (tester) async {
+      final cubit = _SingleVersionCubit();
+      addTearDown(() async {
+        if (!cubit.isClosed) await cubit.close();
+      });
+      // The user message is the last turn, so its action bar is always visible.
+      await _pumpThread(
+        tester,
+        cubit,
+        messages: const [
+          AiMessage(
+            id: 'u1',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'only version')],
+          ),
+        ],
+      );
+
+      expect(find.byTooltip('Edit message'), findsOneWidget);
+      expect(find.text('1 / 1'), findsNothing);
+      expect(find.byTooltip('Previous version'), findsNothing);
+      expect(find.byTooltip('Next version'), findsNothing);
+    },
+  );
 
   testWidgets('a team session offers no branch controls', (tester) async {
     final cubit = _TeamCubit();
@@ -117,20 +230,27 @@ void main() {
 
 /// Pumps the history host around a personal session with one user message and
 /// one reply. Task 8 adds `onEditUserMessage` to the thread here.
-Future<void> _pumpThread(WidgetTester tester, ChatCubit cubit) async {
+Future<void> _pumpThread(
+  WidgetTester tester,
+  ChatCubit cubit, {
+  List<AiMessage>? messages,
+}) async {
   final runtime = ExternalStoreAiThreadRuntime()
-    ..setMessages(const [
-      AiMessage(
-        id: 'u1',
-        role: AiRole.user,
-        parts: [AiTextPart(text: 'first version')],
-      ),
-      AiMessage(
-        id: 'a1',
-        role: AiRole.assistant,
-        parts: [AiTextPart(text: 'answer')],
-      ),
-    ]);
+    ..setMessages(
+      messages ??
+          const [
+            AiMessage(
+              id: 'u1',
+              role: AiRole.user,
+              parts: [AiTextPart(text: 'first version')],
+            ),
+            AiMessage(
+              id: 'a1',
+              role: AiRole.assistant,
+              parts: [AiTextPart(text: 'answer')],
+            ),
+          ],
+    );
   final session = AppSession(sessionId: 's1', workspaceId: 'w1', createdAt: 1);
   final workspace = Workspace(workspaceId: 'w1', createdAt: 1);
   await tester.pumpWidget(
@@ -245,6 +365,41 @@ final class _FailingBranchCubit extends _BranchCubit {
   }) async {
     switchedTo.add(commit);
     throw StateError('switch failed');
+  }
+}
+
+final class _FailingEditCubit extends _BranchCubit {
+  var failing = true;
+
+  @override
+  Future<void> editSeatTurn({
+    required String sessionId,
+    required String memberId,
+    required String userMessageId,
+    required String text,
+  }) async {
+    edits.add((userMessageId, text));
+    if (failing) throw StateError('edit failed');
+  }
+}
+
+final class _SingleVersionCubit extends _BranchCubit {
+  @override
+  Future<SeatBranches> loadSeatBranches({
+    required AppSession session,
+    required String memberId,
+  }) async {
+    return const SeatBranches(
+      turns: {
+        'u1': SeatBranchVersion(
+          index: 1,
+          count: 1,
+          commit: 'c-only',
+          siblings: ['c-only'],
+        ),
+      },
+      checkedOutCommit: 'c-only',
+    );
   }
 }
 

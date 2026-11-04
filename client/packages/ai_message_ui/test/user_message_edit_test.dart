@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   Future<void> pumpEditor(
     WidgetTester tester, {
-    required ValueChanged<String> onSubmit,
+    required Future<bool> Function(String) onSubmit,
     required VoidCallback onCancel,
   }) async {
     await tester.pumpWidget(
@@ -46,7 +46,10 @@ void main() {
               parts: [AiTextPart(text: 'original')],
             ),
             editing: true,
-            onSubmitEdit: (text) => sent = text,
+            onSubmitEdit: (text) async {
+              sent = text;
+              return true;
+            },
             onCancelEdit: () {},
           ),
         ),
@@ -71,9 +74,10 @@ void main() {
     String? sent;
     await pumpEditor(
       tester,
-      onSubmit: (text) {
+      onSubmit: (text) async {
         sends++;
         sent = text;
+        return true;
       },
       onCancel: () {},
     );
@@ -92,7 +96,10 @@ void main() {
     var sends = 0;
     await pumpEditor(
       tester,
-      onSubmit: (_) => sends++,
+      onSubmit: (_) async {
+        sends++;
+        return true;
+      },
       onCancel: () {},
     );
 
@@ -110,7 +117,10 @@ void main() {
     var cancels = 0;
     await pumpEditor(
       tester,
-      onSubmit: (_) => sends++,
+      onSubmit: (_) async {
+        sends++;
+        return true;
+      },
       onCancel: () => cancels++,
     );
 
@@ -126,7 +136,10 @@ void main() {
     var cancels = 0;
     await pumpEditor(
       tester,
-      onSubmit: (_) => sends++,
+      onSubmit: (_) async {
+        sends++;
+        return true;
+      },
       onCancel: () => cancels++,
     );
 
@@ -141,7 +154,10 @@ void main() {
     var sends = 0;
     await pumpEditor(
       tester,
-      onSubmit: (_) => sends++,
+      onSubmit: (_) async {
+        sends++;
+        return true;
+      },
       onCancel: () {},
     );
 
