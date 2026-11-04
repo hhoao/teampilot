@@ -306,6 +306,82 @@ void main() {
     expect(find.text('edited'), findsOneWidget);
   });
 
+  testWidgets('the optimistic bubble survives a runtime swap', (tester) async {
+    const user = AiMessage(
+      id: 'u1',
+      role: AiRole.user,
+      parts: [AiTextPart(text: 'original')],
+    );
+    const reply = AiMessage(
+      id: 'a1',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'answer')],
+    );
+    final before = ExternalStoreAiThreadRuntime()
+      ..setMessages(const [user, reply]);
+    // The restore replays the parent prefix, which predates the edit.
+    final restored = ExternalStoreAiThreadRuntime()..setMessages(const []);
+    final gate = Completer<void>();
+
+    Widget build(AiThreadRuntime runtime) => MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('en'),
+      theme: ThemeData(extensions: [AiMessageTheme.test()]),
+      home: Scaffold(
+        body: SizedBox(
+          width: 600,
+          height: 400,
+          child: SessionHistoryThread(
+            runtime: runtime,
+            hasOlder: false,
+            isLoadingOlder: false,
+            // Two versions keep the action bar permanently revealed.
+            branches: const SeatBranches(
+              turns: {
+                'u1': SeatBranchVersion(
+                  index: 2,
+                  count: 2,
+                  commit: 'c1',
+                  siblings: ['c0', 'c1'],
+                ),
+              },
+              checkedOutCommit: 'c1',
+            ),
+            onEditUserMessage: (messageId, text) async {
+              await gate.future;
+              return true;
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(build(before));
+    await pumpUntilSettled(tester);
+    await tester.tap(find.byTooltip('Edit message'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'edited');
+    await tester.tap(find.text('Send'));
+    await tester.pump();
+    expect(find.text('edited'), findsOneWidget);
+
+    // The seat runtime is replaced while the restore replays the parent.
+    await tester.pumpWidget(build(restored));
+    await tester.pump();
+
+    expect(find.text('edited'), findsOneWidget);
+    expect(
+      find.text('answer'),
+      findsNothing,
+      reason: 'the replaced runtime must not paint the old branch',
+    );
+
+    gate.complete();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+  });
+
   testWidgets('holdTranscript keeps the old branch until it is released', (
     tester,
   ) async {

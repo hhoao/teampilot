@@ -310,7 +310,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       _mountTurns = false;
       _editingMessageId = null;
       _editDraft = null;
-      _messages = widget.runtime.messages;
+      if (_pendingEditId == null) {
+        _messages = widget.runtime.messages;
+      }
+      // The restore swaps the seat runtime mid-edit; keep the optimistic
+      // branch and wait for the new runtime to publish the resent prompt.
       _runtimeSub = widget.runtime.changes.listen((_) => _onRuntimeChanged());
       _scheduleOpenAtEnd();
     } else if (oldWidget.holdTranscript && !widget.holdTranscript) {
@@ -952,18 +956,25 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     final pendingId = _pendingEditId;
     if (pendingId != null) {
       final index = _messages.indexWhere((message) => message.id == pendingId);
-      if (index >= 0) {
-        // The edited bubble shows its new text immediately and everything the
-        // old branch had below it becomes the running row, so the thread does
-        // not repaint the restored branch and then the new one.
-        return [
-          ..._messages.take(index),
-          _messages[index].copyWith(
-            parts: [AiTextPart(text: _pendingEditText ?? '')],
-          ),
-          kSessionHistoryRunningPlaceholder,
-        ];
-      }
+      final edited = index >= 0
+          ? _messages[index].copyWith(
+              parts: [AiTextPart(text: _pendingEditText ?? '')],
+            )
+          : AiMessage(
+              id: pendingId,
+              role: AiRole.user,
+              parts: [AiTextPart(text: _pendingEditText ?? '')],
+            );
+      // The edited bubble shows its new text immediately and everything the
+      // old branch had below it becomes the running row, so the thread does
+      // not repaint the restored branch and then the new one. When the list
+      // already is the parent prefix (the edited id is gone), the bubble still
+      // belongs at the tip: that prefix is everything before it.
+      return [
+        ..._messages.take(index < 0 ? _messages.length : index),
+        edited,
+        kSessionHistoryRunningPlaceholder,
+      ];
     }
     if (!widget.liveChrome.isActive) return _messages;
     if (_messages.any((m) => m.id == kSessionHistoryRunningPlaceholder.id)) {
