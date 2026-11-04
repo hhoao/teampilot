@@ -20,6 +20,7 @@ final class SessionHistoryRewindBinding {
     this.onForkFrom,
     this.onEditUserMessage,
     this.busy = false,
+    this.holdTranscript = false,
   });
 
   final SeatBranches branches;
@@ -27,6 +28,9 @@ final class SessionHistoryRewindBinding {
   final void Function(String commit)? onForkFrom;
   final Future<bool> Function(String messageId, String text)? onEditUserMessage;
   final bool busy;
+
+  /// Keeps the old transcript on screen while an edit restores and resends.
+  final bool holdTranscript;
 }
 
 /// Loads a seat's checkpoints and wires rewind/fork around a history thread.
@@ -58,6 +62,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   var _allowed = false;
   var _started = false;
   var _busy = false;
+  var _editing = false;
   var _reloadSerial = 0;
   var _seenGeneration = 0;
   ChatCubit? _cubit;
@@ -151,7 +156,12 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         );
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _editing = false;
+        });
+      }
     }
   }
 
@@ -194,7 +204,10 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   /// open with the draft so the author can retry.
   Future<bool> _onEditUserMessage(String messageId, String text) async {
     if (_busy) return false;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _editing = true;
+    });
     try {
       await _cubit!.editSeatTurn(
         sessionId: widget.session.sessionId,
@@ -219,7 +232,12 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
       }
       return false;
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _editing = false;
+        });
+      }
     }
   }
 
@@ -233,6 +251,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         onForkFrom: _allowed ? _onForkFrom : null,
         onEditUserMessage: _allowed ? _onEditUserMessage : null,
         busy: _busy,
+        holdTranscript: _editing,
       ),
     );
   }

@@ -710,6 +710,7 @@ class _UserMessageEditorState extends State<_UserMessageEditor> {
                 child: TextField(
                   controller: _controller,
                   focusNode: _focus,
+                  readOnly: _submitted,
                   maxLines: null,
                   minLines: 1,
                   textInputAction: TextInputAction.newline,
@@ -730,13 +731,19 @@ class _UserMessageEditorState extends State<_UserMessageEditor> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextButton(
-                  onPressed: widget.onCancel,
+                  onPressed: _submitted ? null : widget.onCancel,
                   child: Text(widget.cancelLabel),
                 ),
                 const SizedBox(width: 6),
                 FilledButton(
-                  onPressed: _submit,
-                  child: Text(widget.sendLabel),
+                  onPressed: _submitted ? null : _submit,
+                  child: _submitted
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(widget.sendLabel),
                 ),
               ],
             ),

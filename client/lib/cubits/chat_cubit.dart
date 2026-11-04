@@ -1500,9 +1500,7 @@ class ChatCubit extends Cubit<ChatState>
     final session = _tabStore
         .getOpenTabBySessionId(sessionId)
         ?.persistedSession;
-    final historyMemberId = session == null || session.isSimple
-        ? ''
-        : memberId;
+    final historyMemberId = session == null || session.isSimple ? '' : memberId;
     _ptyTurnBaseline[seatKey] =
         _observedPtyMessageId(
           sessionId: sessionId,
@@ -1517,10 +1515,9 @@ class ChatCubit extends Cubit<ChatState>
     required String sessionId,
     required String historyMemberId,
   }) {
-    final seat = podRuntime(sessionId)?.history?.seatOf(
-      sessionId: sessionId,
-      memberId: historyMemberId,
-    );
+    final seat = podRuntime(
+      sessionId,
+    )?.history?.seatOf(sessionId: sessionId, memberId: historyMemberId);
     final fromSeat = _latestMessageId(seat?.loadedMessages);
     if (fromSeat != null) return fromSeat;
     return _latestMessageId(_loaderVisible(sessionId, historyMemberId));
@@ -1532,10 +1529,9 @@ class ChatCubit extends Cubit<ChatState>
     required String sessionId,
     required String historyMemberId,
   }) {
-    final seat = podRuntime(sessionId)?.history?.seatOf(
-      sessionId: sessionId,
-      memberId: historyMemberId,
-    );
+    final seat = podRuntime(
+      sessionId,
+    )?.history?.seatOf(sessionId: sessionId, memberId: historyMemberId);
     final fromSeat = _lastUserMessageId(seat?.loadedMessages);
     if (fromSeat != null) return fromSeat;
     return _lastUserMessageId(_loaderVisible(sessionId, historyMemberId));
@@ -1601,10 +1597,9 @@ class ChatCubit extends Cubit<ChatState>
     final ready = _idThatClosedTurn(seatKey, observed);
     if (ready != null) return ready;
 
-    final seat = podRuntime(sessionId)?.history?.seatOf(
-      sessionId: sessionId,
-      memberId: historyMemberId,
-    );
+    final seat = podRuntime(
+      sessionId,
+    )?.history?.seatOf(sessionId: sessionId, memberId: historyMemberId);
     if (seat != null) {
       try {
         await seat.softReload(force: true);
@@ -3244,6 +3239,9 @@ class ChatCubit extends Cubit<ChatState>
             : target.parentCommit,
       );
       restored = true;
+      // The relaunch reconnects the seat asynchronously; a prompt delivered
+      // while that connect is still in flight is rejected.
+      await _awaitSeatReady(sessionId);
       final deliver = debugDeliverEditedMessage ?? _deliverEditedMessage;
       final result = await deliver(
         sessionId: sessionId,
@@ -3298,15 +3296,34 @@ class ChatCubit extends Cubit<ChatState>
     _publishRewindHistory();
   }
 
+  /// Waits for the seat's post-rewind connect to settle before delivering.
+  ///
+  /// Bounded: a stuck launch must not hang the edit; the delivery then fails
+  /// the normal way and the caller rolls back.
+  Future<void> _awaitSeatReady(
+    String sessionId, {
+    Duration cap = const Duration(seconds: 20),
+  }) async {
+    final deadline = DateTime.now().add(cap);
+    while (!isClosed && isSessionConnecting(sessionId)) {
+      if (DateTime.now().isAfter(deadline)) return;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+  }
+
   Future<HistoryContinueSubmitResult> _deliverEditedMessage({
     required String sessionId,
     required String memberId,
     required String message,
-  }) => submitSessionOperatorMessage(
-    sessionId: sessionId,
-    memberId: memberId,
-    message: message,
-  );
+  }) {
+    // A terminal-less ACP seat has no PTY and no mailbox: the operator
+    // history-continue path would report "unconfirmed" without ever sending.
+    // The seat-aware dispatcher routes ACP seats into their runtime cubit.
+    return _deliverFollowUpAtSeat(
+      followUpSeatKey(sessionId, memberId),
+      message,
+    );
+  }
 
   /// Copy [commit] into a new personal session. Does not stop the source.
   Future<AppSession?> forkSeatFrom({

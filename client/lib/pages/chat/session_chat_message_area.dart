@@ -354,6 +354,8 @@ class SessionChatMessageArea extends StatelessWidget {
                                               onForkFrom: rewind.onForkFrom,
                                               onEditUserMessage:
                                                   rewind.onEditUserMessage,
+                                              holdTranscript:
+                                                  rewind.holdTranscript,
                                               turnInFlight:
                                                   turnInFlight || rewind.busy,
                                             );

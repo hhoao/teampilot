@@ -76,6 +76,7 @@ class SessionHistoryThread extends StatefulWidget {
     this.onSwitchVersion,
     this.onForkFrom,
     this.onEditUserMessage,
+    this.holdTranscript = false,
     this.turnInFlight = false,
     super.key,
   });
@@ -128,6 +129,12 @@ class SessionHistoryThread extends StatefulWidget {
   /// Submits an edit. Returns true when the edit was accepted; false keeps
   /// the editor open with the draft so the user can retry.
   final Future<bool> Function(String messageId, String text)? onEditUserMessage;
+
+  /// Keeps the transcript on screen while an edit restores and resends.
+  ///
+  /// The restore replays the parent branch into the seat; rendering that
+  /// intermediate state and then the new turn makes the thread flash twice.
+  final bool holdTranscript;
 
   /// When true, the controls stay visible but disabled.
   final bool turnInFlight;
@@ -292,6 +299,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       _messages = widget.runtime.messages;
       _runtimeSub = widget.runtime.changes.listen((_) => _onRuntimeChanged());
       _scheduleOpenAtEnd();
+    } else if (oldWidget.holdTranscript && !widget.holdTranscript) {
+      _onRuntimeChanged();
     } else if (oldWidget.liveChrome != widget.liveChrome) {
       if (widget.liveChrome.isActive && _stickToEnd) {
         _scheduleStickFrames();
@@ -388,6 +397,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   void _onRuntimeChanged() {
     if (!mounted) return;
+    // An edit restores the parent branch first; hold the old transcript until
+    // the new turn lands so the thread switches once instead of twice.
+    if (widget.holdTranscript) return;
     // Seat runtime is seat-scoped; sync notify may still fire during sibling
     // deferred mount (TpDeferredForegroundMount). A reload started during
     // another tab's build must not markNeedsBuild this retained thread.

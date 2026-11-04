@@ -37,6 +37,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     this.onSwitchVersion,
     this.onForkFrom,
     this.onEditUserMessage,
+    this.holdTranscript = false,
     this.turnInFlight = false,
     super.key,
   });
@@ -72,6 +73,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   final void Function(String commit)? onSwitchVersion;
   final void Function(String commit)? onForkFrom;
   final Future<bool> Function(String messageId, String text)? onEditUserMessage;
+  final bool holdTranscript;
   final bool turnInFlight;
 
   bool get _showThread {
@@ -112,6 +114,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               onSwitchVersion: onSwitchVersion,
               onForkFrom: onForkFrom,
               onEditUserMessage: onEditUserMessage,
+              holdTranscript: holdTranscript,
               turnInFlight: turnInFlight,
             ),
           ),

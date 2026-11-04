@@ -226,6 +226,61 @@ void main() {
 
     expect(find.text('2 / 2'), findsOneWidget);
   });
+
+  testWidgets('holdTranscript keeps the old branch until it is released', (
+    tester,
+  ) async {
+    const user = AiMessage(
+      id: 'u1',
+      role: AiRole.user,
+      parts: [AiTextPart(text: 'original question')],
+    );
+    const reply = AiMessage(
+      id: 'a1',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'answer one')],
+    );
+    final runtime = ExternalStoreAiThreadRuntime()
+      ..setMessages(const [user, reply]);
+
+    Widget build({required bool hold}) => MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('en'),
+      theme: ThemeData(extensions: [AiMessageTheme.test()]),
+      home: Scaffold(
+        body: SizedBox(
+          width: 600,
+          height: 400,
+          child: SessionHistoryThread(
+            runtime: runtime,
+            hasOlder: false,
+            isLoadingOlder: false,
+            holdTranscript: hold,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(build(hold: true));
+    await pumpUntilSettled(tester);
+    expect(find.text('answer one'), findsOneWidget);
+
+    // The restore replays the parent branch while the edit is in flight.
+    runtime.setMessages(const [user]);
+    await tester.pump();
+    expect(
+      find.text('answer one'),
+      findsOneWidget,
+      reason: 'the held transcript must not repaint mid-edit',
+    );
+
+    await tester.pumpWidget(build(hold: false));
+    await pumpUntilSettled(tester);
+
+    expect(find.text('answer one'), findsNothing);
+    expect(find.text('original question'), findsOneWidget);
+  });
 }
 
 /// Pumps the history host around a personal session with one user message and
