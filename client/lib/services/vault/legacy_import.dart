@@ -1,0 +1,478 @@
+import '../../models/app_provider_config.dart';
+import '../../models/managed_provider.dart';
+import '../../models/ssh_profile.dart';
+import '../../models/team_config.dart';
+import '../../repositories/app_provider_repository.dart';
+import '../../repositories/managed_provider_repository.dart';
+import '../../repositories/ssh_credential_store.dart';
+import '../../repositories/ssh_profile_repository.dart';
+import '../../utils/logging/logger.dart';
+import '../github/github_credentials_store.dart';
+import '../provider_usage/managed_provider_secret_store.dart';
+import 'credential_capture.dart';
+import 'vault_ref.dart';
+import 'vault_service.dart';
+
+/// Raised when at least one owner of a category could not be imported.
+///
+/// Carries counts and ids only — never secret material.
+class _OwnerImportFailure implements Exception {
+  const _OwnerImportFailure(this.owner, this.failures);
+
+  final String owner;
+  final int failures;
+
+  @override
+  String toString() => 'legacy import incomplete for $owner ($failures failed)';
+}
+
+/// The catalog save returned without the reference actually reaching disk.
+class _ReferenceNotPersistedException implements Exception {
+  const _ReferenceNotPersistedException();
+
+  @override
+  String toString() => 'reference not persisted';
+}
+
+/// Imports every legacy secret into the vault exactly once.
+///
+/// Order: GitHub → SSH → app providers → managed providers. Each owner is
+/// isolated; a failed owner keeps its legacy value and blocks the completion
+/// marker so the next run retries only unfinished owners. The marker is
+/// written only when a full pass has zero failures.
+///
+/// Every step follows capture → verify → persist reference → delete legacy, so
+/// a crash at any point leaves the secret readable from at least one place.
+class VaultLegacyImportService {
+  VaultLegacyImportService({
+    required VaultService vault,
+    required VaultCredentialCapture capture,
+    required String importKey,
+    required SshProfileRepository sshProfiles,
+    required SshCredentialStore sshCredentials,
+    required AppProviderRepository appProviders,
+    required ManagedProviderRepository managedProviders,
+    required ManagedProviderSecretStore managedSecrets,
+    required GithubCredentialsStore github,
+  }) : _vault = vault,
+       _capture = capture,
+       _importKey = importKey,
+       _sshProfiles = sshProfiles,
+       _sshCredentials = sshCredentials,
+       _appProviders = appProviders,
+       _managedProviders = managedProviders,
+       _managedSecrets = managedSecrets,
+       _github = github;
+
+  static const _version = 1;
+
+  final VaultService _vault;
+  final VaultCredentialCapture _capture;
+
+  /// Identifies the app-data root this importer migrates into.
+  ///
+  /// A retried `buildAppShell` builds a *new* `VaultService` over the same
+  /// root, so the service instance cannot key single-flight.
+  final String _importKey;
+
+  final SshProfileRepository _sshProfiles;
+  final SshCredentialStore _sshCredentials;
+  final AppProviderRepository _appProviders;
+  final ManagedProviderRepository _managedProviders;
+  final ManagedProviderSecretStore _managedSecrets;
+  final GithubCredentialsStore _github;
+
+  /// In-flight pass per app-data root, shared by every importer instance so a
+  /// retried `buildAppShell` cannot start a second concurrent migration.
+  static final _runningByKey = <String, Future<void>>{};
+
+  /// Runs the migration once; concurrent calls share the same pass.
+  ///
+  /// Safe to call on every launch: the vault marker makes it a no-op after a
+  /// clean pass, and a failed pass retries only the owners that did not
+  /// finish (finished owners are skipped by their stored reference).
+  ///
+  /// Single-flight is keyed on the app-data root, not the instance or the
+  /// service: a retried `buildAppShell` constructs both anew.
+  Future<void> runOnce() {
+    final existing = _runningByKey[_importKey];
+    if (existing != null) return existing;
+    late final Future<void> next;
+    next = _run().whenComplete(() {
+      if (identical(_runningByKey[_importKey], next)) {
+        _runningByKey.remove(_importKey);
+      }
+    });
+    _runningByKey[_importKey] = next;
+    return next;
+  }
+
+  Future<void> _run() async {
+    // Another shell may have finished a pass after this service loaded its
+    // document: re-read the marker so a retried bootstrap no-ops.
+    await _vault.refreshMarkerFromBackend();
+    if (!_vault.isUnlocked) return;
+    if (_vault.legacyImportVersion >= _version) return;
+
+    AppLogger.instance.i('[vault-import] start');
+    var failed = false;
+    failed = !await _guard('github', _importGithub) || failed;
+    failed = !await _guard('ssh', _importSsh) || failed;
+    for (final cli in CliTool.values) {
+      failed =
+          !await _guard(
+            'appProvider:${cli.value}',
+            () => _importProviders(cli),
+          ) ||
+          failed;
+    }
+    failed = !await _guard('managedProvider', _importManaged) || failed;
+
+    if (failed) {
+      AppLogger.instance.w('[vault-import] finished with failures; will retry');
+      return;
+    }
+    try {
+      await _vault.markLegacyImported(_version);
+      AppLogger.instance.i('[vault-import] complete');
+    } on Object catch (error, stackTrace) {
+      // The import itself succeeded, so a retry is harmless: every step is
+      // idempotent and the marker is the only thing left to persist.
+      _warn('marker', error, stackTrace);
+    }
+  }
+
+  /// Runs one owner category, logging its type (never its values) on failure.
+  Future<bool> _guard(String owner, Future<void> Function() body) async {
+    try {
+      await body();
+      return true;
+    } on Object catch (error, stackTrace) {
+      _warn(owner, error, stackTrace);
+      return false;
+    }
+  }
+
+  Future<void> _importGithub() async {
+    final pointer = await _github.storedVaultEntryId();
+    if (pointer != null && await _vault.readField(pointer, 'token') != null) {
+      // A resolvable pointer with a token is authoritative. Drop any plaintext
+      // copy a previous partial pass left behind so a legacy token can never
+      // survive alongside marker = 1.
+      await _github.migrateLegacyHubPublishTokenIfNeeded();
+      await _github.clearLegacyCopy();
+      return;
+    }
+    // No pointer yet, or one that no longer resolves to a token (a locked or
+    // partial delete can leave the legacy token behind): import the snapshot
+    // and let the store persist a fresh pointer, clearing the legacy keys.
+    final snapshot = await _github.readStored();
+    if (snapshot == null || snapshot.token.isEmpty) return;
+    if (snapshot.source == GithubCredentialSource.pat) {
+      await _github.savePat(snapshot.token, login: snapshot.login);
+    } else {
+      await _github.saveOAuth(
+        token: snapshot.token,
+        login: snapshot.login ?? '',
+      );
+    }
+  }
+
+  Future<void> _importSsh() async {
+    final profiles = await _sshProfiles.loadAll();
+    final byId = {for (final profile in profiles) profile.id: profile};
+    final captures = <VaultCaptureResult>[];
+    final cleanupIds = <String>[];
+    var failures = 0;
+
+    for (final profile in profiles) {
+      try {
+        if (await _hasVerifiedSshLink(profile)) {
+          // The vault entry already holds this profile's secret. Merge any
+          // keychain-only field (notably a relay grant stored after the entry
+          // was captured) before the legacy cleanup, otherwise `deleteAll`
+          // would destroy the only copy.
+          await _mergeSshRelayGrant(profile);
+          cleanupIds.add(profile.id);
+          continue;
+        }
+        // No link, or a link whose entry no longer holds the secret: capture
+        // from the keychain first, persist the reference, then delete.
+        final captured = await _captureSshProfile(profile);
+        if (captured == null) continue;
+        byId[profile.id] = captured.profile;
+        captures.add(captured.capture);
+        cleanupIds.add(profile.id);
+      } on Object catch (error, stackTrace) {
+        failures++;
+        _warn('ssh ${profile.id}', error, stackTrace);
+      }
+    }
+
+    // One catalog write for the whole pass; a failure rolls back every capture
+    // and keeps the keychain untouched.
+    if (captures.isNotEmpty) {
+      try {
+        await _sshProfiles.saveAll(byId.values.toList(growable: false));
+      } on Object catch (error, stackTrace) {
+        for (final result in captures) {
+          try {
+            await _capture.rollback(result);
+          } on Object {
+            // Preserve the catalog error; cleanup can remove orphans.
+          }
+        }
+        failures += captures.length;
+        _warn('ssh batch save', error, stackTrace);
+        throw _OwnerImportFailure('ssh', failures);
+      }
+    }
+
+    for (final id in cleanupIds) {
+      try {
+        await _sshCredentials.deleteAll(id);
+      } on Object catch (error, stackTrace) {
+        failures++;
+        _warn('ssh cleanup $id', error, stackTrace);
+      }
+    }
+    if (failures > 0) throw _OwnerImportFailure('ssh', failures);
+  }
+
+  /// True when the profile is linked to an entry that still holds the secret
+  /// the profile's auth type needs.
+  Future<bool> _hasVerifiedSshLink(SshProfile profile) async {
+    final entryId = (profile.vaultEntryId ?? '').trim();
+    if (entryId.isEmpty) return false;
+    final entry = await _vault.get(entryId);
+    if (entry == null) return false;
+    if (profile.authType == SshAuthType.password) {
+      return (entry.fields['password'] ?? '').isNotEmpty;
+    }
+    return (entry.fields['privateKey'] ?? '').isNotEmpty ||
+        (entry.fields['passphrase'] ?? '').isNotEmpty;
+  }
+
+  /// Copies a keychain-only relay grant into a verified entry before cleanup.
+  ///
+  /// Paired tunnels write grants through the legacy keychain store even after
+  /// a profile was linked, so deleting the keychain without merging would drop
+  /// the grant from both places.
+  Future<void> _mergeSshRelayGrant(SshProfile profile) async {
+    final entryId = (profile.vaultEntryId ?? '').trim();
+    if (entryId.isEmpty) return;
+    final entry = await _vault.get(entryId);
+    if (entry == null) return;
+    if ((entry.fields['relayGrant'] ?? '').isNotEmpty) return;
+    final relayGrant = await _sshCredentials.loadRelayGrant(profile.id);
+    if (relayGrant == null || relayGrant.isEmpty) return;
+    await _capture.captureSsh(profile, relayGrant: relayGrant);
+  }
+
+  Future<({SshProfile profile, VaultCaptureResult capture})?>
+  _captureSshProfile(SshProfile profile) async {
+    final passwordAuth = profile.authType == SshAuthType.password;
+    final password = passwordAuth
+        ? await _sshCredentials.loadPassword(profile.id)
+        : null;
+    final privateKey = passwordAuth
+        ? null
+        : await _sshCredentials.loadPrivateKey(profile.id);
+    final passphrase = passwordAuth
+        ? null
+        : await _sshCredentials.loadPrivateKeyPassphrase(profile.id);
+    final relayGrant = await _sshCredentials.loadRelayGrant(profile.id);
+    final hasSecret =
+        (password ?? '').isNotEmpty ||
+        (privateKey ?? '').isNotEmpty ||
+        (passphrase ?? '').isNotEmpty ||
+        (relayGrant ?? '').isNotEmpty;
+    if (!hasSecret) return null;
+
+    final result = await _capture.captureSsh(
+      profile,
+      password: password,
+      privateKey: privateKey,
+      passphrase: passphrase,
+      relayGrant: relayGrant,
+    );
+    return (
+      profile: profile.copyWith(vaultEntryId: result.entryId),
+      capture: result,
+    );
+  }
+
+  Future<void> _importProviders(CliTool cli) async {
+    // Copy before mutating: with `reconcileCredentials: false` the repository
+    // may hand back its own cached list, and a failed save must not leave the
+    // cache claiming a reference that never reached disk.
+    final providers = [
+      ...await _appProviders.loadProviders(cli, reconcileCredentials: false),
+    ];
+    var failures = 0;
+    var changed = false;
+    for (var index = 0; index < providers.length; index++) {
+      final provider = providers[index];
+      try {
+        // A link already owns the credential; its persisted key is stripped
+        // by [AppProviderRepository.saveProviders].
+        if (provider.credentialLink.trim().isNotEmpty) continue;
+        if (provider.apiKey.isEmpty) continue;
+        final result = await _capture.captureProvider(
+          provider,
+          apiKey: provider.apiKey,
+        );
+        providers[index] = provider.copyWith(
+          credentialLink: VaultEntryRef(result.entryId).link,
+          apiKey: '',
+        );
+        changed = true;
+      } on Object catch (error, stackTrace) {
+        failures++;
+        _warn('provider ${provider.id}', error, stackTrace);
+      }
+    }
+    // Persist the owners that succeeded before reporting the failures; the
+    // untouched rows keep their plaintext key for a later retry.
+    if (changed) await _appProviders.saveProviders(cli, providers);
+    if (failures > 0) {
+      throw _OwnerImportFailure('appProvider:${cli.value}', failures);
+    }
+  }
+
+  Future<void> _importManaged() async {
+    final providers = await _managedProviders.load();
+
+    // A legacy ref is shared state: it may only be deleted once every provider
+    // that points at it has a verified vault entry, otherwise deleting it would
+    // destroy the only copy for the other owners.
+    final refOwners = <String, int>{};
+    for (final provider in providers) {
+      final ref = provider.credentialRef?.trim() ?? '';
+      if (ref.isNotEmpty) refOwners[ref] = (refOwners[ref] ?? 0) + 1;
+    }
+
+    final updated = <ManagedProvider>[];
+    final verifiedRefs = <String, int>{};
+    final captured = <({String id, String ref})>[];
+    var failures = 0;
+    var changed = false;
+
+    void verify(String ref) {
+      if (ref.isEmpty) return;
+      verifiedRefs[ref] = (verifiedRefs[ref] ?? 0) + 1;
+    }
+
+    for (final provider in providers) {
+      final ref = provider.credentialRef?.trim() ?? '';
+      try {
+        final entryId = (provider.vaultEntryId ?? '').trim();
+        if (entryId.isNotEmpty) {
+          final fields = await _capture.existingManagedFields(provider);
+          if (fields.isNotEmpty) {
+            updated.add(provider);
+            verify(ref);
+            continue;
+          }
+          // Dangling/incomplete link: fall through and re-capture from the ref
+          // instead of deleting the legacy scope behind it.
+        }
+        if (ref.isEmpty) {
+          updated.add(provider);
+          continue;
+        }
+        final scope = await _readManagedScope(ref);
+        if (scope == null || scope.isEmpty) {
+          // Nothing stored under this ref, so there is nothing to migrate and
+          // nothing that could leak; leave the provider untouched.
+          updated.add(provider);
+          continue;
+        }
+        final values = {
+          for (final field in scope.fields)
+            if ((scope.valueFor(field) ?? '').isNotEmpty)
+              field: scope.valueFor(field)!,
+        };
+        final result = await _capture.captureManaged(provider, values);
+        updated.add(provider.copyWith(vaultEntryId: result.entryId));
+        captured.add((id: provider.id, ref: ref));
+        changed = true;
+      } on Object catch (error, stackTrace) {
+        failures++;
+        _warn('managed ${provider.id}', error, stackTrace);
+        updated.add(provider);
+      }
+    }
+
+    // Save the catalog before deleting anything: a save failure throws here,
+    // so a legacy scope is never removed before its reference is persisted.
+    if (changed) {
+      await _managedProviders.save(updated);
+      // A silent save failure would otherwise let the deletion below destroy
+      // the only copy, so confirm the references reached disk first.
+      final persisted = {
+        for (final provider in await _managedProviders.load())
+          provider.id: (provider.vaultEntryId ?? '').trim(),
+      };
+      for (final capture in captured) {
+        if ((persisted[capture.id] ?? '').isNotEmpty) {
+          verify(capture.ref);
+        } else {
+          failures++;
+          _warn(
+            'managed ${capture.id}',
+            const _ReferenceNotPersistedException(),
+            StackTrace.current,
+          );
+        }
+      }
+    }
+
+    for (final entry in refOwners.entries) {
+      if (verifiedRefs[entry.key] != entry.value) continue;
+      if (!await _deleteManagedRef(entry.key)) failures++;
+    }
+
+    if (failures > 0) {
+      throw _OwnerImportFailure('managedProvider', failures);
+    }
+  }
+
+  /// Reads a managed-provider scope. An unusable reference can never address
+  /// stored data, so it reads as "nothing stored" instead of a failure.
+  Future<ProviderCredentialScope?> _readManagedScope(String ref) async {
+    try {
+      return await _managedSecrets.read(ref);
+    } on ManagedProviderCredentialError catch (error) {
+      if (error.code == ManagedProviderCredentialErrorCode.invalidReference) {
+        return null;
+      }
+      rethrow;
+    }
+  }
+
+  /// Deletes a legacy scope; returns false only for a real storage failure.
+  Future<bool> _deleteManagedRef(String ref) async {
+    try {
+      await _managedSecrets.delete(ref);
+      return true;
+    } on ManagedProviderCredentialError catch (error, stackTrace) {
+      // An unusable reference never had anything stored, so it cannot leak.
+      if (error.code == ManagedProviderCredentialErrorCode.invalidReference) {
+        return true;
+      }
+      _warn('managed ref $ref', error, stackTrace);
+      return false;
+    } on Object catch (error, stackTrace) {
+      _warn('managed ref $ref', error, stackTrace);
+      return false;
+    }
+  }
+
+  void _warn(String owner, Object error, StackTrace stackTrace) {
+    appLogger.w(
+      '[vault-import] $owner failed: ${error.runtimeType}',
+      stackTrace: stackTrace,
+    );
+  }
+}

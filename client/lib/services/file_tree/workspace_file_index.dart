@@ -35,10 +35,11 @@ class _ScoredFileMatch {
 /// tree again. On local roots the index — including its fuzzy scoring, which
 /// touches every entry — lives on a worker isolate so a query never stalls
 /// frames; elsewhere the entries are kept here and queried in memory.
-/// [ensureFresh] rebuilds only when the root's mtime changed since the last
-/// build (or, when mtimes are unavailable, after
-/// [WorkspaceFileIndex.maxStale] has elapsed), so repeated queries and repeated
-/// dialog opens reuse the built index.
+/// [ensureFresh] serves the last snapshot while a stale one rebuilds in the
+/// background (only when the root's mtime changed, or after
+/// [WorkspaceFileIndex.maxStale] when mtimes are unavailable), so repeated
+/// queries and repeated dialog opens reuse the built index and typing never
+/// waits on a rescan.
 ///
 /// Keeps the same skip rules as [searchWorkspaceFiles] (hidden entries and the
 /// `_ignoredDirNames` set), so the dialog and the pure walker agree on what is
@@ -57,7 +58,7 @@ class WorkspaceFileIndex {
   final Filesystem _fs;
   final WorkspaceFileSearchLimits _limits;
 
-  /// Entries built so far; `null` until the first [ensureFresh] completes.
+  /// Entries built so far; `null` until the first build completes.
   List<WorkspaceFileMatch>? _entries;
 
   /// Lowercased [WorkspaceFileMatch.relativePath] for each entry, built once so
@@ -71,6 +72,16 @@ class WorkspaceFileIndex {
   DateTime? _builtRootMtime;
   DateTime? _builtAt;
   Future<void>? _buildInFlight;
+  DateTime? _lastStaleCheckAt;
+
+  /// Bumped whenever a build replaces the served snapshot. Surfaces (the search
+  /// dialog) listen so a background refresh re-runs the active query without
+  /// the user typing again.
+  final ValueNotifier<int> revision = ValueNotifier<int>(0);
+
+  /// Minimum interval between two root-mtime stats: a query per keystroke
+  /// should not pay a filesystem round-trip each time.
+  static const _staleCheckInterval = Duration(seconds: 2);
 
   /// After this idle time (mtime unavailable) the index rebuilds on the next
   /// [ensureFresh]. Generous so a stable workspace stays cached across dialog
@@ -81,28 +92,60 @@ class WorkspaceFileIndex {
   bool get isReady => _rust?.isBuilt == true || _entries != null;
 
   /// Number of files currently indexed (0 before first build).
-  int get size => _rust?.isBuilt == true ? 0 : (_entries?.length ?? 0);
+  int get size {
+    final rust = _rust;
+    if (rust != null && rust.isBuilt) return rust.size;
+    return _entries?.length ?? 0;
+  }
 
   @visibleForTesting
   bool get usedRustBackend => _rust?.isBuilt == true;
 
-  /// Builds the index if missing or stale. Safe to call concurrently from
-  /// multiple queries — concurrent callers share the in-flight build.
+  /// Makes sure an index is available. A stale snapshot is **rebuilt in the
+  /// background** and this returns immediately, so a query is served from the
+  /// previous snapshot instead of blocking on a full rescan
+  /// (stale-while-revalidate); [revision] bumps when the rebuild lands. The
+  /// first build is awaited — there is nothing to serve yet.
   Future<void> ensureFresh() async {
-    if (isReady && !(await _isStale())) return;
-    final inFlight = _buildInFlight;
-    if (inFlight != null) return inFlight;
-    final build = _buildIndex();
-    _buildInFlight = build;
-    try {
-      await build;
-    } finally {
-      _buildInFlight = null;
-    }
+    if (!isReady) return _rebuild();
+    if (!await _isStale()) return;
+    _rebuildInBackground();
   }
 
-  /// Drops the built index; the next [ensureFresh] rebuilds.
+  /// Awaits a (re)build. Used by tests and by callers that must observe the
+  /// refreshed snapshot before reading it.
+  Future<void> refresh() => _rebuild();
+
+  Future<void> _rebuild() {
+    final inFlight = _buildInFlight;
+    if (inFlight != null) return inFlight;
+    late final Future<void> build;
+    build = _buildIndex().whenComplete(() {
+      if (identical(_buildInFlight, build)) _buildInFlight = null;
+    });
+    _buildInFlight = build;
+    return build;
+  }
+
+  /// Fire-and-forget refresh: never delays a query on a full rescan, and keeps
+  /// serving the previous snapshot if the rebuild fails.
+  void _rebuildInBackground() {
+    if (_buildInFlight != null) return;
+    unawaited(_rebuild().catchError((Object _) {}));
+  }
+
+  /// Drops the built index and notifies listeners; the next [ensureFresh]
+  /// rebuilds. Use after a known tree mutation (e.g. a file-tree refresh).
   void invalidate() {
+    _clearSnapshot();
+    revision.value++;
+  }
+
+  /// Frees resources held by the index. Does **not** notify listeners — the
+  /// index is going away, so nothing should be triggered to rebuild it.
+  void dispose() => _clearSnapshot();
+
+  void _clearSnapshot() {
     _rust?.dispose();
     _rust = null;
     _entries = null;
@@ -110,20 +153,44 @@ class WorkspaceFileIndex {
     _dirs = null;
     _builtRootMtime = null;
     _builtAt = null;
+    _lastStaleCheckAt = null;
   }
-
-  /// Frees resources held by the index.
-  void dispose() => invalidate();
 
   Future<bool> _isStale() async {
     final built = _builtAt;
+    if (built == null) return true;
     final rootMtime = _builtRootMtime;
-    if (rootMtime != null) {
+    if (rootMtime != null && _shouldStatNow()) {
       final current = (await _fs.stat(root)).mtime;
       if (current != null) return !current.isAtSameMomentAs(rootMtime);
       // mtime became unavailable — fall back to the TTL check below.
     }
-    return built == null || DateTime.now().difference(built) > maxStale;
+    return DateTime.now().difference(built) > maxStale;
+  }
+
+  /// Stats the root at most once per [_staleCheckInterval], so typing does not
+  /// trigger a filesystem round-trip per character.
+  bool _shouldStatNow() {
+    final checked = _lastStaleCheckAt;
+    final now = DateTime.now();
+    if (checked != null && now.difference(checked) < _staleCheckInterval) {
+      return false;
+    }
+    _lastStaleCheckAt = now;
+    return true;
+  }
+
+  /// Records a completed build: timestamp, root mtime, and a [revision] bump so
+  /// listeners re-run their queries against the new snapshot.
+  Future<void> _stampBuilt() async {
+    _builtAt = DateTime.now();
+    _lastStaleCheckAt = _builtAt;
+    try {
+      _builtRootMtime = (await _fs.stat(root)).mtime;
+    } on Object {
+      _builtRootMtime = null;
+    }
+    revision.value++;
   }
 
   bool _shouldUseRust() {
@@ -137,7 +204,10 @@ class WorkspaceFileIndex {
 
   Future<void> _buildIndex() async {
     if (_shouldUseRust()) {
-      final rust = _rust ?? IsolatedFileIndex();
+      // Build into a *fresh* worker and swap it in only once it is complete:
+      // queries keep being answered by the previous snapshot instead of
+      // queueing behind (or racing) a multi-second rescan on the same worker.
+      final rust = IsolatedFileIndex();
       try {
         await rust.build(
           root,
@@ -146,16 +216,16 @@ class WorkspaceFileIndex {
             useGitignore: true,
           ),
         );
+        final previous = _rust;
         _rust = rust;
         _entries = null;
         _lowerPaths = null;
         _dirs = null;
-        _builtAt = DateTime.now();
-        _builtRootMtime = (await _fs.stat(root)).mtime;
+        await _stampBuilt();
+        previous?.dispose();
         return;
       } on Object {
         rust.dispose();
-        if (identical(_rust, rust)) _rust = null;
       }
     }
     await _build();
@@ -212,8 +282,7 @@ class WorkspaceFileIndex {
     _entries = entries;
     _lowerPaths = lowerPaths;
     _dirs = dirs;
-    _builtAt = DateTime.now();
-    _builtRootMtime = (await _fs.stat(root)).mtime;
+    await _stampBuilt();
   }
 
   /// Filters the built index. Empty when the index is not built yet or [query]
@@ -397,7 +466,10 @@ int _boundaryBonus(String text, int index) {
 /// App-wide cache of [WorkspaceFileIndex]es keyed by search root, so the Search
 /// dialog and the compose `@`-mention picker share one build per workspace.
 ///
-/// Freshness is handled by [WorkspaceFileIndex.ensureFresh] (root mtime + TTL).
+/// Freshness is handled by [WorkspaceFileIndex.ensureFresh]: a stale snapshot
+/// is rebuilt in the background (root mtime + TTL) while queries keep being
+/// served from the previous one, and [WorkspaceFileIndex.revision] tells
+/// listeners to re-run their query once the rebuild lands.
 /// A deliberate second recursive `FsWatcher` per root is avoided — the file
 /// tree already keeps one such watch alive per workspace root (see
 /// `WorkspaceFsWatcher`), and on Linux each watched subdirectory consumes an

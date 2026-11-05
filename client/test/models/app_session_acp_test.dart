@@ -28,6 +28,18 @@ void main() {
     expect(s.toJson()['acp'], isTrue);
   });
 
+  test('qoder simple infers acp true when omitted', () {
+    final s = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      createdAt: 1,
+      cli: CliTool.qoder,
+    );
+    expect(s.acp, isTrue, reason: 'Qoder is ACP-only');
+    expect(s.toJson()['acp'], isTrue);
+    expect(AppSession.fromJson(s.toJson()).acp, isTrue);
+  });
+
   test('legacy JSON without acp: gemini simple is true, claude is false', () {
     expect(
       AppSession.fromJson({

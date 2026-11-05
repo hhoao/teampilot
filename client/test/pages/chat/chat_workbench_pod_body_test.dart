@@ -13,9 +13,9 @@ void main() {
     final notifier = ValueNotifier<int>(0);
 
     Widget build(Listenable? pod) => MaterialApp(
-      home: podBodyRoot(
+      home: wrapPodDependentBody(
         pod: pod,
-        builder: (context, _) => const _StatefulChild(),
+        builder: (context) => const _StatefulChild(),
       ),
     );
 

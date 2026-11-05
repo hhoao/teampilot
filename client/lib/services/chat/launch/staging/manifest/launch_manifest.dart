@@ -26,10 +26,17 @@ final class ManifestSymlink extends LaunchManifestEntry {
 }
 
 final class ManifestCopyFile extends LaunchManifestEntry {
-  const ManifestCopyFile({required this.source, required this.destination});
+  const ManifestCopyFile({
+    required this.source,
+    required this.destination,
+    this.private = false,
+  });
 
   final String source;
   final String destination;
+
+  /// Destination must be created with mode `0600` (credential files).
+  final bool private;
 }
 
 final class ManifestCopyTree extends LaunchManifestEntry {
@@ -92,12 +99,22 @@ class LaunchManifest {
     entries.add(ManifestSymlink(linkPath: link, target: target));
   }
 
-  void copyFile({required String source, required String destination}) {
+  void copyFile({
+    required String source,
+    required String destination,
+    bool private = false,
+  }) {
     final src = source.trim();
     final dest = destination.trim();
     if (src.isEmpty || dest.isEmpty) return;
-    entries.add(ManifestCopyFile(source: src, destination: dest));
+    entries.add(
+      ManifestCopyFile(source: src, destination: dest, private: private),
+    );
   }
+
+  /// Copy whose destination must stay `0600` (credentials).
+  void copyFilePrivate({required String source, required String destination}) =>
+      copyFile(source: source, destination: destination, private: true);
 
   void copyTree({required String source, required String destination}) {
     final src = source.trim();
@@ -135,8 +152,16 @@ class LaunchManifest {
           copy.writeFile(path, content);
         case ManifestSymlink(:final linkPath, :final target):
           copy.symlink(linkPath: linkPath, target: target);
-        case ManifestCopyFile(:final source, :final destination):
-          copy.copyFile(source: source, destination: destination);
+        case ManifestCopyFile(
+          :final source,
+          :final destination,
+          :final private,
+        ):
+          copy.copyFile(
+            source: source,
+            destination: destination,
+            private: private,
+          );
         case ManifestCopyTree(:final source, :final destination):
           copy.copyTree(source: source, destination: destination);
         case ManifestRemoveRecursive(:final path):

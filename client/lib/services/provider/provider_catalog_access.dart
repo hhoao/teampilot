@@ -10,6 +10,10 @@ AppProviderRepository providerCatalogRepository(
     basePath: catalog.basePath,
     fs: catalog.fs,
     storage: storage,
+    // Explicit: launch-time callers must resolve `vault:` links exactly like
+    // the provider cubit does.
+    linkedCredentialLookup:
+        AppProviderRepository.defaultLinkedCredentialLookup,
   );
 }
 

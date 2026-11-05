@@ -26,6 +26,9 @@ class _FixedAuthCapability implements AcpCapability {
   bool get forwardSessionNewMcpServers => true;
 
   @override
+  bool get supportsInPlaceSessionLoad => true;
+
+  @override
   Map<String, String> get agentStatusEnvironment => const {};
 
   @override

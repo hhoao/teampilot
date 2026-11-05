@@ -200,8 +200,12 @@ class _LlmProvidersRightPanel extends StatelessWidget {
               existing: selected,
               onCancel: onCloseEditor,
               onSaved: (draft) async {
-                await saveExistingAppProvider(context, selected, draft: draft);
-                if (!context.mounted) return;
+                final saved = await saveExistingAppProvider(
+                  context,
+                  selected,
+                  draft: draft,
+                );
+                if (!context.mounted || !saved) return;
                 onCloseEditor();
               },
             ),

@@ -56,12 +56,12 @@ String buildMutationApplyScript(LaunchManifest manifest) {
         buffer
           ..writeln('mkdir -p ${posixShellQuote(_posixDirname(to))}')
           ..writeln('mv ${posixShellQuote(from)} ${posixShellQuote(to)}');
-      case ManifestCopyFile(:final source, :final destination):
+      case ManifestCopyFile(:final source, :final destination, :final private):
+        final quotedDest = posixShellQuote(destination);
         buffer
           ..writeln('mkdir -p ${posixShellQuote(_posixDirname(destination))}')
-          ..writeln(
-            'cp -f -- ${posixShellQuote(source)} ${posixShellQuote(destination)}',
-          );
+          ..writeln('cp -f -- ${posixShellQuote(source)} $quotedDest');
+        if (private) buffer.writeln('chmod 600 $quotedDest');
       case ManifestCopyTree(:final source, :final destination):
         buffer
           ..writeln('mkdir -p ${posixShellQuote(_posixDirname(destination))}')
@@ -105,10 +105,11 @@ enum _BufferKind { script, tar }
 enum _MemberKind { file, dir }
 
 final class _OverlayMember {
-  const _OverlayMember(this.kind, {this.bytes});
+  const _OverlayMember(this.kind, {this.bytes, this.private = false});
 
   final _MemberKind kind;
   final List<int>? bytes;
+  final bool private;
 }
 
 final class _OffHomePlanner {
@@ -137,8 +138,16 @@ final class _OffHomePlanner {
           _addWriteFile(path, content);
         case ManifestSymlink(:final linkPath, :final target):
           await _addSymlink(linkPath: linkPath, target: target);
-        case ManifestCopyFile(:final source, :final destination):
-          await _addCopyFile(source: source, destination: destination);
+        case ManifestCopyFile(
+          :final source,
+          :final destination,
+          :final private,
+        ):
+          await _addCopyFile(
+            source: source,
+            destination: destination,
+            private: private,
+          );
         case ManifestCopyTree(:final source, :final destination):
           await _addCopyTree(source: source, destination: destination);
         case ManifestRemoveRecursive(:final path):
@@ -200,6 +209,7 @@ final class _OffHomePlanner {
   Future<void> _addCopyFile({
     required String source,
     required String destination,
+    bool private = false,
   }) async {
     final bytes = await sourceFs.readBytes(source);
     if (bytes == null) {
@@ -207,7 +217,7 @@ final class _OffHomePlanner {
         'Launch manifest copy source missing on control plane: $source',
       );
     }
-    _addBytes(destination, bytes);
+    _addBytes(destination, bytes, private: private);
   }
 
   Future<void> _addCopyTree({
@@ -272,7 +282,7 @@ final class _OffHomePlanner {
     );
   }
 
-  void _addBytes(String destination, List<int> bytes) {
+  void _addBytes(String destination, List<int> bytes, {bool private = false}) {
     final rel = _relative(destination);
     if (rel == null) {
       // Follow-up: out-of-root copy bodies go through a heredoc writeFile and
@@ -282,7 +292,11 @@ final class _OffHomePlanner {
       return;
     }
     _openKind(_BufferKind.tar);
-    _overlay[rel] = _OverlayMember(_MemberKind.file, bytes: bytes);
+    _overlay[rel] = _OverlayMember(
+      _MemberKind.file,
+      bytes: bytes,
+      private: private,
+    );
   }
 
   void _openKind(_BufferKind kind) {
@@ -310,7 +324,12 @@ final class _OffHomePlanner {
     for (final MapEntry(:key, :value) in _overlay.entries) {
       switch (value.kind) {
         case _MemberKind.file:
-          addOverlayFile(archive, relativePath: key, bytes: value.bytes!);
+          addOverlayFile(
+            archive,
+            relativePath: key,
+            bytes: value.bytes!,
+            mode: value.private ? overlayPrivateFileMode : null,
+          );
         case _MemberKind.dir:
           addOverlayDir(archive, relativePath: key);
       }

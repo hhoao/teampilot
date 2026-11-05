@@ -6,6 +6,7 @@ import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
@@ -22,6 +23,7 @@ import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
+import 'package:teampilot/repositories/vault_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
@@ -32,6 +34,12 @@ import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
+import 'package:teampilot/services/vault/credential_capture.dart';
+import 'package:teampilot/services/vault/encrypted_vault_backend.dart';
+import 'package:teampilot/services/vault/keychain_vault_backend.dart';
+import 'package:teampilot/services/vault/vault_crypto.dart';
+import 'package:teampilot/services/vault/vault_service.dart';
+import 'package:teampilot/services/vault/vault_unlock_gate.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -231,6 +239,35 @@ SpyTermuxCubit _createSpyCubit(
   return spy;
 }
 
+class _FakeVaultStore implements SecureKeyValueStore {
+  final values = <String, String>{};
+
+  @override
+  Future<void> delete(String key) async => values.remove(key);
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async => values[key] = value;
+}
+
+/// Unlocked in-memory vault so profile saves capture credentials like prod.
+Future<VaultService> _unlockedVault() async {
+  final service = VaultService(
+    keychainBackend: KeychainVaultBackend(_FakeVaultStore()),
+    encryptedBackend: EncryptedVaultBackend(
+      repository: VaultRepository(
+        rootDir: '/root/vault',
+        fs: InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix)),
+      ),
+      crypto: const VaultCrypto(memoryKiB: 256, iterations: 1, parallelism: 1),
+    ),
+  );
+  await service.initialize();
+  return service;
+}
+
 Future<void> _pumpWorkHomeStep(
   WidgetTester tester, {
   required VoidCallback onBound,
@@ -244,31 +281,36 @@ Future<void> _pumpWorkHomeStep(
   required TerminalTransportFactory transportFactory,
 }) async {
   final theme = ThemeData(useMaterial3: true);
+  final vault = await _unlockedVault();
   await tester.pumpWidget(
-    MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      locale: const Locale('en'),
-      theme: theme,
-      home: TpTheme(
-        data: TpThemeData.fromColorScheme(
-          theme.colorScheme,
-          scale: 1.0,
-          controlScale: AppTypographyScale.standard.multiplier,
+    MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<ConnectionModeService>.value(value: mode),
+        RepositoryProvider<SshCredentialStore>.value(value: credentialStore),
+        RepositoryProvider<TerminalTransportFactory>.value(
+          value: transportFactory,
         ),
-        child: MultiRepositoryProvider(
-          providers: [
-            RepositoryProvider<ConnectionModeService>.value(value: mode),
-            RepositoryProvider<SshCredentialStore>.value(
-              value: credentialStore,
-            ),
-            RepositoryProvider<TerminalTransportFactory>.value(
-              value: transportFactory,
-            ),
-            RepositoryProvider<SshProfileRepository>.value(
-              value: profileRepository,
-            ),
-          ],
+        RepositoryProvider<SshProfileRepository>.value(
+          value: profileRepository,
+        ),
+        RepositoryProvider<VaultCredentialCapture>.value(
+          value: VaultCredentialCapture(vault: vault),
+        ),
+        RepositoryProvider<VaultUnlockGate>.value(
+          value: VaultUnlockGate(vault: vault, prompt: () async => true),
+        ),
+      ],
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        theme: theme,
+        home: TpTheme(
+          data: TpThemeData.fromColorScheme(
+            theme.colorScheme,
+            scale: 1.0,
+            controlScale: AppTypographyScale.standard.multiplier,
+          ),
           child: MultiBlocProvider(
             providers: [
               BlocProvider<SshProfileCubit>.value(value: profileCubit),

@@ -691,7 +691,10 @@ final class _HarnessCubit extends ChatCubit {
   String? nativeAtRelaunch;
 
   @override
-  Future<void> retrySessionLaunch(String sessionId) async {
+  Future<void> retrySessionLaunch(
+    String sessionId, {
+    String? firstPrompt,
+  }) async {
     AppSession? session;
     for (final candidate in state.sessions) {
       if (candidate.sessionId == sessionId) {

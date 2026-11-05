@@ -7,6 +7,7 @@ import '../cubits/ssh_profile_cubit.dart';
 import '../models/ssh_profile.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
+import '../services/vault/vault_service.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import 'ssh_profile_setup_page.dart';
@@ -42,12 +43,19 @@ Future<void> openSshProfileEditor(
 }) async {
   final fullPage = useFullPageEditor ?? Platform.isAndroid;
   if (fullPage) {
+    VaultService? vaultService;
+    try {
+      vaultService = context.read<VaultService>();
+    } on ProviderNotFoundException {
+      vaultService = null;
+    }
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => SshProfileSetupPage(
           profileRepository: context.read<SshProfileRepository>(),
           credentialStore: context.read<SshCredentialStore>(),
           initialProfile: profile,
+          vaultService: vaultService,
           connectionTester: SshProfileConnectionTester(
             clientFactory: context
                 .read<TerminalTransportFactory>()

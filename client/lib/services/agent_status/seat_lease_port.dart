@@ -18,6 +18,7 @@ abstract interface class SeatBackgroundLeasePort {
     required String memberId,
     required String leaseId,
     required DateTime acquiredAt,
+    String? label,
   });
 
   void releaseBackgroundTask({

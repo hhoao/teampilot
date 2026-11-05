@@ -25,6 +25,16 @@ import '../cubits/chat_cubit.dart';
 import '../cubits/session_groups_cubit.dart';
 import '../cubits/session_usage_cubit.dart';
 import 'session_usage_services.dart';
+import '../models/cursor_usage_account.dart';
+import '../models/cursor_usage_range.dart';
+import '../models/cursor_usage_report.dart';
+import '../services/cli/cursor/provider/cursor_usage_auth_resolver.dart';
+import '../services/cursor_usage/cursor_account_registry.dart';
+import '../services/cli/cursor/provider/cursor_provider_settings_resolver.dart';
+import '../services/cursor_usage/cursor_usage_api_client.dart';
+import '../services/cursor_usage/cursor_usage_cache_store.dart';
+import '../services/cursor_usage/cursor_usage_coordinator.dart';
+import '../services/cursor_usage/cursor_usage_event_source.dart';
 import '../services/agent_runtime/agent_event_gateway.dart';
 import '../services/agent_runtime/agent_runtime.dart';
 import '../services/agent_runtime/runtime_event_journal.dart';
@@ -123,6 +133,7 @@ import '../cubits/managed_provider_cubit.dart';
 import '../cubits/managed_provider_usage_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../models/session_preferences.dart';
+import '../models/session_usage_dashboard.dart';
 import '../cubits/extension_cubit.dart';
 import '../cubits/hook_cubit.dart';
 import '../cubits/mcp_cubit.dart';
@@ -143,6 +154,7 @@ import '../services/mcp/mcp_server_probe_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_connection_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
+import '../cubits/vault_cubit.dart';
 import '../cubits/termux_cubit.dart';
 import '../cubits/github_account_cubit.dart';
 import '../config/github_oauth_config.dart';
@@ -159,6 +171,7 @@ import '../services/acp/acp_chat_strings.dart';
 import '../services/acp/acp_frame_logger.dart';
 import '../pages/system/app_bootstrap_loading_page.dart';
 import '../pages/system/bootstrap_startup_error_page.dart';
+import '../pages/vault/vault_status_section.dart' show promptVaultUnlockFromRouter;
 import '../repositories/app_settings_repository.dart';
 import '../repositories/layout_repository.dart';
 import '../repositories/session_preferences_repository.dart';
@@ -179,6 +192,16 @@ import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
 import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
+import '../services/vault/credential_capture.dart';
+import '../services/vault/encrypted_vault_backend.dart';
+import '../services/vault/vault_access.dart';
+import '../services/vault/keychain_vault_backend.dart';
+import '../services/vault/legacy_import.dart';
+import '../models/vault_reference.dart';
+import '../services/vault/provider_credential_link.dart';
+import '../services/vault/vault_reference_indexer.dart';
+import '../services/vault/vault_service.dart';
+import '../services/vault/vault_unlock_gate.dart';
 import '../services/io/local_filesystem.dart';
 import '../services/connect/connect_agent.dart';
 import '../services/connect/authorized_keys_file.dart';
@@ -325,6 +348,7 @@ import '../services/run/run_target_resolver.dart';
 import '../services/run/workspace_run_platform_factory.dart';
 import '../services/search/workspace_search_indexes.dart';
 import '../services/workspace/workspace_worktree_registry.dart';
+import '../services/usage/cursor_usage_sync_adapter.dart';
 import '../services/workspace/workspace_session_groups_registry.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
@@ -487,6 +511,7 @@ class AppShell {
     required this.identityRepository,
     required this.teamCubit,
     required this.sessionUsageCubit,
+    required this.cursorUsageApiClient,
     required this.configCubit,
     required this.connectCubit,
     required this.embeddedSshServer,
@@ -521,6 +546,10 @@ class AppShell {
     required this.appUpdateCubit,
     required this.remoteDownloadCatalogCubit,
     required this.sshProfileCubit,
+    required this.vaultService,
+    required this.vaultCubit,
+    required this.vaultCredentialCapture,
+    required this.vaultUnlockGate,
     required this.termuxCubit,
     required this.homeStorageInvalidator,
     required this.homeInvalidationService,
@@ -597,6 +626,10 @@ class AppShell {
   final LaunchProfileRepository identityRepository;
   final LaunchProfileCubit teamCubit;
   final SessionUsageCubit sessionUsageCubit;
+
+
+  /// Owned by the shell so its HTTP client is closed with the shell.
+  final CursorUsageApiClient cursorUsageApiClient;
   final ConfigCubit configCubit;
   final ConnectCubit? connectCubit;
 
@@ -639,6 +672,10 @@ class AppShell {
   final AppUpdateCubit appUpdateCubit;
   final RemoteDownloadCatalogCubit remoteDownloadCatalogCubit;
   final SshProfileCubit sshProfileCubit;
+  final VaultService vaultService;
+  final VaultCubit vaultCubit;
+  final VaultCredentialCapture vaultCredentialCapture;
+  final VaultUnlockGate vaultUnlockGate;
   final TermuxCubit termuxCubit;
   final HomeStorageInvalidator homeStorageInvalidator;
   final HomeInvalidationService homeInvalidationService;
@@ -770,10 +807,39 @@ Future<AppShell> buildAppShell({
   final sshCredentialStore = const SecureSshCredentialStore(
     FlutterSecureKeyValueStore(),
   );
+  final vaultService = VaultService(
+    keychainBackend: KeychainVaultBackend(const FlutterSecureKeyValueStore()),
+    encryptedBackend: EncryptedVaultBackend(
+      repository: deviceLocalVaultRepository(nativeAppDataPath),
+    ),
+    masterKeyStore: const FlutterSecureKeyValueStore(),
+  );
+  final vaultAccess = VaultAccess(vaultService);
+  try {
+    await vaultService.initialize();
+    // Functional reads (SSH, providers, usage, GitHub) unlock silently with
+    // the remembered master password; only an explicit reveal prompts.
+    await vaultAccess.tryAutoUnlock();
+  } on Object catch (error, stackTrace) {
+    appLogger.w(
+      '[vault] initialize failed: $error',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+  // Shared vault-first capture path + unlock gate: every credential writer
+  // (GitHub, app providers, SSH setup) goes through these so a locked vault
+  // prompts exactly once per action instead of per call site.
+  final vaultCredentialCapture = VaultCredentialCapture(vault: vaultService);
+  final vaultUnlockGate = VaultUnlockGate(
+    vault: vaultService,
+    prompt: promptVaultUnlockFromRouter,
+  );
   // Relay tunnels for paired (QR) SSH profiles: while a tunnel lives, every
   // dial for that profile rides the loopback port instead of the stored host.
   final pairedRelayTunnels = PairedRelayTunnelRegistry(
     credentialStore: sshCredentialStore,
+    vault: vaultAccess,
   );
   final sshKnownHostRepo = SharedPrefsSshKnownHostRepository(preferences);
   final sshConnectionEvents = SshConnectionEvents();
@@ -783,6 +849,8 @@ Future<AppShell> buildAppShell({
     events: sshConnectionEvents,
     onHostKeyPrompt: showSshHostKeyPrompt,
     dialTargetResolver: (profile) => pairedRelayTunnels.targetFor(profile.id),
+    vaultCredentials: (entryId, field) =>
+        vaultAccess.functionalField(entryId, field),
   );
 
   // P1: the home target (the machine the control plane runs on) is the single
@@ -857,6 +925,10 @@ Future<AppShell> buildAppShell({
   reloadAllAppData;
 
   late final SshProfileCubit sshProfileCubit;
+  // Declared before the VaultCubit closure that captures it: the closure only
+  // runs on a later unlock/encrypt, after the importer is assigned below.
+  late final VaultLegacyImportService legacyImporter;
+  late final VaultCubit vaultCubit;
   late final HomeTargetController homeTargetController;
   late final HomeWorkspaceUiCache homeWorkspaceUiCache;
   sshProfileCubit = SshProfileCubit(
@@ -872,10 +944,14 @@ Future<AppShell> buildAppShell({
     enableRemoteCliDiscovery: () =>
         Platform.isAndroid && defaultTargetResolver().kind == RuntimeKind.ssh,
     remoteCliPathCache: deviceLocalRemoteCliPathCache(nativeAppDataPath),
+    vaultCapture: vaultCredentialCapture,
   );
 
   final githubCredentialsStore = GithubCredentialsStore(
     kv: const FlutterSecureKeyValueStore(),
+    vault: vaultService,
+    vaultCapture: vaultCredentialCapture,
+    ensureVaultUnlocked: vaultUnlockGate.ensureUnlocked,
   );
   final githubDeviceFlow = githubDeviceFlowAvailable
       ? GithubDeviceFlowAuth(clientId: githubOauthClientId)
@@ -895,7 +971,6 @@ Future<AppShell> buildAppShell({
     },
     deviceFlowAvailable: githubDeviceFlowAvailable,
   );
-  unawaited(githubAccountCubit.hydrate());
 
   // P1: targets.json is a pure target catalog (no default/migrate); the home
   // target authority is the device-local homeTargetStore read above. The
@@ -1040,6 +1115,31 @@ Future<AppShell> buildAppShell({
     'root=${homeStorage.appDataRoot})',
   );
 
+  vaultCubit = VaultCubit(
+    service: vaultService,
+    sshProfiles: sshProfileRepo,
+    appProviders: AppProviderRepository(storage: homeStorage),
+    onUnlocked: () async {
+      // Import first: GitHub hydration reads the store, and a token that only
+      // lives in the vault must be captured before the pointer is consulted.
+      // Hydration is NOT awaited: it may hit api.github.com, and unlock/save
+      // must stay responsive while it runs.
+      await legacyImporter.runOnce();
+      // The vault page may already be mounted (the user just unlocked it):
+      // re-read rows only; changing status during the unlock transition can
+      // re-enter the page rebuild while a dialog is closing.
+      await vaultCubit.reloadEntries();
+      unawaited(
+        githubAccountCubit.hydrate().catchError((Object error, StackTrace stack) {
+          appLogger.w(
+            '[vault] post-unlock GitHub hydrate failed: ${error.runtimeType}',
+            stackTrace: stack,
+          );
+        }),
+      );
+    },
+  );
+
   // Managed Providers belong to the home/control plane. Construct this graph
   // once after the home context is installed; workspace tabs only consume the Cubits
   // exposed by AppShell and never create provider-specific state.
@@ -1055,6 +1155,65 @@ Future<AppShell> buildAppShell({
         storage: homeStorage,
         onProvidersDeleted: resolvedManagedProviderUsageRepository.deleteMany,
       );
+
+  vaultCubit.attachReferenceIndexer(
+    VaultReferenceIndexer([
+      (entryId) async {
+        final profiles = await sshProfileRepo.loadAll();
+        return [
+          for (final profile in profiles)
+            if (profile.vaultEntryId == entryId)
+              VaultReference(
+                kind: VaultReferenceKind.sshProfile,
+                id: profile.id,
+                label: profile.name,
+              ),
+        ];
+      },
+      (entryId) async {
+        final perCli = await Future.wait([
+          for (final cli in CliTool.values)
+            AppProviderRepository(
+              storage: homeStorage,
+            ).loadProviders(cli, reconcileCredentials: false),
+        ]);
+        return [
+          for (final providers in perCli)
+            for (final provider in providers)
+              if (vaultEntryIdFromCredentialLink(provider.credentialLink) ==
+                  entryId)
+                VaultReference(
+                  kind: VaultReferenceKind.appProvider,
+                  id: provider.id,
+                  label: provider.name,
+                ),
+        ];
+      },
+      (entryId) async {
+        final entries = await resolvedManagedProviderRepository.load();
+        return [
+          for (final entry in entries)
+            if ((entry.vaultEntryId ?? '').trim() == entryId)
+              VaultReference(
+                kind: VaultReferenceKind.managedProvider,
+                id: entry.id,
+                label: entry.name,
+              ),
+        ];
+      },
+      (entryId) async {
+        final stored = await githubCredentialsStore.storedVaultEntryId();
+        if ((stored ?? '').trim() != entryId) return const [];
+        return const [
+          VaultReference(
+            kind: VaultReferenceKind.github,
+            id: 'github',
+            label: 'GitHub',
+          ),
+        ];
+      },
+    ]),
+  );
   final ownsManagedProviderHttpClient =
       managedProviderUsageHttpClient == null &&
       managedProviderUsageCoordinator == null;
@@ -1100,6 +1259,7 @@ Future<AppShell> buildAppShell({
           // (later-constructed) cubit's load-order dependency. Same disk,
           // same cache-free reads.
           appProviders: AppProviderRepository(storage: homeStorage),
+          vault: vaultAccess,
         ),
         http: resolvedManagedProviderHttpClient!,
       );
@@ -1118,12 +1278,27 @@ Future<AppShell> buildAppShell({
   // Resolves a provider config's `credentialLink` to the linked managed
   // entry's stored secret (spec: reverse direction). Secret-free failure: a
   // missing entry or secret resolves to null, never throws.
-  Future<String?> appProviderLinkedCredentialLookup(
-    String managedProviderId,
-  ) async {
+  Future<String?> appProviderLinkedCredentialLookup(String link) async {
+    final vaultEntryId = vaultEntryIdFromCredentialLink(link);
+    if (vaultEntryId != null) {
+      try {
+        return await vaultAccess.functionalField(vaultEntryId, 'apiKey');
+      } on Object {
+        return null;
+      }
+    }
     final entries = await resolvedManagedProviderRepository.load();
-    final entry = entries.where((e) => e.id == managedProviderId).firstOrNull;
+    final entry = entries.where((e) => e.id == link.trim()).firstOrNull;
     if (entry == null) return null;
+    final entryVaultEntryId = entry.vaultEntryId?.trim() ?? '';
+    if (entryVaultEntryId.isNotEmpty) {
+      final field = entry.endpointConfig.credentialField ?? 'apiKey';
+      try {
+        return await vaultAccess.functionalField(entryVaultEntryId, field);
+      } on Object {
+        return null;
+      }
+    }
     final ref = entry.credentialRef?.trim();
     if (ref == null || ref.isEmpty) return null;
     final scope = await resolvedManagedProviderSecretStore.read(ref);
@@ -1131,6 +1306,13 @@ Future<AppShell> buildAppShell({
     final value = scope.valueFor(field);
     return (value == null || value.isEmpty) ? null : value;
   }
+
+  // CLI launch resolvers create their own AppProviderRepository instances
+  // (OpenCode, Claude, cross-machine bridges); give them the vault-aware
+  // lookup so `vault:` links resolve outside the provider cubit too.
+  AppProviderRepository.installDefaultLinkedCredentialLookup(
+    appProviderLinkedCredentialLookup,
+  );
 
   // Constructed before the managed-provider control plane so
   // ManagedProviderCubit can ensure dedicated per-entry CLI provider rows;
@@ -1144,6 +1326,8 @@ Future<AppShell> buildAppShell({
     flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
     openCredentialLoginUrl: openCredentialLoginUrl,
     managedProviderRepository: resolvedManagedProviderRepository,
+    vaultCapture: vaultCredentialCapture,
+    ensureVaultUnlocked: vaultUnlockGate.ensureUnlocked,
   );
 
   // Reclaims dedicated CLI provider rows and their isolated HOME
@@ -1161,9 +1345,22 @@ Future<AppShell> buildAppShell({
         repository: resolvedManagedProviderRepository,
         appProviderCubit: appProviderCubit,
         rowJanitor: managedProviderCliRowJanitor,
+        ensureVaultUnlocked: vaultUnlockGate.ensureUnlocked,
         onProviderDeletedState:
             resolvedManagedProviderUsageCubit.removeProvider,
         onProviderDeletedCredentialCleanup: (provider) async {
+          final vaultEntryId = provider.vaultEntryId?.trim() ?? '';
+          if (vaultEntryId.isNotEmpty) {
+            try {
+              await vaultService.delete(vaultEntryId);
+            } on Object catch (error, stackTrace) {
+              appLogger.w(
+                'Vault entry cleanup failed for managed provider ${provider.id}',
+                error: error,
+                stackTrace: stackTrace,
+              );
+            }
+          }
           final ref = provider.credentialRef?.trim();
           if (ref != null && ref.isNotEmpty) {
             await resolvedManagedProviderSecretStore.delete(ref);
@@ -1195,6 +1392,38 @@ Future<AppShell> buildAppShell({
   final managedProviderControlPlaneLease = ManagedProviderControlPlaneLease(
     managedProviderControlPlane,
   );
+
+  // Vault-first migration of every legacy secret. Constructed after the
+  // managed-provider graph and the GitHub store so the closure above always
+  // sees a fully-assigned importer. `runOnce` is a no-op while the vault is
+  // locked and after a clean pass, so it is safe at every boot.
+  legacyImporter = VaultLegacyImportService(
+    vault: vaultService,
+    capture: vaultCredentialCapture,
+    importKey: nativeAppDataPath,
+    sshProfiles: sshProfileRepo,
+    sshCredentials: sshCredentialStore,
+    appProviders: AppProviderRepository(storage: homeStorage),
+    managedProviders: resolvedManagedProviderRepository,
+    managedSecrets: resolvedManagedProviderSecretStore,
+    github: githubCredentialsStore,
+  );
+  // One background sequence, not two: hydration reads the GitHub store that
+  // the import writes, so running them independently can duplicate the vault
+  // entry. Failure-tolerant and off the boot critical path.
+  unawaited(() async {
+    try {
+      await githubAccountCubit.hydrate();
+      await legacyImporter.runOnce();
+      // Boot import runs in the background; refresh rows on a possibly-open page.
+      await vaultCubit.reloadEntries();
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[vault] boot hydrate/import failed: ${error.runtimeType}',
+        stackTrace: stackTrace,
+      );
+    }
+  }());
 
   // One-shot startup sweep: reclaim orphaned `-mp-` rows and the legacy
   // shared rows. Fire-and-forget and failure-tolerant — the control plane
@@ -1624,11 +1853,45 @@ Future<AppShell> buildAppShell({
       },
     );
 
+    final cursorUsageApiClient = CursorUsageApiClient();
+    // The Cursor stack resolves paths and the filesystem from the active home
+    // plane, so it is rebuilt whenever that plane changes instead of pinning
+    // the first one for the whole app lifetime.
+    var cursorStackGeneration = -1;
+    _CursorUsageStack? cachedCursorStack;
+    _CursorUsageStack cursorStack() {
+      if (cachedCursorStack == null ||
+          cursorStackGeneration != homeStorage.generation) {
+        cursorStackGeneration = homeStorage.generation;
+        cachedCursorStack = _CursorUsageStack(
+          storage: homeStorage,
+          api: cursorUsageApiClient,
+        );
+      }
+      return cachedCursorStack!;
+    }
+
+    final cursorAdapter = CursorUsageSyncAdapter(
+      listAccounts: () => cursorStack().registry.list(),
+      loadAccount: (accountId, range, mode) => cursorStack().coordinator.load(
+        accountId: accountId,
+        range: range,
+        mode: mode,
+      ),
+    );
+
     final sessionUsageServices = SessionUsageServices.forStorage(
       storage: homeStorage,
       registry: cliToolRegistry,
       sessions: sessionRepo,
       teams: identityRepository,
+      loadCursorAccountUsage: () => CursorUsageEventSource(
+        listAccounts: () => cursorStack().registry.list(),
+        loadCache: (accountId) => cursorStack().cacheStore.load(accountId),
+      ).loadEvents(),
+      loadCursorAccounts: () => cursorStack().registry.list(),
+      syncCursorUsage: (range, startMs, endMs, full) =>
+          cursorAdapter.syncFor(range, startMs, endMs, full: full),
     );
     final sessionUsageCubit = SessionUsageCubit(
       loadEvents: sessionUsageServices.loadEvents,
@@ -1639,15 +1902,25 @@ Future<AppShell> buildAppShell({
       savePricing: sessionUsageServices.savePricing,
       loadUsageStats: sessionUsageServices.loadUsageStats,
       compactUsage: sessionUsageServices.compactUsage,
-      loadCursorStatus: sessionUsageServices.loadCursorStatus,
-      importCursorCsv: sessionUsageServices.importCursorCsv,
-      syncCursorUsage: sessionUsageServices.syncCursorUsage,
-      clearCursorUsage: sessionUsageServices.clearCursorUsage,
       loadSessions: sessionUsageServices.loadSessions,
       loadTeams: sessionUsageServices.loadTeams,
+      loadCursorAccounts: sessionUsageServices.loadCursorAccounts,
+      syncCursorUsage: sessionUsageServices.syncCursorUsage,
       storageChanges: homeStorage.changes.map<void>((_) {}),
     );
     unawaited(sessionUsageCubit.ensureLoaded());
+
+    // Warm the caches once at boot so the session usage dashboard has account
+    // rows even when the Cursor page is never opened.
+    unawaited(
+      _warmCursorUsage(
+        accounts: () => cursorStack().registry.list(),
+        load: (accountId) => cursorStack().coordinator.load(
+          accountId: accountId,
+          range: const CursorUsagePresetRange(CursorUsagePreset.billingCycle),
+        ),
+      ),
+    );
 
     final notificationCubit = NotificationCubit(storage: homeStorage);
     final notificationBootstrap = notificationCubit.load();
@@ -3280,6 +3553,7 @@ Future<AppShell> buildAppShell({
       identityRepository: identityRepository,
       teamCubit: teamCubit,
       sessionUsageCubit: sessionUsageCubit,
+      cursorUsageApiClient: cursorUsageApiClient,
       configCubit: configCubit,
       connectCubit: connectCubit,
       embeddedSshServer: embeddedSshServer,
@@ -3314,6 +3588,10 @@ Future<AppShell> buildAppShell({
       appUpdateCubit: appUpdateCubit,
       remoteDownloadCatalogCubit: remoteDownloadCatalogCubit,
       sshProfileCubit: sshProfileCubit,
+      vaultService: vaultService,
+      vaultCubit: vaultCubit,
+      vaultCredentialCapture: vaultCredentialCapture,
+      vaultUnlockGate: vaultUnlockGate,
       termuxCubit: termuxCubit,
       homeStorageInvalidator: homeStorageInvalidator,
       homeInvalidationService: homeInvalidationService,
@@ -3384,6 +3662,73 @@ class _DefaultProviderUsageHttpClient implements ProviderUsageHttpClient {
       body: await response.stream.bytesToString(),
       headers: response.headers,
     );
+  }
+}
+
+/// The Cursor usage objects bound to one home storage plane.
+///
+/// `CursorUsageCacheStore` pairs a filesystem with paths resolved from the same
+/// plane, so a plane swap has to rebuild the whole group, not just the paths.
+class _CursorUsageStack {
+  _CursorUsageStack({
+    required HomeStorage storage,
+    required CursorUsageApiClient api,
+  }) :        registry = CursorAccountRegistry(
+         fs: storage.fs,
+         accountsPath: storage.paths.cursorUsageAccountsFile,
+         resolveAuths: () => CursorUsageAuthResolver(
+           fs: storage.fs,
+           basePath: storage.paths.basePath,
+           home: storage.home,
+           // Expired tokens are included so the usage page can show the account
+           // as "expired, sign in again"; credentialFor filters them for sync.
+         ).resolveAll(includeExpired: true),
+         providerNameFor: (providerId) => CursorProviderSettingsResolver(
+           basePath: storage.paths.basePath,
+           storage: storage,
+         ).findById(providerId).then((provider) => provider?.name),
+       ),
+       cacheStore = CursorUsageCacheStore(
+         fs: storage.fs,
+         pathFor: storage.paths.cursorUsageCacheFile,
+       ) {
+    coordinator = CursorUsageCoordinator(
+      registry: registry,
+      cacheStore: cacheStore,
+      api: api,
+    );
+  }
+
+  final CursorAccountRegistry registry;
+  final CursorUsageCacheStore cacheStore;
+  late final CursorUsageCoordinator coordinator;
+}
+
+/// Fills each enabled account's cache so the session usage dashboard has
+/// account rows even if the Cursor page is never opened. Best effort.
+Future<void> _warmCursorUsage({
+  required Future<List<CursorUsageAccount>> Function() accounts,
+  required Future<CursorUsageReport> Function(String accountId) load,
+}) async {
+  final List<CursorUsageAccount> rows;
+  try {
+    rows = await accounts();
+  } on Object {
+    return;
+  }
+  for (final row in rows) {
+    // Disabled rows are out by choice; expired rows have no live token, so a
+    // warm load would only log a warning per boot.
+    if (!row.enabled || row.isExpired(DateTime.now().millisecondsSinceEpoch)) {
+      continue;
+    }
+    try {
+      await load(row.accountId);
+    } on Object catch (error) {
+      AppLogger.instance.w(
+        'cursor usage warm failed for ${row.accountId}: $error',
+      );
+    }
   }
 }
 
@@ -3523,6 +3868,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         await shell.memberPresenceCubit.close();
         await _teardownConnect(shell);
         await shell.managedProviderControlPlane.close();
+        shell.cursorUsageApiClient.close();
         return;
       }
       await yieldUiFrame();
@@ -3532,6 +3878,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         await shell.memberPresenceCubit.close();
         await _teardownConnect(shell);
         await shell.managedProviderControlPlane.close();
+        shell.cursorUsageApiClient.close();
         return;
       }
       appLogger.i(
@@ -3565,6 +3912,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       // the buildAppShell failure path). The presence cubit is closed for the
       // same reason: it subscribes to the app-lifetime presence projection.
       await builtShell?.memberPresenceCubit.close();
+      builtShell?.cursorUsageApiClient.close();
       await builtShell?.catalogRuntime?.bus.close();
       await _eventTransportController.apply(EventTransportRole.none);
       appLogger.e(
@@ -3614,6 +3962,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       unawaited(_teardownConnect(shell));
       unawaited(shell.managedProviderControlPlane.close());
       unawaited(shell.sessionUsageCubit.close());
+      shell.cursorUsageApiClient.close();
     }
     // Drain queued events; dispose() is synchronous, so stop() is
     // fire-and-forget like the cubit closes above.

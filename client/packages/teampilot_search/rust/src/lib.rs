@@ -521,6 +521,19 @@ pub unsafe extern "C" fn tp_file_index_cancel(handle: *mut TpFileIndexHandle) {
     }
 }
 
+/// Number of files currently held by the index (0 before a build).
+#[no_mangle]
+pub unsafe extern "C" fn tp_file_index_len(handle: *mut TpFileIndexHandle) -> u32 {
+    if handle.is_null() {
+        return 0;
+    }
+    let handle = &*handle;
+    match handle.index.lock() {
+        Ok(index) => index.file_count() as u32,
+        Err(_) => 0,
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn tp_file_index_query(
     handle: *mut TpFileIndexHandle,

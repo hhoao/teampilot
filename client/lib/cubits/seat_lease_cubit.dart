@@ -30,6 +30,20 @@ class SeatLeaseState extends Equatable {
     return false;
   }
 
+  /// The first non-empty lease label for [sessionId], or null when the
+  /// session's background work carries no description.
+  String? sessionBackgroundLabel(String sessionId) {
+    final prefix = agentSeatKey(sessionId: sessionId, memberId: '');
+    for (final e in leases.entries) {
+      if (!e.key.startsWith(prefix)) continue;
+      for (final lease in e.value.values) {
+        final label = lease.label?.trim();
+        if (label != null && label.isNotEmpty) return label;
+      }
+    }
+    return null;
+  }
+
   /// Drops leases past their kind TTL. Pure — the cubit logs the expiries.
   SeatLeaseState pruned(DateTime now) {
     var changed = false;
@@ -123,6 +137,7 @@ class SeatLeaseCubit extends Cubit<SeatLeaseState>
     required String memberId,
     required String leaseId,
     required DateTime acquiredAt,
+    String? label,
   }) {
     acquire(
       sessionId: sessionId,
@@ -131,6 +146,7 @@ class SeatLeaseCubit extends Cubit<SeatLeaseState>
         kind: SeatLeaseKind.backgroundTask,
         id: leaseId,
         acquiredAt: acquiredAt,
+        label: label,
       ),
     );
   }

@@ -59,6 +59,7 @@ AcpLaunchPlan? capabilityToPlan(
     },
     authenticateMethodId: capability.authenticateMethodId,
     forwardSessionNewMcpServers: capability.forwardSessionNewMcpServers,
+    supportsInPlaceSessionLoad: capability.supportsInPlaceSessionLoad,
     sessionNewMeta: capability.sessionNewMeta,
     startupTimeout: capability.startupTimeout,
   );

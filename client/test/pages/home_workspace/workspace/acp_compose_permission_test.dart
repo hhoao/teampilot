@@ -43,6 +43,22 @@ void main() {
       );
       expect(
         willLaunchAcp(
+          cli: CliTool.qoder,
+          requested: false,
+        ),
+        isTrue,
+        reason: 'Qoder is ACP-only on desktop',
+      );
+      expect(
+        willLaunchAcp(
+          cli: CliTool.qoder,
+          requested: true,
+          isAndroidOverride: true,
+        ),
+        isFalse,
+      );
+      expect(
+        willLaunchAcp(
           cli: CliTool.claude,
           requested: true,
         ),

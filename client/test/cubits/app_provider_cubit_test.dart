@@ -1,15 +1,22 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
+import 'package:teampilot/repositories/ssh_credential_store.dart';
+import 'package:teampilot/repositories/vault_repository.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_link_binding.dart';
 import 'package:teampilot/services/provider/credential_login_progress.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
+import 'package:teampilot/services/vault/credential_capture.dart';
+import 'package:teampilot/services/vault/encrypted_vault_backend.dart';
+import 'package:teampilot/services/vault/keychain_vault_backend.dart';
+import 'package:teampilot/services/vault/vault_crypto.dart';
+import 'package:teampilot/services/vault/vault_service.dart';
 import '../support/in_memory_filesystem.dart';
 
 class _SpyProviderImportService extends ProviderImportService {
@@ -330,4 +337,338 @@ void main() {
       'opencode-go-2',
     );
   });
+
+  test('saving a key captures it in the vault and clears the plaintext', () async {
+    final vault = await _vaultService();
+    final capture = VaultCredentialCapture(vault: vault);
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: capture,
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const draft = AppProviderConfig(
+      id: 'captured',
+      cli: CliTool.claude,
+      name: 'Captured',
+      apiKey: 'sk-secret',
+    );
+    expect(
+      await autoCubit.upsertProvider(
+        draft,
+        captureVaultCredentials: true,
+      ),
+      isTrue,
+    );
+
+    final saved = autoCubit.state.providersFor(CliTool.claude)
+        .firstWhere((p) => p.id == 'captured');
+    expect(saved.apiKey, isEmpty);
+    expect(saved.credentialLink, startsWith('vault:'));
+    final entryId = saved.credentialLink.substring('vault:'.length);
+    expect(await vault.readField(entryId, 'apiKey'), 'sk-secret');
+
+    await autoCubit.deleteProvider('captured');
+    expect(await vault.get(entryId), isNull);
+  });
+
+  test('background upserts never capture or prompt', () async {
+    final vault = await _vaultService();
+    var prompts = 0;
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async {
+        prompts++;
+        return true;
+      },
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const linked = AppProviderConfig(
+      id: 'linked',
+      cli: CliTool.claude,
+      name: 'Linked',
+      apiKey: 'resolved-in-memory',
+      credentialLink: 'm1',
+    );
+    expect(await autoCubit.upsertProvider(linked), isTrue);
+    final saved = autoCubit.state.providersFor(CliTool.claude)
+        .firstWhere((p) => p.id == 'linked');
+    expect(saved.credentialLink, 'm1');
+    expect(saved.apiKey, 'resolved-in-memory');
+    expect(await vault.list(), isEmpty);
+    expect(prompts, 0);
+
+    const unlinked = AppProviderConfig(
+      id: 'unlinked',
+      cli: CliTool.claude,
+      name: 'Unlinked',
+      apiKey: 'plain',
+    );
+    expect(await autoCubit.upsertProvider(unlinked), isTrue);
+    final persisted = autoCubit.state.providersFor(CliTool.claude)
+        .firstWhere((p) => p.id == 'unlinked');
+    expect(persisted.apiKey, 'plain');
+    expect(await vault.list(), isEmpty);
+    expect(prompts, 0);
+  });
+
+  test('dropping a managed link never persists the resolved key', () async {
+    final vault = await _vaultService();
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const linked = AppProviderConfig(
+      id: 'linked',
+      cli: CliTool.claude,
+      name: 'Linked',
+      credentialLink: 'm1',
+    );
+    await autoCubit.upsertProvider(linked);
+    final resolved = linked.copyWith(apiKey: 'resolved', credentialLink: '');
+    await autoCubit.upsertProvider(resolved);
+    final saved = autoCubit.state.providersFor(CliTool.claude)
+        .firstWhere((p) => p.id == 'linked');
+    expect(saved.apiKey, isEmpty);
+  });
+
+  test('same provider id in two CLIs keeps separate vault entries', () async {
+    final vault = await _vaultService();
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const claudeRow = AppProviderConfig(
+      id: 'shared',
+      cli: CliTool.claude,
+      name: 'Shared',
+      apiKey: 'claude-key',
+    );
+    const codexRow = AppProviderConfig(
+      id: 'shared',
+      cli: CliTool.codex,
+      name: 'Shared',
+      apiKey: 'codex-key',
+    );
+    await autoCubit.upsertProvider(
+      claudeRow,
+      captureVaultCredentials: true,
+    );
+    await autoCubit.upsertProvider(codexRow, captureVaultCredentials: true);
+    final entries = await vault.list();
+    expect(entries, hasLength(2));
+    expect(
+      entries.map((entry) => entry.fields['apiKey']).toSet(),
+      {'claude-key', 'codex-key'},
+    );
+
+    await autoCubit.setSelectedCli(CliTool.claude);
+    await autoCubit.deleteProvider('shared');
+    expect((await vault.list()).single.fields['apiKey'], 'codex-key');
+  });
+
+  test('a failed catalog save rolls the provider capture back', () async {
+    final vault = await _vaultService();
+    final throwing = _ThrowingSaveRepository(
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+    );
+    final autoCubit = AppProviderCubit(
+      repository: throwing,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+    throwing.failSaves = true;
+    const draft = AppProviderConfig(
+      id: 'rollback',
+      cli: CliTool.claude,
+      name: 'Rollback',
+      apiKey: 'sk-rollback',
+    );
+
+    await expectLater(
+      autoCubit.upsertProvider(draft, captureVaultCredentials: true),
+      throwsA(isA<StateError>()),
+    );
+    expect(await vault.list(), isEmpty);
+  });
+
+  test('a failed catalog save keeps the vault entry on delete', () async {
+    final vault = await _vaultService();
+    final throwing = _ThrowingSaveRepository(
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+    );
+    final autoCubit = AppProviderCubit(
+      repository: throwing,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+    const row = AppProviderConfig(
+      id: 'keep',
+      cli: CliTool.claude,
+      name: 'Keep',
+      apiKey: 'k',
+    );
+    await autoCubit.upsertProvider(row, captureVaultCredentials: true);
+    final entryId = autoCubit.state
+        .providersFor(CliTool.claude)
+        .firstWhere((p) => p.id == 'keep')
+        .credentialLink
+        .substring('vault:'.length);
+
+    throwing.failSaves = true;
+    await expectLater(
+      autoCubit.deleteProvider('keep'),
+      throwsA(isA<StateError>()),
+    );
+    expect(await vault.get(entryId), isNotNull);
+  });
+
+  test('removeProviderRow deletes the vault entry best-effort', () async {
+    final vault = await _vaultService();
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const draft = AppProviderConfig(
+      id: 'row',
+      cli: CliTool.claude,
+      name: 'Row',
+      apiKey: 'sk-row',
+    );
+    expect(
+      await autoCubit.upsertProvider(
+        draft,
+        captureVaultCredentials: true,
+      ),
+      isTrue,
+    );
+    final saved = autoCubit.state.providersFor(CliTool.claude).single;
+    final entryId = saved.credentialLink.substring('vault:'.length);
+    expect(await vault.get(entryId), isNotNull);
+
+    await autoCubit.removeProviderRow(CliTool.claude, 'row');
+
+    expect(autoCubit.state.providersFor(CliTool.claude), isEmpty);
+    expect(await vault.get(entryId), isNull);
+  });
+
+  test('a refused unlock aborts the save', () async {
+    final vault = await _vaultService();
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: _LockedVaultService(vault)),
+      ensureVaultUnlocked: () async => false,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const draft = AppProviderConfig(
+      id: 'blocked',
+      cli: CliTool.claude,
+      name: 'Blocked',
+      apiKey: 'sk-secret',
+    );
+    expect(
+      await autoCubit.upsertProvider(
+        draft,
+        captureVaultCredentials: true,
+      ),
+      isFalse,
+    );
+    expect(autoCubit.state.providersFor(CliTool.claude), isEmpty);
+  });
+}
+
+Future<VaultService> _vaultService() async {
+  final service = VaultService(
+    keychainBackend: KeychainVaultBackend(_FakeVaultStore()),
+    encryptedBackend: EncryptedVaultBackend(
+      repository: VaultRepository(
+        rootDir: '/root/vault',
+        fs: InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix)),
+      ),
+      crypto: const VaultCrypto(memoryKiB: 256, iterations: 1, parallelism: 1),
+    ),
+  );
+  await service.initialize();
+  return service;
+}
+
+class _ThrowingSaveRepository extends AppProviderRepository {
+  _ThrowingSaveRepository({required super.basePath, required super.storage});
+
+  bool failSaves = false;
+
+  @override
+  Future<void> saveProviders(CliTool cli, List<AppProviderConfig> providers) {
+    if (failSaves) throw StateError('save failed');
+    return super.saveProviders(cli, providers);
+  }
+}
+
+class _FakeVaultStore implements SecureKeyValueStore {
+  final values = <String, String>{};
+
+  @override
+  Future<void> delete(String key) async => values.remove(key);
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async => values[key] = value;
+}
+
+class _LockedVaultService implements VaultService {
+  _LockedVaultService(this._delegate);
+
+  final VaultService _delegate;
+
+  @override
+  bool get isUnlocked => false;
+
+  @override
+  Future<void> delete(String id) => _delegate.delete(id);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

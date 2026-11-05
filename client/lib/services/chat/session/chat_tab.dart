@@ -171,6 +171,20 @@ class ChatTab {
     yield* memberShells.values;
   }
 
+  /// ACP cubit whose [AcpChatRuntimeCubit.seatMemberId] is [memberId].
+  ///
+  /// Personal ACP stores the cubit under the session id but stamps attention
+  /// as [AcpChatRuntimeCubit.acpMemberId]; mixed seats use the roster id for
+  /// both. Direct map lookup covers the mixed case; the scan covers personal.
+  AcpChatRuntimeCubit? acpRuntimeForSeatMember(String memberId) {
+    final direct = memberAcpRuntimes[memberId];
+    if (direct != null) return direct;
+    for (final cubit in memberAcpRuntimes.values) {
+      if (cubit.seatMemberId == memberId) return cubit;
+    }
+    return null;
+  }
+
   /// Member ACP seats that are still live (not yet ended, not closed).
   ///
   /// Terminal-less: they never appear in [sessions], so callers asking "is this

@@ -18,6 +18,9 @@ import 'app/ui_zoom_baseline.dart';
 import 'app/home_index_prefetch.dart';
 import 'services/storage/app_paths.dart';
 import 'services/storage/device_local_control_plane.dart';
+import 'services/vault/credential_capture.dart';
+import 'services/vault/vault_service.dart';
+import 'services/vault/vault_unlock_gate.dart';
 import 'services/io/local_filesystem.dart';
 import 'cubits/app_bootstrap_cubit.dart';
 import 'cubits/app_update_cubit.dart';
@@ -588,6 +591,15 @@ void main() async {
                   RepositoryProvider<SshProfileRepository>.value(
                     value: shell.sshProfileRepo,
                   ),
+                  RepositoryProvider<VaultService>.value(
+                    value: shell.vaultService,
+                  ),
+                  RepositoryProvider<VaultCredentialCapture>.value(
+                    value: shell.vaultCredentialCapture,
+                  ),
+                  RepositoryProvider<VaultUnlockGate>.value(
+                    value: shell.vaultUnlockGate,
+                  ),
                   RepositoryProvider<SshCredentialStore>.value(
                     value: shell.sshCredentialStore,
                   ),
@@ -735,6 +747,7 @@ void main() async {
                     BlocProvider.value(value: shell.appUpdateCubit),
                     BlocProvider.value(value: shell.remoteDownloadCatalogCubit),
                     BlocProvider.value(value: shell.sshProfileCubit),
+                    BlocProvider.value(value: shell.vaultCubit),
                     BlocProvider.value(value: shell.sshConnectionCubit),
                     BlocProvider.value(value: shell.termuxCubit),
                     BlocProvider.value(value: shell.githubAccountCubit),

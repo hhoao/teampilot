@@ -300,7 +300,21 @@ class SessionChatMessageArea extends StatelessWidget {
                                             memberId: shellMemberId,
                                           ),
                                         );
-                                    Widget buildChrome(bool sessionHasLeases) {
+                                    // Landing create+send paints its first
+                                    // prompt before the seat owns a turn.
+                                    final pendingUserText =
+                                        seatSelect<ChatCubit, String>(
+                                          context,
+                                          (c) =>
+                                              c
+                                                  .state
+                                                  .pendingLandingPrompts[sid] ??
+                                              '',
+                                        );
+                                    Widget buildChrome(
+                                      bool sessionHasLeases, [
+                                      String? backgroundLabel,
+                                    ]) {
                                       final turnInFlight = historyTurnInFlight(
                                         isSubmitting: isSubmitting,
                                         awaitingAssistant:
@@ -334,6 +348,7 @@ class SessionChatMessageArea extends StatelessWidget {
                                               onLoadOlder:
                                                   historySeat.loadOlder,
                                               liveChrome: liveChrome,
+                                              backgroundLabel: backgroundLabel,
                                               pendingDeliveryStatuses:
                                                   historySeat
                                                       .pendingDeliveryStatuses,
@@ -348,6 +363,10 @@ class SessionChatMessageArea extends StatelessWidget {
                                               scrollAnchors: context
                                                   .read<ChatCubit>()
                                                   .sessionScrollAnchors,
+                                              suppressEmptyPane:
+                                                  sessionConnecting ||
+                                                  activity.isDelivering,
+                                              pendingUserText: pendingUserText,
                                               rewind: rewind,
                                               turnInFlight:
                                                   turnInFlight || rewind.busy,
@@ -371,12 +390,17 @@ class SessionChatMessageArea extends StatelessWidget {
                                     return BlocSelector<
                                       SeatLeaseCubit,
                                       SeatLeaseState,
-                                      bool
+                                      ({bool hasLeases, String? label})
                                     >(
                                       bloc: leaseCubit,
-                                      selector: (s) => s.sessionHasLeases(sid),
-                                      builder: (context, hasLeases) =>
-                                          buildChrome(hasLeases),
+                                      selector: (s) => (
+                                        hasLeases: s.sessionHasLeases(sid),
+                                        label: s.sessionBackgroundLabel(sid),
+                                      ),
+                                      builder: (context, leases) => buildChrome(
+                                        leases.hasLeases,
+                                        leases.label,
+                                      ),
                                     );
                                   },
                                 ),

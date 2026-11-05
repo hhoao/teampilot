@@ -448,6 +448,17 @@ class ManifestFilesystem implements Filesystem, OverlayFilesystem {
   }
 
   @override
+  Future<void> copyFilePrivate(String source, String destination) async {
+    source = _normalize(source);
+    destination = _normalize(destination);
+    manifest.copyFilePrivate(
+      source: _resolveSourceForManifest(source),
+      destination: destination,
+    );
+    await ensureDir(pathContext.dirname(destination));
+  }
+
+  @override
   Future<String> createTempDir({String? prefix, String? parent}) async {
     final dir = pathContext.join(
       parent ?? pathContext.join('', 'tmp'),

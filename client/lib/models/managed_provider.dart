@@ -329,6 +329,7 @@ class ManagedProvider extends Equatable {
     String websiteUrl = '',
     ManagedProviderEndpointConfig? endpointConfig,
     String? credentialRef,
+    String? vaultEntryId,
     ManagedProviderDisplayConfig? displayConfig,
     bool enabled = true,
     int createdAt = 0,
@@ -344,6 +345,7 @@ class ManagedProvider extends Equatable {
     adapterId: _sanitizeRequiredText(adapterId),
     endpointConfig: endpointConfig ?? ManagedProviderEndpointConfig(),
     credentialRef: credentialRef,
+    vaultEntryId: vaultEntryId,
     displayConfig: displayConfig ?? ManagedProviderDisplayConfig(),
     enabled: enabled,
     createdAt: createdAt,
@@ -361,6 +363,7 @@ class ManagedProvider extends Equatable {
     required this.adapterId,
     required this.endpointConfig,
     this.credentialRef,
+    this.vaultEntryId,
     required this.displayConfig,
     required this.enabled,
     required this.createdAt,
@@ -387,6 +390,7 @@ class ManagedProvider extends Equatable {
               )
             : null,
         credentialRef: json['credentialRef'] as String?,
+        vaultEntryId: json['vaultEntryId'] as String?,
         displayConfig: json['displayConfig'] is Map
             ? ManagedProviderDisplayConfig.fromJson(
                 Map<String, Object?>.from(json['displayConfig'] as Map),
@@ -405,6 +409,7 @@ class ManagedProvider extends Equatable {
           'adapterId',
           'endpointConfig',
           'credentialRef',
+          'vaultEntryId',
           'displayConfig',
           'enabled',
           'createdAt',
@@ -421,6 +426,7 @@ class ManagedProvider extends Equatable {
   final String adapterId;
   final ManagedProviderEndpointConfig endpointConfig;
   final String? credentialRef;
+  final String? vaultEntryId;
   final ManagedProviderDisplayConfig displayConfig;
   final bool enabled;
   final int createdAt;
@@ -437,6 +443,7 @@ class ManagedProvider extends Equatable {
     String? adapterId,
     ManagedProviderEndpointConfig? endpointConfig,
     String? credentialRef,
+    String? vaultEntryId,
     ManagedProviderDisplayConfig? displayConfig,
     bool? enabled,
     int? createdAt,
@@ -452,6 +459,7 @@ class ManagedProvider extends Equatable {
     adapterId: adapterId ?? this.adapterId,
     endpointConfig: endpointConfig ?? this.endpointConfig,
     credentialRef: credentialRef ?? this.credentialRef,
+    vaultEntryId: vaultEntryId ?? this.vaultEntryId,
     displayConfig: displayConfig ?? this.displayConfig,
     enabled: enabled ?? this.enabled,
     createdAt: createdAt ?? this.createdAt,
@@ -470,6 +478,7 @@ class ManagedProvider extends Equatable {
     'adapterId': adapterId,
     'endpointConfig': endpointConfig.toJson(),
     if (credentialRef != null) 'credentialRef': credentialRef,
+    if (vaultEntryId != null) 'vaultEntryId': vaultEntryId,
     'displayConfig': displayConfig.toJson(),
     'enabled': enabled,
     'createdAt': createdAt,
@@ -487,6 +496,7 @@ class ManagedProvider extends Equatable {
     adapterId,
     endpointConfig,
     credentialRef,
+    vaultEntryId,
     displayConfig,
     enabled,
     createdAt,

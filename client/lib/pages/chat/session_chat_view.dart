@@ -1253,7 +1253,15 @@ class _SessionChatViewState extends State<SessionChatView> {
         if (clearCompose) {
           await _discardComposeDraftForSubmit();
         }
-        return widget.onSubmit(text);
+        // The lazy attach stages env/MCP/manifests and spawns the agent before
+        // the cubit exists (~1s), so delivering alone would leave the composer
+        // empty with no bubble. Seed the visible seat now; the cubit's first
+        // hydrate publish replaces it (`adoptExternalMessages` drops pendings).
+        final seat = _seat;
+        seat?.enqueuePendingUser(text);
+        final result = await widget.onSubmit(text);
+        if (!result.ok) seat?.removePendingMatching(text);
+        return result;
       }
       if (clearCompose) {
         await _discardComposeDraftForSubmit();
@@ -1555,13 +1563,11 @@ class _SessionChatViewState extends State<SessionChatView> {
               ),
             ),
     );
-    return _provideAcpRuntime(
-      Stack(
-        children: [
-          Positioned.fill(child: _buildContent(context)),
-          Positioned(top: spacing.sm, right: spacing.sm, child: capsule()),
-        ],
-      ),
+    return Stack(
+      children: [
+        Positioned.fill(child: _buildContent(context)),
+        Positioned(top: spacing.sm, right: spacing.sm, child: capsule()),
+      ],
     );
   }
 
@@ -1826,57 +1832,64 @@ class _SessionChatViewState extends State<SessionChatView> {
                                               _userStoppedTurn,
                                             ]),
                                             builder: (context, _) {
-                                              return SessionChatComposeSection(
-                                                session: session,
-                                                workspace: widget.workspace,
-                                                selectedMemberId:
-                                                    selectedMemberId,
-                                                shellMemberId: _shellMemberId,
-                                                composeController: _controller,
-                                                composeClip: _clip,
-                                                composeFocusNode: _focusNode,
-                                                voiceController: _voice,
-                                                isSubmitting: _isSubmitting,
-                                                workspaceRoot: _workspaceRoot,
-                                                workspaceBundle:
-                                                    _workspaceBundle,
-                                                launchError: widget.launchError,
-                                                onRemapDeadTarget:
-                                                    widget.onRemapDeadTarget,
-                                                onRetry: () => unawaited(
-                                                  _retryLaunchOrLatestFailed(),
+                                              return _provideAcpRuntime(
+                                                SessionChatComposeSection(
+                                                  session: session,
+                                                  workspace: widget.workspace,
+                                                  selectedMemberId:
+                                                      selectedMemberId,
+                                                  shellMemberId: _shellMemberId,
+                                                  composeController:
+                                                      _controller,
+                                                  composeClip: _clip,
+                                                  composeFocusNode: _focusNode,
+                                                  voiceController: _voice,
+                                                  isSubmitting: _isSubmitting,
+                                                  workspaceRoot: _workspaceRoot,
+                                                  workspaceBundle:
+                                                      _workspaceBundle,
+                                                  launchError:
+                                                      widget.launchError,
+                                                  onRemapDeadTarget:
+                                                      widget.onRemapDeadTarget,
+                                                  onRetry: () => unawaited(
+                                                    _retryLaunchOrLatestFailed(),
+                                                  ),
+                                                  sessionConnectInProgress: widget
+                                                      .sessionConnectInProgress,
+                                                  isMailboxUnread:
+                                                      widget.isMailboxUnread,
+                                                  mailboxQueued: _mailboxQueued,
+                                                  mailboxQueuedSeats:
+                                                      _mailboxQueuedSeats,
+                                                  mailboxQueuedClearToken:
+                                                      _mailboxQueuedClearToken,
+                                                  onMailboxConsumed: (mailId) {
+                                                    if (!mounted) return;
+                                                    unawaited(
+                                                      _seat
+                                                          ?.refreshMailboxTimeline(),
+                                                    );
+                                                  },
+                                                  onAttach: () =>
+                                                      unawaited(_attachFiles()),
+                                                  onPasteImage:
+                                                      _pasteComposeImage,
+                                                  routeActive:
+                                                      widget.routeActive,
+                                                  onSubmit:
+                                                      _handleComposeSubmit,
+                                                  userStoppedTurn:
+                                                      _userStoppedTurn.value,
+                                                  onUserStoppedTurn:
+                                                      _onUserStoppedTurn,
+                                                  turnStarting:
+                                                      _composeTurnStarting(
+                                                        context
+                                                            .read<ChatCubit>(),
+                                                      ),
+                                                  acpRuntime: widget.acpRuntime,
                                                 ),
-                                                sessionConnectInProgress: widget
-                                                    .sessionConnectInProgress,
-                                                isMailboxUnread:
-                                                    widget.isMailboxUnread,
-                                                mailboxQueued: _mailboxQueued,
-                                                mailboxQueuedSeats:
-                                                    _mailboxQueuedSeats,
-                                                mailboxQueuedClearToken:
-                                                    _mailboxQueuedClearToken,
-                                                onMailboxConsumed: (mailId) {
-                                                  if (!mounted) return;
-                                                  unawaited(
-                                                    _seat
-                                                        ?.refreshMailboxTimeline(),
-                                                  );
-                                                },
-                                                onAttach: () =>
-                                                    unawaited(_attachFiles()),
-                                                onPasteImage:
-                                                    _pasteComposeImage,
-                                                routeActive: widget.routeActive,
-                                                onSubmit: _handleComposeSubmit,
-                                                userStoppedTurn:
-                                                    _userStoppedTurn.value,
-                                                onUserStoppedTurn:
-                                                    _onUserStoppedTurn,
-                                                turnStarting:
-                                                    _composeTurnStarting(
-                                                      context.read<ChatCubit>(),
-                                                    ),
-                                                acpRuntime: widget.acpRuntime,
                                               );
                                             },
                                           ),

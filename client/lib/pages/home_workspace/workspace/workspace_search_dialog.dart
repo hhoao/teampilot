@@ -189,17 +189,44 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   /// Bumped per search; stale async results are discarded.
   var _searchSeq = 0;
 
+  /// File-index revision notifiers this dialog listens to, so a background
+  /// rebuild re-runs the active query without another keystroke.
+  final List<ValueNotifier<int>> _watchedIndexes = [];
+  late final String _refreshDebounceTag = '$_debounceTag#refresh';
+
   @override
   void initState() {
     super.initState();
+    for (final folder in widget.workspace.folders) {
+      if (folder.path.trim().isEmpty) continue;
+      final revision = widget.indexes.fileIndexFor(folder.path).revision;
+      revision.addListener(_onIndexRefreshed);
+      _watchedIndexes.add(revision);
+    }
     unawaited(_warmIndexes());
   }
 
   @override
   void dispose() {
+    for (final revision in _watchedIndexes) {
+      revision.removeListener(_onIndexRefreshed);
+    }
+    _watchedIndexes.clear();
     Debounces.cancel(_debounceTag);
+    Debounces.cancel(_refreshDebounceTag);
     _controller.dispose();
     super.dispose();
+  }
+
+  /// A file index finished a background rebuild — re-run the active query so
+  /// files that appeared after the warm show up without user input.
+  void _onIndexRefreshed() {
+    if (!mounted || _query.trim().isEmpty) return;
+    Debounces.debounce(
+      _refreshDebounceTag,
+      const Duration(milliseconds: 120),
+      () => unawaited(_runSearches(_query)),
+    );
   }
 
   /// Warm the shared file + transcript content indexes in the background so the

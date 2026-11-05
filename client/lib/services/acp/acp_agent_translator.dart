@@ -22,6 +22,13 @@ abstract class AcpAgentTranslator {
   /// Client JSON-RPC methods sent as notifications (no reply).
   List<String> get notificationClientMethods;
 
+  /// Advertise `clientCapabilities._meta.subagents` during `initialize`.
+  ///
+  /// Cursor only keeps the prompt open — and runs a follow-up parent turn when
+  /// a background child finishes — if the client negotiated this. Without it
+  /// the parent turn ends as soon as the child is launched.
+  bool get advertisesBackgroundSubagents => false;
+
   /// Map a prompt-phase error to a display string, or a sentinel
   /// ([acpStopCancelled] / [acpStopAuthRequired]).
   String translateStopError(Object error, {required bool suppressAbort});

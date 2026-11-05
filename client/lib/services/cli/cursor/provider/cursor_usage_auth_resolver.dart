@@ -15,6 +15,7 @@ class CursorUsageAuth extends Equatable {
     required this.userId,
     required this.expiresAtMs,
     required this.modifiedAtMs,
+    this.providerId,
   });
 
   final String token;
@@ -22,6 +23,11 @@ class CursorUsageAuth extends Equatable {
   final String userId;
   final int expiresAtMs;
   final int modifiedAtMs;
+
+  /// Provider-home directory name the token came from, or null for a global
+  /// auth file (`~/.cursor`). Display-only; used to tell multiple provider
+  /// homes for the same account apart on the usage page.
+  final String? providerId;
 
   String get cookie => 'WorkosCursorSessionToken=$userId%3A%3A$token';
 
@@ -32,6 +38,7 @@ class CursorUsageAuth extends Equatable {
     userId,
     expiresAtMs,
     modifiedAtMs,
+    providerId,
   ];
 }
 
@@ -60,20 +67,50 @@ final class CursorUsageAuthResolver {
   final CursorHomeLayout _layout;
   final DateTime Function() _now;
 
-  Future<CursorUsageAuth?> resolve() async {
+  /// Every token, newest first, one entry per account.
+  ///
+  /// With [includeExpired] (the account registry uses this) expired tokens are
+  /// returned too so the usage page can show "expired, sign in again" instead
+  /// of silently dropping the account. The default keeps the old contract for
+  /// the session usage page: only unexpired tokens.
+  Future<List<CursorUsageAuth>> resolveAll({
+    bool includeExpired = false,
+  }) async {
     final candidates = await _candidatePaths();
-    CursorUsageAuth? best;
+    final byAccount = <String, CursorUsageAuth>{};
     for (final path in candidates) {
-      final auth = await _readAuth(path);
+      final auth = await _readAuth(
+        path,
+        includeExpired: includeExpired,
+        providerId: _providerIdOf(path),
+      );
       if (auth == null) continue;
-      if (best == null ||
-          auth.modifiedAtMs > best.modifiedAtMs ||
-          (auth.modifiedAtMs == best.modifiedAtMs &&
-              auth.expiresAtMs > best.expiresAtMs)) {
-        best = auth;
+      final existing = byAccount[auth.account];
+      if (existing == null ||
+          auth.modifiedAtMs > existing.modifiedAtMs ||
+          (auth.modifiedAtMs == existing.modifiedAtMs &&
+              auth.expiresAtMs > existing.expiresAtMs)) {
+        byAccount[auth.account] = auth;
       }
     }
-    return best;
+    final values = byAccount.values.toList()
+      ..sort((a, b) => b.modifiedAtMs.compareTo(a.modifiedAtMs));
+    return values;
+  }
+
+  /// Provider-home directory name embedded in an auth path, or null when the
+  /// path is a global auth file (`~/.config/cursor/auth.json`).
+  String? _providerIdOf(String path) {
+    final match = RegExp(
+      r'providers[/\\]cursor[/\\]([^/\\]+)[/\\]home[/\\]',
+    ).firstMatch(path);
+    return match?.group(1);
+  }
+
+  /// The newest unexpired token, kept for the session usage page.
+  Future<CursorUsageAuth?> resolve() async {
+    final all = await resolveAll();
+    return all.isEmpty ? null : all.first;
   }
 
   Future<List<String>> _candidatePaths() async {
@@ -97,7 +134,11 @@ final class CursorUsageAuthResolver {
     return out;
   }
 
-  Future<CursorUsageAuth?> _readAuth(String path) async {
+  Future<CursorUsageAuth?> _readAuth(
+    String path, {
+    required bool includeExpired,
+    String? providerId,
+  }) async {
     final stat = await _fs.stat(path);
     if (!stat.isFile) return null;
     final raw = await _fs.readString(path);
@@ -116,7 +157,7 @@ final class CursorUsageAuthResolver {
     if (claims == null) return null;
     final expiresAtMs = (claims['exp'] as num?)?.toInt() ?? 0;
     final nowMs = _now().millisecondsSinceEpoch;
-    if (expiresAtMs * 1000 <= nowMs + 60000) return null;
+    if (!includeExpired && expiresAtMs * 1000 <= nowMs + 60000) return null;
     final sub = claims['sub']?.toString().trim() ?? '';
     if (sub.isEmpty) return null;
     final userId = sub.split('|').where((part) => part.isNotEmpty).last;
@@ -127,6 +168,7 @@ final class CursorUsageAuthResolver {
       userId: userId,
       expiresAtMs: expiresAtMs * 1000,
       modifiedAtMs: stat.mtime?.millisecondsSinceEpoch ?? 0,
+      providerId: providerId,
     );
   }
 

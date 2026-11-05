@@ -24,8 +24,54 @@ class UsageFilterBar extends StatelessWidget {
       children: [
         UsageDateRangePicker(state: state, cubit: cubit),
         Container(width: 1, height: 20, color: cs.outlineVariant),
-        _CliFilter(state: state, cubit: cubit),
+        // Kept in one Row so the account picker always sits directly right of
+        // the CLI buttons instead of wrapping onto its own line.
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _CliFilter(state: state, cubit: cubit),
+            if (state.cli == CliTool.cursor &&
+                state.cursorAccounts.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              _CursorAccountFilter(state: state, cubit: cubit),
+            ],
+          ],
+        ),
       ],
+    );
+  }
+}
+
+/// Account picker that appears next to the CLI filter when Cursor is selected.
+/// "All accounts" is the default and yields the combined numbers.
+const _allAccounts = '*';
+
+class _CursorAccountFilter extends StatelessWidget {
+  const _CursorAccountFilter({required this.state, required this.cubit});
+
+  final SessionUsageState state;
+  final SessionUsageCubit cubit;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = state.cursorAccountId ?? _allAccounts;
+    // Centred inside the filter-bar height so the TP pill lines up with the
+    // CLI buttons and the date picker beside it.
+    return SizedBox(
+      height: usageFilterControlHeight,
+      child: Center(
+        child: TpCompactSelect<String>(
+          value: selected,
+          minWidth: 120,
+          entries: [
+            (_allAccounts, context.l10n.sessionUsageAccountAll),
+            for (final account in state.cursorAccounts)
+              (account.accountId, account.providerName ?? account.label),
+          ],
+          onChanged: (value) =>
+              cubit.setCursorAccount(value == _allAccounts ? null : value),
+        ),
+      ),
     );
   }
 }

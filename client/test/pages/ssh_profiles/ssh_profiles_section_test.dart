@@ -22,6 +22,8 @@ import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
+import 'package:teampilot/services/vault/vault_service.dart';
+import 'package:teampilot/services/vault/vault_unlock_gate.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 import '../../support/in_memory_filesystem.dart';
@@ -166,6 +168,17 @@ class _NoopSink implements StreamSink<List<int>> {
   Future get done async {}
 }
 
+class _LockedVault implements VaultService {
+  @override
+  bool get isEncrypted => false;
+
+  @override
+  bool get isUnlocked => false;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 SshConnectionState _stateWithHost({
   required SshHostUiStatus status,
   String? errorDetail,
@@ -190,6 +203,8 @@ Future<Widget> _host({
   required SshCredentialStore credentialStore,
   required TerminalTransportFactory transportFactory,
   required SshProfileRepository profileRepository,
+  VaultService? vault,
+  VaultUnlockGate? vaultUnlockGate,
 }) async {
   final theme = ThemeData(useMaterial3: true);
   return MaterialApp(
@@ -212,6 +227,10 @@ Future<Widget> _host({
           RepositoryProvider<SshProfileRepository>.value(
             value: profileRepository,
           ),
+          if (vault != null)
+            RepositoryProvider<VaultService>.value(value: vault),
+          if (vaultUnlockGate != null)
+            RepositoryProvider<VaultUnlockGate>.value(value: vaultUnlockGate),
         ],
         child: MultiBlocProvider(
           providers: [
@@ -414,5 +433,96 @@ void main() {
     );
     expect(find.text(l10n.sshProfileStatusConnected), findsNothing);
     expect(find.text(l10n.sshProfileStatusDisconnected), findsOneWidget);
+  });
+
+  testWidgets(
+    'Connect on a vault-backed target aborts when unlock is cancelled',
+    (tester) async {
+      connectionCubit.seed(
+        _stateWithHost(status: SshHostUiStatus.disconnected),
+      );
+      final vaultProfile = _profile.copyWith(vaultEntryId: 'entry-1');
+      final seeded = _SeededSshProfileCubit(
+        profileRepository: profileRepository,
+        credentialStore: harness.credentialStore,
+        profiles: [vaultProfile],
+      );
+      addTearDown(seeded.close);
+      var prompts = 0;
+      final vault = _LockedVault();
+      final gate = VaultUnlockGate(
+        vault: vault,
+        prompt: () async {
+          prompts++;
+          return false;
+        },
+      );
+
+      await tester.pumpWidget(
+        await _host(
+          profileCubit: seeded,
+          connectionCubit: connectionCubit,
+          credentialStore: harness.credentialStore,
+          transportFactory: transportFactory,
+          profileRepository: profileRepository,
+          vault: vault,
+          vaultUnlockGate: gate,
+        ),
+      );
+
+      await tester.tap(find.text(l10n.sshProfileConnect));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(prompts, 1);
+      expect(connectionCubit.connectCalls, isEmpty);
+      expect(find.text(l10n.vaultLockedSaveBlocked), findsOneWidget);
+      // Let the toast's dismissal timer expire before the tree is disposed.
+      await tester.pump(const Duration(seconds: 6));
+    },
+  );
+
+  testWidgets('Test on a vault-backed target aborts when unlock is cancelled', (
+    tester,
+  ) async {
+    connectionCubit.seed(_stateWithHost(status: SshHostUiStatus.disconnected));
+    final vaultProfile = _profile.copyWith(vaultEntryId: 'entry-1');
+    final seeded = _SeededSshProfileCubit(
+      profileRepository: profileRepository,
+      credentialStore: harness.credentialStore,
+      profiles: [vaultProfile],
+    );
+    addTearDown(seeded.close);
+    var prompts = 0;
+    final vault = _LockedVault();
+    final gate = VaultUnlockGate(
+      vault: vault,
+      prompt: () async {
+        prompts++;
+        return false;
+      },
+    );
+
+    await tester.pumpWidget(
+      await _host(
+        profileCubit: seeded,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        vault: vault,
+        vaultUnlockGate: gate,
+      ),
+    );
+
+    await tester.tap(find.text(l10n.sshProfileTest));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(prompts, 1);
+    expect(connectionCubit.connectCalls, isEmpty);
+    expect(find.text(l10n.vaultLockedSaveBlocked), findsOneWidget);
+    // Let the toast's dismissal timer expire before the tree is disposed.
+    await tester.pump(const Duration(seconds: 6));
   });
 }

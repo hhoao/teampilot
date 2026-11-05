@@ -67,12 +67,14 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
     AppProviderCubit? appProviderCubit,
     ManagedProviderCliBinding binding = const ManagedProviderCliBinding(),
     ManagedProviderCliRowJanitor? rowJanitor,
+    Future<bool> Function()? ensureVaultUnlocked,
   }) : _repository = repository,
        _onProviderDeletedState = onProviderDeletedState,
        _onProviderDeletedCredentialCleanup = onProviderDeletedCredentialCleanup,
        _appProviderCubit = appProviderCubit,
        _binding = binding,
        _rowJanitor = rowJanitor,
+       _ensureVaultUnlocked = ensureVaultUnlocked,
        super(ManagedProviderState());
 
   final ManagedProviderRepository _repository;
@@ -82,6 +84,7 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
   final AppProviderCubit? _appProviderCubit;
   final ManagedProviderCliBinding _binding;
   final ManagedProviderCliRowJanitor? _rowJanitor;
+  final Future<bool> Function()? _ensureVaultUnlocked;
   Future<void>? _loadFlight;
   Future<void> _mutationTail = Future<void>.value();
   int _catalogRevision = 0;
@@ -269,6 +272,12 @@ class ManagedProviderCubit extends Cubit<ManagedProviderState> {
     if (id.isEmpty) return;
     await _serializeMutation(() async {
       final provider = state.providerFor(id);
+      // A vault-backed row must be unlocked before either the row or its
+      // entry is deleted; cancelling the prompt keeps both.
+      if ((provider?.vaultEntryId ?? '').trim().isNotEmpty) {
+        final ensureUnlocked = _ensureVaultUnlocked;
+        if (ensureUnlocked != null && !await ensureUnlocked()) return;
+      }
       await _repository.delete(id);
       final cleanupCredentials = _onProviderDeletedCredentialCleanup;
       if (provider != null && cleanupCredentials != null) {

@@ -45,6 +45,7 @@ class SessionUsageEvent extends Equatable {
     this.teamId = '',
     this.isFinal = true,
     this.costMicroUsd,
+    this.accountId = '',
   });
 
   /// CLI-scoped dedup key. See the design spec for the per-CLI formats.
@@ -71,6 +72,10 @@ class SessionUsageEvent extends Equatable {
 
   /// Only set when a CLI reports cost itself; no pricing table here.
   final int? costMicroUsd;
+
+  /// Cursor account this row belongs to. Empty for CLIs that have no account
+  /// dimension; used by the usage page's account filter.
+  final String accountId;
 
   bool get hasBillableTokens =>
       inputTokens > 0 ||
@@ -103,6 +108,7 @@ class SessionUsageEvent extends Equatable {
     'teamId': teamId,
     'isFinal': isFinal,
     if (costMicroUsd != null) 'costMicroUsd': costMicroUsd,
+    if (accountId.isNotEmpty) 'accountId': accountId,
   };
 
   factory SessionUsageEvent.fromJson(Map<String, Object?> json) {
@@ -123,6 +129,7 @@ class SessionUsageEvent extends Equatable {
       teamId: '${json['teamId'] ?? ''}',
       isFinal: json['isFinal'] != false,
       costMicroUsd: (json['costMicroUsd'] as num?)?.toInt(),
+      accountId: '${json['accountId'] ?? ''}',
     );
   }
 
@@ -142,6 +149,7 @@ class SessionUsageEvent extends Equatable {
     memberId,
     teamId,
     isFinal,
+    accountId,
     costMicroUsd,
   ];
 }

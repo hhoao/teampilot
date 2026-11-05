@@ -3278,12 +3278,6 @@ abstract class AppLocalizations {
   /// **'Scroll up for earlier messages'**
   String get sessionHistoryLoadOlderHint;
 
-  /// No description provided for @sessionHistoryNewMessages.
-  ///
-  /// In en, this message translates to:
-  /// **'New messages'**
-  String get sessionHistoryNewMessages;
-
   /// No description provided for @sessionHistoryStarting.
   ///
   /// In en, this message translates to:
@@ -10790,6 +10784,12 @@ abstract class AppLocalizations {
   /// **'Antigravity'**
   String get appProviderToolAntigravity;
 
+  /// No description provided for @appProviderToolQoder.
+  ///
+  /// In en, this message translates to:
+  /// **'Qoder'**
+  String get appProviderToolQoder;
+
   /// No description provided for @codebuddyCredentialsLogin.
   ///
   /// In en, this message translates to:
@@ -10933,6 +10933,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Antigravity sign-in failed.'**
   String get antigravityCredentialsActionFailed;
+
+  /// No description provided for @qoderCredentialsLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get qoderCredentialsLogin;
+
+  /// No description provided for @qoderCredentialsLoginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to Qoder'**
+  String get qoderCredentialsLoginTitle;
+
+  /// No description provided for @qoderCredentialsLoginIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the sign-in in the terminal below. The CLI opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.'**
+  String get qoderCredentialsLoginIntro;
+
+  /// No description provided for @qoderCredentialsLoginStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting Qoder CLI…'**
+  String get qoderCredentialsLoginStarting;
+
+  /// No description provided for @qoderCredentialsLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the login terminal: {error}'**
+  String qoderCredentialsLoginFailed(String error);
+
+  /// No description provided for @qoderCredentialsLoginExited.
+  ///
+  /// In en, this message translates to:
+  /// **'Qoder CLI exited. Close this dialog and start the sign-in again.'**
+  String get qoderCredentialsLoginExited;
+
+  /// No description provided for @qoderCredentialsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get qoderCredentialsDone;
+
+  /// No description provided for @qoderCredentialsCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get qoderCredentialsCancel;
+
+  /// No description provided for @qoderCredentialsRelaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Relaunch'**
+  String get qoderCredentialsRelaunch;
+
+  /// No description provided for @qoderCredentialsSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in'**
+  String get qoderCredentialsSignedIn;
+
+  /// No description provided for @qoderContextWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Context window (tokens)'**
+  String get qoderContextWindow;
+
+  /// No description provided for @qoderContextWindowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to use the model default.'**
+  String get qoderContextWindowHint;
+
+  /// No description provided for @qoderCredentialsActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The Qoder action failed'**
+  String get qoderCredentialsActionFailed;
 
   /// No description provided for @appProviderTeamToolSection.
   ///
@@ -15011,7 +15089,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersBasicsSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Basics'**
+  /// **'Name and API key'**
   String get managedProvidersBasicsSectionTitle;
 
   /// No description provided for @managedProvidersBasicsSectionSubtitle.
@@ -15029,7 +15107,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersQuerySectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Query'**
+  /// **'Usage API and JSON parsing'**
   String get managedProvidersQuerySectionTitle;
 
   /// No description provided for @managedProvidersQuerySectionSubtitle.
@@ -15041,7 +15119,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersCredentialsSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Credential details'**
+  /// **'Credential source and delivery'**
   String get managedProvidersCredentialsSectionTitle;
 
   /// No description provided for @managedProvidersCredentialsSectionSubtitle.
@@ -15053,7 +15131,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersDisplaySectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Display'**
+  /// **'Balance and quota display'**
   String get managedProvidersDisplaySectionTitle;
 
   /// No description provided for @managedProvidersDisplaySectionSubtitle.
@@ -15065,7 +15143,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersAdvancedSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Advanced'**
+  /// **'Adapter, kind, and reference'**
   String get managedProvidersAdvancedSectionTitle;
 
   /// No description provided for @managedProvidersAdvancedSectionSubtitle.
@@ -15275,19 +15353,19 @@ abstract class AppLocalizations {
   /// No description provided for @managedProvidersJsonPathSeeAlso.
   ///
   /// In en, this message translates to:
-  /// **'See \$ syntax in Query ℹ️'**
+  /// **'See \$ syntax in Usage API and JSON parsing ℹ️'**
   String get managedProvidersJsonPathSeeAlso;
 
   /// No description provided for @managedProvidersTemplateVariablesSeeAlsoQuery.
   ///
   /// In en, this message translates to:
-  /// **'See brace syntax in Query ℹ️'**
+  /// **'See brace syntax in Usage API and JSON parsing ℹ️'**
   String get managedProvidersTemplateVariablesSeeAlsoQuery;
 
   /// No description provided for @managedProvidersTemplateVariablesSeeAlsoCredentials.
   ///
   /// In en, this message translates to:
-  /// **'See brace syntax in Credentials ℹ️'**
+  /// **'See brace syntax in Credential source and delivery ℹ️'**
   String get managedProvidersTemplateVariablesSeeAlsoCredentials;
 
   /// No description provided for @managedProvidersReferenceSyntaxHelper.
@@ -17342,6 +17420,12 @@ abstract class AppLocalizations {
   /// **'Sort ascending'**
   String get sessionUsageSortAscending;
 
+  /// No description provided for @sessionUsageAccountAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All accounts'**
+  String get sessionUsageAccountAll;
+
   /// No description provided for @sessionUsageCliAll.
   ///
   /// In en, this message translates to:
@@ -17940,108 +18024,6 @@ abstract class AppLocalizations {
   /// **'Usage storage compacted.'**
   String get sessionUsageMaintenanceCompacted;
 
-  /// No description provided for @sessionUsageCursorTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Cursor usage'**
-  String get sessionUsageCursorTitle;
-
-  /// No description provided for @sessionUsageCursorHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Cursor\'s local transcripts do not include token counts. Import the CSV from cursor.com/dashboard/usage, or sync with the signed-in account.'**
-  String get sessionUsageCursorHint;
-
-  /// No description provided for @sessionUsageCursorImported.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} dashboard events'**
-  String sessionUsageCursorImported(int count);
-
-  /// No description provided for @sessionUsageCursorImportedSession.
-  ///
-  /// In en, this message translates to:
-  /// **'Cursor (imported)'**
-  String get sessionUsageCursorImportedSession;
-
-  /// No description provided for @sessionUsageCursorNoData.
-  ///
-  /// In en, this message translates to:
-  /// **'No Cursor dashboard usage imported.'**
-  String get sessionUsageCursorNoData;
-
-  /// No description provided for @sessionUsageCursorLastUpdated.
-  ///
-  /// In en, this message translates to:
-  /// **'Last updated: {time}'**
-  String sessionUsageCursorLastUpdated(String time);
-
-  /// No description provided for @sessionUsageCursorImport.
-  ///
-  /// In en, this message translates to:
-  /// **'Import CSV'**
-  String get sessionUsageCursorImport;
-
-  /// No description provided for @sessionUsageCursorSync.
-  ///
-  /// In en, this message translates to:
-  /// **'Sync'**
-  String get sessionUsageCursorSync;
-
-  /// No description provided for @sessionUsageCursorClear.
-  ///
-  /// In en, this message translates to:
-  /// **'Remove'**
-  String get sessionUsageCursorClear;
-
-  /// No description provided for @sessionUsageCursorLoginRequired.
-  ///
-  /// In en, this message translates to:
-  /// **'Cursor is not signed in, or the session expired. Open Cursor and sign in again.'**
-  String get sessionUsageCursorLoginRequired;
-
-  /// No description provided for @sessionUsageCursorRateLimited.
-  ///
-  /// In en, this message translates to:
-  /// **'Cursor rate-limited the usage export. Try again later.'**
-  String get sessionUsageCursorRateLimited;
-
-  /// No description provided for @sessionUsageCursorNetworkFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not reach cursor.com. Check the network and try again.'**
-  String get sessionUsageCursorNetworkFailed;
-
-  /// No description provided for @sessionUsageCursorInvalidCsv.
-  ///
-  /// In en, this message translates to:
-  /// **'That file is not a Cursor usage CSV.'**
-  String get sessionUsageCursorInvalidCsv;
-
-  /// No description provided for @sessionUsageCursorFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Cursor usage import failed.'**
-  String get sessionUsageCursorFailed;
-
-  /// No description provided for @sessionUsageCursorImportedToast.
-  ///
-  /// In en, this message translates to:
-  /// **'Imported {count} Cursor usage events.'**
-  String sessionUsageCursorImportedToast(int count);
-
-  /// No description provided for @sessionUsageCursorSyncedToast.
-  ///
-  /// In en, this message translates to:
-  /// **'Synced {count} Cursor usage events.'**
-  String sessionUsageCursorSyncedToast(int count);
-
-  /// No description provided for @sessionUsageCursorCleared.
-  ///
-  /// In en, this message translates to:
-  /// **'Removed imported Cursor usage.'**
-  String get sessionUsageCursorCleared;
-
   /// No description provided for @sessionUsageMaintenanceFailed.
   ///
   /// In en, this message translates to:
@@ -18113,6 +18095,336 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Name'**
   String get sessionUsageGroupName;
+
+  /// No description provided for @cursorAccountUsageSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor accounts'**
+  String get cursorAccountUsageSession;
+
+  /// No description provided for @vaultPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential Vault'**
+  String get vaultPageTitle;
+
+  /// No description provided for @vaultPageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH passwords, private keys and provider API keys'**
+  String get vaultPageSubtitle;
+
+  /// No description provided for @vaultNewEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'New entry'**
+  String get vaultNewEntry;
+
+  /// No description provided for @vaultSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search title, fields or tags'**
+  String get vaultSearchHint;
+
+  /// No description provided for @vaultEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No entries yet'**
+  String get vaultEmptyTitle;
+
+  /// No description provided for @vaultEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Save SSH passwords, private keys or provider API keys here.'**
+  String get vaultEmptyHint;
+
+  /// No description provided for @vaultStatusKeychain.
+  ///
+  /// In en, this message translates to:
+  /// **'System keychain · no unlock needed'**
+  String get vaultStatusKeychain;
+
+  /// No description provided for @vaultStatusEncrypted.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted vault · locked'**
+  String get vaultStatusEncrypted;
+
+  /// No description provided for @vaultStatusUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted vault · unlocked'**
+  String get vaultStatusUnlocked;
+
+  /// No description provided for @vaultUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get vaultUnlock;
+
+  /// No description provided for @vaultLock.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock now'**
+  String get vaultLock;
+
+  /// No description provided for @vaultEnableEncryption.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable encrypted vault'**
+  String get vaultEnableEncryption;
+
+  /// No description provided for @vaultDisableEncryption.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable encrypted vault'**
+  String get vaultDisableEncryption;
+
+  /// No description provided for @vaultUnlockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock vault'**
+  String get vaultUnlockTitle;
+
+  /// No description provided for @vaultPassphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Master passphrase'**
+  String get vaultPassphrase;
+
+  /// No description provided for @vaultPassphraseConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm passphrase'**
+  String get vaultPassphraseConfirm;
+
+  /// No description provided for @vaultPassphraseMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passphrases do not match'**
+  String get vaultPassphraseMismatch;
+
+  /// No description provided for @vaultPassphraseRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Passphrase is required'**
+  String get vaultPassphraseRequired;
+
+  /// No description provided for @vaultUnlockFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not unlock the vault'**
+  String get vaultUnlockFailed;
+
+  /// No description provided for @vaultWrongPassphraseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong passphrase or damaged file. Data was not modified.'**
+  String get vaultWrongPassphraseHint;
+
+  /// No description provided for @vaultCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get vaultCopy;
+
+  /// No description provided for @vaultReveal.
+  ///
+  /// In en, this message translates to:
+  /// **'Reveal'**
+  String get vaultReveal;
+
+  /// No description provided for @vaultHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get vaultHide;
+
+  /// No description provided for @vaultCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get vaultCopied;
+
+  /// No description provided for @vaultOnlyCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy only'**
+  String get vaultOnlyCopy;
+
+  /// No description provided for @vaultReferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Used by'**
+  String get vaultReferences;
+
+  /// No description provided for @vaultNoReferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Not referenced yet'**
+  String get vaultNoReferences;
+
+  /// No description provided for @vaultDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete entry?'**
+  String get vaultDeleteTitle;
+
+  /// No description provided for @vaultDeleteReferenced.
+  ///
+  /// In en, this message translates to:
+  /// **'This entry is still used by:'**
+  String get vaultDeleteReferenced;
+
+  /// No description provided for @vaultDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get vaultDeleteConfirm;
+
+  /// No description provided for @vaultCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get vaultCancel;
+
+  /// No description provided for @vaultSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get vaultSave;
+
+  /// No description provided for @vaultEntryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get vaultEntryTitle;
+
+  /// No description provided for @vaultEntryType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get vaultEntryType;
+
+  /// No description provided for @vaultEntryTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags (comma separated)'**
+  String get vaultEntryTags;
+
+  /// No description provided for @vaultEntryNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get vaultEntryNotes;
+
+  /// No description provided for @vaultEntryFavorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorite'**
+  String get vaultEntryFavorite;
+
+  /// No description provided for @vaultTypeSshPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH password'**
+  String get vaultTypeSshPassword;
+
+  /// No description provided for @vaultTypeSshPrivateKey.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH private key'**
+  String get vaultTypeSshPrivateKey;
+
+  /// No description provided for @vaultTypeApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider API key'**
+  String get vaultTypeApiKey;
+
+  /// No description provided for @vaultTypeLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get vaultTypeLogin;
+
+  /// No description provided for @vaultTypeToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Token'**
+  String get vaultTypeToken;
+
+  /// No description provided for @vaultTypeSecureNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Secure note'**
+  String get vaultTypeSecureNote;
+
+  /// No description provided for @vaultTypeCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get vaultTypeCustom;
+
+  /// No description provided for @sshCredentialSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Credentials'**
+  String get sshCredentialSource;
+
+  /// No description provided for @sshCredentialSourceKeychain.
+  ///
+  /// In en, this message translates to:
+  /// **'This device\'s keychain'**
+  String get sshCredentialSourceKeychain;
+
+  /// No description provided for @sshCredentialVaultDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted vault entry'**
+  String get sshCredentialVaultDeleted;
+
+  /// No description provided for @sshSaveToVault.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to vault'**
+  String get sshSaveToVault;
+
+  /// No description provided for @sshMigrateToVault.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to vault'**
+  String get sshMigrateToVault;
+
+  /// No description provided for @sshVaultBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault'**
+  String get sshVaultBadge;
+
+  /// No description provided for @vaultLockedSaveBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock the vault to save credentials.'**
+  String get vaultLockedSaveBlocked;
+
+  /// No description provided for @vaultUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential vault is unavailable.'**
+  String get vaultUnavailable;
+
+  /// No description provided for @vaultStoredInVault.
+  ///
+  /// In en, this message translates to:
+  /// **'Stored in vault'**
+  String get vaultStoredInVault;
+
+  /// No description provided for @vaultLockedQueryBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock the vault to query usage.'**
+  String get vaultLockedQueryBlocked;
 }
 
 class _AppLocalizationsDelegate

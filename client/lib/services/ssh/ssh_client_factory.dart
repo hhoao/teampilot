@@ -9,6 +9,7 @@ import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_known_host_repository.dart';
 import '../../utils/logging/logger.dart';
 import 'ssh_connection_events.dart';
+import 'ssh_credentials_resolver.dart';
 import 'ssh_storage_io.dart';
 import 'ssh_transport_close.dart';
 
@@ -72,6 +73,7 @@ class SshClientFactory {
     void Function(String storageKey, String fingerprintHex)? onHostKeyPersist,
     SshClientConnector? connector,
     SshDialTargetResolver? dialTargetResolver,
+    VaultCredentialReader? vaultCredentials,
     int maxConcurrentHandshakes = 3,
     this.drainGracePeriod = const Duration(seconds: 5),
   }) : _credentialStore = credentialStore,
@@ -86,6 +88,7 @@ class SshClientFactory {
        ),
        _connector = connector,
        _dialTargetResolver = dialTargetResolver,
+       _vaultCredentials = vaultCredentials,
        _handshakeGate = _HandshakeGate(maxConcurrentHandshakes);
 
   /// Maximum time an evicted storage connection remains available to
@@ -101,6 +104,7 @@ class SshClientFactory {
   final SshHostKeyTrustPolicy _hostKeyTrustPolicy;
   final SshClientConnector? _connector;
   final SshDialTargetResolver? _dialTargetResolver;
+  final VaultCredentialReader? _vaultCredentials;
   final _HandshakeGate _handshakeGate;
   final Map<String, _PooledConnection> _pool = {};
   final Map<String, SftpClient> _sftpByProfile = {};
@@ -605,9 +609,17 @@ class SshClientFactory {
       );
     }
 
+    final credentials = await resolveSshCredentials(
+      profile,
+      vault: _vaultCredentials,
+      legacyPassword: _credentialStore.loadPassword,
+      legacyPrivateKey: _credentialStore.loadPrivateKey,
+      legacyPassphrase: _credentialStore.loadPrivateKeyPassphrase,
+    );
+
     switch (profile.authType) {
       case SshAuthType.password:
-        final password = await _credentialStore.loadPassword(profile.id) ?? '';
+        final password = credentials.password ?? '';
         return SSHClient(
           socket,
           username: profile.username,
@@ -619,13 +631,11 @@ class SshClientFactory {
           authTimeout: timeout,
         );
       case SshAuthType.privateKey:
-        final privateKey = await _credentialStore.loadPrivateKey(profile.id);
+        final privateKey = credentials.privateKey;
         if (privateKey == null || privateKey.isEmpty) {
           throw StateError('Private key not found for profile ${profile.id}');
         }
-        final passphrase = await _credentialStore.loadPrivateKeyPassphrase(
-          profile.id,
-        );
+        final passphrase = credentials.passphrase;
         final identities = SSHKeyPair.fromPem(
           privateKey,
           passphrase == null || passphrase.isEmpty ? null : passphrase,

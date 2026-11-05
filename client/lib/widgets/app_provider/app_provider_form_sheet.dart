@@ -17,9 +17,11 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/cli/codex/capabilities/provider.dart';
 import '../../services/provider/credential_binding.dart';
 import '../../services/provider_usage/managed_provider_link_binding.dart';
+import '../../services/vault/provider_credential_link.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
 import 'brand_dropdown_rows.dart';
+import '../../pages/vault/vault_secret_reveal.dart';
 import 'cli_effort_picker_field.dart';
 import '../../services/cli/claude/provider/claude_credential_binding_field.dart';
 import 'provider_credential_action_bar.dart';
@@ -242,7 +244,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       credentialLink: _credentialLink,
       // A linked row reads its key from the referenced managed entry; the
       // draft never carries a resolved key so persistence stays clean.
-      apiKey: _credentialLink.isNotEmpty ? '' : _apiKeyCtl.text.trim(),
+      apiKey: _apiKeyCtl.text.trim(),
       apiKeyField: _apiKeyField,
       baseUrl: _baseUrlCtl.text.trim(),
       defaultModel: _defaultModelCtl.text.trim(),
@@ -506,13 +508,19 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                     const SizedBox(height: 12),
                     if (_canPickCredentialLink)
                       _buildCredentialLinkPicker(context),
-                    if (_credentialLink.isNotEmpty)
+                    if (_credentialLink.isNotEmpty &&
+                        vaultEntryIdFromCredentialLink(_credentialLink) == null)
                       _LinkedCredentialChip(
                         entryName: _linkedEntryName(context),
                       )
                     else
                       TpPasswordInput(
                         controller: _apiKeyCtl,
+                        onReveal: () => revealVaultSecret(
+                          context,
+                          vaultEntryIdFromCredentialLink(_credentialLink),
+                          'apiKey',
+                        ),
                         decoration: InputDecoration(
                           labelText: l10n.apiKey,
                           hintText: _isEditing
@@ -704,7 +712,8 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     ];
     for (final entry in managed) {
       final ref = entry.credentialRef?.trim() ?? '';
-      if (ref.isEmpty) continue;
+      final vaultEntryId = entry.vaultEntryId?.trim() ?? '';
+      if (ref.isEmpty && vaultEntryId.isEmpty) continue;
       if (entry.kind != ManagedProviderKind.apiBalance &&
           entry.kind != ManagedProviderKind.customHttp) {
         continue;
@@ -741,6 +750,9 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
             for (final option in options) {
               if (option.$1 == value) return option.$2;
             }
+            if (vaultEntryIdFromCredentialLink(value) != null) {
+              return context.l10n.vaultStoredInVault;
+            }
             return value;
           },
           onChanged: (value) {
@@ -760,6 +772,10 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   String _linkedEntryName(BuildContext context) {
     final link = _credentialLink.trim();
     if (link.isEmpty) return '';
+    final vaultEntryId = vaultEntryIdFromCredentialLink(link);
+    if (vaultEntryId != null) {
+      return context.l10n.vaultStoredInVault;
+    }
     final entry = _managedCubitOf(
       context,
     )?.state.providers.where((e) => e.id == link).firstOrNull;

@@ -288,30 +288,6 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   }
 }
 
-/// Stable listener used when a session has no pod yet. Keeping a single
-/// instance (and never notifying it) lets the body always be wrapped in a
-/// [ListenableBuilder] regardless of whether the pod exists.
-final ChangeNotifier _idlePodNotifier = ChangeNotifier();
-
-/// Wraps the pod-dependent body so the root widget type is constant.
-///
-/// A rewind reconnect replaces (or briefly drops) the pod. Switching between a
-/// `ListenableBuilder` root and a bare child root changes the runtimeType at
-/// that position, so Flutter deactivates the whole chat subtree
-/// (SessionChatView, the rewind host, the message thread) and remounts it —
-/// one visible flash per flip. Keeping the ListenableBuilder present while the
-/// pod is gone preserves the thread's State, scroll offset and cached bodies.
-@visibleForTesting
-Widget podBodyRoot({
-  required Listenable? pod,
-  required TransitionBuilder builder,
-}) {
-  return ListenableBuilder(
-    listenable: pod ?? _idlePodNotifier,
-    builder: builder,
-  );
-}
-
 class _ChatWorkbenchBody extends StatelessWidget {
   const _ChatWorkbenchBody({
     required this.workspaceId,
@@ -504,9 +480,9 @@ class _ChatWorkbenchBody extends StatelessWidget {
       );
     }
 
-    return podBodyRoot(
+    return wrapPodDependentBody(
       pod: pod,
-      builder: (context, _) => buildPodDependentBody(context),
+      builder: (context) => buildPodDependentBody(context),
     );
   }
 
@@ -930,14 +906,24 @@ class _ChatWorkbenchBody extends StatelessWidget {
         // A reclaimed personal ACP runtime activates on demand — same as a
         // simple PTY session: viewing the tab shows the stored transcript
         // without spawning the agent, and the connect happens here on send.
-        // `retrySessionLaunch` resolves after the attach settles, so the prompt
-        // is delivered to a live cubit.
+        // Hand the prompt to the attach itself: the cubit shows the user bubble
+        // before the handshake and `start()` dispatches the turn immediately,
+        // instead of parking it behind a launch-time history replay.
         if (acpRuntime == null && isAcpChatSession(appSession)) {
-          await chatCubit.retrySessionLaunch(appSession.sessionId);
+          await chatCubit.retrySessionLaunch(
+            appSession.sessionId,
+            firstPrompt: message,
+          );
           acpRuntime = _acpRuntimeForSelectedSeat(
             chatCubit: chatCubit,
             session: appSession,
             selectedMemberId: historyMemberId,
+          );
+          return HistoryContinueSubmitResult(
+            ok:
+                acpRuntime != null &&
+                acpRuntime.state.phase != AcpChatPhase.ended,
+            channel: HistoryContinueChannel.pty,
           );
         }
         if (acpRuntime != null) {
@@ -1054,4 +1040,30 @@ class _ChatWorkbenchBody extends StatelessWidget {
     }
     return '';
   }
+}
+
+/// Wraps the pod-dependent workbench body in a stable [ListenableBuilder].
+///
+/// A session's runtime pod is created lazily on the first connect. Returning
+/// the bare body while `pod == null` and a [ListenableBuilder] afterwards
+/// changes the widget type at the root of the workbench, so Flutter unmounts
+/// the whole subtree — the chat thread, compose draft, and scroll state are
+/// recreated the first time a seat connects (visible as a flash).
+Widget wrapPodDependentBody({
+  required Listenable? pod,
+  required WidgetBuilder builder,
+}) => ListenableBuilder(
+  listenable: pod ?? const _IdleListenable(),
+  builder: (context, _) => builder(context),
+);
+
+/// No-op [Listenable] for the "pod not created yet" window.
+class _IdleListenable implements Listenable {
+  const _IdleListenable();
+
+  @override
+  void addListener(VoidCallback listener) {}
+
+  @override
+  void removeListener(VoidCallback listener) {}
 }

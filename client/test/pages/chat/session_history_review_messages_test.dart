@@ -9,6 +9,7 @@ import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/failed_message_record.dart';
 import 'package:teampilot/pages/chat/session_history_review_messages.dart';
+import 'package:teampilot/pages/chat/session_history_live_chrome.dart';
 import 'package:teampilot/pages/chat/session_history_thread.dart';
 import 'package:teampilot/repositories/layout_repository.dart';
 
@@ -17,6 +18,9 @@ Widget _harness({
   required AiThreadRuntime runtime,
   Map<String, FailedMessageStatus> pendingDeliveryStatuses = const {},
   ValueChanged<String>? onRetryFailedMessage,
+  bool suppressEmptyPane = false,
+  SessionHistoryLiveChrome liveChrome = SessionHistoryLiveChrome.none,
+  String pendingUserText = '',
 }) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -34,6 +38,9 @@ Widget _harness({
           onLoadOlder: () async {},
           pendingDeliveryStatuses: pendingDeliveryStatuses,
           onRetryFailedMessage: onRetryFailedMessage,
+          suppressEmptyPane: suppressEmptyPane,
+          liveChrome: liveChrome,
+          pendingUserText: pendingUserText,
         ),
       ),
     ),
@@ -94,6 +101,111 @@ void main() {
     expect(find.text('No prior messages for this member yet.'), findsNothing);
     expect(find.byType(SessionHistoryThread), findsOneWidget);
     expect(find.text('optimistic continue'), findsOneWidget);
+  });
+
+  testWidgets('ready status with an empty runtime is never a blank pane', (
+    tester,
+  ) async {
+    // A dropped pending / cleared window can leave status=ready with nothing to
+    // paint. Mounting the thread anyway rendered an empty scroll view — a blank
+    // chat area with only the composer below.
+    final runtime = ExternalStoreAiThreadRuntime();
+
+    await tester.pumpWidget(
+      _harness(
+        state: const AiHistoryState(status: AiHistoryViewStatus.ready),
+        runtime: runtime,
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(SessionHistoryThread), findsNothing);
+    expect(find.text('No prior messages for this member yet.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'launching session keeps the loading pane instead of empty history',
+    (tester) async {
+      // Landing create+send mounts Chat with a brand-new seat (status empty)
+      // while the session is still connecting. Painting "no prior messages"
+      // there is wrong — the first turn has not been delivered yet.
+      final runtime = ExternalStoreAiThreadRuntime()..setEmpty();
+
+      await tester.pumpWidget(
+        _harness(
+          state: const AiHistoryState(status: AiHistoryViewStatus.empty),
+          runtime: runtime,
+          suppressEmptyPane: true,
+        ),
+      );
+      // The loading pane spins a progress indicator forever, so settle on
+      // fixed frames instead of pumpAndSettle.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('No prior messages for this member yet.'), findsNothing);
+      expect(find.text('Loading conversation history…'), findsOneWidget);
+      expect(find.byType(SessionHistoryThread), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'landing prompt paints the user bubble plus the Starting footer',
+    (tester) async {
+      // Landing create+send: the seat has no transcript yet, but the user turn
+      // must already read like a normal chat (bubble + "Starting…"), never the
+      // empty-history pane.
+      final runtime = ExternalStoreAiThreadRuntime()..setEmpty();
+
+      await tester.pumpWidget(
+        _harness(
+          state: const AiHistoryState(status: AiHistoryViewStatus.empty),
+          runtime: runtime,
+          suppressEmptyPane: true,
+          liveChrome: SessionHistoryLiveChrome.starting,
+          pendingUserText: 'landing hello',
+        ),
+      );
+      // The Starting footer spins forever; settle on fixed frames.
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      expect(find.text('landing hello'), findsOneWidget);
+      expect(find.byKey(kSessionHistoryRunningFooterKey), findsOneWidget);
+      expect(find.text('Starting…'), findsOneWidget);
+      expect(find.text('No prior messages for this member yet.'), findsNothing);
+      expect(find.text('Loading conversation history…'), findsNothing);
+    },
+  );
+
+  testWidgets('runtime user turn replaces the synthetic landing bubble', (
+    tester,
+  ) async {
+    // ACP `sendPrompt` / hydrated PTY pending: the runtime now owns the same
+    // text, so the synthetic bubble must drop instead of painting twice.
+    final runtime = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        const AiMessage(
+          id: 'real-user-turn',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'landing hello')],
+        ),
+      ]);
+
+    await tester.pumpWidget(
+      _harness(
+        state: const AiHistoryState(status: AiHistoryViewStatus.empty),
+        runtime: runtime,
+        liveChrome: SessionHistoryLiveChrome.starting,
+        pendingUserText: 'landing hello',
+      ),
+    );
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(find.text('landing hello'), findsOneWidget);
   });
 
   testWidgets('pending delivery status does not show inline labels', (

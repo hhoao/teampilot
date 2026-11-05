@@ -94,6 +94,24 @@ void main() {
     });
   });
 
+  group('foldCasePreservingLength', () {
+    test('folds case without shifting offsets', () {
+      const text = 'Größe FIX 世界 ABC';
+      final folded = foldCasePreservingLength(text);
+      // Same length ⇒ an index found in the folded copy is valid in the
+      // original text (used to slice snippets and map to a message).
+      expect(folded.length, text.length);
+      expect(folded, contains('fix'));
+      expect(folded.indexOf('abc'), text.indexOf('ABC'));
+      expect(folded.indexOf('größe'), 0);
+    });
+
+    test('leaves already-lowercase text untouched', () {
+      const text = 'all lowercase';
+      expect(identical(foldCasePreservingLength(text), text), isTrue);
+    });
+  });
+
   group('WorkspaceSessionContentIndex', () {
     late InMemoryFilesystem fs;
     const root = '/tp-root';

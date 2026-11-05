@@ -27,6 +27,7 @@ class TpPasswordInput extends StatefulWidget {
     this.onTapOutside,
     this.restorationId,
     this.initiallyObscured = true,
+    this.onReveal,
   });
 
   final TextEditingController? controller;
@@ -48,6 +49,12 @@ class TpPasswordInput extends StatefulWidget {
 
   /// Whether the value starts hidden. Defaults to `true`.
   final bool initiallyObscured;
+
+  /// Called the first time the field is revealed while empty.
+  ///
+  /// The returned value is written into [controller] and shown. Return null
+  /// (for example when the user cancels an unlock prompt) to stay masked.
+  final Future<String?> Function()? onReveal;
 
   @override
   State<TpPasswordInput> createState() => _TpPasswordInputState();
@@ -97,10 +104,25 @@ class _TpPasswordInputState extends State<TpPasswordInput> {
       key: const ValueKey('password-visibility-toggle'),
       obscured: _obscured,
       enabled: widget.enabled,
-      onPressed: () => setState(() => _obscured = !_obscured),
+      onPressed: _toggle,
     );
     if (existing == null) return toggle;
     return Row(mainAxisSize: MainAxisSize.min, children: [existing, toggle]);
+  }
+
+  Future<void> _toggle() async {
+    if (_obscured) {
+      final reveal = widget.onReveal;
+      final controller = widget.controller;
+      if (reveal != null && controller != null && controller.text.isEmpty) {
+        final value = await reveal();
+        if (!mounted) return;
+        if (value == null || value.isEmpty) return;
+        controller.text = value;
+        widget.onChanged?.call(value);
+      }
+    }
+    if (mounted) setState(() => _obscured = !_obscured);
   }
 }
 

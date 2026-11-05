@@ -6,6 +6,9 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/services/chat/launch/staging/manifest/apply_plan.dart';
 import 'package:teampilot/services/chat/launch/staging/manifest/apply_plan_ssh_compiler.dart';
 import 'package:teampilot/services/chat/launch/staging/manifest/blob_store.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/work_path_projector.dart';
+
+import '../../../support/in_memory_filesystem.dart';
 
 void main() {
   test('ensureDir symlink writeInline is one script and no tar', () async {
@@ -237,6 +240,113 @@ void main() {
     expect(payload.gzipTar, isNull);
     expect(payload.extractCommand, isNull);
   });
+
+  test('duplicate blob writes keep the most restrictive mode', () async {
+    final blobs = MemoryBlobStore();
+    final hash = contentSha256Hex([7]);
+    await blobs.put(hash, [7]);
+
+    final payload = await compileApplyPlanForSsh(
+      plan: ApplyPlan(
+        workRoot: '/w',
+        ops: [
+          ApplyWriteBlob(
+            path: '/w/secret',
+            sha256: hash,
+            mode: applyPlanPrivateFileMode,
+          ),
+          ApplyWriteBlob(path: '/w/secret', sha256: hash),
+        ],
+      ),
+      blobs: blobs,
+    );
+
+    final decoded = TarDecoder().decodeBytes(
+      GZipDecoder().decodeBytes(payload.gzipTar!),
+    );
+    expect(decoded.findFile('secret')!.unixPermissions & 0x1ff, 0x180);
+  });
+
+  test('tree entry mode is preserved in the tar member', () async {
+    final blobs = MemoryBlobStore();
+    final hash = contentSha256Hex([8]);
+    await blobs.put(hash, [8]);
+
+    final payload = await compileApplyPlanForSsh(
+      plan: ApplyPlan(
+        workRoot: '/w',
+        ops: [
+          ApplyTree(
+            dest: '/w/tree',
+            entries: [
+              ApplyTreeEntry(
+                rel: 'secret',
+                sha256: hash,
+                mode: applyPlanPrivateFileMode,
+              ),
+            ],
+          ),
+        ],
+      ),
+      blobs: blobs,
+    );
+
+    final decoded = TarDecoder().decodeBytes(
+      GZipDecoder().decodeBytes(payload.gzipTar!),
+    );
+    expect(decoded.findFile('tree/secret')!.unixPermissions & 0x1ff, 0x180);
+  });
+
+  test(
+    'production path: private .auth copies reach the SSH tar as 0600',
+    () async {
+      final sourceFs = InMemoryFilesystem();
+      final workFs = InMemoryFilesystem();
+      const configDir =
+          '/w/workspace/workspaces/ws/sessions/s/runtime/qoder';
+      const sourceDir = '/h/providers/qoder/work';
+      await sourceFs.writeBytes('$sourceDir/user', [85, 83, 69, 82]);
+      await sourceFs.writeBytes('$sourceDir/machine_id', [77, 73, 68]);
+      final manifest = LaunchManifest()
+        ..ensureDir('$configDir/.auth')
+        ..copyFilePrivate(
+          source: '$sourceDir/user',
+          destination: '$configDir/.auth/user',
+        )
+        ..copyFilePrivate(
+          source: '$sourceDir/machine_id',
+          destination: '$configDir/.auth/machine_id',
+        );
+
+      // Exactly what ManifestExecutor.flush does for a remote work plane.
+      final built = await buildApplyPlan(
+        manifest: manifest,
+        sourceFs: sourceFs,
+        workFs: workFs,
+        homeRoot: '/h',
+        workRoot: '/w',
+      );
+      final payload = await compileApplyPlanForSsh(
+        plan: built.plan,
+        blobs: built.blobs,
+      );
+
+      final decoded = TarDecoder().decodeBytes(
+        GZipDecoder().decodeBytes(payload.gzipTar!),
+      );
+      const relativeDir =
+          'workspace/workspaces/ws/sessions/s/runtime/qoder/.auth';
+      for (final name in const ['user', 'machine_id']) {
+        final file = decoded.findFile('$relativeDir/$name');
+        expect(file, isNotNull, reason: name);
+        expect(
+          file!.unixPermissions & 0x1ff,
+          applyPlanPrivateFileMode,
+          reason: '$name must extract 0600',
+        );
+      }
+    },
+  );
 
   test(
     'ensureDir succeeds when the path is already a dangling symlink',

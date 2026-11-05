@@ -420,8 +420,6 @@ void main() {
 
     expect(find.byKey(AppKeys.sessionUsageSyncButton), findsOneWidget);
     expect(find.byKey(AppKeys.sessionUsageSettingsButton), findsOneWidget);
-    // Cursor import/sync moved into the settings dialog.
-    expect(find.byKey(AppKeys.sessionUsageCursorButton), findsNothing);
     expect(find.text('JSONL read-only'), findsNothing);
     expect(find.text('Auto + manual sync'), findsNothing);
   });

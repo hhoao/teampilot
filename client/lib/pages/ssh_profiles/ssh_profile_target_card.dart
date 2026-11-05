@@ -312,6 +312,19 @@ class SshProfileTargetCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if ((profile.vaultEntryId ?? '').isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.lock_outline,
+                            size: 14,
+                            color: cs.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            context.l10n.sshVaultBadge,
+                            style: TpTextStyles.of(context).mutedXs,
+                          ),
+                        ],
                         const SizedBox(width: 8),
                         Container(
                           width: 8,

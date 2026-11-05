@@ -60,6 +60,6 @@ class WorkspaceSearchIndexes {
     for (final folder in workspace.folders) {
       _fileIndexes.remove(folder.path);
     }
-    _contentByWorkspace.remove(workspace.workspaceId.trim())?.clear();
+    _contentByWorkspace.remove(workspace.workspaceId.trim())?.dispose();
   }
 }

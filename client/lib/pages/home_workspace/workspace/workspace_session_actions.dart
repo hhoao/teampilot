@@ -557,6 +557,15 @@ Future<bool> submitWorkspaceLandingMessage(
     team: team,
   );
 
+  // Paint the user bubble immediately (transient, memory-only) so the landing
+  // window shows "message + Starting…" instead of an empty/loading history
+  // pane. The real turn takes over from the runtime: ACP `sendPrompt` queues
+  // its own bubble, PTY hydrates the persisted pending.
+  chatCubit.beginPendingLandingPrompt(
+    sessionId: session.sessionId,
+    text: trimmed,
+  );
+
   final historyMemberId = isPersonal
       ? ''
       : (_teamLead(team, session: session)?.id ?? 'team-lead');
@@ -574,7 +583,7 @@ Future<bool> submitWorkspaceLandingMessage(
     );
   }
 
-  return chatCubit.withCancellableOperatorDelivery(session.sessionId, (
+  final delivery = chatCubit.withCancellableOperatorDelivery(session.sessionId, (
     cancelled,
   ) async {
     late final bool connected;
@@ -750,6 +759,12 @@ Future<bool> submitWorkspaceLandingMessage(
       return false;
     }
   });
+
+  // Success, failure, and Stop all drop the transient bubble here; by now the
+  // real user turn belongs to the runtime whenever it exists.
+  return delivery.whenComplete(
+    () => chatCubit.clearPendingLandingPrompt(session.sessionId),
+  );
 }
 
 Future<AppSession?> _sessionById({

@@ -737,6 +737,55 @@ abstract interface class ProviderCapability implements CliCapability {
 abstract interface class RefreshableProviderModelCapability
     implements ProviderCapability {}
 
+/// Optional friendly label for a model id. The id stays the persisted value;
+/// only the picker text changes (`qfmodel` → `Qwen3.8-Flash`).
+abstract interface class ModelDisplayNameCapability {
+  String? modelDisplayName({
+    required String providerId,
+    required String modelId,
+  });
+}
+
+/// Optional capability summary shown when hovering a model row.
+abstract interface class ModelDescriptionCapability {
+  String? modelDescription({
+    required String providerId,
+    required String modelId,
+  });
+}
+
+/// Picker label for [modelId], falling back to the raw id.
+String providerModelLabel(
+  ProviderCapability? capability, {
+  required String providerId,
+  required String modelId,
+}) {
+  final display = capability is ModelDisplayNameCapability
+      ? (capability as ModelDisplayNameCapability).modelDisplayName(
+          providerId: providerId,
+          modelId: modelId,
+        )
+      : null;
+  final trimmed = display?.trim() ?? '';
+  return trimmed.isEmpty ? modelId : trimmed;
+}
+
+/// Hover text for [modelId], or null when the CLI has no description.
+String? providerModelDescription(
+  ProviderCapability? capability, {
+  required String providerId,
+  required String modelId,
+}) {
+  final text = capability is ModelDescriptionCapability
+      ? (capability as ModelDescriptionCapability).modelDescription(
+          providerId: providerId,
+          modelId: modelId,
+        )
+      : null;
+  final trimmed = text?.trim() ?? '';
+  return trimmed.isEmpty ? null : trimmed;
+}
+
 final _emptyCatalogUpdates = _EmptyListenable();
 
 final class _EmptyListenable implements Listenable {

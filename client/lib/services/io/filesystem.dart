@@ -125,6 +125,12 @@ abstract interface class Filesystem {
 /// migration — must consult [readDelegate], not overlay [Filesystem.stat].
 abstract interface class OverlayFilesystem implements Filesystem {
   Filesystem get readDelegate;
+
+  /// Stages a copy whose destination must stay private (`0600`).
+  ///
+  /// The overlay records the mode instead of applying it now; backends that
+  /// cannot express file modes may fall back to [copyFile].
+  Future<void> copyFilePrivate(String source, String destination);
 }
 
 /// Disk used for existence checks. Overlay staging must not look like the

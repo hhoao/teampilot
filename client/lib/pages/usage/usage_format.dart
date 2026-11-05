@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/session_usage_dashboard.dart';
 import '../../models/team_config.dart';
-import '../../models/cursor_usage_import.dart';
+import '../../services/cursor_usage/cursor_usage_event_source.dart';
 
 String formatUsageTokens(int value) {
   if (value >= 1000000) {
@@ -57,6 +57,7 @@ String usageCliLabel(CliTool cli) => switch (cli) {
   CliTool.gemini => 'Gemini',
   CliTool.codebuddy => 'CodeBuddy',
   CliTool.antigravity => 'Antigravity',
+  CliTool.qoder => 'Qoder',
   CliTool.flashskyai => 'FlashSky',
 };
 
@@ -68,6 +69,7 @@ Color usageCliColor(CliTool cli) => switch (cli) {
   CliTool.gemini => const Color(0xFF4285F4),
   CliTool.codebuddy => const Color(0xFF1E6FFF),
   CliTool.antigravity => const Color(0xFF34A853),
+  CliTool.qoder => const Color(0xFF6B4EFF),
   CliTool.flashskyai => const Color(0xFFF59E0B),
 };
 
@@ -93,8 +95,8 @@ String usageGroupSubtitle(BuildContext context, String subtitle) {
 
 String usageGroupName(BuildContext context, UsageGroup group) {
   final l10n = context.l10n;
-  if (group.label == cursorImportedSessionId) {
-    return l10n.sessionUsageCursorImportedSession;
+  if (group.label == cursorAccountUsageSessionId) {
+    return l10n.cursorAccountUsageSession;
   }
   return switch (group.label) {
     usageUnknownModel => l10n.sessionUsageUnknownModel,

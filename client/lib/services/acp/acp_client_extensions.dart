@@ -9,7 +9,11 @@ import 'acp_session.dart';
 const cursorAskQuestionMethod = 'cursor/ask_question';
 const cursorCreatePlanMethod = 'cursor/create_plan';
 
-/// Cursor ACP notification methods (no reply).
+/// Cursor ACP extension methods documented as notifications.
+///
+/// cursor-agent still often sends them as JSON-RPC *requests* with an `id`.
+/// A `-32601 Method not found` reply leaves `session/prompt` hanging, so the
+/// client both folds the payload and acks the documented success outcome.
 const cursorUpdateTodosMethod = 'cursor/update_todos';
 const cursorTaskMethod = 'cursor/task';
 const cursorGenerateImageMethod = 'cursor/generate_image';
@@ -226,13 +230,72 @@ List<acpd.HandlerRegistration> registerCursorClientExtensions({
           wait: wait,
         ),
       ),
-    for (final method in notificationMethods)
+    for (final method in notificationMethods) ...[
       rpc.onNotification(method, (params) {
         if (isDisposed()) return;
         final update = handleCursorNotification(method, params);
         if (update != null) emitUpdate(update);
       }),
+      // cursor-agent often sends these with an `id`. Ack immediately so the
+      // parent `session/prompt` can return; still fold a well-formed payload.
+      rpc.onRequest(
+        method,
+        (params) => handleCursorNotificationRequest(
+          method: method,
+          params: params,
+          disposed: isDisposed(),
+          emitUpdate: emitUpdate,
+        ),
+      ),
+    ],
   ];
+}
+
+/// Folds a Cursor notification-shaped request and returns the documented ack.
+///
+/// Malformed / unknown / disposed payloads still encode cancelled so the
+/// agent is never left waiting on `session/prompt`.
+Object? handleCursorNotificationRequest({
+  required String method,
+  required Object? params,
+  required bool disposed,
+  required void Function(AcpSessionUpdate update) emitUpdate,
+}) {
+  if (disposed) return _cancelledResult;
+  if (params is! Map) return _cancelledResult;
+  final map = Map<String, Object?>.from(params);
+  final update = handleCursorNotification(method, map);
+  if (update != null) emitUpdate(update);
+  return encodeCursorNotificationAck(method, map);
+}
+
+/// Encodes the JSON-RPC result cursor-agent expects when it sent a
+/// documented-as-notification method as a request.
+Map<String, Object?> encodeCursorNotificationAck(
+  String method,
+  Map<String, Object?> params,
+) {
+  final parsed = parseCursorNotification(method, params);
+  if (parsed == null) return _cancelledResult;
+  return switch (parsed) {
+    AcpTodoListNotification(:final todos) => _wrapOutcome({
+      'outcome': 'accepted',
+      'todos': [
+        for (final todo in todos)
+          {'id': todo.id, 'content': todo.content, 'status': todo.status},
+      ],
+    }),
+    AcpTaskNotification() => _wrapOutcome({
+      'outcome': 'completed',
+      if (_nonEmptyString(params['agentId']) != null)
+        'agentId': params['agentId'],
+      if (params['durationMs'] is num) 'durationMs': params['durationMs'],
+    }),
+    AcpGeneratedImageNotification(:final filePath) =>
+      filePath == null
+          ? _cancelledResult
+          : _wrapOutcome({'outcome': 'generated', 'filePath': filePath}),
+  };
 }
 
 /// Maps a Cursor notification onto an [AcpSessionUpdate], or null to drop.

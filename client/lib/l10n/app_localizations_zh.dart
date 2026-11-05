@@ -1694,9 +1694,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionHistoryLoadOlderHint => '上滑查看更早消息';
 
   @override
-  String get sessionHistoryNewMessages => '新消息';
-
-  @override
   String get sessionHistoryStarting => '启动中…';
 
   @override
@@ -5809,6 +5806,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderToolAntigravity => 'Antigravity';
 
   @override
+  String get appProviderToolQoder => 'Qoder';
+
+  @override
   String get codebuddyCredentialsLogin => '登录';
 
   @override
@@ -5887,6 +5887,48 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get antigravityCredentialsActionFailed => 'Antigravity 登录失败。';
+
+  @override
+  String get qoderCredentialsLogin => '登录';
+
+  @override
+  String get qoderCredentialsLoginTitle => '登录 Qoder';
+
+  @override
+  String get qoderCredentialsLoginIntro =>
+      '在下方终端完成登录。CLI 会打开浏览器；如果没有打开，请手动访问它输出的链接。也可以在这里切换账号。';
+
+  @override
+  String get qoderCredentialsLoginStarting => '正在启动 Qoder CLI…';
+
+  @override
+  String qoderCredentialsLoginFailed(String error) {
+    return '无法启动登录终端：$error';
+  }
+
+  @override
+  String get qoderCredentialsLoginExited => 'Qoder CLI 已退出。请关闭此对话框后重新登录。';
+
+  @override
+  String get qoderCredentialsDone => '完成';
+
+  @override
+  String get qoderCredentialsCancel => '取消';
+
+  @override
+  String get qoderCredentialsRelaunch => '重新启动';
+
+  @override
+  String get qoderCredentialsSignedIn => '已登录';
+
+  @override
+  String get qoderContextWindow => '上下文窗口（tokens）';
+
+  @override
+  String get qoderContextWindowHint => '留空则使用模型默认值。';
+
+  @override
+  String get qoderCredentialsActionFailed => 'Qoder 操作失败';
 
   @override
   String get appProviderTeamToolSection => '团队默认服务商';
@@ -8102,7 +8144,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersQuickPresetCustomHint => '从零配置接口、凭据与显示格式。';
 
   @override
-  String get managedProvidersBasicsSectionTitle => '基本信息';
+  String get managedProvidersBasicsSectionTitle => '名称与密钥';
 
   @override
   String get managedProvidersBasicsSectionSubtitle => '命名与必要密钥。';
@@ -8111,25 +8153,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersBasicsSummary => '选择预设、命名，并按需填写密钥。';
 
   @override
-  String get managedProvidersQuerySectionTitle => '查询';
+  String get managedProvidersQuerySectionTitle => '用量 API 与 JSON 解析';
 
   @override
   String get managedProvidersQuerySectionSubtitle => '用量 API 与 JSON 解析。';
 
   @override
-  String get managedProvidersCredentialsSectionTitle => '凭据详情';
+  String get managedProvidersCredentialsSectionTitle => '凭据来源与请求写入';
 
   @override
   String get managedProvidersCredentialsSectionSubtitle => '凭据来源及写入请求的方式。';
 
   @override
-  String get managedProvidersDisplaySectionTitle => '显示';
+  String get managedProvidersDisplaySectionTitle => '余额与额度显示';
 
   @override
   String get managedProvidersDisplaySectionSubtitle => '余额与额度的显示格式。';
 
   @override
-  String get managedProvidersAdvancedSectionTitle => '高级';
+  String get managedProvidersAdvancedSectionTitle => '适配器、类型与引用';
 
   @override
   String get managedProvidersAdvancedSectionSubtitle => '适配器、类型与内部引用。';
@@ -8235,14 +8277,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersFieldExampleLabel => '示例';
 
   @override
-  String get managedProvidersJsonPathSeeAlso => '\$ 用法详见「查询」ℹ️';
+  String get managedProvidersJsonPathSeeAlso => '\$ 用法详见「用量 API 与 JSON 解析」ℹ️';
 
   @override
-  String get managedProvidersTemplateVariablesSeeAlsoQuery => '花括号用法详见「查询」ℹ️';
+  String get managedProvidersTemplateVariablesSeeAlsoQuery =>
+      '花括号用法详见「用量 API 与 JSON 解析」ℹ️';
 
   @override
   String get managedProvidersTemplateVariablesSeeAlsoCredentials =>
-      '花括号用法详见「凭据详情」ℹ️';
+      '花括号用法详见「凭据来源与请求写入」ℹ️';
 
   @override
   String get managedProvidersReferenceSyntaxHelper =>
@@ -9351,6 +9394,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionUsageSortAscending => '升序';
 
   @override
+  String get sessionUsageAccountAll => '全部账号';
+
+  @override
   String get sessionUsageCliAll => '全部';
 
   @override
@@ -9691,67 +9737,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionUsageMaintenanceCompacted => '用量存储已压缩。';
 
   @override
-  String get sessionUsageCursorTitle => 'Cursor 用量';
-
-  @override
-  String get sessionUsageCursorHint =>
-      'Cursor 本地会话文件不含 token 数。请导入 cursor.com/dashboard/usage 导出的 CSV，或使用已登录账号同步。';
-
-  @override
-  String sessionUsageCursorImported(int count) {
-    return '$count 条 Dashboard 记录';
-  }
-
-  @override
-  String get sessionUsageCursorImportedSession => 'Cursor（导入）';
-
-  @override
-  String get sessionUsageCursorNoData => '尚未导入 Cursor Dashboard 用量。';
-
-  @override
-  String sessionUsageCursorLastUpdated(String time) {
-    return '最近更新：$time';
-  }
-
-  @override
-  String get sessionUsageCursorImport => '导入 CSV';
-
-  @override
-  String get sessionUsageCursorSync => '同步';
-
-  @override
-  String get sessionUsageCursorClear => '移除';
-
-  @override
-  String get sessionUsageCursorLoginRequired =>
-      'Cursor 未登录或登录已过期，请打开 Cursor 重新登录。';
-
-  @override
-  String get sessionUsageCursorRateLimited => 'Cursor 限流了用量导出，请稍后再试。';
-
-  @override
-  String get sessionUsageCursorNetworkFailed => '无法连接 cursor.com，请检查网络后重试。';
-
-  @override
-  String get sessionUsageCursorInvalidCsv => '该文件不是 Cursor 用量 CSV。';
-
-  @override
-  String get sessionUsageCursorFailed => 'Cursor 用量导入失败。';
-
-  @override
-  String sessionUsageCursorImportedToast(int count) {
-    return '已导入 $count 条 Cursor 用量记录。';
-  }
-
-  @override
-  String sessionUsageCursorSyncedToast(int count) {
-    return '已同步 $count 条 Cursor 用量记录。';
-  }
-
-  @override
-  String get sessionUsageCursorCleared => '已移除导入的 Cursor 用量。';
-
-  @override
   String get sessionUsageMaintenanceFailed => '用量存储压缩失败。';
 
   @override
@@ -9786,4 +9771,169 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionUsageGroupName => '名称';
+
+  @override
+  String get cursorAccountUsageSession => 'Cursor 账号';
+
+  @override
+  String get vaultPageTitle => '保险库';
+
+  @override
+  String get vaultPageSubtitle => 'SSH 密码、私钥与供应商 API Key';
+
+  @override
+  String get vaultNewEntry => '新建条目';
+
+  @override
+  String get vaultSearchHint => '搜索标题、字段或标签';
+
+  @override
+  String get vaultEmptyTitle => '还没有条目';
+
+  @override
+  String get vaultEmptyHint => '在这里保存 SSH 密码、私钥或供应商 API Key。';
+
+  @override
+  String get vaultStatusKeychain => '系统钥匙串 · 无需解锁';
+
+  @override
+  String get vaultStatusEncrypted => '加密保险库 · 已锁定';
+
+  @override
+  String get vaultStatusUnlocked => '加密保险库 · 已解锁';
+
+  @override
+  String get vaultUnlock => '解锁';
+
+  @override
+  String get vaultLock => '立即锁定';
+
+  @override
+  String get vaultEnableEncryption => '启用加密保险库';
+
+  @override
+  String get vaultDisableEncryption => '停用加密保险库';
+
+  @override
+  String get vaultUnlockTitle => '解锁保险库';
+
+  @override
+  String get vaultPassphrase => '主密码';
+
+  @override
+  String get vaultPassphraseConfirm => '确认主密码';
+
+  @override
+  String get vaultPassphraseMismatch => '两次输入的密码不一致';
+
+  @override
+  String get vaultPassphraseRequired => '请输入主密码';
+
+  @override
+  String get vaultUnlockFailed => '解锁失败';
+
+  @override
+  String get vaultWrongPassphraseHint => '密码错误或文件损坏，数据未被修改。';
+
+  @override
+  String get vaultCopy => '复制';
+
+  @override
+  String get vaultReveal => '显示';
+
+  @override
+  String get vaultHide => '隐藏';
+
+  @override
+  String get vaultCopied => '已复制';
+
+  @override
+  String get vaultOnlyCopy => '仅复制';
+
+  @override
+  String get vaultReferences => '被引用';
+
+  @override
+  String get vaultNoReferences => '尚未被引用';
+
+  @override
+  String get vaultDeleteTitle => '删除条目？';
+
+  @override
+  String get vaultDeleteReferenced => '该条目仍被以下位置使用：';
+
+  @override
+  String get vaultDeleteConfirm => '删除';
+
+  @override
+  String get vaultCancel => '取消';
+
+  @override
+  String get vaultSave => '保存';
+
+  @override
+  String get vaultEntryTitle => '标题';
+
+  @override
+  String get vaultEntryType => '类型';
+
+  @override
+  String get vaultEntryTags => '标签（逗号分隔）';
+
+  @override
+  String get vaultEntryNotes => '备注';
+
+  @override
+  String get vaultEntryFavorite => '收藏';
+
+  @override
+  String get vaultTypeSshPassword => 'SSH 密码';
+
+  @override
+  String get vaultTypeSshPrivateKey => 'SSH 私钥';
+
+  @override
+  String get vaultTypeApiKey => '供应商 API Key';
+
+  @override
+  String get vaultTypeLogin => '账号密码';
+
+  @override
+  String get vaultTypeToken => '令牌';
+
+  @override
+  String get vaultTypeSecureNote => '安全笔记';
+
+  @override
+  String get vaultTypeCustom => '自定义';
+
+  @override
+  String get sshCredentialSource => '凭据来源';
+
+  @override
+  String get sshCredentialSourceKeychain => '本机钥匙串';
+
+  @override
+  String get sshCredentialVaultDeleted => '已删除的条目';
+
+  @override
+  String get sshSaveToVault => '保存到保险库';
+
+  @override
+  String get sshMigrateToVault => '迁移到保险库';
+
+  @override
+  String get sshVaultBadge => '保险库';
+
+  @override
+  String get vaultLockedSaveBlocked => '请先解锁保险库再保存凭据。';
+
+  @override
+  String get vaultUnavailable => '凭据保险库不可用。';
+
+  @override
+  String get vaultStoredInVault => '已存入保险库';
+
+  @override
+  String get vaultLockedQueryBlocked => '请先解锁保险库再查询用量。';
 }

@@ -578,7 +578,10 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final paintedTitle = rowContent.titleForPaint(l10n);
 
     // Leading area: shared 24×24 slot — indicator (idle) ↔ drag handle (hover).
-    // Waiting (needs-you) wins over working, which wins over background work.
+    // Waiting (needs-you) wins over working, which wins over background work:
+    // the spinner says a turn is answering (input queues behind it), the
+    // breathing hourglass says the seat is parked on background work and new
+    // input starts a fresh turn immediately.
     // The pod ChangeNotifier flips `phase` connecting→running mid-call; select
     // it so the indicator rebuilds on that transition without a global emit.
     final connecting = context.select<ChatCubit, bool>(
@@ -592,7 +595,6 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
             waiting: waiting,
             backgroundRunning: false,
             selected: selected,
-            l10n: l10n,
             cs: cs,
           )
         : BlocBuilder<SeatLeaseCubit, SeatLeaseState>(
@@ -607,7 +609,6 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   !waiting &&
                   leaseState.sessionHasLeases(sessionId),
               selected: selected,
-              l10n: l10n,
               cs: cs,
             ),
           );
@@ -945,17 +946,17 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   }
 
   /// Leading status slot for the row. Waiting (needs-you) wins over working,
-  /// which wins over background work — a completed turn whose CLI is still
-  /// busy gets a static hourglass, not the turn spinner.
+  /// which wins over background work. Background work gets the breathing
+  /// hourglass, not the turn spinner: the agent is not answering, so a new
+  /// message starts a fresh turn instead of queuing behind one.
   Widget _sessionIndicator({
     required bool working,
     required bool waiting,
     required bool backgroundRunning,
     required bool selected,
-    required AppLocalizations l10n,
     required ColorScheme cs,
   }) {
-    final indicator = SessionWorkingIndicator(
+    return SessionWorkingIndicator(
       working: working,
       waiting: waiting,
       backgroundRunning: backgroundRunning,
@@ -965,11 +966,6 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       idleColor: (selected ? cs.primary : cs.onSurfaceVariant).withValues(
         alpha: 0.5,
       ),
-    );
-    if (!backgroundRunning) return indicator;
-    return Tooltip(
-      message: l10n.sessionHistoryBackgroundRunning,
-      child: indicator,
     );
   }
 }

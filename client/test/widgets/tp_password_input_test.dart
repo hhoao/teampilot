@@ -57,4 +57,70 @@ void main() {
 
     expect(field(tester).obscureText, isFalse);
   });
+
+  testWidgets('fetches a stored secret when revealing an empty field', (
+    tester,
+  ) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    var reveals = 0;
+    await tester.pumpWidget(
+      wrap(
+        TpPasswordInput(
+          controller: controller,
+          onReveal: () async {
+            reveals++;
+            return 'stored';
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('password-visibility-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(reveals, 1);
+    expect(controller.text, 'stored');
+    expect(field(tester).obscureText, isFalse);
+  });
+
+  testWidgets('a cancelled reveal keeps the field masked and empty', (
+    tester,
+  ) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      wrap(TpPasswordInput(controller: controller, onReveal: () async => null)),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('password-visibility-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(controller.text, isEmpty);
+    expect(field(tester).obscureText, isTrue);
+  });
+
+  testWidgets('does not overwrite typed text or call onReveal', (tester) async {
+    final controller = TextEditingController(text: 'typed');
+    addTearDown(controller.dispose);
+    var reveals = 0;
+    await tester.pumpWidget(
+      wrap(
+        TpPasswordInput(
+          controller: controller,
+          onReveal: () async {
+            reveals++;
+            return 'stored';
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('password-visibility-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(reveals, 0);
+    expect(controller.text, 'typed');
+    expect(field(tester).obscureText, isFalse);
+  });
 }

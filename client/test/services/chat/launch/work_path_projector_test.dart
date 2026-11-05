@@ -99,6 +99,27 @@ void main() {
     expect(built.plan.ops.single, isA<ApplyWriteBlob>());
   });
 
+  test('copyFilePrivate carries 0600 into the blob write', () async {
+    final sourceFs = InMemoryFilesystem();
+    final workFs = InMemoryFilesystem();
+    await sourceFs.writeBytes('/h/providers/qoder/work/user', [85, 83, 69, 82]);
+    final manifest = LaunchManifest()
+      ..copyFilePrivate(
+        source: '/h/providers/qoder/work/user',
+        destination: '/w/sessions/s/runtime/qoder/.auth/user',
+      );
+    final built = await buildApplyPlan(
+      manifest: manifest,
+      sourceFs: sourceFs,
+      workFs: workFs,
+      homeRoot: '/h',
+      workRoot: '/w',
+    );
+    final op = built.plan.ops.whereType<ApplyWriteBlob>().single;
+    expect(op.path, '/w/sessions/s/runtime/qoder/.auth/user');
+    expect(op.mode, applyPlanPrivateFileMode);
+  });
+
   test('writeFile at 4096 stays inline; 4097 is blob', () async {
     final fs = InMemoryFilesystem();
     final manifest = LaunchManifest()

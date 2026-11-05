@@ -23,6 +23,7 @@ import 'layout_config_section.dart';
 import 'session_config_section.dart';
 import 'shortcuts_config_section.dart';
 import 'ssh_profiles_config_section.dart';
+import 'vault_config_section.dart';
 
 int _configSectionDialogIndex(ConfigSection section) {
   return switch (section) {
@@ -31,13 +32,14 @@ int _configSectionDialogIndex(ConfigSection section) {
     ConfigSection.cli => 2,
     ConfigSection.aiFeatures => 3,
     ConfigSection.sshProfiles => 4,
-    ConfigSection.connect => 5,
-    ConfigSection.github => 6,
-    ConfigSection.downloadSources => 7,
-    ConfigSection.discovery => 8,
-    ConfigSection.shortcuts => 9,
-    ConfigSection.about => 10,
-    ConfigSection.logs => 10,
+    ConfigSection.vault => 5,
+    ConfigSection.connect => 6,
+    ConfigSection.github => 7,
+    ConfigSection.downloadSources => 8,
+    ConfigSection.discovery => 9,
+    ConfigSection.shortcuts => 10,
+    ConfigSection.about => 11,
+    ConfigSection.logs => 11,
   };
 }
 
@@ -112,6 +114,13 @@ Future<void> showWorkspaceSettingsDialog(
         subtitle: (l10n) => l10n.sshProfilesPageSubtitle,
         bodyBuilder: (_) =>
             const SshProfilesConfigWorkspace(showHeading: false),
+      ),
+      SettingsDialogEntry(
+        icon: Icons.lock_outline,
+        navLabel: (l10n) => l10n.vaultPageTitle,
+        title: (l10n) => l10n.vaultPageTitle,
+        subtitle: (l10n) => l10n.vaultPageSubtitle,
+        bodyBuilder: (_) => const VaultConfigSection(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.phone_android_outlined,
@@ -227,6 +236,15 @@ class ConfigSettingsHubPage extends StatelessWidget {
           }),
         ),
         WorkspaceHubEntry(
+          key: AppKeys.configVaultSectionButton,
+          title: l10n.vaultPageTitle,
+          icon: Icons.lock_outline,
+          onTap: throttledTap('config_hub_vault', () {
+            context.read<ConfigCubit>().selectSection(ConfigSection.vault);
+            context.push('/config/${ConfigSection.vault.routeSegment}');
+          }),
+        ),
+        WorkspaceHubEntry(
           title: l10n.connectSettingsTitle,
           icon: Icons.phone_android_outlined,
           onTap: throttledTap('config_hub_connect', () {
@@ -336,6 +354,7 @@ class ConfigWorkspace extends StatelessWidget {
         ConfigSection.sshProfiles => SshProfilesConfigWorkspace(
           showHeading: showHeading,
         ),
+        ConfigSection.vault => VaultConfigSection(showHeading: showHeading),
         ConfigSection.connect => ConnectConfigWorkspace(
           showHeading: showHeading,
         ),
@@ -421,6 +440,16 @@ class ConfigNavPanel extends StatelessWidget {
           onTap: throttledTap(
             'config_nav_ssh_profiles',
             () => onSelectSection(ConfigSection.sshProfiles),
+          ),
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configVaultSectionButton,
+          title: l10n.vaultPageTitle,
+          icon: Icons.lock_outline,
+          selected: section == ConfigSection.vault,
+          onTap: throttledTap(
+            'config_nav_vault',
+            () => onSelectSection(ConfigSection.vault),
           ),
         ),
         WorkspaceHubEntry(

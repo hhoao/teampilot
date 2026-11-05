@@ -273,6 +273,52 @@ void main() {
     expect(claudeItems, const [claudePreset]);
   });
 
+  test('presetsByRecentUse sorts by lastUsedAt descending, stable for ties', () {
+    const a = CliPreset(
+      id: 'a',
+      name: 'A',
+      cli: CliTool.claude,
+      provider: 'p',
+      model: 'm',
+      createdAt: 0,
+      updatedAt: 0,
+      lastUsedAt: 10,
+    );
+    const b = CliPreset(
+      id: 'b',
+      name: 'B',
+      cli: CliTool.claude,
+      provider: 'p',
+      model: 'm',
+      createdAt: 0,
+      updatedAt: 0,
+      lastUsedAt: 0,
+    );
+    const c = CliPreset(
+      id: 'c',
+      name: 'C',
+      cli: CliTool.claude,
+      provider: 'p',
+      model: 'm',
+      createdAt: 0,
+      updatedAt: 0,
+      lastUsedAt: 20,
+    );
+    const d = CliPreset(
+      id: 'd',
+      name: 'D',
+      cli: CliTool.claude,
+      provider: 'p',
+      model: 'm',
+      createdAt: 0,
+      updatedAt: 0,
+      lastUsedAt: 0,
+    );
+
+    final sorted = presetsByRecentUse(const [a, b, c, d]);
+    expect(sorted.map((p) => p.id).toList(), ['c', 'a', 'b', 'd']);
+  });
+
   test('teamPresetPickerItems returns all presets for mixed teams', () {
     const team = TeamProfile(
       id: 'team',

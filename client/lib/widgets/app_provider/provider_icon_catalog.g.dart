@@ -58,6 +58,7 @@ const Map<String, String> providerIconAssetPaths = {
   'packycode': 'assets/providers/packycode.svg',
   'palm': 'assets/providers/palm.svg',
   'perplexity': 'assets/providers/perplexity.svg',
+  'qoder': 'assets/providers/qoder.svg',
   'qwen': 'assets/providers/qwen.svg',
   'rc': 'assets/providers/rc.svg',
   'shengsuanyun': 'assets/providers/shengsuanyun.svg',

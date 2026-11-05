@@ -338,7 +338,10 @@ final class _HarnessCubit extends ChatCubit {
   }
 
   @override
-  Future<void> retrySessionLaunch(String sessionId) async {
+  Future<void> retrySessionLaunch(
+    String sessionId, {
+    String? firstPrompt,
+  }) async {
     relaunchCalls.add('retry:$sessionId');
   }
 

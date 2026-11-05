@@ -43,6 +43,25 @@ void main() {
     expect(raw.contains('"credentialLink": "m1"'), isTrue);
   });
 
+  test('a repository built before the default lookup still resolves', () async {
+    // Reproduces the app-shell order: vault cubit / managed resolver build a
+    // repository before the composition root installs the vault resolver.
+    final r = AppProviderRepository(
+      storage: fakeHomeStorage(filesystem: fs),
+      fs: fs,
+      basePath: '/tp',
+    );
+    await r.saveProviders(CliTool.claude, [_linkedRow()]);
+    AppProviderRepository.installDefaultLinkedCredentialLookup(
+      (id) async => id == 'm1' ? 'sk-static' : null,
+    );
+    addTearDown(AppProviderRepository.resetDefaultLinkedCredentialLookup);
+
+    final loaded = await r.loadProviders(CliTool.claude);
+    expect(loaded.single.apiKey, 'sk-static');
+    expect(loaded.single.credentialStatus, 'ready');
+  });
+
   test('missing managed secret yields empty key and missing status', () async {
     linkedSecret = null; // entry or secret absent
     final r = repo();

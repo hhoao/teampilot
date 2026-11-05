@@ -3,8 +3,16 @@ import 'search_file_reader.dart';
 
 /// Directory names skipped wholesale during fallback traversal.
 const kFallbackIgnoredDirNames = {
-  '.git', '.hg', '.svn', 'node_modules', '.dart_tool', 'build',
-  '.idea', '.gradle', '.next', 'dist',
+  '.git',
+  '.hg',
+  '.svn',
+  'node_modules',
+  '.dart_tool',
+  'build',
+  '.idea',
+  '.gradle',
+  '.next',
+  'dist',
 };
 
 /// Longest line whose text is kept; longer lines yield text-less matches.
@@ -28,7 +36,8 @@ Stream<TpSearchMatch> fallbackSearch(
     throw FormatException('invalid regex: ${options.pattern}');
   }
   final q = options.isRegex ? options.pattern : RegExp.escape(options.pattern);
-  final caseSensitive = options.caseSensitive ||
+  final caseSensitive =
+      options.caseSensitive ||
       (options.smartCase && _hasUppercase(options.pattern));
   final rx = RegExp(q, caseSensitive: caseSensitive);
   final includeGlobs = options.filesToInclude
@@ -39,12 +48,18 @@ Stream<TpSearchMatch> fallbackSearch(
       .toList(growable: false);
 
   final queue = <String>[root];
+  var head = 0;
   var truncated = false;
   var matchCount = 0;
+  // Scans this many lines before giving the event loop a turn. A remote tree
+  // has awaits per file (listing/reading yields on its own), but one huge file
+  // would otherwise pin the UI isolate for its whole regex scan.
+  var linesScanned = 0;
+  const yieldEveryLines = 2000;
 
-  while (queue.isNotEmpty) {
+  while (head < queue.length) {
     if (truncated) break;
-    final dir = queue.removeAt(0);
+    final dir = queue[head++];
     final entries = await reader.listDir(dir);
     for (final entry in entries) {
       if (truncated) break;
@@ -70,8 +85,11 @@ Stream<TpSearchMatch> fallbackSearch(
       if (lines == null) continue;
       for (var i = 0; i < lines.length; i++) {
         if (truncated) break;
+        if (++linesScanned % yieldEveryLines == 0) {
+          await Future<void>.delayed(Duration.zero);
+        }
         final line = lines[i];
-        if (line.codeUnits.length > kFallbackMaxLineBytes) {
+        if (line.length > kFallbackMaxLineBytes) {
           matchCount++;
           yield TpSearchMatch(
             path: full,

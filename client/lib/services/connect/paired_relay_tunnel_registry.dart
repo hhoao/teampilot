@@ -4,6 +4,7 @@ import 'dart:io';
 import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../utils/logging/logger_utils.dart';
+import '../vault/vault_access.dart';
 import 'phone_relay_tunnel.dart';
 import 'ssh_device_key.dart';
 
@@ -19,10 +20,12 @@ class PairedRelayTunnelRegistry {
   PairedRelayTunnelRegistry({
     required this.credentialStore,
     this.tunnelFactory,
+    this.vault,
   });
 
   final SshCredentialStore credentialStore;
   final RelayTunnelFactory? tunnelFactory;
+  final VaultAccess? vault;
 
   final _tunnels = <String, PhoneRelayTunnel>{};
   final _deviceIds = <String, String>{};
@@ -44,7 +47,7 @@ class PairedRelayTunnelRegistry {
       throw const SocketException('profile has no relay endpoint');
     }
 
-    final grant = await credentialStore.loadRelayGrant(profile.id);
+    final grant = await relayGrantFor(profile);
     if (grant == null || grant.isEmpty) {
       throw const SocketException('no relay grant stored for profile');
     }
@@ -69,6 +72,25 @@ class PairedRelayTunnelRegistry {
       rethrow;
     }
     return (address: tunnel.address, port: tunnel.port);
+  }
+
+  /// Vault entry first (vault-first credentials), then the keychain.
+  Future<String?> relayGrantFor(SshProfile profile) async {
+    final entryId = profile.vaultEntryId?.trim() ?? '';
+    if (vault != null && entryId.isNotEmpty) {
+      try {
+        final grant = await vault!.functionalField(entryId, 'relayGrant');
+        if (grant != null && grant.isNotEmpty) return grant;
+      } on Object catch (error) {
+        // Read failures (locked, corrupt) fall through to the keychain; log
+        // only the type so a locked vault is distinguishable from a missing
+        // grant without ever touching the value.
+        AppLogger.instance.w(
+          '[connect-relay] vault grant read failed: ${error.runtimeType}',
+        );
+      }
+    }
+    return credentialStore.loadRelayGrant(profile.id);
   }
 
   Future<void> closeFor(String profileId) async {

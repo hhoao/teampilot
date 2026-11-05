@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/chat/launch/staging/manifest/apply_plan.dart';
 import 'package:teampilot/services/chat/launch/staging/manifest/blob_store.dart';
@@ -73,10 +75,11 @@ final class WorkPlaneApplier {
       case ApplyWriteInline(:final path, :final content):
         await _fs.ensureDir(ctx.dirname(path));
         await _fs.atomicWrite(path, content);
-      case ApplyWriteBlob(:final path, :final sha256):
+      case ApplyWriteBlob(:final path, :final sha256, :final mode):
         final bytes = await _blobs.open(sha256);
         await _fs.ensureDir(ctx.dirname(path));
         await _fs.writeBytes(path, bytes);
+        _applyMode(path, mode);
       case ApplyTree(:final dest, :final entries):
         await _fs.ensureDir(dest);
         for (final entry in entries) {
@@ -84,10 +87,24 @@ final class WorkPlaneApplier {
           final bytes = await _blobs.open(entry.sha256);
           await _fs.ensureDir(ctx.dirname(filePath));
           await _fs.writeBytes(filePath, bytes);
+          _applyMode(filePath, entry.mode);
         }
       case ApplySymlink(:final linkPath, :final target):
         await _fs.removeRecursive(linkPath);
         await _fs.createSymlink(target: target, linkPath: linkPath);
+    }
+  }
+
+  /// Best-effort permission application after the bytes are written.
+  ///
+  /// Windows has no POSIX mode bits; the local checkout skips it like the
+  /// provider auth store does.
+  void _applyMode(String path, int? mode) {
+    if (mode == null || Platform.isWindows) return;
+    try {
+      Process.runSync('chmod', [mode.toRadixString(8), path]);
+    } on Object {
+      // Best effort: content is already in place.
     }
   }
 }

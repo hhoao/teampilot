@@ -66,6 +66,23 @@ void main() {
         );
       });
 
+      test('sessionBackgroundLabel exposes the lease label', () {
+        final cubit = SeatLeaseCubit(pruneInterval: null);
+        addTearDown(cubit.close);
+        cubit.acquireBackgroundTask(
+          sessionId: 's',
+          memberId: 'm',
+          leaseId: 'acp-background-task',
+          acquiredAt: DateTime(2026, 1, 1),
+          label: 'Run full client test suite',
+        );
+        expect(
+          cubit.state.sessionBackgroundLabel('s'),
+          'Run full client test suite',
+        );
+        expect(cubit.state.sessionBackgroundLabel('other'), isNull);
+      });
+
       test('release drops the backgroundTask lease, keeping others', () {
         final cubit = SeatLeaseCubit(pruneInterval: null);
         addTearDown(cubit.close);

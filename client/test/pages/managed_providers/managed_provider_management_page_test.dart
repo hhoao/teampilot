@@ -23,6 +23,13 @@ import 'package:teampilot/services/provider_usage/managed_provider_usage_coordin
     hide ManagedProviderUsageState;
 import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
+import 'package:teampilot/repositories/vault_repository.dart';
+import 'package:teampilot/services/vault/credential_capture.dart';
+import 'package:teampilot/services/vault/encrypted_vault_backend.dart';
+import 'package:teampilot/services/vault/keychain_vault_backend.dart';
+import 'package:teampilot/services/vault/vault_crypto.dart';
+import 'package:teampilot/services/vault/vault_service.dart';
+import 'package:teampilot/services/vault/vault_unlock_gate.dart';
 import 'package:teampilot/widgets/tp_password_input.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -68,6 +75,7 @@ class _Adapter implements ManagedProviderUsageAdapter {
   Object? error;
   int calls = 0;
   ProviderCredentialScope? resolvedCredentials;
+  ManagedProvider? resolvedProvider;
 
   @override
   String get id => adapterId;
@@ -80,6 +88,7 @@ class _Adapter implements ManagedProviderUsageAdapter {
     required DateTime now,
   }) async {
     calls++;
+    resolvedProvider = provider;
     resolvedCredentials = await credentials.resolve(provider);
     final error = this.error;
     if (error != null) throw error;
@@ -168,6 +177,7 @@ void main() {
   late _RecordingNavigatorObserver navigatorObserver;
   late _MemorySecureKeyValueStore secureStore;
   late ManagedProviderUsageCoordinator coordinator;
+  late VaultService vaultService;
 
   setUp(() async {
     fs = InMemoryFilesystem();
@@ -189,6 +199,18 @@ void main() {
     );
     navigatorObserver = _RecordingNavigatorObserver();
     secureStore = _MemorySecureKeyValueStore();
+    vaultService = VaultService(
+      keychainBackend: KeychainVaultBackend(secureStore),
+      encryptedBackend: EncryptedVaultBackend(
+        repository: VaultRepository(rootDir: '/tp/vault', fs: fs),
+        crypto: const VaultCrypto(
+          memoryKiB: 256,
+          iterations: 1,
+          parallelism: 1,
+        ),
+      ),
+    );
+    await vaultService.initialize();
     coordinator = ManagedProviderUsageCoordinator(
       providerRepository: providerRepository,
       usageRepository: usageRepository,
@@ -245,6 +267,16 @@ void main() {
               BlocProvider(create: (_) => LayoutCubit()),
               RepositoryProvider.value(
                 value: ManagedProviderSecretStore(secureStore),
+              ),
+              RepositoryProvider<VaultService>.value(value: vaultService),
+              RepositoryProvider<VaultCredentialCapture>.value(
+                value: VaultCredentialCapture(vault: vaultService),
+              ),
+              RepositoryProvider<VaultUnlockGate>.value(
+                value: VaultUnlockGate(
+                  vault: vaultService,
+                  prompt: () async => true,
+                ),
               ),
             ],
             child: CliToolRegistryScope(
@@ -762,9 +794,7 @@ void main() {
     expect(find.text('Codex'), findsNothing);
   });
 
-  testWidgets('new provider stores API key in secure storage only', (
-    tester,
-  ) async {
+  testWidgets('new provider stores API key in the vault only', (tester) async {
     providerCubit.emit(
       ManagedProviderState(status: ManagedProviderLoadStatus.ready),
     );
@@ -790,12 +820,22 @@ void main() {
     await tester.pumpAndSettle();
 
     final provider = providerCubit.state.providers.single;
-    expect(provider.credentialRef, 'managed-provider:${provider.id}');
+    expect(provider.vaultEntryId, isNotNull);
     expect(provider.toJson().toString(), isNot(contains('sk-test-secret')));
-    final scope = await ManagedProviderSecretStore(
-      secureStore,
-    ).read(provider.credentialRef!);
-    expect(scope.valueFor('apiKey'), 'sk-test-secret');
+    expect(
+      await vaultService.readField(provider.vaultEntryId!, 'apiKey'),
+      'sk-test-secret',
+    );
+    expect(
+      await ManagedProviderSecretStore(
+        secureStore,
+      ).read('managed-provider:${provider.id}'),
+      isA<ManagedProviderCredentialScope>().having(
+        (scope) => scope.valueFor('apiKey'),
+        'apiKey',
+        isNull,
+      ),
+    );
   });
 
   testWidgets('DeepSeek preset requires an API key before save', (
@@ -891,6 +931,11 @@ void main() {
     expect(httpJsonAdapter.calls, 1);
     expect(find.byKey(const Key('managed-provider-editor-page')), findsNothing);
     expect(find.text('12.50 USD'), findsOneWidget);
+    final saved = providerCubit.state.providers.single;
+    expect(saved.vaultEntryId, isNotNull);
+    // The first query must see the persisted row (vault link included), not
+    // the pre-capture draft.
+    expect(httpJsonAdapter.resolvedProvider?.vaultEntryId, saved.vaultEntryId);
   });
 
   testWidgets(
@@ -932,10 +977,11 @@ void main() {
       );
       expect(find.text('Provider network request failed.'), findsOneWidget);
       final provider = providerCubit.state.providers.single;
-      final scope = await ManagedProviderSecretStore(
-        secureStore,
-      ).read(provider.credentialRef!);
-      expect(scope.valueFor('apiKey'), 'sk-test-secret');
+      expect(provider.vaultEntryId, isNotNull);
+      expect(
+        await vaultService.readField(provider.vaultEntryId!, 'apiKey'),
+        'sk-test-secret',
+      );
     },
   );
 
@@ -1112,12 +1158,12 @@ void main() {
 
       final provider = providerCubit.state.providers.single;
       expect(provider.name, 'Custom');
-      expect(provider.credentialRef, 'managed-provider:${provider.id}');
+      expect(provider.vaultEntryId, isNotNull);
       expect(provider.toJson().toString(), isNot(contains('sk-custom')));
-      final scope = await ManagedProviderSecretStore(
-        secureStore,
-      ).read(provider.credentialRef!);
-      expect(scope.valueFor('apiKey'), 'sk-custom');
+      expect(
+        await vaultService.readField(provider.vaultEntryId!, 'apiKey'),
+        'sk-custom',
+      );
     },
   );
 
@@ -1180,11 +1226,13 @@ void main() {
         findsOneWidget,
       );
       await tester.scrollUntilVisible(
-        find.text('Advanced'),
+        find.byKey(const Key('managed-provider-section-advanced')),
         500,
         scrollable: _verticalScrollable(),
       );
-      await tester.tap(find.text('Advanced'));
+      await tester.tap(
+        find.byKey(const Key('managed-provider-section-advanced')),
+      );
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.byKey(const Key('managed-provider-adapter'), skipOffstage: false),

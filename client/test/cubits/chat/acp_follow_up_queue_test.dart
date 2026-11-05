@@ -11,7 +11,9 @@ import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
+import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
+import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/chat/conversation/follow_up/follow_up_queue.dart';
 import 'package:teampilot/services/chat/session/chat_tab.dart';
 
@@ -91,6 +93,55 @@ void main() {
     expect(cubit.operatorDeliveries, 0);
     expect(cubit.followUpQueue.queueFor(seat).items, isEmpty);
   });
+
+  test('ACP end_turn clears session busy without an idle-watch tick', () async {
+    acp.sendPrompt('helo');
+    await _settle();
+    expect(cubit.state.busySessionIds, contains(sessionId));
+
+    runtime.add(const AcpStop(kind: AcpStopKind.endTurn));
+    await pumpEventQueue();
+
+    expect(acp.state.inTurn, isFalse);
+    expect(
+      cubit.state.busySessionIds,
+      isEmpty,
+      reason:
+          'History 运行中 reads sessionActivities, not cubit.inTurn. '
+          'Stamping attention done while inTurn is still true leaves the '
+          'session busy until idle-watch recomputes — ACP has no PTY quiet.',
+    );
+  });
+
+  test(
+    'Cursor afterAgentResponse hook after ACP end_turn does not keep 运行中',
+    () async {
+      acp.sendPrompt('helo');
+      await _settle();
+      runtime.add(const AcpStop(kind: AcpStopKind.endTurn));
+      await pumpEventQueue();
+      expect(cubit.state.busySessionIds, isEmpty);
+
+      attention.applyEvent(
+        sessionId: sessionId,
+        memberId: AcpChatRuntimeCubit.acpMemberId,
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.working,
+          hookEventName: 'afterAgentResponse',
+        ),
+        skipPermissions: false,
+      );
+      await pumpEventQueue();
+
+      expect(
+        cubit.state.busySessionIds,
+        isEmpty,
+        reason:
+            'Cursor ACP has no PTY-quiet fallback. A late afterAgentResponse '
+            'hook must not pin attention busy for 30 minutes after end_turn.',
+      );
+    },
+  );
 
   test('ended ACP runtime leaves the head queued for a manual retry', () async {
     final seat = followUpSeatKey(sessionId, sessionId);

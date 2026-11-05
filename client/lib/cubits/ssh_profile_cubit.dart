@@ -11,6 +11,7 @@ import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../services/cli/remote_cli_path_cache.dart';
 import '../services/storage/home_ssh_profile_impact.dart';
+import '../services/vault/credential_capture.dart';
 
 class SshProfileState extends Equatable {
   const SshProfileState({
@@ -62,6 +63,7 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     void Function(String profileId)? invalidateProfileConnection,
     bool Function()? enableRemoteCliDiscovery,
     RemoteCliPathCache? remoteCliPathCache,
+    VaultCredentialCapture? vaultCapture,
   }) : _profileRepository = profileRepository,
        _credentialStore = credentialStore,
        _locateRemoteCliPaths = locateRemoteCliPaths,
@@ -69,6 +71,7 @@ class SshProfileCubit extends Cubit<SshProfileState> {
        _invalidateProfileConnection = invalidateProfileConnection,
        _enableRemoteCliDiscovery = enableRemoteCliDiscovery,
        _remoteCliPathCache = remoteCliPathCache,
+       _vaultCapture = vaultCapture,
        super(const SshProfileState());
 
   final SshProfileRepository _profileRepository;
@@ -78,6 +81,7 @@ class SshProfileCubit extends Cubit<SshProfileState> {
   final void Function(String profileId)? _invalidateProfileConnection;
   final bool Function()? _enableRemoteCliDiscovery;
   final RemoteCliPathCache? _remoteCliPathCache;
+  final VaultCredentialCapture? _vaultCapture;
 
   /// Single-flight: bootstrapHomeIndex, prepareInteractiveShell, and
   /// reconnectHomeSshIfNeeded all call [load] concurrently on boot; coalescing
@@ -166,6 +170,8 @@ class SshProfileCubit extends Cubit<SshProfileState> {
   }
 
   Future<void> deleteProfile(String profileId) async {
+    final profile = state.profiles.where((p) => p.id == profileId).firstOrNull;
+    final vaultEntryId = (profile?.vaultEntryId ?? '').trim();
     _invalidateProfileConnection?.call(profileId);
     try {
       await _credentialStore.deleteAll(profileId);
@@ -178,7 +184,20 @@ class SshProfileCubit extends Cubit<SshProfileState> {
         stackTrace: stackTrace,
       );
     }
+    // Delete the repository row first: a failure here must keep the vault
+    // entry so a retried delete still knows which secret belongs to the row.
     await _profileRepository.delete(profileId);
+    if (vaultEntryId.isNotEmpty && _vaultCapture != null) {
+      try {
+        await _vaultCapture.deleteOwner(vaultOwnerKindSshProfile, profileId);
+      } on Object catch (error) {
+        // Best effort, and never log the secret: the type is diagnostic enough.
+        Logger().w(
+          'Failed to delete vault entry for SSH profile $profileId '
+          '(${error.runtimeType})',
+        );
+      }
+    }
     await load();
   }
 

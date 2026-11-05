@@ -13,10 +13,14 @@ import '../../models/managed_provider.dart';
 import '../../models/managed_provider_editor_schema.dart';
 import '../../models/provider_usage_snapshot.dart';
 import '../../services/provider_usage/managed_provider_cli_binding.dart';
-import '../../services/provider_usage/managed_provider_credential_transaction.dart';
 import '../../services/provider_usage/managed_provider_link_binding.dart';
 import '../../services/provider_usage/managed_provider_presets.dart';
 import '../../services/provider_usage/managed_provider_secret_store.dart';
+import '../../services/provider_usage/managed_provider_vault_writer.dart';
+import '../../services/vault/credential_capture.dart';
+import '../../services/vault/vault_service.dart';
+import '../../services/vault/vault_unlock_gate.dart';
+import '../vault/vault_secret_reveal.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../utils/managed_provider_error_localization.dart';
 import 'managed_provider_editor_field_examples.dart';
@@ -72,7 +76,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   String? _formError;
   bool _saving = false;
 
-  ManagedProvider? get _provider => widget.provider;
+  ManagedProvider? _savedProvider;
+
+  ManagedProvider? get _provider => _savedProvider ?? widget.provider;
 
   /// Stable id for the entry across the editor session: new entries get it
   /// at editor open so the per-entry CLI credential row can bind (and be
@@ -189,7 +195,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               ManagedProviderEditorSectionShell(
                 key: const Key('managed-provider-section-basics'),
                 title: l10n.managedProvidersBasicsSectionTitle,
-                subtitle: l10n.managedProvidersBasicsSectionSubtitle,
                 initiallyExpanded: true,
                 child: ManagedProviderBasicsSection(
                   schema: _schema,
@@ -198,11 +203,18 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                   nameController: _name,
                   credentialSecretController: _credentialSecret,
                   credentialSecretFocusNode: _credentialSecretFocus,
-                  credentialConfigured: _credentialRef.text.trim().isNotEmpty,
+                  credentialConfigured: _credentialConfigured,
                   enabled: _enabled,
                   hideSecret: _isLinkedProviderSource,
                   onQuickPresetChanged: _handleQuickPresetChanged,
                   onEnabledChanged: _setEnabled,
+                  onRevealSecret: () => revealVaultSecret(
+                    context,
+                    _provider?.vaultEntryId,
+                    _credentialField.text.trim().isEmpty
+                        ? 'apiKey'
+                        : _credentialField.text.trim(),
+                  ),
                 ),
               ),
               if (_schema.hasSection(ManagedProviderEditorSection.query)) ...[
@@ -210,7 +222,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 ManagedProviderEditorSectionShell(
                   key: const Key('managed-provider-section-query'),
                   title: l10n.managedProvidersQuerySectionTitle,
-                  subtitle: l10n.managedProvidersQuerySectionSubtitle,
                   referenceTip: managedProviderHttpJsonReferenceTip(l10n),
                   initiallyExpanded: _queryInitiallyExpanded,
                   child: ManagedProviderQuerySection(
@@ -232,14 +243,10 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               ManagedProviderEditorSectionShell(
                 key: const Key('managed-provider-section-credentials'),
                 title: l10n.managedProvidersCredentialsSectionTitle,
-                subtitle: l10n.managedProvidersCredentialsSectionSubtitle,
                 referenceTip: _isCliCredentialSource
                     ? null
                     : managedProviderHttpJsonReferenceTip(l10n),
                 initiallyExpanded: _credentialsInitiallyExpanded,
-                badge: _credentialsInitiallyExpanded
-                    ? l10n.managedProvidersSectionConfiguredBadge
-                    : null,
                 child: _isCliCredentialSource
                     ? ManagedProviderOfficialCredentials(
                         credentialSource: _credentialSource.text.trim(),
@@ -276,9 +283,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                         credentialPlacementController: _credentialPlacement,
                         credentialSourceController: _credentialSource,
                         credentialTemplateController: _credentialTemplate,
-                        credentialConfigured: _credentialRef.text
-                            .trim()
-                            .isNotEmpty,
+                        credentialConfigured: _credentialConfigured,
                         onCredentialFieldChanged: _handleCredentialFieldChanged,
                         credentialLinkModeSelector:
                             _buildCredentialLinkModeSelector(context),
@@ -288,7 +293,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               ManagedProviderEditorSectionShell(
                 key: const Key('managed-provider-section-display'),
                 title: l10n.managedProvidersDisplaySectionTitle,
-                subtitle: l10n.managedProvidersDisplaySectionSubtitle,
                 initiallyExpanded: _displayInitiallyExpanded,
                 badge: _displayInitiallyExpanded
                     ? l10n.managedProvidersSectionConfiguredBadge
@@ -308,7 +312,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 ManagedProviderEditorSectionShell(
                   key: const Key('managed-provider-section-advanced'),
                   title: l10n.managedProvidersAdvancedSectionTitle,
-                  subtitle: l10n.managedProvidersAdvancedSectionSubtitle,
                   initiallyExpanded: _advancedInitiallyExpanded,
                   badge: _advancedInitiallyExpanded
                       ? l10n.managedProvidersSectionConfiguredBadge
@@ -320,7 +323,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                     onKindChanged: _setKind,
                   ),
                 ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -657,6 +660,10 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     return row?.name ?? '';
   }
 
+  bool get _credentialConfigured =>
+      (_provider?.vaultEntryId ?? '').trim().isNotEmpty ||
+      (_provider?.credentialRef ?? '').trim().isNotEmpty;
+
   bool get _credentialsInitiallyExpanded {
     if (_isCliCredentialSource) return true;
     final provider = _provider;
@@ -713,9 +720,6 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     });
     final cubit = context.read<ManagedProviderCubit>();
     final secretStore = context.read<ManagedProviderSecretStore>();
-    final credentialTransaction = ManagedProviderCredentialTransaction(
-      secretStore,
-    );
     final now = DateTime.now().millisecondsSinceEpoch;
     final current = _provider;
     final shouldRunFirstQuery = current == null && _schema.firstQuery;
@@ -748,12 +752,18 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
           .toSet();
     }
     if (requiredSecretsToKeep.isNotEmpty) {
-      final hasExisting = await _existingCredentialHasRequiredSecrets(
-        store: secretStore,
-        current: current,
-        credentialRef: credentialRef,
-        fields: requiredSecretsToKeep,
-      );
+      final hasExisting = (current?.vaultEntryId?.trim().isNotEmpty ?? false)
+          ? await _vaultHasRequiredSecrets(
+              context.read<VaultService>(),
+              current!,
+              requiredSecretsToKeep,
+            )
+          : await _existingCredentialHasRequiredSecrets(
+              store: secretStore,
+              current: current,
+              credentialRef: credentialRef,
+              fields: requiredSecretsToKeep,
+            );
       if (!mounted) return;
       if (!hasExisting) {
         setState(() {
@@ -810,6 +820,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         credentialPrefix: _credentialPrefix,
       ),
       credentialRef: credentialRef.isEmpty ? null : credentialRef,
+      vaultEntryId: (current?.vaultEntryId?.trim().isEmpty ?? true)
+          ? null
+          : current!.vaultEntryId!.trim(),
       displayConfig: ManagedProviderDisplayConfig(
         currency: _currency.text.trim().isEmpty ? null : _currency.text.trim(),
         unit: _unit.text.trim().isEmpty ? null : _unit.text.trim(),
@@ -824,17 +837,48 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
           : current.createdAt,
       updatedAt: now,
     );
+    final secretValues = _isLinkedProviderSource
+        ? const <String, String>{}
+        : credentialValues;
+    // Vault-backed rows need no pre-read: capture merges the owner entry.
+    // Reading it here would throw while the encrypted vault is locked, before
+    // the writer can prompt for unlock.
+    final existingValues = current == null
+        ? const <String, String>{}
+        : (current.vaultEntryId?.trim().isNotEmpty ?? false)
+        ? const <String, String>{}
+        : await _legacyManagedFields(secretStore, current.credentialRef);
+    if (!mounted) return;
+    var persisted = next;
     try {
-      await credentialTransaction.run<void>(
-        credentialRef: credentialRef,
-        nextValues: credentialValues,
-        persistProvider: () async {
-          await cubit.upsert(next);
-          if (cubit.state.errorCode != null) {
-            throw const _ManagedProviderEditorPersistenceFailed();
-          }
-        },
-      );
+      if (secretValues.isNotEmpty) {
+        persisted = await saveManagedProviderWithVault(
+          provider: next,
+          existingValues: existingValues,
+          secretValues: secretValues,
+          capture: context.read<VaultCredentialCapture>(),
+          unlockGate: context.read<VaultUnlockGate>(),
+          persist: (value) async {
+            await cubit.upsert(value);
+            if (cubit.state.errorCode != null) {
+              throw const _ManagedProviderEditorPersistenceFailed();
+            }
+          },
+        );
+        if (mounted) setState(() => _savedProvider = persisted);
+      } else {
+        await cubit.upsert(next);
+        if (cubit.state.errorCode != null) {
+          throw const _ManagedProviderEditorPersistenceFailed();
+        }
+      }
+    } on VaultSaveBlockedException {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _formError = context.l10n.vaultLockedSaveBlocked;
+      });
+      return;
     } on _ManagedProviderEditorPersistenceFailed {
       if (!mounted) return;
       setState(() {
@@ -856,7 +900,14 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     }
     if (!mounted) return;
     if (shouldRunFirstQuery) {
-      await context.read<ManagedProviderUsageCubit>().queryProvider(next);
+      final vaultBacked = (persisted.vaultEntryId ?? '').trim().isNotEmpty;
+      final usageCubit = context.read<ManagedProviderUsageCubit>();
+      if (!vaultBacked ||
+          await context.read<VaultUnlockGate>().ensureUnlocked()) {
+        await usageCubit.queryProvider(persisted);
+      } else if (mounted) {
+        setState(() => _formError = context.l10n.vaultLockedQueryBlocked);
+      }
       if (!mounted) return;
     }
     setState(() => _saving = false);
@@ -902,6 +953,21 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final draft = _draftProviderForQuery();
     if (draft == null) return;
     final credentialOverride = _credentialOverrideForQuery();
+    final l10n = context.l10n;
+    var blocked = false;
+    if (credentialOverride == null &&
+        (draft.vaultEntryId ?? '').trim().isNotEmpty) {
+      blocked = !await context.read<VaultUnlockGate>().ensureUnlocked();
+    }
+    if (!mounted) return;
+    if (blocked) {
+      AppToast.show(
+        context,
+        message: l10n.vaultLockedQueryBlocked,
+        variant: TpToastVariant.error,
+      );
+      return;
+    }
     setState(() => _saving = true);
     final snapshot = await context
         .read<ManagedProviderUsageCubit>()
@@ -982,6 +1048,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       credentialRef: _credentialRef.text.trim().isEmpty
           ? null
           : _credentialRef.text.trim(),
+      vaultEntryId: (current?.vaultEntryId?.trim().isEmpty ?? true)
+          ? null
+          : current!.vaultEntryId!.trim(),
       displayConfig: current?.displayConfig,
       enabled: _enabled,
     );
@@ -1069,6 +1138,41 @@ Future<bool> _existingCredentialHasRequiredSecrets({
   try {
     final scope = await store.read(credentialRef);
     return fields.every((field) => scope.valueFor(field)?.isNotEmpty ?? false);
+  } on Object {
+    return false;
+  }
+}
+
+Future<Map<String, String>> _legacyManagedFields(
+  ManagedProviderSecretStore store,
+  String? credentialRef,
+) async {
+  final ref = credentialRef?.trim() ?? '';
+  if (ref.isEmpty) return const {};
+  try {
+    final scope = await store.read(ref);
+    return {
+      for (final field in scope.fields)
+        if ((scope.valueFor(field) ?? '').isNotEmpty)
+          field: scope.valueFor(field)!,
+    };
+  } on Object {
+    return const {};
+  }
+}
+
+Future<bool> _vaultHasRequiredSecrets(
+  VaultService vault,
+  ManagedProvider provider,
+  Set<String> fields,
+) async {
+  if (fields.isEmpty) return true;
+  final entryId = provider.vaultEntryId?.trim() ?? '';
+  if (entryId.isEmpty) return false;
+  try {
+    final entry = await vault.get(entryId);
+    if (entry == null) return false;
+    return fields.every((field) => (entry.fields[field] ?? '').isNotEmpty);
   } on Object {
     return false;
   }

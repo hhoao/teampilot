@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
@@ -13,15 +14,12 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/failed_message_record.dart';
 import '../../models/pending_branch_edit.dart';
 import '../../services/chat/rewind/seat_branches.dart';
+import '../../widgets/session_working_spinner.dart';
 import 'chat_outline.dart';
 import 'chat_reveal_controller.dart';
 import 'history_scroll_cursor_lock.dart';
 import 'session_history_live_chrome.dart';
-
-/// Finder key for the “new messages” jump chip.
-const Key kSessionHistoryNewMessagesChipKey = ValueKey(
-  'session-history-new-messages-chip',
-);
+import 'session_history_scroll_to_bottom_button.dart';
 
 /// Finder key for the in-thread starting/running assistant placeholder.
 const Key kSessionHistoryRunningFooterKey = ValueKey(
@@ -35,6 +33,12 @@ const AiMessage kSessionHistoryRunningPlaceholder = AiMessage(
   status: AiMessageStatus.incomplete,
   parts: [],
 );
+
+/// Synthetic user bubble for a landing create+send that is still connecting.
+///
+/// Rendered only from [SessionHistoryThread.pendingUserText]; never enters the
+/// runtime or the history store.
+const String kSessionHistoryPendingLandingUserId = 'pending:landing';
 
 /// Whether [chrome] means a turn is actively producing output (as opposed to
 /// idle history review or a background task that outlived the turn).
@@ -66,6 +70,7 @@ class SessionHistoryThread extends StatefulWidget {
     required this.isLoadingOlder,
     this.onLoadOlder,
     this.liveChrome = SessionHistoryLiveChrome.none,
+    this.backgroundLabel,
     this.pendingDeliveryStatuses = const {},
     this.onRetryFailedMessage,
     this.highlightMessageId,
@@ -82,6 +87,7 @@ class SessionHistoryThread extends StatefulWidget {
     this.branchEdit,
     this.onOptimisticLanded,
     this.turnInFlight = false,
+    this.pendingUserText = '',
     super.key,
   });
 
@@ -92,6 +98,19 @@ class SessionHistoryThread extends StatefulWidget {
 
   /// Slim starting/running footer under the scroll surface.
   final SessionHistoryLiveChrome liveChrome;
+
+  /// What the out-of-turn background work is doing (e.g. the background shell
+  /// task's description). Appended to the background footer so the row says
+  /// what is still running, not just that something is.
+  final String? backgroundLabel;
+
+  /// Transient first prompt of a landing create+send, painted as a user bubble
+  /// until the runtime owns that turn (ACP `sendPrompt` / PTY pending).
+  ///
+  /// Memory-only: the bubble is synthesized per build and never written to the
+  /// runtime, the history store, or disk. Empty for every non-landing path.
+  final String pendingUserText;
+
   final Map<String, FailedMessageStatus> pendingDeliveryStatuses;
   final ValueChanged<String>? onRetryFailedMessage;
 
@@ -159,6 +178,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   static const _bottomEpsilon = 1.0;
   static const _loadOlderPixelThreshold = 120.0;
 
+  /// Distance from the tip past which the jump-to-bottom button is offered.
+  static const _scrollToBottomThreshold = 80.0;
+
   /// Frames the anchor restore waits for the virtualized viewport to grow
   /// its extent toward the anchor (turns mount lazily / in chunks).
   static const _anchorRestoreFrames = 24;
@@ -200,8 +222,14 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   /// build the top of the thread under a scroll offset of 0.
   var _mountTurns = false;
 
-  /// Tip grew while stick was paused — show jump chip until user resumes.
-  var _showNewMessagesChip = false;
+  /// Tip grew while stick was paused — badge the jump button until the user
+  /// resumes following.
+  var _hasNewMessagesBelow = false;
+
+  /// Whether the transcript is far enough from the tip to show the floating
+  /// jump-to-bottom button. Kept in a notifier so scroll ticks rebuild only
+  /// the button, not the whole thread.
+  final ValueNotifier<bool> _showScrollToBottom = ValueNotifier(false);
 
   double _lastPixels = 0;
 
@@ -288,6 +316,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     final enabled = TickerMode.valuesOf(context).enabled;
     final becameForeground = enabled && !_foreground;
     _foreground = enabled;
+    _syncScrollToBottom();
     if (becameForeground) {
       _restickAfterForeground();
     }
@@ -325,7 +354,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       _cancelAnchorRestore();
       _runtimeSub?.cancel();
       _setStickToEnd(true);
-      _showNewMessagesChip = false;
+      _hasNewMessagesBelow = false;
       _paginationArmed = true;
       _mountTurns = false;
       // Keep the controller's draft: a runtime swap also happens when an edit
@@ -344,6 +373,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       if (widget.liveChrome.isActive && _stickToEnd) {
         _scheduleStickFrames();
       }
+    }
+    if (oldWidget.pendingUserText != widget.pendingUserText &&
+        widget.pendingUserText.trim().isNotEmpty &&
+        _stickToEnd) {
+      // Landing bubble arrives after mount (tab opens first): keep it pinned.
+      _scheduleStickFrames();
     }
     if (oldWidget.revealRequest != widget.revealRequest) {
       _boundReveal?.removeListener(_onRevealRequestChanged);
@@ -369,8 +404,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     }
     setState(() {
       _stickToEnd = value;
-      if (value) _showNewMessagesChip = false;
+      if (value) _hasNewMessagesBelow = false;
     });
+    _syncScrollToBottom();
   }
 
   @override
@@ -381,6 +417,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     _stickGeneration++;
     _hoverResumeTimer?.cancel();
     _hoverEffectsEnabled.dispose();
+    _showScrollToBottom.dispose();
     _runtimeSub?.cancel();
     _boundReveal?.removeListener(_onRevealRequestChanged);
     _scrollController
@@ -478,7 +515,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     setState(() {
       _messages = next;
       if (!_stickToEnd && tipGrew) {
-        _showNewMessagesChip = true;
+        _hasNewMessagesBelow = true;
       }
     });
     if (_stickToEnd && !wasPrepend && _foreground) {
@@ -487,6 +524,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       // heuristic. The foreground handoff re-anchors to the real tip instead.
       _scheduleStickFrames();
     }
+    // Content can grow below the viewport without changing `pixels`, so the
+    // scroll listener may not fire; re-check once layout applies the extent.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncScrollToBottom();
+    });
   }
 
   /// Whether [next] ends with the user message the edit resent.
@@ -636,13 +678,14 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
           max - pixels > _bottomEpsilon) {
         _setStickToEnd(false);
       } else if (!_stickToEnd && max - pixels <= _bottomEpsilon) {
-        // Manual scroll back to tip — same as tapping the new-messages chip.
+        // Manual scroll back to tip — same as tapping the jump button.
         _resumeStickToTip();
       }
     }
 
     _lastPixels = pixels;
     _captureOlderExtentIfWaiting();
+    _syncScrollToBottom();
   }
 
   void _captureOlderExtentIfWaiting() {
@@ -772,6 +815,64 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     _scheduleStickFrames();
   }
 
+  bool get _scrollToBottomVisible {
+    if (!_foreground || _stickToEnd || !_scrollController.hasClients) {
+      return false;
+    }
+    final position = _scrollController.position;
+    return position.maxScrollExtent > 0 &&
+        position.maxScrollExtent - position.pixels > _scrollToBottomThreshold;
+  }
+
+  /// Keeps the jump-button visibility in sync with the scroll offset.
+  ///
+  /// Scroll listeners fire during layout, so a sync notifier write would
+  /// rebuild the button mid-frame ("Build scheduled during frame") — defer
+  /// those to the frame callback, same as [_setHoverEnabled].
+  void _syncScrollToBottom() {
+    final visible = _scrollToBottomVisible;
+    if (_showScrollToBottom.value == visible) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase != SchedulerPhase.idle &&
+        phase != SchedulerPhase.postFrameCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final next = _scrollToBottomVisible;
+        if (_showScrollToBottom.value != next) {
+          _showScrollToBottom.value = next;
+        }
+      });
+      return;
+    }
+    _showScrollToBottom.value = visible;
+  }
+
+  void _animateScrollToBottom() {
+    if (!_scrollController.hasClients) return;
+    // Clears the new-messages dot and hides the button immediately.
+    _setStickToEnd(true);
+    final position = _scrollController.position;
+    final distance = position.maxScrollExtent - position.pixels;
+    if (distance <= _bottomEpsilon) {
+      _scheduleStickFrames();
+      return;
+    }
+    final ms = (240 + distance * 0.12).clamp(240, 480).round();
+    unawaited(
+      _scrollController
+          .animateTo(
+            position.maxScrollExtent,
+            duration: Duration(milliseconds: ms),
+            curve: Curves.easeInOutCubic,
+          )
+          .whenComplete(() {
+            // A mid-flight user drag releases stick; re-pinning then would
+            // fight the user and snap them back down.
+            if (mounted && _stickToEnd) _scheduleStickFrames();
+          }),
+    );
+  }
+
   void _setHoverEnabled(bool enabled) {
     if (_hoverEffectsEnabled.value == enabled) return;
     // jumpTo / measure correction dispatch ScrollStart during layout; a sync
@@ -884,63 +985,18 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     }
   }
 
-  Widget _buildNewMessagesChip(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final l10n = context.l10n;
-    return Positioned(
-      left: 0,
-      right: 0,
-      // Footer sits below this Stack (Column sibling), not overlaid — no offset.
-      bottom: 12,
-      child: Center(
-        child: SelectionContainer.disabled(
-          child: Material(
-            key: kSessionHistoryNewMessagesChipKey,
-            color: scheme.surfaceContainerHigh,
-            elevation: 2,
-            shadowColor: Colors.black.withValues(alpha: 0.12),
-            shape: const StadiumBorder(),
-            child: TpHover(
-              shape: TpPressableShape.stadium,
-              onTap: _resumeStickToTip,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 18,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      l10n.sessionHistoryNewMessages,
-                      style: TpTextStyles.of(
-                        context,
-                      ).smColored(scheme.onSurface),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildRunningInMessage(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isBackground =
         widget.liveChrome == SessionHistoryLiveChrome.background;
+    final backgroundLabel = widget.backgroundLabel?.trim() ?? '';
     final label = switch (widget.liveChrome) {
       SessionHistoryLiveChrome.starting => context.l10n.sessionHistoryStarting,
       SessionHistoryLiveChrome.background =>
-        context.l10n.sessionHistoryBackgroundRunning,
+        backgroundLabel.isEmpty
+            ? context.l10n.sessionHistoryBackgroundRunning
+            : '${context.l10n.sessionHistoryBackgroundRunning} · '
+                  '$backgroundLabel',
       SessionHistoryLiveChrome.running ||
       SessionHistoryLiveChrome.none => context.l10n.sessionHistoryRunning,
     };
@@ -954,11 +1010,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Background work is not a turn: show a static marker instead of
-            // the running spinner so the two states stay distinguishable.
+            // Background work is not a turn: show the breathing hourglass
+            // instead of the running spinner so the two states stay
+            // distinguishable — yet the footer still reads as alive.
             if (isBackground)
-              Icon(
-                Icons.hourglass_bottom_rounded,
+              SessionBackgroundWorkMarker(
                 size: 14,
                 color: scheme.onSurfaceVariant,
               )
@@ -969,16 +1025,46 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                 color: scheme.onSurfaceVariant,
               ),
             const SizedBox(width: 10),
-            Text(
-              label,
-              style: TpTextStyles.of(
-                context,
-              ).smColored(scheme.onSurfaceVariant),
+            // The background label can be an arbitrary tool description, so
+            // clip it instead of overflowing the footer row.
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TpTextStyles.of(
+                  context,
+                ).smColored(scheme.onSurfaceVariant),
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  /// Appends the transient landing bubble while it is not in [messages] yet.
+  ///
+  /// Matching by role + text (not id) keeps the swap seamless: the ACP queued
+  /// prompt and the hydrated PTY pending reuse the user's own words, so the
+  /// synthetic bubble drops itself the frame the real turn lands.
+  List<AiMessage> _withPendingLandingUser(List<AiMessage> messages) {
+    final text = widget.pendingUserText.trim();
+    if (text.isEmpty) return messages;
+    final alreadyPresent = messages.any(
+      (m) =>
+          m.role == AiRole.user &&
+          m.parts.any((p) => p is AiTextPart && p.text.trim() == text),
+    );
+    if (alreadyPresent) return messages;
+    return [
+      ...messages,
+      AiMessage(
+        id: kSessionHistoryPendingLandingUserId,
+        role: AiRole.user,
+        parts: [AiTextPart(text: text)],
+      ),
+    ];
   }
 
   List<AiMessage> get _displayMessages {
@@ -996,20 +1082,19 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
             );
       // The edited bubble shows its new text immediately and everything the
       // old branch had below it becomes the running row, so the thread does
-      // not repaint the restored branch and then the new one. When the list
-      // already is the parent prefix (the edited id is gone), the bubble still
-      // belongs at the tip: that prefix is everything before it.
+      // not repaint the restored branch and then the new one.
       return [
         ..._messages.take(index < 0 ? _messages.length : index),
         edited,
         kSessionHistoryRunningPlaceholder,
       ];
     }
-    if (!widget.liveChrome.isActive) return _messages;
-    if (_messages.any((m) => m.id == kSessionHistoryRunningPlaceholder.id)) {
-      return _messages;
+    final messages = _withPendingLandingUser(_messages);
+    if (!widget.liveChrome.isActive) return messages;
+    if (messages.any((m) => m.id == kSessionHistoryRunningPlaceholder.id)) {
+      return messages;
     }
-    return [..._messages, kSessionHistoryRunningPlaceholder];
+    return [...messages, kSessionHistoryRunningPlaceholder];
   }
 
   @override
@@ -1310,13 +1395,41 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
     return AiMessageInteractionScope(
       rewindForkEnabled: !widget.turnInFlight,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          thread,
-          if (_showNewMessagesChip && !_stickToEnd)
-            _buildNewMessagesChip(context),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Match the composer card: both the thread and the composer center a
+          // column capped at [AiMessageTheme.threadMaxWidth] with the same
+          // horizontal padding, so this inset lands on the input box's right
+          // edge on wide windows instead of the window edge. Nudge it one
+          // spacing step inward so it reads as floating over the card corner.
+          final contentWidth = math.min(
+            math.max(
+              0.0,
+              constraints.maxWidth - 2 * aiTheme.threadHorizontalPadding,
+            ),
+            aiTheme.threadMaxWidth,
+          );
+          final rightInset =
+              (constraints.maxWidth - contentWidth) / 2 + context.tpSpacing.md;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              thread,
+              ValueListenableBuilder<bool>(
+                valueListenable: _showScrollToBottom,
+                builder: (context, visible, _) {
+                  if (!visible) return const SizedBox.shrink();
+                  return SessionHistoryScrollToBottomButton(
+                    tooltip: context.l10n.aiMessageScrollToBottom,
+                    showNewMessagesDot: _hasNewMessagesBelow,
+                    onPressed: _animateScrollToBottom,
+                    rightInset: rightInset,
+                  );
+                },
+              ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -1778,9 +1778,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionHistoryLoadOlderHint => 'Scroll up for earlier messages';
 
   @override
-  String get sessionHistoryNewMessages => 'New messages';
-
-  @override
   String get sessionHistoryStarting => 'Starting…';
 
   @override
@@ -6054,6 +6051,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderToolAntigravity => 'Antigravity';
 
   @override
+  String get appProviderToolQoder => 'Qoder';
+
+  @override
   String get codebuddyCredentialsLogin => 'Sign in';
 
   @override
@@ -6134,6 +6134,49 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get antigravityCredentialsActionFailed =>
       'Antigravity sign-in failed.';
+
+  @override
+  String get qoderCredentialsLogin => 'Sign in';
+
+  @override
+  String get qoderCredentialsLoginTitle => 'Sign in to Qoder';
+
+  @override
+  String get qoderCredentialsLoginIntro =>
+      'Complete the sign-in in the terminal below. The CLI opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.';
+
+  @override
+  String get qoderCredentialsLoginStarting => 'Starting Qoder CLI…';
+
+  @override
+  String qoderCredentialsLoginFailed(String error) {
+    return 'Could not start the login terminal: $error';
+  }
+
+  @override
+  String get qoderCredentialsLoginExited =>
+      'Qoder CLI exited. Close this dialog and start the sign-in again.';
+
+  @override
+  String get qoderCredentialsDone => 'Done';
+
+  @override
+  String get qoderCredentialsCancel => 'Cancel';
+
+  @override
+  String get qoderCredentialsRelaunch => 'Relaunch';
+
+  @override
+  String get qoderCredentialsSignedIn => 'Signed in';
+
+  @override
+  String get qoderContextWindow => 'Context window (tokens)';
+
+  @override
+  String get qoderContextWindowHint => 'Leave empty to use the model default.';
+
+  @override
+  String get qoderCredentialsActionFailed => 'The Qoder action failed';
 
   @override
   String get appProviderTeamToolSection => 'Tool providers for this team';
@@ -8432,7 +8475,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Configure endpoint, credentials, and display from scratch.';
 
   @override
-  String get managedProvidersBasicsSectionTitle => 'Basics';
+  String get managedProvidersBasicsSectionTitle => 'Name and API key';
 
   @override
   String get managedProvidersBasicsSectionSubtitle =>
@@ -8443,28 +8486,30 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pick a preset, name the provider, and add a secret if needed.';
 
   @override
-  String get managedProvidersQuerySectionTitle => 'Query';
+  String get managedProvidersQuerySectionTitle => 'Usage API and JSON parsing';
 
   @override
   String get managedProvidersQuerySectionSubtitle =>
       'Usage API and JSON parsing.';
 
   @override
-  String get managedProvidersCredentialsSectionTitle => 'Credential details';
+  String get managedProvidersCredentialsSectionTitle =>
+      'Credential source and delivery';
 
   @override
   String get managedProvidersCredentialsSectionSubtitle =>
       'Credential source and how it is sent.';
 
   @override
-  String get managedProvidersDisplaySectionTitle => 'Display';
+  String get managedProvidersDisplaySectionTitle => 'Balance and quota display';
 
   @override
   String get managedProvidersDisplaySectionSubtitle =>
       'How balances and quotas are shown.';
 
   @override
-  String get managedProvidersAdvancedSectionTitle => 'Advanced';
+  String get managedProvidersAdvancedSectionTitle =>
+      'Adapter, kind, and reference';
 
   @override
   String get managedProvidersAdvancedSectionSubtitle =>
@@ -8579,15 +8624,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get managedProvidersFieldExampleLabel => 'Example';
 
   @override
-  String get managedProvidersJsonPathSeeAlso => 'See \$ syntax in Query ℹ️';
+  String get managedProvidersJsonPathSeeAlso =>
+      'See \$ syntax in Usage API and JSON parsing ℹ️';
 
   @override
   String get managedProvidersTemplateVariablesSeeAlsoQuery =>
-      'See brace syntax in Query ℹ️';
+      'See brace syntax in Usage API and JSON parsing ℹ️';
 
   @override
   String get managedProvidersTemplateVariablesSeeAlsoCredentials =>
-      'See brace syntax in Credentials ℹ️';
+      'See brace syntax in Credential source and delivery ℹ️';
 
   @override
   String get managedProvidersReferenceSyntaxHelper =>
@@ -9768,6 +9814,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionUsageSortAscending => 'Sort ascending';
 
   @override
+  String get sessionUsageAccountAll => 'All accounts';
+
+  @override
   String get sessionUsageCliAll => 'All';
 
   @override
@@ -10116,70 +10165,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionUsageMaintenanceCompacted => 'Usage storage compacted.';
 
   @override
-  String get sessionUsageCursorTitle => 'Cursor usage';
-
-  @override
-  String get sessionUsageCursorHint =>
-      'Cursor\'s local transcripts do not include token counts. Import the CSV from cursor.com/dashboard/usage, or sync with the signed-in account.';
-
-  @override
-  String sessionUsageCursorImported(int count) {
-    return '$count dashboard events';
-  }
-
-  @override
-  String get sessionUsageCursorImportedSession => 'Cursor (imported)';
-
-  @override
-  String get sessionUsageCursorNoData => 'No Cursor dashboard usage imported.';
-
-  @override
-  String sessionUsageCursorLastUpdated(String time) {
-    return 'Last updated: $time';
-  }
-
-  @override
-  String get sessionUsageCursorImport => 'Import CSV';
-
-  @override
-  String get sessionUsageCursorSync => 'Sync';
-
-  @override
-  String get sessionUsageCursorClear => 'Remove';
-
-  @override
-  String get sessionUsageCursorLoginRequired =>
-      'Cursor is not signed in, or the session expired. Open Cursor and sign in again.';
-
-  @override
-  String get sessionUsageCursorRateLimited =>
-      'Cursor rate-limited the usage export. Try again later.';
-
-  @override
-  String get sessionUsageCursorNetworkFailed =>
-      'Could not reach cursor.com. Check the network and try again.';
-
-  @override
-  String get sessionUsageCursorInvalidCsv =>
-      'That file is not a Cursor usage CSV.';
-
-  @override
-  String get sessionUsageCursorFailed => 'Cursor usage import failed.';
-
-  @override
-  String sessionUsageCursorImportedToast(int count) {
-    return 'Imported $count Cursor usage events.';
-  }
-
-  @override
-  String sessionUsageCursorSyncedToast(int count) {
-    return 'Synced $count Cursor usage events.';
-  }
-
-  @override
-  String get sessionUsageCursorCleared => 'Removed imported Cursor usage.';
-
-  @override
   String get sessionUsageMaintenanceFailed =>
       'Couldn\'t compact usage storage.';
 
@@ -10215,4 +10200,172 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionUsageGroupName => 'Name';
+
+  @override
+  String get cursorAccountUsageSession => 'Cursor accounts';
+
+  @override
+  String get vaultPageTitle => 'Credential Vault';
+
+  @override
+  String get vaultPageSubtitle =>
+      'SSH passwords, private keys and provider API keys';
+
+  @override
+  String get vaultNewEntry => 'New entry';
+
+  @override
+  String get vaultSearchHint => 'Search title, fields or tags';
+
+  @override
+  String get vaultEmptyTitle => 'No entries yet';
+
+  @override
+  String get vaultEmptyHint =>
+      'Save SSH passwords, private keys or provider API keys here.';
+
+  @override
+  String get vaultStatusKeychain => 'System keychain · no unlock needed';
+
+  @override
+  String get vaultStatusEncrypted => 'Encrypted vault · locked';
+
+  @override
+  String get vaultStatusUnlocked => 'Encrypted vault · unlocked';
+
+  @override
+  String get vaultUnlock => 'Unlock';
+
+  @override
+  String get vaultLock => 'Lock now';
+
+  @override
+  String get vaultEnableEncryption => 'Enable encrypted vault';
+
+  @override
+  String get vaultDisableEncryption => 'Disable encrypted vault';
+
+  @override
+  String get vaultUnlockTitle => 'Unlock vault';
+
+  @override
+  String get vaultPassphrase => 'Master passphrase';
+
+  @override
+  String get vaultPassphraseConfirm => 'Confirm passphrase';
+
+  @override
+  String get vaultPassphraseMismatch => 'Passphrases do not match';
+
+  @override
+  String get vaultPassphraseRequired => 'Passphrase is required';
+
+  @override
+  String get vaultUnlockFailed => 'Could not unlock the vault';
+
+  @override
+  String get vaultWrongPassphraseHint =>
+      'Wrong passphrase or damaged file. Data was not modified.';
+
+  @override
+  String get vaultCopy => 'Copy';
+
+  @override
+  String get vaultReveal => 'Reveal';
+
+  @override
+  String get vaultHide => 'Hide';
+
+  @override
+  String get vaultCopied => 'Copied';
+
+  @override
+  String get vaultOnlyCopy => 'Copy only';
+
+  @override
+  String get vaultReferences => 'Used by';
+
+  @override
+  String get vaultNoReferences => 'Not referenced yet';
+
+  @override
+  String get vaultDeleteTitle => 'Delete entry?';
+
+  @override
+  String get vaultDeleteReferenced => 'This entry is still used by:';
+
+  @override
+  String get vaultDeleteConfirm => 'Delete';
+
+  @override
+  String get vaultCancel => 'Cancel';
+
+  @override
+  String get vaultSave => 'Save';
+
+  @override
+  String get vaultEntryTitle => 'Title';
+
+  @override
+  String get vaultEntryType => 'Type';
+
+  @override
+  String get vaultEntryTags => 'Tags (comma separated)';
+
+  @override
+  String get vaultEntryNotes => 'Notes';
+
+  @override
+  String get vaultEntryFavorite => 'Favorite';
+
+  @override
+  String get vaultTypeSshPassword => 'SSH password';
+
+  @override
+  String get vaultTypeSshPrivateKey => 'SSH private key';
+
+  @override
+  String get vaultTypeApiKey => 'Provider API key';
+
+  @override
+  String get vaultTypeLogin => 'Login';
+
+  @override
+  String get vaultTypeToken => 'Token';
+
+  @override
+  String get vaultTypeSecureNote => 'Secure note';
+
+  @override
+  String get vaultTypeCustom => 'Custom';
+
+  @override
+  String get sshCredentialSource => 'Credentials';
+
+  @override
+  String get sshCredentialSourceKeychain => 'This device\'s keychain';
+
+  @override
+  String get sshCredentialVaultDeleted => 'Deleted vault entry';
+
+  @override
+  String get sshSaveToVault => 'Save to vault';
+
+  @override
+  String get sshMigrateToVault => 'Move to vault';
+
+  @override
+  String get sshVaultBadge => 'Vault';
+
+  @override
+  String get vaultLockedSaveBlocked => 'Unlock the vault to save credentials.';
+
+  @override
+  String get vaultUnavailable => 'Credential vault is unavailable.';
+
+  @override
+  String get vaultStoredInVault => 'Stored in vault';
+
+  @override
+  String get vaultLockedQueryBlocked => 'Unlock the vault to query usage.';
 }

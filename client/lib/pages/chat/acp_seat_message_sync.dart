@@ -17,6 +17,10 @@ bool shouldShowAcpHistoryLoading({
 /// Handshake starts with an empty cubit. Publishing that list would wipe a
 /// landing pending bubble until [AcpChatRuntimeCubit.start] finishes, and
 /// would flash the empty-history pane before JSONL hydrate.
+///
+/// A live bubble can also arrive *before* hydrate (lazy attach-then-send).
+/// Publishing only that bubble would replace the snapshot-painted transcript,
+/// so an unhydrated cubit never overwrites a seat that already has messages.
 bool shouldPublishAcpSeatMessages({
   required List<AiMessage> cubitMessages,
   required AcpChatPhase phase,
@@ -29,6 +33,7 @@ bool shouldPublishAcpSeatMessages({
   )) {
     return false;
   }
+  if (!historyHydrated && seatHasMessages) return false;
   if (cubitMessages.isEmpty &&
       phase == AcpChatPhase.launching &&
       seatHasMessages) {

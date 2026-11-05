@@ -15,7 +15,12 @@ import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
+import '../../services/ssh/ssh_profile_vault_writer.dart';
+import '../../services/vault/credential_capture.dart';
+import '../../services/vault/vault_service.dart';
+import '../../services/vault/vault_unlock_gate.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
+import '../vault/vault_secret_reveal.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
 
 /// Desktop settings: Orca-style modal for adding/editing an SSH target.
@@ -98,6 +103,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       authType: _usesPasswordAuth
           ? SshAuthType.password
           : SshAuthType.privateKey,
+      vaultEntryId: widget.initialProfile?.vaultEntryId,
       createdAt: existing == null || existing.createdAt == 0
           ? now
           : existing.createdAt,
@@ -105,9 +111,11 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     );
   }
 
-  bool get _usesPasswordAuth =>
-      _identityFileController.text.trim().isEmpty &&
-      _passwordController.text.isNotEmpty;
+  bool get _usesPasswordAuth {
+    if (_identityFileController.text.isNotEmpty) return false;
+    if (_passwordController.text.isNotEmpty) return true;
+    return widget.initialProfile?.authType == SshAuthType.password;
+  }
 
   Future<void> _browseIdentityFile() async {
     final result = await FilePicker.platform.pickFiles(
@@ -132,25 +140,6 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     return file.readAsString();
   }
 
-  Future<void> _persistCredentials(SshProfile profile) async {
-    final store = context.read<SshCredentialStore>();
-    if (_usesPasswordAuth) {
-      await store.savePassword(profile.id, _passwordController.text);
-      return;
-    }
-    final identityPath = _identityFileController.text.trim();
-    if (identityPath.isNotEmpty) {
-      final pem = await _readIdentityFile();
-      if (pem != null && pem.isNotEmpty) {
-        await store.savePrivateKey(profile.id, pem);
-      }
-    }
-    final passphrase = _passphraseController.text;
-    if (passphrase.isNotEmpty) {
-      await store.savePrivateKeyPassphrase(profile.id, passphrase);
-    }
-  }
-
   Future<SshProfile?> _save({required bool notify}) async {
     if (_formKey.currentState?.validate() != true) return null;
     final profile = _buildProfile();
@@ -164,40 +153,82 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       );
       return null;
     }
-    await context.read<SshProfileRepository>().save(profile);
-    var credentialsSaved = true;
     try {
-      await _persistCredentials(profile);
-    } on Object {
-      credentialsSaved = false;
-    }
-    if (!mounted) return profile;
-    if (!credentialsSaved) {
-      AppToast.show(
-        context,
-        message: context.l10n.sshProfileFormCredentialSaveFailed,
-        variant: TpToastVariant.warning,
+      final linked = (widget.initialProfile?.vaultEntryId ?? '').isNotEmpty;
+      final capture = context.read<VaultCredentialCapture>();
+      final unlockGate = context.read<VaultUnlockGate>();
+      final repository = context.read<SshProfileRepository>();
+      final credentialStore = context.read<SshCredentialStore>();
+      final usesPassword = _usesPasswordAuth;
+      final privateKeyPem = usesPassword
+          ? ''
+          : (await _readIdentityFile() ?? '');
+      final inputs = sshEditorSecretInputs(
+        authType: usesPassword ? SshAuthType.password : SshAuthType.privateKey,
+        linked: linked,
+        passwordText: _passwordController.text,
+        privateKeyPem: privateKeyPem,
+        passphraseText: _passphraseController.text,
       );
+      final result = await saveSshProfileWithVault(
+        profile: profile,
+        password: inputs.password,
+        privateKey: inputs.privateKey,
+        passphrase: inputs.passphrase,
+        capture: capture,
+        unlockGate: unlockGate,
+        repository: repository,
+        credentialStore: credentialStore,
+      );
+      if (!mounted) return result.profile;
+      if (notify) {
+        await context.read<SshProfileCubit>().load();
+        if (mounted) Navigator.of(context).pop();
+      }
+      return result.profile;
+    } on VaultSaveBlockedException {
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.vaultLockedSaveBlocked,
+          variant: TpToastVariant.error,
+        );
+      }
+      return null;
+    } on Object {
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.sshProfileFormCredentialSaveFailed,
+          variant: TpToastVariant.warning,
+        );
+      }
+      return null;
     }
-    if (notify) {
-      await context.read<SshProfileCubit>().load();
-      if (mounted) Navigator.of(context).pop();
-    }
-    return profile;
   }
 
   Future<void> _testConnection() async {
     if (_formKey.currentState?.validate() != true) return;
     setState(() => _testing = true);
     final credentialStore = context.read<SshCredentialStore>();
-    final sshClientFactory =
-        context.read<TerminalTransportFactory>().sshClientFactory;
+    final sshClientFactory = context
+        .read<TerminalTransportFactory>()
+        .sshClientFactory;
     try {
       final profile = _buildProfile();
+      final linkedId = widget.initialProfile?.vaultEntryId;
       String? password;
       String? privateKey;
       String? passphrase;
-      if (_usesPasswordAuth) {
+      if (linkedId != null && linkedId.isNotEmpty) {
+        final vault = context.read<VaultService>();
+        if (_usesPasswordAuth) {
+          password = await vault.readField(linkedId, 'password');
+        } else {
+          privateKey = await vault.readField(linkedId, 'privateKey');
+          passphrase = await vault.readField(linkedId, 'passphrase');
+        }
+      } else if (_usesPasswordAuth) {
         password = _passwordController.text;
       } else {
         privateKey = await _readIdentityFile();
@@ -208,9 +239,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
             ? await credentialStore.loadPrivateKeyPassphrase(profile.id)
             : _passphraseController.text;
       }
-      await SshProfileConnectionTester(
-        clientFactory: sshClientFactory,
-      ).test(
+      await SshProfileConnectionTester(clientFactory: sshClientFactory).test(
         profile,
         password: password,
         privateKey: privateKey,
@@ -315,6 +344,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
             onPressed: busy ? null : _browseIdentityFile,
             icon: const Icon(Icons.folder_open_outlined),
           ),
+          onChanged: () => setState(() {}),
         ),
         const SizedBox(height: 12),
         _field(
@@ -334,6 +364,12 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
               : l10n.sshProfileFormPasswordHint,
           helper: l10n.sshProfileFormPasswordHelper,
           obscure: true,
+          onChanged: () => setState(() {}),
+          onReveal: () => revealVaultSecret(
+            context,
+            widget.initialProfile?.vaultEntryId,
+            'password',
+          ),
         ),
       ],
     );
@@ -398,9 +434,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
                 children: [
                   Flexible(
                     fit: FlexFit.loose,
-                    child: SingleChildScrollView(
-                      child: formFields,
-                    ),
+                    child: SingleChildScrollView(child: formFields),
                   ),
                   actions,
                 ],
@@ -421,6 +455,8 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     bool obscure = false,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    VoidCallback? onChanged,
+    Future<String?> Function()? onReveal,
   }) {
     return TpFormField<String>(
       id: id,
@@ -442,7 +478,11 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
             controller: controller,
             focusNode: state.focusNode,
             keyboardType: keyboardType,
-            onChanged: state.didChange,
+            onReveal: onReveal,
+            onChanged: (value) {
+              state.didChange(value);
+              onChanged?.call();
+            },
             decoration: decoration,
           );
         }
@@ -450,7 +490,10 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           controller: controller,
           focusNode: state.focusNode,
           keyboardType: keyboardType,
-          onChanged: state.didChange,
+          onChanged: (value) {
+            state.didChange(value);
+            onChanged?.call();
+          },
           decoration: decoration,
         );
       },

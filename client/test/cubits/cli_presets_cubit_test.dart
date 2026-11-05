@@ -130,4 +130,40 @@ void main() {
     // Should not add — name must be non-blank
     expect(cubit.state.presets, isEmpty);
   });
+
+  test('markPresetUsed updates lastUsedAt and persists', () async {
+    await cubit.load();
+    await cubit.addPreset(
+      name: 'Used',
+      cli: CliTool.claude,
+      provider: 'p',
+      model: 'm',
+    );
+    final id = cubit.state.presets.first.id;
+    expect(cubit.state.presets.first.lastUsedAt, 0);
+
+    await cubit.markPresetUsed(id);
+
+    final usedAt = cubit.state.presets.first.lastUsedAt;
+    expect(usedAt, greaterThan(0));
+
+    final cubit2 = CliPresetsCubit(repository: repo);
+    await cubit2.load();
+    expect(cubit2.state.presets.first.lastUsedAt, usedAt);
+  });
+
+  test('markPresetUsed is a no-op for unknown id', () async {
+    await cubit.load();
+    await cubit.addPreset(
+      name: 'Keep',
+      cli: CliTool.claude,
+      provider: 'p',
+      model: 'm',
+    );
+    final before = cubit.state.presets;
+
+    await cubit.markPresetUsed('missing-id');
+
+    expect(cubit.state.presets, before);
+  });
 }

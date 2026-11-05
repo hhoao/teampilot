@@ -9,6 +9,7 @@ import 'package:teampilot/services/acp/acp_connection.dart';
 import 'package:teampilot/services/acp/acp_frame_logger.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
 import 'package:teampilot/services/acp/acp_transport.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/acp.dart';
 import 'package:teampilot/services/cli/gemini/capabilities/acp.dart';
 
 void main() {
@@ -114,7 +115,38 @@ void main() {
     expect(caps.fs?.writeTextFile, isFalse);
     expect(caps.terminal, isFalse);
     expect(caps.session, isNull);
+    expect(caps.meta['subagents'], isNull);
   });
+
+  test(
+    'cursor advertises subagents so a finished child resumes the parent',
+    () async {
+      final localAgent = acpd_test.MockAgent();
+      final localTransport = _PairAcpTransport(localAgent.clientTransport);
+      final cursor = AcpAgentConnection(
+        transport: localTransport,
+        logger: AcpFrameLogger(mirrorToLog: false),
+        translator: const CursorAcpTranslator(),
+      );
+      addTearDown(() async {
+        await cursor.dispose();
+        await localAgent.close();
+      });
+      acpd.InitializeRequest? seen;
+      localAgent.connection.onRequest('initialize', (params) {
+        seen = acpd.InitializeRequest.fromJson(
+          (params! as Map).cast<String, Object?>(),
+        );
+        return const acpd.InitializeResponse(
+          protocolVersion: acpd.ProtocolVersion.v1,
+        ).toJson();
+      });
+
+      await cursor.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+
+      expect(seen!.clientCapabilities!.meta['subagents'], isTrue);
+    },
+  );
 
   test('capabilities default to false when agent declares nothing', () async {
     stubInitialize();
@@ -208,47 +240,54 @@ void main() {
     );
   });
 
-  test('authenticate does not wrap TimeoutException as not-logged-in', () async {
-    stubInitialize();
-    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
-    agent.connection.onRequest('authenticate', (params) {
-      return Completer<Map<String, dynamic>>().future;
-    });
+  test(
+    'authenticate does not wrap TimeoutException as not-logged-in',
+    () async {
+      stubInitialize();
+      await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+      agent.connection.onRequest('authenticate', (params) {
+        return Completer<Map<String, dynamic>>().future;
+      });
 
-    await expectLater(
-      conn.authenticate(
-        'cursor_login',
-        timeout: const Duration(milliseconds: 20),
-      ),
-      throwsA(isA<TimeoutException>()),
-    );
-  });
+      await expectLater(
+        conn.authenticate(
+          'cursor_login',
+          timeout: const Duration(milliseconds: 20),
+        ),
+        throwsA(isA<TimeoutException>()),
+      );
+    },
+  );
 
-  test('negotiatedCapabilities is null before initialize and non-null after',
-      () async {
-    expect(conn.negotiatedCapabilities, isNull);
-    stubInitialize();
-    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
-    expect(conn.negotiatedCapabilities, isNotNull);
-    expect(conn.negotiatedCapabilities!.loadSession, isFalse);
-  });
+  test(
+    'negotiatedCapabilities is null before initialize and non-null after',
+    () async {
+      expect(conn.negotiatedCapabilities, isNull);
+      stubInitialize();
+      await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+      expect(conn.negotiatedCapabilities, isNotNull);
+      expect(conn.negotiatedCapabilities!.loadSession, isFalse);
+    },
+  );
 
-  test('loadSession sends session/load with the stored id and returns it',
-      () async {
-    stubInitialize();
-    Map<String, Object?>? seen;
-    agent.connection.onRequest('session/load', (params) {
-      seen = (params! as Map).cast<String, Object?>();
-      return acpd.LoadSessionResponse().toJson();
-    });
-    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+  test(
+    'loadSession sends session/load with the stored id and returns it',
+    () async {
+      stubInitialize();
+      Map<String, Object?>? seen;
+      agent.connection.onRequest('session/load', (params) {
+        seen = (params! as Map).cast<String, Object?>();
+        return acpd.LoadSessionResponse().toJson();
+      });
+      await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
 
-    final session = await conn.loadSession(sessionId: 'agent-9', cwd: '/w');
+      final session = await conn.loadSession(sessionId: 'agent-9', cwd: '/w');
 
-    expect(seen!['sessionId'], 'agent-9');
-    expect(seen!['cwd'], '/w');
-    expect(session.sessionId, 'agent-9');
-  });
+      expect(seen!['sessionId'], 'agent-9');
+      expect(seen!['cwd'], '/w');
+      expect(session.sessionId, 'agent-9');
+    },
+  );
 
   test('resumeSession sends session/resume', () async {
     stubInitialize();

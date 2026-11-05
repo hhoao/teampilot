@@ -123,7 +123,7 @@ void main() {
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('Credential details'));
+    await tester.tap(find.text('Credential source and delivery'));
     await tester.pumpAndSettle();
 
     // Open the mode picker and choose the provider row.

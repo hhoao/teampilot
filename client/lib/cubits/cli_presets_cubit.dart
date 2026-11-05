@@ -132,6 +132,17 @@ class CliPresetsCubit extends Cubit<CliPresetsState> {
     await _persist(next);
   }
 
+  /// Records that [id] was selected in a compose cascade presets menu.
+  Future<void> markPresetUsed(String id) async {
+    final index = state.presets.indexWhere((p) => p.id == id);
+    if (index < 0) return;
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final next = List<CliPreset>.from(state.presets);
+    next[index] = next[index].copyWith(lastUsedAt: now);
+    await _persist(next);
+  }
+
   Future<void> _persist(List<CliPreset> presets) async {
     final saved = await _repository.save(presets);
     emit(state.copyWith(presets: saved));

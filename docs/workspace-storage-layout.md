@@ -34,6 +34,9 @@ Typical `<teampilotRoot>` paths:
   automations/catalog.json       # global automation sidebar index
   cli-presets.json
   ssh_profiles/
+  vault/
+    vault.json                   # optional: master-passphrase encrypted credential vault
+    vault.json.bak               # previous copy kept when encryption is disabled
   targets.json                   # runtime targets registry (local / WSL / SSH)
   team-hub/                      # Team Hub template registry + cache
   member-hub/                    # Expert Hub catalog UX state + local templates
@@ -43,6 +46,16 @@ Typical `<teampilotRoot>` paths:
   notifications.json
   event-transport.json           # loopback Event Transport advertisement (desktop server)
 ```
+
+`vault/` is **device-local** data (same pin as `ssh_profiles/`): Android Connect can
+rebind the home plane to a remote host, and the vault must not follow it. The default
+backend is the OS keychain (`teampilot.vault.v1.document`); after enabling encryption
+the document lives in `vault/vault.json`.
+
+Credentials are **vault-first**: SSH passwords/keys/relay grants, provider API keys,
+managed-provider (balance/usage) credentials and the GitHub token are captured into the
+vault on save. Legacy keychain entries and `providers.json` `apiKey` values are imported
+once in the background (marker: `VaultDocument.legacyImportVersion`) and then deleted.
 
 ## Workspace directory
 
