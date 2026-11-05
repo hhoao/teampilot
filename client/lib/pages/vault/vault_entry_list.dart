@@ -35,22 +35,24 @@ class VaultEntryList extends StatelessWidget {
             centered: true,
           );
         }
-        return Column(
-          children: [
-            for (final entry in state.entries)
-              ListTile(
-                key: Key('vault-entry-${entry.id}'),
-                leading: Icon(
-                  entry.favorite ? Icons.star : Icons.key_outlined,
-                ),
-                title: Text(entry.title),
-                subtitle: Text(
-                  '${vaultTypeLabel(l10n, entry.type)} · '
-                  '${entry.fields['username'] ?? entry.fields['provider'] ?? ''}',
-                ),
-                onTap: () => onOpen(entry),
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          itemCount: state.entries.length,
+          itemBuilder: (context, index) {
+            final entry = state.entries[index];
+            return ListTile(
+              key: Key('vault-entry-${entry.id}'),
+              leading: Icon(
+                entry.favorite ? Icons.star : Icons.key_outlined,
               ),
-          ],
+              title: Text(entry.title),
+              subtitle: Text(
+                '${vaultTypeLabel(l10n, entry.type)} · '
+                '${entry.fields['username'] ?? entry.fields['provider'] ?? ''}',
+              ),
+              onTap: () => onOpen(entry),
+            );
+          },
         );
       },
     );

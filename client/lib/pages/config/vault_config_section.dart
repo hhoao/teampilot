@@ -15,12 +15,7 @@ class VaultConfigSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (showHeading) WorkspacePaneHeader(title: context.l10n.vaultPageTitle),
-        const Expanded(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(16),
-            child: VaultPageBody(),
-          ),
-        ),
+        const Expanded(child: VaultPageBody()),
       ],
     );
   }
