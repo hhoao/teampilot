@@ -578,7 +578,10 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final paintedTitle = rowContent.titleForPaint(l10n);
 
     // Leading area: shared 24×24 slot — indicator (idle) ↔ drag handle (hover).
-    // Waiting (needs-you) wins over working, which wins over background work.
+    // Waiting (needs-you) wins over working, which wins over background work:
+    // the spinner says a turn is answering (input queues behind it), the
+    // breathing hourglass says the seat is parked on background work and new
+    // input starts a fresh turn immediately.
     // The pod ChangeNotifier flips `phase` connecting→running mid-call; select
     // it so the indicator rebuilds on that transition without a global emit.
     final connecting = context.select<ChatCubit, bool>(
@@ -943,8 +946,9 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   }
 
   /// Leading status slot for the row. Waiting (needs-you) wins over working,
-  /// which wins over background work. Background work uses the same spinner
-  /// as a live turn.
+  /// which wins over background work. Background work gets the breathing
+  /// hourglass, not the turn spinner: the agent is not answering, so a new
+  /// message starts a fresh turn instead of queuing behind one.
   Widget _sessionIndicator({
     required bool working,
     required bool waiting,

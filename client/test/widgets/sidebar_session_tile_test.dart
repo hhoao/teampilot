@@ -556,7 +556,7 @@ void main() {
     await _dismissContextMenu(tester);
   });
 
-  testWidgets('background lease shows the running spinner', (tester) async {
+  testWidgets('background lease shows the breathing hourglass', (tester) async {
     final leases = SeatLeaseCubit(pruneInterval: null);
     final chatCubit = _RecordingChatCubit(seatLeaseCubit: leases);
     final (attention, automationCubit) = _tileCubits();
@@ -585,13 +585,14 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(SessionWorkingSpinner), findsOneWidget);
+    expect(find.byType(SessionBackgroundWorkMarker), findsOneWidget);
+    expect(find.byType(SessionWorkingSpinner), findsNothing);
     final l10n = AppLocalizations.of(
       tester.element(find.byType(SidebarSessionTile)),
     );
     expect(find.text(l10n.sessionHistoryBackgroundRunning), findsNothing);
 
-    // Releasing the lease drops the spinner back to the idle dot. The cubit
+    // Releasing the lease drops the marker back to the idle dot. The cubit
     // delivers the state change on a microtask, so give it a frame to land
     // before the selector rebuilds.
     leases.release(
@@ -601,7 +602,7 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
-    expect(find.byType(SessionWorkingSpinner), findsNothing);
+    expect(find.byType(SessionBackgroundWorkMarker), findsNothing);
     expect(find.text(l10n.sessionHistoryBackgroundRunning), findsNothing);
   });
 
@@ -634,7 +635,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(SessionWorkingSpinner), findsOneWidget);
+    expect(find.byType(SessionBackgroundWorkMarker), findsOneWidget);
     expect(find.text('Run full client test suite'), findsNothing);
   });
 

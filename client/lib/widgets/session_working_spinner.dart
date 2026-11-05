@@ -11,9 +11,11 @@ import '../utils/ui/app_keys.dart';
 /// the row background (e.g. a selected sidebar tile sits on primaryContainer).
 ///
 /// Precedence: [waiting] (permission / needs-you) wins over [working], which
-/// wins over [backgroundRunning]. Background work uses the same spinner as a
-/// live turn: a still glyph reads as frozen, and the row text next to it says
-/// what is actually running.
+/// wins over [backgroundRunning]. The last two are different affordances:
+/// [working] means the agent is answering this turn (new input is appended
+/// behind it), [backgroundRunning] means the agent is parked on out-of-turn
+/// work and a new message starts a fresh turn immediately. A still glyph reads
+/// as frozen, so the background marker breathes instead of spinning.
 class SessionWorkingIndicator extends StatelessWidget {
   const SessionWorkingIndicator({
     super.key,
@@ -52,9 +54,9 @@ class SessionWorkingIndicator extends StatelessWidget {
       return SessionWorkingSpinner(size: size, color: color);
     }
     if (backgroundRunning) {
-      return SessionWorkingSpinner(
+      return SessionBackgroundWorkMarker(
         size: size,
-        color: color ?? backgroundWorkColor,
+        color: backgroundWorkColor,
       );
     }
     final cs = Theme.of(context).colorScheme;
