@@ -194,6 +194,7 @@ import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
 import '../services/vault/credential_capture.dart';
 import '../services/vault/encrypted_vault_backend.dart';
+import '../services/vault/vault_access.dart';
 import '../services/vault/keychain_vault_backend.dart';
 import '../services/vault/legacy_import.dart';
 import '../services/vault/provider_credential_link.dart';
@@ -811,11 +812,12 @@ Future<AppShell> buildAppShell({
     ),
     masterKeyStore: const FlutterSecureKeyValueStore(),
   );
+  final vaultAccess = VaultAccess(vaultService);
   try {
     await vaultService.initialize();
     // Functional reads (SSH, providers, usage, GitHub) unlock silently with
     // the remembered master password; only an explicit reveal prompts.
-    await vaultService.tryAutoUnlock();
+    await vaultAccess.tryAutoUnlock();
   } on Object catch (error, stackTrace) {
     appLogger.w(
       '[vault] initialize failed: $error',
@@ -835,7 +837,7 @@ Future<AppShell> buildAppShell({
   // dial for that profile rides the loopback port instead of the stored host.
   final pairedRelayTunnels = PairedRelayTunnelRegistry(
     credentialStore: sshCredentialStore,
-    vault: vaultService,
+    vault: vaultAccess,
   );
   final sshKnownHostRepo = SharedPrefsSshKnownHostRepository(preferences);
   final sshConnectionEvents = SshConnectionEvents();
@@ -846,7 +848,7 @@ Future<AppShell> buildAppShell({
     onHostKeyPrompt: showSshHostKeyPrompt,
     dialTargetResolver: (profile) => pairedRelayTunnels.targetFor(profile.id),
     vaultCredentials: (entryId, field) =>
-        vaultService.readField(entryId, field),
+        vaultAccess.functionalField(entryId, field),
   );
 
   // P1: the home target (the machine the control plane runs on) is the single
@@ -1196,7 +1198,7 @@ Future<AppShell> buildAppShell({
           // (later-constructed) cubit's load-order dependency. Same disk,
           // same cache-free reads.
           appProviders: AppProviderRepository(storage: homeStorage),
-          vault: vaultService,
+          vault: vaultAccess,
         ),
         http: resolvedManagedProviderHttpClient!,
       );
@@ -1219,7 +1221,7 @@ Future<AppShell> buildAppShell({
     final vaultEntryId = vaultEntryIdFromCredentialLink(link);
     if (vaultEntryId != null) {
       try {
-        return await vaultService.readField(vaultEntryId, 'apiKey');
+        return await vaultAccess.functionalField(vaultEntryId, 'apiKey');
       } on Object {
         return null;
       }
@@ -1231,7 +1233,7 @@ Future<AppShell> buildAppShell({
     if (entryVaultEntryId.isNotEmpty) {
       final field = entry.endpointConfig.credentialField ?? 'apiKey';
       try {
-        return await vaultService.readField(entryVaultEntryId, field);
+        return await vaultAccess.functionalField(entryVaultEntryId, field);
       } on Object {
         return null;
       }

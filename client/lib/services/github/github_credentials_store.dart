@@ -1,6 +1,7 @@
 import '../../repositories/ssh_credential_store.dart';
 import '../../utils/logging/logger_utils.dart';
 import '../vault/credential_capture.dart';
+import '../vault/vault_capture_guard.dart';
 import '../vault/vault_service.dart';
 import '../vault/vault_unlock_gate.dart';
 import 'github_http.dart';
@@ -106,24 +107,18 @@ class GithubCredentialsStore {
     if (unlock != null && !await unlock()) {
       throw const VaultSaveBlockedException();
     }
-    final result = await capture.captureGithub(
-      token: token,
-      login: login,
-      source: source,
+    await captureThenPersist(
+      capture: capture,
+      captureEntry: () => capture.captureGithub(
+        token: token,
+        login: login,
+        source: source,
+      ),
+      persist: (result) async {
+        await _kv.write(_vaultEntryKey, result.entryId);
+        return result;
+      },
     );
-    try {
-      await _kv.write(_vaultEntryKey, result.entryId);
-    } on Object {
-      try {
-        await capture.rollback(result);
-      } on Object catch (error, stackTrace) {
-        AppLogger.instance.w(
-          '[vault] github capture rollback failed: ${error.runtimeType}',
-          stackTrace: stackTrace,
-        );
-      }
-      rethrow;
-    }
     await _clearLegacy();
     return true;
   }

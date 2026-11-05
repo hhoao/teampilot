@@ -13,6 +13,7 @@ import 'package:teampilot/services/provider_usage/managed_provider_secret_store.
 import 'package:teampilot/services/vault/encrypted_vault_backend.dart';
 import 'package:teampilot/services/vault/keychain_vault_backend.dart';
 import 'package:teampilot/services/vault/vault_crypto.dart';
+import 'package:teampilot/services/vault/vault_access.dart';
 import 'package:teampilot/services/vault/vault_service.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -168,7 +169,7 @@ void main() {
     );
     final store = ManagedProviderSecretStore(_FakeSecureKeyValueStore());
     await store.write('managed-provider:m2', {'apiKey': 'from-store'});
-    final resolver = ManagedProviderCredentialResolver(store, vault: vault);
+    final resolver = ManagedProviderCredentialResolver(store, vault: VaultAccess(vault));
     final provider = _secretEntry().copyWith(vaultEntryId: 'v1');
 
     final scope = await resolver.resolve(provider);

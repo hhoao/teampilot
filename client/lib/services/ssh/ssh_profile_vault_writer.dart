@@ -2,6 +2,7 @@ import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../vault/credential_capture.dart';
+import '../vault/vault_capture_guard.dart';
 import '../vault/vault_unlock_gate.dart';
 
 class SshProfileVaultWriteResult {
@@ -58,24 +59,23 @@ Future<SshProfileVaultWriteResult> saveSshProfileWithVault({
     }
   }
   final relayGrant = await credentialStore.loadRelayGrant(profile.id);
-  final result = await capture.captureSsh(
-    profile,
-    password: effectivePassword,
-    privateKey: effectivePrivateKey,
-    passphrase: effectivePassphrase,
-    relayGrant: relayGrant,
+  final result = await captureThenPersist(
+    capture: capture,
+    captureEntry: () => capture.captureSsh(
+      profile,
+      password: effectivePassword,
+      privateKey: effectivePrivateKey,
+      passphrase: effectivePassphrase,
+      relayGrant: relayGrant,
+    ),
+    persist: (captured) async {
+      await repository.save(
+        profile.copyWith(vaultEntryId: captured.entryId),
+      );
+      return captured;
+    },
   );
   final saved = profile.copyWith(vaultEntryId: result.entryId);
-  try {
-    await repository.save(saved);
-  } on Object {
-    try {
-      await capture.rollback(result);
-    } on Object {
-      // Preserve the repository error; the final review can spot orphans.
-    }
-    rethrow;
-  }
   try {
     await credentialStore.deleteAll(profile.id);
   } on Object {

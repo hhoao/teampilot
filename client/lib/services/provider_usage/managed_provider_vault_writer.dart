@@ -1,5 +1,6 @@
 import '../../models/managed_provider.dart';
 import '../vault/credential_capture.dart';
+import '../vault/vault_capture_guard.dart';
 import '../vault/vault_unlock_gate.dart';
 
 /// Captures managed-provider credentials, then persists the provider row.
@@ -22,20 +23,16 @@ Future<ManagedProvider> saveManagedProviderWithVault({
   if (!await unlockGate.ensureUnlocked()) {
     throw const VaultSaveBlockedException();
   }
-  final result = await capture.captureManaged(provider, {
-    ...existingValues,
-    ...secretValues,
-  });
-  final saved = provider.copyWith(vaultEntryId: result.entryId);
-  try {
-    await persist(saved);
-  } on Object {
-    try {
-      await capture.rollback(result);
-    } on Object {
-      // Preserve the persistence error.
-    }
-    rethrow;
-  }
-  return saved;
+  return captureThenPersist(
+    capture: capture,
+    captureEntry: () => capture.captureManaged(provider, {
+      ...existingValues,
+      ...secretValues,
+    }),
+    persist: (result) async {
+      final saved = provider.copyWith(vaultEntryId: result.entryId);
+      await persist(saved);
+      return saved;
+    },
+  );
 }

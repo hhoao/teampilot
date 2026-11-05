@@ -11,6 +11,7 @@ import 'package:teampilot/services/connect/phone_relay_tunnel.dart';
 import 'package:teampilot/services/vault/encrypted_vault_backend.dart';
 import 'package:teampilot/services/vault/keychain_vault_backend.dart';
 import 'package:teampilot/services/vault/vault_crypto.dart';
+import 'package:teampilot/services/vault/vault_access.dart';
 import 'package:teampilot/services/vault/vault_service.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -105,7 +106,7 @@ void main() {
     await credentials.saveRelayGrant('p1', 'legacy-grant');
     final registry = PairedRelayTunnelRegistry(
       credentialStore: credentials,
-      vault: vault,
+      vault: VaultAccess(vault),
     );
 
     expect(await registry.relayGrantFor(_pairedProfile), 'vault-grant');
@@ -121,7 +122,7 @@ void main() {
     await credentials.saveRelayGrant('p1', 'keychain-grant');
     final registry = PairedRelayTunnelRegistry(
       credentialStore: credentials,
-      vault: vault,
+      vault: VaultAccess(vault),
     );
 
     expect(await registry.relayGrantFor(_pairedProfile), 'keychain-grant');
@@ -142,7 +143,7 @@ void main() {
     await credentials.saveRelayGrant('p1', 'keychain-grant');
     final registry = PairedRelayTunnelRegistry(
       credentialStore: credentials,
-      vault: vault,
+      vault: VaultAccess(vault),
     );
 
     expect(await registry.relayGrantFor(_pairedProfile), 'keychain-grant');
@@ -173,7 +174,7 @@ void main() {
     final tunnel = _RecordingTunnel();
     final registry = PairedRelayTunnelRegistry(
       credentialStore: credentials,
-      vault: vault,
+      vault: VaultAccess(vault),
       tunnelFactory: () => tunnel,
     );
 
@@ -195,7 +196,7 @@ void main() {
     final tunnel = _RecordingTunnel();
     final registry = PairedRelayTunnelRegistry(
       credentialStore: credentials,
-      vault: vault,
+      vault: VaultAccess(vault),
       tunnelFactory: () => tunnel,
     );
 
