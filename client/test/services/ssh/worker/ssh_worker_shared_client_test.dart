@@ -113,6 +113,35 @@ void main() {
     );
     await shared.close();
   });
+
+  test('re-dials a new target after the old client closes', () async {
+    final clients = <_FakeSshClient>[];
+    final shared = SshWorkerSharedClient(
+      profileId: _profile.id,
+      openClient:
+          ({required profile, required target, required timeout}) async {
+            final client = _FakeSshClient();
+            clients.add(client);
+            return client;
+          },
+    );
+    final first = await shared.acquire(
+      profile: _profile,
+      target: _target,
+      timeout: const Duration(seconds: 1),
+    );
+    await first.close();
+
+    final second = await shared.acquire(
+      profile: _profile,
+      target: const SshWorkerDialTarget(host: 'other.test', port: 2222),
+      timeout: const Duration(seconds: 1),
+    );
+
+    expect(identical(first, second), isFalse);
+    expect(clients, hasLength(2));
+    await shared.close();
+  });
 }
 
 final class _FakeSshClient extends SSHClient {

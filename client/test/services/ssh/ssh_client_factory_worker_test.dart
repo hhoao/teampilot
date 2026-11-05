@@ -84,6 +84,27 @@ void main() {
     await factory.close();
   });
 
+  test('runOnStorageWithStdin accepts multi-MB stdin', () async {
+    final launcher = _StorageWorkerLauncher();
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      workerManager: SshProfileWorkerManager(launcher: launcher),
+    );
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'test',
+      host: 'example.test',
+      username: 'tester',
+    );
+    final stdin = List<int>.filled(1500 * 1024, 7);
+
+    await factory.runOnStorageWithStdin(profile, 'cat', stdin: stdin);
+
+    expect(launcher.runPayloads.single?.length, stdin.length);
+    await factory.close();
+  });
+
   test('runOnStorageWithStdin forwards the payload to the worker', () async {
     final launcher = _StorageWorkerLauncher();
     final factory = SshClientFactory(
