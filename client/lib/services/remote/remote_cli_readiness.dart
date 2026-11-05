@@ -62,7 +62,10 @@ final class RemoteCliFailed extends RemoteCliReadiness {
 
 /// Test seam: build the remote command runner for a profile without dartssh2.
 typedef RemoteRunnerForProfile =
-    SshCommandRunner Function(SshProfile profile, {required bool includeStderr});
+    SshCommandRunner Function(
+      SshProfile profile, {
+      required bool includeStderr,
+    });
 
 /// Builds the adapter install action for a profile over an existing runner.
 typedef AdapterInstallActionBuilder =
@@ -134,10 +137,14 @@ class RemoteCliReadinessService {
     required bool includeStderr,
   }) async {
     final override = _remoteRunnerFor;
-    if (override != null) return override(profile, includeStderr: includeStderr);
-    final client = await sshClientFactory.clientForStorage(profile);
-    return RemoteCliLocator.getRunnerForClient(
-      client,
+    if (override != null)
+      return override(profile, includeStderr: includeStderr);
+    // Keep the old eager-connect behavior: a dead transport must surface as a
+    // failed probe, not as "missing binary" after each command is swallowed.
+    await sshClientFactory.ensureStorageConnected(profile);
+    return RemoteCliLocator.runnerForStorage(
+      sshClientFactory,
+      profile,
       includeStderr: includeStderr,
     );
   }
@@ -234,11 +241,7 @@ class RemoteCliReadinessService {
     void Function(CliInstallProgress progress)? onProgress,
   }) {
     if (kind == CliBinaryKind.adapter) {
-      return _installAdapter(
-        target: target,
-        cli: cli,
-        onProgress: onProgress,
-      );
+      return _installAdapter(target: target, cli: cli, onProgress: onProgress);
     }
     return _installCli(target: target, cli: cli, onProgress: onProgress);
   }
@@ -331,8 +334,9 @@ class RemoteCliReadinessService {
         message: 'No SSH profile for target "${target.id}".',
       );
     }
-    final installer =
-        registry.capability<AcpSettingsCapability>(cli)?.adapterInstaller;
+    final installer = registry
+        .capability<AcpSettingsCapability>(cli)
+        ?.adapterInstaller;
     if (installer == null) {
       return RemoteCliFailed(
         targetId: target.id,
@@ -350,15 +354,13 @@ class RemoteCliReadinessService {
         cli: cli,
         run: run,
       );
-      final path = existing ??
+      final path =
+          existing ??
           await (_adapterInstallActionBuilder?.call(installer, profile, run) ??
-                  buildRemotePreflightAdapterInstall(
-                    installer: installer,
-                    profile: profile,
-                  ))(
-            run: run,
-            onProgress: onProgress ?? (_) {},
-          );
+              buildRemotePreflightAdapterInstall(
+                installer: installer,
+                profile: profile,
+              ))(run: run, onProgress: onProgress ?? (_) {});
       await rememberRemoteAcpAdapterPathIfNeeded(
         targetId: target.id,
         cli: cli,
@@ -422,8 +424,8 @@ class RemoteCliReadinessService {
     required CliTool cli,
     required SshCommandRunner run,
   }) async {
-    final stored =
-        (await acpAdapterPathOverride(target.id, cli.value) ?? '').trim();
+    final stored = (await acpAdapterPathOverride(target.id, cli.value) ?? '')
+        .trim();
     if (stored.isNotEmpty) return stored;
     final located = await AcpAdapterDiscovery(
       registry: registry,

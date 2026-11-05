@@ -104,7 +104,7 @@ class WorkspaceShellConnector {
   }
 
   Future<void> disposeRemotePlane(TerminalSession session) async {
-    session.sshMemberSession?.close();
+    await session.sshMemberSession?.close();
     session.sshMemberSession = null;
   }
 

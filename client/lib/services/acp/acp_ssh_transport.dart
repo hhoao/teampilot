@@ -2,14 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:dartssh2/dartssh2.dart';
-
+import '../ssh/worker/ssh_worker_exec_proxy.dart';
 import 'acp_transport.dart';
 
 /// Narrow seam over one non-PTY SSH exec channel.
 ///
 /// Keeps [AcpSshTransport] unit-testable without a real sshd; production wires
-/// [DartSsh2AcpChannel] over a vendored dartssh2 [SSHSession].
+/// [DartSsh2AcpChannel] over the profile worker's exec proxy.
 abstract interface class AcpSshChannel {
   /// Remote stdout (NDJSON bytes). Never merged with stderr.
   Stream<Uint8List> get stdout;
@@ -33,40 +32,35 @@ abstract interface class AcpSshChannel {
   void dispose();
 }
 
-/// [AcpSshChannel] over a vendored dartssh2 [SSHSession].
+/// [AcpSshChannel] over the profile worker's primitive exec proxy.
 ///
-/// A bare [SSHSession] from `SSHClient.execute` already separates stdout and
-/// stderr and exposes a writable stdin, which is exactly the ACP framing shape.
+/// The worker keeps dartssh2 on its own isolate; stdout/stderr stay separate
+/// and stdin is a bounded payload, which is exactly the ACP framing shape.
 final class DartSsh2AcpChannel implements AcpSshChannel {
-  DartSsh2AcpChannel(this._session);
+  DartSsh2AcpChannel(this._channel);
 
-  final SSHSession _session;
-
-  @override
-  Stream<Uint8List> get stdout => _session.stdout;
+  final SshWorkerExecChannel _channel;
 
   @override
-  Stream<Uint8List> get stderr => _session.stderr;
+  Stream<Uint8List> get stdout => _channel.stdout;
 
   @override
-  Future<int> get exitCode =>
-      // The vendored dartssh2 completes the exit future with `null` when the
-      // remote process is terminated by a signal (no exit-status request). Map
-      // that to a nonzero sentinel so the spawner's handshake race classifies
-      // it as a failed candidate rather than a clean `code 0` exit.
-      _session.done.then((_) => _session.exitCode ?? -1);
+  Stream<Uint8List> get stderr => _channel.stderr;
 
   @override
-  void write(Uint8List data) => _session.write(data);
+  Future<int> get exitCode => _channel.done.catchError((_) => -1);
 
   @override
-  Future<void> closeStdin() => _session.stdin.close();
+  void write(Uint8List data) => _channel.write(data);
 
   @override
-  void kill() => _session.kill(SSHSignal.KILL);
+  Future<void> closeStdin() async => _channel.closeStdin();
 
   @override
-  void dispose() => _session.close();
+  void kill() => _channel.kill();
+
+  @override
+  void dispose() => _channel.close();
 }
 
 /// [AcpTransport] over an SSH exec channel.

@@ -123,14 +123,14 @@ class ChatTab {
     await memberRemoteBusMounts.remove(memberId)?.close();
   }
 
-  void closeMemberSshSession(String memberId) {
-    memberSshSessions.remove(memberId)?.close();
+  Future<void> closeMemberSshSession(String memberId) async {
+    await memberSshSessions.remove(memberId)?.close();
   }
 
   /// Tears down one member's session-plane SSH connection and bus mount.
   Future<void> closeMemberRemotePlane(String memberId) async {
     await closeMemberRemoteBusMount(memberId);
-    closeMemberSshSession(memberId);
+    await closeMemberSshSession(memberId);
   }
 
   Future<void> disposeBus() async {
@@ -138,7 +138,7 @@ class ChatTab {
       await closeMemberRemoteBusMount(id);
     }
     for (final id in memberSshSessions.keys.toList()) {
-      closeMemberSshSession(id);
+      await closeMemberSshSession(id);
     }
     teamBus?.dispose();
     teamBus = null;

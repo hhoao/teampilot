@@ -307,14 +307,13 @@ class MixedTeamIntegrationHarness {
   Future<void> verifyMockReachableFromDocker(
     MixedTeamDockerRemote remote,
   ) async {
-    final client = await remote.sshClientFactory.clientForStorage(
-      remote.profile,
-    );
     final url = 'http://${DockerSshServer.hostGatewayHostname}:$mockPort/';
-    final out = await client.run(
+    final out = await remote.sshClientFactory.runOnStorage(
+      remote.profile,
       'wget -q -O /dev/null --timeout=5 $url 2>/dev/null; echo \$?',
+      stderr: false,
     );
-    final code = String.fromCharCodes(out).trim();
+    final code = String.fromCharCodes(out.stdout).trim();
     if (code != '0' && code != '8') {
       throw StateError(
         'Docker worker host cannot reach mock API at $url (wget exit $code)',
@@ -914,8 +913,11 @@ class MixedTeamDockerRemote {
       onHostKeyPrompt: (_) async => true,
     );
 
-    final client = await sshClientFactory.clientForStorage(profile);
-    await client.run('mkdir -p $remoteWorkspacePath');
+    await sshClientFactory.runOnStorage(
+      profile,
+      'mkdir -p $remoteWorkspacePath',
+      stderr: false,
+    );
 
     final resolver = RuntimeContextResolver(
       sshClientFactory: sshClientFactory,

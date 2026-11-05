@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -207,10 +206,10 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
       // scanning a new pairing code.
       final stalePairing =
           profile.pairedDesktopId != null &&
-          (((error is SshHostKeyMismatch || cause is SSHHostkeyError) &&
+          (((error is SshHostKeyMismatch || isSshHostKeyFailure(error)) &&
                   profile.hostKeyFingerprints.isNotEmpty) ||
               (profile.embeddedTarget && isTcpConnectionRefused(error)));
-      final authFailed = cause is SSHAuthFailError || cause is SSHHostkeyError;
+      final authFailed = isSshAuthFailure(error);
       final status = authFailed
           ? SshHostUiStatus.authFailed
           : SshHostUiStatus.error;

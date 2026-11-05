@@ -1,27 +1,25 @@
 import 'dart:convert';
 
-import 'package:dartssh2/dartssh2.dart';
-
 import '../../models/ssh_profile.dart';
 import '../../utils/logging/logger.dart';
 import '../event/event_transport_client.dart';
 import '../storage/home_storage.dart';
 import 'ssh_client_factory.dart';
 
-/// Wraps dartssh2 [SSHForwardChannel] as the event-package byte-stream seam.
+/// Adapts the SSH layer's app-owned forward into the event byte-stream seam.
 ///
 /// Lives next to the SSH layer so `services/event/` never imports dartssh2.
 final class SshForwardEventTransportChannel
     implements EventTransportByteChannel {
   SshForwardEventTransportChannel(this._channel);
 
-  final SSHForwardChannel _channel;
+  final SshForwardByteChannel _channel;
 
   @override
-  Stream<List<int>> get incoming => _channel.stream;
+  Stream<List<int>> get incoming => _channel.incoming;
 
   @override
-  void add(List<int> data) => _channel.sink.add(data);
+  void add(List<int> data) => _channel.add(data);
 
   @override
   Future<void> close() => _channel.close();
@@ -64,7 +62,10 @@ Future<EventTransportByteChannel> openSshEventTransportChannel({
   if (profile == null) {
     throw StateError('event-transport ssh home profile missing');
   }
-  final client = await sshClientFactory.clientForStorage(profile);
-  final forward = await client.forwardLocal('127.0.0.1', port);
+  final forward = await sshClientFactory.openForwardChannel(
+    profile,
+    '127.0.0.1',
+    port,
+  );
   return SshForwardEventTransportChannel(forward);
 }

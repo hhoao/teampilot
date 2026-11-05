@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
@@ -97,7 +99,7 @@ class WorkspaceTerminalConnectCoordinator {
     if (targetKind == RuntimeKind.ssh || targetKind == RuntimeKind.termux) {
       sshSession = await _connector.openSshSession(entry.spec);
       if (!stillLive(group, entry, generation) || !mounted()) {
-        sshSession?.close();
+        if (sshSession != null) unawaited(sshSession.close());
         return;
       }
       if (sshSession == null) {

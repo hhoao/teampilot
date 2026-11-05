@@ -502,6 +502,9 @@ class TerminalSession {
 
   void dispose() {
     if (isDisposed) return;
+    final sshMemberSession = this.sshMemberSession;
+    this.sshMemberSession = null;
+    if (sshMemberSession != null) unawaited(sshMemberSession.close());
     _launch.dispose();
     // Terminal path: this tracker is going away with the session. Never used on
     // unbind, where the listener must stay revivable.

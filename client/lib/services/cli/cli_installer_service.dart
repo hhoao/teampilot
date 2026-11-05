@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
 
@@ -474,27 +473,14 @@ class _SshCommandRunner {
       );
     }
     try {
-      final client = await factory.clientForStorage(profile);
-      final session = await client.execute(command.commandLine);
-      final stdout = await _decode(session.stdout);
-      final stderr = await _decode(session.stderr);
-      await session.done;
+      final result = await factory.runOnStorage(profile, command.commandLine);
       return CliInstallerCommandResult(
-        exitCode: session.exitCode ?? 0,
-        stdout: stdout,
-        stderr: stderr,
+        exitCode: result.exitCode ?? 0,
+        stdout: utf8.decode(result.stdout, allowMalformed: true),
+        stderr: utf8.decode(result.stderr, allowMalformed: true),
       );
     } on Object catch (e) {
       return CliInstallerCommandResult(exitCode: 1, stderr: e.toString());
     }
-  }
-
-  static Future<String> _decode(Stream<Uint8List> stream) async {
-    return utf8.decode(
-      await stream.fold<List<int>>(
-        <int>[],
-        (buffer, chunk) => buffer..addAll(chunk),
-      ),
-    );
   }
 }

@@ -79,6 +79,8 @@ import '../services/remote/remote_cli_readiness.dart';
 import '../services/editor_platform/editor_platform.dart';
 import '../services/chat/launch/launch_factory.dart';
 import '../services/launch_profile/team/launch_profile_selectors.dart';
+import '../services/ssh/worker/ssh_worker_entry.dart';
+import '../services/ssh/worker/ssh_worker_metrics.dart';
 import '../cubits/board_cubit.dart';
 import '../utils/session/workspace_tab_session_scope.dart';
 import '../cubits/mailbox_cubit.dart';
@@ -133,7 +135,6 @@ import '../cubits/managed_provider_cubit.dart';
 import '../cubits/managed_provider_usage_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../models/session_preferences.dart';
-import '../models/session_usage_dashboard.dart';
 import '../cubits/extension_cubit.dart';
 import '../cubits/hook_cubit.dart';
 import '../cubits/mcp_cubit.dart';
@@ -328,6 +329,8 @@ import '../services/hub_publish/http_github_api_client.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/ssh/ssh_connection_events.dart';
+import '../services/ssh/worker/ssh_profile_worker_manager.dart';
+import '../services/ssh/worker/ssh_worker_auth_bridge.dart';
 import '../widgets/ssh/ssh_host_key_prompt_dialog.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
 import '../services/ssh/mcp/session_ssh_mcp_executor.dart';
@@ -506,6 +509,7 @@ class AppShell {
     required this.workspaceToolsScopeRegistry,
     required this.workspaceRunRegistry,
     required this.sshClientFactory,
+    required this.sshProfileWorkerManager,
     required this.sshProfileConnectionCoordinator,
     required this.connectionModeService,
     required this.identityRepository,
@@ -621,6 +625,7 @@ class AppShell {
   final WorkspaceToolsScopeRegistry workspaceToolsScopeRegistry;
   final WorkspaceRunRegistry workspaceRunRegistry;
   final SshClientFactory sshClientFactory;
+  final SshProfileWorkerManager sshProfileWorkerManager;
   final SshProfileConnectionCoordinator sshProfileConnectionCoordinator;
   final ConnectionModeService connectionModeService;
   final LaunchProfileRepository identityRepository;
@@ -843,6 +848,28 @@ Future<AppShell> buildAppShell({
   );
   final sshKnownHostRepo = SharedPrefsSshKnownHostRepository(preferences);
   final sshConnectionEvents = SshConnectionEvents();
+  final sshWorkerAuthBridge = SshWorkerAuthBridge(
+    credentialStore: sshCredentialStore,
+    knownHostRepository: sshKnownHostRepo,
+    onHostKeyPrompt: showSshHostKeyPrompt,
+    dialTargetResolver: (profile) => pairedRelayTunnels.targetFor(profile.id),
+  );
+  const sshWorkerCaptureMode = String.fromEnvironment(
+    'SSH_WORKER_CAPTURE_MODE',
+    defaultValue: 'worker',
+  );
+  final sshWorkerMetrics =
+      bool.fromEnvironment('SSH_WORKER_METRICS', defaultValue: false)
+      ? SshWorkerMetrics(enabled: true, logDiagnostic: appLogger.i)
+      : null;
+  final sshWorkerLauncher = sshWorkerCaptureMode == 'direct'
+      ? DirectSshWorkerLauncher()
+      : const IsolateSshWorkerLauncher();
+  final sshProfileWorkerManager = SshProfileWorkerManager(
+    launcher: sshWorkerLauncher,
+    authChallengeHandlerFor: sshWorkerAuthBridge.handlerFor,
+    metrics: sshWorkerMetrics,
+  );
   final sshClientFactory = SshClientFactory(
     credentialStore: sshCredentialStore,
     knownHostRepository: sshKnownHostRepo,
@@ -851,6 +878,8 @@ Future<AppShell> buildAppShell({
     dialTargetResolver: (profile) => pairedRelayTunnels.targetFor(profile.id),
     vaultCredentials: (entryId, field) =>
         vaultAccess.functionalField(entryId, field),
+    workerAuthBridge: sshWorkerAuthBridge,
+    workerManager: sshProfileWorkerManager,
   );
 
   // P1: the home target (the machine the control plane runs on) is the single
@@ -878,9 +907,8 @@ Future<AppShell> buildAppShell({
   final sshProfileRepo = deviceLocalSshProfileRepository(nativeAppDataPath);
   Future<Map<CliTool, String>> locateRemoteClis(SshProfile profile) async {
     try {
-      final client = await sshClientFactory.clientForStorage(profile);
       return await cliExecutableDiscovery.locateRemote(
-        run: RemoteCliLocator.getRunnerForClient(client),
+        run: RemoteCliLocator.runnerForStorage(sshClientFactory, profile),
       );
     } on Object catch (error, stackTrace) {
       appLogger.w(
@@ -1940,9 +1968,7 @@ Future<AppShell> buildAppShell({
       if (profile == null) {
         throw StateError('SSH profile not found for this run target');
       }
-      final client = await sshClientFactory.clientForStorage(profile);
-      final session = await client.execute(shellCommand);
-      return SshProcessRunHandle(session);
+      return sshClientFactory.startProcess(profile, shellCommand);
     }
 
     final repoCloneHostRunner = DefaultRepoCloneHostRunner(
@@ -3548,6 +3574,7 @@ Future<AppShell> buildAppShell({
       workspaceToolsScopeRegistry: workspaceToolsScopeRegistry,
       workspaceRunRegistry: workspaceRunRegistry,
       sshClientFactory: sshClientFactory,
+      sshProfileWorkerManager: sshProfileWorkerManager,
       sshProfileConnectionCoordinator: sshProfileConnectionCoordinator,
       connectionModeService: connectionModeService,
       identityRepository: identityRepository,
@@ -3748,7 +3775,11 @@ class TeamPilotBootstrap extends StatefulWidget {
   final Future<String> defaultWorkspaceDirectoryFuture;
   final Future<void> homeIndexPrefetchFuture;
   final AppBootstrapCubit bootstrapCubit;
-  final Widget Function(AppShell shell) childBuilder;
+  final Widget Function(
+    AppShell shell,
+    Future<void> Function() stopEventTransport,
+  )
+  childBuilder;
 
   @override
   State<TeamPilotBootstrap> createState() => _TeamPilotBootstrapState();
@@ -3778,6 +3809,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
   );
 
   HomeStorage? _eventTransportHome;
+  Future<void>? _eventTransportStopFuture;
 
   late final EventTransportController _eventTransportController =
       EventTransportController(
@@ -3825,6 +3857,9 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
               );
             },
       );
+
+  Future<void> _stopEventTransport() => _eventTransportStopFuture ??=
+      _eventTransportController.apply(EventTransportRole.none);
 
   @override
   void initState() {
@@ -3974,7 +4009,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     // close — runs strictly after the last delivery. The projection also
     // guards its own broadcast add (`if (!_changes.isClosed)`), so even a late
     // event would be dropped rather than throw; the chain is belt-and-braces.
-    unawaited(_eventTransportController.apply(EventTransportRole.none));
+    unawaited(_stopEventTransport());
     unawaited(_eventDispatcher.stop().then((_) => _presenceProjection.close()));
     super.dispose();
   }
@@ -4019,7 +4054,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         if (shell.connectCubit != null)
           BlocProvider<ConnectCubit>.value(value: shell.connectCubit!),
       ],
-      child: widget.childBuilder(shell),
+      child: widget.childBuilder(shell, _stopEventTransport),
     );
   }
 }

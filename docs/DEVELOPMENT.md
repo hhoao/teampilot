@@ -138,11 +138,50 @@ before claiming done**, and launch it in the background so you keep working
 holds the lock — a queued full-suite run blocks every other agent's small
 verification behind it.
 
+### Profile-scoped SSH worker
+
+Production SSH protocol ownership is exercised through the profile-worker
+proxy. Use this focused worker/lifecycle loop while changing the worker, its
+storage/member facades, or lifecycle wiring:
+
+```bash
+cd client
+dart run tool/run_tests.dart \
+  test/services/ssh/worker/ssh_profile_worker_manager_test.dart \
+  test/services/ssh/worker/ssh_worker_storage_client_test.dart \
+  test/services/ssh/worker/ssh_worker_member_session_test.dart \
+  test/services/ssh/worker/ssh_worker_output_batcher_test.dart \
+  test/services/ssh/ssh_client_factory_worker_test.dart \
+  test/services/ssh/ssh_worker_forwarding_test.dart \
+  test/services/ssh/ssh_profile_connection_coordinator_test.dart \
+  test/services/terminal/terminal_transport_factory_test.dart
+flutter analyze --no-fatal-infos --no-fatal-warnings
+```
+
+The `SshClientFactory.connector`, injected reverse-tunnel factory, and
+`SshMemberSession.testing` are deterministic direct-mode test adapters. They
+are intentionally retained for unit tests; production construction does not
+use them and must keep dartssh2 ownership in the profile worker.
+
+Run real SSH coverage through the wrapper as well. The embedded shell test
+keeps its existing library-availability guard, and the Docker tests keep their
+existing Docker-availability guard:
+
+```bash
+cd client
+dart run tool/run_tests.dart --tags integration \
+  test/integration/embedded_pairing_test.dart \
+  test/integration/embedded_shell_pty_integration_test.dart
+dart run tool/run_tests.dart --tags integration \
+  test/integration/remote_materialize_cache_docker_test.dart \
+  test/integration/artifact_chunked_transfer_docker_test.dart
+```
+
 `teampilot_search` package (Rust engine + Dart wrapper):
 
 ```bash
 cd client/packages/teampilot_search
-cargo test --manifest-path rust/Cargo.toml && flutter test
+cargo test --manifest-path rust/Cargo.toml && dart test
 ```
 
 Linux PTY integration tests (local) — filter by secondary tag (see table below):
@@ -150,7 +189,8 @@ Linux PTY integration tests (local) — filter by secondary tag (see table below
 ```bash
 cd client
 flutter build linux --debug
-LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib flutter test --tags "integration && linux-pty"
+LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib \
+  dart run tool/run_tests.dart --tags "integration && linux-pty"
 ```
 
 ### Integration test tags
@@ -167,9 +207,9 @@ Examples:
 
 ```bash
 cd client
-flutter test --tags "integration && cross-platform"   # L1 only
-flutter test --tags "integration && linux-pty"        # L2 + L3 (CI)
-flutter test --tags "integration && docker"           # L3 + remote CLI install
+dart run tool/run_tests.dart --tags "integration && cross-platform"   # L1 only
+dart run tool/run_tests.dart --tags "integration && linux-pty"        # L2 + L3 (CI)
+dart run tool/run_tests.dart --tags "integration && docker"           # L3 + remote CLI install
 ```
 
 ### Embedded connect server
@@ -195,12 +235,9 @@ matrix, noted in the PR description. Run them with:
 
 ```bash
 cd client
-dart run tool/run_tests.dart --tags integration test/integration/embedded_pairing_test.dart
-
-flutter build linux --debug
-LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib \
-  flutter test --tags "integration && linux-pty" \
-    test/integration/embedded_shell_pty_integration_test.dart
+dart run tool/run_tests.dart --tags integration \
+  test/integration/embedded_pairing_test.dart \
+  test/integration/embedded_shell_pty_integration_test.dart
 ```
 
 ### Mock model gateway + CLI message matrix
@@ -219,7 +256,7 @@ cd tools/mock_model_gateway && dart test
 **L1 (client bus / cross-platform, no PTY):**
 
 ```bash
-cd client && flutter test --tags "integration && cross-platform"
+cd client && dart run tool/run_tests.dart --tags "integration && cross-platform"
 ```
 
 **L2 (CLI message matrix — real CLI + ChatCubit + PTY + gateway, Linux):**
@@ -228,7 +265,7 @@ cd client && flutter test --tags "integration && cross-platform"
 cd client
 flutter build linux --debug
 LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib \
-  flutter test --tags "integration && linux-pty" \
+  dart run tool/run_tests.dart --tags "integration && linux-pty" \
   test/integration/cli_message_matrix_*.dart
 ```
 
@@ -252,7 +289,7 @@ native **replicated** green; `placementFiltered` deferred (unit only).
 cd client
 flutter build linux --debug
 LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib \
-  flutter test test/integration/mixed_team_claude_docker_integration_test.dart --tags "integration && docker"
+  dart run tool/run_tests.dart test/integration/mixed_team_claude_docker_integration_test.dart --tags "integration && docker"
 ```
 
 L3 uses `Dockerfile.mixed` (`teampilot-it-ssh-mixed:latest`) with Node + `claude` baked in. Most wall time is **cold start** (Docker + two Claude PTYs + remote preflight locate); once both members are idle, bus ping/pong should complete in **seconds** (`kickoffAndWaitForPingPong` allows 30s per attempt). Bare-image install coverage remains `remote_cli_install_docker_test.dart`.
@@ -261,7 +298,7 @@ Remote CLI install over Docker SSH (needs Docker daemon + outbound network):
 
 ```bash
 cd client
-flutter test test/integration/remote_cli_install_docker_test.dart --tags "integration && docker"
+dart run tool/run_tests.dart test/integration/remote_cli_install_docker_test.dart --tags "integration && docker"
 ```
 
 Skips automatically when Docker is unavailable. First run builds `teampilot-it-ssh:latest` from `test/integration/docker/Dockerfile` (Debian + OpenSSH + socat, no Node/npm preinstalled).
@@ -313,7 +350,7 @@ You can still run `git tag vX.Y.Z && git push origin vX.Y.Z` (a local push trigg
 Changes under `client/` trigger [Client Build Verify](../.github/workflows/client-verify.yml):
 
 - **Four platforms** (Linux, Windows, macOS, Android): `flutter analyze` and `dart run tool/run_tests.dart`.
-- **Linux integration** (`integration-linux` job): L2 + L3 via `flutter test --tags "integration && linux-pty"` after `flutter build linux --debug`, global `claude` CLI, and a cached `Dockerfile.mixed` image.
+- **Linux integration** (`integration-linux` job): L2 + L3 via `dart run tool/run_tests.dart --tags "integration && linux-pty"` after `flutter build linux --debug`, global `claude` CLI, and a cached `Dockerfile.mixed` image.
 
 ### Local packaging examples
 

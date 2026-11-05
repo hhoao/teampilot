@@ -127,7 +127,7 @@ class RuntimeContextResolver {
         profile: profile,
         clientFactory: clientFactory,
       );
-      await clientFactory.sftpFor(profile);
+      await clientFactory.ensureStorageConnected(profile);
       final fs = SftpFilesystem(fileStore);
       return RuntimeContext(
         target: target,

@@ -61,11 +61,12 @@ void main() {
       final factory = sshFactory!;
 
       final profile = _profile.copyWith(port: docker.port);
-      final client = await factory.clientForStorage(
+      final run = RemoteCliLocator.runnerForStorage(
+        factory,
         profile,
         timeout: const Duration(seconds: 30),
       );
-      final run = RemoteCliLocator.getRunnerForClient(client);
+
 
       final install = buildRemotePreflightCliInstall(
         registry: CliToolRegistry.builtIn(),

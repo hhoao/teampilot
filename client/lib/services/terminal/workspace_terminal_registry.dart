@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:uuid/uuid.dart';
@@ -37,7 +39,9 @@ class WorkspaceTerminalEntry {
 
   void dispose() {
     bumpConnectGeneration();
-    session.sshMemberSession?.close();
+    final sshMemberSession = session.sshMemberSession;
+    session.sshMemberSession = null;
+    if (sshMemberSession != null) unawaited(sshMemberSession.close());
     session.disconnect();
     session.dispose();
     controller.dispose();

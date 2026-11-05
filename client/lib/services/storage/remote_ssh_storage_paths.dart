@@ -8,8 +8,7 @@ import '../ssh/ssh_client_factory.dart';
 import '../ssh/ssh_run_result.dart';
 import '../ssh/ssh_storage_io.dart';
 
-typedef SshRunCapture =
-    Future<SSHRunResult> Function(SSHClient client, String command);
+typedef SshRunCapture = Future<SSHRunResult> Function(String command);
 
 /// Home + TeamPilot app-data dir on a remote SSH host.
 class RemoteSshStoragePaths {
@@ -44,9 +43,8 @@ printf '%s\n' "$HOME_DIR" "$TP_DIR"
     final SSHRunResult result;
     final customRun = _runCommand;
     if (customRun != null) {
-      final client = await _clientFactory.clientForStorage(profile);
       result = await SshStorageIo.awaitOrThrow(
-        customRun(client, resolveCommand),
+        customRun(resolveCommand),
         timeout: SshStorageIo.locateTimeout,
         operation: 'remote path resolve',
       );

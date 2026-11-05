@@ -215,12 +215,10 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
     if (connectionMode.isRemoteWorkPlane) {
       final profile = _remoteSshProfile(context, connectionMode);
       if (profile == null) return null;
-      final client = await context.read<SshClientFactory>().clientForStorage(
-        profile,
-      );
+      final factory = context.read<SshClientFactory>();
       return ToolchainExecutableDiscovery().locateRemoteTool(
         toolId: widget.toolId,
-        run: RemoteCliLocator.getRunnerForClient(client),
+        run: RemoteCliLocator.runnerForStorage(factory, profile),
       );
     }
     return ToolchainExecutableDiscovery().locateLocalTool(widget.toolId);

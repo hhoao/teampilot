@@ -165,9 +165,7 @@ class WorkspaceRunPlatformFactory {
     if (profile == null) {
       throw StateError('SSH profile not found for this run target');
     }
-    final client = await factory.clientForStorage(profile);
-    final session = await client.execute(shellCommand);
-    return SshProcessRunHandle(session);
+    return factory.startProcess(profile, shellCommand);
   }
 
   String _resolveExtensionPath(String extensionId) {

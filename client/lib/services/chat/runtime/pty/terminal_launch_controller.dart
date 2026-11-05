@@ -315,12 +315,32 @@ final class TerminalLaunchController {
         feedPtyBytes(data);
       });
 
-      transport.done.then((code) {
-        if (_disposed ||
-            startGeneration != _transportStartGeneration ||
-            _transport != transport) {
-          return;
+      bool isCurrentTransport() =>
+          !_disposed &&
+          startGeneration == _transportStartGeneration &&
+          _transport == transport;
+
+      void failRunning(String message) {
+        if (_transport == transport) {
+          transport.close();
+          _transport = null;
         }
+        _teardownPtyState();
+        // Prefer failure UI so chat shows why the CLI stopped; finishSessionConnect
+        // inside failSessionConnect also refreshes isRunning.
+        final failed = onProcessFailed;
+        final exited = onProcessExited;
+        onProcessFailed = null;
+        onProcessExited = null;
+        if (failed != null) {
+          failed(message);
+        } else {
+          exited?.call();
+        }
+      }
+
+      void handleExit(int code) {
+        if (!isCurrentTransport()) return;
         if (_starting && !_startFailed) {
           if (_observation != null) {
             _observation!.notifyProcessExited(code);
@@ -335,9 +355,7 @@ final class TerminalLaunchController {
           );
           return;
         }
-        if (_phase != TerminalLaunchPhase.running) {
-          return;
-        }
+        if (_phase != TerminalLaunchPhase.running) return;
         if (code != 0) {
           final message = composeProcessExitFailureMessage(
             code: code,
@@ -348,22 +366,7 @@ final class TerminalLaunchController {
             '(executable: ${CliExecutableValidator.cliDisplayName(executable)})',
           );
           writeToDisplay?.call('\r\n$message\r\n');
-          if (_transport == transport) {
-            transport.close();
-            _transport = null;
-          }
-          _teardownPtyState();
-          // Prefer failure UI so chat shows why the CLI stopped; finishSessionConnect
-          // inside failSessionConnect also refreshes isRunning.
-          final failed = onProcessFailed;
-          final exited = onProcessExited;
-          onProcessFailed = null;
-          onProcessExited = null;
-          if (failed != null) {
-            failed(message);
-          } else {
-            exited?.call();
-          }
+          failRunning(message);
           return;
         }
         if (_transport == transport) {
@@ -374,7 +377,27 @@ final class TerminalLaunchController {
         final callback = onProcessExited;
         onProcessExited = null;
         callback?.call();
-      });
+      }
+
+      void handleTransportError(Object error, StackTrace stackTrace) {
+        if (!isCurrentTransport()) return;
+        final message = 'SSH terminal transport failed: $error';
+        if (_starting && !_startFailed) {
+          _handleStartFailure(message);
+          return;
+        }
+        if (_phase != TerminalLaunchPhase.running) return;
+        appLogger.w(
+          '[terminal] $message '
+          '(executable: ${CliExecutableValidator.cliDisplayName(executable)})',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        writeToDisplay?.call('\r\n$message\r\n');
+        failRunning(message);
+      }
+
+      transport.done.then(handleExit, onError: handleTransportError);
     } on Object catch (error, stackTrace) {
       if (_startTransportAborted(startGeneration)) {
         return;

@@ -31,6 +31,161 @@ dart run tool/dump_live_perf.dart --vm-uri http://127.0.0.1:PORT/AUTH/
 
 Do **not** open DevTools → Performance at the same time (it fights over the same timeline buffer). To inspect a flame chart later, open DevTools and **Load** the saved JSON (static file, no live refresh).
 
+### SSH profile-worker capture
+
+Profile-worker measurements are diagnostics-only. The app does not create a
+collector unless `SSH_WORKER_METRICS=true` is supplied at compile time. For a
+custom harness, inject the same collector explicitly:
+
+```dart
+final manager = SshProfileWorkerManager(
+  metrics: SshWorkerMetrics(enabled: true),
+);
+```
+
+Use these explicit app capture modes:
+
+- `SSH_WORKER_CAPTURE_MODE=direct` uses `DirectSshWorkerLauncher`, which runs
+  the worker actor in the app isolate and is the baseline.
+- `SSH_WORKER_CAPTURE_MODE=worker` uses `IsolateSshWorkerLauncher` and is the
+  candidate. It is also the default when the define is omitted.
+
+The collector logs aggregate snapshots only when a worker generation starts or
+shuts down. It never logs commands, paths, credentials, payloads, or per-byte
+events. `SshWorkerMetrics.snapshot.diagnosticContexts` exposes the bounded,
+sanitized correlation records observed by an injected collector. Each record
+contains only `profileId`, generation, plane, request ID, and stream ID. The
+snapshot also contains active-worker counts; request/connect/reconnect and
+shutdown latency samples; pending-message high-water mark; and terminal/SFTP
+byte totals, counts, and samples. Context and numeric sample lists retain the
+most recent 200 values by default; totals and counts remain exact for the
+collector's lifetime.
+
+For a measured cutover, use the same desktop, SSH server, profile, Flutter
+mode, terminal dimensions, and file corpus for a direct-mode baseline and a
+worker-mode candidate. Capture each scenario at least three times, preserve the
+raw JSON and sanitized aggregate metric log, and record the commit/ref for
+each run.
+
+1. Create an output directory, then start the direct baseline. Keep this
+   terminal open and exercise only the workload being captured:
+
+   ```bash
+   cd client
+   mkdir -p build/ssh-worker-capture
+   flutter run -d linux --profile \
+     --dart-define=PERF_DRIVER=true \
+     --dart-define=SSH_WORKER_CAPTURE_MODE=direct \
+     --dart-define=SSH_WORKER_METRICS=true
+   ```
+
+2. In a second terminal, retain the enabled collector's aggregate snapshots.
+   Profile builds persist these `AppLogger` info records rather than printing
+   them to the console:
+
+   ```bash
+   cd client
+   log_dir="${XDG_DATA_HOME:-$HOME/.local/share}/com.hhoa.teampilot/logs"
+   mkdir -p "$log_dir"
+   log_file="$log_dir/app_$(date +%F).log"
+   touch "$log_file"
+   tail -n 0 -F "$log_file" \
+     | rg --line-buffered 'SSH worker metrics' \
+     | tee build/ssh-worker-capture/direct-metrics.log
+   ```
+
+3. In a third terminal, collect one direct-mode dump while exercising a named
+   remote workload. This example records the PTY scenario for 30 seconds and
+   immediately prints the required summary:
+
+   ```bash
+   cd client
+   dart run tool/dump_live_perf.dart --seconds 30 \
+     --output build/ssh-worker-capture/direct-pty.json
+   dart run tool/analyze_performance_json.dart \
+     build/ssh-worker-capture/direct-pty.json --format summary \
+     | tee build/ssh-worker-capture/direct-pty-summary.txt
+   ```
+
+   Close the workload's member/storage/forward leases and either use the
+   profile disconnect action or wait for the 60-second idle shutdown before
+   ending the app. The shutdown line in `direct-metrics.log` contains the final
+   aggregate counts for the generation.
+
+4. Stop the direct app and log-tail commands normally. Start a fresh
+   worker-mode app with the same profile, host, build mode, terminal
+   dimensions, and corpus:
+
+   ```bash
+   cd client
+   flutter run -d linux --profile \
+     --dart-define=PERF_DRIVER=true \
+     --dart-define=SSH_WORKER_CAPTURE_MODE=worker \
+     --dart-define=SSH_WORKER_METRICS=true
+   ```
+
+   Repeat step 2 with `worker-metrics.log`, then capture and analyze the
+   matching worker run from another terminal:
+
+   ```bash
+   cd client
+   dart run tool/dump_live_perf.dart --seconds 30 \
+     --output build/ssh-worker-capture/worker-pty.json
+   dart run tool/analyze_performance_json.dart \
+     build/ssh-worker-capture/worker-pty.json --format summary \
+     | tee build/ssh-worker-capture/worker-pty-summary.txt
+   ```
+
+5. Repeat steps 1–4 at least three times for each workload, changing `pty` in
+   the output names to `sftp`, `members`, `connect`, or `memory`:
+
+   - sustained high-volume remote PTY output;
+   - concurrent SFTP reads and writes;
+   - several member sessions sharing one profile;
+   - cold connect and reconnect; and
+   - idle and active worker memory.
+
+   For memory on Linux, record app RSS immediately before the workload and
+   while it is active:
+
+   ```bash
+   ps -o pid=,rss=,etime=,cmd= -p "$(pgrep -n teampilot)" \
+     | tee -a build/ssh-worker-capture/worker-memory-rss.txt
+   ```
+
+   Repeat with the direct app and a `direct-memory-rss.txt` output. A Dart
+   isolate shares its process with the app, so this is application RSS in KiB,
+   not an attributable per-worker RSS measurement; label it accordingly.
+
+6. For every JSON dump, retain the summary's UI p50/p95/p99 and janky-frame
+   count. From the matching aggregate snapshot, retain terminal and SFTP
+   throughput (total bytes / timed scenario duration), request/connect/
+   reconnect latency, pending-message high-water mark, and active-worker
+   count. Do not copy raw SSH data into the capture notes.
+
+#### SSH cutover record
+
+No live SSH host was available while this instrumentation was added, so the
+following values are intentionally not populated. Do not substitute synthetic
+or local fake-worker results for remote measurements.
+
+| Scenario | Direct baseline | Worker candidate | Required record |
+|---|---|---|---|
+| High-volume remote PTY | Not captured — live SSH host unavailable | Not captured — live SSH host unavailable | UI p50/p95/p99, janky frames, terminal throughput |
+| Concurrent SFTP | Not captured — live SSH host unavailable | Not captured — live SSH host unavailable | UI p50/p95/p99, janky frames, SFTP throughput, queue high-water mark |
+| Shared-profile member sessions | Not captured — live SSH host unavailable | Not captured — live SSH host unavailable | UI p50/p95/p99, janky frames, active-worker count |
+| Cold connect / reconnect | Not captured — live SSH host unavailable | Not captured — live SSH host unavailable | connect/reconnect latency and active-worker count |
+| Idle / active memory | Not captured — live SSH host unavailable | Not captured — live SSH host unavailable | application RSS and active-worker count |
+
+The tagged host-free guard is useful for collector wiring only; it does not
+replace these live captures:
+
+```bash
+cd client
+dart run tool/run_tests.dart --tags performance \
+  test/integration/ssh_worker_performance_test.dart
+```
+
 **Scripted scenarios** (open a workspace / switch tabs) are separate; they navigate for you. See [Automated capture](#automated-capture-live-app--real-local-data) below.
 
 ### DevTools UI export (optional)

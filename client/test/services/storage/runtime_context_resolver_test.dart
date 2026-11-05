@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -14,8 +13,6 @@ import 'package:teampilot/services/termux/termux_config.dart';
 import 'package:teampilot/services/termux/termux_transport_profile.dart';
 
 class _MockSshClientFactory extends Mock implements SshClientFactory {}
-
-class _MockSftpClient extends Mock implements SftpClient {}
 
 class _FakePathResolver extends RemoteSshStoragePathResolver {
   _FakePathResolver({required super.clientFactory, required this.onResolve});
@@ -65,8 +62,7 @@ void main() {
 
   test('termux with working SSH transport resolves sftp context', () async {
     final factory = _MockSshClientFactory();
-    final sftp = _MockSftpClient();
-    when(() => factory.sftpFor(any())).thenAnswer((_) async => sftp);
+    when(() => factory.ensureStorageConnected(any())).thenAnswer((_) async {});
 
     final resolver = RuntimeContextResolver(
       sshClientFactory: factory,
@@ -94,14 +90,16 @@ void main() {
       ctx.appDataRoot,
       '/data/data/com.termux/files/home/.local/share/com.hhoa.teampilot',
     );
-    verify(() => factory.sftpFor(termuxProfile)).called(1);
+    verify(() => factory.ensureStorageConnected(termuxProfile)).called(1);
   });
 
   test(
     'termux SFTP failure with cached paths falls back without throwing',
     () async {
       final factory = _MockSshClientFactory();
-      when(() => factory.sftpFor(any())).thenThrow(StateError('sshd down'));
+      when(
+        () => factory.ensureStorageConnected(any()),
+      ).thenThrow(StateError('sshd down'));
 
       final resolver = RuntimeContextResolver(
         sshClientFactory: factory,
@@ -137,7 +135,9 @@ void main() {
 
   test('ssh SFTP failure with profile path cache soft-fails', () async {
     final factory = _MockSshClientFactory();
-    when(() => factory.sftpFor(any())).thenThrow(StateError('host down'));
+    when(
+      () => factory.ensureStorageConnected(any()),
+    ).thenThrow(StateError('host down'));
     final profile = SshProfile(
       id: 'p1',
       name: 'Remote',
@@ -168,7 +168,9 @@ void main() {
 
   test('ssh failure without cache rethrows', () async {
     final factory = _MockSshClientFactory();
-    when(() => factory.sftpFor(any())).thenThrow(StateError('host down'));
+    when(
+      () => factory.ensureStorageConnected(any()),
+    ).thenThrow(StateError('host down'));
     final profile = const SshProfile(
       id: 'p1',
       name: 'Remote',
@@ -194,7 +196,9 @@ void main() {
 
   test('termux failure without cache rethrows', () async {
     final factory = _MockSshClientFactory();
-    when(() => factory.sftpFor(any())).thenThrow(StateError('sshd down'));
+    when(
+      () => factory.ensureStorageConnected(any()),
+    ).thenThrow(StateError('sshd down'));
 
     final resolver = RuntimeContextResolver(
       sshClientFactory: factory,

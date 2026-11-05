@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:dartssh2/dartssh2.dart';
-
 import '../../models/ssh_profile.dart';
 import '../../utils/logging/logger.dart';
 import '../remote/remote_connection_monitor.dart';
@@ -84,7 +82,7 @@ class SshProfileConnectionCoordinator {
     Duration timeout = const Duration(seconds: 10),
   }) async {
     _userDisconnectLatched.remove(profile.id);
-    await _factory.clientForStorage(profile, timeout: timeout);
+    await _factory.ensureStorageConnected(profile, timeout: timeout);
     monitorFor(profile.id);
   }
 
@@ -221,13 +219,7 @@ class SshProfileConnectionCoordinator {
     _scheduleReconnect(profileId);
   }
 
-  bool _shouldSkipReconnect(Object error) {
-    if (error is SSHHostkeyError) return true;
-    if (error is SSHAuthAbortError && error.reason is SSHHostkeyError) {
-      return true;
-    }
-    return false;
-  }
+  bool _shouldSkipReconnect(Object error) => isSshHostKeyFailure(error);
 
   bool _shouldPreferDisconnectError(Object incoming, Object existing) {
     if (_shouldSkipReconnect(incoming) && !_shouldSkipReconnect(existing)) {
@@ -357,8 +349,7 @@ class SshProfileConnectionCoordinator {
     if (existing != null) return existing;
 
     final attempt = _factory
-        .clientForStorage(profile, timeout: timeout)
-        .then((_) {})
+        .ensureStorageConnected(profile, timeout: timeout)
         .whenComplete(() {
           _storageReconnects.remove(profile.id);
         });

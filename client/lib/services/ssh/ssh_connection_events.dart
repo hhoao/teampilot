@@ -1,7 +1,11 @@
-import 'ssh_client_factory.dart';
+typedef SshProfileTransportClosedHandler = void Function(
+  String profileId,
+  Object error,
+  StackTrace stackTrace,
+);
 
 /// Shared event sink for SSH connection lifecycle. Injected into
-/// [SshClientFactory] and [SshProfileConnectionCoordinator] at bootstrap so
+/// the SSH factory and reconnect coordinator at bootstrap so
 /// neither mutates the other after construction.
 class SshConnectionEvents {
   SshProfileTransportClosedHandler? onTransportClosed;

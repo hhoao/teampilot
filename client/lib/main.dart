@@ -225,6 +225,8 @@ class _CleanupWindowListener extends WindowListener {
     this.chatCubit,
     this.automationScheduler,
     this.workspaceTerminalRegistry,
+    this.sshClientFactory,
+    this.stopEventTransport,
     this.gitRepoStore,
     this.workspaceFileTreeStore,
     this.workspaceWorktreeRegistry,
@@ -234,15 +236,19 @@ class _CleanupWindowListener extends WindowListener {
   final ChatCubit chatCubit;
   final AutomationScheduler automationScheduler;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
+  final SshClientFactory sshClientFactory;
+  final Future<void> Function() stopEventTransport;
   final GitRepoStore gitRepoStore;
   final WorkspaceFileTreeStore workspaceFileTreeStore;
   final WorkspaceWorktreeRegistry workspaceWorktreeRegistry;
   final WorkspaceToolsScopeRegistry workspaceToolsScopeRegistry;
   final WorkspaceRunRegistry workspaceRunRegistry;
 
+  Future<void>? _closeFuture;
+
   @override
   void onWindowClose() {
-    unawaited(_shutdownAndDestroy());
+    unawaited(_closeFuture ??= _shutdownAndDestroy());
   }
 
   Future<void> _shutdownAndDestroy() async {
@@ -250,6 +256,8 @@ class _CleanupWindowListener extends WindowListener {
       automationScheduler.stop();
       await chatCubit.close();
       workspaceTerminalRegistry.disposeAll();
+      await stopEventTransport();
+      await sshClientFactory.close();
       gitRepoStore.dispose();
       workspaceFileTreeStore.dispose();
       workspaceWorktreeRegistry.dispose();
@@ -287,6 +295,8 @@ class _AppShutdownScope extends StatefulWidget {
     required this.sshConnectionCubit,
     required this.termuxCubit,
     required this.workspaceTerminalRegistry,
+    required this.sshClientFactory,
+    required this.stopEventTransport,
     required this.gitRepoStore,
     required this.workspaceFileTreeStore,
     required this.workspaceWorktreeRegistry,
@@ -308,6 +318,8 @@ class _AppShutdownScope extends StatefulWidget {
   final SshConnectionCubit sshConnectionCubit;
   final TermuxCubit termuxCubit;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
+  final SshClientFactory sshClientFactory;
+  final Future<void> Function() stopEventTransport;
   final GitRepoStore gitRepoStore;
   final WorkspaceFileTreeStore workspaceFileTreeStore;
   final WorkspaceWorktreeRegistry workspaceWorktreeRegistry;
@@ -336,12 +348,18 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
     unawaited(widget.termuxCubit.close());
     NotificationRecorder.install(null);
     widget.workspaceTerminalRegistry.disposeAll();
+    unawaited(_stopEventTransportThenCloseSsh());
     widget.gitRepoStore.dispose();
     widget.workspaceFileTreeStore.dispose();
     widget.workspaceWorktreeRegistry.dispose();
     widget.workspaceToolsScopeRegistry.dispose();
     widget.workspaceRunRegistry.dispose();
     super.dispose();
+  }
+
+  Future<void> _stopEventTransportThenCloseSsh() async {
+    await widget.stopEventTransport();
+    await widget.sshClientFactory.close();
   }
 
   @override
@@ -525,13 +543,15 @@ void main() async {
           defaultWorkspaceDirectoryFuture: defaultWorkspaceDirectoryFuture,
           homeIndexPrefetchFuture: homeIndexPrefetchFuture,
           bootstrapCubit: bootstrapCubit,
-          childBuilder: (shell) {
+          childBuilder: (shell, stopEventTransport) {
             if (!Platform.isAndroid) {
               windowManager.addListener(
                 _CleanupWindowListener(
                   shell.chatCubit,
                   shell.automationScheduler,
                   shell.workspaceTerminalRegistry,
+                  shell.sshClientFactory,
+                  stopEventTransport,
                   shell.gitRepoStore,
                   shell.workspaceFileTreeStore,
                   shell.workspaceWorktreeRegistry,
@@ -554,6 +574,8 @@ void main() async {
               sshConnectionCubit: shell.sshConnectionCubit,
               termuxCubit: shell.termuxCubit,
               workspaceTerminalRegistry: shell.workspaceTerminalRegistry,
+              sshClientFactory: shell.sshClientFactory,
+              stopEventTransport: stopEventTransport,
               gitRepoStore: shell.gitRepoStore,
               workspaceFileTreeStore: shell.workspaceFileTreeStore,
               workspaceWorktreeRegistry: shell.workspaceWorktreeRegistry,

@@ -1,29 +1,49 @@
 import 'dart:async';
-import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:dartssh2/dartssh2.dart';
+
 import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_known_host_repository.dart';
 import '../../utils/logging/logger.dart';
+import '../host/process_run_handle.dart';
+import '../chat/team_bus/remote/reverse_tunnel.dart';
 import 'ssh_connection_events.dart';
+import 'ssh_client_factory_support.dart';
 import 'ssh_credentials_resolver.dart';
+import 'ssh_forward_channel.dart';
 import 'ssh_storage_io.dart';
 import 'ssh_transport_close.dart';
+import 'worker/ssh_worker_auth_bridge.dart';
+import 'worker/ssh_worker_member_session.dart';
+import 'worker/ssh_worker_forward_proxy.dart';
+import 'worker/ssh_profile_worker_manager.dart';
+import 'worker/ssh_worker_protocol.dart';
+import 'worker/ssh_worker_storage_client.dart';
+import 'worker/ssh_worker_storage_types.dart';
+
+export 'worker/ssh_worker_auth_bridge.dart'
+    show HostKeyPromptInfo, SshHostKeyTrustPolicy;
+export 'ssh_forward_channel.dart' show SshForwardByteChannel;
+
+part 'ssh_client_factory_storage.dart';
+part 'ssh_client_factory_narrow_operations.dart';
+part 'ssh_client_factory_legacy_storage.dart';
 
 typedef SshClientConnector =
     Future<SSHClient> Function(SshProfile profile, {Duration timeout});
+
+typedef SshMemberReverseTunnelFactory =
+    ReverseTunnel Function(SshProfile profile, {required String bindHost});
 
 /// Returns the actual socket target for [profile], or null to use the
 /// stored host/port. Relay-paired profiles route through this while a
 /// loopback tunnel lives.
 typedef SshDialTargetResolver =
     Future<({InternetAddress address, int port})?> Function(SshProfile profile);
-
-typedef SshProfileTransportClosedHandler =
-    void Function(String profileId, Object error, StackTrace stackTrace);
 
 class _ClientLifecycle {
   _ClientLifecycle({required this.profileId, required this.plane});
@@ -46,24 +66,6 @@ class _PooledConnection {
   bool readyCompleted = false;
 }
 
-class HostKeyPromptInfo {
-  HostKeyPromptInfo({
-    required this.profile,
-    required this.keyType,
-    required this.fingerprintHex,
-    required this.fingerprintBase64,
-    required this.isMismatch,
-    this.previousFingerprintHex,
-  });
-
-  final SshProfile profile;
-  final String keyType;
-  final String fingerprintHex;
-  final String fingerprintBase64;
-  final bool isMismatch;
-  final String? previousFingerprintHex;
-}
-
 class SshClientFactory {
   SshClientFactory({
     required SshCredentialStore credentialStore,
@@ -72,8 +74,11 @@ class SshClientFactory {
     Future<bool> Function(HostKeyPromptInfo)? onHostKeyPrompt,
     void Function(String storageKey, String fingerprintHex)? onHostKeyPersist,
     SshClientConnector? connector,
+    SshMemberReverseTunnelFactory? memberReverseTunnelFactory,
     SshDialTargetResolver? dialTargetResolver,
     VaultCredentialReader? vaultCredentials,
+    SshWorkerAuthBridge? workerAuthBridge,
+    SshProfileWorkerManager? workerManager,
     int maxConcurrentHandshakes = 3,
     this.drainGracePeriod = const Duration(seconds: 5),
   }) : _credentialStore = credentialStore,
@@ -81,15 +86,42 @@ class SshClientFactory {
        _events = events ?? SshConnectionEvents(),
        _onHostKeyPrompt = onHostKeyPrompt,
        _onHostKeyPersist = onHostKeyPersist,
-       _hostKeyTrustPolicy = SshHostKeyTrustPolicy(
-         knownHostRepository: knownHostRepository,
-         onHostKeyPrompt: onHostKeyPrompt,
-         onHostKeyPersist: onHostKeyPersist,
-       ),
-       _connector = connector,
        _dialTargetResolver = dialTargetResolver,
-       _vaultCredentials = vaultCredentials,
-       _handshakeGate = _HandshakeGate(maxConcurrentHandshakes);
+       _workerAuthBridge =
+           workerAuthBridge ??
+           SshWorkerAuthBridge(
+             credentialStore: credentialStore,
+             knownHostRepository: knownHostRepository,
+             onHostKeyPrompt: onHostKeyPrompt,
+             onHostKeyPersist: onHostKeyPersist,
+             dialTargetResolver: dialTargetResolver,
+             vault: vaultCredentials,
+           ),
+       _connector = connector,
+       _memberReverseTunnelFactory = memberReverseTunnelFactory,
+       _handshakeGate = SshHandshakeGate(maxConcurrentHandshakes) {
+    final resolvedWorkerManager =
+        workerManager ??
+        SshProfileWorkerManager(authChallengeHandlerFor: workerAuthHandlerFor);
+    this.workerManager = resolvedWorkerManager;
+    _workerEventsSubscription = resolvedWorkerManager.events.listen(
+      _onWorkerManagerEvent,
+    );
+    _workerStoragePool = _SshWorkerStoragePool(
+      manager: resolvedWorkerManager,
+      resolveDialTarget: resolveWorkerDialTarget,
+      waitForDrain: (profileId) =>
+          _waitForTrackedOperations(profileId, drainGracePeriod),
+      onPoolChanged: _notifyPoolChange,
+      onTransportClosed: (profileId, reason, stackTrace) {
+        _events.onTransportClosed?.call(
+          profileId,
+          SshTransportClosed(reason: reason, plane: SshTransportPlane.storage),
+          stackTrace,
+        );
+      },
+    );
+  }
 
   /// Maximum time an evicted storage connection remains available to
   /// operations that already borrowed it.
@@ -101,20 +133,44 @@ class SshClientFactory {
   final Future<bool> Function(HostKeyPromptInfo)? _onHostKeyPrompt;
   final void Function(String storageKey, String fingerprintHex)?
   _onHostKeyPersist;
-  final SshHostKeyTrustPolicy _hostKeyTrustPolicy;
-  final SshClientConnector? _connector;
   final SshDialTargetResolver? _dialTargetResolver;
-  final VaultCredentialReader? _vaultCredentials;
-  final _HandshakeGate _handshakeGate;
-  final Map<String, _PooledConnection> _pool = {};
-  final Map<String, SftpClient> _sftpByProfile = {};
+  final SshWorkerAuthBridge _workerAuthBridge;
+  final SshClientConnector? _connector;
+  final SshMemberReverseTunnelFactory? _memberReverseTunnelFactory;
+  final SshHandshakeGate _handshakeGate;
+  // Raw dartssh2 storage access remains only as a compatibility seam for
+  // injected connector tests. Production storage is held by worker leases.
+  final Map<String, _PooledConnection> _legacyPool = {};
+  final Map<String, SftpClient> _legacySftpByProfile = {};
   final Map<String, int> _inFlight = {};
   final Set<SSHClient> _watchedClients = {};
   final Map<SSHClient, _ClientLifecycle> _clientLifecycle = {};
+  late final _SshWorkerStoragePool _workerStoragePool;
+  late final SshProfileWorkerManager workerManager;
+  late final StreamSubscription<SshProfileWorkerManagerEvent>
+  _workerEventsSubscription;
   final _poolChanges = StreamController<String>.broadcast();
+  Future<void>? _closeFuture;
+
+  /// UI-isolate challenge bridge used by future profile-worker generations.
+  SshWorkerAuthBridge get workerAuthBridge => _workerAuthBridge;
+
+  /// Creates the UI-isolate auth handler for one profile worker generation.
+  SshWorkerAuthChallengeHandler workerAuthHandlerFor(SshProfile profile) {
+    return _workerAuthBridge.handlerFor(profile);
+  }
+
+  /// Snapshots the current relay/direct target for a new worker generation.
+  ///
+  /// Callers must invoke this immediately before connecting that generation so
+  /// a recreated relay tunnel is never inherited from an older worker.
+  Future<SshWorkerDialTarget> resolveWorkerDialTarget(SshProfile profile) {
+    return _workerAuthBridge.dialTargetFor(profile);
+  }
 
   bool hasLiveStorageClient(String profileId) {
-    final cached = _pool[profileId];
+    if (_workerStoragePool.hasLiveClient(profileId)) return true;
+    final cached = _legacyPool[profileId];
     return cached != null && !cached.client.isClosed && cached.readyCompleted;
   }
 
@@ -124,157 +180,129 @@ class SshClientFactory {
     if (!_poolChanges.isClosed) _poolChanges.add(profileId);
   }
 
-  /// Pooled storage-plane client for [profile] (SFTP / file I/O only).
+  void _onWorkerManagerEvent(SshProfileWorkerManagerEvent envelope) {
+    if (!workerManager.isCurrentGeneration(
+      envelope.profileId,
+      envelope.generation,
+    )) {
+      return;
+    }
+    final event = envelope.event;
+    if (event.kind != SshWorkerEventKind.transportClose ||
+        event.plane == null ||
+        event.reason == null) {
+      return;
+    }
+    _events.onTransportClosed?.call(
+      envelope.profileId,
+      SshTransportClosed(reason: event.reason!, plane: event.plane!),
+      StackTrace.current,
+    );
+  }
+
+  /// Pooled worker storage-plane client for [profile] (SFTP / file I/O only).
   ///
   /// Interactive session work (PTY, reverse bus tunnels, exec probes) must use
   /// [createMemberClient] via [SshMemberSession.open] instead.
   ///
-  /// Idle cached clients are keepalive-probed before reuse. When another
-  /// storage op is already in flight (`_inFlight > 0`, including this caller's
-  /// own tracked increment), the probe is skipped so a long stdin write is
-  /// not evicted by a probe timeout.
-  Future<SSHClient> clientForStorage(
+  /// Reuses a pooled client only after a short keepalive probe so half-dead
+  /// sockets (FIN not yet observed) are rebuilt instead of hanging callers.
+  Future<SshWorkerStorageClient> storageFor(
+    SshProfile profile, {
+    Duration timeout = const Duration(seconds: 10),
+    bool probeCached = true,
+  }) => _workerStoragePool.clientFor(
+    profile,
+    timeout: timeout,
+    probeCached: probeCached,
+  );
+
+  /// Opens a primitive-only member transport backed by the profile worker.
+  ///
+  /// An injected [connector] remains a direct adapter for legacy pure tests;
+  /// it never changes the production worker path.
+  Future<SshWorkerMemberTransport> openMemberTransport(
+    SshProfile profile, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    if (_connector != null) {
+      final client = await createMemberClient(profile, timeout: timeout);
+      await client.authenticated;
+      return SshWorkerDirectMemberTransport(
+        client: client,
+        closeTransport: () async {
+          prepareClientClose(
+            client,
+            reason: SshTransportCloseReason.memberSessionClosed,
+          );
+          await _disconnectQuietly(client);
+        },
+      );
+    }
+    final lease = await workerManager.acquire(profile);
+    try {
+      final target = await resolveWorkerDialTarget(profile);
+      return SshWorkerLeaseMemberTransport(lease: lease, target: target);
+    } on Object {
+      await lease.release();
+      rethrow;
+    }
+  }
+
+  /// Ensures the profile worker storage plane is connected without exposing
+  /// its facade to callers that only need a readiness check.
+  Future<void> ensureStorageConnected(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
     bool probeCached = true,
   }) async {
-    final cached = _pool[profile.id];
-    if (cached != null) {
-      if (cached.client.isClosed) {
-        _pool.remove(profile.id);
-        _sftpByProfile.remove(profile.id);
-      } else if (cached.hostIdentifier == profile.hostIdentifier) {
-        await cached.ready;
-        final inFlight = _inFlight[profile.id] ?? 0;
-        final skipProbe = !probeCached || inFlight > 0;
-        if (skipProbe || await _probeStorageClient(cached.client)) {
-          return cached.client;
-        }
-        if ((_inFlight[profile.id] ?? 0) > 0) {
-          return cached.client;
-        }
-        _evictProfile(
-          profile.id,
-          closePooled: true,
-          reason: SshTransportCloseReason.transportError,
-        );
-      } else {
-        _evictProfile(
-          profile.id,
-          closePooled: true,
-          reason: SshTransportCloseReason.hostIdentityChanged,
-        );
-      }
-    }
-
-    final client = await _connectClient(
-      profile,
-      plane: SshTransportPlane.storage,
-      timeout: timeout,
-    );
-    final ready = client.authenticated;
-    final pooled = _PooledConnection(
-      client: client,
-      hostIdentifier: profile.hostIdentifier,
-      ready: ready,
-    );
-    _pool[profile.id] = pooled;
-    try {
-      await ready;
-      pooled.readyCompleted = true;
-      _notifyPoolChange(profile.id);
-    } on Object {
-      _evictProfile(
-        profile.id,
-        closePooled: true,
-        reason: SshTransportCloseReason.authFailed,
+    if (_connector != null) {
+      await clientForStorage(
+        profile,
+        timeout: timeout,
+        probeCached: probeCached,
       );
-      rethrow;
+      return;
     }
-    return client;
+    await storageFor(profile, timeout: timeout, probeCached: probeCached);
   }
-
-  Future<bool> _probeStorageClient(SSHClient client) async {
-    if (client.isClosed) return false;
-    try {
-      await SshStorageIo.awaitOrThrow(
-        client.ping(),
-        timeout: SshStorageIo.probeTimeout,
-        operation: 'storage keepalive probe',
-      );
-      return true;
-    } on Object {
-      return false;
-    }
-  }
-
-  /// Shared SFTP session for [profile] (reused by all [RemoteFileStore] instances).
-  Future<SftpClient> sftpFor(SshProfile profile) async {
-    final cached = _sftpByProfile[profile.id];
-    if (cached != null) {
-      try {
-        await SshStorageIo.awaitOrThrow(
-          cached.absolute('.'),
-          timeout: SshStorageIo.probeTimeout,
-          operation: 'sftp liveness probe',
-        );
-        return cached;
-      } on Object {
-        _sftpByProfile.remove(profile.id);
-      }
-    }
-
-    return _openSftp(profile);
-  }
-
-  Future<SftpClient> _openSftp(SshProfile profile) async {
-    final client = await clientForStorage(profile);
-    try {
-      final sftp = await SshStorageIo.awaitOrThrow(
-        client.sftp(),
-        timeout: SshStorageIo.ioTimeout,
-        operation: 'sftp open',
-      );
-      _sftpByProfile[profile.id] = sftp;
-      return sftp;
-    } on Object {
-      _evictProfile(
-        profile.id,
-        closePooled: true,
-        reason: SshTransportCloseReason.transportError,
-      );
-      rethrow;
-    }
-  }
-
-  /// Rejects exec argv longer than this so large payloads go on stdin.
-  static const maxExecCommandBytes = 1024;
 
   /// Runs [command] on the storage-plane client with an I/O timeout.
   ///
-  /// On timeout the pooled client is evicted so the next caller rebuilds.
+  /// On timeout the pooled worker is evicted so the next caller rebuilds.
   Future<SSHRunResult> runOnStorage(
     SshProfile profile,
     String command, {
     Duration timeout = SshStorageIo.ioTimeout,
     bool stderr = true,
   }) => _tracked(profile.id, () async {
-    final client = await clientForStorage(profile);
-    try {
-      return await SshStorageIo.awaitOrThrow(
-        client.runWithResult(command, stderr: stderr),
+    if (_connector != null) {
+      return _runOnLegacyStorage(
+        profile,
+        command,
         timeout: timeout,
-        operation: 'storage exec',
+        stderr: stderr,
       );
-    } on TimeoutException {
-      _evictProfile(
+    }
+
+    try {
+      final result = await (await storageFor(
+        profile,
+        timeout: timeout,
+      )).run(command, stderr: stderr, timeout: timeout);
+      return _toSshRunResult(result);
+    } on SshWorkerTransportException catch (error) {
+      if (error.code != 'transport_timeout') rethrow;
+      _workerStoragePool.disconnectStorage(
         profile.id,
-        closePooled: true,
         reason: SshTransportCloseReason.transportError,
       );
-      rethrow;
+      throw TimeoutException('storage exec', timeout);
     }
   });
+
+  /// Rejects exec argv longer than this so large payloads go on stdin.
+  static const maxExecCommandBytes = 1024;
 
   /// Runs [command] on the storage plane, writing [stdin] then closing it.
   Future<SSHRunResult> runOnStorageWithStdin(
@@ -290,22 +318,69 @@ class SshClientFactory {
       );
     }
     return _tracked(profile.id, () async {
-      final client = await clientForStorage(profile);
+      if (_connector != null) {
+        final client = await clientForStorage(profile);
+        try {
+          return await SshStorageIo.awaitOrThrow(
+            client.runWithResult(command, stderr: stderr, stdin: stdin),
+            timeout: timeout,
+            operation: 'storage exec stdin',
+          );
+        } on TimeoutException {
+          _evictLegacyProfile(
+            profile.id,
+            closePooled: true,
+            reason: SshTransportCloseReason.transportError,
+          );
+          rethrow;
+        }
+      }
       try {
-        return await SshStorageIo.awaitOrThrow(
-          client.runWithResult(command, stderr: stderr, stdin: stdin),
+        final result = await (await storageFor(
+          profile,
           timeout: timeout,
-          operation: 'storage exec stdin',
+        )).run(
+          command,
+          stderr: stderr,
+          stdin: Uint8List.fromList(stdin),
+          timeout: timeout,
         );
-      } on TimeoutException {
-        _evictProfile(
+        return _toSshRunResult(result);
+      } on SshWorkerTransportException catch (error) {
+        if (error.code != 'transport_timeout') rethrow;
+        _workerStoragePool.disconnectStorage(
           profile.id,
-          closePooled: true,
           reason: SshTransportCloseReason.transportError,
         );
-        rethrow;
+        throw TimeoutException('storage exec stdin', timeout);
       }
     });
+  }
+
+  SSHRunResult _toSshRunResult(SshWorkerRunResult result) {
+    // The worker DTO intentionally keeps stdout and stderr separate and cannot
+    // represent dartssh2's arrival-order interleaving. Preserve both captures;
+    // compatibility `output` is therefore defined as stdout followed by stderr.
+    final output =
+        (BytesBuilder(copy: false)
+              ..add(result.stdout)
+              ..add(result.stderr))
+            .takeBytes();
+    final signal = result.signalName;
+    return SSHRunResult(
+      output: output,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.exitCode,
+      exitSignal: signal == null
+          ? null
+          : SSHSessionExitSignal(
+              signalName: signal,
+              coreDumped: false,
+              errorMessage: '',
+              languageTag: '',
+            ),
+    );
   }
 
   /// Tracks a storage operation so an evicted client is not closed underneath
@@ -337,20 +412,28 @@ class SshClientFactory {
     _clientLifecycle[client]?.pendingLocalCloseReason = reason;
   }
 
+  void disconnectStorage(
+    String profileId, {
+    SshTransportCloseReason reason = SshTransportCloseReason.transportError,
+  }) {
+    _workerStoragePool.disconnectStorage(profileId, reason: reason);
+  }
+
   void disconnectProfile(
     String profileId, {
     SshTransportCloseReason reason = SshTransportCloseReason.userDisconnect,
   }) {
-    _evictProfile(profileId, closePooled: true, reason: reason);
+    _workerStoragePool.disconnectProfile(profileId, reason: reason);
+    _evictLegacyProfile(profileId, closePooled: true, reason: reason);
   }
 
-  void _evictProfile(
+  void _evictLegacyProfile(
     String profileId, {
     required bool closePooled,
     SshTransportCloseReason? reason,
   }) {
-    _sftpByProfile.remove(profileId);
-    final cached = _pool.remove(profileId);
+    _legacySftpByProfile.remove(profileId);
+    final cached = _legacyPool.remove(profileId);
     final wasLive = cached != null && cached.readyCompleted;
     if (closePooled && cached != null && !cached.client.isClosed) {
       final lifecycle = _clientLifecycle[cached.client];
@@ -381,12 +464,19 @@ class SshClientFactory {
     SSHClient client,
     Duration timeout,
   ) async {
+    await _waitForTrackedOperations(profileId, timeout);
+    if (!client.isClosed) await _disconnectQuietly(client);
+  }
+
+  Future<void> _waitForTrackedOperations(
+    String profileId,
+    Duration timeout,
+  ) async {
     var pollsLeft = timeout.inMilliseconds ~/ _drainPollInterval.inMilliseconds;
     while ((_inFlight[profileId] ?? 0) > 0 && pollsLeft > 0) {
       await Future<void>.delayed(_drainPollInterval);
       pollsLeft--;
     }
-    if (!client.isClosed) await _disconnectQuietly(client);
   }
 
   Future<void> _disconnectQuietly(SSHClient client) async {
@@ -427,9 +517,9 @@ class SshClientFactory {
             : SshTransportCloseReason.remotePeerClosed);
 
     if (lifecycle.plane == SshTransportPlane.storage) {
-      final cached = _pool[lifecycle.profileId];
+      final cached = _legacyPool[lifecycle.profileId];
       if (cached != null && identical(cached.client, client)) {
-        _evictProfile(lifecycle.profileId, closePooled: false);
+        _evictLegacyProfile(lifecycle.profileId, closePooled: false);
       }
     }
 
@@ -440,21 +530,27 @@ class SshClientFactory {
     );
   }
 
-  void _handleKeepAliveFailed(
-    String profileId,
-    Object error,
-    StackTrace stackTrace,
-  ) {
-    _events.onKeepAliveFailed?.call(profileId, error, stackTrace);
-  }
-
   void disconnectAll({
     SshTransportCloseReason reason = SshTransportCloseReason.disconnectAll,
   }) {
-    for (final profileId in _pool.keys.toList()) {
-      _evictProfile(profileId, closePooled: true, reason: reason);
+    for (final profileId in _legacyPool.keys.toList()) {
+      _evictLegacyProfile(profileId, closePooled: true, reason: reason);
     }
-    _sftpByProfile.clear();
+    _workerStoragePool.disconnectAll(reason: reason);
+    _legacySftpByProfile.clear();
+  }
+
+  /// Stops factory listeners before closing every worker generation.
+  ///
+  /// App shutdown invokes this only after terminal, member, and storage
+  /// producers have stopped issuing requests.
+  Future<void> close() => _closeFuture ??= _close();
+
+  Future<void> _close() async {
+    disconnectAll();
+    await _workerEventsSubscription.cancel();
+    await workerManager.close();
+    await _poolChanges.close();
   }
 
   /// One-off connectivity check using form credentials without persisting the
@@ -465,12 +561,19 @@ class SshClientFactory {
     String? privateKey,
     String? privateKeyPassphrase,
   }) async {
-    final store = _CredentialOverrideStore(
+    final store = SshCredentialOverrideStore(
       base: _credentialStore,
       profileId: profile.id,
       password: password,
       privateKey: privateKey,
       privateKeyPassphrase: privateKeyPassphrase,
+    );
+    final bridge = SshWorkerAuthBridge(
+      credentialStore: store,
+      knownHostRepository: _knownHostRepository,
+      onHostKeyPrompt: _onHostKeyPrompt,
+      onHostKeyPersist: _onHostKeyPersist,
+      dialTargetResolver: _dialTargetResolver,
     );
     final ephemeral = SshClientFactory(
       credentialStore: store,
@@ -478,7 +581,21 @@ class SshClientFactory {
       onHostKeyPrompt: _onHostKeyPrompt,
       onHostKeyPersist: _onHostKeyPersist,
       connector: _connector,
+      dialTargetResolver: _dialTargetResolver,
+      workerAuthBridge: bridge,
+      workerManager: workerManager.detached(
+        authChallengeHandlerFor: bridge.handlerFor,
+      ),
     );
+    if (_connector == null) {
+      try {
+        await ephemeral.ensureStorageConnected(profile);
+      } finally {
+        await ephemeral.close();
+      }
+      return;
+    }
+
     final client = await ephemeral.createClient(profile);
     try {
       await client.authenticated;
@@ -488,6 +605,7 @@ class SshClientFactory {
         // socket close can outlive it.
         unawaited(client.disconnect());
       }
+      await ephemeral.close();
     }
   }
 
@@ -497,40 +615,33 @@ class SshClientFactory {
   /// `SHA256:<base64>` fingerprint. Older forks passed a raw digest; those
   /// remain hex-colon encoded for compatibility.
   static String fingerprintIdentity(Uint8List fingerprint) {
-    final asText = utf8.decode(fingerprint, allowMalformed: true);
-    if (asText.startsWith('SHA256:')) return asText;
-    return fingerprintToHex(fingerprint);
+    return SshWorkerAuthBridge.fingerprintIdentity(fingerprint);
   }
 
-  static String fingerprintToHex(Uint8List fingerprint) {
-    final buffer = StringBuffer();
-    for (var i = 0; i < fingerprint.length; i++) {
-      if (i > 0) buffer.write(':');
-      buffer.write(fingerprint[i].toRadixString(16).padLeft(2, '0'));
-    }
-    return buffer.toString();
-  }
+  static String fingerprintToHex(Uint8List fingerprint) =>
+      SshWorkerAuthBridge.fingerprintToHex(fingerprint);
 
-  static String fingerprintToBase64(Uint8List fingerprint) {
-    final identity = fingerprintIdentity(fingerprint);
-    if (identity.startsWith('SHA256:')) {
-      return identity.substring('SHA256:'.length);
-    }
-    return base64.encode(fingerprint);
-  }
+  static String fingerprintToBase64(Uint8List fingerprint) =>
+      SshWorkerAuthBridge.fingerprintToBase64(fingerprint);
 
-  /// One-shot SSH client for heavy or short-lived remote work (manifest apply,
-  /// probes). Does not register with [SshProfileConnectionCoordinator].
+  /// Direct-client compatibility adapter for connector-injected tests.
+  ///
+  /// Production one-shot work must use a profile-worker storage or member
+  /// facade so a dartssh2 client never enters the UI isolate.
   Future<SSHClient> createEphemeralClient(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
+    final connector = _connector;
+    if (connector == null) {
+      throw StateError(
+        'Raw SSH clients are test-only; inject a connector or use worker APIs',
+      );
+    }
     final key = profile.hostIdentifier;
     await _handshakeGate.acquire(key);
     try {
-      final client = _connector != null
-          ? await _connector(profile, timeout: timeout)
-          : await _openClient(profile, timeout: timeout);
+      final client = await connector(profile, timeout: timeout);
       _releaseGateWhenSettled(key, client);
       return client;
     } on Object {
@@ -539,7 +650,9 @@ class SshClientFactory {
     }
   }
 
-  /// Opens a fresh, caller-owned SSH connection for one member session plane.
+  /// Direct-client compatibility adapter for connector-injected tests.
+  ///
+  /// Production member work must use [openMemberTransport].
   Future<SSHClient> createMemberClient(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
@@ -549,6 +662,7 @@ class SshClientFactory {
     timeout: timeout,
   );
 
+  /// Legacy alias retained for connector-injected tests.
   Future<SSHClient> createClient(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
@@ -563,13 +677,17 @@ class SshClientFactory {
     required SshTransportPlane plane,
     Duration timeout = const Duration(seconds: 10),
   }) async {
+    final connector = _connector;
+    if (connector == null) {
+      throw StateError(
+        'Raw SSH clients are test-only; inject a connector or use worker APIs',
+      );
+    }
     final key = profile.hostIdentifier;
     await _handshakeGate.acquire(key);
     final SSHClient client;
     try {
-      client = _connector != null
-          ? await _connector(profile, timeout: timeout)
-          : await _openClient(profile, timeout: timeout);
+      client = await connector(profile, timeout: timeout);
     } on Object {
       _handshakeGate.release(key);
       rethrow;
@@ -586,256 +704,5 @@ class SshClientFactory {
     client.authenticated
         .then<void>((_) {}, onError: (_) {})
         .whenComplete(() => _handshakeGate.release(key));
-  }
-
-  Future<SSHClient> _openClient(
-    SshProfile profile, {
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
-    final resolved = _dialTargetResolver == null
-        ? null
-        : await _dialTargetResolver(profile);
-    final socket = await SSHSocket.connect(
-      resolved?.address.address ?? profile.host,
-      resolved?.port ?? profile.port,
-      timeout: timeout,
-    );
-
-    Future<bool> hostKeyVerifier(String keyType, Uint8List fingerprint) async {
-      return _hostKeyTrustPolicy.verify(
-        profile: profile,
-        keyType: keyType,
-        fingerprint: fingerprint,
-      );
-    }
-
-    final credentials = await resolveSshCredentials(
-      profile,
-      vault: _vaultCredentials,
-      legacyPassword: _credentialStore.loadPassword,
-      legacyPrivateKey: _credentialStore.loadPrivateKey,
-      legacyPassphrase: _credentialStore.loadPrivateKeyPassphrase,
-    );
-
-    switch (profile.authType) {
-      case SshAuthType.password:
-        final password = credentials.password ?? '';
-        return SSHClient(
-          socket,
-          username: profile.username,
-          onPasswordRequest: () => password,
-          onVerifyHostKey: hostKeyVerifier,
-          onKeepAliveFailed: (error, stackTrace) =>
-              _handleKeepAliveFailed(profile.id, error, stackTrace),
-          handshakeTimeout: timeout,
-          authTimeout: timeout,
-        );
-      case SshAuthType.privateKey:
-        final privateKey = credentials.privateKey;
-        if (privateKey == null || privateKey.isEmpty) {
-          throw StateError('Private key not found for profile ${profile.id}');
-        }
-        final passphrase = credentials.passphrase;
-        final identities = SSHKeyPair.fromPem(
-          privateKey,
-          passphrase == null || passphrase.isEmpty ? null : passphrase,
-        );
-        return SSHClient(
-          socket,
-          username: profile.username,
-          identities: identities,
-          onVerifyHostKey: hostKeyVerifier,
-          onKeepAliveFailed: (error, stackTrace) =>
-              _handleKeepAliveFailed(profile.id, error, stackTrace),
-          handshakeTimeout: timeout,
-          authTimeout: timeout,
-        );
-    }
-  }
-}
-
-/// Bounds concurrent SSH handshakes per dial target.
-///
-/// Every unauthenticated connection counts against the server's `MaxStartups`
-/// budget (default 10) and — when it stalls — against its `LoginGraceTime`
-/// before `PerSourcePenalties` kicks in. A reconnect storm (storage pool plus
-/// every member terminal redialing at once) must therefore never open them
-/// all simultaneously; candidates queue per host until a slot settles.
-class _HandshakeGate {
-  _HandshakeGate(this.maxConcurrent);
-
-  final int maxConcurrent;
-  final Map<String, int> _active = {};
-  final Map<String, Queue<Completer<void>>> _waiting = {};
-
-  Future<void> acquire(String key) {
-    final active = _active[key] ?? 0;
-    if (active < maxConcurrent) {
-      _active[key] = active + 1;
-      return Future.value();
-    }
-    final waiter = Completer<void>();
-    _waiting.putIfAbsent(key, Queue<Completer<void>>.new).add(waiter);
-    return waiter.future;
-  }
-
-  void release(String key) {
-    final queue = _waiting[key];
-    if (queue != null && queue.isNotEmpty) {
-      queue.removeFirst().complete();
-      // The slot transfers directly to the next waiter.
-      return;
-    }
-    final active = (_active[key] ?? 1) - 1;
-    if (active <= 0) {
-      _active.remove(key);
-      _waiting.remove(key);
-    } else {
-      _active[key] = active;
-    }
-  }
-}
-
-class _CredentialOverrideStore implements SshCredentialStore {
-  _CredentialOverrideStore({
-    required SshCredentialStore base,
-    required this.profileId,
-    this.password,
-    this.privateKey,
-    this.privateKeyPassphrase,
-  }) : _base = base;
-
-  final SshCredentialStore _base;
-  final String profileId;
-  final String? password;
-  final String? privateKey;
-  final String? privateKeyPassphrase;
-
-  bool _hasOverride(String? value) => value != null && value.isNotEmpty;
-
-  @override
-  Future<String?> loadPassword(String id) async {
-    if (id == profileId && _hasOverride(password)) return password;
-    return _base.loadPassword(id);
-  }
-
-  @override
-  Future<String?> loadPrivateKey(String id) async {
-    if (id == profileId && _hasOverride(privateKey)) return privateKey;
-    return _base.loadPrivateKey(id);
-  }
-
-  @override
-  Future<String?> loadPrivateKeyPassphrase(String id) async {
-    if (id == profileId && _hasOverride(privateKeyPassphrase)) {
-      return privateKeyPassphrase;
-    }
-    return _base.loadPrivateKeyPassphrase(id);
-  }
-
-  @override
-  Future<void> savePassword(String profileId, String password) =>
-      _base.savePassword(profileId, password);
-
-  @override
-  Future<void> savePrivateKey(String profileId, String privateKey) =>
-      _base.savePrivateKey(profileId, privateKey);
-
-  @override
-  Future<void> savePrivateKeyPassphrase(String profileId, String passphrase) =>
-      _base.savePrivateKeyPassphrase(profileId, passphrase);
-
-  @override
-  Future<String?> loadDevicePrivateKey() => _base.loadDevicePrivateKey();
-
-  @override
-  Future<void> saveDevicePrivateKey(String privateKey) =>
-      _base.saveDevicePrivateKey(privateKey);
-
-  @override
-  Future<String?> loadRelayGrant(String profileId) =>
-      _base.loadRelayGrant(profileId);
-
-  @override
-  Future<void> saveRelayGrant(String profileId, String grant) =>
-      _base.saveRelayGrant(profileId, grant);
-
-  @override
-  Future<void> deleteAll(String profileId) => _base.deleteAll(profileId);
-}
-
-class SshHostKeyTrustPolicy {
-  SshHostKeyTrustPolicy({
-    required SshKnownHostRepository knownHostRepository,
-    Future<bool> Function(HostKeyPromptInfo)? onHostKeyPrompt,
-    void Function(String storageKey, String fingerprintHex)? onHostKeyPersist,
-  }) : _knownHostRepository = knownHostRepository,
-       _onHostKeyPrompt = onHostKeyPrompt,
-       _onHostKeyPersist = onHostKeyPersist;
-
-  final SshKnownHostRepository _knownHostRepository;
-  final Future<bool> Function(HostKeyPromptInfo)? _onHostKeyPrompt;
-  final void Function(String storageKey, String fingerprintHex)?
-  _onHostKeyPersist;
-
-  Future<bool> verify({
-    required SshProfile profile,
-    required String keyType,
-    required Uint8List fingerprint,
-  }) async {
-    final storageKey = '${profile.hostIdentifier}::$keyType';
-    final fingerprintHex = SshClientFactory.fingerprintIdentity(fingerprint);
-    final fingerprintBase64 = SshClientFactory.fingerprintToBase64(fingerprint);
-    if (profile.hostKeyFingerprints.isNotEmpty) {
-      return profile.hostKeyFingerprints.contains(fingerprintHex);
-    }
-    final existing = await _knownHostRepository.findFingerprint(
-      profile.hostIdentifier,
-      keyType,
-    );
-
-    if (existing == null) {
-      if (_onHostKeyPrompt != null) {
-        final accepted = await _onHostKeyPrompt(
-          HostKeyPromptInfo(
-            profile: profile,
-            keyType: keyType,
-            fingerprintHex: fingerprintHex,
-            fingerprintBase64: fingerprintBase64,
-            isMismatch: false,
-          ),
-        );
-        if (!accepted) return false;
-      }
-      await _knownHostRepository.saveFingerprint(
-        profile.hostIdentifier,
-        keyType,
-        fingerprintHex,
-      );
-      _onHostKeyPersist?.call(storageKey, fingerprintHex);
-      return true;
-    }
-
-    if (existing == fingerprintHex) return true;
-
-    if (_onHostKeyPrompt == null) return false;
-    final accepted = await _onHostKeyPrompt(
-      HostKeyPromptInfo(
-        profile: profile,
-        keyType: keyType,
-        fingerprintHex: fingerprintHex,
-        fingerprintBase64: fingerprintBase64,
-        isMismatch: true,
-        previousFingerprintHex: existing,
-      ),
-    );
-    if (!accepted) return false;
-    await _knownHostRepository.saveFingerprint(
-      profile.hostIdentifier,
-      keyType,
-      fingerprintHex,
-    );
-    _onHostKeyPersist?.call(storageKey, fingerprintHex);
-    return true;
   }
 }

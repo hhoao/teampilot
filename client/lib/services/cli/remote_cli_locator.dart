@@ -1,10 +1,11 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:dartssh2/dartssh2.dart';
 
+import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../utils/logging/logger.dart';
+import '../ssh/ssh_client_factory.dart';
 import 'cli_tool_locator.dart';
 import 'registry/capabilities/cli_executable_capability.dart';
 import 'registry/cli_tool_registry.dart';
@@ -37,7 +38,7 @@ class RemoteCliLocator {
     return capability.locateRemote(run);
   }
 
-  /// Adapts a connected [SSHClient] into an [SshCommandRunner] (non-test path).
+  /// Adapts a connected [SSHClient] into an [SshCommandRunner].
   ///
   /// Locate probes keep [includeStderr] false so PATH chatter does not pollute
   /// path parsing. Install / bootstrap must pass true so failure messages and
@@ -50,6 +51,32 @@ class RemoteCliLocator {
     return (command) async {
       final run = client.runWithResult(command, stderr: includeStderr);
       final result = timeout == null ? await run : await run.timeout(timeout);
+      return SshCommandResult(
+        exitCode: result.exitCode ?? 1,
+        stdout: utf8.decode(result.stdout, allowMalformed: true),
+        stderr: includeStderr
+            ? utf8.decode(result.stderr, allowMalformed: true)
+            : '',
+      );
+    };
+  }
+
+  /// Adapts the profile worker's narrow exec facade into an
+  /// [SshCommandRunner]. Production callers use this instead of borrowing a
+  /// raw dartssh2 storage client.
+  static SshCommandRunner runnerForStorage(
+    SshClientFactory factory,
+    SshProfile profile, {
+    bool includeStderr = false,
+    Duration? timeout,
+  }) {
+    return (command) async {
+      final result = await factory.runOnStorage(
+        profile,
+        command,
+        stderr: includeStderr,
+        timeout: timeout ?? const Duration(seconds: 30),
+      );
       return SshCommandResult(
         exitCode: result.exitCode ?? 1,
         stdout: utf8.decode(result.stdout, allowMalformed: true),

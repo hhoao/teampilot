@@ -296,3 +296,53 @@ Defined in `client/lib/router/app_router.dart`:
 | [pty-fullscreen-delivery.md](pty-fullscreen-delivery.md) | Full-screen TUI submission machine |
 | [workspace-storage-layout.md](workspace-storage-layout.md) | On-disk trees |
 | [AGENTS.md](../AGENTS.md) | Hard rules for assistants |
+## Profile-scoped SSH worker
+
+Each SSH profile has at most one active `SshProfileWorker` generation. The
+profile worker owns every dartssh2 `SSHClient`, `SftpClient`, `SSHSession`,
+forward, and their socket/session lifecycle. Storage, member sessions, PTYs,
+exec, and forwarding for the same profile lease that worker rather than
+creating UI-isolate dartssh2 clients. Within a generation those planes share
+one authenticated `SSHClient` (and one handshake/auth challenge); each plane
+owns only its own SFTP handles, sessions, and forward channels.
+
+The UI isolate communicates with a worker only through primitive
+`SshWorkerRequest`, `SshWorkerReply`, and `SshWorkerEvent` DTOs. UI-facing
+services receive TeamPilot-owned storage, member, PTY, and forwarding proxies;
+they do not receive a dartssh2 object. Terminal rendering, Flutter/plugin
+access, profile reconnect policy, and user-visible state remain in the UI
+isolate.
+
+### Authentication boundary
+
+The worker asks the UI-side `SshWorkerAuthBridge` for host-key decisions,
+credential material, and the current relay/direct dial target. The bridge uses
+the credential and known-host repositories plus the existing prompt policy in
+the UI isolate. It returns only the challenge response to the worker; private
+keys, passwords, passphrases, repositories, callbacks, and Flutter objects do
+not cross the worker boundary as objects or appear in diagnostics.
+
+### Lifecycle and generations
+
+`SshProfileWorkerManager` reference-counts leases, performs idle shutdown, and
+assigns every replacement worker a new generation. Requests and events carry
+that generation, so replies from a retired worker cannot complete a request or
+alter terminal/reconnect state for its successor. Storage retirement closes
+only the storage plane (`disconnectStorage`); member, PTY, exec, and forward
+leases survive a single failed or timed-out file operation. A worker
+transport-close is
+reported once through `SshConnectionEvents`; `SshProfileConnectionCoordinator`
+continues to own disconnect coalescing and reconnect decisions. Explicit
+profile disconnect, removal, and application shutdown invalidate the active
+generation and close its channels before a later acquire can create a fresh
+worker.
+
+### Direct-mode test adapters
+
+Unit tests may inject `SshClientFactory.connector`, an injected reverse-tunnel
+factory, a worker launcher, or `SshMemberSession.testing` to make deterministic
+in-process tests. These are explicit test adapters, not production fallbacks.
+They are the only reason a compatibility SSH-layer adapter may reference raw
+dartssh2 types outside `client/lib/services/ssh/worker/`. Real embedded and
+Docker integration tests intentionally use dartssh2 clients to validate the
+wire protocol against an SSH server.

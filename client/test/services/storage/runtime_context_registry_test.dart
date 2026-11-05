@@ -69,7 +69,9 @@ void main() {
     'ensureHome ssh with persisted lastHome soft-fails when SFTP is down',
     () async {
       final factory = _MockSshClientFactory();
-      when(() => factory.sftpFor(any())).thenThrow(StateError('host down'));
+      when(
+        () => factory.ensureStorageConnected(any()),
+      ).thenThrow(StateError('host down'));
       final profile = SshProfile(
         id: 'p1',
         name: 'Remote',

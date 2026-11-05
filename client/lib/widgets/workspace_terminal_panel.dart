@@ -338,7 +338,9 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       if (pid != profileId) continue;
       if (!entry.connected && !entry.session.isRunning) continue;
       entry.connected = false;
-      entry.session.sshMemberSession?.close();
+      final sshMemberSession = entry.session.sshMemberSession;
+      entry.session.sshMemberSession = null;
+      if (sshMemberSession != null) unawaited(sshMemberSession.close());
       entry.session.disconnect();
       if (!mounted) return;
       unawaited(_runConnect(entry));

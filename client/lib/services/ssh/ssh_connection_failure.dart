@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:dartssh2/dartssh2.dart';
 
 import '../../l10n/app_localizations.dart';
+import 'worker/ssh_worker_errors.dart';
+import 'worker/ssh_worker_protocol.dart';
 
 /// Prefer the underlying cause when dartssh2 wraps a handshake failure.
 ///
@@ -22,16 +24,38 @@ String sshConnectionFailureLogMessage(Object error) {
   return '$error (cause: $cause)';
 }
 
+String? _workerErrorCode(Object error) =>
+    error is SshWorkerCodedException ? error.code : null;
+
+/// True when [error] is a host-key rejection (direct or worker-flattened).
+bool isSshHostKeyFailure(Object error) {
+  if (_workerErrorCode(error) == sshWorkerErrorHostKeyRejected) return true;
+  final cause = sshConnectionFailureCause(error);
+  return cause is SSHHostkeyError;
+}
+
+/// True when [error] is an authentication failure (including host-key
+/// rejection, which the UI presents as an auth failure).
+bool isSshAuthFailure(Object error) {
+  if (isSshHostKeyFailure(error)) return true;
+  final code = _workerErrorCode(error);
+  if (code == sshWorkerErrorAuthFailed || code == sshWorkerErrorAuthAborted) {
+    return true;
+  }
+  final cause = sshConnectionFailureCause(error);
+  return cause is SSHAuthFailError;
+}
+
 /// Short user-facing explanation for SSH connect/test failures.
 String sshConnectionFailureUserMessage(Object error, AppLocalizations l10n) {
   final cause = sshConnectionFailureCause(error);
   if (isSshdPenaltyRefusal(error)) {
     return l10n.sshPenaltyRefused;
   }
-  if (cause is SSHHostkeyError) {
+  if (isSshHostKeyFailure(error)) {
     return l10n.sshProfileTestFailedHostKey;
   }
-  if (cause is SSHAuthFailError) {
+  if (isSshAuthFailure(error)) {
     return l10n.sshProfileTestFailedAuth;
   }
   if (error is SSHAuthAbortError || cause is SSHAuthAbortError) {
@@ -65,6 +89,7 @@ const _connectionRefusedErrnos = {111, 61, 10061};
 /// moved off the port pinned at pairing time. An offline desktop instead
 /// times out or is unreachable, which this returns false for.
 bool isTcpConnectionRefused(Object error) {
+  if (_workerErrorCode(error) == sshWorkerErrorConnectionRefused) return true;
   var cause = sshConnectionFailureCause(error);
   if (cause is SSHSocketError) cause = cause.error;
   return cause is SocketException &&
@@ -75,6 +100,7 @@ bool isTcpConnectionRefused(Object error) {
 /// exchange read the refusal text instead of an `SSH-2.0-` banner. Retrying
 /// immediately only extends the penalty; callers should back off.
 bool isSshdPenaltyRefusal(Object error) {
+  if (_workerErrorCode(error) == sshWorkerErrorSshdPenalty) return true;
   final cause = sshConnectionFailureCause(error);
   return cause is SSHHandshakeError &&
       cause.message.contains(_sshdPenaltyRefusalText);

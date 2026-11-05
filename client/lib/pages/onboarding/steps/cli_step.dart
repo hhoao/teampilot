@@ -390,8 +390,7 @@ Future<Map<CliTool, String>> _locateRemoteAll(
   SshClientFactory clientFactory,
   CliExecutableDiscovery discovery,
 ) async {
-  final client = await clientFactory.clientForStorage(profile);
   return discovery.locateRemote(
-    run: RemoteCliLocator.getRunnerForClient(client),
+    run: RemoteCliLocator.runnerForStorage(clientFactory, profile),
   );
 }

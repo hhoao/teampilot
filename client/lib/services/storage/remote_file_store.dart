@@ -1,15 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:dartssh2/dartssh2.dart';
+import 'package:dartssh2/dartssh2.dart' show SSHRunResult;
 import 'package:path/path.dart' as p;
 
 import '../io/filesystem.dart';
 import '../host/host_one_shot_runner.dart';
 import '../host/process_run_handle.dart';
 import '../ssh/ssh_client_factory.dart';
+import '../ssh/ssh_storage_io.dart';
 import '../ssh/ssh_transport_close.dart';
 import '../ssh/ssh_run_result.dart';
+import '../ssh/worker/ssh_worker_storage_client.dart';
+import '../ssh/worker/ssh_worker_storage_types.dart';
 import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import 'remote_home_resolver.dart';
@@ -21,15 +24,24 @@ class RemoteDirEntry {
   final bool isDirectory;
 }
 
+Future<SshWorkerStorageFacade> Function({Duration timeout})
+_defaultRemoteStorageFor(SshClientFactory factory, SshProfile profile) =>
+    ({Duration timeout = SshStorageIo.ioTimeout}) =>
+        factory.storageFor(profile, timeout: timeout);
+
 class RemoteFileStore {
   RemoteFileStore({
     required SshProfile profile,
     required SshClientFactory clientFactory,
+    Future<SshWorkerStorageFacade> Function({Duration timeout})? storageFor,
   }) : _profile = profile,
-       _clientFactory = clientFactory;
+       _clientFactory = clientFactory,
+       _storageFor =
+           storageFor ?? _defaultRemoteStorageFor(clientFactory, profile);
 
   final SshProfile _profile;
   final SshClientFactory _clientFactory;
+  final Future<SshWorkerStorageFacade> Function({Duration timeout}) _storageFor;
   String? _cachedRemoteHome;
 
   Future<String> _remoteHome() async {
@@ -47,27 +59,40 @@ class RemoteFileStore {
     return home;
   }
 
-  Future<SftpClient> _ensureConnected() => _clientFactory.sftpFor(_profile);
+  Future<SshWorkerStorageFacade> _ensureConnected({
+    Duration timeout = SshStorageIo.ioTimeout,
+  }) => _storageFor(timeout: timeout);
 
   Future<T> _tracked<T>(
-    Future<T> Function() operation, {
+    Future<T> Function(Duration timeout) operation, {
+    Duration timeout = SshStorageIo.ioTimeout,
     bool retryOnTransportClosure = true,
   }) => _clientFactory.runTracked(_profile.id, () async {
     try {
-      return await operation();
+      return await operation(timeout);
     } on Object catch (error) {
       if (!retryOnTransportClosure || !_isRetryableTransportClosure(error)) {
         rethrow;
       }
-      // sftpFor() probes and discards a closed SFTP channel on the next
-      // acquisition. Retrying once is safe for the idempotent SFTP data
-      // operations in this class; arbitrary shell commands stay outside
-      // this boundary and are never replayed here.
-      return operation();
+      _clientFactory.disconnectStorage(
+        _profile.id,
+        reason: SshTransportCloseReason.transportError,
+      );
+      // Retrying once is safe for the idempotent file operations in this
+      // class; arbitrary shell commands stay outside this boundary.
+      return operation(timeout);
     }
   });
 
   bool _isRetryableTransportClosure(Object error) {
+    if (error is SshWorkerTransportException) {
+      return const {
+        'transport_closed',
+        'transport_error',
+        'transport_timeout',
+        'storage_not_connected',
+      }.contains(error.code);
+    }
     final message = error.toString().toLowerCase();
     return message.contains('sftp channel closed') ||
         message.contains('sftp client closed') ||
@@ -75,6 +100,18 @@ class RemoteFileStore {
         message.contains('ssh transport closed') ||
         message.contains('transport is closed');
   }
+
+  static bool _isMissing(SshWorkerTransportException error) =>
+      error.code == 'sftp_no_such_file';
+
+  static bool _isSftpFailure(SshWorkerTransportException error) =>
+      _isMissing(error) || error.code == 'sftp_error';
+
+  static FsEntityKind _entityKind(String kind) => switch (kind) {
+    'directory' => FsEntityKind.directory,
+    'symlink' => FsEntityKind.symlink,
+    _ => FsEntityKind.file,
+  };
 
   Future<String> expandHome(String path) async {
     if (!path.startsWith('~')) return path;
@@ -90,25 +127,20 @@ class RemoteFileStore {
   }
 
   /// Full [FsStat] including size/mtime from SFTP attrs when available.
-  Future<FsStat> stat(String path) => _tracked(() async {
+  Future<FsStat> stat(String path) => _tracked((timeout) async {
     try {
-      final sftp = await _ensureConnected();
+      final storage = await _ensureConnected(timeout: timeout);
       final resolved = await expandHome(path);
-      final attrs = await sftp.stat(resolved);
-      final kind = attrs.isDirectory
-          ? FsEntityKind.directory
-          : attrs.isSymbolicLink
-          ? FsEntityKind.symlink
-          : FsEntityKind.file;
+      final attrs = await storage.stat(resolved, timeout: timeout);
       return FsStat(
-        kind: kind,
+        kind: _entityKind(attrs.kind),
         size: attrs.size,
         mtime: attrs.modifyTime != null
             ? DateTime.fromMillisecondsSinceEpoch(attrs.modifyTime! * 1000)
             : null,
       );
-    } on SftpStatusError catch (e) {
-      if (e.code == SftpStatusCode.noSuchFile) {
+    } on SshWorkerTransportException catch (error) {
+      if (_isMissing(error)) {
         return const FsStat(kind: FsEntityKind.notFound);
       }
       rethrow;
@@ -116,63 +148,60 @@ class RemoteFileStore {
   });
 
   /// Reads the immediate target of a symlink, or null if not a link / missing.
-  Future<String?> readlink(String path) => _tracked(() async {
+  Future<String?> readlink(String path) => _tracked((timeout) async {
     try {
-      final sftp = await _ensureConnected();
+      final storage = await _ensureConnected(timeout: timeout);
       final resolved = await expandHome(path);
-      return await sftp.readlink(resolved);
-    } on SftpStatusError {
+      return await storage.readlink(resolved, timeout: timeout);
+    } on SshWorkerTransportException catch (error) {
+      if (!_isSftpFailure(error)) rethrow;
       return null;
     }
   });
 
   /// Fully resolves [path] to its canonical absolute path, or null on failure.
-  Future<String?> realpath(String path) => _tracked(() async {
+  Future<String?> realpath(String path) => _tracked((timeout) async {
     try {
-      final sftp = await _ensureConnected();
+      final storage = await _ensureConnected(timeout: timeout);
       final resolved = await expandHome(path);
-      return await sftp.absolute(resolved);
-    } on SftpStatusError {
+      return await storage.realpath(resolved, timeout: timeout);
+    } on SshWorkerTransportException catch (error) {
+      if (!_isSftpFailure(error)) rethrow;
       return null;
     }
   });
 
-  Future<bool> fileExists(String path) => _tracked(() async {
+  Future<bool> fileExists(String path) => _tracked((timeout) async {
     try {
-      final sftp = await _ensureConnected();
+      final storage = await _ensureConnected(timeout: timeout);
       final resolved = await expandHome(path);
-      await sftp.stat(resolved);
+      await storage.stat(resolved, timeout: timeout);
       return true;
-    } on SftpStatusError catch (e) {
-      if (e.code == SftpStatusCode.noSuchFile) return false;
+    } on SshWorkerTransportException catch (error) {
+      if (_isMissing(error)) return false;
       rethrow;
     }
   });
 
-  Future<String?> readFile(String path) => _tracked(() async {
+  Future<String?> readFile(String path) => _tracked((timeout) async {
     try {
-      final sftp = await _ensureConnected();
+      final storage = await _ensureConnected(timeout: timeout);
       final resolved = await expandHome(path);
-      final file = await sftp.open(resolved, mode: SftpFileOpenMode.read);
-      final bytes = await file.readBytes();
-      await file.close();
+      final bytes = await storage.readBytes(resolved, timeout: timeout);
       return utf8.decode(bytes);
-    } on SftpStatusError catch (e) {
-      if (e.code == SftpStatusCode.noSuchFile) return null;
+    } on SshWorkerTransportException catch (error) {
+      if (_isMissing(error)) return null;
       rethrow;
     }
   });
 
-  Future<List<int>?> readFileBytes(String path) => _tracked(() async {
+  Future<List<int>?> readFileBytes(String path) => _tracked((timeout) async {
     try {
-      final sftp = await _ensureConnected();
+      final storage = await _ensureConnected(timeout: timeout);
       final resolved = await expandHome(path);
-      final file = await sftp.open(resolved, mode: SftpFileOpenMode.read);
-      final bytes = await file.readBytes();
-      await file.close();
-      return bytes;
-    } on SftpStatusError catch (e) {
-      if (e.code == SftpStatusCode.noSuchFile) return null;
+      return await storage.readBytes(resolved, timeout: timeout);
+    } on SshWorkerTransportException catch (error) {
+      if (_isMissing(error)) return null;
       rethrow;
     }
   });
@@ -181,86 +210,64 @@ class RemoteFileStore {
     String path, {
     required int offset,
     required int length,
-  }) => _tracked(() async {
+  }) => _tracked((timeout) async {
     try {
-      final sftp = await _ensureConnected();
+      final storage = await _ensureConnected(timeout: timeout);
       final resolved = await expandHome(path);
-      final file = await sftp.open(resolved, mode: SftpFileOpenMode.read);
-      try {
-        return await file.readBytes(length: length, offset: offset);
-      } finally {
-        await file.close();
-      }
-    } on SftpStatusError catch (e) {
-      if (e.code == SftpStatusCode.noSuchFile) return null;
+      return await storage.readBytes(
+        resolved,
+        offset: offset,
+        length: length,
+        timeout: timeout,
+      );
+    } on SshWorkerTransportException catch (error) {
+      if (_isMissing(error)) return null;
       rethrow;
     }
   });
 
-  Future<void> writeFile(String path, String contents) => _tracked(() async {
-    final sftp = await _ensureConnected();
-    final resolved = await expandHome(path);
-    await _ensureParentDirs(resolved);
-    final bytes = Uint8List.fromList(utf8.encode(contents));
-    final file = await sftp.open(
-      resolved,
-      mode:
-          SftpFileOpenMode.write |
-          SftpFileOpenMode.create |
-          SftpFileOpenMode.truncate,
-    );
-    await file.writeBytes(bytes);
-    await file.close();
-  });
+  Future<void> writeFile(String path, String contents) =>
+      _tracked((timeout) async {
+        final storage = await _ensureConnected(timeout: timeout);
+        final resolved = await expandHome(path);
+        await _ensureParentDirs(resolved);
+        final bytes = Uint8List.fromList(utf8.encode(contents));
+        await storage.writeBytes(resolved, bytes, timeout: timeout);
+      });
 
   Future<List<String>> listDirectory(String path) async {
     final entries = await listDirectoryEntries(path);
     return entries.map((e) => e.name).toList();
   }
 
-  Future<List<RemoteDirEntry>> listDirectoryEntries(String path) =>
-      _tracked(() async {
-        final sftp = await _ensureConnected();
-        final resolved = await expandHome(path);
-        final names = await sftp.listdir(resolved);
-        return [
-          for (final n in names)
-            if (n.filename != '.' && n.filename != '..')
-              RemoteDirEntry(name: n.filename, isDirectory: n.attr.isDirectory),
-        ];
-      });
-
-  Future<void> writeBytes(String path, Uint8List bytes) => _tracked(() async {
-    final sftp = await _ensureConnected();
+  Future<List<RemoteDirEntry>> listDirectoryEntries(String path) => _tracked((
+    timeout,
+  ) async {
+    final storage = await _ensureConnected(timeout: timeout);
     final resolved = await expandHome(path);
-    await _ensureParentDirs(resolved);
-    final file = await sftp.open(
-      resolved,
-      mode:
-          SftpFileOpenMode.write |
-          SftpFileOpenMode.create |
-          SftpFileOpenMode.truncate,
-    );
-    await file.writeBytes(bytes);
-    await file.close();
+    final names = await storage.listDirectory(resolved, timeout: timeout);
+    return [
+      for (final n in names)
+        if (n.name != '.' && n.name != '..')
+          RemoteDirEntry(name: n.name, isDirectory: n.stat.kind == 'directory'),
+    ];
   });
 
-  Future<void> appendBytes(String path, Uint8List bytes) => _tracked(() async {
-    final sftp = await _ensureConnected();
+  Future<void> writeBytes(String path, Uint8List bytes) =>
+      _tracked((timeout) async {
+        final storage = await _ensureConnected(timeout: timeout);
+        final resolved = await expandHome(path);
+        await _ensureParentDirs(resolved);
+        await storage.writeBytes(resolved, bytes, timeout: timeout);
+      });
+
+  Future<void> appendBytes(String path, Uint8List bytes) => _tracked((
+    timeout,
+  ) async {
+    final storage = await _ensureConnected(timeout: timeout);
     final resolved = await expandHome(path);
     await _ensureParentDirs(resolved);
-    final file = await sftp.open(
-      resolved,
-      mode:
-          SftpFileOpenMode.write |
-          SftpFileOpenMode.create |
-          SftpFileOpenMode.append,
-    );
-    try {
-      await file.writeBytes(bytes);
-    } finally {
-      await file.close();
-    }
+    await storage.writeBytes(resolved, bytes, append: true, timeout: timeout);
   }, retryOnTransportClosure: false);
 
   Future<void> ensureDirectory(String path) async {
@@ -285,8 +292,8 @@ class RemoteFileStore {
   }
 
   Future<void> _ensureDirectorySftp(String absolutePosixPath) =>
-      _tracked(() async {
-        final sftp = await _ensureConnected();
+      _tracked((timeout) async {
+        final storage = await _ensureConnected(timeout: timeout);
         final posix = p.posix;
         final isAbsolute = posix.isAbsolute(absolutePosixPath);
         final parts = absolutePosixPath
@@ -298,8 +305,9 @@ class RemoteFileStore {
               ? part
               : (current == '/' ? '/$part' : posix.join(current, part));
           try {
-            await sftp.mkdir(current);
-          } on SftpStatusError {
+            await storage.mkdir(current, timeout: timeout);
+          } on SshWorkerTransportException catch (error) {
+            if (!_isSftpFailure(error)) rethrow;
             // Directory may already exist.
           }
         }
@@ -406,23 +414,24 @@ class RemoteFileStore {
     }
   }
 
-  Future<void> createDirectory(String path) => _tracked(() async {
-    final sftp = await _ensureConnected();
+  Future<void> createDirectory(String path) => _tracked((timeout) async {
+    final storage = await _ensureConnected(timeout: timeout);
     final resolved = await expandHome(path);
     try {
-      await sftp.mkdir(resolved);
-    } on SftpStatusError catch (_) {
+      await storage.mkdir(resolved, timeout: timeout);
+    } on SshWorkerTransportException catch (error) {
+      if (!_isSftpFailure(error)) rethrow;
       // Directory might already exist; ignore errors
     }
   });
 
-  Future<void> deleteFile(String path) => _tracked(() async {
-    final sftp = await _ensureConnected();
+  Future<void> deleteFile(String path) => _tracked((timeout) async {
+    final storage = await _ensureConnected(timeout: timeout);
     final resolved = await expandHome(path);
     try {
-      await sftp.remove(resolved);
-    } on SftpStatusError catch (e) {
-      if (e.code == SftpStatusCode.noSuchFile) return;
+      await storage.remove(resolved, timeout: timeout);
+    } on SshWorkerTransportException catch (error) {
+      if (_isMissing(error)) return;
       rethrow;
     }
   });
@@ -493,11 +502,8 @@ class RemoteFileStore {
 
   /// Opens a streaming SSH exec session (no short I/O timeout — caller waits on
   /// [ProcessRunHandle.exitCode]).
-  Future<ProcessRunHandle> startShell(String command) async {
-    final client = await _clientFactory.clientForStorage(_profile);
-    final session = await client.execute(command);
-    return SshProcessRunHandle(session);
-  }
+  Future<ProcessRunHandle> startShell(String command) =>
+      _clientFactory.startProcess(_profile, command);
 
   /// Opens [absolutePath] in the remote OS file manager (best-effort).
   Future<bool> revealInFileManager(

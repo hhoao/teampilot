@@ -174,9 +174,9 @@ class WorkspaceProvisioner {
       '[workspace-provision] ensure-cli locate begin '
       'target=${target.id} cli=${cli.value} host=${profile.host}',
     );
-    final client = await sshClientFactory.clientForStorage(profile);
-    final run = RemoteCliLocator.getRunnerForClient(
-      client,
+    final run = RemoteCliLocator.runnerForStorage(
+      sshClientFactory,
+      profile,
       timeout: SshStorageIo.locateTimeout,
     );
     final storedPath = (await cliPathOverride(target.id, cli.value) ?? '')

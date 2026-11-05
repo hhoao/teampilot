@@ -1,76 +1,34 @@
-import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:dartssh2/dartssh2.dart';
-
 import '../../../ssh/ssh_member_session.dart';
+import '../../../ssh/worker/ssh_worker_member_session.dart';
 import '../../../terminal/terminal_transport.dart';
 
+/// [TerminalTransport] over a UI-safe proxy for a worker-owned SSH PTY.
 class SshPtyTransport implements TerminalTransport {
-  SshPtyTransport({required this.session});
+  SshPtyTransport({required this.channel});
 
-  final SSHSession session;
-  Stream<Uint8List>? _output;
-
-  @override
-  Stream<Uint8List> get output => _output ??= _mergeOutputStreams();
+  final SshWorkerPtyChannel channel;
 
   @override
-  Future<int> get done => session.done.then((_) => session.exitCode ?? 0);
+  Stream<Uint8List> get output => channel.output;
+
+  @override
+  Future<int> get done => channel.done;
 
   @override
   int? get pid => null;
 
   @override
-  void write(Uint8List data) {
-    session.write(data);
-  }
+  void write(Uint8List data) => channel.write(data);
 
   @override
-  void resize(int rows, int columns) {
-    session.resizeTerminal(columns, rows);
-  }
+  void resize(int rows, int columns) => channel.resize(rows, columns);
 
   @override
-  void close() {
-    session.close();
-  }
+  void close() => channel.close();
 
-  Stream<Uint8List> _mergeOutputStreams() {
-    late StreamSubscription<Uint8List> stdoutSub;
-    late StreamSubscription<Uint8List> stderrSub;
-    var closed = 0;
-    final controller = StreamController<Uint8List>();
-
-    void markClosed() {
-      closed += 1;
-      if (closed == 2 && !controller.isClosed) {
-        controller.close();
-      }
-    }
-
-    controller.onListen = () {
-      stdoutSub = session.stdout.listen(
-        controller.add,
-        onError: controller.addError,
-        onDone: markClosed,
-      );
-      stderrSub = session.stderr.listen(
-        controller.add,
-        onError: controller.addError,
-        onDone: markClosed,
-      );
-    };
-    controller.onCancel = () async {
-      await stdoutSub.cancel();
-      await stderrSub.cancel();
-    };
-
-    return controller.stream;
-  }
-
-  /// Starts a remote PTY. [command] `null` opens a bare `shell` request —
-  /// the remote side picks the shell — instead of `exec`-ing a command.
+  /// Starts a remote PTY. [command] `null` opens a bare `shell` request.
   static Future<SshPtyTransport> start({
     required SshMemberSession memberSession,
     String? command,
@@ -78,12 +36,12 @@ class SshPtyTransport implements TerminalTransport {
     int rows = 24,
     Map<String, String>? environment,
   }) async {
-    final session = await memberSession.openPty(
+    final channel = await memberSession.openPty(
       command: command,
       columns: columns,
       rows: rows,
       environment: environment,
     );
-    return SshPtyTransport(session: session);
+    return SshPtyTransport(channel: channel);
   }
 }

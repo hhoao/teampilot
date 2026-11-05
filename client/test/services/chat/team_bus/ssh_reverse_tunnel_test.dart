@@ -3,10 +3,9 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/chat/team_bus/remote/reverse_tunnel.dart';
 
-/// SshReverseTunnel is a thin wrapper over dartssh2 forwardRemote; the part with
-/// logic is the channel mapping, captured by StreamTunnelChannel (which
-/// SshReverseTunnel uses to adapt each SSHForwardChannel). Test the mapping with
-/// in-memory primitives (no real SSH).
+/// Direct SSH adapters map their transport channels through
+/// StreamTunnelChannel. Test that app-owned primitive mapping without a real
+/// SSH connection.
 void main() {
   test('StreamTunnelChannel maps input stream, add sink and close', () async {
     final incoming = StreamController<List<int>>();
