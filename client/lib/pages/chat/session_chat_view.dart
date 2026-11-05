@@ -82,6 +82,12 @@ class _ChatFindToggleIntent extends Intent {
 }
 
 /// Bound Chat view: history thread + slim compose for a session body.
+/// Outcome of one history-load attempt.
+///
+/// [deferred] means the seat is cold/offstage and must not touch disk yet;
+/// [pty] loaded a CLI transcript; [acp] republished the app-owned transcript.
+enum _HistoryLoadOutcome { deferred, pty, acp }
+
 class SessionChatView extends StatefulWidget {
   const SessionChatView({
     required this.session,
@@ -167,7 +173,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// Single-flight for the non-forced history load: mount, activation, and
   /// running/busy transitions can fire in one async window; coalesce so a cold
   /// seat is never parsed twice.
-  Future<bool>? _historyLoadInFlight;
+  Future<_HistoryLoadOutcome>? _historyLoadInFlight;
   AiHistorySeat? _seat;
   CliTaskBoardController? _taskBoardController;
 
@@ -478,7 +484,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       memberId: widget.selectedMemberId,
     );
     // _loadHistory hydrates the session document before deciding ACP vs PTY.
-    final isAcp = await _loadHistory();
+    final outcome = await _loadHistory();
     if (!mounted ||
         !scope.isCurrent(
           seat: _seat,
@@ -489,8 +495,8 @@ class _SessionChatViewState extends State<SessionChatView> {
     }
     // Terminal-less ACP: the cubit owns the app-side message table; the
     // failed-message store is a PTY delivery concern and must not resurrect
-    // stale pending bubbles.
-    if (isAcp) return;
+    // stale pending bubbles. Deferred seats have not loaded anything yet.
+    if (outcome != _HistoryLoadOutcome.pty) return;
     await _hydratePersistedPendingUsers();
   }
 
@@ -658,7 +664,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         usesPosixPaths: homeStorageOf(context).usesPosixPaths,
       );
 
-  Future<bool> _loadHistory({bool force = false}) {
+  Future<_HistoryLoadOutcome> _loadHistory({bool force = false}) {
     if (force) return _loadHistoryImpl(force: true);
     final inFlight = _historyLoadInFlight;
     if (inFlight != null) return inFlight;
@@ -672,10 +678,29 @@ class _SessionChatViewState extends State<SessionChatView> {
     return future;
   }
 
-  Future<bool> _loadHistoryImpl({required bool force}) async {
+  Future<_HistoryLoadOutcome> _loadHistoryImpl({required bool force}) async {
     final seat = _seat;
-    if (seat == null) return false;
+    if (seat == null) return _HistoryLoadOutcome.deferred;
     final chat = context.read<ChatCubit>();
+    final running = chat.isMemberRunning(
+      sessionId: widget.session.sessionId,
+      memberId: _shellMemberId,
+    );
+    // Cold seats only load when hot (visible or running). Check this BEFORE
+    // hydrating: offstage restored tabs must not read session docs on boot.
+    if (!force &&
+        !isHistorySeatHot(
+          routeActive: widget.routeActive,
+          isMemberRunning: running,
+        )) {
+      appLogger.d(
+        '[history-defer] not-hot skip session=${widget.session.sessionId} '
+        'member=$_shellMemberId routeActive=${widget.routeActive} '
+        'running=$running',
+      );
+      await _liveRefresh?.stop();
+      return _HistoryLoadOutcome.deferred;
+    }
     final ready =
         seat.state.status == AiHistoryViewStatus.ready &&
         seat.state.sessionId == widget.session.sessionId &&
@@ -691,7 +716,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         session.workspaceId,
         session.sessionId,
       );
-      if (!mounted) return false;
+      if (!mounted) return _HistoryLoadOutcome.deferred;
       if (hydrated != null) session = hydrated;
     }
     final usesAcp = _usesAcpTranscriptFor(session);
@@ -703,26 +728,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       } else {
         _syncAcpMessages(acpRuntime);
       }
-      return true;
-    }
-    final running = chat.isMemberRunning(
-      sessionId: widget.session.sessionId,
-      memberId: _shellMemberId,
-    );
-    // Cold seats only load when hot (visible or running). Offstage, idle
-    // restored tabs defer to first activation instead of parsing on boot.
-    if (!force &&
-        !isHistorySeatHot(
-          routeActive: widget.routeActive,
-          isMemberRunning: running,
-        )) {
-      appLogger.d(
-        '[history-defer] not-hot skip session=${widget.session.sessionId} '
-        'member=$_shellMemberId routeActive=${widget.routeActive} '
-        'running=$running',
-      );
-      await _liveRefresh?.stop();
-      return false;
+      return _HistoryLoadOutcome.acp;
     }
     final launchContext = _launchContextFor(session);
     final workingDirectory = _workspaceRootFor(session);
@@ -735,13 +741,13 @@ class _SessionChatViewState extends State<SessionChatView> {
         workingDirectory: workingDirectory,
         force: true,
       );
-      if (!mounted) return false;
+      if (!mounted) return _HistoryLoadOutcome.deferred;
       _maybeStartLiveRefreshForRunningPty();
       _syncAwaitingFromWorkingSessions(chat.state);
       if (seat.state.awaitingAssistant) {
         unawaited(_startLiveRefresh(skipInitialRefresh: true));
       }
-      return false;
+      return _HistoryLoadOutcome.pty;
     }
     await seat.softReloadOrLoad(
       session: session,
@@ -750,13 +756,13 @@ class _SessionChatViewState extends State<SessionChatView> {
       team: widget.team,
       workingDirectory: workingDirectory,
     );
-    if (!mounted) return false;
+    if (!mounted) return _HistoryLoadOutcome.deferred;
     _maybeStartLiveRefreshForRunningPty();
     _syncAwaitingFromWorkingSessions(chat.state);
     if (seat.state.awaitingAssistant) {
       unawaited(_startLiveRefresh(skipInitialRefresh: true));
     }
-    return false;
+    return _HistoryLoadOutcome.pty;
   }
 
   /// Single entry for "this seat's hot state may have changed": load a cold hot
