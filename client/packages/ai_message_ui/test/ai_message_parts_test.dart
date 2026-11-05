@@ -108,8 +108,9 @@ void main() {
 
     expect(shortBubble.width, lessThan(80));
     expect(shortBubble.width, lessThan(longBubble.width));
-    // Action bar reserves 80px on a 400px thread → cap 320.
-    expect(longBubble.width, closeTo(320, 8));
+    // The action bar sits under the bubble, so the bubble may use the whole
+    // 400px thread width instead of reserving horizontal chrome.
+    expect(longBubble.width, closeTo(400, 8));
     expect(longBubble.width, lessThan(kUserBubbleMaxWidth));
   });
 

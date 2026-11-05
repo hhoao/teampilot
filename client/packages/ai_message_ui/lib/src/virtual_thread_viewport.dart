@@ -669,8 +669,11 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
         final scrollInTurn = widget.scrollController.hasClients
             ? _scrollPixelsInTurnSpace(widget.scrollController.position.pixels)
             : 0.0;
-        // Only correct when the turn was fully above the viewport top.
-        final fullyAbove = turnStart + before <= scrollInTurn;
+        // Only correct when the turn really ends above the viewport top. Test
+        // the measured height, not the previous estimate: an unmeasured turn
+        // swallowed the tip and looked "fully above" while most of it was on
+        // screen, so its growth dragged the reading position to the end.
+        final fullyAbove = turnStart + after <= scrollInTurn;
         if (!widget.suppressMeasureScrollCorrection &&
             fullyAbove &&
             widget.onMeasureScrollCorrection != null) {

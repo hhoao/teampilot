@@ -235,4 +235,34 @@ void main() {
     expect(nextCalls, 0);
     expect(forkCalls, 0);
   });
+
+  testWidgets('dense bar keeps a compact fixed row', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMessageActionBar(
+            message: message,
+            reveal: AiActionBarReveal.hover,
+            dense: true,
+          ),
+        ),
+      ),
+    );
+    expect(tester.getSize(find.byType(AiMessageActionBar)).height, 26);
+    expect(copyIcon(), findsNothing);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMessageActionBar(
+            message: message,
+            reveal: AiActionBarReveal.always,
+            dense: true,
+          ),
+        ),
+      ),
+    );
+    expect(tester.getSize(find.byType(AiMessageActionBar)).height, 26);
+    expect(copyIcon(), findsOneWidget);
+  });
 }

@@ -1163,6 +1163,16 @@ class _SessionChatViewState extends State<SessionChatView> {
     _focusNode.requestFocus();
   }
 
+  /// Attach picker for the inline user-message editor: same path rules as the
+  /// composer, but the editor inserts the returned refs into its own field.
+  Future<List<String>> _pickEditAttachments() {
+    return pickComposeFileReferences(
+      workspaceRoot: _workspaceRoot,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+      filesystem: homeStorageOf(context).fs,
+    );
+  }
+
   Future<bool> _pasteComposeImage() async {
     if (_isSubmitting) return false;
     final pasted = await pasteComposeImageAttachment(
@@ -1828,6 +1838,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                                               unawaited(
                                                 _retryFailedMessage(id),
                                               ),
+                                          onPickEditAttachments:
+                                              _pickEditAttachments,
                                           onCloseFind: _closeFind,
                                           onNavigateFind: _navigateFindTo,
                                         ),

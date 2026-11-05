@@ -20,6 +20,7 @@ final class SessionHistoryRewindBinding {
     this.onSwitchVersion,
     this.onForkFrom,
     this.onEditUserMessage,
+    this.onPickEditAttachments,
     required this.branchEdit,
     this.busy = false,
     this.onOptimisticLanded,
@@ -29,6 +30,9 @@ final class SessionHistoryRewindBinding {
   final void Function(String commit)? onSwitchVersion;
   final void Function(String commit)? onForkFrom;
   final Future<bool> Function(String messageId, String text)? onEditUserMessage;
+
+  /// Opens the host file picker for the inline editor and returns `@` refs.
+  final Future<List<String>> Function()? onPickEditAttachments;
   final bool busy;
 
   /// Single source of truth for pending/draft/editor state.
@@ -46,6 +50,7 @@ class SessionHistoryRewindHost extends StatefulWidget {
     required this.session,
     required this.workspace,
     required this.memberId,
+    this.onPickEditAttachments,
     required this.builder,
     super.key,
   });
@@ -53,6 +58,10 @@ class SessionHistoryRewindHost extends StatefulWidget {
   final AppSession session;
   final Workspace workspace;
   final String memberId;
+
+  /// Opens the host file picker for the inline editor (see
+  /// [SessionHistoryRewindBinding.onPickEditAttachments]).
+  final Future<List<String>> Function()? onPickEditAttachments;
   final Widget Function(
     BuildContext context,
     SessionHistoryRewindBinding binding,
@@ -294,6 +303,9 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         onSwitchVersion: _allowed ? _onSwitchVersion : null,
         onForkFrom: _allowed ? _onForkFrom : null,
         onEditUserMessage: _allowed ? _onEditUserMessage : null,
+        onPickEditAttachments: _allowed
+            ? widget.onPickEditAttachments
+            : null,
         // Keep fork/switch/edit disabled until the optimistic prompt lands;
         // clearing _busy at send time opens a race with a second rewind.
         branchEdit: branchEdit,

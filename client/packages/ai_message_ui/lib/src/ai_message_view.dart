@@ -31,6 +31,7 @@ class AiMessageView extends StatefulWidget {
     this.editInitialText,
     this.onSubmitEdit,
     this.onCancelEdit,
+    this.onPickEditAttachments,
     this.editSendLabel = 'Send',
     this.editCancelLabel = 'Cancel',
     this.onFork,
@@ -70,6 +71,11 @@ class AiMessageView extends StatefulWidget {
   /// open (and re-enables submit) so the user can retry.
   final Future<bool> Function(String text)? onSubmitEdit;
   final VoidCallback? onCancelEdit;
+
+  /// Opens the host's file picker and returns `@` references to insert into
+  /// the edit draft. Null hides the editor's attach action.
+  final Future<List<String>> Function()? onPickEditAttachments;
+
   final String editSendLabel;
   final String editCancelLabel;
 
@@ -150,13 +156,16 @@ class _AiMessageViewState extends State<AiMessageView> {
     final rewindForkEnabled =
         AiMessageInteractionScope.maybeRewindEnabled(context) ??
         widget.rewindForkEnabled;
+    final isUser = widget.message.role == AiRole.user;
+    // The user action bar lives under the bubble and reserves its own row, so
+    // drop the outer message gap while it is shown (the bar/editor supplies the
+    // spacing below the message).
+    final actionsUnderBubble = isUser && widget.showActionBar;
 
     final body = Padding(
       padding: EdgeInsets.only(
-        top: widget.message.role == AiRole.user
-            ? aiTheme.userMessageTopInset
-            : 0,
-        bottom: aiTheme.messageSpacing,
+        top: isUser ? aiTheme.userMessageTopInset : 0,
+        bottom: actionsUnderBubble ? 0 : aiTheme.messageSpacing,
       ),
       child: RepaintBoundary(
         child: switch (widget.message.role) {
@@ -175,6 +184,7 @@ class _AiMessageViewState extends State<AiMessageView> {
             editInitialText: widget.editInitialText,
             onSubmitEdit: widget.onSubmitEdit,
             onCancelEdit: widget.onCancelEdit,
+            onPickEditAttachments: widget.onPickEditAttachments,
             editSendLabel: widget.editSendLabel,
             editCancelLabel: widget.editCancelLabel,
             onFork: widget.onFork,
@@ -298,6 +308,7 @@ class _UserBubble extends StatelessWidget {
     this.editInitialText,
     this.onSubmitEdit,
     this.onCancelEdit,
+    this.onPickEditAttachments,
     this.editSendLabel = 'Send',
     this.editCancelLabel = 'Cancel',
     this.onFork,
@@ -325,6 +336,7 @@ class _UserBubble extends StatelessWidget {
   final String? editInitialText;
   final Future<bool> Function(String text)? onSubmitEdit;
   final VoidCallback? onCancelEdit;
+  final Future<List<String>> Function()? onPickEditAttachments;
   final String editSendLabel;
   final String editCancelLabel;
   final VoidCallback? onFork;
@@ -339,66 +351,50 @@ class _UserBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (editing) {
-      return _UserMessageEditor(
-        scheme: scheme,
-        theme: aiTheme,
-        initialText: editInitialText ?? plainTextForCopy(message),
-        originalText: plainTextForCopy(message),
-        sendLabel: editSendLabel,
-        cancelLabel: editCancelLabel,
-        onSubmit: onSubmitEdit ?? (_) async => true,
-        onCancel: onCancelEdit,
-      );
-    }
+    final collapsed = _buildCollapsed(context);
+    if (!editing) return collapsed;
+    final editor = _UserMessageEditor(
+      scheme: scheme,
+      theme: aiTheme,
+      initialText: editInitialText ?? plainTextForCopy(message),
+      originalText: plainTextForCopy(message),
+      sendLabel: editSendLabel,
+      cancelLabel: editCancelLabel,
+      onSubmit: onSubmitEdit ?? (_) async => true,
+      onCancel: onCancelEdit,
+      onPickAttachments: onPickEditAttachments,
+    );
+    // Keep the collapsed bubble + action row in the tree as an invisible
+    // sizer and let the editor fill that exact slot. Opening the editor then
+    // never changes the message height; a long draft scrolls inside the box
+    // instead of pushing the transcript down.
+    return Stack(
+      children: [
+        Visibility(
+          visible: false,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: collapsed,
+        ),
+        Positioned.fill(child: editor),
+      ],
+    );
+  }
+
+  Widget _buildCollapsed(BuildContext context) {
     return Align(
       alignment: Alignment.centerRight,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Reserve action-bar chrome so Row never overflows the thread width.
-          // The version control is two icon buttons plus a text label. Scale
-          // the label reserve with the platform text scale instead of a
-          // locale-independent magic width.
-          final versionReserve = versionCount != null && versionCount! > 1
-              ? 72.0 + MediaQuery.textScalerOf(context).scale(36.0)
-              : 0.0;
-          final actionBarReserve =
-              80.0 +
-              (onRetryDelivery != null ? 36.0 : 0.0) +
-              (onEdit != null ? 36.0 : 0.0) +
-              (onFork != null ? 36.0 : 0.0) +
-              versionReserve;
           final threadMax = constraints.maxWidth.isFinite
               ? constraints.maxWidth
               : 480.0;
-          final canFitActionBar =
-              showActionBar && threadMax >= actionBarReserve;
-          final bubbleCap = canFitActionBar
-              ? (threadMax - actionBarReserve).clamp(0.0, threadMax)
-              : threadMax;
-          final bubbleMax = aiTheme.userBubbleMaxWidth.clamp(0.0, bubbleCap);
-          return Row(
+          final bubbleMax = aiTheme.userBubbleMaxWidth.clamp(0.0, threadMax);
+          return Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (canFitActionBar)
-                _HoverScopedActionBar(
-                  message: message,
-                  reveal: actionBarReveal,
-                  hoverListenable: hoverListenable,
-                  onRetryDelivery: onRetryDelivery,
-                  onEdit: onEdit,
-                  editLabel: editLabel,
-                  onFork: onFork,
-                  forkLabel: forkLabel,
-                  rewindForkEnabled: rewindForkEnabled,
-                  versionIndex: versionIndex,
-                  versionCount: versionCount,
-                  onPreviousVersion: onPreviousVersion,
-                  onNextVersion: onNextVersion,
-                  previousVersionLabel: previousVersionLabel,
-                  nextVersionLabel: nextVersionLabel,
-                ),
               ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: bubbleMax),
                 child: ClipRRect(
@@ -424,6 +420,28 @@ class _UserBubble extends StatelessWidget {
                   ),
                 ),
               ),
+              if (showActionBar)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10, bottom: 18),
+                  child: _HoverScopedActionBar(
+                    message: message,
+                    reveal: actionBarReveal,
+                    hoverListenable: hoverListenable,
+                    dense: true,
+                    onRetryDelivery: onRetryDelivery,
+                    onEdit: onEdit,
+                    editLabel: editLabel,
+                    onFork: onFork,
+                    forkLabel: forkLabel,
+                    rewindForkEnabled: rewindForkEnabled,
+                    versionIndex: versionIndex,
+                    versionCount: versionCount,
+                    onPreviousVersion: onPreviousVersion,
+                    onNextVersion: onNextVersion,
+                    previousVersionLabel: previousVersionLabel,
+                    nextVersionLabel: nextVersionLabel,
+                  ),
+                ),
             ],
           );
         },
@@ -564,6 +582,7 @@ class _HoverScopedActionBar extends StatelessWidget {
     required this.message,
     required this.reveal,
     this.hoverListenable,
+    this.dense = false,
     this.onRetryDelivery,
     this.onEdit,
     this.editLabel = 'Edit message',
@@ -581,6 +600,7 @@ class _HoverScopedActionBar extends StatelessWidget {
   final AiMessage message;
   final AiActionBarReveal reveal;
   final ValueListenable<bool>? hoverListenable;
+  final bool dense;
   final VoidCallback? onRetryDelivery;
   final VoidCallback? onEdit;
   final String editLabel;
@@ -600,6 +620,7 @@ class _HoverScopedActionBar extends StatelessWidget {
       message: message,
       reveal: reveal,
       forceVisibleListenable: hoverListenable,
+      dense: dense,
       onRetryDelivery: onRetryDelivery,
       onEdit: onEdit,
       editLabel: editLabel,
@@ -616,6 +637,12 @@ class _HoverScopedActionBar extends StatelessWidget {
   }
 }
 
+/// Editor box radius (the bubble radius is too tight for a bordered field).
+const double _kUserEditRadius = 16;
+
+/// Space the editor leaves below its border box, before the next message.
+const double _kUserEditBottomInset = 12;
+
 class _SendEditIntent extends Intent {
   const _SendEditIntent();
 }
@@ -625,6 +652,9 @@ class _CancelEditIntent extends Intent {
 }
 
 /// In-place editor for a user message. Enter sends, Shift+Enter is a newline.
+///
+/// The box replaces the bubble and its action row with roughly the same
+/// footprint, so opening the editor does not jump the transcript height.
 class _UserMessageEditor extends StatefulWidget {
   const _UserMessageEditor({
     required this.scheme,
@@ -635,6 +665,7 @@ class _UserMessageEditor extends StatefulWidget {
     required this.cancelLabel,
     required this.onSubmit,
     required this.onCancel,
+    this.onPickAttachments,
   });
 
   final ColorScheme scheme;
@@ -649,6 +680,9 @@ class _UserMessageEditor extends StatefulWidget {
   final String cancelLabel;
   final Future<bool> Function(String text) onSubmit;
   final VoidCallback? onCancel;
+
+  /// Opens the host picker; returned `@` references are inserted at the cursor.
+  final Future<List<String>> Function()? onPickAttachments;
 
   @override
   State<_UserMessageEditor> createState() => _UserMessageEditorState();
@@ -688,78 +722,184 @@ class _UserMessageEditorState extends State<_UserMessageEditor> {
     }
   }
 
+  Future<void> _attach() async {
+    final pick = widget.onPickAttachments;
+    if (pick == null || _submitted) return;
+    final refs = await pick();
+    if (!mounted || refs.isEmpty) return;
+    final text = _controller.text;
+    final selection = _controller.selection;
+    final start = selection.isValid ? selection.start : text.length;
+    final end = selection.isValid ? selection.end : text.length;
+    final leading = start > 0 && text[start - 1].trim().isNotEmpty ? ' ' : '';
+    final trailing = end < text.length && text[end].trim().isNotEmpty
+        ? ' '
+        : '';
+    final insertion = '$leading${refs.join(' ')}$trailing';
+    _controller.value = TextEditingValue(
+      text: text.replaceRange(start, end, insertion),
+      selection: TextSelection.collapsed(offset: start + insertion.length),
+    );
+    _focus.requestFocus();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: widget.theme.userBubbleMaxWidth),
+    final strings = AiMessageStrings.of(context);
+    final textStyle = widget.theme.markdown.userBubble(widget.scheme.onSurface);
+    return Padding(
+      // Breathing room between the box and whatever follows the message.
+      padding: const EdgeInsets.only(bottom: _kUserEditBottomInset),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 8, 12, 12),
+        decoration: BoxDecoration(
+          color: widget.scheme.surface,
+          borderRadius: BorderRadius.circular(_kUserEditRadius),
+          border: Border.all(color: widget.scheme.primary),
+        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Shortcuts(
-              shortcuts: const {
-                SingleActivator(LogicalKeyboardKey.enter): _SendEditIntent(),
-                SingleActivator(LogicalKeyboardKey.escape): _CancelEditIntent(),
-              },
-              child: Actions(
-                actions: {
-                  _SendEditIntent: CallbackAction<_SendEditIntent>(
-                    onInvoke: (_) {
-                      _submit();
-                      return null;
-                    },
-                  ),
-                  _CancelEditIntent: CallbackAction<_CancelEditIntent>(
-                    onInvoke: (_) {
-                      widget.onCancel?.call();
-                      return null;
-                    },
-                  ),
-                },
-                child: TextField(
-                  controller: _controller,
-                  focusNode: _focus,
-                  readOnly: _submitted,
-                  maxLines: null,
-                  minLines: 1,
-                  textInputAction: TextInputAction.newline,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: widget.theme.resolveUserBubble(widget.scheme),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        widget.theme.userBubbleRadius,
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  // Fill the box so a click anywhere in the text area focuses
+                  // the field; longer drafts scroll inside the fixed slot.
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: Shortcuts(
+                      shortcuts: const {
+                        SingleActivator(LogicalKeyboardKey.enter):
+                            _SendEditIntent(),
+                        SingleActivator(LogicalKeyboardKey.escape):
+                            _CancelEditIntent(),
+                      },
+                      child: Actions(
+                        actions: {
+                          _SendEditIntent: CallbackAction<_SendEditIntent>(
+                            onInvoke: (_) {
+                              _submit();
+                              return null;
+                            },
+                          ),
+                          _CancelEditIntent: CallbackAction<_CancelEditIntent>(
+                            onInvoke: (_) {
+                              widget.onCancel?.call();
+                              return null;
+                            },
+                          ),
+                        },
+                        child: TextField(
+                          controller: _controller,
+                          focusNode: _focus,
+                          readOnly: _submitted,
+                          maxLines: null,
+                          minLines: 1,
+                          style: textStyle,
+                          cursorColor: widget.scheme.primary,
+                          textInputAction: TextInputAction.newline,
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            filled: false,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                            // The app theme pins text fields to a control
+                            // height; the editor text sits directly in the
+                            // bordered box.
+                            constraints: BoxConstraints(),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 2),
             Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
+                if (widget.onPickAttachments != null) ...[
+                  IconButton(
+                    tooltip: strings.attachFile,
+                    onPressed: _submitted ? null : _attach,
+                    icon: const Icon(Icons.attach_file_rounded),
+                    iconSize: 20,
+                    color: widget.scheme.onSurfaceVariant,
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(28, 28),
+                      maximumSize: const Size(28, 28),
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                _editPill(
+                  label: widget.cancelLabel,
                   onPressed: _submitted ? null : widget.onCancel,
-                  child: Text(widget.cancelLabel),
                 ),
-                const SizedBox(width: 6),
-                FilledButton(
+                const SizedBox(width: 8),
+                _editPill(
+                  label: widget.sendLabel,
                   onPressed: _submitted ? null : _submit,
+                  primary: true,
                   child: _submitted
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 14,
                           height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: widget.scheme.onPrimary,
+                          ),
                         )
-                      : Text(widget.sendLabel),
+                      : null,
                 ),
               ],
             ),
           ],
         ),
       ),
+    );
+  }
+
+  /// Compact pill action matching the composer's cancel/send pair.
+  Widget _editPill({
+    required String label,
+    required VoidCallback? onPressed,
+    bool primary = false,
+    Widget? child,
+  }) {
+    final style = ButtonStyle(
+      minimumSize: const WidgetStatePropertyAll(Size(0, 28)),
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 18),
+      ),
+      shape: const WidgetStatePropertyAll(StadiumBorder()),
+      visualDensity: VisualDensity.compact,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      textStyle: WidgetStatePropertyAll(Theme.of(context).textTheme.labelLarge),
+    );
+    final content = child ?? Text(label);
+    if (primary) {
+      return FilledButton(style: style, onPressed: onPressed, child: content);
+    }
+    return OutlinedButton(
+      style: style.copyWith(
+        foregroundColor: WidgetStatePropertyAll(widget.scheme.onSurfaceVariant),
+        side: WidgetStatePropertyAll(
+          BorderSide(color: widget.scheme.outlineVariant),
+        ),
+      ),
+      onPressed: onPressed,
+      child: content,
     );
   }
 }

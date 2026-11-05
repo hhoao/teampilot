@@ -160,9 +160,10 @@ Future<bool> pasteComposeImageAttachment({
   return false;
 }
 
-/// Opens a multi-file picker and inserts `@` references at the compose cursor.
-Future<void> pickAndInsertComposeFileReferences({
-  required ComposeTextController controller,
+/// Opens a multi-file picker and returns `@` references for the picked files.
+///
+/// Returns an empty list when the picker is cancelled or nothing resolves.
+Future<List<String>> pickComposeFileReferences({
   required String workspaceRoot,
   required bool usesPosixPaths,
   required Filesystem filesystem,
@@ -171,7 +172,7 @@ Future<void> pickAndInsertComposeFileReferences({
     allowMultiple: true,
     type: FileType.any,
   );
-  if (result == null || result.files.isEmpty) return;
+  if (result == null || result.files.isEmpty) return const [];
 
   final refs = <String>[];
   for (final file in result.files) {
@@ -185,6 +186,21 @@ Future<void> pickAndInsertComposeFileReferences({
     );
     if (ref != null) refs.add(ref);
   }
+  return refs;
+}
+
+/// Opens a multi-file picker and inserts `@` references at the compose cursor.
+Future<void> pickAndInsertComposeFileReferences({
+  required ComposeTextController controller,
+  required String workspaceRoot,
+  required bool usesPosixPaths,
+  required Filesystem filesystem,
+}) async {
+  final refs = await pickComposeFileReferences(
+    workspaceRoot: workspaceRoot,
+    usesPosixPaths: usesPosixPaths,
+    filesystem: filesystem,
+  );
   if (refs.isEmpty) return;
 
   insertComposeReferences(controller, refs);

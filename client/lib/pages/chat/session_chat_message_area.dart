@@ -71,6 +71,7 @@ class SessionChatMessageArea extends StatelessWidget {
     required this.historyCap,
     required this.onRetry,
     required this.onRetryFailedMessage,
+    this.onPickEditAttachments,
     required this.onCloseFind,
     required this.onNavigateFind,
     super.key,
@@ -99,6 +100,7 @@ class SessionChatMessageArea extends StatelessWidget {
   final AiHistoryCapability? historyCap;
   final VoidCallback onRetry;
   final ValueChanged<String> onRetryFailedMessage;
+  final Future<List<String>> Function()? onPickEditAttachments;
   final VoidCallback onCloseFind;
   final void Function(TranscriptHit) onNavigateFind;
 
@@ -340,6 +342,8 @@ class SessionChatMessageArea extends StatelessWidget {
                                           session: session,
                                           workspace: workspace,
                                           memberId: shellMemberId,
+                                          onPickEditAttachments:
+                                              onPickEditAttachments,
                                           builder: (context, rewind) {
                                             return SessionHistoryReviewMessages(
                                               state: state,

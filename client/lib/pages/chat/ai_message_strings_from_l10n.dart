@@ -19,6 +19,7 @@ AiMessageStrings aiMessageStringsFromL10n(
     result: l10n.aiMessageToolResult,
     copy: l10n.copy,
     copied: l10n.aiMessageCopied,
+    attachFile: l10n.workspaceChatLandingAttach,
     retryDelivery: l10n.sessionHistoryRetry,
     exportMarkdown: l10n.aiMessageExportMarkdown,
     messageIncomplete: l10n.aiMessageIncomplete,

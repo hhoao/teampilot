@@ -166,6 +166,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               onSwitchVersion: rewind?.onSwitchVersion,
               onForkFrom: rewind?.onForkFrom,
               onEditUserMessage: rewind?.onEditUserMessage,
+              onPickEditAttachments: rewind?.onPickEditAttachments,
               holdTranscript: rewind?.holdTranscript ?? false,
               branchEdit: rewind?.branchEdit,
               onOptimisticLanded: rewind?.onOptimisticLanded,

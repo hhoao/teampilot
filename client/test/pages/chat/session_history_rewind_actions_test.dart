@@ -538,7 +538,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.byType(TextField), findsOneWidget);
-    expect(find.text('edited'), findsOneWidget);
+    // The optimistic bubble stays mounted behind the editor as a height
+    // sizer, so read the draft from the field itself.
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller!.text, 'edited');
   });
 
   testWidgets('a host-owned optimistic edit survives a thread remount', (

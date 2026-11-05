@@ -43,8 +43,13 @@ class AiMessageActionBar extends StatefulWidget {
     this.onNextVersion,
     this.previousVersionLabel = 'Previous version',
     this.nextVersionLabel = 'Next version',
+    this.dense = false,
     super.key,
   });
+
+  /// Compact chrome for bars placed under a user bubble: shorter row and
+  /// smaller hit targets so the bar reads as message chrome, not a toolbar.
+  final bool dense;
 
   final AiMessage message;
   final AiActionBarReveal reveal;
@@ -222,12 +227,13 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
   @override
   Widget build(BuildContext context) {
     // Fixed height so hover reveal never shifts messages below.
-    const barHeight = 40.0;
+    final barHeight = widget.dense ? 26.0 : 40.0;
+    final hitSize = widget.dense ? 26.0 : 36.0;
 
     if (!_actionsMounted) {
-      const placeholder = SizedBox(height: barHeight);
+      final placeholder = SizedBox(height: barHeight);
       if (widget.forceVisibleListenable != null) {
-        return const SelectionContainer.disabled(child: placeholder);
+        return SelectionContainer.disabled(child: placeholder);
       }
       return SelectionContainer.disabled(
         child: MouseRegion(
@@ -257,12 +263,14 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
             label: strings.retryDelivery,
             icon: Icons.refresh_rounded,
             color: scheme.error,
+            hitSize: hitSize,
             onPressed: widget.onRetryDelivery,
           ),
         _LiteIconAction(
           label: _copied ? strings.copied : strings.copy,
           icon: _copied ? Icons.check_rounded : Icons.copy_rounded,
           color: color,
+          hitSize: hitSize,
           onPressed: _plain.isEmpty ? null : _copyPlain,
         ),
         if (widget.onEdit != null)
@@ -272,6 +280,7 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
               label: widget.editLabel,
               icon: Icons.edit_outlined,
               color: color,
+              hitSize: hitSize,
               onPressed: widget.rewindForkEnabled ? widget.onEdit : null,
             ),
           ),
@@ -282,14 +291,16 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
               label: widget.forkLabel,
               icon: Icons.call_split,
               color: color,
+              hitSize: hitSize,
               onPressed: widget.rewindForkEnabled ? widget.onFork : null,
             ),
           ),
-        if (_showsVersion) _versionControl(color),
+        if (_showsVersion) _versionControl(color, hitSize),
         _LiteIconAction(
           label: _exported ? strings.copied : strings.exportMarkdown,
           icon: _exported ? Icons.check_rounded : Icons.description_outlined,
           color: color,
+          hitSize: hitSize,
           onPressed: _markdown.isEmpty ? null : _copyMarkdown,
         ),
       ],
@@ -342,7 +353,7 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
     );
   }
 
-  Widget _versionControl(Color color) {
+  Widget _versionControl(Color color, double hitSize) {
     final enabled = widget.rewindForkEnabled;
     final textStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
       color: color,
@@ -357,6 +368,7 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
             label: widget.previousVersionLabel,
             icon: Icons.chevron_left,
             color: color,
+            hitSize: hitSize,
             onPressed: enabled ? widget.onPreviousVersion : null,
           ),
         ),
@@ -370,6 +382,7 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
             label: widget.nextVersionLabel,
             icon: Icons.chevron_right,
             color: color,
+            hitSize: hitSize,
             onPressed: enabled ? widget.onNextVersion : null,
           ),
         ),
@@ -385,12 +398,14 @@ class _LiteIconAction extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.onPressed,
+    this.hitSize = 36,
   });
 
   final String label;
   final IconData icon;
   final Color color;
   final VoidCallback? onPressed;
+  final double hitSize;
 
   @override
   Widget build(BuildContext context) {
@@ -403,9 +418,9 @@ class _LiteIconAction extends StatelessWidget {
       child: TpHover(
         enabled: enabled,
         onTap: onPressed,
-        width: 36,
-        height: 36,
-        borderRadius: BorderRadius.circular(8),
+        width: hitSize,
+        height: hitSize,
+        borderRadius: BorderRadius.circular(hitSize <= 28 ? 6 : 8),
         hoverColor: color.withValues(alpha: 0.08),
         child: Icon(icon, size: 16, color: iconColor),
       ),

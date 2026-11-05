@@ -83,6 +83,7 @@ class SessionHistoryThread extends StatefulWidget {
     this.onSwitchVersion,
     this.onForkFrom,
     this.onEditUserMessage,
+    this.onPickEditAttachments,
     this.holdTranscript = false,
     this.branchEdit,
     this.onOptimisticLanded,
@@ -152,6 +153,10 @@ class SessionHistoryThread extends StatefulWidget {
   /// Submits an edit. Returns true when the edit was accepted; false keeps
   /// the editor open with the draft so the user can retry.
   final Future<bool> Function(String messageId, String text)? onEditUserMessage;
+
+  /// Opens the host file picker while a user message is being edited and
+  /// returns `@` references to insert into the draft.
+  final Future<List<String>> Function()? onPickEditAttachments;
 
   /// Keeps the transcript on screen while an edit restores and resends.
   ///
@@ -1328,6 +1333,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                               return accepted;
                             },
                             onCancelEdit: _edit.cancelEdit,
+                            onPickEditAttachments:
+                                widget.onPickEditAttachments,
                             editSendLabel: editSendLabel,
                             editCancelLabel: editCancelLabel,
                             editInitialText: _edit.editingMessageId == ai.id
