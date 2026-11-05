@@ -21,6 +21,27 @@ class _SlowFilesystem extends InMemoryFilesystem {
   }
 }
 
+/// Separates full rewrites from appends so tests can assert the hot path
+/// never rewrites the transcript.
+class _RecordingFilesystem extends InMemoryFilesystem {
+  int atomicWrites = 0;
+  int appends = 0;
+  int appendedBytes = 0;
+
+  @override
+  Future<void> atomicWrite(String path, String content) async {
+    atomicWrites++;
+    await super.atomicWrite(path, content);
+  }
+
+  @override
+  Future<void> appendString(String path, String content) async {
+    appends++;
+    appendedBytes += content.length;
+    await super.appendString(path, content);
+  }
+}
+
 void main() {
   test('missing or empty jsonl decodes to no messages', () {
     expect(decodeAcpChatTranscript(null), isEmpty);
@@ -235,7 +256,7 @@ void main() {
     final loaded = await writer.loadMessages();
     expect(loaded, hasLength(1));
     expect((loaded.single.parts.single as AiTextPart).text, 'hello');
-    expect(fs.files[path], contains('"v":1'));
+    expect(fs.files[path], contains('"v":2'));
     expect(fs.files[path], isNot(contains('"type":"chunk"')));
   });
 
@@ -309,5 +330,221 @@ void main() {
     final loaded = await writer.loadMessages();
     expect(loaded, hasLength(1));
     expect((loaded.single.parts.single as AiTextPart).text, 'second');
+  });
+
+  test('v2 round-trip preserves status and deliveryChannel', () {
+    final loaded = decodeAcpChatTranscript(
+      encodeAcpChatTranscript([
+        const AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'x')],
+          status: AiMessageStatus.incomplete,
+          deliveryChannel: 'mailbox',
+        ),
+      ]),
+    );
+    expect(loaded.single.status, AiMessageStatus.incomplete);
+    expect(loaded.single.deliveryChannel, 'mailbox');
+  });
+
+  test('decode flags legacy v1 records', () {
+    final legacy = encodeAcpChatTranscriptV1([
+      const AiMessage(
+        id: 'u1',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'hi')],
+      ),
+    ]);
+    final result = decodeAcpChatTranscriptResult(legacy);
+    expect(result.hasLegacyRecords, isTrue);
+    expect(result.messages, hasLength(1));
+    expect(decodeAcpChatTranscriptResult(encodeAcpChatTranscript([]))
+        .hasLegacyRecords, isFalse);
+  });
+
+  test('mixed v1 and v2 records fold in order', () {
+    final legacy = encodeAcpChatTranscriptV1([
+      const AiMessage(
+        id: 'u1',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'hi')],
+      ),
+    ]);
+    final v2 = [
+      _line({'v': 2, 'type': 'assistant', 'id': 'a1'}),
+      _line({
+        'v': 2,
+        'type': 'part',
+        'mid': 'a1',
+        'i': 0,
+        'part': {'kind': 'text', 'text': 'Hello'},
+      }),
+    ].join('\n');
+    final loaded = decodeAcpChatTranscript('$legacy\n$v2');
+    expect(loaded, hasLength(2));
+    expect(loaded.first.id, 'u1');
+    expect(loaded.last.id, 'a1');
+    expect((loaded.last.parts.single as AiTextPart).text, 'Hello');
+  });
+
+  test('legacy v1 transcript is migrated to v2 on the next save', () async {
+    final fs = _RecordingFilesystem();
+    const path = '/tp/t.jsonl';
+    await fs.atomicWrite(
+      path,
+      encodeAcpChatTranscriptV1([
+        const AiMessage(
+          id: 'u1',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'hi')],
+        ),
+      ]),
+    );
+    final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+    expect(await writer.loadMessages(), hasLength(1));
+    await writer.saveMessages([
+      const AiMessage(
+        id: 'u1',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'hi')],
+      ),
+      const AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'Hello')],
+      ),
+    ]);
+    final raw = fs.files[path]!;
+    expect(raw, isNot(contains('"v":1')));
+    expect(raw, contains('"v":2'));
+    expect(await writer.loadMessages(), hasLength(2));
+  });
+
+  test('delta appends only changed parts without rewriting the prefix',
+      () async {
+    final fs = _RecordingFilesystem();
+    const path = '/tp/t.jsonl';
+    final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+    final text = AiTextPart(text: 'hello');
+    final tool = AiToolCallPart(toolCallId: 't1', toolName: 'Read');
+    await writer.saveMessages([
+      AiMessage(id: 'a1', role: AiRole.assistant, parts: [text, tool]),
+    ]);
+    final first = fs.files[path]!;
+
+    await writer.saveMessages([
+      AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [
+          text, // unchanged instance: no record emitted
+          tool.copyWith(status: AiToolCallStatus.complete, result: 'ok'),
+        ],
+      ),
+    ]);
+
+    expect(fs.atomicWrites, 1); // only the initial compact write
+    expect(fs.appends, 1);
+    expect(fs.files[path]!.startsWith(first), isTrue);
+    expect(fs.appendedBytes, lessThan(500));
+    final loaded = await writer.loadMessages();
+    expect(loaded, hasLength(1));
+    expect(loaded.single.parts, hasLength(2));
+    expect((loaded.single.parts.last as AiToolCallPart).result, 'ok');
+  });
+
+  test('streaming text growth appends only suffixes, not cumulative text',
+      () async {
+    final fs = _RecordingFilesystem();
+    const path = '/tp/t.jsonl';
+    final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+    var text = 'x';
+    for (var i = 0; i < 200; i++) {
+      await writer.saveMessages([
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: text)],
+        ),
+      ]);
+      text = '${text}y';
+    }
+    expect(fs.atomicWrites, 1);
+    // 200 commits of a 200-char growing part must not write ~200*200 bytes.
+    expect(fs.appendedBytes, lessThan(200 * 120));
+    final loaded = await writer.loadMessages();
+    expect(
+      (loaded.single.parts.single as AiTextPart).text,
+      'x${'y' * 199}',
+    );
+  });
+
+  test('dropping a message appends a drop record', () async {
+    final fs = _RecordingFilesystem();
+    const path = '/tp/t.jsonl';
+    final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+    await writer.saveMessages([
+      const AiMessage(
+        id: 'u1',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'first')],
+      ),
+    ]);
+    await writer.saveMessages([
+      const AiMessage(
+        id: 'u2',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'second')],
+      ),
+    ]);
+    expect(fs.files[path], contains('"type":"drop"'));
+    final loaded = await writer.loadMessages();
+    expect(loaded, hasLength(1));
+    expect(loaded.single.id, 'u2');
+    expect((loaded.single.parts.single as AiTextPart).text, 'second');
+  });
+
+  test('a no-op save writes nothing', () async {
+    final fs = _RecordingFilesystem();
+    const path = '/tp/t.jsonl';
+    final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+    final messages = [
+      const AiMessage(
+        id: 'u1',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'hi')],
+      ),
+    ];
+    await writer.saveMessages(messages);
+    final writes = fs.atomicWrites + fs.appends;
+    await writer.saveMessages(messages);
+    expect(fs.atomicWrites + fs.appends, writes);
+  });
+
+  test('compacts the log after the append threshold', () async {
+    final fs = _RecordingFilesystem();
+    const path = '/tp/t.jsonl';
+    final writer = AcpChatTranscriptWriter(
+      fs: fs,
+      path: path,
+      compactAfterAppendedBytes: 200,
+    );
+    var text = '';
+    for (var i = 0; i < 40; i++) {
+      text = '${text}chunk-$i;';
+      await writer.saveMessages([
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: text)],
+        ),
+      ]);
+    }
+    expect(fs.atomicWrites, greaterThan(1));
+    // Compaction collapses duplicate text-delta records.
+    expect(fs.files[path]!.length, lessThan(fs.appendedBytes));
+    final loaded = await writer.loadMessages();
+    expect((loaded.single.parts.single as AiTextPart).text, text);
   });
 }

@@ -1903,7 +1903,7 @@ void main() {
     expect((loaded[0].parts.single as AiTextPart).text, 'hi');
     expect((loaded[1].parts.single as AiTextPart).text, 'Hello');
     final snapshot = fs.files['/tp/acp.jsonl'] ?? '';
-    expect(snapshot, contains('"v":1'));
+    expect(snapshot, contains('"v":2'));
     expect(snapshot, contains('"type":"user"'));
     expect(snapshot, contains('"type":"assistant"'));
     expect(snapshot, isNot(contains('"type":"chunk"')));
