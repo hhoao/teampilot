@@ -51,6 +51,25 @@ void main() {
     await pump.done;
   });
 
+  test('exec pump writes stdin and closes it', () async {
+    final session = _FakeWorkerExecSession();
+    final pump = SshWorkerExecPump(
+      id: 'member-1/exec-1',
+      session: session,
+      sendEvent: (_) {},
+      onFinished: () {},
+    );
+    pump.start();
+
+    pump.write(Uint8List.fromList([1, 2, 3]));
+    pump.closeStdin();
+
+    expect(session.written, [1, 2, 3]);
+    expect(session.stdinClosed, isTrue);
+    session.finish(exitCode: 0);
+    await pump.done;
+  });
+
   test('exec EOF drains within the ACK window', () async {
     final session = _FakeWorkerExecSession();
     final events = <SshWorkerEvent>[];

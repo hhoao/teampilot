@@ -76,6 +76,32 @@ void main() {
     expect(diagnostics, everyElement(isNot(contains('private-key-material'))));
   });
 
+  test('vault entry overrides legacy credentials', () async {
+    final store = InMemorySshCredentialStore();
+    await store.savePassword(testProfile.id, 'legacy-secret');
+    final requested = <String>[];
+    final bridge = SshWorkerAuthBridge(
+      credentialStore: store,
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      vault: (entryId, field) async {
+        requested.add('$entryId/$field');
+        return field == 'password' ? 'vault-secret' : null;
+      },
+    );
+    final profile = testProfile.copyWith(vaultEntryId: 'vault-1');
+
+    final reply = await bridge.replyTo(
+      profile,
+      SshWorkerAuthChallenge.password(
+        requestId: 'password-vault',
+        profileId: profile.id,
+      ),
+    );
+
+    expect(reply.secretValue, 'vault-secret');
+    expect(requested, ['vault-1/password']);
+  });
+
   test('dial target is resolved again for each worker generation', () async {
     var port = 4000;
     final bridge = SshWorkerAuthBridge(

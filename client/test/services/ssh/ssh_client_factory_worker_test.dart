@@ -84,6 +84,26 @@ void main() {
     await factory.close();
   });
 
+  test('runOnStorageWithStdin forwards the payload to the worker', () async {
+    final launcher = _StorageWorkerLauncher();
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      workerManager: SshProfileWorkerManager(launcher: launcher),
+    );
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'test',
+      host: 'example.test',
+      username: 'tester',
+    );
+
+    await factory.runOnStorageWithStdin(profile, 'cat', stdin: const [1, 2, 3]);
+
+    expect(launcher.runPayloads.single, [1, 2, 3]);
+    await factory.close();
+  });
+
   test(
     'runOnStorage keeps captures and defines output as stdout then stderr',
     () async {
@@ -351,6 +371,7 @@ final class _StorageWorkerLauncher implements SshWorkerLauncher {
   var spawnCount = 0;
   var shutdownCount = 0;
   final operations = <SshWorkerOperation>[];
+  final runPayloads = <Uint8List?>[];
   final runRequested = Completer<void>();
   final shutdownRequested = Completer<void>();
   final connectTimeouts = <int>[];
@@ -374,6 +395,7 @@ final class _StorageWorkerLauncher implements SshWorkerLauncher {
           connectTimeouts.add(request.args['timeoutMs']! as int);
           messages.add(SshWorkerReply.success(request.requestId).toWire());
         case SshWorkerOperation.runStorage:
+          runPayloads.add(request.payload);
           if (!runRequested.isCompleted) runRequested.complete();
           await runGate?.future;
           final errorCode = runErrorCode;

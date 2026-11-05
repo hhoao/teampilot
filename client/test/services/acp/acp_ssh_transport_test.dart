@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/acp/acp_ssh_transport.dart';
+import 'package:teampilot/services/ssh/worker/ssh_worker_exec_proxy.dart';
 
 class _FakeAcpSshChannel implements AcpSshChannel {
   final stdoutController = StreamController<Uint8List>();
@@ -66,38 +67,43 @@ void main() {
     await sub.cancel();
   });
 
-  test('stderr stays separate and reaches onStderr and the stderr stream',
-      () async {
-    final channel = _FakeAcpSshChannel();
-    final onStderr = <int>[];
-    final transport = AcpSshTransport(
-      channel: channel,
-      onStderr: onStderr.addAll,
-    );
-    final seenStderr = <int>[];
-    final sub = transport.stderr.listen(seenStderr.addAll);
-    channel.stderrController.add(Uint8List.fromList([9, 8]));
-    await Future<void>.delayed(Duration.zero);
-    expect(onStderr, [9, 8]);
-    expect(seenStderr, [9, 8]);
-    await sub.cancel();
-  });
+  test(
+    'stderr stays separate and reaches onStderr and the stderr stream',
+    () async {
+      final channel = _FakeAcpSshChannel();
+      final onStderr = <int>[];
+      final transport = AcpSshTransport(
+        channel: channel,
+        onStderr: onStderr.addAll,
+      );
+      final seenStderr = <int>[];
+      final sub = transport.stderr.listen(seenStderr.addAll);
+      channel.stderrController.add(Uint8List.fromList([9, 8]));
+      await Future<void>.delayed(Duration.zero);
+      expect(onStderr, [9, 8]);
+      expect(seenStderr, [9, 8]);
+      await sub.cancel();
+    },
+  );
 
-  test('close sends stdin EOF, waits for exit, disposes without killing', () async {
-    final channel = _FakeAcpSshChannel();
-    final transport = AcpSshTransport(
-      channel: channel,
-      onStderr: null,
-      gracefulShutdownTimeout: const Duration(milliseconds: 200),
-    );
-    final closing = transport.close();
-    channel.finish(0);
-    await closing;
-    expect(channel.stdinClosed, isTrue);
-    expect(channel.killed, isFalse);
-    expect(channel.disposed, isTrue);
-    expect(transport.isClosed, isTrue);
-  });
+  test(
+    'close sends stdin EOF, waits for exit, disposes without killing',
+    () async {
+      final channel = _FakeAcpSshChannel();
+      final transport = AcpSshTransport(
+        channel: channel,
+        onStderr: null,
+        gracefulShutdownTimeout: const Duration(milliseconds: 200),
+      );
+      final closing = transport.close();
+      channel.finish(0);
+      await closing;
+      expect(channel.stdinClosed, isTrue);
+      expect(channel.killed, isFalse);
+      expect(channel.disposed, isTrue);
+      expect(transport.isClosed, isTrue);
+    },
+  );
 
   test('close escalates to kill when the remote ignores EOF', () async {
     final channel = _FakeAcpSshChannel()..exitOnKill = false;
@@ -124,4 +130,61 @@ void main() {
     transport.write('late');
     expect(channel.written, isEmpty);
   });
+
+  test('worker exec adapter forwards IO and maps exit code', () async {
+    final channel = _FakeWorkerExecChannel();
+    final adapter = DartSsh2AcpChannel(channel);
+
+    adapter.write(Uint8List.fromList([1, 2]));
+    await adapter.closeStdin();
+    expect(channel.written, [1, 2]);
+    expect(channel.stdinClosed, isTrue);
+
+    channel.stdoutController.add(Uint8List.fromList([3]));
+    expect(await adapter.stdout.first, [3]);
+
+    channel.finish(17);
+    expect(await adapter.exitCode, 17);
+    adapter.kill();
+    expect(channel.killed, isTrue);
+    adapter.dispose();
+    expect(channel.disposed, isTrue);
+  });
+}
+
+final class _FakeWorkerExecChannel implements SshWorkerExecChannel {
+  final stdoutController = StreamController<Uint8List>();
+  final stderrController = StreamController<Uint8List>();
+  final _done = Completer<int>();
+  final written = <int>[];
+  var stdinClosed = false;
+  var killed = false;
+  var disposed = false;
+
+  @override
+  Stream<Uint8List> get stdout => stdoutController.stream;
+
+  @override
+  Stream<Uint8List> get stderr => stderrController.stream;
+
+  @override
+  Future<int> get done => _done.future;
+
+  @override
+  void write(Uint8List data) => written.addAll(data);
+
+  @override
+  void closeStdin() => stdinClosed = true;
+
+  @override
+  void kill() => killed = true;
+
+  @override
+  void close() => disposed = true;
+
+  void finish(int exitCode) {
+    if (!_done.isCompleted) _done.complete(exitCode);
+    unawaited(stdoutController.close());
+    unawaited(stderrController.close());
+  }
 }
