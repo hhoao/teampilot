@@ -110,7 +110,8 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
   bool get _separateAdapter => _settings?.usesSeparateAdapter == true;
 
   bool get _canChooseTransport =>
-      _registry.capability<CliTransportCapability>(widget.cli)
+      _registry
+          .capability<CliTransportCapability>(widget.cli)
           ?.canChooseTransport ??
       false;
 
@@ -294,12 +295,10 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     if (connectionMode.isRemoteWorkPlane) {
       final profile = _remoteSshProfile(context, connectionMode);
       if (profile == null) return null;
-      final client = await context.read<SshClientFactory>().clientForStorage(
-        profile,
-      );
+      final factory = context.read<SshClientFactory>();
       return CliExecutableDiscovery().locateRemoteCli(
         cli: widget.cli,
-        run: RemoteCliLocator.getRunnerForClient(client),
+        run: RemoteCliLocator.runnerForStorage(factory, profile),
       );
     }
     return CliExecutableDiscovery().locateLocalCli(widget.cli);
@@ -504,7 +503,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     );
     final adapterKnown = isRemote
         ? (_remoteAdapterKnown ??
-            _looksAbsolute(cubit.configuredAcpAdapterPath(widget.cli)))
+              _looksAbsolute(cubit.configuredAcpAdapterPath(widget.cli)))
         : cubit.hasKnownAcpAdapter(widget.cli);
     final cliUpdate =
         _npmInstaller(exec) != null &&
@@ -694,10 +693,7 @@ class _CliTransportPill extends StatelessWidget {
       totalSwitches: 2,
       initialLabelIndex: acp ? 0 : 1,
       labels: const ['', ''],
-      icons: const [
-        Icons.chat_bubble_outline_rounded,
-        Icons.terminal_rounded,
-      ],
+      icons: const [Icons.chat_bubble_outline_rounded, Icons.terminal_rounded],
       tooltips: [
         l10n.cliTransportDefaultChat,
         l10n.cliTransportDefaultTerminal,

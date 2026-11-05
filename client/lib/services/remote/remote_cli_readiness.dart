@@ -11,6 +11,7 @@ import '../cli/registry/installer/acp_adapter_installer.dart';
 import '../cli/remote_cli_installer.dart';
 import '../cli/remote_cli_locator.dart';
 import '../ssh/ssh_client_factory.dart';
+import '../ssh/ssh_storage_io.dart';
 import 'remote_preflight_cli_install.dart';
 import 'remember_remote_cli_path.dart';
 
@@ -135,17 +136,22 @@ class RemoteCliReadinessService {
   Future<SshCommandRunner> _runnerFor(
     SshProfile profile, {
     required bool includeStderr,
+    Duration timeout = SshStorageIo.ioTimeout,
   }) async {
     final override = _remoteRunnerFor;
     if (override != null)
       return override(profile, includeStderr: includeStderr);
     // Keep the old eager-connect behavior: a dead transport must surface as a
     // failed probe, not as "missing binary" after each command is swallowed.
-    await sshClientFactory.ensureStorageConnected(profile);
+    await sshClientFactory.ensureStorageConnected(
+      profile,
+      timeout: SshStorageIo.ioTimeout,
+    );
     return RemoteCliLocator.runnerForStorage(
       sshClientFactory,
       profile,
       includeStderr: includeStderr,
+      timeout: timeout,
     );
   }
 
@@ -278,7 +284,11 @@ class RemoteCliReadinessService {
     }
 
     try {
-      final run = await _runnerFor(profile, includeStderr: true);
+      final run = await _runnerFor(
+        profile,
+        includeStderr: true,
+        timeout: SshStorageIo.provisionPhaseTimeout,
+      );
       final storedPath = (await cliPathOverride(target.id, cli.value) ?? '')
           .trim();
       final path = await _installer.ensure(
@@ -348,7 +358,11 @@ class RemoteCliReadinessService {
     }
 
     try {
-      final run = await _runnerFor(profile, includeStderr: true);
+      final run = await _runnerFor(
+        profile,
+        includeStderr: true,
+        timeout: SshStorageIo.provisionPhaseTimeout,
+      );
       final existing = await _locateAdapterWithRun(
         target: target,
         cli: cli,

@@ -136,12 +136,9 @@ void main() {
       //    TeamPilot toolchain Node bin to PATH (npm shims are `#!/usr/bin/env
       //    node`). A raw `$path --version` fails with exit 127 because the
       //    non-interactive ssh PATH has no node.
-      final client = await factory.clientForStorage(
+      final run = RemoteCliLocator.runnerForStorage(
+        factory,
         profile,
-        timeout: const Duration(seconds: 30),
-      );
-      final run = RemoteCliLocator.getRunnerForClient(
-        client,
         includeStderr: true,
         timeout: const Duration(seconds: 20),
       );
