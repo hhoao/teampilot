@@ -53,6 +53,7 @@ final class SshWorkerExecProxy implements SshWorkerExecChannel {
   var _killRequested = false;
   var _closeRequested = false;
   var _finished = false;
+  Future<void> _writeChain = Future<void>.value();
 
   @override
   Stream<Uint8List> get stdout => _stdout.stream;
@@ -66,13 +67,24 @@ final class SshWorkerExecProxy implements SshWorkerExecChannel {
   @override
   void write(Uint8List data) {
     if (_finished || _killRequested || _closeRequested) return;
-    unawaited(_writeQuietly(data));
+    _writeChain = _writeChain.then((_) => _writeChunks(data)).catchError((
+      Object error,
+    ) {
+      finishError(error);
+    });
   }
 
   @override
   void closeStdin() {
     if (_finished || _killRequested || _closeRequested) return;
-    unawaited(_closeStdinQuietly());
+    _writeChain = _writeChain
+        .then((_) async {
+          if (_finished) return;
+          await closeStdinRemote();
+        })
+        .catchError((Object _) {
+          // EOF is best effort; the session may already be closing.
+        });
   }
 
   @override
@@ -110,7 +122,7 @@ final class SshWorkerExecProxy implements SshWorkerExecChannel {
       finishError(SshWorkerMemberException(errorCode));
       return;
     }
-    finish(event.exitCode ?? 0);
+    finish(event.exitCode ?? -1);
   }
 
   void finish(int exitCode) {
@@ -133,19 +145,14 @@ final class SshWorkerExecProxy implements SshWorkerExecChannel {
     onFinished();
   }
 
-  Future<void> _writeQuietly(Uint8List data) async {
-    try {
-      await writeRemote(data);
-    } on Object catch (error) {
-      finishError(error);
-    }
-  }
-
-  Future<void> _closeStdinQuietly() async {
-    try {
-      await closeStdinRemote();
-    } on Object {
-      // EOF is best effort; the session may already be closing.
+  Future<void> _writeChunks(Uint8List data) async {
+    for (
+      var offset = 0;
+      offset < data.length && !_finished;
+      offset += sshWorkerMaxChunkSize
+    ) {
+      final end = (offset + sshWorkerMaxChunkSize).clamp(0, data.length);
+      await writeRemote(Uint8List.sublistView(data, offset, end));
     }
   }
 

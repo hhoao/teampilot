@@ -172,7 +172,8 @@ import '../services/acp/acp_chat_strings.dart';
 import '../services/acp/acp_frame_logger.dart';
 import '../pages/system/app_bootstrap_loading_page.dart';
 import '../pages/system/bootstrap_startup_error_page.dart';
-import '../pages/vault/vault_status_section.dart' show promptVaultUnlockFromRouter;
+import '../pages/vault/vault_status_section.dart'
+    show promptVaultUnlockFromRouter;
 import '../repositories/app_settings_repository.dart';
 import '../repositories/layout_repository.dart';
 import '../repositories/session_preferences_repository.dart';
@@ -509,7 +510,6 @@ class AppShell {
     required this.workspaceToolsScopeRegistry,
     required this.workspaceRunRegistry,
     required this.sshClientFactory,
-    required this.sshProfileWorkerManager,
     required this.sshProfileConnectionCoordinator,
     required this.connectionModeService,
     required this.identityRepository,
@@ -625,13 +625,11 @@ class AppShell {
   final WorkspaceToolsScopeRegistry workspaceToolsScopeRegistry;
   final WorkspaceRunRegistry workspaceRunRegistry;
   final SshClientFactory sshClientFactory;
-  final SshProfileWorkerManager sshProfileWorkerManager;
   final SshProfileConnectionCoordinator sshProfileConnectionCoordinator;
   final ConnectionModeService connectionModeService;
   final LaunchProfileRepository identityRepository;
   final LaunchProfileCubit teamCubit;
   final SessionUsageCubit sessionUsageCubit;
-
 
   /// Owned by the shell so its HTTP client is closed with the shell.
   final CursorUsageApiClient cursorUsageApiClient;
@@ -853,6 +851,7 @@ Future<AppShell> buildAppShell({
     knownHostRepository: sshKnownHostRepo,
     onHostKeyPrompt: showSshHostKeyPrompt,
     dialTargetResolver: (profile) => pairedRelayTunnels.targetFor(profile.id),
+    vault: (entryId, field) => vaultAccess.functionalField(entryId, field),
   );
   const sshWorkerCaptureMode = String.fromEnvironment(
     'SSH_WORKER_CAPTURE_MODE',
@@ -907,6 +906,7 @@ Future<AppShell> buildAppShell({
   final sshProfileRepo = deviceLocalSshProfileRepository(nativeAppDataPath);
   Future<Map<CliTool, String>> locateRemoteClis(SshProfile profile) async {
     try {
+      await sshClientFactory.ensureStorageConnected(profile);
       return await cliExecutableDiscovery.locateRemote(
         run: RemoteCliLocator.runnerForStorage(sshClientFactory, profile),
       );
@@ -1158,7 +1158,10 @@ Future<AppShell> buildAppShell({
       // re-enter the page rebuild while a dialog is closing.
       await vaultCubit.reloadEntries();
       unawaited(
-        githubAccountCubit.hydrate().catchError((Object error, StackTrace stack) {
+        githubAccountCubit.hydrate().catchError((
+          Object error,
+          StackTrace stack,
+        ) {
           appLogger.w(
             '[vault] post-unlock GitHub hydrate failed: ${error.runtimeType}',
             stackTrace: stack,
@@ -3574,7 +3577,6 @@ Future<AppShell> buildAppShell({
       workspaceToolsScopeRegistry: workspaceToolsScopeRegistry,
       workspaceRunRegistry: workspaceRunRegistry,
       sshClientFactory: sshClientFactory,
-      sshProfileWorkerManager: sshProfileWorkerManager,
       sshProfileConnectionCoordinator: sshProfileConnectionCoordinator,
       connectionModeService: connectionModeService,
       identityRepository: identityRepository,
@@ -3700,7 +3702,7 @@ class _CursorUsageStack {
   _CursorUsageStack({
     required HomeStorage storage,
     required CursorUsageApiClient api,
-  }) :        registry = CursorAccountRegistry(
+  }) : registry = CursorAccountRegistry(
          fs: storage.fs,
          accountsPath: storage.paths.cursorUsageAccountsFile,
          resolveAuths: () => CursorUsageAuthResolver(

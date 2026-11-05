@@ -230,7 +230,7 @@ final class _SshWorkerDirectExecChannel implements SshWorkerExecChannel {
   Stream<Uint8List> get stderr => _session.stderr;
 
   @override
-  Future<int> get done => _session.done.then((_) => _session.exitCode ?? 0);
+  Future<int> get done => _session.done.then((_) => _session.exitCode ?? -1);
 
   @override
   void write(Uint8List data) => _session.write(data);
@@ -387,11 +387,9 @@ final class SshWorkerLeaseMemberTransport implements SshWorkerMemberTransport {
         SshWorkerOperation.acknowledgeExecOutput,
         {'execId': execId, 'sequence': sequence},
       ).then<void>((reply) => _expectSuccess(reply)),
-      writeRemote: (data) => _request(
-        SshWorkerOperation.writeMemberExec,
-        {'execId': execId},
-        payload: data,
-      ).then<void>((reply) => _expectSuccess(reply)),
+      writeRemote: (data) => _request(SshWorkerOperation.writeMemberExec, {
+        'execId': execId,
+      }, payload: data).then<void>((reply) => _expectSuccess(reply)),
       closeStdinRemote: () => _request(
         SshWorkerOperation.closeMemberExecStdin,
         {'execId': execId},

@@ -21,9 +21,15 @@ final class SshWorkerStorageCore {
   var _connected = false;
   var _stopped = false;
   var _epoch = 0;
-  Completer<void> _invalidated = Completer<void>();
+  final _invalidations = StreamController<void>.broadcast(sync: true);
 
   Future<SshWorkerReply> handle(SshWorkerRequest request) async {
+    final invalidation = Completer<Map<String, Object?>>();
+    final invalidationSubscription = _invalidations.stream.listen((_) {
+      if (!invalidation.isCompleted) {
+        invalidation.completeError(_failure('transport_closed'));
+      }
+    });
     try {
       if (_stopped) throw _failure('worker_shutting_down');
       final timeout = Duration(
@@ -36,9 +42,7 @@ final class SshWorkerStorageCore {
       );
       final result = await Future.any([
         _dispatch(request, timeout),
-        _invalidated.future.then<Map<String, Object?>>(
-          (_) => throw _failure('transport_closed'),
-        ),
+        invalidation.future,
       ]).timeout(timeout);
       return SshWorkerReply.success(request.requestId, result: result);
     } on TimeoutException {
@@ -62,6 +66,12 @@ final class SshWorkerStorageCore {
     } on Object catch (error) {
       invalidate(SshTransportCloseReason.transportError);
       return _error(request, sshWorkerErrorCode(error));
+    } finally {
+      await invalidationSubscription.cancel();
+      if (!invalidation.isCompleted) {
+        // Release the Future.any listener without surfacing a late error.
+        invalidation.complete(const {});
+      }
     }
   }
 
@@ -322,7 +332,7 @@ final class SshWorkerStorageCore {
 
   /// Force close the transport first: waiting for remote CLOSE on a dead
   /// connection must never delay timeout replies or worker shutdown.
-  void invalidate(SshTransportCloseReason reason) {
+  void invalidate(SshTransportCloseReason reason, {bool notify = true}) {
     final hadStorage = _connected || _connecting != null || _streams.isNotEmpty;
     _epoch++;
     _connected = false;
@@ -335,9 +345,7 @@ final class SshWorkerStorageCore {
       state.outstanding.clear();
       state.delivered.clear();
     }
-    final oldInvalidated = _invalidated;
-    _invalidated = Completer<void>();
-    oldInvalidated.complete();
+    if (!_invalidations.isClosed) _invalidations.add(null);
     backend.close();
     for (final state in states) {
       // Backend teardown has already invalidated all remote handles.
@@ -345,18 +353,20 @@ final class SshWorkerStorageCore {
         state.file?.close().timeout(state.timeout).catchError((Object _) {}),
       );
     }
-    if (hadStorage)
+    if (hadStorage && notify) {
       sendEvent(
         SshWorkerEvent.transportClosed(
           plane: SshTransportPlane.storage,
           reason: reason,
         ),
       );
+    }
   }
 
   void shutdown() {
     _stopped = true;
-    invalidate(SshTransportCloseReason.disconnectAll);
+    invalidate(SshTransportCloseReason.disconnectAll, notify: false);
+    if (!_invalidations.isClosed) unawaited(_invalidations.close());
   }
 
   int _integer(

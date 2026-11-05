@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../models/ssh_profile.dart';
+import '../../../utils/logging/logger.dart';
 import 'ssh_profile_worker_client.dart';
 import 'ssh_worker_entry.dart';
 import 'ssh_worker_metrics.dart';
@@ -238,6 +239,15 @@ class SshProfileWorkerManager {
       await record.eventsSubscription?.cancel();
       record.eventsSubscription = null;
       await (await record.client).close();
+    } on Object catch (error, stackTrace) {
+      // The worker is already gone; shutdown failures must not surface as
+      // unhandled zone errors from idle/onDone shutdown paths.
+      appLogger.w(
+        '[ssh-worker] shutdown failed profile=${record.profileId} '
+        'generation=${record.generation}',
+        error: error,
+        stackTrace: stackTrace,
+      );
     } finally {
       if (metrics != null) {
         metrics.workerGenerationClosed(context);

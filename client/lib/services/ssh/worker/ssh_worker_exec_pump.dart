@@ -142,6 +142,7 @@ final class SshWorkerExecPump {
     if (!_finished.isCompleted) {
       _discardPending = true;
       _pending.clear();
+      _completePendingDrainIfReady();
       if (_paused) {
         _paused = false;
         _stdoutSubscription.resume();
@@ -190,7 +191,7 @@ final class SshWorkerExecPump {
           sequence: _sequence++,
           bytes: Uint8List(0),
           isFinal: true,
-          exitCode: session.exitCode ?? 0,
+          exitCode: session.exitCode ?? -1,
           errorCode: _errorCode,
         ),
       );

@@ -52,7 +52,8 @@ final class SshWorkerDartStorageBackend implements SshWorkerStorageBackend {
     final epoch = _epoch;
     final client = await openClient(request);
     if (epoch != _epoch) {
-      client.close();
+      // The client is shared with member/forward planes. Storage cancellation
+      // must never close the transport; the owning worker generation does.
       throw const SshWorkerTransportException(
         'Connection cancelled',
         code: 'cancelled',
@@ -198,8 +199,11 @@ final class SshWorkerDartStorageBackend implements SshWorkerStorageBackend {
   void close() {
     _epoch++;
     _client = null;
-    _sftp?.close();
+    final sftp = _sftp;
     _sftp = null;
+    if (sftp != null) {
+      unawaited(sftp.close().catchError((Object _) {}));
+    }
     // The SSH client is owned by SshWorkerSharedClient and may still serve
     // member/forward planes; only the storage-local SFTP view is closed here.
   }

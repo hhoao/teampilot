@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:dartssh2/dartssh2.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
+import 'package:teampilot/services/ssh/ssh_storage_io.dart';
 
 import 'session_ssh_mcp_operations.dart';
 
@@ -37,16 +37,12 @@ class SshClientFactorySessionSshMcpExecutor implements SessionSshMcpExecutor {
     required List<int> bytes,
     required String remotePath,
   }) async {
-    final sftp = await _factory.sftpFor(profile);
-    final file = await sftp.open(
+    final storage = await _factory.storageFor(profile);
+    await storage.writeBytes(
       remotePath,
-      mode:
-          SftpFileOpenMode.write |
-          SftpFileOpenMode.create |
-          SftpFileOpenMode.truncate,
+      Uint8List.fromList(bytes),
+      timeout: SshStorageIo.provisionPhaseTimeout,
     );
-    await file.writeBytes(Uint8List.fromList(bytes));
-    await file.close();
   }
 
   @override
@@ -54,10 +50,10 @@ class SshClientFactorySessionSshMcpExecutor implements SessionSshMcpExecutor {
     required SshProfile profile,
     required String remotePath,
   }) async {
-    final sftp = await _factory.sftpFor(profile);
-    final file = await sftp.open(remotePath, mode: SftpFileOpenMode.read);
-    final bytes = await file.readBytes();
-    await file.close();
-    return bytes;
+    final storage = await _factory.storageFor(profile);
+    return storage.readBytes(
+      remotePath,
+      timeout: SshStorageIo.provisionPhaseTimeout,
+    );
   }
 }

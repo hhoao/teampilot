@@ -405,6 +405,10 @@ class SshProfileWorker {
 
   Future<void> _shutdown(SshWorkerRequest request) async {
     _forwardCore?.beginShutdown();
+    // Unblock any open client/auth wait before awaiting storage or transport
+    // teardown; otherwise a pending prompt can stall shutdown until the
+    // launcher's kill timeout.
+    _failPendingAuthReplies();
     final initialization = _storageInitialization;
     if (initialization != null) {
       try {
@@ -423,7 +427,6 @@ class SshProfileWorker {
     await _forwardCore?.shutdown();
     _forwardCore = null;
     await _sharedClient.close();
-    _failPendingAuthReplies();
     send(SshWorkerReply.success(request.requestId).toWire());
     _commands?.close();
   }

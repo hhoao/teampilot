@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import '../ssh_transport_close.dart';
 import 'ssh_worker_entry.dart';
@@ -257,7 +258,9 @@ class SshProfileWorkerClient {
         errorCode: 'auth_challenge_mismatched_reply',
       );
     }
-    if (_closing || _messagesClosed) return;
+    // During shutdown still send the failure: it unblocks the worker's
+    // pending open instead of waiting for the launcher's kill timeout.
+    if (_messagesClosed) return;
     try {
       _launch.commands.send(reply.toWire());
     } on Object {
@@ -364,9 +367,10 @@ class SshProfileWorkerClient {
     }
     if (pending.operation == SshWorkerOperation.readSftpChunk &&
         reply.kind == SshWorkerReplyKind.success) {
+      final bytes = reply.result['bytes'];
       metrics.sftpChunk(
         pending.context,
-        _base64ByteCount(reply.result['bytes']),
+        bytes is Uint8List ? bytes.length : _base64ByteCount(bytes),
       );
     }
     if (reply.kind == SshWorkerReplyKind.success) {

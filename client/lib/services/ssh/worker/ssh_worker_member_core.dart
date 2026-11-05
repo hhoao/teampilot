@@ -273,7 +273,9 @@ final class SshWorkerMemberCore {
       return const {};
     }
     final member = _members.remove(channelId);
-    if (member == null) throw const _MemberFailure('channel_not_found');
+    // Close is idempotent: final events can remove a channel before a
+    // concurrent teardown reaches the worker.
+    if (member == null) return const {};
     final ownedPtys = _ptys.entries
         .where((entry) => entry.value.memberId == channelId)
         .map((entry) => entry.key)

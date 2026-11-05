@@ -143,10 +143,7 @@ class RemoteCliReadinessService {
       return override(profile, includeStderr: includeStderr);
     // Keep the old eager-connect behavior: a dead transport must surface as a
     // failed probe, not as "missing binary" after each command is swallowed.
-    await sshClientFactory.ensureStorageConnected(
-      profile,
-      timeout: SshStorageIo.ioTimeout,
-    );
+    await sshClientFactory.ensureStorageConnected(profile, timeout: timeout);
     return RemoteCliLocator.runnerForStorage(
       sshClientFactory,
       profile,

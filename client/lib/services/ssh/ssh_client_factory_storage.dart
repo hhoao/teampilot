@@ -17,11 +17,13 @@ final class _SshWorkerStoragePool {
     required SshProfileWorkerManager manager,
     required _SshWorkerDialTargetResolver resolveDialTarget,
     required Future<void> Function(String profileId) waitForDrain,
+    required bool Function(String profileId) isBusy,
     required void Function(String profileId) onPoolChanged,
     required _SshWorkerStorageClosed onTransportClosed,
   }) : _manager = manager,
        _resolveDialTarget = resolveDialTarget,
        _waitForDrain = waitForDrain,
+       _isBusy = isBusy,
        _onPoolChanged = onPoolChanged,
        _onTransportClosed = onTransportClosed;
 
@@ -29,6 +31,7 @@ final class _SshWorkerStoragePool {
   final Duration probeInterval = const Duration(seconds: 15);
   final _SshWorkerDialTargetResolver _resolveDialTarget;
   final Future<void> Function(String profileId) _waitForDrain;
+  final bool Function(String profileId) _isBusy;
   final void Function(String profileId) _onPoolChanged;
   final _SshWorkerStorageClosed _onTransportClosed;
   final Map<String, _WorkerStorageConnection> _connections = {};
@@ -101,7 +104,9 @@ final class _SshWorkerStoragePool {
         final probeDue =
             cached.lastProbedAt == null ||
             DateTime.now().difference(cached.lastProbedAt!) >= probeInterval;
-        if (!probeCached || !probeDue) {
+        // Never probe-evict while another storage operation is in flight; a
+        // slow probe would cancel a legitimate long transfer on this lease.
+        if (!probeCached || !probeDue || _isBusy(profile.id)) {
           _throwIfOpeningInvalidated(profile.id, token);
           return cached.storage;
         }

@@ -181,7 +181,7 @@ dart run tool/run_tests.dart --tags integration \
 
 ```bash
 cd client/packages/teampilot_search
-cargo test --manifest-path rust/Cargo.toml && dart test
+cargo test --manifest-path rust/Cargo.toml && flutter test
 ```
 
 Linux PTY integration tests (local) — filter by secondary tag (see table below):

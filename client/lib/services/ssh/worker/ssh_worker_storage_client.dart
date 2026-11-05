@@ -381,7 +381,9 @@ final class SshWorkerLeaseStorageTransport
     if (reply.kind != SshWorkerReplyKind.success) {
       final error = SshWorkerTransportException(
         reply.error?.message ?? 'Worker storage operation failed',
-        code: reply.error?.code,
+        code: reply.kind == SshWorkerReplyKind.cancellation
+            ? 'cancelled'
+            : reply.error?.code,
       );
       if (error.code == 'transport_timeout') {
         onTimeout?.call();

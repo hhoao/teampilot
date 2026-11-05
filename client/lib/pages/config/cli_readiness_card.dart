@@ -296,6 +296,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       final profile = _remoteSshProfile(context, connectionMode);
       if (profile == null) return null;
       final factory = context.read<SshClientFactory>();
+      await factory.ensureStorageConnected(profile);
       return CliExecutableDiscovery().locateRemoteCli(
         cli: widget.cli,
         run: RemoteCliLocator.runnerForStorage(factory, profile),

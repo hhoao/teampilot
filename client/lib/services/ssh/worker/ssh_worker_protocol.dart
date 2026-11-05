@@ -10,6 +10,11 @@ const int sshWorkerProtocolVersion = 1;
 /// Payloads crossing the worker boundary may not contain SSH library objects.
 const int sshWorkerMaxChunkSize = 1024 * 1024;
 
+/// A `runStorage` stdin payload is a one-shot launch/provisioning blob, not a
+/// streamed terminal write. It may exceed the per-chunk limit but stays
+/// bounded to the same budget as storage exec output.
+const int sshWorkerMaxStorageStdinBytes = 32 * 1024 * 1024;
+
 /// Stable error codes carried across the worker boundary.
 ///
 /// The UI isolate cannot inspect dartssh2 exception types once the failure is
@@ -832,7 +837,12 @@ void _validatePayload(SshWorkerOperation operation, Uint8List? payload) {
       operation != SshWorkerOperation.runStorage) {
     throw _malformed();
   }
-  if (payload != null) _checkChunkSize(payload.length);
+  if (payload != null) {
+    final max = operation == SshWorkerOperation.runStorage
+        ? sshWorkerMaxStorageStdinBytes
+        : sshWorkerMaxChunkSize;
+    if (payload.length > max) throw _malformed();
+  }
 }
 
 FormatException _malformed() =>

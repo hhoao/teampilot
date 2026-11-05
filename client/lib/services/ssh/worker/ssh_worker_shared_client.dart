@@ -43,16 +43,27 @@ final class SshWorkerSharedClient {
     }
     final key = '${target.host}:${target.port}';
     final currentKey = _host == null ? null : '$_host:$_port';
-    if (currentKey != null && currentKey != key) {
-      throw StateError('SSH worker dial target changed');
-    }
 
     final existing = _client;
-    if (existing != null && !existing.isClosed) return existing;
+    if (existing != null && !existing.isClosed) {
+      if (currentKey != null && currentKey != key) {
+        throw StateError('SSH worker dial target changed');
+      }
+      return existing;
+    }
+    _client = null;
 
     final opening = _opening;
-    if (opening != null) return opening;
+    if (opening != null) {
+      // A concurrent open is already dialing the previous target; don't let a
+      // second caller race it into a different host:port.
+      if (currentKey != null && currentKey != key) {
+        throw StateError('SSH worker dial target changed');
+      }
+      return opening;
+    }
 
+    // No live transport: a relay/LAN target change is allowed to re-dial.
     _host = target.host;
     _port = target.port;
 

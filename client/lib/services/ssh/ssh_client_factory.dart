@@ -112,6 +112,7 @@ class SshClientFactory {
       resolveDialTarget: resolveWorkerDialTarget,
       waitForDrain: (profileId) =>
           _waitForTrackedOperations(profileId, drainGracePeriod),
+      isBusy: (profileId) => (_inFlight[profileId] ?? 0) > 0,
       onPoolChanged: _notifyPoolChange,
       onTransportClosed: (profileId, reason, stackTrace) {
         _events.onTransportClosed?.call(
@@ -151,9 +152,6 @@ class SshClientFactory {
   _workerEventsSubscription;
   final _poolChanges = StreamController<String>.broadcast();
   Future<void>? _closeFuture;
-
-  /// UI-isolate challenge bridge used by future profile-worker generations.
-  SshWorkerAuthBridge get workerAuthBridge => _workerAuthBridge;
 
   /// Creates the UI-isolate auth handler for one profile worker generation.
   SshWorkerAuthChallengeHandler workerAuthHandlerFor(SshProfile profile) {
@@ -336,10 +334,7 @@ class SshClientFactory {
         }
       }
       try {
-        final result = await (await storageFor(
-          profile,
-          timeout: timeout,
-        )).run(
+        final result = await (await storageFor(profile, timeout: timeout)).run(
           command,
           stderr: stderr,
           stdin: Uint8List.fromList(stdin),

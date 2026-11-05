@@ -84,6 +84,7 @@ final class SshWorkerForwardPump {
       _closing = true;
       _discardPending = true;
       _pending.clear();
+      _completePendingDrainIfReady();
       if (_paused) _resume();
       try {
         await channel.close();
