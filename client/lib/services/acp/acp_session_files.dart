@@ -4,7 +4,7 @@
 /// member so parallel agents never share a transcript / agent-session id.
 library;
 
-/// Transcript snapshot of the folded chat messages ([AcpChatTranscriptWriter]).
+/// Append-only transcript of the folded chat messages ([AcpChatTranscriptWriter]).
 ///
 /// Personal stays `acp-transcript.jsonl`. Mixed seats use
 /// `acp-transcript-<rosterMemberId>.jsonl`.
