@@ -8,10 +8,11 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+import '../../cubits/branch_edit_controller.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/failed_message_record.dart';
+import '../../models/pending_branch_edit.dart';
 import '../../services/chat/rewind/seat_branches.dart';
-import '../../utils/logging/logger.dart';
 import 'chat_outline.dart';
 import 'chat_reveal_controller.dart';
 import 'history_scroll_cursor_lock.dart';
@@ -78,7 +79,7 @@ class SessionHistoryThread extends StatefulWidget {
     this.onForkFrom,
     this.onEditUserMessage,
     this.holdTranscript = false,
-    this.optimisticEdit,
+    this.branchEdit,
     this.onOptimisticLanded,
     this.turnInFlight = false,
     super.key,
@@ -139,8 +140,9 @@ class SessionHistoryThread extends StatefulWidget {
   /// intermediate state and then the new turn makes the thread flash twice.
   final bool holdTranscript;
 
-  /// Host-owned optimistic edit; survives a rebuild of this thread.
-  final PendingBranchEdit? optimisticEdit;
+  /// Shared edit state; when omitted the thread owns a private controller
+  /// (tests and standalone usage).
+  final BranchEditController? branchEdit;
 
   /// Call when the runtime publishes the resent prompt.
   final VoidCallback? onOptimisticLanded;
@@ -215,23 +217,28 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   List<AiMessage> _messages = const [];
 
-  /// User message currently open in the inline editor, if any.
-  String? _editingMessageId;
+  BranchEditController? _ownBranchEdit;
 
-  /// Local copy set at submit time; the host owns the durable copy.
-  PendingBranchEdit? _localPendingEdit;
+  BranchEditController get _edit =>
+      widget.branchEdit ?? (_ownBranchEdit ??= BranchEditController());
 
-  PendingBranchEdit? get _pendingEdit =>
-      _localPendingEdit ?? widget.optimisticEdit;
+  Object? _bodyCacheKeyForTurn(ThreadTurn turn) {
+    final keys = <Object?>[
+      widget.onSwitchVersion != null,
+      widget.onForkFrom != null,
+      widget.onEditUserMessage != null,
+    ];
+    for (final id in turn.messageIds) {
+      if (id == _edit.editingMessageId) keys.add('editing:$id');
+      final version = widget.branches.turnOf(id);
+      if (version != null) {
+        keys.add(Object.hash(version.commit, version.index, version.count));
+      }
+    }
+    return Object.hashAll(keys);
+  }
 
-  /// Local hold: set the instant an edit is submitted, before the host's
-  /// `holdTranscript` flag reaches us on the next frame. Without it the first
-  /// runtime publish of the restore lands on top of the optimistic edit.
-  var _holdForEdit = false;
-
-  /// Draft kept while an edit is in flight/failed so the editor can be
-  /// reseeded instead of losing the author's text.
-  String? _editDraft;
+  PendingBranchEdit? get _pendingEdit => _edit.pending;
 
   /// Message to reveal in the viewport (from [ChatRevealController]).
   String? _revealTargetId;
@@ -260,10 +267,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   void initState() {
     super.initState();
     _messages = widget.runtime.messages;
-    appLogger.d(
-      '[branch-edit] thread mount messages=${_messages.length} '
-      'pending=${widget.optimisticEdit?.messageId}',
-    );
+    _edit.addListener(_onBranchEditChanged);
     _scrollController = ScrollController()..addListener(_onScrollTick);
     _runtimeSub = widget.runtime.changes.listen((_) => _onRuntimeChanged());
     _boundReveal = widget.revealRequest;
@@ -309,6 +313,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   @override
   void didUpdateWidget(covariant SessionHistoryThread oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.branchEdit, widget.branchEdit)) {
+      (oldWidget.branchEdit ?? _ownBranchEdit)?.removeListener(
+        _onBranchEditChanged,
+      );
+      _edit.addListener(_onBranchEditChanged);
+    }
     if (oldWidget.runtime != widget.runtime) {
       // Member/seat switch keeps the default open-at-end behavior — anchor
       // restore only applies to a fresh mount of the same thread.
@@ -318,12 +328,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       _showNewMessagesChip = false;
       _paginationArmed = true;
       _mountTurns = false;
-      appLogger.d(
-        '[branch-edit] runtime swapped pending=${_pendingEdit?.messageId} '
-        'messages=${widget.runtime.messages.length}',
-      );
-      _editingMessageId = null;
-      _editDraft = null;
+      // Keep the controller's draft: a runtime swap also happens when an edit
+      // fails, and the editor must reopen with the author's text.
+      _edit.runtimeSwapped();
       if (_pendingEdit == null) {
         _messages = widget.runtime.messages;
       }
@@ -332,7 +339,6 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       _runtimeSub = widget.runtime.changes.listen((_) => _onRuntimeChanged());
       _scheduleOpenAtEnd();
     } else if (oldWidget.holdTranscript && !widget.holdTranscript) {
-      _holdForEdit = false;
       _onRuntimeChanged();
     } else if (oldWidget.liveChrome != widget.liveChrome) {
       if (widget.liveChrome.isActive && _stickToEnd) {
@@ -369,10 +375,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   @override
   void dispose() {
-    appLogger.d(
-      '[branch-edit] thread dispose anchor=${widget.scrollAnchorKey} '
-      'msgs=${_messages.length} pending=${_pendingEdit?.messageId}',
-    );
+    (widget.branchEdit ?? _ownBranchEdit)?.removeListener(_onBranchEditChanged);
+    _ownBranchEdit?.dispose();
     _writeScrollAnchor();
     _stickGeneration++;
     _hoverResumeTimer?.cancel();
@@ -432,11 +436,15 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     _endAnchorRestore();
   }
 
+  void _onBranchEditChanged() {
+    if (mounted) setState(() {});
+  }
+
   void _onRuntimeChanged() {
     if (!mounted) return;
     // An edit restores the parent branch first; hold the old transcript until
     // the new turn lands so the thread switches once instead of twice.
-    if (_holdForEdit || widget.holdTranscript) return;
+    if (_edit.holdsTranscript || widget.holdTranscript) return;
     // Seat runtime is seat-scoped; sync notify may still fire during sibling
     // deferred mount (TpDeferredForegroundMount). A reload started during
     // another tab's build must not markNeedsBuild this retained thread.
@@ -453,10 +461,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     // the optimistic branch on screen until the list carries the new prompt.
     final pending = _pendingEdit;
     if (pending != null && !_listHasPendingEdit(next)) {
-      appLogger.d('[branch-edit] hold replayed prefix messages=${next.length}');
       return;
     }
-    if (pending != null) widget.onOptimisticLanded?.call();
+    if (pending != null) {
+      _edit.markLanded();
+      widget.onOptimisticLanded?.call();
+    }
     final wasPrepend = _isPrepend(_messages, next);
     final tipGrew = _tipGrew(_messages, next, wasPrepend: wasPrepend);
     // Sending a message appends a fresh user turn at the tip. Re-stick even if
@@ -465,15 +475,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     if (_newUserTip(_messages, next)) {
       _setStickToEnd(true);
     }
-    if (pending != null) {
-      appLogger.d(
-        '[branch-edit] adopt branch messages=${next.length} '
-        'message=${pending.messageId}',
-      );
-    }
     setState(() {
       _messages = next;
-      _localPendingEdit = null;
       if (!_stickToEnd && tipGrew) {
         _showNewMessagesChip = true;
       }
@@ -495,6 +498,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     if (expected.isEmpty) return true;
     for (final message in next.reversed) {
       if (message.role != AiRole.user) continue;
+      if (_edit.baselineIds.contains(message.id)) return false;
       final text = message.parts
           .whereType<AiTextPart>()
           .map((part) => part.text)
@@ -504,6 +508,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     }
     return false;
   }
+
+  /// Editing replaces the message with text only, so attachments/structured
+  /// parts would be silently dropped on resend.
+  static bool _isPureText(AiMessage message) =>
+      message.parts.isNotEmpty &&
+      message.parts.every((part) => part is AiTextPart);
 
   /// True when the tip of [next] is a user turn that was not the tip of
   /// [current] — i.e. the user just sent a new message.
@@ -1102,16 +1112,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                         // after the first mount (generation bump, same live
                         // list). Drop cached turn bodies so the action bar
                         // appears without a new message list instance.
-                        bodyCacheKey: (
-                          // An edit freezes the transcript; dropping every
-                          // cached body here is what made the thread flash.
-                          widget.holdTranscript ? false : widget.turnInFlight,
-                          widget.branches,
-                          widget.onSwitchVersion != null,
-                          widget.onForkFrom != null,
-                          widget.onEditUserMessage != null,
-                          _editingMessageId,
-                        ),
+                        // Only the turn that owns the edited message or its
+                        // version control needs a new body. The busy flag is
+                        // delivered through AiMessageInteractionScope so it
+                        // can rebuild action bars without dropping this cache.
+                        bodyCacheKeyForTurn: _bodyCacheKeyForTurn,
                         revealMessageId: _revealTargetId,
                         revealEpoch: _revealEpoch,
                         onRevealOffset: (offset) {
@@ -1181,7 +1186,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                               : null;
                           final editing =
                               ai.role == AiRole.user &&
-                              _editingMessageId == ai.id;
+                              _edit.editingMessageId == ai.id;
                           final showsVersion =
                               version != null && version.count > 1;
                           final previous = version?.previous;
@@ -1211,54 +1216,37 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                             editing: editing,
                             onEdit:
                                 version == null ||
-                                    widget.onEditUserMessage == null
+                                    widget.onEditUserMessage == null ||
+                                    !_isPureText(ai)
                                 ? null
-                                : () =>
-                                      setState(() => _editingMessageId = ai.id),
+                                : () => _edit.openEditor(ai.id),
                             editLabel: editLabel,
                             onSubmitEdit: (text) async {
-                              appLogger.d(
-                                '[branch-edit] submit message=${ai.id}',
+                              _edit.begin(
+                                messageId: ai.id,
+                                text: text,
+                                visibleMessageIds: _messages.map(
+                                  (message) => message.id,
+                                ),
                               );
-                              setState(() {
-                                _editDraft = text;
-                                _localPendingEdit = PendingBranchEdit(
-                                  messageId: ai.id,
-                                  text: text,
-                                );
-                                _editingMessageId = null;
-                                _holdForEdit = true;
-                              });
                               final accepted =
                                   await (widget.onEditUserMessage?.call(
                                         ai.id,
                                         text,
                                       ) ??
                                       Future.value(true));
-                              appLogger.d('[branch-edit] resolved=$accepted');
                               if (!mounted) return accepted;
-                              setState(() {
-                                _holdForEdit = false;
-                                _localPendingEdit = null;
-                                if (accepted) {
-                                  // The host keeps the optimistic edit until
-                                  // the new prompt lands.
-                                  _editDraft = null;
-                                } else {
-                                  // Reopen the editor with the draft.
-                                  _editingMessageId = ai.id;
-                                }
-                              });
+                              _edit.finish(
+                                accepted: accepted,
+                                messageId: ai.id,
+                              );
                               return accepted;
                             },
-                            onCancelEdit: () => setState(() {
-                              _editingMessageId = null;
-                              _editDraft = null;
-                            }),
+                            onCancelEdit: _edit.cancelEdit,
                             editSendLabel: editSendLabel,
                             editCancelLabel: editCancelLabel,
-                            editInitialText: _editingMessageId == ai.id
-                                ? _editDraft
+                            editInitialText: _edit.editingMessageId == ai.id
+                                ? _edit.draft
                                 : null,
                             versionIndex: showsVersion ? version.index : null,
                             versionCount: showsVersion ? version.count : null,
@@ -1320,13 +1308,16 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       ),
     );
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        thread,
-        if (_showNewMessagesChip && !_stickToEnd)
-          _buildNewMessagesChip(context),
-      ],
+    return AiMessageInteractionScope(
+      rewindForkEnabled: !widget.turnInFlight,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          thread,
+          if (_showNewMessagesChip && !_stickToEnd)
+            _buildNewMessagesChip(context),
+        ],
+      ),
     );
   }
 }

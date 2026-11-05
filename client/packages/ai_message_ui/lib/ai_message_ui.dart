@@ -6,6 +6,7 @@ export 'src/ai_message_parts.dart';
 export 'src/ai_message_view.dart';
 export 'src/ai_thread.dart';
 export 'src/history_render_scope.dart';
+export 'src/ai_message_interaction_scope.dart';
 export 'src/message_action_bar.dart';
 export 'src/message_streaming_scope.dart';
 export 'src/part_grouping.dart';

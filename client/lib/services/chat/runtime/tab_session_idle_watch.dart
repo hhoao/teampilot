@@ -134,7 +134,12 @@ final class TabSessionIdleWatch {
     required MemberCoordination coordination,
   }) async {
     try {
-      await _onBeforeTurnEnded?.call(sessionId, memberId);
+      await _onBeforeTurnEnded
+          ?.call(sessionId, memberId)
+          .timeout(const Duration(seconds: 60));
+    } on Object {
+      // A checkpoint must never keep the turn published as in-flight forever;
+      // the store logs its own failure and the next turn can start.
     } finally {
       coordination.endTurn();
       _onAfterTurnEnded?.call(sessionId, memberId);

@@ -4,7 +4,6 @@ import '../models/workspace.dart';
 import '../models/app_session.dart';
 import '../models/session_activity.dart';
 import '../services/chat/launch/session/team_config_launch_validator.dart';
-import '../services/chat/rewind/seat_branches.dart';
 
 export '../services/chat/launch/shell_launch_typedefs.dart';
 
@@ -21,10 +20,8 @@ class ChatState extends Equatable {
     this.sessionLaunchError,
     this.teamConfigValidation,
     this.sessionActivities = const {},
-    this.rewindForkInProgress = false,
-    this.rewindForkError,
-    this.rewindHistoryGeneration = 0,
-    this.pendingBranchEdits = const {},
+    this.rewindForkInProgress = const {},
+    this.rewindHistoryGenerations = const {},
   });
 
   final List<Workspace> workspaces;
@@ -61,19 +58,12 @@ class ChatState extends Equatable {
   /// idle-notify uses [SessionActivity.isReadyToChat].
   final Map<String, SessionActivity> sessionActivities;
 
-  /// True while this cubit is stopping, restoring, or forking a seat.
-  final bool rewindForkInProgress;
+  /// Sessions with a rewind/fork operation running.
+  final Set<String> rewindForkInProgress;
 
-  /// l10n key for a rewind/fork failure (`branchSwitchFailed` / `sessionForkFailed`).
-  final String? rewindForkError;
-
-  /// Bumped when a checkpoint, rewind, or fork for a seat finishes.
-  /// History hosts reload actions from this, not only from the live list.
-  final int rewindHistoryGeneration;
-
-  /// Pending optimistic edits keyed by session id; survives a chat-area
-  /// rebuild caused by the restore's reconnect.
-  final Map<String, PendingBranchEdit> pendingBranchEdits;
+  /// Bumped per session when a checkpoint, rewind, or fork finishes.
+  /// History hosts reload actions only for their own session.
+  final Map<String, int> rewindHistoryGenerations;
 
   Set<String> get busySessionIds => {
     for (final e in sessionActivities.entries)
@@ -97,11 +87,8 @@ class ChatState extends Equatable {
     TeamConfigValidation? teamConfigValidation,
     bool clearTeamConfigValidation = false,
     Map<String, SessionActivity>? sessionActivities,
-    bool? rewindForkInProgress,
-    String? rewindForkError,
-    bool clearRewindForkError = false,
-    int? rewindHistoryGeneration,
-    Map<String, PendingBranchEdit>? pendingBranchEdits,
+    Set<String>? rewindForkInProgress,
+    Map<String, int>? rewindHistoryGenerations,
   }) {
     return ChatState(
       workspaces: workspaces ?? this.workspaces,
@@ -123,12 +110,8 @@ class ChatState extends Equatable {
           : (teamConfigValidation ?? this.teamConfigValidation),
       sessionActivities: sessionActivities ?? this.sessionActivities,
       rewindForkInProgress: rewindForkInProgress ?? this.rewindForkInProgress,
-      rewindForkError: clearRewindForkError
-          ? null
-          : (rewindForkError ?? this.rewindForkError),
-      rewindHistoryGeneration:
-          rewindHistoryGeneration ?? this.rewindHistoryGeneration,
-      pendingBranchEdits: pendingBranchEdits ?? this.pendingBranchEdits,
+      rewindHistoryGenerations:
+          rewindHistoryGenerations ?? this.rewindHistoryGenerations,
     );
   }
 
@@ -146,8 +129,6 @@ class ChatState extends Equatable {
     teamConfigValidation,
     sessionActivities,
     rewindForkInProgress,
-    rewindForkError,
-    rewindHistoryGeneration,
-    pendingBranchEdits,
+    rewindHistoryGenerations,
   ];
 }

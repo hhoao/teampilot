@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'ai_message_interaction_scope.dart';
 import 'ai_message_parts.dart';
 import 'history_render_scope.dart';
 import 'markdown/compiled_markdown_chrome.dart';
@@ -146,6 +147,9 @@ class _AiMessageViewState extends State<AiMessageView> {
     final trackHover =
         widget.showActionBar &&
         widget.actionBarReveal == AiActionBarReveal.hover;
+    final rewindForkEnabled =
+        AiMessageInteractionScope.maybeRewindEnabled(context) ??
+        widget.rewindForkEnabled;
 
     final body = Padding(
       padding: EdgeInsets.only(
@@ -175,7 +179,7 @@ class _AiMessageViewState extends State<AiMessageView> {
             editCancelLabel: widget.editCancelLabel,
             onFork: widget.onFork,
             forkLabel: widget.forkLabel,
-            rewindForkEnabled: widget.rewindForkEnabled,
+            rewindForkEnabled: rewindForkEnabled,
             versionIndex: widget.versionIndex,
             versionCount: widget.versionCount,
             onPreviousVersion: widget.onPreviousVersion,
@@ -193,7 +197,7 @@ class _AiMessageViewState extends State<AiMessageView> {
             hoverListenable: trackHover ? _hovered : null,
             onFork: widget.onFork,
             forkLabel: widget.forkLabel,
-            rewindForkEnabled: widget.rewindForkEnabled,
+            rewindForkEnabled: rewindForkEnabled,
             versionIndex: widget.versionIndex,
             versionCount: widget.versionCount,
             onPreviousVersion: widget.onPreviousVersion,
@@ -352,12 +356,18 @@ class _UserBubble extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           // Reserve action-bar chrome so Row never overflows the thread width.
+          // The version control is two icon buttons plus a text label. Scale
+          // the label reserve with the platform text scale instead of a
+          // locale-independent magic width.
+          final versionReserve = versionCount != null && versionCount! > 1
+              ? 72.0 + MediaQuery.textScalerOf(context).scale(36.0)
+              : 0.0;
           final actionBarReserve =
               80.0 +
               (onRetryDelivery != null ? 36.0 : 0.0) +
               (onEdit != null ? 36.0 : 0.0) +
               (onFork != null ? 36.0 : 0.0) +
-              (versionCount != null && versionCount! > 1 ? 108.0 : 0.0);
+              versionReserve;
           final threadMax = constraints.maxWidth.isFinite
               ? constraints.maxWidth
               : 480.0;

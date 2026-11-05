@@ -1,8 +1,29 @@
 import 'package:teampilot/services/acp/acp_session_files.dart';
 
+/// Mixed-seat rewind is implemented but deliberately not exposed yet.
+/// Flip this when team-session branching ships; every entry point reads it.
+const bool kMixedSeatRewindEnabled = false;
+
 enum SeatRewindKind { personalAcp, mixedAcp, personalPty, mixedPty }
 
 const rewindExcludeNames = {'plugins', 'skills', 'node_modules', 'cache'};
+
+/// One canonical target for a seat, so the checkpoint writers and the UI
+/// reader agree on the kind/tool/member triple.
+SeatRewindTarget resolveSeatRewindTarget({
+  required bool personal,
+  required bool acp,
+  required String tool,
+  String? memberId,
+}) {
+  return SeatRewindTarget(
+    kind: acp
+        ? (personal ? SeatRewindKind.personalAcp : SeatRewindKind.mixedAcp)
+        : (personal ? SeatRewindKind.personalPty : SeatRewindKind.mixedPty),
+    tool: tool,
+    memberId: personal ? null : memberId,
+  );
+}
 
 final class SeatRewindTarget {
   const SeatRewindTarget({
@@ -23,8 +44,7 @@ final class SeatRewindTarget {
 
   String get seatKey => _personal ? 'personal' : memberId!.trim();
 
-  String get _toolDirPrefix =>
-      _personal ? tool : '${memberId!.trim()}/$tool';
+  String get _toolDirPrefix => _personal ? tool : '${memberId!.trim()}/$tool';
 
   /// Repo-relative paths that `git add` / checkout may touch.
   List<String> get includedPrefixes {

@@ -10,12 +10,12 @@ void main() {
 
   setUp(() async {
     tmpDir = await Directory.systemTemp.createTemp('seat-branches-');
-    await Directory('${tmpDir.path}/work/claude/projects').create(
-      recursive: true,
-    );
-    await File('${tmpDir.path}/work/claude/projects/a.jsonl').writeAsString(
-      'one',
-    );
+    await Directory(
+      '${tmpDir.path}/work/claude/projects',
+    ).create(recursive: true);
+    await File(
+      '${tmpDir.path}/work/claude/projects/a.jsonl',
+    ).writeAsString('one');
   });
 
   tearDown(() async {
@@ -49,7 +49,6 @@ void main() {
     expect(branches.turnOf('u1')!.count, 1);
     expect(branches.turnOf('u1')!.previous, isNull);
     expect(branches.turnOf('u2')!.count, 1);
-    expect(branches.checkedOutCommit, branches.turnOf('u2')!.commit);
   });
 
   test('turns written before the anchor are ignored', () async {

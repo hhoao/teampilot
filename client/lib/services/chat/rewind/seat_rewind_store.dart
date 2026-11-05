@@ -1,12 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/chat/rewind/rewind_work_gate.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_paths.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/utils/logging/logger.dart';
 
-String personalize(SeatRewindTarget source, String path) {
+String _personalize(SeatRewindTarget source, String path) {
   final member = source.memberId?.trim() ?? '';
   if (member.isEmpty) return path;
   final prefix = '$member/${source.tool}/';
@@ -62,12 +64,42 @@ final class SeatRewindStore {
     required this.workTree,
     required this.target,
     this.gitExecutable = 'git',
+    this.commandTimeout = const Duration(seconds: 30),
   });
+
+  /// Resolves the one canonical repository location for a seat.
+  ///
+  /// Checkpoint writers and the history/UI path must share this factory; a
+  /// second copy of the path rule silently splits one seat into two repos.
+  factory SeatRewindStore.forSession({
+    required RuntimeLayout layout,
+    required String workspaceId,
+    required String sessionId,
+    required SeatRewindTarget target,
+    String gitExecutable = 'git',
+    Duration commandTimeout = const Duration(seconds: 30),
+  }) {
+    return SeatRewindStore(
+      gitDir: layout.pathContext.join(
+        layout.workspace.sessionDir(workspaceId, sessionId),
+        'rewind',
+        target.seatKey,
+      ),
+      workTree: layout.workspace.sessionRuntimeDir(workspaceId, sessionId),
+      target: target,
+      gitExecutable: gitExecutable,
+      commandTimeout: commandTimeout,
+    );
+  }
 
   final String gitDir;
   final String workTree;
   final SeatRewindTarget target;
   final String gitExecutable;
+
+  /// Upper bound for one git process. A checkpoint runs before the seat is
+  /// published idle, so a stuck git process must never latch the turn forever.
+  final Duration commandTimeout;
 
   static const _gitIdentity = {
     'GIT_AUTHOR_NAME': 'TeamPilot',
@@ -78,11 +110,25 @@ final class SeatRewindStore {
 
   List<String> get _repoArgs => ['--git-dir', gitDir, '--work-tree', workTree];
 
+  /// Whether this seat has a rewind repository yet.
+  Future<bool> repoExists() => Directory(gitDir).exists();
+
   Future<void> ensureRepo() async {
     final head = File(p.join(gitDir, 'HEAD'));
     if (!await head.exists()) {
       await Directory(gitDir).create(recursive: true);
       await _runGit(['--git-dir', gitDir, 'init']);
+      // Runtime bytes must round-trip verbatim. A user/global git config with
+      // autocrlf, executable-bit tracking, or symlink checkout would rewrite
+      // JSONL/DB sidecars and break a restore. Repo-local config is written
+      // once at init, not on every turn.
+      for (final entry in const {
+        'core.autocrlf': 'false',
+        'core.fileMode': 'false',
+        'core.symlinks': 'false',
+      }.entries) {
+        await _runGit(['--git-dir', gitDir, 'config', entry.key, entry.value]);
+      }
     }
     final exclude = File(p.join(gitDir, 'info', 'exclude'));
     await exclude.parent.create(recursive: true);
@@ -104,9 +150,7 @@ final class SeatRewindStore {
     }
     await ensureRepo();
     await _dropStaleSeatIndexEntries();
-    for (final relative in _includedRuntimeFiles()) {
-      await _runGit([..._repoArgs, 'add', '--', relative]);
-    }
+    await _addIncludedFiles(await _includedRuntimeFiles());
     final tree = (await _runGit([..._repoArgs, 'write-tree'])).trim();
     final parent = await checkedOut() ?? await root();
     final turnAt = DateTime.now().millisecondsSinceEpoch;
@@ -147,6 +191,27 @@ final class SeatRewindStore {
       turnAt: turnAt,
       nativeSessionId: nativeSessionId,
     );
+  }
+
+  /// Adds every included file in one git process.
+  ///
+  /// One process per file is both slow on Windows and amplifies a streaming
+  /// turn into hundreds of spawns. Older git versions without
+  /// `--pathspec-from-file` fall back to the per-file path.
+  Future<void> _addIncludedFiles(List<String> files) async {
+    if (files.isEmpty) return;
+    try {
+      await _runGit([
+        ..._repoArgs,
+        'add',
+        '--pathspec-from-file=-',
+        '--pathspec-file-nul',
+      ], stdinText: '${files.join('\x00')}\x00');
+    } on StateError {
+      for (final relative in files) {
+        await _runGit([..._repoArgs, 'add', '--', relative]);
+      }
+    }
   }
 
   Future<void> restore(String commit) async {
@@ -196,10 +261,10 @@ final class SeatRewindStore {
     if (existing.isNotEmpty) return existing;
     final indexFile = p.join(gitDir, 'root-index');
     try {
-      final tree = (await _runGit([
-        ..._repoArgs,
-        'write-tree',
-      ], environment: {'GIT_INDEX_FILE': indexFile})).trim();
+      final tree = (await _runGit(
+        [..._repoArgs, 'write-tree'],
+        environment: {'GIT_INDEX_FILE': indexFile},
+      )).trim();
       final commit = (await _runGit([
         ..._repoArgs,
         'commit-tree',
@@ -257,30 +322,35 @@ final class SeatRewindStore {
         .where((commit) => commit.isNotEmpty)
         .toSet();
     if (kept.isEmpty) return const [];
+    // Feed revisions through stdin: a long-lived seat can accumulate more
+    // keep refs than the Windows command line (or ARG_MAX) allows.
     final walked = const LineSplitter().convert(
-      await _runGit([
-        ..._repoArgs,
-        'rev-list',
-        '--reverse',
-        '--topo-order',
-        ...kept,
-      ], allowFailure: true),
+      await _runGit(
+        [..._repoArgs, 'rev-list', '--reverse', '--topo-order', '--stdin'],
+        stdinText: '${kept.join('\n')}\n',
+        allowFailure: true,
+      ),
     );
+    final walkedSet = walked.toSet();
     final ordered = [
       for (final commit in walked)
         if (kept.contains(commit)) commit,
       // A tip the walk cannot reach still lists after the reachable ones.
       for (final commit in kept)
-        if (!walked.contains(commit)) commit,
+        if (!walkedSet.contains(commit)) commit,
     ];
     if (ordered.isEmpty) return const [];
-    final bodies = await _runGit([
-      ..._repoArgs,
-      'log',
-      '--no-walk=unsorted',
-      '--format=%H%x00%P%x00%B%x01',
-      ...ordered,
-    ], allowFailure: true);
+    final bodies = await _runGit(
+      [
+        ..._repoArgs,
+        'log',
+        '--no-walk=unsorted',
+        '--format=%H%x00%P%x00%B%x01',
+        '--stdin',
+      ],
+      stdinText: '${ordered.join('\n')}\n',
+      allowFailure: true,
+    );
     final records = <String, ({String parents, String body})>{};
     for (final record in bodies.split('\x01')) {
       final entry = record.trimLeft();
@@ -315,6 +385,7 @@ final class SeatRewindStore {
       workTree: destWorkTree,
       target: destTarget,
       gitExecutable: gitExecutable,
+      commandTimeout: commandTimeout,
     );
     await dest.ensureRepo();
     await dest._fetchCommit(gitDir, commit);
@@ -340,29 +411,30 @@ final class SeatRewindStore {
   /// `git show <commit>:<path>` bytes decoded as UTF-8, or null when missing
   /// or not valid UTF-8 (binary CLI files such as `opencode.db`).
   Future<String?> showFile(String commit, String path) async {
-    final result = await Process.run(
-      gitExecutable,
-      [..._repoArgs, 'show', '$commit:$path'],
-      stdoutEncoding: null,
-      stderrEncoding: utf8,
-    );
-    if (result.exitCode == 0) return _utf8OrNull(result.stdout);
-    if (target.seatKey != 'personal') return null;
-    final sourcePath = await _personalizedSourcePath(commit, path);
-    if (sourcePath == null) return null;
-    final mapped = await Process.run(
-      gitExecutable,
-      [..._repoArgs, 'show', '$commit:$sourcePath'],
-      stdoutEncoding: null,
-      stderrEncoding: utf8,
-    );
-    if (mapped.exitCode != 0) return null;
-    return _utf8OrNull(mapped.stdout);
+    try {
+      final result = await _runProcess([
+        ..._repoArgs,
+        'show',
+        '$commit:$path',
+      ], allowFailure: true);
+      if (result.exitCode == 0) return _utf8OrNull(result.stdout);
+      if (target.seatKey != 'personal') return null;
+      final sourcePath = await _personalizedSourcePath(commit, path);
+      if (sourcePath == null) return null;
+      final mapped = await _runProcess([
+        ..._repoArgs,
+        'show',
+        '$commit:$sourcePath',
+      ], allowFailure: true);
+      if (mapped.exitCode != 0) return null;
+      return _utf8OrNull(mapped.stdout);
+    } on StateError {
+      // A timed-out git process must not break history rendering.
+      return null;
+    }
   }
 
-  String? _utf8OrNull(Object? stdout) {
-    if (stdout is String) return stdout;
-    if (stdout is! List<int>) return null;
+  String? _utf8OrNull(List<int> stdout) {
     try {
       return utf8.decode(stdout);
     } on FormatException {
@@ -378,13 +450,16 @@ final class SeatRewindStore {
       return;
     }
     if (treePaths.any(target.includes) || target.seatKey != 'personal') {
-      await _runGit([
-        ..._repoArgs,
-        'checkout',
-        commit,
-        '--',
-        ...target.includedPrefixes,
-      ]);
+      // `git checkout <commit> -- <pathspec>` fails when any pathspec matches
+      // nothing. A checkpoint can legitimately omit a sidecar (or the whole
+      // tool dir), so checkout only paths that actually exist in the commit.
+      final existing = [
+        for (final path in treePaths)
+          if (target.includes(path) && !target.isExcluded(path)) path,
+      ];
+      if (existing.isNotEmpty) {
+        await _runGit([..._repoArgs, 'checkout', commit, '--', ...existing]);
+      }
       await _deleteIncludedFilesNotIn(treePaths.toSet());
       return;
     }
@@ -397,7 +472,7 @@ final class SeatRewindStore {
     );
     final names = <String>{};
     for (final path in treePaths) {
-      final relative = personalize(source, path);
+      final relative = _personalize(source, path);
       if (!target.includes(relative) || target.isExcluded(relative)) {
         continue;
       }
@@ -416,24 +491,40 @@ final class SeatRewindStore {
       'ls-files',
       '-z',
     ], allowFailure: true);
+    final stale = <String>[];
     for (final relative in listed.split('\x00')) {
       if (relative.isEmpty) continue;
       if (!target.includes(relative) || target.isExcluded(relative)) {
         continue;
       }
-      final type = FileSystemEntity.typeSync(
+      final type = await FileSystemEntity.type(
         p.join(workTree, relative),
         followLinks: false,
       );
       if (type == FileSystemEntityType.file) continue;
+      stale.add(relative);
+    }
+    if (stale.isEmpty) return;
+    try {
       await _runGit([
         ..._repoArgs,
         'rm',
         '--cached',
         '--ignore-unmatch',
-        '--',
-        relative,
-      ]);
+        '--pathspec-from-file=-',
+        '--pathspec-file-nul',
+      ], stdinText: '${stale.join('\x00')}\x00');
+    } on StateError {
+      for (final relative in stale) {
+        await _runGit([
+          ..._repoArgs,
+          'rm',
+          '--cached',
+          '--ignore-unmatch',
+          '--',
+          relative,
+        ]);
+      }
     }
   }
 
@@ -497,29 +588,35 @@ final class SeatRewindStore {
       '--format=%(objectname) %(refname)',
       'refs/rewind/keep',
     ], allowFailure: true);
+    final reachable = const LineSplitter()
+        .convert(
+          await _runGit([
+            '--git-dir',
+            gitDir,
+            'rev-list',
+            commit,
+          ], allowFailure: true),
+        )
+        .where((line) => line.isNotEmpty)
+        .toSet();
+    if (reachable.isEmpty) return;
+    final updates = <String>[];
     for (final line in const LineSplitter().convert(listed)) {
       if (line.isEmpty) continue;
       final space = line.indexOf(' ');
       if (space <= 0) continue;
       final keepCommit = line.substring(0, space);
       final refName = line.substring(space + 1);
-      final ancestor = await _runGitResult([
-        '--git-dir',
-        gitDir,
-        'merge-base',
-        '--is-ancestor',
-        keepCommit,
-        commit,
-      ], allowFailure: true);
-      if (ancestor.exitCode != 0) continue;
-      await dest._runGit([
-        '--git-dir',
-        dest.gitDir,
-        'update-ref',
-        refName,
-        keepCommit,
-      ]);
+      if (!reachable.contains(keepCommit)) continue;
+      updates.add('update $refName $keepCommit');
     }
+    if (updates.isEmpty) return;
+    await dest._runGit([
+      '--git-dir',
+      dest.gitDir,
+      'update-ref',
+      '--stdin',
+    ], stdinText: '${updates.join('\n')}\n');
   }
 
   Future<void> _writePersonalizedWorkTree(
@@ -536,7 +633,7 @@ final class SeatRewindStore {
     ]);
     for (final path in const LineSplitter().convert(listed)) {
       if (path.isEmpty) continue;
-      await dest._writeRawBlob(commit, path, personalize(target, path));
+      await dest._writeRawBlob(commit, path, _personalize(target, path));
     }
   }
 
@@ -568,7 +665,7 @@ final class SeatRewindStore {
     );
     String? unique;
     for (final treePath in treePaths) {
-      if (personalize(source, treePath) != path) continue;
+      if (_personalize(source, treePath) != path) continue;
       if (unique != null) return null;
       unique = treePath;
     }
@@ -608,28 +705,65 @@ final class SeatRewindStore {
     String sourcePath,
     String destRelative,
   ) async {
-    final shown = await Process.run(
-      gitExecutable,
-      ['--git-dir', gitDir, 'show', '$commit:$sourcePath'],
-      stdoutEncoding: null,
-      stderrEncoding: utf8,
-    );
-    if (shown.exitCode != 0) {
-      final stderr = shown.stderr as String;
-      AppLogger.instance.e(
-        'git show $commit:$sourcePath failed (${shown.exitCode}): $stderr',
-      );
-      throw StateError(
-        'git show $commit:$sourcePath failed (${shown.exitCode}): $stderr',
-      );
-    }
     final destFile = File(p.join(workTree, destRelative));
     await destFile.parent.create(recursive: true);
-    await destFile.writeAsBytes(shown.stdout as List<int>);
+    // Never follow a CLI-created symlink out of the work tree.
+    if (await FileSystemEntity.isLink(destFile.path)) {
+      await Link(destFile.path).delete();
+    }
+    await _runGitToFile([
+      '--git-dir',
+      gitDir,
+      'show',
+      '$commit:$sourcePath',
+    ], destFile);
+  }
+
+  /// Streams one git blob into [dest] instead of buffering it in memory.
+  ///
+  /// Forking a seat with a large SQLite/transcript file would otherwise hold
+  /// the whole blob in the UI isolate's heap.
+  Future<void> _runGitToFile(List<String> args, File dest) async {
+    final process = await Process.start(gitExecutable, args);
+    final stderrFuture = process.stderr.transform(utf8.decoder).join();
+    final sink = dest.openWrite();
+    var timedOut = false;
+    try {
+      await process.stdout
+          .pipe(sink)
+          .timeout(
+            commandTimeout,
+            onTimeout: () {
+              timedOut = true;
+              process.kill();
+            },
+          );
+    } finally {
+      try {
+        await process.stdin.close();
+      } on Object {
+        // The process may already be gone after a timeout.
+      }
+    }
+    final exitCode = await process.exitCode.timeout(
+      commandTimeout,
+      onTimeout: () {
+        timedOut = true;
+        process.kill();
+        return -1;
+      },
+    );
+    final stderr = await stderrFuture;
+    if (timedOut || exitCode != 0) {
+      if (await dest.exists()) await dest.delete();
+      final reason = timedOut ? 'timed out after $commandTimeout' : stderr;
+      AppLogger.instance.e('git ${args.join(' ')} failed ($exitCode): $reason');
+      throw StateError('git ${args.join(' ')} failed ($exitCode): $reason');
+    }
   }
 
   Future<void> _deleteIncludedFilesNotIn(Set<String> keep) async {
-    for (final relative in _includedRuntimeFiles()) {
+    for (final relative in await _includedRuntimeFiles()) {
       if (keep.contains(relative)) continue;
       await File(p.join(workTree, relative)).delete();
     }
@@ -642,15 +776,15 @@ final class SeatRewindStore {
   /// plugin or cache tree never enters the walk. A directory that disappears
   /// or cannot be listed mid-walk (a marketplace refresh pruning a plugin
   /// tree) is skipped instead of failing the whole checkpoint.
-  List<String> _includedRuntimeFiles() {
+  Future<List<String>> _includedRuntimeFiles() async {
     final found = <String>[];
     final root = Directory(workTree);
-    if (!root.existsSync()) return found;
+    if (!await root.exists()) return found;
 
-    void visit(Directory dir, String relative) {
+    Future<void> visit(Directory dir, String relative) async {
       List<FileSystemEntity> entries;
       try {
-        entries = dir.listSync(followLinks: false);
+        entries = await dir.list(followLinks: false).toList();
       } on FileSystemException catch (error) {
         AppLogger.instance.w(
           '[rewind] skipped unreadable runtime directory ${dir.path}: $error',
@@ -660,10 +794,13 @@ final class SeatRewindStore {
       for (final entry in entries) {
         final name = p.basename(entry.path);
         final child = relative.isEmpty ? name : '$relative/$name';
-        final type = FileSystemEntity.typeSync(entry.path, followLinks: false);
+        final type = await FileSystemEntity.type(
+          entry.path,
+          followLinks: false,
+        );
         if (type == FileSystemEntityType.directory) {
           if (target.isExcluded(child) || !_mayIncludeUnder(child)) continue;
-          visit(Directory(entry.path), child);
+          await visit(Directory(entry.path), child);
           continue;
         }
         if (type != FileSystemEntityType.file) continue;
@@ -672,7 +809,7 @@ final class SeatRewindStore {
       }
     }
 
-    visit(root, '');
+    await visit(root, '');
     return found;
   }
 
@@ -689,40 +826,83 @@ final class SeatRewindStore {
     return false;
   }
 
-  Future<({String stdout, int exitCode})> _runGitResult(
+  Future<({List<int> stdout, String stderr, int exitCode})> _runProcess(
     List<String> args, {
     bool allowFailure = false,
     Map<String, String>? environment,
+    String? stdinText,
   }) async {
-    final result = await Process.run(
+    final process = await Process.start(
       gitExecutable,
       args,
       workingDirectory: args.contains('--work-tree') ? workTree : null,
       environment: environment,
-      stdoutEncoding: utf8,
-      stderrEncoding: utf8,
     );
-    if (!allowFailure && result.exitCode != 0) {
-      final stderr = result.stderr as String;
-      AppLogger.instance.e(
-        'git ${args.join(' ')} failed (${result.exitCode}): $stderr',
-      );
-      throw StateError(
-        'git ${args.join(' ')} failed (${result.exitCode}): $stderr',
-      );
+    // Drain both pipes concurrently: a chatty stderr must not block stdout.
+    final stdoutFuture = process.stdout.fold<List<int>>(
+      <int>[],
+      (buffer, chunk) => buffer..addAll(chunk),
+    );
+    final stderrFuture = process.stderr.transform(utf8.decoder).join();
+    if (stdinText != null) process.stdin.write(stdinText);
+    try {
+      await process.stdin.close();
+    } on Object {
+      // A process that exits immediately may have already closed its stdin.
     }
-    return (stdout: result.stdout as String, exitCode: result.exitCode);
+    var timedOut = false;
+    final exitCode = await process.exitCode.timeout(
+      commandTimeout,
+      onTimeout: () {
+        timedOut = true;
+        process.kill();
+        return -1;
+      },
+    );
+    final stdout = await stdoutFuture;
+    final stderr = await stderrFuture;
+    if (timedOut) {
+      AppLogger.instance.e(
+        'git ${args.join(' ')} timed out after $commandTimeout',
+      );
+      throw StateError('git ${args.join(' ')} timed out after $commandTimeout');
+    }
+    if (!allowFailure && exitCode != 0) {
+      AppLogger.instance.e('git ${args.join(' ')} failed ($exitCode): $stderr');
+      throw StateError('git ${args.join(' ')} failed ($exitCode): $stderr');
+    }
+    return (stdout: stdout, stderr: stderr, exitCode: exitCode);
+  }
+
+  Future<({String stdout, int exitCode})> _runGitResult(
+    List<String> args, {
+    bool allowFailure = false,
+    Map<String, String>? environment,
+    String? stdinText,
+  }) async {
+    final result = await _runProcess(
+      args,
+      allowFailure: allowFailure,
+      environment: environment,
+      stdinText: stdinText,
+    );
+    return (
+      stdout: utf8.decode(result.stdout, allowMalformed: true),
+      exitCode: result.exitCode,
+    );
   }
 
   Future<String> _runGit(
     List<String> args, {
     bool allowFailure = false,
     Map<String, String>? environment,
+    String? stdinText,
   }) async {
     final result = await _runGitResult(
       args,
       allowFailure: allowFailure,
       environment: environment,
+      stdinText: stdinText,
     );
     return result.stdout;
   }

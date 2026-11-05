@@ -13,6 +13,7 @@ import 'package:teampilot/cubits/ai_history_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/services/chat/session/chat_tab_store.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/branch_edit_controller.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/expert_hub_cubit.dart';
@@ -58,6 +59,19 @@ import '../../support/compose_field_test_utils.dart';
 /// field, so the mock must provide a real empty map instead of mocktail's
 /// implicit null.
 class _MockChatCubit extends Mock implements ChatCubit {
+  final BranchEditController _branchEdit = BranchEditController(
+    watchdog: Duration.zero,
+  );
+
+  @override
+  BranchEditController branchEditFor(String sessionId) => _branchEdit;
+
+  @override
+  Future<AppSession?> hydrateSessionDocument(
+    String workspaceId,
+    String sessionId,
+  ) async => null;
+
   @override
   final Map<String, double> sessionScrollAnchors = {};
 
@@ -370,7 +384,10 @@ void main() {
       cli: CliTool.claude,
       createdAt: 1,
     );
-    composeDraftCache.setSessionDraft('s1', ComposeDraft(text: 'continue this'));
+    composeDraftCache.setSessionDraft(
+      's1',
+      ComposeDraft(text: 'continue this'),
+    );
 
     await pumpSession(tester, session: session);
 
@@ -756,7 +773,8 @@ AppSession _session(String sessionId) => AppSession(
   createdAt: 1,
 );
 
-ExtendedTextField _composeField(WidgetTester tester) => composeFieldWidget(tester);
+ExtendedTextField _composeField(WidgetTester tester) =>
+    composeFieldWidget(tester);
 
 Future<void> _flushRealIo(WidgetTester tester, {int rounds = 6}) async {
   for (var i = 0; i < rounds; i++) {

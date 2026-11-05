@@ -1,7 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Directory, Platform;
-
-import 'package:uuid/uuid.dart';
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:collection/collection.dart';
@@ -18,6 +15,7 @@ import '../models/workspace.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_launch_context.dart';
 import '../models/app_session.dart';
+import 'branch_edit_controller.dart';
 import '../models/member_presence.dart';
 import '../models/member_instance.dart';
 import '../services/chat/runtime/member_presence_service.dart';
@@ -36,6 +34,9 @@ import '../services/chat/rewind/rewind_fork_service.dart';
 import '../services/chat/rewind/seat_branches.dart';
 import '../services/chat/rewind/rewind_work_gate.dart';
 import '../services/chat/rewind/seat_rewind_paths.dart';
+import '../services/chat/rewind/seat_rewind_policy.dart';
+import '../services/chat/rewind/seat_rewind_controller.dart';
+import '../services/chat/rewind/seat_pty_checkpoint_tracker.dart';
 import '../services/chat/rewind/seat_rewind_store.dart';
 import '../services/cli/git_on_path.dart';
 import '../services/chat/runtime/session_activity_reduce.dart';
@@ -121,9 +122,15 @@ export '../services/chat/session/session_open_request.dart';
 export '../services/chat/session/session_open_status.dart';
 export '../services/chat/session/session_workbench_view.dart';
 
+part 'chat_rewind_adapters.dart';
+
 class ChatCubit extends Cubit<ChatState>
     with ChatConnectStateMixin
-    implements SessionLaunchHost, WorkspaceSnapshotPatchPort {
+    implements
+        SessionLaunchHost,
+        WorkspaceSnapshotPatchPort,
+        SeatRewindHost,
+        PtyCheckpointHost {
   ChatCubit({
     required String Function() executableResolver,
     required HomeStorage storage,
@@ -167,6 +174,7 @@ class ChatCubit extends Cubit<ChatState>
     String Function()? termuxDisconnectedWorkOpsMessageResolver,
     RuntimeTarget Function()? termuxGateHomeResolver,
     PromptDeliveryCoordinator? Function()? promptDeliveries,
+    this.branchEditWatchdog = const Duration(seconds: 30),
   }) : _remoteBusSetup = remoteBusSetup,
        _promptDeliveries = promptDeliveries,
        _remoteCliReadiness = remoteCliReadiness,
@@ -274,31 +282,22 @@ class ChatCubit extends Cubit<ChatState>
   })?
   debugDeliverEditedMessage;
 
-  /// Watchdogs for optimistic edits, keyed by session id.
-  final Map<String, Timer> _pendingBranchEditTimers = {};
+  /// Optimistic edit state, one controller per session, owned by the cubit so
+  /// it survives a chat-area rebuild caused by the restore's reconnect.
+  final Map<String, BranchEditController> _branchEdits = {};
 
-  void _setPendingBranchEdit(String sessionId, PendingBranchEdit edit) {
-    _pendingBranchEditTimers[sessionId]?.cancel();
-    emit(
-      state.copyWith(
-        pendingBranchEdits: {...state.pendingBranchEdits, sessionId: edit},
-      ),
-    );
-    _pendingBranchEditTimers[sessionId] = Timer(
-      const Duration(seconds: 15),
-      () => clearPendingBranchEdit(sessionId),
-    );
-  }
+  /// Test seam: widget tests can use [Duration.zero] to avoid a pending timer.
+  final Duration branchEditWatchdog;
+
+  BranchEditController branchEditFor(String sessionId) =>
+      _branchEdits.putIfAbsent(
+        sessionId,
+        () => BranchEditController(watchdog: branchEditWatchdog),
+      );
 
   /// Clears the optimistic bubble once the runtime publishes the new prompt.
   void clearPendingBranchEdit(String sessionId) {
-    _pendingBranchEditTimers.remove(sessionId)?.cancel();
-    if (isClosed || state.pendingBranchEdits[sessionId] == null) return;
-    emit(
-      state.copyWith(
-        pendingBranchEdits: Map.of(state.pendingBranchEdits)..remove(sessionId),
-      ),
-    );
+    _branchEdits[sessionId]?.clearPending();
   }
 
   final _operatorMailboxQueued =
@@ -418,16 +417,41 @@ class ChatCubit extends Cubit<ChatState>
   );
   bool? _gitOnPath;
 
+  late final SeatRewindPolicy _rewindPolicy = SeatRewindPolicy(
+    isMobile: isMobilePlatform,
+    gitAvailable: _gitAvailableForRewind,
+    layout: () => _storage.context.layout,
+    launchTargetFor: _launchTargetForRewind,
+  );
+
+  late final SeatRewindController _rewindController = SeatRewindController(
+    host: this,
+    policy: _rewindPolicy,
+    forkService: _rewindFork,
+    gate: _rewindGate,
+  );
+
+  late final SeatPtyCheckpointTracker _ptyCheckpoints =
+      SeatPtyCheckpointTracker(
+        host: this,
+        policy: _rewindPolicy,
+        gate: _rewindGate,
+      );
+
   /// Test override for [gitOnPath]. Skips the process probe so the
   /// no-git branch of [rewindActionsAllowed] is testable on any host.
   @visibleForTesting
   bool? debugGitOnPath;
 
-  /// Last message id committed for a PTY seat (`sessionId\0memberId`).
-  final _ptyCommittedMessageBySeat = <String, String>{};
+  bool _gitAvailableForRewind() =>
+      debugGitOnPath ?? (_gitOnPath ??= gitOnPath());
 
-  /// Latest history id seen when the seat entered working.
-  final _ptyTurnBaseline = <String, String>{};
+  RuntimeTarget _launchTargetForRewind(AppSession session, String? memberId) {
+    return _lifecycle.launchWorkTarget(
+      _launchService.launchContextFor(session),
+      memberId: session.isSimple ? null : memberId,
+    );
+  }
 
   Future<void>? _attentionChain;
 
@@ -440,6 +464,7 @@ class ChatCubit extends Cubit<ChatState>
     termuxWorkOpsBlockFor: _termuxWorkOpsBlockFor,
     onSessionTabOpened: _forwardSessionTabOpened,
     rewindGate: _rewindGate,
+    rewindPolicy: _rewindPolicy,
   );
 
   /// Forwards to [onSessionTabOpened], resolved at call time so wiring set by
@@ -1421,83 +1446,13 @@ class ChatCubit extends Cubit<ChatState>
   /// Runs before the seat is published idle: a follow-up drain or a queued
   /// doorbell reads that idle edge, and it must not start a new turn while
   /// [SeatRewindStore.commitTurn] is still walking the work tree.
-  Future<void> _checkpointPtyTurn(String sessionId, String memberId) async {
-    if (memberId.trim().isEmpty) return;
-    final session = _tabStore
-        .getOpenTabBySessionId(sessionId)
-        ?.persistedSession;
-    if (session == null) return;
-    if (isAcpChatSession(session) || isAcpChatSeat(session, memberId)) {
-      return;
-    }
-    if (Platform.isAndroid) return;
-    final workTarget = _lifecycle.launchWorkTarget(
-      _launchService.launchContextFor(session),
-      memberId: session.isSimple ? null : memberId,
-    );
-    if (workTarget.kind == RuntimeKind.ssh) return;
-
-    final cli = _cliForPtySeat(session, memberId);
-    final personal = session.isSimple;
-    final target = SeatRewindTarget(
-      kind: personal ? SeatRewindKind.personalPty : SeatRewindKind.mixedPty,
-      tool: cli.value,
-      memberId: personal ? null : memberId,
-    );
-    final layout = _storage.context.layout;
-    final gitDir = layout.pathContext.join(
-      layout.workspace.sessionDir(session.workspaceId, session.sessionId),
-      'rewind',
-      target.seatKey,
-    );
-    final workTree = layout.workspace.sessionRuntimeDir(
-      session.workspaceId,
-      session.sessionId,
-    );
-    final historyMemberId = personal ? '' : memberId;
-    final seatKey = '$sessionId\u0000$memberId';
-    final nativeSessionId = personal
-        ? session.nativeSessionIds[cli.value]
-        : session.bindingFor(memberId)?.nativeSessionIds[cli.value];
-    await _rewindGate.runSnapshot(gitDir, () async {
-      try {
-        final messageId = await _closingPtyMessageId(
-          sessionId: sessionId,
-          memberId: memberId,
-          historyMemberId: historyMemberId,
-          seatKey: seatKey,
-        );
-        if (messageId == null) return;
-        final userMessageId = _observedPtyUserMessageId(
-          sessionId: sessionId,
-          historyMemberId: historyMemberId,
-        );
-        // A checkpoint with no anchor cannot drive the version control, and
-        // committing it would still move `live` past the turn.
-        if (userMessageId == null) return;
-        await _commitPtyTurnOnce(
-          gitDir: gitDir,
-          workTree: workTree,
-          target: target,
-          messageId: messageId,
-          userMessageId: userMessageId,
-          nativeSessionId: nativeSessionId,
-          seatKey: seatKey,
-          sessionId: sessionId,
-          memberId: memberId,
-        );
-      } finally {
-        // The next turn's rising edge must record a fresh start id.
-        _ptyTurnBaseline.remove(seatKey);
-      }
-    });
-  }
+  Future<void> _checkpointPtyTurn(String sessionId, String memberId) =>
+      _ptyCheckpoints.checkpointTurn(sessionId, memberId);
 
   /// Shell turn latch rose (`inTurn` false → true). That is the start of a
   /// quiet-end turn, including Cursor where attention may never enter working.
-  void _onShellTurnStarted(String sessionId, String memberId) {
-    _rememberPtyTurnBaseline(sessionId, memberId);
-  }
+  void _onShellTurnStarted(String sessionId, String memberId) =>
+      _ptyCheckpoints.onShellTurnStarted(sessionId, memberId);
 
   void _capturePtyTurnBaselines(
     AgentAttentionState previous,
@@ -1513,66 +1468,97 @@ class ChatCubit extends Cubit<ChatState>
       final sessionId = entry.key.substring(0, sep);
       final memberId = entry.key.substring(sep + 1);
       if (memberId.isEmpty) continue;
-      _rememberPtyTurnBaseline(sessionId, memberId);
+      _ptyCheckpoints.rememberBaseline(sessionId, memberId);
     }
   }
 
-  /// Records the latest visible id at turn start. The first signal wins:
-  /// the shell latch, or attention entering working. A later signal must
-  /// not move the baseline onto a message this turn already produced.
-  void _rememberPtyTurnBaseline(String sessionId, String memberId) {
-    if (memberId.trim().isEmpty) return;
-    final seatKey = '$sessionId\u0000$memberId';
-    if (_ptyTurnBaseline.containsKey(seatKey)) return;
-    final session = _tabStore
-        .getOpenTabBySessionId(sessionId)
-        ?.persistedSession;
-    final historyMemberId = session == null || session.isSimple ? '' : memberId;
-    _ptyTurnBaseline[seatKey] =
-        _observedPtyMessageId(
-          sessionId: sessionId,
-          historyMemberId: historyMemberId,
-        ) ??
-        '';
+  /// Records the latest visible id at turn start. The first signal wins.
+  void _rememberPtyTurnBaseline(String sessionId, String memberId) =>
+      _ptyCheckpoints.rememberBaseline(sessionId, memberId);
+
+  // ----- PtyCheckpointHost -----
+
+  @override
+  AppSession? ptySessionFor(String sessionId) =>
+      _tabStore.getOpenTabBySessionId(sessionId)?.persistedSession;
+
+  @override
+  bool ptyIsAcp(AppSession session, String memberId) =>
+      isAcpChatSession(session) || isAcpChatSeat(session, memberId);
+
+  @override
+  CliTool ptyCliFor(AppSession session, String memberId) =>
+      _cliForPtySeat(session, memberId);
+
+  @override
+  String? ptyNativeSessionId(AppSession session, String memberId, CliTool cli) {
+    return session.isSimple
+        ? session.nativeSessionIds[cli.value]
+        : session.bindingFor(memberId)?.nativeSessionIds[cli.value];
   }
 
-  /// The history seat's latest id, or the loader's full index / incremental
-  /// list when that seat has not been opened.
-  String? _observedPtyMessageId({
-    required String sessionId,
-    required String historyMemberId,
-  }) {
+  @override
+  List<AiMessage>? ptySeatMessages(String sessionId, String historyMemberId) {
+    return podRuntime(sessionId)?.history
+        ?.seatOf(sessionId: sessionId, memberId: historyMemberId)
+        ?.loadedMessages;
+  }
+
+  @override
+  List<AiMessage>? ptyLoaderMessages(
+    String sessionId,
+    String historyMemberId,
+  ) => _loaderVisible(sessionId, historyMemberId);
+
+  @override
+  Future<void> ptyReloadSeat(String sessionId, String historyMemberId) async {
     final seat = podRuntime(
       sessionId,
     )?.history?.seatOf(sessionId: sessionId, memberId: historyMemberId);
-    final fromSeat = _latestMessageId(seat?.loadedMessages);
-    if (fromSeat != null) return fromSeat;
-    return _latestMessageId(_loaderVisible(sessionId, historyMemberId));
+    if (seat != null) await seat.softReload(force: true);
   }
 
-  /// User message that opened the turn: the last user-role message in the
-  /// seat's loaded history, else in the loader cache.
-  String? _observedPtyUserMessageId({
-    required String sessionId,
-    required String historyMemberId,
-  }) {
-    final seat = podRuntime(
-      sessionId,
-    )?.history?.seatOf(sessionId: sessionId, memberId: historyMemberId);
-    final fromSeat = _lastUserMessageId(seat?.loadedMessages);
-    if (fromSeat != null) return fromSeat;
-    return _lastUserMessageId(_loaderVisible(sessionId, historyMemberId));
+  @override
+  Future<void> ptyWaitForHistory(
+    String sessionId,
+    String historyMemberId,
+  ) async {
+    await historyLoader?.waitForVisibleMessages(
+      sessionId: sessionId,
+      memberId: historyMemberId,
+    );
   }
 
-  String? _lastUserMessageId(List<AiMessage>? messages) {
-    if (messages == null) return null;
-    for (final message in messages.reversed) {
-      if (message.role != AiRole.user) continue;
-      final id = message.id.trim();
-      if (id.isNotEmpty) return id;
+  @override
+  Future<void> ptyCommitCheckpoint({
+    required SeatRewindStore store,
+    required String messageId,
+    required String userMessageId,
+    required String? nativeSessionId,
+  }) async {
+    final hook = debugCommitPtyTurn;
+    if (hook != null) {
+      await hook(
+        gitDir: store.gitDir,
+        workTree: store.workTree,
+        target: store.target,
+        messageId: messageId,
+        userMessageId: userMessageId,
+        nativeSessionId: nativeSessionId,
+      );
+      return;
     }
-    return null;
+    await store.commitTurn(
+      messageId: messageId,
+      userMessageId: userMessageId,
+      nativeSessionId: nativeSessionId,
+      gate: _rewindGate,
+    );
   }
+
+  @override
+  void ptyHistoryChanged(String sessionId) =>
+      _rewindGate.noteHistoryChanged(sessionId);
 
   List<AiMessage>? _loaderVisible(String sessionId, String historyMemberId) {
     final loader = historyLoader;
@@ -1587,154 +1573,6 @@ class ChatCubit extends Cubit<ChatState>
       memberId: historyMemberId,
       token: token,
     );
-  }
-
-  String? _latestMessageId(List<AiMessage>? messages) {
-    if (messages == null || messages.isEmpty) return null;
-    final id = messages.last.id.trim();
-    return id.isEmpty ? null : id;
-  }
-
-  /// Id of the message that closed this turn.
-  ///
-  /// A keep ref is not moved onto the new tree when the only id on hand is
-  /// the one already committed, or the one visible when the turn started.
-  /// Missing and stale caches retry once the full index or incremental list
-  /// catches up.
-  Future<String?> _closingPtyMessageId({
-    required String sessionId,
-    required String memberId,
-    required String historyMemberId,
-    required String seatKey,
-  }) async {
-    final observed = _observedPtyMessageId(
-      sessionId: sessionId,
-      historyMemberId: historyMemberId,
-    );
-    if (observed != null && _ptyCommittedMessageBySeat[seatKey] == observed) {
-      return null;
-    }
-    if (!_ptyTurnBaseline.containsKey(seatKey)) {
-      appLogger.w(
-        '[rewind] pty checkpoint skipped: turn start was not observed '
-        'session=$sessionId member=$memberId',
-      );
-      return null;
-    }
-    final ready = _idThatClosedTurn(seatKey, observed);
-    if (ready != null) return ready;
-
-    final seat = podRuntime(
-      sessionId,
-    )?.history?.seatOf(sessionId: sessionId, memberId: historyMemberId);
-    if (seat != null) {
-      try {
-        await seat.softReload(force: true);
-      } on Object catch (error, stackTrace) {
-        appLogger.w(
-          '[rewind] history seat reload failed session=$sessionId '
-          'member=$memberId: $error',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
-      // A completed reload already published the closing message; waiting for
-      // the loader's catch-up timeout on top of it would stall the checkpoint.
-      final reloaded = _observedPtyMessageId(
-        sessionId: sessionId,
-        historyMemberId: historyMemberId,
-      );
-      final closing = _idThatClosedTurn(seatKey, reloaded);
-      if (closing != null) return closing;
-    }
-    final loader = historyLoader;
-    if (loader != null) {
-      await loader.waitForVisibleMessages(
-        sessionId: sessionId,
-        memberId: historyMemberId,
-      );
-    }
-    final retried = _observedPtyMessageId(
-      sessionId: sessionId,
-      historyMemberId: historyMemberId,
-    );
-    if (retried != null && _ptyCommittedMessageBySeat[seatKey] == retried) {
-      return null;
-    }
-    if (!_ptyTurnBaseline.containsKey(seatKey)) return null;
-    final closing = _idThatClosedTurn(seatKey, retried);
-    if (closing != null) return closing;
-    appLogger.w(
-      '[rewind] pty checkpoint skipped: history has not observed this turn '
-      'session=$sessionId member=$memberId',
-    );
-    return null;
-  }
-
-  String? _idThatClosedTurn(String seatKey, String? id) {
-    if (id == null || id.isEmpty) return null;
-    if (_ptyCommittedMessageBySeat[seatKey] == id) return null;
-    // No start baseline: the visible id may be the previous turn's message.
-    if (!_ptyTurnBaseline.containsKey(seatKey)) return null;
-    if (id == _ptyTurnBaseline[seatKey]) return null;
-    return id;
-  }
-
-  Future<void> _commitPtyTurnOnce({
-    required String gitDir,
-    required String workTree,
-    required SeatRewindTarget target,
-    required String messageId,
-    required String userMessageId,
-    required String? nativeSessionId,
-    required String seatKey,
-    required String sessionId,
-    required String memberId,
-  }) async {
-    if (_ptyCommittedMessageBySeat[seatKey] == messageId) return;
-    if (_rewindGate.isInProgress(gitDir)) {
-      appLogger.d(
-        '[rewind] pty checkpoint skipped: rewind or fork in progress '
-        'session=$sessionId member=$memberId',
-      );
-      return;
-    }
-    try {
-      final hook = debugCommitPtyTurn;
-      if (hook != null) {
-        await hook(
-          gitDir: gitDir,
-          workTree: workTree,
-          target: target,
-          messageId: messageId,
-          userMessageId: userMessageId,
-          nativeSessionId: nativeSessionId,
-        );
-      } else {
-        final store = SeatRewindStore(
-          gitDir: gitDir,
-          workTree: workTree,
-          target: target,
-        );
-        await store.commitTurn(
-          messageId: messageId,
-          userMessageId: userMessageId,
-          nativeSessionId: nativeSessionId,
-          gate: _rewindGate,
-        );
-      }
-      _ptyCommittedMessageBySeat[seatKey] = messageId;
-      _rewindGate.noteHistoryChanged();
-    } on RewindTurnSkipped {
-      return;
-    } on Object catch (error, stackTrace) {
-      appLogger.e(
-        '[rewind] pty checkpoint failed session=$sessionId '
-        'member=$memberId: $error',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
   }
 
   /// Roster member by id from the active team, or null when the member is not
@@ -1821,7 +1659,8 @@ class ChatCubit extends Cubit<ChatState>
       _rememberPtyTurnBaseline(sessionId, memberId);
 
   @visibleForTesting
-  void debugPublishRewindHistory() => _publishRewindHistory();
+  void debugPublishRewindHistory(String sessionId) =>
+      _publishRewindHistory(sessionId);
 
   @visibleForTesting
   void debugTickIdleWatch() => _sessionRuntime.debugTickIdleWatch();
@@ -3161,69 +3000,41 @@ class ChatCubit extends Cubit<ChatState>
     return created;
   }
 
-  void _publishRewindHistory() {
+  void _setRewindForkInProgress(String sessionId, bool value) {
     if (isClosed) return;
-    emit(
-      state.copyWith(
-        rewindHistoryGeneration: state.rewindHistoryGeneration + 1,
-      ),
-    );
+    if (state.rewindForkInProgress.contains(sessionId) == value) return;
+    final sessions = Set<String>.of(state.rewindForkInProgress);
+    if (value) {
+      sessions.add(sessionId);
+    } else {
+      sessions.remove(sessionId);
+    }
+    emit(state.copyWith(rewindForkInProgress: sessions));
+  }
+
+  void _publishRewindHistory(String sessionId) {
+    if (isClosed || sessionId.isEmpty) return;
+    final generations = Map<String, int>.of(state.rewindHistoryGenerations);
+    generations[sessionId] = (generations[sessionId] ?? 0) + 1;
+    emit(state.copyWith(rewindHistoryGenerations: generations));
   }
 
   /// Versions of every user message on this seat.
   Future<SeatBranches> loadSeatBranches({
     required AppSession session,
     required String memberId,
-  }) async {
-    final store = _seatRewindStore(session, memberId);
-    if (store == null) return const SeatBranches.empty();
-    if (!Directory(store.gitDir).existsSync()) {
-      return const SeatBranches.empty();
-    }
-    return readSeatBranches(store: store);
-  }
+  }) => _rewindController.loadBranches(session: session, memberId: memberId);
 
   /// Restore the branch that [commit] belongs to, then relaunch the seat.
   Future<void> switchSeatVersion({
     required String sessionId,
     required String memberId,
     required String commit,
-  }) async {
-    final session = _sessionForRewind(sessionId);
-    if (session == null) return;
-    final store = _seatRewindStore(session, memberId);
-    if (store == null) return;
-    emit(
-      state.copyWith(rewindForkInProgress: true, clearRewindForkError: true),
-    );
-    try {
-      // Resolve the tip only after any in-flight snapshot settles; a
-      // checkpoint landing in between would otherwise leave a stale tip.
-      await _rewindGate.waitForSnapshot(store.gitDir);
-      final tip = await store.branchTip(commit);
-      await _rewindFork.rewind(
-        store: store,
-        seat: _CubitSeatProcess(this, session, memberId),
-        commit: tip,
-      );
-      onSessionHistoryStale?.call(sessionId);
-      _publishRewindHistory();
-    } on Object catch (error, stackTrace) {
-      appLogger.e(
-        '[rewind] switchSeatVersion failed session=$sessionId: $error',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      if (!isClosed) {
-        emit(state.copyWith(rewindForkError: 'branchSwitchFailed'));
-      }
-      rethrow;
-    } finally {
-      if (!isClosed) {
-        emit(state.copyWith(rewindForkInProgress: false));
-      }
-    }
-  }
+  }) => _rewindController.switchVersion(
+    sessionId: sessionId,
+    memberId: memberId,
+    commit: commit,
+  );
 
   /// Restore the turn before [userMessageId] and resend [text].
   ///
@@ -3234,98 +3045,12 @@ class ChatCubit extends Cubit<ChatState>
     required String memberId,
     required String userMessageId,
     required String text,
-  }) async {
-    _setPendingBranchEdit(
-      sessionId,
-      PendingBranchEdit(messageId: userMessageId, text: text),
-    );
-    final session = _sessionForRewind(sessionId);
-    if (session == null) return;
-    final store = _seatRewindStore(session, memberId);
-    if (store == null) return;
-    RewindCheckpoint? target;
-    for (final turn in await store.checkpoints()) {
-      if (turn.userMessageId == userMessageId) {
-        target = turn;
-        break;
-      }
-    }
-    if (target == null) {
-      throw StateError('No checkpoint for the edited user message');
-    }
-    final before = await store.checkedOut();
-    // Only roll back when the parent restore actually ran; a refused restore
-    // (e.g. a turn latched) must not be force-rewound, which would stop the
-    // running turn.
-    var restored = false;
-    emit(
-      state.copyWith(rewindForkInProgress: true, clearRewindForkError: true),
-    );
-    try {
-      await _rewindFork.rewind(
-        store: store,
-        seat: _CubitSeatProcess(this, session, memberId),
-        commit: target.parentCommit.isEmpty
-            ? await store.root()
-            : target.parentCommit,
-      );
-      restored = true;
-      // The relaunch reconnects the seat asynchronously; a prompt delivered
-      // while that connect is still in flight is rejected.
-      await _awaitSeatReady(sessionId);
-      final deliver = debugDeliverEditedMessage ?? _deliverEditedMessage;
-      final result = await deliver(
-        sessionId: sessionId,
-        memberId: memberId,
-        message: text,
-      );
-      if (!result.ok) {
-        throw StateError('The edited message was not delivered');
-      }
-    } on Object catch (error, stackTrace) {
-      appLogger.e(
-        '[rewind] editSeatTurn failed session=$sessionId: $error',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      if (restored && before != null) {
-        try {
-          // The send already failed, so a latched turn must not keep the seat
-          // on the parent branch. Only this rollback skips the guard.
-          await _rewindFork.rewind(
-            store: store,
-            seat: _CubitSeatProcess(this, session, memberId),
-            commit: before,
-            allowTurnInFlight: true,
-          );
-        } on Object catch (rollbackError, rollbackStack) {
-          appLogger.e(
-            '[rewind] edit rollback failed session=$sessionId: '
-            '$rollbackError',
-            error: rollbackError,
-            stackTrace: rollbackStack,
-          );
-        }
-      }
-      if (!isClosed) {
-        emit(state.copyWith(rewindForkError: 'branchEditFailed'));
-      }
-      // Surface whichever branch the seat is actually on now: the rollback
-      // target after a failed send, or the unchanged parent after a refused
-      // restore.
-      onSessionHistoryStale?.call(sessionId);
-      _publishRewindHistory();
-      rethrow;
-    } finally {
-      if (!isClosed) {
-        emit(state.copyWith(rewindForkInProgress: false));
-      }
-    }
-    // Success: refresh only after the send landed, so a refresh failure
-    // cannot revert a good edit.
-    onSessionHistoryStale?.call(sessionId);
-    _publishRewindHistory();
-  }
+  }) => _rewindController.editTurn(
+    sessionId: sessionId,
+    memberId: memberId,
+    userMessageId: userMessageId,
+    text: text,
+  );
 
   /// Waits for the seat's post-rewind connect to settle before delivering.
   ///
@@ -3361,100 +3086,21 @@ class ChatCubit extends Cubit<ChatState>
     required String sessionId,
     required String memberId,
     required String commit,
-  }) async {
-    final source = _sessionForRewind(sessionId);
-    if (source == null) return null;
-    final store = _seatRewindStore(source, memberId);
-    final repo = _sessionRepository;
-    if (store == null || repo == null) return null;
-    emit(
-      state.copyWith(rewindForkInProgress: true, clearRewindForkError: true),
-    );
-    try {
-      final created = await _forkSeatFromUnlocked(
-        source: source,
-        store: store,
-        repo: repo,
-        memberId: memberId,
-        commit: commit,
-      );
-      if (created != null) _publishRewindHistory();
-      return created;
-    } on Object catch (error, stackTrace) {
-      appLogger.e(
-        '[rewind] forkSeatFrom failed session=$sessionId: $error',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      if (!isClosed) {
-        emit(state.copyWith(rewindForkError: 'sessionForkFailed'));
-      }
-      rethrow;
-    } finally {
-      if (!isClosed) {
-        emit(state.copyWith(rewindForkInProgress: false));
-      }
-    }
-  }
-
-  Future<AppSession?> _forkSeatFromUnlocked({
-    required AppSession source,
-    required SeatRewindStore store,
-    required SessionRepository repo,
-    required String memberId,
-    required String commit,
-  }) async {
-    final cli = _cliForRewindSeat(source, memberId);
-    final newId = const Uuid().v4();
-    final acp = isAcpChatSession(source) || isAcpChatSeat(source, memberId);
-    final destTarget = SeatRewindTarget(
-      kind: acp ? SeatRewindKind.personalAcp : SeatRewindKind.personalPty,
-      tool: cli.value,
-    );
-    final layout = _storage.context.layout;
-    final destGitDir = layout.pathContext.join(
-      layout.workspace.sessionDir(source.workspaceId, newId),
-      'rewind',
-      destTarget.seatKey,
-    );
-    final destWorkTree = layout.workspace.sessionRuntimeDir(
-      source.workspaceId,
-      newId,
-    );
-    final createdId = await _rewindFork.fork(
-      source: store,
-      commit: commit,
-      destTarget: destTarget,
-      destGitDir: destGitDir,
-      destWorkTree: destWorkTree,
-      sessions: _CubitForkSessionCreator(
-        cubit: this,
-        repo: repo,
-        fixedSessionId: newId,
-      ),
-      workspaceId: source.workspaceId,
-      cli: cli,
-      display: '${source.display} fork',
-      workingDirectory: source.firstFolderPath,
-    );
-    for (final session in state.sessions) {
-      if (session.sessionId == createdId) return session;
-    }
-    return hydrateSessionDocument(source.workspaceId, createdId);
-  }
+  }) => _rewindController.forkFrom(
+    sessionId: sessionId,
+    memberId: memberId,
+    commit: commit,
+  );
 
   bool rewindActionsAllowed(AppSession session, String memberId) {
-    if (!session.isSimple) return false;
-    if (Platform.isAndroid) return false;
-    final cached = _gitOnPath;
-    final gitOk = cached ?? debugGitOnPath ?? gitOnPath();
-    _gitOnPath = gitOk;
-    if (!gitOk) return false;
-    final workTarget = _lifecycle.launchWorkTarget(
-      _launchService.launchContextFor(session),
-      memberId: session.isSimple ? null : memberId,
-    );
-    return workTarget.kind == RuntimeKind.local;
+    return _rewindPolicy
+        .evaluate(
+          session: session,
+          memberId: memberId,
+          cli: _cliForRewindSeat(session, memberId),
+          acp: isAcpChatSession(session) || isAcpChatSeat(session, memberId),
+        )
+        .allowed;
   }
 
   AppSession? _sessionForRewind(String sessionId) {
@@ -3471,31 +3117,84 @@ class ChatCubit extends Cubit<ChatState>
     return _cliForPtySeat(session, memberId);
   }
 
-  SeatRewindStore? _seatRewindStore(AppSession session, String memberId) {
-    final cli = _cliForRewindSeat(session, memberId);
-    final acp = isAcpChatSession(session) || isAcpChatSeat(session, memberId);
-    final personal = session.isSimple;
-    final target = SeatRewindTarget(
-      kind: acp
-          ? (personal ? SeatRewindKind.personalAcp : SeatRewindKind.mixedAcp)
-          : (personal ? SeatRewindKind.personalPty : SeatRewindKind.mixedPty),
-      tool: cli.value,
-      memberId: personal ? null : memberId,
+  // ----- SeatRewindHost -----
+
+  @override
+  bool get rewindIsClosed => isClosed;
+
+  @override
+  AppSession? rewindSessionFor(String sessionId) =>
+      _sessionForRewind(sessionId);
+
+  @override
+  CliTool rewindCliFor(AppSession session, String memberId) =>
+      _cliForRewindSeat(session, memberId);
+
+  @override
+  bool rewindIsAcp(AppSession session, String memberId) =>
+      isAcpChatSession(session) || isAcpChatSeat(session, memberId);
+
+  @override
+  SeatProcess rewindSeatProcess(AppSession session, String memberId) =>
+      _CubitSeatProcess(this, session, memberId);
+
+  @override
+  ForkSessionCreator rewindForkCreator(
+    SessionRepository repo,
+    String fixedSessionId,
+  ) => _CubitForkSessionCreator(
+    cubit: this,
+    repo: repo,
+    fixedSessionId: fixedSessionId,
+  );
+
+  @override
+  SessionRepository? get rewindRepository => _sessionRepository;
+
+  @override
+  Iterable<AppSession> get rewindSessions => state.sessions;
+
+  @override
+  Future<void> rewindAwaitSeatReady(String sessionId) =>
+      _awaitSeatReady(sessionId);
+
+  @override
+  Future<bool> rewindDeliverEdited({
+    required String sessionId,
+    required String memberId,
+    required String message,
+  }) async {
+    final deliver = debugDeliverEditedMessage ?? _deliverEditedMessage;
+    final result = await deliver(
+      sessionId: sessionId,
+      memberId: memberId,
+      message: message,
     );
-    final layout = _storage.context.layout;
-    return SeatRewindStore(
-      gitDir: layout.pathContext.join(
-        layout.workspace.sessionDir(session.workspaceId, session.sessionId),
-        'rewind',
-        target.seatKey,
-      ),
-      workTree: layout.workspace.sessionRuntimeDir(
-        session.workspaceId,
-        session.sessionId,
-      ),
-      target: target,
-    );
+    return result.ok;
   }
+
+  @override
+  Future<AppSession?> rewindHydrate(String workspaceId, String sessionId) =>
+      hydrateSessionDocument(workspaceId, sessionId);
+
+  @override
+  void rewindBeginEdit(String sessionId, String userMessageId, String text) =>
+      branchEditFor(sessionId).ensurePending(userMessageId, text);
+
+  @override
+  void rewindClearEdit(String sessionId) => clearPendingBranchEdit(sessionId);
+
+  @override
+  void rewindSetInProgress(String sessionId, bool value) =>
+      _setRewindForkInProgress(sessionId, value);
+
+  @override
+  void rewindPublishHistory(String sessionId) =>
+      _publishRewindHistory(sessionId);
+
+  @override
+  void rewindMarkHistoryStale(String sessionId) =>
+      onSessionHistoryStale?.call(sessionId);
 
   /// Compose-landing / inject path: rename untitled session from first prompt.
   Future<void> applyFirstPromptTitle(
@@ -3763,10 +3462,10 @@ class ChatCubit extends Cubit<ChatState>
   @override
   Future<void> close() async {
     if (isClosed) return;
-    for (final timer in _pendingBranchEditTimers.values) {
-      timer.cancel();
+    for (final controller in _branchEdits.values) {
+      controller.dispose();
     }
-    _pendingBranchEditTimers.clear();
+    _branchEdits.clear();
     await _agentAttentionSub?.cancel();
     _agentAttentionSub = null;
     _sessionRuntime.disposeIdleWatch();
@@ -3779,162 +3478,5 @@ class ChatCubit extends Cubit<ChatState>
     _tabStore.clear();
     await _operatorMailboxQueued.close();
     await super.close();
-  }
-}
-
-final class _CubitSeatProcess implements SeatProcess {
-  _CubitSeatProcess(this._cubit, this._session, this._memberId);
-
-  final ChatCubit _cubit;
-  final AppSession _session;
-  final String _memberId;
-
-  @override
-  bool get turnInFlight {
-    final activity = _cubit.state.sessionActivities[_session.sessionId];
-    return activity?.isInTurn == true ||
-        activity?.isBusy == true ||
-        activity?.isDelivering == true;
-  }
-
-  @override
-  bool get localRuntime {
-    final workTarget = _cubit._lifecycle.launchWorkTarget(
-      _cubit._launchService.launchContextFor(_session),
-      memberId: _session.isSimple ? null : _memberId,
-    );
-    return workTarget.kind == RuntimeKind.local;
-  }
-
-  @override
-  Future<void> stopAndWait() async {
-    if (isAcpChatSession(_session)) {
-      await _cubit.discardPersonalAcpRuntime(_session.sessionId);
-      return;
-    }
-    if (isAcpChatSeat(_session, _memberId)) {
-      await _cubit.discardAcpSeat(_session.sessionId, _memberId);
-      return;
-    }
-    final tab = _cubit._tabStore.getOpenTabBySessionId(_session.sessionId);
-    final TerminalSession? shell;
-    if (_session.isSimple) {
-      shell = displayedPersonalResumeShell(
-        sessionId: _session.sessionId,
-        resumeSession: tab?.resumeSession,
-        memberShells: tab?.memberShells ?? const {},
-      );
-      shell?.disconnect();
-    } else {
-      shell = tab?.memberShells[_memberId];
-      _cubit.disconnectMemberShell(_session.sessionId, _memberId);
-    }
-    while (shell != null && shell.isRunning) {
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-    }
-  }
-
-  @override
-  Future<void> recordNativeSessionId(String? nativeSessionId) async {
-    final id = nativeSessionId?.trim() ?? '';
-    if (id.isEmpty) return;
-    final repo = _cubit._sessionRepository;
-    if (repo == null) return;
-    final cli = _cubit._cliForRewindSeat(_session, _memberId);
-    await repo.recordNativeSessionId(
-      _session.sessionId,
-      tool: cli.value,
-      nativeId: id,
-      rosterMemberId: _session.isSimple ? null : _memberId,
-    );
-    final AppSession updated;
-    if (_session.isSimple) {
-      updated = _session.withNativeSessionId(cli.value, id);
-    } else {
-      final binding = _session.bindingFor(_memberId);
-      if (binding == null) return;
-      final next = binding.withNativeSessionId(cli.value, id);
-      updated = _session.copyWith(
-        members: [
-          for (final member in _session.members)
-            if (member.rosterMemberId == _memberId) next else member,
-        ],
-      );
-    }
-    _cubit.replaceSessionSnapshot(updated);
-    _cubit._tabStore
-            .getOpenTabBySessionId(_session.sessionId)
-            ?.persistedSession =
-        updated;
-  }
-
-  @override
-  Future<void> relaunch() async {
-    if (_session.isSimple) {
-      await _cubit.retrySessionLaunch(_session.sessionId);
-      return;
-    }
-    await _cubit.ensureMemberTerminalForView(_session.sessionId, _memberId);
-  }
-}
-
-final class _CubitForkSessionCreator implements ForkSessionCreator {
-  _CubitForkSessionCreator({
-    required this.cubit,
-    required this.repo,
-    required this.fixedSessionId,
-  });
-
-  final ChatCubit cubit;
-  final SessionRepository repo;
-  final String fixedSessionId;
-
-  @override
-  Future<String> createPersonal({
-    required String workspaceId,
-    required CliTool cli,
-    required String display,
-    required String? workingDirectory,
-    required String? nativeSessionId,
-  }) async {
-    final created = await cubit._dataStore.createSession(
-      workspaceId,
-      repo,
-      sessionTeamId: '',
-      cli: cli,
-      workingDirectory: workingDirectory,
-      fixedSessionId: fixedSessionId,
-    );
-    try {
-      await repo.renameSession(created.sessionId, display);
-      if (nativeSessionId != null && nativeSessionId.trim().isNotEmpty) {
-        await repo.recordNativeSessionId(
-          created.sessionId,
-          tool: cli.value,
-          nativeId: nativeSessionId.trim(),
-        );
-      }
-      var next = created.copyWith(display: display);
-      if (nativeSessionId != null && nativeSessionId.trim().isNotEmpty) {
-        next = next.withNativeSessionId(cli.value, nativeSessionId.trim());
-      }
-      cubit._dataStore.markSessionDocument(next.sessionId);
-      cubit._emitSnapshot(
-        cubit._dataStore.appendSession(cubit.stateSnapshot(), next),
-      );
-      return next.sessionId;
-    } catch (_) {
-      try {
-        await cubit.deleteSession(repo, created.sessionId);
-      } on Object {
-        // Keep the original create/rename/record failure.
-      }
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> deleteSession(String sessionId) async {
-    await cubit.deleteSession(repo, sessionId);
   }
 }

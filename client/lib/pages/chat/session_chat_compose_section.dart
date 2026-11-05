@@ -27,7 +27,6 @@ import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/acp/acp_client_extensions.dart';
 import '../../services/acp/acp_model_ref.dart';
-import '../../services/acp/acp_session.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/native_command_capability.dart';
 import '../../services/cli/registry/capabilities/skill_capability.dart';
@@ -65,6 +64,7 @@ import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart'
 import 'acp_ask_card.dart';
 import 'acp_permission_card.dart';
 import 'acp_plan_card.dart';
+import 'acp_runtime_scope.dart';
 import 'agent_permission_attention_banner.dart';
 import 'compose_stop_visibility.dart';
 import 'session_seat_working.dart';
@@ -193,22 +193,11 @@ class SessionChatComposeSection extends StatelessWidget {
     // live on the ACP runtime's own state (the attention seat is keyed
     // 'acp', which the banner's seat lookup cannot resolve for a simple
     // session).
-    final acpPending = acpRuntime == null
-        ? null
-        : seatSelect<AcpChatRuntimeCubit, AcpPendingClientRequest?>(
-            context,
-            (c) => c.state.pendingClient,
-          );
+    final acpUi = AcpRuntimeScope.maybeOf(context);
+    final acpPending = acpRuntime == null ? null : acpUi?.pendingClient;
     final acpPermissionWaiting = acpPending != null;
-    final acpTurnInFlight = acpRuntime == null
-        ? false
-        : seatSelect<AcpChatRuntimeCubit, bool>(context, (c) => c.state.inTurn);
-    final acpModelState = acpRuntime == null
-        ? null
-        : seatSelect<AcpChatRuntimeCubit, AcpModelState?>(
-            context,
-            (c) => c.state.modelState,
-          );
+    final acpTurnInFlight = acpRuntime != null && (acpUi?.inTurn ?? false);
+    final acpModelState = acpRuntime == null ? null : acpUi?.modelState;
 
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
@@ -1154,8 +1143,7 @@ class SessionChatComposeSection extends StatelessWidget {
       // endpoint, and an effort change is part of the launch config, so neither
       // can be replaced by a live model switch.
       final providerChanged =
-          live != null &&
-          live.provider.trim() != previousProvider.trim();
+          live != null && live.provider.trim() != previousProvider.trim();
       final effortChanged =
           live != null && live.effort.trim() != session.effort.trim();
       if (!providerChanged &&

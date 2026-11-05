@@ -312,8 +312,10 @@ void main() {
       throwsA(isA<Object>()),
     );
 
-    expect(env.cubit.state.rewindForkError, 'branchSwitchFailed');
-    expect(env.cubit.state.rewindForkInProgress, isFalse);
+    expect(
+      env.cubit.state.rewindForkInProgress.contains(env.session.sessionId),
+      isFalse,
+    );
   });
 
   test(
@@ -370,7 +372,6 @@ void main() {
     expect(branches.turnOf('u-branch-2')!.count, 2);
     expect(branches.turnOf('u-branch-2')!.commit, second.commit);
     expect(branches.turnOf('u-branch')!.next, second.commit);
-    expect(branches.checkedOutCommit, second.commit);
   });
 
   test('rewindActionsAllowed is false for a team session', () async {
@@ -466,7 +467,6 @@ Future<void> _expectForkCleansUp({required String throwOn}) async {
     layout.workspace.sessionsDir(workspace.workspaceId),
   ).listSync().whereType<Directory>().map((e) => p.basename(e.path)).toSet();
   expect(after, before);
-  expect(cubit.state.rewindForkError, 'sessionForkFailed');
 }
 
 Future<_Env> _openPersonal({CliTool? cli, bool acp = false}) async {
@@ -598,12 +598,7 @@ Future<_Seeded> _seedPersonal({
     messageId: 'm2',
     nativeSessionId: secondNative,
   );
-  return _Seeded(
-    first: first,
-    second: second,
-    store: store,
-    liveFile: live,
-  );
+  return _Seeded(first: first, second: second, store: store, liveFile: live);
 }
 
 Future<_Seeded> _seedMixedAcp({
@@ -639,12 +634,7 @@ Future<_Seeded> _seedMixedAcp({
   final first = await store.commitTurn(messageId: 'm1');
   await live.writeAsString('two');
   final second = await store.commitTurn(messageId: 'm2');
-  return _Seeded(
-    first: first,
-    second: second,
-    store: store,
-    liveFile: live,
-  );
+  return _Seeded(first: first, second: second, store: store, liveFile: live);
 }
 
 final class _Env {

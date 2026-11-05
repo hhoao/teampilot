@@ -1,9 +1,7 @@
 import 'dart:async';
 
-import 'package:acpd/acpd.dart' as acpd;
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -35,10 +33,6 @@ import '../../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/chat/session/session_member_cli_resolver.dart';
-import '../../services/acp/acp_client_extensions.dart';
-import '../../services/acp/acp_session.dart';
-import '../../services/acp/acp_session_runtime.dart';
-import '../../services/agent_status/agent_permission_request.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/cli/tasks/cli_task_board_controller.dart';
 import '../../services/chat/conversation/compose/compose_clip.dart';
@@ -68,6 +62,7 @@ import '../../utils/team/team_member_naming.dart';
 import 'launch_error_card_retry.dart';
 import 'session_chat_compose_section.dart';
 import 'session_seat_working.dart';
+import 'acp_runtime_scope.dart';
 import 'session_chat_message_area.dart';
 import 'agent_permission_attention_banner.dart';
 import 'chat_find_bar.dart';
@@ -172,7 +167,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// Single-flight for the non-forced history load: mount, activation, and
   /// running/busy transitions can fire in one async window; coalesce so a cold
   /// seat is never parsed twice.
-  Future<void>? _historyLoadInFlight;
+  Future<bool>? _historyLoadInFlight;
   AiHistorySeat? _seat;
   CliTaskBoardController? _taskBoardController;
 
@@ -235,10 +230,6 @@ class _SessionChatViewState extends State<SessionChatView> {
   @override
   void initState() {
     super.initState();
-    appLogger.d(
-      '[branch-edit] chat view mount sid=${widget.session.sessionId} '
-      'acpRuntime=${widget.acpRuntime != null}',
-    );
     _focusNode = FocusNode(debugLabel: 'session_history_review_compose');
     _voice = SessionVoiceController(composeController: _controller);
     // Restore the cached session draft before attaching the change listener so
@@ -344,9 +335,10 @@ class _SessionChatViewState extends State<SessionChatView> {
   ///
   /// Opening a session to read its history must never spawn the agent — the
   /// runtime attaches lazily on the first send (see [_deliverComposeMessage]).
-  Future<void> _loadAcpTranscriptSnapshot() async {
+  Future<void> _loadAcpTranscriptSnapshot({AppSession? session}) async {
     final seat = _seat;
     if (seat == null || seat.isClosed) return;
+    final source = session ?? widget.session;
     final key = historySeatKey(
       sessionId: widget.session.sessionId,
       selectedMemberId: widget.selectedMemberId,
@@ -361,9 +353,9 @@ class _SessionChatViewState extends State<SessionChatView> {
     try {
       messages = await AcpSeatTranscriptReader(storage: homeStorageOf(context))
           .load(
-            session: widget.session,
+            session: source,
             memberId: widget.selectedMemberId,
-            personal: isAcpChatSession(widget.session),
+            personal: isAcpChatSession(source),
           );
     } on Object catch (error, stackTrace) {
       appLogger.w(
@@ -421,13 +413,6 @@ class _SessionChatViewState extends State<SessionChatView> {
   @override
   void didUpdateWidget(covariant SessionChatView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.acpRuntime != widget.acpRuntime) {
-      appLogger.d(
-        '[branch-edit] acpRuntime flip '
-        '${oldWidget.acpRuntime != null} -> ${widget.acpRuntime != null} '
-        'sid=${widget.session.sessionId}',
-      );
-    }
     if (oldWidget.session.workspaceId != widget.session.workspaceId) {
       unawaited(_loadWorkspaceProjectBundle());
     }
@@ -487,29 +472,13 @@ class _SessionChatViewState extends State<SessionChatView> {
   Future<void> _loadHistoryThenHydratePersistedPendingUsers() async {
     final seat = _seat;
     if (seat == null) return;
-    // Terminal-less ACP: the cubit owns the transcript (app-side message
-    // table), and the failed-message store is a PTY delivery concern —
-    // hydrating persisted pending records here would resurrect stale bubbles
-    // that the cubit never reconciles. Gate on the session or the selected
-    // mixed seat, not only an already-attached cubit: the view often mounts
-    // before attach, and a PTY load in that window starts live-refresh on a
-    // missing transcript (blank thread, never the empty-state pane).
-    if (_usesAcpTranscript) {
-      await _stopLiveRefreshForAcp();
-      final acpRuntime = widget.acpRuntime;
-      if (acpRuntime == null) {
-        await _loadAcpTranscriptSnapshot();
-      } else {
-        _syncAcpMessages(acpRuntime);
-      }
-      return;
-    }
     final scope = HistoryHydrationScope(
       seat: seat,
       sessionId: widget.session.sessionId,
       memberId: widget.selectedMemberId,
     );
-    await _loadHistory();
+    // _loadHistory hydrates the session document before deciding ACP vs PTY.
+    final isAcp = await _loadHistory();
     if (!mounted ||
         !scope.isCurrent(
           seat: _seat,
@@ -518,6 +487,10 @@ class _SessionChatViewState extends State<SessionChatView> {
         )) {
       return;
     }
+    // Terminal-less ACP: the cubit owns the app-side message table; the
+    // failed-message store is a PTY delivery concern and must not resurrect
+    // stale pending bubbles.
+    if (isAcp) return;
     await _hydratePersistedPendingUsers();
   }
 
@@ -685,7 +658,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         usesPosixPaths: homeStorageOf(context).usesPosixPaths,
       );
 
-  Future<void> _loadHistory({bool force = false}) {
+  Future<bool> _loadHistory({bool force = false}) {
     if (force) return _loadHistoryImpl(force: true);
     final inFlight = _historyLoadInFlight;
     if (inFlight != null) return inFlight;
@@ -699,24 +672,39 @@ class _SessionChatViewState extends State<SessionChatView> {
     return future;
   }
 
-  Future<void> _loadHistoryImpl({required bool force}) async {
+  Future<bool> _loadHistoryImpl({required bool force}) async {
     final seat = _seat;
-    if (seat == null) return;
-    // Terminal-less ACP session: the app-side message table held by
-    // [AcpChatRuntimeCubit] is the single source. The CLI transcript loader
-    // has nothing to read for ACP and a `seat.load()`/`softReloadOrLoad()`
-    // would blank the thread on rebuild. Re-publish and return.
-    if (_usesAcpTranscript) {
+    if (seat == null) return false;
+    final chat = context.read<ChatCubit>();
+    final ready =
+        seat.state.status == AiHistoryViewStatus.ready &&
+        seat.state.sessionId == widget.session.sessionId &&
+        seat.state.memberId == widget.selectedMemberId;
+    // A list-row stub carries no members/provider, and a legacy index may omit
+    // the persisted CLI (resolver falls back to claude), so the cold parse
+    // could locate the wrong transcript. Hydrate BEFORE deciding ACP vs PTY:
+    // a mixed ACP stub has no member binding and would otherwise be treated
+    // as a PTY seat, producing a false "no history" on app startup.
+    var session = widget.session;
+    if (!ready || force) {
+      final hydrated = await chat.hydrateSessionDocument(
+        session.workspaceId,
+        session.sessionId,
+      );
+      if (!mounted) return false;
+      if (hydrated != null) session = hydrated;
+    }
+    final usesAcp = _usesAcpTranscriptFor(session);
+    if (usesAcp) {
       await _stopLiveRefreshForAcp();
       final acpRuntime = widget.acpRuntime;
       if (acpRuntime == null) {
-        await _loadAcpTranscriptSnapshot();
+        await _loadAcpTranscriptSnapshot(session: session);
       } else {
         _syncAcpMessages(acpRuntime);
       }
-      return;
+      return true;
     }
-    final chat = context.read<ChatCubit>();
     final running = chat.isMemberRunning(
       sessionId: widget.session.sessionId,
       memberId: _shellMemberId,
@@ -734,27 +722,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         'running=$running',
       );
       await _liveRefresh?.stop();
-      return;
-    }
-    final ready =
-        seat.state.status == AiHistoryViewStatus.ready &&
-        seat.state.sessionId == widget.session.sessionId &&
-        seat.state.memberId == widget.selectedMemberId;
-    // A list-row stub carries no members/provider, and a legacy index may omit
-    // the persisted CLI (resolver falls back to claude), so the cold parse
-    // could locate the wrong transcript. Hydrate the session document on EVERY
-    // cold load: the widget's snapshot can be a stale stub even after the store
-    // marked the document (store emits a newer full doc on hydrate). Hydration
-    // is single-flight and a cache hit once the doc exists, so this is a
-    // state/disk read only when the load genuinely precedes it.
-    var session = widget.session;
-    if (!ready || force) {
-      final hydrated = await chat.hydrateSessionDocument(
-        session.workspaceId,
-        session.sessionId,
-      );
-      if (!mounted) return;
-      if (hydrated != null) session = hydrated;
+      return false;
     }
     final launchContext = _launchContextFor(session);
     final workingDirectory = _workspaceRootFor(session);
@@ -767,13 +735,13 @@ class _SessionChatViewState extends State<SessionChatView> {
         workingDirectory: workingDirectory,
         force: true,
       );
-      if (!mounted) return;
+      if (!mounted) return false;
       _maybeStartLiveRefreshForRunningPty();
       _syncAwaitingFromWorkingSessions(chat.state);
       if (seat.state.awaitingAssistant) {
         unawaited(_startLiveRefresh(skipInitialRefresh: true));
       }
-      return;
+      return false;
     }
     await seat.softReloadOrLoad(
       session: session,
@@ -782,12 +750,13 @@ class _SessionChatViewState extends State<SessionChatView> {
       team: widget.team,
       workingDirectory: workingDirectory,
     );
-    if (!mounted) return;
+    if (!mounted) return false;
     _maybeStartLiveRefreshForRunningPty();
     _syncAwaitingFromWorkingSessions(chat.state);
     if (seat.state.awaitingAssistant) {
       unawaited(_startLiveRefresh(skipInitialRefresh: true));
     }
+    return false;
   }
 
   /// Single entry for "this seat's hot state may have changed": load a cold hot
@@ -825,10 +794,12 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// Terminal-less ACP transcript: an attached cubit, a personal ACP session,
   /// or the selected mixed ACP seat (before that seat's cubit is attached).
   /// Any of these must skip PTY history load / live-refresh.
-  bool get _usesAcpTranscript =>
+  bool get _usesAcpTranscript => _usesAcpTranscriptFor(widget.session);
+
+  bool _usesAcpTranscriptFor(AppSession session) =>
       widget.acpRuntime != null ||
-      isAcpChatSession(widget.session) ||
-      isAcpChatSeat(widget.session, widget.selectedMemberId);
+      isAcpChatSession(session) ||
+      isAcpChatSeat(session, widget.selectedMemberId);
 
   /// PTY shells for Simple seats are keyed by [AppSession.sessionId].
   String get _shellMemberId => shellMemberIdForHistory(
@@ -1594,22 +1565,18 @@ class _SessionChatViewState extends State<SessionChatView> {
     );
   }
 
-  /// The compose section reads the ACP runtime's pending-permission state via
-  /// [seatSelect] (context.select), which requires a
-  /// [BlocProvider<AcpChatRuntimeCubit>] in the ancestor chain. The runtime is
-  /// tab-scoped (owned by the ChatTabStore), not app-scoped, so — like other
-  /// session-scoped cubits — it is provided as a `BlocProvider.value` from the
-  /// view that receives it as a constructor arg. Nothing here owns/disposes it.
+  /// The compose section subscribes to the ACP runtime's small UI snapshot
+  /// through [AcpRuntimeScope]. The runtime is tab-scoped (owned by the
+  /// ChatTabStore), not app-scoped, and is passed down as a nullable
+  /// constructor arg.
   ///
-  /// The provider is ALWAYS present. A rewind edit stops and relaunches the
-  /// seat, which flips `tab.acpRuntime` through null; swapping this root
-  /// between a bare child and a BlocProvider would change the runtimeType at
-  /// the position and remount the whole chat subtree (message thread, scroll
-  /// offset, cached bodies) — a visible flash per flip. While no real runtime
-  /// exists the idle cubit is served instead; its state is never read because
-  /// the compose section guards on the nullable constructor arg first.
+  /// The scope widget is ALWAYS present. A rewind edit stops and relaunches
+  /// the seat, which flips `tab.acpRuntime` through null; swapping this root
+  /// between a bare child and another widget type would remount the whole chat
+  /// subtree (message thread, scroll offset, cached bodies) — a visible flash
+  /// per flip. The nullable scope keeps the type stable without a fake cubit.
   Widget _provideAcpRuntime(Widget child) =>
-      acpRuntimeScope(runtime: widget.acpRuntime, child: child);
+      AcpRuntimeScope(runtime: widget.acpRuntime, child: child);
 
   Widget _buildContent(BuildContext context) {
     final l10n = context.l10n;
@@ -1949,96 +1916,4 @@ List<String> _runningSubagentIds(AiHistorySeat seat, AiHistoryCapability? cap) {
     }
   }
   return out;
-}
-
-/// No-op [AcpSessionRuntimeApi] backing [idleAcpRuntimeCubit].
-///
-/// Its state is never read: the compose section (the only provider consumer)
-/// guards on the nullable `acpRuntime` constructor arg before selecting, so
-/// the idle cubit only exists to keep the provider's widget type constant
-/// while a rewind edit drops and recreates the real runtime.
-class _IdleAcpSessionRuntime implements AcpSessionRuntimeApi {
-  @override
-  bool get isStarted => false;
-
-  @override
-  String get sessionId => '';
-
-  @override
-  Future<void> start({
-    required CliTool tool,
-    required String executable,
-    required String sessionToolDir,
-    required String workingDirectory,
-    Map<String, String> baseEnv = const {},
-    List<acpd.McpServer> mcpServers = const [],
-    LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess,
-    String? resumeSessionId,
-  }) async {}
-
-  @override
-  void setPermissionPolicy(LaunchSecurityPolicy policy) {}
-
-  @override
-  Future<void> prompt(String text) async {}
-
-  @override
-  Stream<AcpSessionUpdate> get updates => const Stream.empty();
-
-  @override
-  Stream<AgentPermissionRequest> get permissionRequests => const Stream.empty();
-
-  @override
-  Stream<AcpPendingClientRequest> get clientRequests => const Stream.empty();
-
-  @override
-  AcpAuthNotice? get lastAuthNotice => null;
-
-  @override
-  Future<int>? get agentProcessExitCode => null;
-
-  @override
-  Future<AgentPermissionReplyKind?> answerPermission(
-    AgentPermissionReplyKind reply, {
-    AgentPermissionAlwaysOption? always,
-  }) async => null;
-
-  @override
-  Future<void> answerAsk(AcpAskHoldReply reply) async {}
-
-  @override
-  Future<void> answerPlan(AcpPlanHoldReply reply) async {}
-
-  @override
-  void cancel() {}
-
-  @override
-  Future<void> close() async {}
-}
-
-/// Shared idle runtime served by the provider while no real one exists.
-final AcpChatRuntimeCubit idleAcpRuntimeCubit = AcpChatRuntimeCubit(
-  runtime: _IdleAcpSessionRuntime(),
-  sessionId: '',
-  tool: CliTool.claude,
-);
-
-/// Always-present [BlocProvider] for the tab-scoped ACP runtime.
-///
-/// A rewind edit stops and relaunches the seat, flipping `tab.acpRuntime`
-/// through null. Returning a bare [child] while it is null would change the
-/// root runtimeType at this position and remount the whole chat subtree
-/// (message thread, scroll offset, cached bodies) — one visible flash per
-/// flip. Keeping the provider present with the shared idle cubit preserves
-/// the tree shape; the idle state is never read (the compose section guards
-/// on the nullable constructor arg before selecting from the provider).
-@visibleForTesting
-Widget acpRuntimeScope({
-  required AcpChatRuntimeCubit? runtime,
-  required Widget child,
-}) {
-  return BlocProvider<AcpChatRuntimeCubit>.value(
-    value: runtime ?? idleAcpRuntimeCubit,
-    child: child,
-  );
 }

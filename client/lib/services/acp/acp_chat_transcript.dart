@@ -123,10 +123,7 @@ class AcpChatTranscriptWriter {
     final delta = committed == null
         ? null
         : buildAcpChatTranscriptDelta(previous: committed, next: snapshot);
-    if (committed != null &&
-        !_needsRewrite &&
-        delta != null &&
-        delta.isEmpty) {
+    if (committed != null && !_needsRewrite && delta != null && delta.isEmpty) {
       // Repeated _persist calls at a turn boundary carry no new state.
       _committed = snapshot;
       return;
@@ -147,7 +144,15 @@ class AcpChatTranscriptWriter {
         buffer.writeln(jsonEncode(record));
       }
       final text = buffer.toString();
-      await _fs.appendString(path, text);
+      try {
+        await _fs.appendString(path, text);
+      } on Object {
+        // A partial append may already contain complete `text` records. The
+        // next save must compact from the snapshot instead of re-emitting the
+        // same suffix, otherwise replay would duplicate streamed text.
+        _needsRewrite = true;
+        rethrow;
+      }
       _appendedSinceCompact += utf8.encode(text).length;
     }
     // An unchanged snapshot writes nothing at all.

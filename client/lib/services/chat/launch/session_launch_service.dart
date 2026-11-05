@@ -20,6 +20,7 @@ import 'connect/session_connect_scheduler.dart';
 import 'connect/acp_launch_environment.dart';
 import 'connect/acp_runtime_attach.dart';
 import '../rewind/rewind_work_gate.dart';
+import '../rewind/seat_rewind_policy.dart';
 import '../../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../../cubits/session/acp/acp_transport_wiring.dart';
 import 'connect/launch_generation_store.dart';
@@ -72,6 +73,7 @@ class SessionLaunchService
     this.prepareAcpRemoteStaging,
     this.prepareAcpSshLaunch,
     this.rewindGate,
+    this.rewindPolicy,
   }) : _storage = storage,
        _generations = generations ?? LaunchGenerationStore();
 
@@ -115,6 +117,9 @@ class SessionLaunchService
   /// Shared rewind/fork gate. Null in tests that do not checkpoint.
   final RewindWorkGate? rewindGate;
 
+  /// Shared eligibility/path policy.
+  final SeatRewindPolicy? rewindPolicy;
+
   late final AcpRuntimeAttach _acpAttach = AcpRuntimeAttach(
     host: _h,
     storage: _storage,
@@ -129,6 +134,7 @@ class SessionLaunchService
     sshLaunchFactory: prepareAcpSshLaunch,
     touchUserActivity: touchOnUserActivity,
     rewindGate: rewindGate,
+    rewindPolicy: rewindPolicy,
   );
 
   static const _uuid = Uuid();

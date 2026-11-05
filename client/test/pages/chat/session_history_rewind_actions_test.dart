@@ -9,6 +9,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/cubits/branch_edit_controller.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/pages/chat/session_history_rewind_host.dart';
 import 'package:teampilot/pages/chat/session_history_thread.dart';
@@ -221,7 +222,7 @@ void main() {
     expect(find.text('2 / 2'), findsNothing);
 
     cubit.landed = true;
-    cubit.debugPublishRewindHistory();
+    cubit.debugPublishRewindHistory('s1');
     await pumpUntilSettled(tester);
 
     expect(find.text('2 / 2'), findsOneWidget);
@@ -306,6 +307,96 @@ void main() {
     expect(find.text('edited'), findsOneWidget);
   });
 
+  testWidgets('a same-text parent message does not land the optimistic edit', (
+    tester,
+  ) async {
+    final runtime = ExternalStoreAiThreadRuntime()
+      ..setMessages(const [
+        AiMessage(
+          id: 'u0',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'same')],
+        ),
+        AiMessage(
+          id: 'a0',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'parent answer')],
+        ),
+        AiMessage(
+          id: 'u1',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'original')],
+        ),
+      ]);
+    final gate = Completer<void>();
+    var landed = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        theme: ThemeData(extensions: [AiMessageTheme.test()]),
+        home: Scaffold(
+          body: SizedBox(
+            width: 600,
+            height: 400,
+            child: SessionHistoryThread(
+              runtime: runtime,
+              hasOlder: false,
+              isLoadingOlder: false,
+              branches: const SeatBranches(
+                turns: {
+                  'u1': SeatBranchVersion(
+                    index: 2,
+                    count: 2,
+                    commit: 'c1',
+                    siblings: ['c0', 'c1'],
+                  ),
+                },
+              ),
+              onEditUserMessage: (messageId, text) async {
+                await gate.future;
+                return true;
+              },
+              onOptimisticLanded: () => landed = true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await pumpUntilSettled(tester);
+
+    await tester.tap(find.byTooltip('Edit message'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'same');
+    await tester.tap(find.text('Send'));
+    await tester.pump();
+
+    // The restore replays the parent, whose last user message also says
+    // "same". It must not be mistaken for the resent prompt.
+    runtime.setMessages(const [
+      AiMessage(
+        id: 'u0',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'same')],
+      ),
+      AiMessage(
+        id: 'a0',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'parent answer')],
+      ),
+    ]);
+    await tester.pump();
+    expect(landed, isFalse);
+    // The optimistic branch still owns the tip; adopting the restored prefix
+    // would drop the running row and show only the parent answer.
+    expect(find.byKey(kSessionHistoryRunningFooterKey), findsOneWidget);
+
+    gate.complete();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+  });
+
   testWidgets('the optimistic bubble survives a runtime swap', (tester) async {
     const user = AiMessage(
       id: 'u1',
@@ -346,7 +437,6 @@ void main() {
                   siblings: ['c0', 'c1'],
                 ),
               },
-              checkedOutCommit: 'c1',
             ),
             onEditUserMessage: (messageId, text) async {
               await gate.future;
@@ -382,10 +472,82 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
   });
 
+  testWidgets('a failed edit keeps its draft across a runtime swap', (
+    tester,
+  ) async {
+    const user = AiMessage(
+      id: 'u1',
+      role: AiRole.user,
+      parts: [AiTextPart(text: 'original')],
+    );
+    const reply = AiMessage(
+      id: 'a1',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'answer')],
+    );
+    final before = ExternalStoreAiThreadRuntime()
+      ..setMessages(const [user, reply]);
+    final restored = ExternalStoreAiThreadRuntime()..setMessages(const []);
+    final gate = Completer<void>();
+
+    Widget build(AiThreadRuntime runtime) => MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('en'),
+      theme: ThemeData(extensions: [AiMessageTheme.test()]),
+      home: Scaffold(
+        body: SizedBox(
+          width: 600,
+          height: 400,
+          child: SessionHistoryThread(
+            runtime: runtime,
+            hasOlder: false,
+            isLoadingOlder: false,
+            branches: const SeatBranches(
+              turns: {
+                'u1': SeatBranchVersion(
+                  index: 2,
+                  count: 2,
+                  commit: 'c1',
+                  siblings: ['c0', 'c1'],
+                ),
+              },
+            ),
+            onEditUserMessage: (messageId, text) async {
+              await gate.future;
+              return false;
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(build(before));
+    await pumpUntilSettled(tester);
+    await tester.tap(find.byTooltip('Edit message'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'edited');
+    await tester.tap(find.text('Send'));
+    await tester.pump();
+
+    // Restore swaps the runtime while the send is still pending.
+    await tester.pumpWidget(build(restored));
+    await tester.pump();
+    gate.complete();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('edited'), findsOneWidget);
+  });
+
   testWidgets('a host-owned optimistic edit survives a thread remount', (
     tester,
   ) async {
     final runtime = ExternalStoreAiThreadRuntime()..setMessages(const []);
+    final branchEdit = BranchEditController(watchdog: Duration.zero)
+      ..begin(messageId: 'u1', text: 'edited', visibleMessageIds: const []);
+    addTearDown(branchEdit.dispose);
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -400,10 +562,7 @@ void main() {
               runtime: runtime,
               hasOlder: false,
               isLoadingOlder: false,
-              optimisticEdit: const PendingBranchEdit(
-                messageId: 'u1',
-                text: 'edited',
-              ),
+              branchEdit: branchEdit,
             ),
           ),
         ),
@@ -522,6 +681,7 @@ Future<ExternalStoreAiThreadRuntime> _pumpThread(
                   onForkFrom: binding.onForkFrom,
                   onEditUserMessage: binding.onEditUserMessage,
                   holdTranscript: binding.holdTranscript,
+                  branchEdit: binding.branchEdit,
                   turnInFlight: binding.busy,
                 );
               },
@@ -541,6 +701,7 @@ class _BranchCubit extends ChatCubit {
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
         storage: testHomeStorage,
+        branchEditWatchdog: Duration.zero,
       );
 
   final switchedTo = <String>[];
@@ -573,7 +734,6 @@ class _BranchCubit extends ChatCubit {
           siblings: ['c-first', 'c-second'],
         ),
       },
-      checkedOutCommit: 'c-second',
     );
   }
 
@@ -643,7 +803,6 @@ final class _SingleVersionCubit extends _BranchCubit {
           siblings: ['c-only'],
         ),
       },
-      checkedOutCommit: 'c-only',
     );
   }
 }

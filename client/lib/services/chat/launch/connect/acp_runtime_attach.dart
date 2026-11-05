@@ -29,7 +29,7 @@ import '../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../team_bus/mcp/teammate_bus_mcp_gateway_port.dart';
 import '../../runtime/runtime_extra_mcp_servers.dart';
 import '../../rewind/rewind_work_gate.dart';
-import '../../rewind/seat_rewind_paths.dart';
+import '../../rewind/seat_rewind_policy.dart';
 import '../../rewind/seat_rewind_store.dart';
 import '../../../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../../../cubits/session/acp/acp_launch_wiring.dart';
@@ -93,6 +93,7 @@ class AcpRuntimeAttach {
     this.sshLaunchFactory,
     this.touchUserActivity,
     this.rewindGate,
+    this.rewindPolicy,
   }) : _host = host,
        _storage = storage;
 
@@ -122,6 +123,9 @@ class AcpRuntimeAttach {
   /// Shared with [RewindForkService] so a snapshot skips an in-progress
   /// rewind or fork, and rewind waits for this callback's commit.
   final RewindWorkGate? rewindGate;
+
+  /// Shared eligibility/path policy. Null in tests that do not checkpoint.
+  final SeatRewindPolicy? rewindPolicy;
 
   /// Terminal-less personal ACP: attach a cubit and spawn `session.cli`
   /// locally, or on the remote host when the launch target uses SSH.
@@ -224,10 +228,9 @@ class AcpRuntimeAttach {
       processWorkingDirectory: workingDirectory,
       launchProvider: session.provider,
       launchModel: session.model,
-      onTurnCheckpoint: await _turnCheckpointCallback(
+      onTurnCheckpoint: _turnCheckpointCallback(
         session: session,
         cli: cli,
-        personal: true,
         memberId: null,
         launchTarget: launchTarget,
       ),
@@ -445,10 +448,9 @@ class AcpRuntimeAttach {
       processWorkingDirectory: staged.workingDirectory,
       launchProvider: member.provider,
       launchModel: member.model,
-      onTurnCheckpoint: await _turnCheckpointCallback(
+      onTurnCheckpoint: _turnCheckpointCallback(
         session: session,
         cli: cli,
-        personal: false,
         memberId: member.id,
         launchTarget: launchTarget,
       ),
@@ -601,47 +603,27 @@ class AcpRuntimeAttach {
     )..ensureStrings(_host.acpChatStrings?.call(cli) ?? defaultAcpChatStrings);
   }
 
-  Future<Future<void> Function(String messageId, String userMessageId)?>
+  Future<void> Function(String messageId, String userMessageId)?
   _turnCheckpointCallback({
     required AppSession session,
     required CliTool cli,
-    required bool personal,
     required String? memberId,
     required RuntimeTarget launchTarget,
-  }) async {
-    if (launchTarget.kind != RuntimeKind.local) return null;
-    if (Platform.isAndroid) return null;
-    if (!await _gitOnPath()) return null;
+  }) {
+    final policy = rewindPolicy;
+    if (policy == null) return null;
+    final eligibility = policy.evaluate(
+      session: session,
+      memberId: memberId,
+      cli: cli,
+      acp: true,
+    );
+    if (!eligibility.allowed) return null;
+    final store = eligibility.store!;
     return (messageId, userMessageId) async {
-      final target = SeatRewindTarget(
-        kind: personal ? SeatRewindKind.personalAcp : SeatRewindKind.mixedAcp,
-        tool: cli.value,
-        memberId: personal ? null : memberId,
-      );
-      final layout = _storage.context.layout;
-      final gitDir = layout.pathContext.join(
-        layout.workspace.sessionDir(session.workspaceId, session.sessionId),
-        'rewind',
-        target.seatKey,
-      );
-      final workTree = layout.workspace.sessionRuntimeDir(
-        session.workspaceId,
-        session.sessionId,
-      );
+      final gitDir = store.gitDir;
       final gate = rewindGate;
       Future<void> commit() async {
-        if (gate != null && gate.isInProgress(gitDir)) {
-          appLogger.d(
-            '[rewind] acp checkpoint skipped: rewind or fork in progress '
-            'session=${session.sessionId}',
-          );
-          return;
-        }
-        final store = SeatRewindStore(
-          gitDir: gitDir,
-          workTree: workTree,
-          target: target,
-        );
         try {
           await store.commitTurn(
             messageId: messageId,
@@ -651,7 +633,7 @@ class AcpRuntimeAttach {
         } on RewindTurnSkipped {
           return;
         }
-        gate?.noteHistoryChanged();
+        gate?.noteHistoryChanged(session.sessionId);
       }
 
       if (gate == null) {
@@ -660,15 +642,6 @@ class AcpRuntimeAttach {
       }
       await gate.runSnapshot(gitDir, commit);
     };
-  }
-
-  Future<bool> _gitOnPath() async {
-    try {
-      final result = await Process.run('git', ['--version']);
-      return result.exitCode == 0;
-    } on Object {
-      return false;
-    }
   }
 
   /// Local agents write their transcript on this machine, so the out-of-turn

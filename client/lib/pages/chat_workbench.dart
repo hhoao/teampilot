@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -34,7 +33,6 @@ import '../services/workspace/dead_ssh_target_error.dart';
 import '../services/workspace/target_liveness.dart';
 import '../services/workspace/workspace_tools_scope.dart';
 import '../theme/workspace_surface_layers.dart';
-import '../utils/logging/logger.dart';
 import '../utils/ui/app_keys.dart';
 import '../widgets/workspace/workspace_dead_target_remap_dialog.dart';
 import 'home_workspace/workspace/workspace_route_active_scope.dart';
@@ -424,12 +422,6 @@ class _ChatWorkbenchBody extends StatelessWidget {
         slice: slice,
         team: team,
       );
-      if (chatCubit.state.pendingBranchEdits.containsKey(activeId)) {
-        appLogger.d(
-          '[branch-edit] workbench body sessionNull=${session == null} '
-          'view=$view connecting=$connectInProgress sid=$activeId',
-        );
-      }
       if (session == null) {
         if (view == SessionWorkbenchView.chat) {
           body = _buildSessionChatView(

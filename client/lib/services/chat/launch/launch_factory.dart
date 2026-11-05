@@ -16,6 +16,7 @@ import '../session/session_lifecycle_service.dart';
 import '../../ssh/ssh_client_factory.dart';
 import '../../storage/home_storage.dart';
 import '../rewind/rewind_work_gate.dart';
+import '../rewind/seat_rewind_policy.dart';
 import '../../storage/runtime_context.dart';
 import 'staging/session_connect_orchestrator.dart';
 import 'staging/session_runtime_plan_builder.dart';
@@ -174,6 +175,7 @@ SessionLaunchService buildSessionLaunchService({
   })?
   onSessionTabOpened,
   RewindWorkGate? rewindGate,
+  SeatRewindPolicy? rewindPolicy,
 }) {
   final dataStore = host.dataStore;
   final postFrame = host.postFrameScheduler;
@@ -185,6 +187,7 @@ SessionLaunchService buildSessionLaunchService({
     onSessionTabOpened: onSessionTabOpened,
     generations: generations,
     rewindGate: rewindGate,
+    rewindPolicy: rewindPolicy,
   );
   final persistence = SessionPersistenceWriter(
     repository: host,

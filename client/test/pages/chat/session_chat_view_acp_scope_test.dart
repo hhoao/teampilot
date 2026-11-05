@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/pages/chat/session_chat_view.dart';
+import 'package:teampilot/pages/chat/acp_runtime_scope.dart';
+
+import '../../support/idle_acp_runtime.dart';
 
 void main() {
   // Editing a user message rewinds and relaunches the seat. That flips
   // tab.acpRuntime through null (discard) and back to a fresh cubit (attach).
   // The provider root must keep the same widget type across those flips or
   // Flutter remounts the entire chat subtree (message thread, scroll offset,
-  // cached bodies) — the visible double flash. The idle cubit is a shared
-  // non-null stand-in; before the fix the root alternated between a bare
-  // child and a BlocProvider, which this test catches as a State change.
+  // cached bodies) — the visible double flash. The scope stays present while
+  // its runtime is nullable; before the fix the root alternated between a
+  // bare child and a BlocProvider, which this test catches as a State change.
   testWidgets('runtime null/non-null flips keep the subtree State mounted', (
     tester,
   ) async {
+    final cubit = testAcpRuntimeCubit();
+    addTearDown(cubit.close);
     Widget build(bool hasRuntime) => MaterialApp(
-      home: acpRuntimeScope(
-        runtime: hasRuntime ? idleAcpRuntimeCubit : null,
+      home: AcpRuntimeScope(
+        runtime: hasRuntime ? cubit : null,
         child: const _StatefulChild(),
       ),
     );

@@ -24,6 +24,7 @@ import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
 import 'package:teampilot/services/chat/session/chat_tab_store.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/branch_edit_controller.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/expert_hub_cubit.dart';
@@ -77,6 +78,13 @@ import '../../support/post_frame_test_harness.dart';
 /// field, so the mock must provide a real empty map instead of mocktail's
 /// implicit null.
 class _MockChatCubit extends Mock implements ChatCubit {
+  final BranchEditController _branchEdit = BranchEditController(
+    watchdog: Duration.zero,
+  );
+
+  @override
+  BranchEditController branchEditFor(String sessionId) => _branchEdit;
+
   @override
   final Map<String, double> sessionScrollAnchors = {};
 
@@ -326,6 +334,7 @@ void main() {
     Future<HistoryContinueSubmitResult> Function(String message)? onSubmit,
     bool memberWorking = false,
     InMemoryFollowUpQueueStore? followUpQueueStore,
+    AppSession? hydratedSession,
   }) async {
     final workspace = Workspace(
       workspaceId: 'ws-1',
@@ -381,7 +390,7 @@ void main() {
     // harness has no persisted session document, so return null.
     when(
       () => chatCubit.hydrateSessionDocument(any(), any()),
-    ).thenAnswer((_) async => null);
+    ).thenAnswer((_) async => hydratedSession);
     when(() => chatCubit.lifecycle).thenReturn(lifecycle);
     final followUpQueue = followUpQueueStore ?? InMemoryFollowUpQueueStore();
     when(() => chatCubit.followUpQueue).thenReturn(followUpQueue);
@@ -1101,6 +1110,35 @@ void main() {
         selectedMemberId: 'lead',
       );
       expect(tester.takeException(), isNull);
+      expect(loads, isEmpty);
+      verify(() => seat.markExternalLoading()).called(greaterThan(0));
+    },
+  );
+
+  testWidgets(
+    'a restored mixed ACP list-row stub hydrates before choosing history',
+    (tester) async {
+      final full = mixedTeamSession();
+      // sessions-index rows for mixed seats carry no member bindings, so the
+      // first build cannot tell this is an ACP seat until hydration.
+      final stub = AppSession(
+        sessionId: full.sessionId,
+        workspaceId: full.workspaceId,
+        folders: const [],
+        sessionTeam: full.sessionTeam,
+        createdAt: full.createdAt,
+      );
+      final loads = <int>[];
+      countPtyHistoryLoads(loads);
+
+      await pumpSession(
+        tester,
+        session: stub,
+        selectedMemberId: 'lead',
+        hydratedSession: full,
+      );
+      expect(tester.takeException(), isNull);
+      // Must use the ACP snapshot path, not the PTY loader.
       expect(loads, isEmpty);
       verify(() => seat.markExternalLoading()).called(greaterThan(0));
     },

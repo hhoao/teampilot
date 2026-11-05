@@ -1060,7 +1060,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     // follow-up drain, which must not write the next turn into this commit.
     if (wasInTurn && callback != null && messageId.isNotEmpty) {
       try {
-        await callback(messageId, userMessageId);
+        await callback(
+          messageId,
+          userMessageId,
+        ).timeout(const Duration(seconds: 60));
       } on Object catch (error, stackTrace) {
         appLogger.e(
           '[acp-chat] session $sessionId turn checkpoint failed: $error',

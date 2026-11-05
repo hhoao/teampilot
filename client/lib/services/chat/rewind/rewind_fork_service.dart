@@ -41,6 +41,7 @@ final class RewindForkService {
     required SeatProcess seat,
     required String commit,
     bool allowTurnInFlight = false,
+    void Function()? onRestored,
   }) async {
     if (!allowTurnInFlight && seat.turnInFlight) {
       throw StateError('Cannot rewind while a turn is in flight');
@@ -49,13 +50,15 @@ final class RewindForkService {
       throw StateError('Cannot rewind a remote runtime');
     }
     await gate.waitForSnapshot(store.gitDir);
-    if (gate.isInProgress(store.gitDir)) {
-      throw StateError('Cannot rewind while another rewind or fork is running');
+    if (!gate.begin(store.gitDir)) {
+      throw StateError('Cannot rewind while another rewind is running');
     }
-    gate.begin(store.gitDir);
     try {
-      await seat.stopAndWait();
+      await seat.stopAndWait().timeout(const Duration(seconds: 20));
       await store.restore(commit);
+      // The work tree is now on the target branch. Callers must treat a
+      // failure after this point as "restore happened".
+      onRestored?.call();
       String? nativeSessionId;
       for (final checkpoint in await store.checkpoints()) {
         if (checkpoint.commit == commit) {
@@ -83,40 +86,35 @@ final class RewindForkService {
     required String display,
     required String? workingDirectory,
   }) async {
+    // A fork only reads the source repo's objects. It must still wait for an
+    // in-flight snapshot to settle, but it must not claim the work-tree lock:
+    // otherwise the source's next turn checkpoint is silently dropped.
     await gate.waitForSnapshot(source.gitDir);
-    if (gate.isInProgress(source.gitDir)) {
-      throw StateError('Cannot fork while another rewind or fork is running');
+    String? nativeSessionId;
+    for (final checkpoint in await source.checkpoints()) {
+      if (checkpoint.commit == commit) {
+        nativeSessionId = checkpoint.nativeSessionId;
+        break;
+      }
     }
-    gate.begin(source.gitDir);
+    final sessionId = await sessions.createPersonal(
+      workspaceId: workspaceId,
+      cli: cli,
+      display: display,
+      workingDirectory: workingDirectory,
+      nativeSessionId: nativeSessionId,
+    );
     try {
-      String? nativeSessionId;
-      for (final checkpoint in await source.checkpoints()) {
-        if (checkpoint.commit == commit) {
-          nativeSessionId = checkpoint.nativeSessionId;
-          break;
-        }
-      }
-      final sessionId = await sessions.createPersonal(
-        workspaceId: workspaceId,
-        cli: cli,
-        display: display,
-        workingDirectory: workingDirectory,
-        nativeSessionId: nativeSessionId,
+      await source.forkAt(
+        commit: commit,
+        destGitDir: destGitDir,
+        destWorkTree: destWorkTree,
+        destTarget: destTarget,
       );
-      try {
-        await source.forkAt(
-          commit: commit,
-          destGitDir: destGitDir,
-          destWorkTree: destWorkTree,
-          destTarget: destTarget,
-        );
-      } catch (_) {
-        await sessions.deleteSession(sessionId);
-        rethrow;
-      }
-      return sessionId;
-    } finally {
-      gate.end(source.gitDir);
+    } catch (_) {
+      await sessions.deleteSession(sessionId);
+      rethrow;
     }
+    return sessionId;
   }
 }

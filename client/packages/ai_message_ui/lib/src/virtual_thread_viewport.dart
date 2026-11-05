@@ -57,6 +57,7 @@ class VirtualThreadViewport extends StatefulWidget {
     this.onVisibleRange,
     this.buildKey,
     this.bodyCacheKey,
+    this.bodyCacheKeyForTurn,
     super.key,
   });
 
@@ -102,6 +103,10 @@ class VirtualThreadViewport extends StatefulWidget {
   /// Invalidates every cached turn body when it changes (e.g. rewind/fork
   /// busy), unlike [buildKey] which only refreshes the highlighted turn.
   final Object? bodyCacheKey;
+
+  /// Per-turn cache key. Prefer this over [bodyCacheKey]: a version/editor
+  /// change in one message should not discard every other turn's body.
+  final Object? Function(ThreadTurn turn)? bodyCacheKeyForTurn;
 
   @override
   State<VirtualThreadViewport> createState() => _VirtualThreadViewportState();
@@ -702,6 +707,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       _identityByTurnId[turn.id] ?? turnContentIdentity(turn, widget.messages),
       highlightInTurn ? widget.buildKey : null,
       widget.bodyCacheKey,
+      widget.bodyCacheKeyForTurn?.call(turn),
     );
     final cached = _builtTurnBody[turn.id];
     if (cached != null && cached.identity == identity) {

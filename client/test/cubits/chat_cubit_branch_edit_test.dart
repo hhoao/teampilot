@@ -90,8 +90,10 @@ void main() {
       );
 
       expect(await store.checkedOut(), second.commit);
-      expect(env.cubit.state.rewindForkError, 'branchEditFailed');
-      expect(env.cubit.state.rewindForkInProgress, isFalse);
+      expect(
+        env.cubit.state.rewindForkInProgress.contains(env.session.sessionId),
+        isFalse,
+      );
     },
   );
 
@@ -133,8 +135,10 @@ void main() {
     // No second rewind: the seat is never stopped or relaunched.
     expect(env.cubit.relaunchCalls, isEmpty);
     expect(await store.checkedOut(), second.commit);
-    expect(env.cubit.state.rewindForkError, 'branchEditFailed');
-    expect(env.cubit.state.rewindForkInProgress, isFalse);
+    expect(
+      env.cubit.state.rewindForkInProgress.contains(env.session.sessionId),
+      isFalse,
+    );
   });
 
   test('a rejected send reports the delivery failure', () async {
@@ -159,8 +163,6 @@ void main() {
         ),
       ),
     );
-
-    expect(env.cubit.state.rewindForkError, 'branchEditFailed');
   });
 
   test('editing the first message restores the root', () async {
@@ -214,7 +216,7 @@ void main() {
       text: 'edited text',
     );
 
-    final pending = env.cubit.state.pendingBranchEdits[env.session.sessionId];
+    final pending = env.cubit.branchEditFor(env.session.sessionId).pending;
     expect(pending?.messageId, 'u2');
     expect(pending?.text, 'edited text');
 
@@ -222,13 +224,13 @@ void main() {
     await edit;
 
     expect(
-      env.cubit.state.pendingBranchEdits[env.session.sessionId],
+      env.cubit.branchEditFor(env.session.sessionId).pending,
       isNotNull,
       reason: 'the runtime has not published the new prompt yet',
     );
 
     env.cubit.clearPendingBranchEdit(env.session.sessionId);
-    expect(env.cubit.state.pendingBranchEdits[env.session.sessionId], isNull);
+    expect(env.cubit.branchEditFor(env.session.sessionId).pending, isNull);
   });
 }
 

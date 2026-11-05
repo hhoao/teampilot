@@ -6,7 +6,7 @@ import '../../cubits/ai_history_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/failed_message_record.dart';
 import '../../services/chat/rewind/seat_branches.dart';
-import '../../utils/logging/logger.dart';
+import 'session_history_rewind_host.dart';
 import 'chat_reveal_controller.dart';
 import 'session_history_live_chrome.dart';
 import 'session_history_thread.dart';
@@ -34,13 +34,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     this.visibleOwnerId,
     this.scrollAnchorKey,
     this.scrollAnchors,
-    this.branches = const SeatBranches.empty(),
-    this.onSwitchVersion,
-    this.onForkFrom,
-    this.onEditUserMessage,
-    this.holdTranscript = false,
-    this.optimisticEdit,
-    this.onOptimisticLanded,
+    this.rewind,
     this.turnInFlight = false,
     super.key,
   });
@@ -72,13 +66,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   /// `ChatCubit.sessionScrollAnchors`.
   final Map<String, double>? scrollAnchors;
 
-  final SeatBranches branches;
-  final void Function(String commit)? onSwitchVersion;
-  final void Function(String commit)? onForkFrom;
-  final Future<bool> Function(String messageId, String text)? onEditUserMessage;
-  final bool holdTranscript;
-  final PendingBranchEdit? optimisticEdit;
-  final VoidCallback? onOptimisticLanded;
+  final SessionHistoryRewindBinding? rewind;
   final bool turnInFlight;
 
   bool get _showThread {
@@ -88,7 +76,9 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     // (scroll position, cached bodies, optimistic bubble) and paints a
     // spinner: the visible flash. Keep it mounted for the whole edit window;
     // holdTranscript already freezes its contents until the new turn lands.
-    if (optimisticEdit != null || holdTranscript) return true;
+    if (rewind?.holdTranscript == true || rewind?.branchEdit.pending != null) {
+      return true;
+    }
     if (state.status == AiHistoryViewStatus.ready) return true;
     if (state.status == AiHistoryViewStatus.refreshing) return true;
     // Optimistic pendings may land while status is still empty/loading, and a
@@ -100,13 +90,6 @@ class SessionHistoryReviewMessages extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (optimisticEdit != null || holdTranscript) {
-      appLogger.d(
-        '[branch-edit] review build showThread=$_showThread '
-        'status=${state.status.name} msgs=${runtime.messages.length} '
-        'hold=$holdTranscript pending=${optimisticEdit != null}',
-      );
-    }
     if (_showThread) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -140,13 +123,13 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               visibleOwnerId: visibleOwnerId,
               scrollAnchorKey: scrollAnchorKey,
               scrollAnchors: scrollAnchors,
-              branches: branches,
-              onSwitchVersion: onSwitchVersion,
-              onForkFrom: onForkFrom,
-              onEditUserMessage: onEditUserMessage,
-              holdTranscript: holdTranscript,
-              optimisticEdit: optimisticEdit,
-              onOptimisticLanded: onOptimisticLanded,
+              branches: rewind?.branches ?? const SeatBranches.empty(),
+              onSwitchVersion: rewind?.onSwitchVersion,
+              onForkFrom: rewind?.onForkFrom,
+              onEditUserMessage: rewind?.onEditUserMessage,
+              holdTranscript: rewind?.holdTranscript ?? false,
+              branchEdit: rewind?.branchEdit,
+              onOptimisticLanded: rewind?.onOptimisticLanded,
               turnInFlight: turnInFlight,
             ),
           ),

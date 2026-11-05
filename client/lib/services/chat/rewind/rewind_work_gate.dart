@@ -10,15 +10,20 @@ final class RewindWorkGate {
   final Map<String, Future<void>> _tails = {};
 
   /// Cubit hook: a checkpoint, rewind, or fork finished for some seat.
-  void Function()? onHistoryChanged;
+  void Function(String sessionId)? onHistoryChanged;
 
   bool isInProgress(String gitDir) => _inProgress.contains(gitDir);
 
-  void begin(String gitDir) => _inProgress.add(gitDir);
+  /// Atomically claims [gitDir] for a work-tree mutation.
+  ///
+  /// Returns false when another rewind already owns it. A separate
+  /// `isInProgress` check followed by `begin` would let two callers through.
+  bool begin(String gitDir) => _inProgress.add(gitDir);
 
   void end(String gitDir) => _inProgress.remove(gitDir);
 
-  void noteHistoryChanged() => onHistoryChanged?.call();
+  void noteHistoryChanged(String sessionId) =>
+      onHistoryChanged?.call(sessionId);
 
   Future<void> waitForSnapshot(String gitDir) async {
     final pending = _tails[gitDir];

@@ -12,6 +12,7 @@ import 'package:teampilot/cubits/ai_history_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/services/chat/session/chat_tab_store.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/branch_edit_controller.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/expert_hub_cubit.dart';
@@ -52,6 +53,13 @@ import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _MockChatCubit extends Mock implements ChatCubit {
+  final BranchEditController _branchEdit = BranchEditController(
+    watchdog: Duration.zero,
+  );
+
+  @override
+  BranchEditController branchEditFor(String sessionId) => _branchEdit;
+
   @override
   final Map<String, double> sessionScrollAnchors = {};
 

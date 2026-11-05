@@ -124,6 +124,38 @@ void main() {
   });
 
   test(
+    'restore tolerates a checkpoint that omits an included sidecar',
+    () async {
+      final tmp = tmpDir.path;
+      await File('$tmp/work/acp-session.json').delete();
+      await Directory('$tmp/work/claude').delete(recursive: true);
+      final store = SeatRewindStore(
+        gitDir: '$tmp/repo.git',
+        workTree: '$tmp/work',
+        target: const SeatRewindTarget(
+          kind: SeatRewindKind.personalAcp,
+          tool: 'claude',
+        ),
+      );
+      final checkpoint = await store.commitTurn(messageId: 'm1');
+
+      // Add the sidecar/tool files back; restore must remove them rather than
+      // fail on the pathspec that is absent from the target commit.
+      await File(
+        '$tmp/work/acp-session.json',
+      ).writeAsString('{"v":1,"sessionId":"s2"}');
+      await Directory('$tmp/work/claude/projects').create(recursive: true);
+      await File('$tmp/work/claude/projects/b.jsonl').writeAsString('two');
+
+      await store.restore(checkpoint.commit);
+
+      expect(File('$tmp/work/acp-session.json').existsSync(), isFalse);
+      expect(File('$tmp/work/claude/projects/b.jsonl').existsSync(), isFalse);
+      expect(await File('$tmp/work/acp-transcript.jsonl').readAsString(), '[]');
+    },
+  );
+
+  test(
     'restore replaces seat bytes, deletes extras, and keeps the sibling',
     () async {
       final tmp = tmpDir.path;
@@ -314,10 +346,7 @@ exec "$realGit" "\$@"
       userMessageId: 'u1',
       nativeSessionId: 's1',
     );
-    final second = await store.commitTurn(
-      messageId: 'a2',
-      userMessageId: 'u2',
-    );
+    final second = await store.commitTurn(messageId: 'a2', userMessageId: 'u2');
 
     expect(first.userMessageId, 'u1');
     expect(first.messageId, 'a1');
@@ -379,82 +408,93 @@ exec "$realGit" "\$@"
     expect(await store.checkedOut(), root);
   });
 
-  test('a reopened store parses the turn anchor from the commit body', () async {
-    final tmp = tmpDir.path;
-    final writer = SeatRewindStore(
-      gitDir: '$tmp/repo.git',
-      workTree: '$tmp/work',
-      target: const SeatRewindTarget(
-        kind: SeatRewindKind.personalAcp,
-        tool: 'claude',
-      ),
-    );
-    await writer.commitTurn(messageId: 'a1', userMessageId: 'u1');
+  test(
+    'a reopened store parses the turn anchor from the commit body',
+    () async {
+      final tmp = tmpDir.path;
+      final writer = SeatRewindStore(
+        gitDir: '$tmp/repo.git',
+        workTree: '$tmp/work',
+        target: const SeatRewindTarget(
+          kind: SeatRewindKind.personalAcp,
+          tool: 'claude',
+        ),
+      );
+      await writer.commitTurn(messageId: 'a1', userMessageId: 'u1');
 
-    // A fresh store instance has no in-memory record; only the commit body.
-    final reader = SeatRewindStore(
-      gitDir: '$tmp/repo.git',
-      workTree: '$tmp/work',
-      target: const SeatRewindTarget(
-        kind: SeatRewindKind.personalAcp,
-        tool: 'claude',
-      ),
-    );
-    final parsed = (await reader.checkpoints()).single;
+      // A fresh store instance has no in-memory record; only the commit body.
+      final reader = SeatRewindStore(
+        gitDir: '$tmp/repo.git',
+        workTree: '$tmp/work',
+        target: const SeatRewindTarget(
+          kind: SeatRewindKind.personalAcp,
+          tool: 'claude',
+        ),
+      );
+      final parsed = (await reader.checkpoints()).single;
 
-    expect(parsed.userMessageId, 'u1');
-    expect(parsed.messageId, 'a1');
-    expect(parsed.turnAt, greaterThan(0));
-  });
+      expect(parsed.userMessageId, 'u1');
+      expect(parsed.messageId, 'a1');
+      expect(parsed.turnAt, greaterThan(0));
+    },
+  );
 
-  test('a commit written before the anchor parses with empty defaults', () async {
-    final tmp = tmpDir.path;
-    final gitDir = '$tmp/repo.git';
-    final store = SeatRewindStore(
-      gitDir: gitDir,
-      workTree: '$tmp/work',
-      target: const SeatRewindTarget(
-        kind: SeatRewindKind.personalAcp,
-        tool: 'claude',
-      ),
-    );
-    // Seed a tree, then write a commit body in the pre-anchor shape.
-    await store.commitTurn(messageId: 'a1');
-    final tree = (await Process.run('git', [
-      '--git-dir',
-      gitDir,
-      '--work-tree',
-      '$tmp/work',
-      'write-tree',
-    ])).stdout as String;
-    const identity = {
-      'GIT_AUTHOR_NAME': 'TeamPilot',
-      'GIT_AUTHOR_EMAIL': 'teampilot@localhost',
-      'GIT_COMMITTER_NAME': 'TeamPilot',
-      'GIT_COMMITTER_EMAIL': 'teampilot@localhost',
-    };
-    final legacy = (await Process.run('git', [
-      '--git-dir',
-      gitDir,
-      'commit-tree',
-      tree.trim(),
-      '-m',
-      'checkpoint\n\nTurn-Message: a-legacy\nNative-Session: ',
-    ], environment: identity)).stdout as String;
-    await Process.run('git', [
-      '--git-dir',
-      gitDir,
-      'update-ref',
-      'refs/rewind/keep/a-legacy',
-      legacy.trim(),
-    ]);
+  test(
+    'a commit written before the anchor parses with empty defaults',
+    () async {
+      final tmp = tmpDir.path;
+      final gitDir = '$tmp/repo.git';
+      final store = SeatRewindStore(
+        gitDir: gitDir,
+        workTree: '$tmp/work',
+        target: const SeatRewindTarget(
+          kind: SeatRewindKind.personalAcp,
+          tool: 'claude',
+        ),
+      );
+      // Seed a tree, then write a commit body in the pre-anchor shape.
+      await store.commitTurn(messageId: 'a1');
+      final tree =
+          (await Process.run('git', [
+                '--git-dir',
+                gitDir,
+                '--work-tree',
+                '$tmp/work',
+                'write-tree',
+              ])).stdout
+              as String;
+      const identity = {
+        'GIT_AUTHOR_NAME': 'TeamPilot',
+        'GIT_AUTHOR_EMAIL': 'teampilot@localhost',
+        'GIT_COMMITTER_NAME': 'TeamPilot',
+        'GIT_COMMITTER_EMAIL': 'teampilot@localhost',
+      };
+      final legacy =
+          (await Process.run('git', [
+                '--git-dir',
+                gitDir,
+                'commit-tree',
+                tree.trim(),
+                '-m',
+                'checkpoint\n\nTurn-Message: a-legacy\nNative-Session: ',
+              ], environment: identity)).stdout
+              as String;
+      await Process.run('git', [
+        '--git-dir',
+        gitDir,
+        'update-ref',
+        'refs/rewind/keep/a-legacy',
+        legacy.trim(),
+      ]);
 
-    final parsed = (await store.checkpoints())
-        .singleWhere((turn) => turn.messageId == 'a-legacy');
+      final parsed = (await store.checkpoints()).singleWhere(
+        (turn) => turn.messageId == 'a-legacy',
+      );
 
-    expect(parsed.userMessageId, isEmpty);
-    expect(parsed.turnAt, 0);
-  });
+      expect(parsed.userMessageId, isEmpty);
+      expect(parsed.turnAt, 0);
+    },
+  );
 }
 
 Future<List<String>> _lsTree(SeatRewindStore store, String commit) async {

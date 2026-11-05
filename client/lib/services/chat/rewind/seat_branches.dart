@@ -1,16 +1,5 @@
 import 'package:teampilot/services/chat/rewind/seat_rewind_store.dart';
 
-/// An edited user message shown in place until its new turn lands.
-///
-/// Cubit-owned: the restore reconnects the session, which rebuilds the whole
-/// chat area (hosts and threads). Widget-local state cannot survive it.
-final class PendingBranchEdit {
-  const PendingBranchEdit({required this.messageId, required this.text});
-
-  final String messageId;
-  final String text;
-}
-
 /// One version of a user message: the turn it opened.
 final class SeatBranchVersion {
   const SeatBranchVersion({
@@ -41,14 +30,11 @@ final class SeatBranchVersion {
 
 /// Branch tree of one seat, keyed by the user message that opened a turn.
 final class SeatBranches {
-  const SeatBranches({required this.turns, required this.checkedOutCommit});
+  const SeatBranches({required this.turns});
 
-  const SeatBranches.empty() : turns = const {}, checkedOutCommit = null;
+  const SeatBranches.empty() : turns = const {};
 
   final Map<String, SeatBranchVersion> turns;
-
-  /// Commit currently written into the seat's runtime.
-  final String? checkedOutCommit;
 
   SeatBranchVersion? turnOf(String userMessageId) => turns[userMessageId];
 }
@@ -56,7 +42,8 @@ final class SeatBranches {
 /// Groups [store]'s checkpoints by parent and indexes them per user message.
 Future<SeatBranches> readSeatBranches({required SeatRewindStore store}) async {
   final checkpoints = await store.checkpoints();
-  final checkedOut = await store.checkedOut();
+  // checkedOut is not part of the version UI and costs one extra git process
+  // on every reload; callers that need it read `store.checkedOut()` directly.
   final groups = <String, List<RewindCheckpoint>>{};
   for (final checkpoint in checkpoints) {
     if (checkpoint.userMessageId.isEmpty) continue;
@@ -76,5 +63,5 @@ Future<SeatBranches> readSeatBranches({required SeatRewindStore store}) async {
       );
     }
   }
-  return SeatBranches(turns: turns, checkedOutCommit: checkedOut);
+  return SeatBranches(turns: turns);
 }

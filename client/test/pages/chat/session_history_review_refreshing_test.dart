@@ -4,9 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/ai_history_seat.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/cubits/branch_edit_controller.dart';
 import 'package:teampilot/pages/chat/session_history_review_messages.dart';
-import 'package:teampilot/pages/chat/session_history_thread.dart';
+import 'package:teampilot/pages/chat/session_history_rewind_host.dart';
 import 'package:teampilot/services/chat/rewind/seat_branches.dart';
+import 'package:teampilot/pages/chat/session_history_thread.dart';
 
 void main() {
   Widget wrap(Widget child) {
@@ -89,7 +91,7 @@ void main() {
           ),
         ]);
 
-      Widget build(AiHistoryState state, {PendingBranchEdit? edit}) => wrap(
+      Widget build(AiHistoryState state, {BranchEditController? edit}) => wrap(
         Column(
           children: [
             Expanded(
@@ -98,14 +100,25 @@ void main() {
                 runtime: runtime,
                 onRetry: () {},
                 onLoadOlder: () async {},
-                optimisticEdit: edit,
+                rewind: edit == null
+                    ? null
+                    : SessionHistoryRewindBinding(
+                        branches: const SeatBranches.empty(),
+                        branchEdit: edit,
+                      ),
               ),
             ),
           ],
         ),
       );
 
-      const edit = PendingBranchEdit(messageId: 'm-0', text: 'edited');
+      final edit = BranchEditController(watchdog: Duration.zero)
+        ..begin(
+          messageId: 'm-0',
+          text: 'edited',
+          visibleMessageIds: const ['m-0'],
+        );
+      addTearDown(edit.dispose);
 
       await tester.pumpWidget(
         build(

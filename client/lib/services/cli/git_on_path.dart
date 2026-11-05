@@ -1,11 +1,14 @@
 import 'dart:io';
 
+/// Mobile never has a usable local git work tree for rewind.
+bool isMobilePlatform() => Platform.isAndroid || Platform.isIOS;
+
 /// Whether a `git` executable is on `PATH`.
 ///
-/// Android never counts as present. Uses [File.existsSync] so widget tests
+/// Mobile never counts as present. Uses [File.existsSync] so widget tests
 /// that gate rewind UI do not spawn a [Process.run] timer.
 bool gitOnPath() {
-  if (Platform.isAndroid) return false;
+  if (Platform.isAndroid || Platform.isIOS) return false;
   final path = Platform.environment['PATH'] ?? '';
   if (path.isEmpty) return false;
   final separator = Platform.isWindows ? ';' : ':';
