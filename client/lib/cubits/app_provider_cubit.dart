@@ -15,6 +15,7 @@ import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
 import '../services/provider_usage/managed_provider_link_binding.dart';
 import '../services/vault/credential_capture.dart';
+import '../services/vault/vault_ref.dart';
 import '../utils/logging/logger.dart';
 
 class AppProviderState extends Equatable {
@@ -338,7 +339,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     var effectiveApiKey = provider.apiKey;
     // Managed links resolve their secret into apiKey in memory; probe and
     // binding upserts must never rewrite them into a vault link.
-    final linkIsVault = effectiveLink.startsWith('vault:');
+    final linkIsVault = VaultRef.parse(effectiveLink) is VaultEntryRef;
     final linkIsManaged = effectiveLink.isNotEmpty && !linkIsVault;
     if (captureVaultCredentials &&
         capture != null &&
@@ -351,7 +352,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
           provider,
           apiKey: provider.apiKey.isEmpty ? null : provider.apiKey,
         );
-        effectiveLink = 'vault:${captured.entryId}';
+        effectiveLink = VaultEntryRef(captured.entryId).link;
         effectiveApiKey = '';
       } on Object catch (error, stackTrace) {
         appLogger.w(
@@ -442,7 +443,8 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     final cli = state.selectedCli;
     final target = state.providers.where((p) => p.id == id).firstOrNull;
     final removeEntry =
-        target != null && target.credentialLink.trim().startsWith('vault:');
+        target != null &&
+        VaultRef.parse(target.credentialLink) is VaultEntryRef;
     if (removeEntry) {
       final unlock = _ensureVaultUnlocked;
       if (unlock != null && !await unlock()) return;
@@ -496,7 +498,8 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     if (filtered.length == current.length) return;
     final target = current.where((p) => p.id == trimmed).firstOrNull;
     final removeEntry =
-        target != null && target.credentialLink.trim().startsWith('vault:');
+        target != null &&
+        VaultRef.parse(target.credentialLink) is VaultEntryRef;
     // Persist the catalog first: if this fails, the credential must survive.
     await _repository.saveProviders(cli, filtered);
     // Programmatic removal: drop the vault entry best-effort so a failure to

@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum VaultReferenceKind { sshProfile, appProvider }
+enum VaultReferenceKind { sshProfile, appProvider, managedProvider, github }
 
 class VaultReference extends Equatable {
   const VaultReference({

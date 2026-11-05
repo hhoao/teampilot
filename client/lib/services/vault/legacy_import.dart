@@ -10,6 +10,7 @@ import '../../utils/logging/logger.dart';
 import '../github/github_credentials_store.dart';
 import '../provider_usage/managed_provider_secret_store.dart';
 import 'credential_capture.dart';
+import 'vault_ref.dart';
 import 'vault_service.dart';
 
 /// Raised when at least one owner of a category could not be imported.
@@ -322,7 +323,7 @@ class VaultLegacyImportService {
           apiKey: provider.apiKey,
         );
         providers[index] = provider.copyWith(
-          credentialLink: 'vault:${result.entryId}',
+          credentialLink: VaultEntryRef(result.entryId).link,
           apiKey: '',
         );
         changed = true;

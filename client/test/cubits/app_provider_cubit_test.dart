@@ -12,7 +12,6 @@ import 'package:teampilot/repositories/vault_repository.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_link_binding.dart';
 import 'package:teampilot/services/provider/credential_login_progress.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
-import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/vault/credential_capture.dart';
 import 'package:teampilot/services/vault/encrypted_vault_backend.dart';
 import 'package:teampilot/services/vault/keychain_vault_backend.dart';

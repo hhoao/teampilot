@@ -197,7 +197,9 @@ import '../services/vault/encrypted_vault_backend.dart';
 import '../services/vault/vault_access.dart';
 import '../services/vault/keychain_vault_backend.dart';
 import '../services/vault/legacy_import.dart';
+import '../models/vault_reference.dart';
 import '../services/vault/provider_credential_link.dart';
+import '../services/vault/vault_reference_indexer.dart';
 import '../services/vault/vault_service.dart';
 import '../services/vault/vault_unlock_gate.dart';
 import '../services/io/local_filesystem.dart';
@@ -1153,6 +1155,65 @@ Future<AppShell> buildAppShell({
         storage: homeStorage,
         onProvidersDeleted: resolvedManagedProviderUsageRepository.deleteMany,
       );
+
+  vaultCubit.attachReferenceIndexer(
+    VaultReferenceIndexer([
+      (entryId) async {
+        final profiles = await sshProfileRepo.loadAll();
+        return [
+          for (final profile in profiles)
+            if (profile.vaultEntryId == entryId)
+              VaultReference(
+                kind: VaultReferenceKind.sshProfile,
+                id: profile.id,
+                label: profile.name,
+              ),
+        ];
+      },
+      (entryId) async {
+        final perCli = await Future.wait([
+          for (final cli in CliTool.values)
+            AppProviderRepository(
+              storage: homeStorage,
+            ).loadProviders(cli, reconcileCredentials: false),
+        ]);
+        return [
+          for (final providers in perCli)
+            for (final provider in providers)
+              if (vaultEntryIdFromCredentialLink(provider.credentialLink) ==
+                  entryId)
+                VaultReference(
+                  kind: VaultReferenceKind.appProvider,
+                  id: provider.id,
+                  label: provider.name,
+                ),
+        ];
+      },
+      (entryId) async {
+        final entries = await resolvedManagedProviderRepository.load();
+        return [
+          for (final entry in entries)
+            if ((entry.vaultEntryId ?? '').trim() == entryId)
+              VaultReference(
+                kind: VaultReferenceKind.managedProvider,
+                id: entry.id,
+                label: entry.name,
+              ),
+        ];
+      },
+      (entryId) async {
+        final stored = await githubCredentialsStore.storedVaultEntryId();
+        if ((stored ?? '').trim() != entryId) return const [];
+        return const [
+          VaultReference(
+            kind: VaultReferenceKind.github,
+            id: 'github',
+            label: 'GitHub',
+          ),
+        ];
+      },
+    ]),
+  );
   final ownsManagedProviderHttpClient =
       managedProviderUsageHttpClient == null &&
       managedProviderUsageCoordinator == null;

@@ -11,6 +11,7 @@ import 'package:teampilot/repositories/vault_repository.dart';
 import 'package:teampilot/services/vault/encrypted_vault_backend.dart';
 import 'package:teampilot/services/vault/keychain_vault_backend.dart';
 import 'package:teampilot/services/vault/vault_crypto.dart';
+import 'package:teampilot/services/vault/vault_reference_indexer.dart';
 import 'package:teampilot/services/vault/vault_service.dart';
 import '../support/in_memory_filesystem.dart';
 
@@ -95,6 +96,24 @@ void main() {
     expect(refs, hasLength(1));
     expect(refs.single.kind, VaultReferenceKind.sshProfile);
     expect(refs.single.label, 'Server');
+  });
+
+  test('an attached reference indexer replaces the fallback', () async {
+    await cubit.load();
+    cubit.attachReferenceIndexer(
+      VaultReferenceIndexer([
+        (id) async => const [
+          VaultReference(
+            kind: VaultReferenceKind.github,
+            id: 'github',
+            label: 'GitHub',
+          ),
+        ],
+      ]),
+    );
+
+    final refs = await cubit.referencesFor('a');
+    expect(refs.single.kind, VaultReferenceKind.github);
   });
 
   test('setQuery while locked surfaces error and keeps query', () async {

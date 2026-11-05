@@ -10,6 +10,8 @@ import '../models/vault_reference.dart';
 import '../repositories/app_provider_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../services/vault/vault_errors.dart';
+import '../services/vault/vault_reference_indexer.dart';
+import '../services/vault/vault_ref.dart';
 import '../services/vault/vault_service.dart';
 import '../utils/logging/logger_utils.dart';
 
@@ -297,7 +299,18 @@ class VaultCubit extends Cubit<VaultState> {
     }
   }
 
+  VaultReferenceIndexer? _referenceIndexer;
+
+  /// Installs the composition-root reference sources. Called once after the
+  /// managed-provider and GitHub stores exist.
+  void attachReferenceIndexer(VaultReferenceIndexer indexer) {
+    _referenceIndexer = indexer;
+  }
+
   Future<List<VaultReference>> referencesFor(String entryId) async {
+    final indexer = _referenceIndexer;
+    if (indexer != null) return indexer.referencesTo(entryId);
+    // Fallback for tests and headless callers without a composition root.
     // One parallel fan-out: the detail dialog opens on a user tap, so serial
     // profile + per-CLI file reads add avoidable latency.
     final results = await Future.wait<Object>([
@@ -317,7 +330,8 @@ class VaultCubit extends Cubit<VaultState> {
     ];
     for (final providers in results.skip(1)) {
       for (final provider in providers as List<AppProviderConfig>) {
-        if (provider.credentialLink.trim() == 'vault:$entryId') {
+        final ref = VaultRef.parse(provider.credentialLink);
+        if (ref is VaultEntryRef && ref.entryId == entryId) {
           references.add(
             VaultReference(
               kind: VaultReferenceKind.appProvider,
