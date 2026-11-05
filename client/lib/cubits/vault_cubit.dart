@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../models/team_config.dart';
+import '../models/app_provider_config.dart';
+import '../models/ssh_profile.dart';
 import '../models/vault_entry.dart';
 import '../models/vault_reference.dart';
 import '../repositories/app_provider_repository.dart';
@@ -297,7 +298,14 @@ class VaultCubit extends Cubit<VaultState> {
   }
 
   Future<List<VaultReference>> referencesFor(String entryId) async {
-    final profiles = await _sshProfiles.loadAll();
+    // One parallel fan-out: the detail dialog opens on a user tap, so serial
+    // profile + per-CLI file reads add avoidable latency.
+    final results = await Future.wait<Object>([
+      _sshProfiles.loadAll(),
+      for (final cli in CliTool.values)
+        _appProviders.loadProviders(cli, reconcileCredentials: false),
+    ]);
+    final profiles = results.first as List<SshProfile>;
     final references = <VaultReference>[
       for (final profile in profiles)
         if (profile.vaultEntryId == entryId)
@@ -307,12 +315,8 @@ class VaultCubit extends Cubit<VaultState> {
             label: profile.name,
           ),
     ];
-    for (final cli in CliTool.values) {
-      final providers = await _appProviders.loadProviders(
-        cli,
-        reconcileCredentials: false,
-      );
-      for (final provider in providers) {
+    for (final providers in results.skip(1)) {
+      for (final provider in providers as List<AppProviderConfig>) {
         if (provider.credentialLink.trim() == 'vault:$entryId') {
           references.add(
             VaultReference(

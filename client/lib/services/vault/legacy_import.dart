@@ -178,8 +178,13 @@ class VaultLegacyImportService {
   }
 
   Future<void> _importSsh() async {
+    final profiles = await _sshProfiles.loadAll();
+    final byId = {for (final profile in profiles) profile.id: profile};
+    final captures = <VaultCaptureResult>[];
+    final cleanupIds = <String>[];
     var failures = 0;
-    for (final profile in await _sshProfiles.loadAll()) {
+
+    for (final profile in profiles) {
       try {
         if (await _hasVerifiedSshLink(profile)) {
           // The vault entry already holds this profile's secret. Merge any
@@ -187,16 +192,47 @@ class VaultLegacyImportService {
           // was captured) before the legacy cleanup, otherwise `deleteAll`
           // would destroy the only copy.
           await _mergeSshRelayGrant(profile);
-          await _sshCredentials.deleteAll(profile.id);
+          cleanupIds.add(profile.id);
           continue;
         }
         // No link, or a link whose entry no longer holds the secret: capture
         // from the keychain first, persist the reference, then delete.
-        await _captureSshProfile(profile);
-        await _sshCredentials.deleteAll(profile.id);
+        final captured = await _captureSshProfile(profile);
+        if (captured == null) continue;
+        byId[profile.id] = captured.profile;
+        captures.add(captured.capture);
+        cleanupIds.add(profile.id);
       } on Object catch (error, stackTrace) {
         failures++;
         _warn('ssh ${profile.id}', error, stackTrace);
+      }
+    }
+
+    // One catalog write for the whole pass; a failure rolls back every capture
+    // and keeps the keychain untouched.
+    if (captures.isNotEmpty) {
+      try {
+        await _sshProfiles.saveAll(byId.values.toList(growable: false));
+      } on Object catch (error, stackTrace) {
+        for (final result in captures) {
+          try {
+            await _capture.rollback(result);
+          } on Object {
+            // Preserve the catalog error; cleanup can remove orphans.
+          }
+        }
+        failures += captures.length;
+        _warn('ssh batch save', error, stackTrace);
+        throw _OwnerImportFailure('ssh', failures);
+      }
+    }
+
+    for (final id in cleanupIds) {
+      try {
+        await _sshCredentials.deleteAll(id);
+      } on Object catch (error, stackTrace) {
+        failures++;
+        _warn('ssh cleanup $id', error, stackTrace);
       }
     }
     if (failures > 0) throw _OwnerImportFailure('ssh', failures);
@@ -232,7 +268,8 @@ class VaultLegacyImportService {
     await _capture.captureSsh(profile, relayGrant: relayGrant);
   }
 
-  Future<void> _captureSshProfile(SshProfile profile) async {
+  Future<({SshProfile profile, VaultCaptureResult capture})?>
+  _captureSshProfile(SshProfile profile) async {
     final passwordAuth = profile.authType == SshAuthType.password;
     final password = passwordAuth
         ? await _sshCredentials.loadPassword(profile.id)
@@ -249,7 +286,7 @@ class VaultLegacyImportService {
         (privateKey ?? '').isNotEmpty ||
         (passphrase ?? '').isNotEmpty ||
         (relayGrant ?? '').isNotEmpty;
-    if (!hasSecret) return;
+    if (!hasSecret) return null;
 
     final result = await _capture.captureSsh(
       profile,
@@ -258,13 +295,10 @@ class VaultLegacyImportService {
       passphrase: passphrase,
       relayGrant: relayGrant,
     );
-    try {
-      await _sshProfiles.save(profile.copyWith(vaultEntryId: result.entryId));
-    } on Object {
-      // The reference did not stick, so the captured entry must not survive.
-      await _capture.rollback(result);
-      rethrow;
-    }
+    return (
+      profile: profile.copyWith(vaultEntryId: result.entryId),
+      capture: result,
+    );
   }
 
   Future<void> _importProviders(CliTool cli) async {
