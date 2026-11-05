@@ -830,6 +830,51 @@ void main() {
     expect(conn.isAlive, isFalse);
   });
 
+  test(
+    'cancel ends the turn when the agent never acknowledges session/cancel',
+    () async {
+      // CodeBuddy-style agent: aborting the stream triggers an internal
+      // auto-retry, so the session/prompt request never resolves.
+      final never = Completer<Object?>();
+      var prompts = 0;
+      scriptPrompt(() {
+        prompts++;
+        if (prompts == 1) return never.future;
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      final runtime = makeRuntime((argv, env) async => conn);
+      await startRuntime(runtime);
+
+      final events = <AcpSessionUpdate>[];
+      final sub = runtime.updates.listen(events.add);
+      final promptDone = runtime.prompt('go');
+      await pumpEventQueue();
+
+      runtime.cancel();
+      // The client must own the turn end: it cannot wait for the agent. The
+      // bounded grace preserves trailing-update ordering for cooperative
+      // agents, so allow a little over AcpAgentSession.cancelStopGrace.
+      await promptDone.timeout(const Duration(seconds: 3));
+      await pumpEventQueue();
+
+      expect(events, [const AcpStop(kind: AcpStopKind.cancelled)]);
+
+      // `_promptInFlight` is released, so the next turn is accepted without
+      // waiting for the abandoned request.
+      final second = runtime.prompt('again');
+      await second.timeout(const Duration(seconds: 1));
+      await pumpEventQueue();
+      expect(prompts, 2);
+      expect(events.last, const AcpStop(kind: AcpStopKind.endTurn));
+
+      sub.cancel();
+      await runtime.close();
+    },
+  );
+
   test('start loads the stored session when loadSession is negotiated',
       () async {
     await stubInitialize(

@@ -225,9 +225,15 @@ class _FakeAcpRuntime
   @override
   String get sessionId => 'acp-session-1';
 
+  /// Blocks [prompt] until completed, mimicking an agent that never answers
+  /// `session/cancel` (and therefore never resolves `session/prompt`).
+  Completer<void>? promptGate;
+
   @override
   Future<void> prompt(String text) async {
     prompts.add(text);
+    final gate = promptGate;
+    if (gate != null) await gate.future;
   }
 
   @override
@@ -777,6 +783,135 @@ void main() {
     expect(runtime.cancelled, isTrue);
     expect(runtime.prompts, isEmpty);
     expect(cubit.state.inTurn, isFalse);
+    await cubit.close();
+  });
+
+  test(
+    'cancelTurn force-ends the turn when the runtime never emits a stop',
+    () async {
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      // The agent accepted the prompt but never answers `session/cancel`
+      // (CodeBuddy aborts its stream and auto-retries instead).
+      runtime.promptGate = Completer<void>();
+      expect(cubit.sendPrompt('hello'), isTrue);
+      await pumpEventQueue();
+      expect(cubit.state.inTurn, isTrue);
+
+      cubit.cancelTurn();
+      await pumpEventQueue();
+      expect(runtime.cancelled, isTrue);
+      expect(cubit.state.inTurn, isTrue);
+
+      await Future<void>.delayed(const Duration(milliseconds: 2300));
+      expect(cubit.state.inTurn, isFalse);
+      expect(cubit.state.activity, AcpChatActivity.none);
+
+      runtime.promptGate?.complete();
+      await cubit.close();
+    },
+  );
+
+  test('cancelTurn drops live updates from the abandoned turn', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    expect(cubit.sendPrompt('hello'), isTrue);
+    await pumpEventQueue();
+
+    cubit.cancelTurn();
+    runtime.emit(const AcpStop(kind: AcpStopKind.cancelled));
+    await pumpEventQueue();
+    expect(cubit.state.inTurn, isFalse);
+
+    final afterStop = cubit.state.messages;
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'late retry output',
+        isThought: false,
+      ),
+    );
+    await pumpEventQueue();
+    expect(cubit.state.messages, same(afterStop));
+
+    // The next prompt owns the stream again.
+    expect(cubit.sendPrompt('next'), isTrue);
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'fresh output',
+        isThought: false,
+      ),
+    );
+    await pumpEventQueue();
+    expect(
+      cubit.state.messages.last.parts.whereType<AiTextPart>().last.text,
+      'fresh output',
+    );
+    await cubit.close();
+  });
+
+  test('cancelTurn marks running tool calls as cancelled', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    expect(cubit.sendPrompt('hello'), isTrue);
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 't1',
+        title: 'Bash',
+        status: AcpToolCallStatus.inProgress,
+      ),
+    );
+    await pumpEventQueue();
+    expect(
+      (cubit.state.messages.last.parts.last as AiToolCallPart).status,
+      AiToolCallStatus.running,
+    );
+
+    cubit.cancelTurn();
+    await pumpEventQueue();
+    expect(
+      (cubit.state.messages.last.parts.last as AiToolCallPart).status,
+      AiToolCallStatus.cancelled,
+    );
+    await cubit.close();
+  });
+
+  test('cancel watchdog does not kill the next turn', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    expect(cubit.sendPrompt('hello'), isTrue);
+    await pumpEventQueue();
+
+    cubit.cancelTurn();
+    // A cooperative runtime resolves the turn immediately; the pending
+    // watchdog must be disarmed.
+    runtime.emit(const AcpStop(kind: AcpStopKind.cancelled));
+    await pumpEventQueue();
+    expect(cubit.state.inTurn, isFalse);
+
+    expect(cubit.sendPrompt('next'), isTrue);
+    await pumpEventQueue();
+    expect(cubit.state.inTurn, isTrue);
+
+    await Future<void>.delayed(const Duration(milliseconds: 2300));
+    expect(cubit.state.inTurn, isTrue);
     await cubit.close();
   });
 

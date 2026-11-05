@@ -231,5 +231,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(runtime.cancelled, isTrue);
+    // The runtime never acknowledges the cancel in this stub; let the
+    // cubit's settle watchdog fire so no timer outlives the test.
+    await tester.pump(AcpChatRuntimeCubit.cancelSettleGrace);
+    await tester.pumpAndSettle();
   });
 }

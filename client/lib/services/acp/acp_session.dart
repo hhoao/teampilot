@@ -655,6 +655,21 @@ class AcpAgentSession {
   /// Whether a prompt turn is currently in flight (sequential-turns guard).
   bool _promptInFlight = false;
 
+  /// How long [cancel] waits for the agent's cancelled stop (and its trailing
+  /// tool-call updates) before ending the turn locally.
+  static const Duration cancelStopGrace = Duration(milliseconds: 1500);
+
+  /// The in-flight `session/prompt`, kept so [cancel] can abandon it locally.
+  ///
+  /// Some agents (CodeBuddy) treat `session/cancel` as a model-stream abort
+  /// and auto-retry internally, so the prompt response may never arrive. The
+  /// turn must still end for the UI, and `_promptInFlight` must be released so
+  /// the next prompt is accepted.
+  acpd.RequestHandle<acpd.PromptResponse>? _activePrompt;
+
+  /// Bounded wait for the cancelled stop before [cancel] abandons the request.
+  Timer? _cancelStopTimer;
+
   /// When true, `session/update` notifications are dropped until the first
   /// [prompt]. Set for load/resume sessions: the agent replays its whole
   /// history, but the app transcript is the UI source of truth.
@@ -693,10 +708,11 @@ class AcpAgentSession {
       throw StateError('A prompt turn is already in flight for this session.');
     }
     _promptInFlight = true;
+    final handle = _activePrompt = _client.client.promptCancellable(
+      acpd.PromptRequest.text(sessionId, text),
+    );
     try {
-      final response = await _client.client.prompt(
-        acpd.PromptRequest.text(sessionId, text),
-      );
+      final response = await handle.future;
       final metaError = _connection.translator.translateStopMeta(
         response.stopReason,
         response.meta,
@@ -707,6 +723,13 @@ class AcpAgentSession {
             : AcpStop(kind: _mapStopReason(response.stopReason)),
       );
     } on Object catch (error) {
+      if (error is acpd.RpcError &&
+          error.code == acpd.ErrorCode.requestCancelled.code) {
+        // [cancel] abandoned the request locally; a late peer response is
+        // already dropped by the connection.
+        _emit(const AcpStop(kind: AcpStopKind.cancelled));
+        return;
+      }
       final translated = _connection.translator.translateStopError(
         error,
         suppressAbort: _suppressAbort,
@@ -717,6 +740,9 @@ class AcpAgentSession {
         _emit(AcpStop(kind: AcpStopKind.error, message: translated));
       }
     } finally {
+      _cancelStopTimer?.cancel();
+      _cancelStopTimer = null;
+      if (identical(_activePrompt, handle)) _activePrompt = null;
       _promptInFlight = false;
       _suppressAbort = false;
     }
@@ -774,7 +800,35 @@ class AcpAgentSession {
   /// tool-call updates keep flowing onto [updates] until the stop reason.
   void cancel() {
     _suppressAbort = true;
-    _client.client.cancel(sessionId);
+    try {
+      _client.client.cancel(sessionId);
+    } on Object catch (error, stackTrace) {
+      AppLogger.instance.w(
+        'ACP: session/cancel failed for $sessionId: $error',
+        stackTrace: stackTrace,
+      );
+    }
+    // Cooperative agents answer with a cancelled stop and may emit trailing
+    // tool-call updates first; keep the turn open for that grace. Agents that
+    // ignore `session/cancel` (CodeBuddy aborts and auto-retries) would pin
+    // `prompt()` — and the sequential-turns guard — forever, so abandon the
+    // request locally once the grace expires. The handle removes the pending
+    // entry, so the peer's late response is dropped by the connection.
+    final handle = _activePrompt;
+    if (handle != null && _promptInFlight && _cancelStopTimer == null) {
+      _cancelStopTimer = Timer(cancelStopGrace, () {
+        _cancelStopTimer = null;
+        if (!_promptInFlight) return;
+        try {
+          handle.cancel();
+        } on Object catch (error, stackTrace) {
+          AppLogger.instance.w(
+            'ACP: request cancel failed for $sessionId: $error',
+            stackTrace: stackTrace,
+          );
+        }
+      });
+    }
     _gate.complete(
       sessionId: sessionId,
       memberId: _permissionMemberId,
@@ -828,6 +882,8 @@ class AcpAgentSession {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    _cancelStopTimer?.cancel();
+    _cancelStopTimer = null;
     _gate.clearSeat(sessionId: sessionId, memberId: _permissionMemberId);
     _updateRegistration?.dispose();
     _permissionRegistration?.dispose();

@@ -262,6 +262,19 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   bool _closing = false;
   Future<void>? _hydrateInFlight;
 
+  /// How long [cancelTurn] waits for the runtime's cancelled stop before it
+  /// ends the turn locally. Only non-acknowledging agents hit this; the
+  /// runtime normally resolves the prompt synchronously on cancel.
+  static const cancelSettleGrace = Duration(seconds: 2);
+
+  Timer? _cancelSettleTimer;
+
+  /// Drop live turn updates from a cancelled turn until the next prompt owns
+  /// the stream. Agents that ignore `session/cancel` (CodeBuddy aborts its
+  /// model stream and auto-retries) keep emitting chunks for the abandoned
+  /// turn; those must not reach the transcript.
+  bool _ignoreLiveTurnUpdates = false;
+
   /// True only when [AcpChatTranscriptWriter.loadMessages] returned (missing
   /// file, empty, garbage→[], or a decoded list). Stays false for this cubit's
   /// lifetime if the initial load threw, so a later persist cannot replace an
@@ -688,6 +701,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   void _dispatchPrompt(String trimmed, int serial) {
     _showUserMessage(trimmed);
+    _ignoreLiveTurnUpdates = false;
+    _disarmCancelSettle();
     _resetTurnTrackers();
     emit(state.copyWith(inTurn: true, activity: AcpChatActivity.thinking));
     // A turn is in flight: without this the ACP seat sits at `done` for the
@@ -722,17 +737,27 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     await _runtime.prompt(text);
   }
 
-  /// Cancels the current turn (silently resolved via the cancelled stop).
+  /// Cancels the current turn.
+  ///
+  /// The runtime resolves the in-flight prompt locally with a cancelled stop
+  /// (see `AcpSession.cancel`), so the normal `_onStop` path usually ends the
+  /// turn within the same event-loop turn. A watchdog covers agents whose
+  /// `session/prompt` never comes back; live updates from the abandoned turn
+  /// are dropped until the next prompt owns the stream.
   void cancelTurn() {
+    if (_closing || isClosed) return;
     final hadQueued = _queuedPrompt != null;
     _turnSerial++;
     _queuedPrompt = null;
-    if (!isClosed) emit(state.copyWith(pendingClient: null));
+    emit(state.copyWith(pendingClient: null));
+    _ignoreLiveTurnUpdates = true;
+    _cancelRunningToolCalls();
     if (!_runtime.isStarted) {
       _clearInTurnKeepingPhase();
       unawaited(_persist());
       return;
     }
+    _armCancelSettle();
     _runtime.cancel();
     if (hadQueued) {
       // A prompt queued behind launch/history-sync never reached the runtime,
@@ -744,6 +769,55 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     }
   }
 
+  void _armCancelSettle() {
+    _disarmCancelSettle();
+    _cancelSettleTimer = Timer(cancelSettleGrace, () {
+      _cancelSettleTimer = null;
+      if (_closing || isClosed || !state.inTurn) return;
+      appLogger.w(
+        '[acp-chat] session $sessionId cancel did not settle; ending turn '
+        'locally',
+      );
+      _endTurn();
+      unawaited(_persist());
+    });
+  }
+
+  void _disarmCancelSettle() {
+    _cancelSettleTimer?.cancel();
+    _cancelSettleTimer = null;
+  }
+
+  /// Finalizes in-flight tool cards so a cancelled turn does not leave them
+  /// spinning forever (the abandoned turn's completion updates are dropped).
+  void _cancelRunningToolCalls() {
+    if (isClosed || _runningToolCalls.isEmpty) return;
+    final messages = [...state.messages];
+    var changed = false;
+    for (var i = 0; i < messages.length; i++) {
+      final message = messages[i];
+      final parts = [...message.parts];
+      var partChanged = false;
+      for (var j = 0; j < parts.length; j++) {
+        final part = parts[j];
+        if (part is! AiToolCallPart) continue;
+        if (!_runningToolCalls.contains(part.toolCallId)) continue;
+        if (part.status != AiToolCallStatus.running &&
+            part.status != AiToolCallStatus.incomplete) {
+          continue;
+        }
+        parts[j] = part.copyWith(status: AiToolCallStatus.cancelled);
+        partChanged = true;
+      }
+      if (partChanged) {
+        messages[i] = message.copyWith(parts: parts);
+        changed = true;
+      }
+    }
+    _runningToolCalls.clear();
+    if (changed) emit(state.copyWith(messages: messages));
+  }
+
   /// Assigns [policy] for subsequent permission requests on the open session.
   void setPermissionPolicy(LaunchSecurityPolicy policy) {
     if (_closing || isClosed) return;
@@ -752,6 +826,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   void _clearInTurnKeepingPhase() {
     if (_closing || isClosed) return;
+    _disarmCancelSettle();
     _resetTurnTrackers();
     emit(
       state.copyWith(
@@ -815,6 +890,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     // Mark before killing the agent: `_runtime.close()` awaits process exit,
     // so the watcher fires with 0 while this cubit is still open.
     _closing = true;
+    _disarmCancelSettle();
     _stopBackgroundSync();
     await _updatesSub?.cancel();
     await _permissionSub?.cancel();
@@ -851,6 +927,12 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   Future<void> _onUpdate(AcpSessionUpdate update) async {
     if (_closing || isClosed) return;
     final replaying = _replayMessages != null;
+    // The cancelled turn may keep streaming (CodeBuddy auto-retries). Keep the
+    // stop/attention/model plumbing alive but drop its content, and let an
+    // explicit history replay rebuild the transcript if needed.
+    if (!replaying && _ignoreLiveTurnUpdates && _isTurnContentUpdate(update)) {
+      return;
+    }
     switch (update) {
       case AcpMessageChunk():
         if (isClosed) return;
@@ -916,6 +998,13 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         break;
     }
   }
+
+  /// Whether [update] carries turn content that must not leak out of a
+  /// cancelled turn. Stops, auth notices and model state remain live.
+  static bool _isTurnContentUpdate(AcpSessionUpdate update) => switch (update) {
+    AcpStop() || AcpAuthNotice() || AcpModelStateUpdate() => false,
+    _ => true,
+  };
 
   List<AiMessagePart> _chunkParts(AcpMessageChunk chunk) => [
     chunk.isThought
@@ -1081,6 +1170,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   void _endTurn() {
     if (_closing || isClosed) return;
+    _disarmCancelSettle();
     final hadBackground = _turnHadBackgroundToolCall;
     final backgroundLabel = _turnBackgroundLabel;
     _resetTurnTrackers();
@@ -1268,10 +1358,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     required String sessionToolDir,
     required String agentId,
   }) {
-    _bindBackgroundTranscript(
-      sessionToolDir: sessionToolDir,
-      agentId: agentId,
-    );
+    _bindBackgroundTranscript(sessionToolDir: sessionToolDir, agentId: agentId);
     if (_backgroundLiveness != null) return;
     final livenessFactory = _backgroundLivenessFactory;
     if (livenessFactory == null) return;
@@ -1913,6 +2000,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   void _endWith(AcpChatErrorKind kind, String message) {
     if (_closing || isClosed) return;
+    _disarmCancelSettle();
     _stopBackgroundSync();
     _queuedPrompt = null;
     _resetTurnTrackers();

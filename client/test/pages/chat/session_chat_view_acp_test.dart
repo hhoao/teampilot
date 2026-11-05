@@ -886,6 +886,11 @@ void main() {
     // Same stop semantics as a PTY seat: queued follow-ups must not auto-fire
     // after the cancelled turn.
     verify(() => harness.chatCubit.pauseFollowUpQueue('s1', 's1')).called(1);
+
+    // The stub runtime never acknowledges the cancel; let the cubit's settle
+    // watchdog fire so no timer outlives the test.
+    await tester.pump(AcpChatRuntimeCubit.cancelSettleGrace);
+    await tester.pumpAndSettle();
   });
 
   testWidgets(
