@@ -26,7 +26,7 @@ class WorkspaceActiveContext {
     LandingLaunchContext? landingFallback,
   }) {
     final activeTab = scopedActiveChatTab(workbench, chat, tabScopeId);
-    final sessionId = activeTab?.info.id;
+    final sessionId = activeTab?.sessionId;
     if (sessionId != null && sessionId.isNotEmpty) {
       final session = _sessionById(chat.state.sessions, sessionId);
       if (session != null) {

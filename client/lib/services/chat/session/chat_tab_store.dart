@@ -6,13 +6,18 @@ import 'chat_tab.dart';
 import 'chat_tab_info.dart';
 
 /// Session runtime registry. Owns the *runtime* behind each session tab, not
-/// bar presence/order (that is `WorkbenchCubit`). Keyed by session id.
+/// bar presence/order (that is `WorkbenchCubit`).
+///
+/// Entries are stored under [ChatTabInfo.id] — the one identifier that never
+/// changes. A scratch tab starts as `local-<teamId>` and later gains a session
+/// row, so session-keyed lookups ([getOpenTabBySessionId]) must also match
+/// [ChatTab.sessionId].
 class ChatTabStore {
   ChatTabStore({required HomeStorage storage}) : _storage = storage;
 
   final HomeStorage _storage;
 
-  final Map<String, ChatTab> _bySessionId = {};
+  final Map<String, ChatTab> _byTabId = {};
   String _activeWorkspaceId = '';
 
   String get activeWorkspaceId => _activeWorkspaceId;
@@ -21,44 +26,57 @@ class ChatTabStore {
   /// buckets are gone; runtime presence is global, keyed by session id).
   void setActiveWorkspaceId(String id) => _activeWorkspaceId = id;
 
-  ChatTab? getOpenTabBySessionId(String sessionId) =>
-      _bySessionId[sessionId.trim()];
+  ChatTab? getOpenTabBySessionId(String sessionId) {
+    final key = sessionId.trim();
+    final direct = _byTabId[key];
+    if (direct != null) return direct;
+    // Scratch tabs are registered under `local-<teamId>`; once persisted their
+    // runtime is only reachable by the real session id.
+    for (final tab in _byTabId.values) {
+      if (tab.sessionId == key) return tab;
+    }
+    return null;
+  }
 
-  Iterable<ChatTab> get openTabs => _bySessionId.values;
+  Iterable<ChatTab> get openTabs => _byTabId.values;
 
   List<ChatTab> tabsForWorkspace(String workspaceId) =>
-      _bySessionId.values.where((t) => t.workspaceId == workspaceId).toList();
+      _byTabId.values.where((t) => t.workspaceId == workspaceId).toList();
 
   /// Every open session runtime, globally — not scoped to the foreground
   /// workspace (bar presence/order lives in `WorkbenchCubit`).
-  List<ChatTab> get activeTabs => _bySessionId.values.toList();
+  List<ChatTab> get activeTabs => _byTabId.values.toList();
 
-  bool get activeTabsIsEmpty => _bySessionId.isEmpty;
+  bool get activeTabsIsEmpty => _byTabId.isEmpty;
 
-  bool get hasOpenTabs => _bySessionId.isNotEmpty;
+  bool get hasOpenTabs => _byTabId.isNotEmpty;
 
   /// Register a staged session runtime (bar presence is handled by the bridge).
   void registerSession(ChatTab tab) {
     tab.workspaceId = _activeWorkspaceId;
-    _bySessionId[tab.info.id.trim()] = tab;
+    _byTabId[tab.info.id.trim()] = tab;
   }
 
   /// Remove and return the runtime for [sessionId], if any.
-  ChatTab? removeSession(String sessionId) =>
-      _bySessionId.remove(sessionId.trim());
+  ChatTab? removeSession(String sessionId) {
+    final tab = getOpenTabBySessionId(sessionId);
+    if (tab == null) return null;
+    _byTabId.remove(tab.info.id.trim());
+    return tab;
+  }
 
   /// Session ids whose runtime belongs to [workspaceId].
   List<String> sessionsForWorkspace(String workspaceId) => [
-    for (final tab in _bySessionId.values)
-      if (tab.workspaceId == workspaceId) tab.info.id,
+    for (final tab in _byTabId.values)
+      if (tab.workspaceId == workspaceId) tab.sessionId,
   ];
 
-  void clear() => _bySessionId.clear();
+  void clear() => _byTabId.clear();
 
   /// Thin back-compat helper: the foreground runtime (first open), ignoring the
   /// index. Deleted with the remaining callers.
   ChatTab? activeTab(int index) =>
-      _bySessionId.isEmpty ? null : _bySessionId.values.first;
+      _byTabId.isEmpty ? null : _byTabId.values.first;
 
   String defaultMemberId(TeamProfile team) {
     if (team.members.isEmpty) return '';
@@ -88,7 +106,7 @@ class ChatTabStore {
     List<AppSession> sessions, {
     List<Workspace> workspaces = const [],
   }) {
-    final tabId = tab.info.id;
+    final tabId = tab.sessionId;
     if (tabId.startsWith('local-')) {
       return (_storage.cwd, const <String>[]);
     }
@@ -118,7 +136,7 @@ class ChatTabStore {
   }
 
   AppSession? sessionForTab(ChatTab tab, List<AppSession> sessions) {
-    final tabId = tab.info.id;
+    final tabId = tab.sessionId;
     if (tabId.startsWith('local-')) return tab.persistedSession;
     // Prefer the in-memory snapshot (launchState, member bindings, native ids)
     // over a stale tab.persistedSession left at create/reopen time.

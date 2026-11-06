@@ -3144,7 +3144,7 @@ Future<AppShell> buildAppShell({
               workspace.workspaceId,
           ],
           activeSessionKeys: {
-            for (final tab in chatCubit.tabStore.openTabs) tab.info.id,
+            for (final tab in chatCubit.tabStore.openTabs) tab.sessionId,
           },
         );
       } on Object catch (e, st) {

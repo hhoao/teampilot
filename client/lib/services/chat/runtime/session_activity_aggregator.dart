@@ -41,7 +41,7 @@ final class SessionActivityAggregator {
     final presence = _presence();
 
     for (final tab in _tabStore.openTabs) {
-      final sessionId = tab.info.id;
+      final sessionId = tab.sessionId;
       final reasons = <SessionBusyReason>{};
 
       final usesPresenceSnapshot = _sessionWorking.usesPresenceSnapshotForTab(

@@ -123,7 +123,7 @@ class TabTeamBusCoordinator implements TeamBusUserInputPort {
     final bus = TeamBus(
       launcher: ChatCubitMemberLauncher(
         materializer: _materializer,
-        sessionId: tab.info.id,
+        sessionId: tab.sessionId,
       ),
       messageLog: BusMessageLogFactory.forSession(
         session.workspaceId,
@@ -221,7 +221,7 @@ class TabTeamBusCoordinator implements TeamBusUserInputPort {
       onTurnStart: () {
         shell?.activityTracker.latchTurnQuietBaseline();
         bus.markTurnStarted(memberId);
-        _onAfterTurnLatched?.call(tab.info.id, memberId);
+        _onAfterTurnLatched?.call(tab.sessionId, memberId);
       },
     );
   }

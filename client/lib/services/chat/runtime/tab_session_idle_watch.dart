@@ -86,7 +86,7 @@ final class TabSessionIdleWatch {
       }
       final isPersonal = _coordinationFactory.sessionWorking.isPersonalTab(tab);
       tab.memberShells.forEach((memberId, shell) {
-        final key = '${tab.info.id}:$memberId';
+        final key = '${tab.sessionId}:$memberId';
         const pendingDelivery = false;
         final coordination = _coordinationFactory.forTabMember(
           tab: tab,
@@ -100,19 +100,19 @@ final class TabSessionIdleWatch {
           inTurn: inTurn,
           shell: shell,
           wasInTurn: _wasInTurn,
-          onTurnStarted: () => _onAfterTurnStarted?.call(tab.info.id, memberId),
+          onTurnStarted: () => _onAfterTurnStarted?.call(tab.sessionId, memberId),
           endTurn: () {
             final cli = _memberCli?.call(tab, memberId);
             if (cli == null || !ptyQuietEndsTurn(cli)) return;
             if (!_endingTurn.add(key)) return;
             appLogger.d(
               '[idle-watch] end-turn member=$memberId '
-              'session=${tab.info.id} '
+              'session=${tab.sessionId} '
               'busInTurn=${bus?.isMemberInTurn(memberId)}',
             );
             unawaited(
               _finishTurn(
-                sessionId: tab.info.id,
+                sessionId: tab.sessionId,
                 memberId: memberId,
                 turnKey: key,
                 coordination: coordination,

@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/pages/chat_workbench.dart';
 
+class _Registry extends ChangeNotifier {
+  void bump() => notifyListeners();
+}
+
 class _Counter extends StatefulWidget {
   const _Counter();
 
@@ -20,36 +24,51 @@ class _CounterState extends State<_Counter> {
 }
 
 void main() {
-  testWidgets('the pod appearing later keeps the workbench body mounted', (
+  testWidgets('a pod created after the first build reaches the body', (
     tester,
   ) async {
-    final pod = ValueNotifier<int>(0);
-    addTearDown(pod.dispose);
+    final registry = _Registry();
+    addTearDown(registry.dispose);
+    Listenable? pod;
     var rendered = 0;
+    var resolvedPods = 0;
 
-    Widget harness(Listenable? listenable) => MaterialApp(
-      home: wrapPodDependentBody(
-        pod: listenable,
-        builder: (context) {
-          rendered++;
-          return const _Counter();
-        },
+    await tester.pumpWidget(
+      MaterialApp(
+        home: wrapPodDependentBody(
+          podRegistry: registry,
+          resolvePod: () => pod,
+          builder: (context, resolved) {
+            rendered++;
+            if (resolved != null) resolvedPods++;
+            return const _Counter();
+          },
+        ),
       ),
     );
-
-    await tester.pumpWidget(harness(null));
     await tester.tap(find.byType(TextButton));
     await tester.pump();
     expect(find.text('count: 1'), findsOneWidget);
+    expect(resolvedPods, 0);
 
-    // First connect creates the pod. The wrapper kind must not change, or the
-    // whole subtree (chat thread, compose, scroll) is remounted.
-    await tester.pumpWidget(harness(pod));
-    expect(find.text('count: 1'), findsOneWidget);
+    // First connect creates the pod: the registry is the only signal (pod
+    // state changes do not emit ChatState), so without it the body would keep
+    // resolving null forever.
+    final created = ValueNotifier<int>(0);
+    addTearDown(created.dispose);
+    pod = created;
+    registry.bump();
+    await tester.pump();
+    expect(resolvedPods, 1);
+    expect(
+      find.text('count: 1'),
+      findsOneWidget,
+      reason: 'the wrapper must not remount the chat subtree',
+    );
 
-    // Pod notifications still drive the body.
+    // The body is bound to the new pod, not to the pre-creation listener.
     final before = rendered;
-    pod.value++;
+    created.value++;
     await tester.pump();
     expect(rendered, greaterThan(before));
     expect(find.text('count: 1'), findsOneWidget);

@@ -399,6 +399,13 @@ class ChatCubit extends Cubit<ChatState>
   /// active pod instead of global connecting sentinels.
   final Map<String, SessionPod> _pods = {};
 
+  /// Signals pod creation/removal. Views resolve `podRuntime(...)` during
+  /// build; a pod created after that build must still reach them, and pod
+  /// state changes no longer emit ChatState, so this registry is the only
+  /// notification for the null → non-null transition.
+  final _PodRegistry _podRegistry = _PodRegistry();
+  Listenable get podRegistry => _podRegistry;
+
   /// Pre-session materialization (the former `'pending'` connect): no real pod
   /// exists yet, but a connect is in flight so concurrent connects must wait.
   bool _materializingInFlight = false;
@@ -498,7 +505,7 @@ class ChatCubit extends Cubit<ChatState>
         activeTeam: () => _activeTeam,
         isClosed: () => isClosed,
         globalPresets: () => _lifecycle.globalPresets,
-        activeSessionId: () => activeTab?.info.id,
+        activeSessionId: () => activeTab?.sessionId,
         presence: () => _presenceCubit?.state.presence ?? const {},
         sessionBusyFromAttention: (sessionId) {
           final attention = _agentAttentionCubit;
@@ -698,33 +705,37 @@ class ChatCubit extends Cubit<ChatState>
   /// Seeds an idle runtime pod for [sessionId] if absent and returns it.
   /// The pod is a [ChangeNotifier] — consumers listen directly; no global emit.
   @override
-  SessionPod ensurePodRuntime(String sessionId) =>
-      _pods.putIfAbsent(sessionId.trim(), () {
-        final tab = _tabStore.getOpenTabBySessionId(sessionId.trim());
-        final sid = sessionId.trim();
-        final loader = historyLoader;
-        return SessionPod(
-          sessionId: sid,
-          workspaceId: tab?.workspaceId ?? '',
-          history: loader == null
-              ? null
-              : HistoryStore(
-                  loader: loader,
-                  loadMailboxRecords: (s, m) async {
-                    final bus = _tabStore.getOpenTabBySessionId(s)?.teamBus;
-                    if (bus == null) return const [];
-                    return bus.memberMailRecords(m);
-                  },
-                ),
-        );
-      });
+  SessionPod ensurePodRuntime(String sessionId) {
+    final sid = sessionId.trim();
+    final existing = _pods[sid];
+    if (existing != null) return existing;
+    final tab = _tabStore.getOpenTabBySessionId(sid);
+    final loader = historyLoader;
+    final pod = SessionPod(
+      sessionId: sid,
+      workspaceId: tab?.workspaceId ?? '',
+      history: loader == null
+          ? null
+          : HistoryStore(
+              loader: loader,
+              loadMailboxRecords: (s, m) async {
+                final bus = _tabStore.getOpenTabBySessionId(s)?.teamBus;
+                if (bus == null) return const [];
+                return bus.memberMailRecords(m);
+              },
+            ),
+    );
+    _pods[sid] = pod;
+    _podRegistry.bump();
+    return pod;
+  }
 
   /// Observable state of the pod for [sessionId], or null.
   SessionPodState? podFor(String sessionId) => _pods[sessionId.trim()]?.state;
 
   /// Observable state of the active session's pod (foreground tab), or null.
   SessionPodState? get activePod {
-    final id = activeTab?.info.id;
+    final id = activeTab?.sessionId;
     if (id == null || id.isEmpty) return null;
     return _pods[id]?.state;
   }
@@ -870,6 +881,7 @@ class ChatCubit extends Cubit<ChatState>
   Future<void> disposePod(String sessionId) async {
     final pod = _pods.remove(sessionId.trim());
     if (pod == null) return;
+    _podRegistry.bump();
     await pod.history?.close();
   }
 
@@ -1097,7 +1109,7 @@ class ChatCubit extends Cubit<ChatState>
     final reasons = _sessionRuntime.computeReasons();
     final next = <String, SessionActivity>{};
     for (final tab in _tabStore.openTabs) {
-      final id = tab.info.id;
+      final id = tab.sessionId;
       final prev = state.sessionActivities[id] ?? const SessionActivity();
       final forced = _forcedDisposition.remove(id);
       final activity = reduceSessionActivity(
@@ -1171,7 +1183,7 @@ class ChatCubit extends Cubit<ChatState>
 
     for (final tab in _tabStore.activeTabs) {
       final mid = tab.selectedMemberId.trim();
-      if (mid.isNotEmpty) notifySeat(tab.info.id, mid);
+      if (mid.isNotEmpty) notifySeat(tab.sessionId, mid);
     }
     for (final seat in _followUpQueue.seats) {
       final parsed = parseFollowUpSeatKey(seat);
@@ -1745,7 +1757,7 @@ class ChatCubit extends Cubit<ChatState>
     final sessionWorking = _sessionRuntime.sessionWorking;
     final usesPresenceSnapshot = sessionWorking.usesPresenceSnapshotForTab(
       tab: tab,
-      activeSessionId: activeTab?.info.id,
+      activeSessionId: activeTab?.sessionId,
       presenceNonEmpty: presence.isNotEmpty,
     );
 
@@ -1764,7 +1776,7 @@ class ChatCubit extends Cubit<ChatState>
     String? sessionId,
     String? memberId,
   }) async {
-    final sid = sessionId ?? activeTab?.info.id;
+    final sid = sessionId ?? activeTab?.sessionId;
     if (sid == null) return;
     final tab = _tabStore.getOpenTabBySessionId(sid);
     if (tab == null) return;
@@ -2631,7 +2643,7 @@ class ChatCubit extends Cubit<ChatState>
       _launchService.reconnectSshProfile(profileId);
 
   Future<void> _tearDownTab(ChatTab tab) async {
-    final sessionId = tab.info.id;
+    final sessionId = tab.sessionId;
     // Release the pod (history store + registry entry) first; the global cubit
     // sink handles legacy seats and any pods that predate history wiring.
     await disposePod(sessionId);
@@ -2671,7 +2683,7 @@ class ChatCubit extends Cubit<ChatState>
   /// scratch tabs, which have no persisted workspace session).
   int openTabCountForWorkspace(String workspaceId) => _tabStore
       .tabsForWorkspace(workspaceId)
-      .where((t) => !t.info.id.startsWith('local-'))
+      .where((t) => !t.sessionId.startsWith('local-'))
       .length;
 
   /// Closes (terminates) every open session belonging to [workspaceId] by
@@ -2809,7 +2821,7 @@ class ChatCubit extends Cubit<ChatState>
     if (tab == null) return;
     assignSelectedMember(tab, memberId);
     if (tab.workbenchView == SessionWorkbenchView.terminal) {
-      unawaited(ensureMemberTerminalForView(tab.info.id, memberId));
+      unawaited(ensureMemberTerminalForView(tab.sessionId, memberId));
     }
   }
 
@@ -2937,7 +2949,7 @@ class ChatCubit extends Cubit<ChatState>
 
   void disconnectSession() {
     final tab = activeTab;
-    final sessionId = tab?.info.id;
+    final sessionId = tab?.sessionId;
     _launchService.disconnectSession();
     if (sessionId != null && sessionId.isNotEmpty) {
       onSessionHistoryStale?.call(sessionId);
@@ -2996,7 +3008,7 @@ class ChatCubit extends Cubit<ChatState>
       return s;
     }).toList();
     for (final tab in _tabStore.openTabs) {
-      if (tab.info.id == sessionId) {
+      if (tab.sessionId == sessionId) {
         tab.info = tab.info.copyWith(title: newName);
       }
     }
@@ -3530,7 +3542,34 @@ class ChatCubit extends Cubit<ChatState>
     await Future.wait(busDisposals);
     await _teammateBusMcpGateway.dispose();
     _tabStore.clear();
+    _podRegistry.dispose();
     await _operatorMailboxQueued.close();
     await super.close();
+  }
+}
+
+/// Minimal [ChangeNotifier] for the pod registry. Kept private so the only
+/// trigger is [ChatCubit.ensurePodRuntime] / [ChatCubit.disposePod].
+///
+/// Notification is deferred to a microtask: pods are also seeded from
+/// build-time selectors (sidebar phase reads), and a synchronous notify would
+/// make listeners call `setState` during build.
+final class _PodRegistry extends ChangeNotifier {
+  bool _disposed = false;
+  bool _bumpScheduled = false;
+
+  void bump() {
+    if (_disposed || _bumpScheduled) return;
+    _bumpScheduled = true;
+    scheduleMicrotask(() {
+      _bumpScheduled = false;
+      if (!_disposed) notifyListeners();
+    });
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

@@ -109,7 +109,7 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     // Terminal liveness (member shells) lives outside pod state; notify the
     // pod so workbench listeners re-read it instead of keeping a discarded /
     // disconnected shell mounted as an unresponsive surface.
-    podRuntime(tab.info.id)?.notifyExternalStateChanged();
+    podRuntime(tab.sessionId)?.notifyExternalStateChanged();
     onTabRunningChanged();
   }
 

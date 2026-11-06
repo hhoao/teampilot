@@ -180,16 +180,16 @@ class SessionShellConnector implements SessionShellConnectPort {
         : (member?.id ?? '');
     appLogger.d(
       '[session-launch] connectShell start '
-      'session=${tab.info.id} member=$memberLabel personal=$isPersonal '
+      'session=${tab.sessionId} member=$memberLabel personal=$isPersonal '
       'launched=$launched',
     );
     if (!isPersonal && (team == null || member == null)) {
       appLogger.d(
-        '[session-launch] connectShell aborted session=${tab.info.id} '
+        '[session-launch] connectShell aborted session=${tab.sessionId} '
         'reason=missing_team_or_member',
       );
       _host.failSessionConnect(
-        tab.info.id,
+        tab.sessionId,
         'Team session requires team and member to connect.',
       );
       return ConnectShellResult.failed;
@@ -203,11 +203,11 @@ class SessionShellConnector implements SessionShellConnectPort {
     if (team != null) {
       if (connectSession.cliTeamName.isEmpty) {
         appLogger.d(
-          '[session-launch] connectShell aborted session=${tab.info.id} '
+          '[session-launch] connectShell aborted session=${tab.sessionId} '
           'reason=missing_cli_team_name',
         );
         _host.failSessionConnect(
-          tab.info.id,
+          tab.sessionId,
           'Session is missing CLI team identity (cliTeamName). '
           'Create a new team session.',
         );
@@ -216,11 +216,11 @@ class SessionShellConnector implements SessionShellConnectPort {
       if (!connectSession.sessionId.startsWith('local-') &&
           connectSession.members.isEmpty) {
         appLogger.d(
-          '[session-launch] connectShell aborted session=${tab.info.id} '
+          '[session-launch] connectShell aborted session=${tab.sessionId} '
           'reason=missing_member_bindings',
         );
         _host.failSessionConnect(
-          tab.info.id,
+          tab.sessionId,
           'Session is missing member task bindings. Create a new team session.',
         );
         return ConnectShellResult.failed;
@@ -280,7 +280,7 @@ class SessionShellConnector implements SessionShellConnectPort {
 
       appLogger.d(
         '[session-launch] launch target resolved '
-        'session=${tab.info.id} member=$preflightMemberId '
+        'session=${tab.sessionId} member=$preflightMemberId '
         'cli=${launchCli.value} target=${launchTarget.kind.name} '
         'targetId=${launchTarget.id}',
       );
@@ -288,10 +288,10 @@ class SessionShellConnector implements SessionShellConnectPort {
       final termuxBlock = _termuxWorkOpsBlockFor?.call(launchTarget);
       if (termuxBlock != null) {
         appLogger.d(
-          '[session-launch] connectShell aborted session=${tab.info.id} '
+          '[session-launch] connectShell aborted session=${tab.sessionId} '
           'reason=termux_disconnected',
         );
-        _host.failSessionConnect(tab.info.id, termuxBlock);
+        _host.failSessionConnect(tab.sessionId, termuxBlock);
         return ConnectShellResult.failed;
       }
 
@@ -313,7 +313,7 @@ class SessionShellConnector implements SessionShellConnectPort {
       if (isPersonal) {
         if (workspace == null) {
           _host.failSessionConnect(
-            tab.info.id,
+            tab.sessionId,
             'Simple session requires workspace to connect.',
           );
           return ConnectShellResult.failed;
@@ -364,7 +364,7 @@ class SessionShellConnector implements SessionShellConnectPort {
         if (mixedBus && memberSshSession != null) {
           appLogger.d(
             '[session-launch] mixed bus remote setup start '
-            'session=${tab.info.id} member=$preflightMemberId',
+            'session=${tab.sessionId} member=$preflightMemberId',
           );
           final setup = _host.remoteBusSetup;
           if (setup != null) {
@@ -532,7 +532,7 @@ class SessionShellConnector implements SessionShellConnectPort {
       final plan = shellLaunch.plan;
       appLogger.d(
         '[session-launch] launch plan ready '
-        'session=${tab.info.id} member=$memberLabel '
+        'session=${tab.sessionId} member=$memberLabel '
         'resume=${plan.resume} create=${plan.createSessionId ?? ''} '
         'resumeId=${plan.resumeSessionId ?? ''} warnings=${plan.warnings.length}',
       );
@@ -566,7 +566,7 @@ class SessionShellConnector implements SessionShellConnectPort {
       );
       appLogger.d(
         '[session-launch] shell.connect '
-        'session=${tab.info.id} member=$memberLabel '
+        'session=${tab.sessionId} member=$memberLabel '
         'cwd=${memberWork.workingDirectory} addDirs=${memberWork.addDirs.length}',
       );
       // Background members never hit workbench theme sync before spawn; apply
@@ -611,32 +611,32 @@ class SessionShellConnector implements SessionShellConnectPort {
             sessionId: activeSession.sessionId,
             memberId: agentStatusSeatMemberId,
           );
-          _host.failSessionConnect(tab.info.id, message);
+          _host.failSessionConnect(tab.sessionId, message);
         },
         onProcessExited: () {
           _host.clearAgentStatusSeat(
             sessionId: activeSession.sessionId,
             memberId: agentStatusSeatMemberId,
           );
-          _host.updateTabRunning(tab.info.id);
+          _host.updateTabRunning(tab.sessionId);
         },
         onProcessStarted: () {
           if (team != null && member != null) {
-            _delegate.cancelLifecycleConnectRetry(tab.info.id, member.id);
+            _delegate.cancelLifecycleConnectRetry(tab.sessionId, member.id);
             tab.teamBus?.markMemberRunning(member.id);
-            _host.memberMaterializer.markMemberReady(tab.info.id, member.id);
+            _host.memberMaterializer.markMemberReady(tab.sessionId, member.id);
           } else if (isPersonal) {
             final personalMemberId = tab.selectedMemberId.trim();
             if (personalMemberId.isNotEmpty) {
               _host.memberMaterializer.markMemberReady(
-                tab.info.id,
+                tab.sessionId,
                 personalMemberId,
               );
             }
           }
-          _host.clearLaunchError(tab.info.id);
-          _host.updateTabRunning(tab.info.id);
-          _host.finishSessionConnect(tab.info.id);
+          _host.clearLaunchError(tab.sessionId);
+          _host.updateTabRunning(tab.sessionId);
+          _host.finishSessionConnect(tab.sessionId);
           final r = repo ?? _host.sessionRepository;
           if (r != null && !activeSession.sessionId.startsWith('local-')) {
             unawaited(
@@ -660,12 +660,12 @@ class SessionShellConnector implements SessionShellConnectPort {
         await tab.closeMemberRemotePlane(remoteMemberKeyForRollback);
       }
       appLogger.e(
-        '[session-launch] connectShell failed session=${tab.info.id} '
+        '[session-launch] connectShell failed session=${tab.sessionId} '
         'member=$memberLabel: $e',
         error: e,
         stackTrace: st,
       );
-      _host.failSessionConnect(tab.info.id, 'Failed to connect session: $e');
+      _host.failSessionConnect(tab.sessionId, 'Failed to connect session: $e');
       return ConnectShellResult.failed;
     }
   }
@@ -770,7 +770,7 @@ class SessionShellConnector implements SessionShellConnectPort {
         detail: progress.detail,
         hostLabel: hostLabel,
       );
-      _host.setMemberRemoteProvisionProgress(tab.info.id, memberId, latest);
+      _host.setMemberRemoteProvisionProgress(tab.sessionId, memberId, latest);
     }
 
     Future<
@@ -783,11 +783,11 @@ class SessionShellConnector implements SessionShellConnectPort {
     runPrepare(void Function(CliInstallProgress progress)? onProgress) async {
       try {
         final result = await prepare(onProgress);
-        _host.setMemberRemoteProvisionProgress(tab.info.id, memberId, null);
+        _host.setMemberRemoteProvisionProgress(tab.sessionId, memberId, null);
         return result;
       } on Object catch (e) {
         _host.setMemberRemoteProvisionProgress(
-          tab.info.id,
+          tab.sessionId,
           memberId,
           (latest ??
                   MemberRemoteProvisionProgress(
@@ -823,7 +823,7 @@ class SessionShellConnector implements SessionShellConnectPort {
         : InstallJobScopeSsh(profileId);
     final key = InstallJobKey(
       kind: InstallJobKind.cliExecutable,
-      target: 'provision:${tab.info.id}:$memberId',
+      target: 'provision:${tab.sessionId}:$memberId',
       scope: scope,
     );
 
@@ -887,19 +887,19 @@ class SessionShellConnector implements SessionShellConnectPort {
     Future<RemoteBusBinding> run() async {
       appLogger.d(
         '[session-launch] mixed bus remote resolve-work-ctx '
-        'session=${tab.info.id} member=$memberId target=${launchTarget.id}',
+        'session=${tab.sessionId} member=$memberId target=${launchTarget.id}',
       );
       final workCtx = await _host.lifecycle.resolveWorkContextForTargetId(
         launchTarget.id,
       );
       appLogger.d(
         '[session-launch] mixed bus remote uname '
-        'session=${tab.info.id} member=$memberId',
+        'session=${tab.sessionId} member=$memberId',
       );
       final arch = archFromUname(await memberSshSession.run('uname -m'));
       appLogger.d(
         '[session-launch] mixed bus remote bind '
-        'session=${tab.info.id} member=$memberId arch=$arch cli=${launchCli.value}',
+        'session=${tab.sessionId} member=$memberId arch=$arch cli=${launchCli.value}',
       );
       final binding = await setup.mountAndBindMixed(
         tab: tab,
@@ -912,7 +912,7 @@ class SessionShellConnector implements SessionShellConnectPort {
       );
       appLogger.d(
         '[session-launch] mixed bus remote setup ready '
-        'session=${tab.info.id} member=$memberId',
+        'session=${tab.sessionId} member=$memberId',
       );
       return binding;
     }

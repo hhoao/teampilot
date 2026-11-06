@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/pages/chat_workbench.dart';
 
+class _Registry extends ChangeNotifier {
+  void bump() => notifyListeners();
+}
+
 void main() {
   // A rewind edit stops and relaunches the seat, so the pod is briefly null
   // (or replaced). The body root must stay the same widget type across that
@@ -10,22 +14,33 @@ void main() {
   testWidgets('pod null/non-null flip keeps the subtree element mounted', (
     tester,
   ) async {
+    final registry = _Registry();
     final notifier = ValueNotifier<int>(0);
+    final relaunched = ValueNotifier<int>(1);
+    addTearDown(registry.dispose);
+    addTearDown(notifier.dispose);
+    addTearDown(relaunched.dispose);
+    Listenable? pod = notifier;
 
-    Widget build(Listenable? pod) => MaterialApp(
-      home: wrapPodDependentBody(
-        pod: pod,
-        builder: (context) => const _StatefulChild(),
+    Future<void> pump() => tester.pumpWidget(
+      MaterialApp(
+        home: wrapPodDependentBody(
+          podRegistry: registry,
+          resolvePod: () => pod,
+          builder: (context, _) => const _StatefulChild(),
+        ),
       ),
     );
 
-    await tester.pumpWidget(build(notifier));
+    await pump();
     final firstState = tester.state<State<_StatefulChild>>(
       find.byType(_StatefulChild),
     );
 
     // Reconnect start: pod dropped.
-    await tester.pumpWidget(build(null));
+    pod = null;
+    registry.bump();
+    await tester.pump();
     expect(
       tester.state<State<_StatefulChild>>(find.byType(_StatefulChild)),
       same(firstState),
@@ -33,16 +48,14 @@ void main() {
     );
 
     // Reconnect end: pod back (a fresh instance, as the runtime is relaunched).
-    final relaunched = ValueNotifier<int>(1);
-    await tester.pumpWidget(build(relaunched));
+    pod = relaunched;
+    registry.bump();
+    await tester.pump();
     expect(
       tester.state<State<_StatefulChild>>(find.byType(_StatefulChild)),
       same(firstState),
       reason: 'recreating the pod must not remount the chat subtree',
     );
-
-    notifier.dispose();
-    relaunched.dispose();
   });
 }
 

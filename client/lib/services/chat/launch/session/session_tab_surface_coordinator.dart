@@ -106,7 +106,7 @@ class SessionTabSurfaceCoordinator {
     if (request.connectImmediately &&
         !request.preserveWorkbenchView &&
         !isAcpChatSession(session)) {
-      _host.setPodView(existing.info.id, SessionWorkbenchView.terminal);
+      _host.setPodView(existing.sessionId, SessionWorkbenchView.terminal);
     }
     if (connect && memberConnectAlreadyScheduled) {
       appLogger.d(
@@ -152,7 +152,7 @@ class SessionTabSurfaceCoordinator {
     _host.sessionRuntime.ensureIdleWatch();
     onSessionTabOpened?.call(
       session.workspaceId,
-      tab.info.id,
+      tab.sessionId,
       preview: request.preview ?? !request.connectImmediately,
       activate: true,
     );
@@ -161,7 +161,7 @@ class SessionTabSurfaceCoordinator {
     if (request.connectImmediately &&
         !request.preserveWorkbenchView &&
         !isAcpChatSession(session)) {
-      _host.setPodView(tab.info.id, SessionWorkbenchView.terminal);
+      _host.setPodView(tab.sessionId, SessionWorkbenchView.terminal);
     }
 
     return SessionTabSurfaceResult(

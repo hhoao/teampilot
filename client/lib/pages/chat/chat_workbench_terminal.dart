@@ -95,7 +95,7 @@ class _ChatWorkbenchRunningTerminalState
   ({String surfaceLabel, Workspace? workspace, String tabScopeId})
   _selectionAiTarget(BuildContext context) {
     final chat = context.read<ChatCubit>();
-    final sessionId = chat.activeTab?.info.id.trim() ?? '';
+    final sessionId = chat.activeTab?.sessionId.trim() ?? '';
     AppSession? appSession;
     for (final candidate in chat.state.sessions) {
       if (candidate.sessionId == sessionId) {

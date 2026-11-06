@@ -60,7 +60,7 @@ CliTool resolveSessionTabCli({
 AppSession? _sessionForTab(ChatTab tab, List<AppSession> sessions) {
   final cached = tab.persistedSession;
   if (cached != null) return cached;
-  final tabId = tab.info.id;
+  final tabId = tab.sessionId;
   if (tabId.startsWith('local-')) return null;
   for (final s in sessions) {
     if (s.sessionId == tabId) return s;

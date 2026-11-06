@@ -142,7 +142,7 @@ class AcpRuntimeAttach {
     if (existing != null) {
       if (firstPrompt.isNotEmpty) existing.sendPrompt(firstPrompt);
       tab.reclaimedAcpRuntime = false;
-      _host.updateTabRunning(tab.info.id);
+      _host.updateTabRunning(tab.sessionId);
       return true;
     }
     final cli = session.cli;
@@ -241,7 +241,7 @@ class AcpRuntimeAttach {
     );
     tab.acpRuntime = cubit;
     tab.reclaimedAcpRuntime = false;
-    _host.updateTabRunning(tab.info.id);
+    _host.updateTabRunning(tab.sessionId);
     // A lazy attach-then-send owns the very first turn: queue the prompt on the
     // cubit *before* the handshake so its bubble is visible immediately and
     // `start()` dispatches it instead of running a launch-time history replay
@@ -257,7 +257,7 @@ class AcpRuntimeAttach {
     );
     if (_host.isClosed) return true;
     _host.finishSessionConnect(session.sessionId);
-    _host.updateTabRunning(tab.info.id);
+    _host.updateTabRunning(tab.sessionId);
     return true;
   }
 
@@ -356,7 +356,7 @@ class AcpRuntimeAttach {
     if (tab == null) return false;
     final existing = tab.memberAcpRuntimes[member.id];
     if (existing != null) {
-      _host.updateTabRunning(tab.info.id);
+      _host.updateTabRunning(tab.sessionId);
       return true;
     }
     if (workspace == null) {
@@ -466,7 +466,7 @@ class AcpRuntimeAttach {
     );
     tab.memberAcpRuntimes[member.id] = cubit;
     _listenForMemberIdle(tab, member.id, cubit);
-    _host.updateTabRunning(tab.info.id);
+    _host.updateTabRunning(tab.sessionId);
     // Same moment as PTY `onProcessStarted`: unblock send()'s materialize
     // wait and allow MailArrived doorbells. Do this before `cubit.start`
     // (ACP session/new is often >20s) so TeamBus is not stuck in
@@ -493,7 +493,7 @@ class AcpRuntimeAttach {
     );
     if (_host.isClosed) return true;
     _host.finishSessionConnect(session.sessionId);
-    _host.updateTabRunning(tab.info.id);
+    _host.updateTabRunning(tab.sessionId);
     return true;
   }
 
