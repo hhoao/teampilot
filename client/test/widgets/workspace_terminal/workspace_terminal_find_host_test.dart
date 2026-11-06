@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
+import 'package:teampilot/widgets/find/find_bar_widgets.dart';
 import 'package:teampilot/widgets/terminal_find_bar.dart';
 import 'package:teampilot/widgets/workspace_terminal/workspace_terminal_find_host.dart';
 
@@ -71,6 +72,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(TerminalFindBar), findsOneWidget);
     expect(find.text('Find in terminal'), findsOneWidget);
+    expect(find.byType(FindBarPanel), findsOneWidget);
   });
 
   testWidgets('close hides TerminalFindBar', (tester) async {

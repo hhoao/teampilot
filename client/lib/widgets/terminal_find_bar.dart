@@ -3,6 +3,9 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
+import 'find/find_bar_palette.dart';
+import 'find/find_bar_widgets.dart';
+
 /// Inline find bar for [TerminalView] scrollback search.
 class TerminalFindBar extends StatefulWidget {
   const TerminalFindBar({
@@ -26,9 +29,11 @@ class TerminalFindBar extends StatefulWidget {
 
 class _TerminalFindBarState extends State<TerminalFindBar> {
   final _queryController = TextEditingController();
+  final _focusNode = FocusNode();
 
   @override
   void dispose() {
+    _focusNode.dispose();
     _queryController.dispose();
     super.dispose();
   }
@@ -61,7 +66,8 @@ class _TerminalFindBarState extends State<TerminalFindBar> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final palette = FindBarPalette.of(context);
+    final styles = TpTextStyles.of(context);
     final query = _queryController.text;
     final status = !widget.controller.searchValid && query.isNotEmpty
         ? widget.noResultsLabel
@@ -69,44 +75,45 @@ class _TerminalFindBarState extends State<TerminalFindBar> {
         ? ''
         : 'regex';
 
-    return Material(
-      elevation: 4,
-      color: cs.surfaceContainerHighest,
+    return FindBarPanel(
+      focusNode: _focusNode,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
         child: Row(
           children: [
             Expanded(
-              child: TextField(
+              child: FindField(
                 controller: _queryController,
+                focusNode: _focusNode,
+                hint: widget.searchLabel,
                 autofocus: true,
-                decoration: InputDecoration(
-                  isDense: true,
-                  hintText: widget.searchLabel,
-                  border: const OutlineInputBorder(),
-                  suffixText: status,
-                ),
                 onChanged: (_) => _runSearch(),
                 onSubmitted: (_) => _step(true),
+                trailing: status.isEmpty
+                    ? null
+                    : Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Text(
+                          status,
+                          style: styles.sm.copyWith(color: palette.mutedText),
+                        ),
+                      ),
               ),
             ),
-            IconButton(
+            FindActionButton(
               tooltip: 'Previous',
-              icon: Icon(Icons.keyboard_arrow_up, size: context.tpIconSizes.md),
-              onPressed: () => _step(false),
+              icon: Icons.keyboard_arrow_up,
+              onTap: () => _step(false),
             ),
-            IconButton(
+            FindActionButton(
               tooltip: 'Next',
-              icon: Icon(
-                Icons.keyboard_arrow_down,
-                size: context.tpIconSizes.md,
-              ),
-              onPressed: () => _step(true),
+              icon: Icons.keyboard_arrow_down,
+              onTap: () => _step(true),
             ),
-            IconButton(
+            FindActionButton(
               tooltip: 'Close',
-              icon: Icon(Icons.close, size: context.tpIconSizes.md),
-              onPressed: _close,
+              icon: Icons.close,
+              onTap: _close,
             ),
           ],
         ),
