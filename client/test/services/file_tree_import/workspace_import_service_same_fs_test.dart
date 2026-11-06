@@ -55,6 +55,8 @@ Future<ImportPlan> _buildPlan(
 
 /// Delegates to [delegate] but throws on [rename] when [failRename] is true.
 class RenameFailingFilesystem implements Filesystem {
+  @override
+  bool get isRemote => false;
   RenameFailingFilesystem(this.delegate, {this.failRename = true});
 
   final InMemoryFilesystem delegate;
@@ -149,6 +151,8 @@ class RenameFailingFilesystem implements Filesystem {
 
 /// Delegates to [delegate] but throws on [copyFile].
 class CopyFailingFilesystem implements Filesystem {
+  @override
+  bool get isRemote => false;
   CopyFailingFilesystem(this.delegate);
 
   final InMemoryFilesystem delegate;

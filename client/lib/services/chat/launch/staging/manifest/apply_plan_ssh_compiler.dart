@@ -7,6 +7,7 @@ import 'apply_plan.dart';
 import 'blob_store.dart';
 import 'manifest_ssh_flush_plan.dart';
 import 'manifest_ssh_overlay.dart';
+import '../../../../remote/runtime_materialization_policy.dart';
 
 final class ApplyPlanSshPayload {
   const ApplyPlanSshPayload({this.script, this.gzipTar, this.extractCommand});
@@ -83,6 +84,33 @@ String? _compileMutationScript(
           ..writeln("cat > ${posixShellQuote(path)} <<'$delimiter'")
           ..writeln(content)
           ..writeln(delimiter);
+      case ApplyCopyFile(:final source, :final destination, :final mode):
+        _writeEnsureDir(buffer, _posixDirname(destination));
+        if (mode == applyPlanPrivateFileMode) {
+          buffer.writeln(
+            'install -m 600 -- ${posixShellQuote(source)} '
+            '${posixShellQuote(destination)}',
+          );
+        } else {
+          buffer.writeln(
+            'cp -f -- ${posixShellQuote(source)} '
+            '${posixShellQuote(destination)}',
+          );
+        }
+      case ApplyCopyTree(:final source, :final destination):
+        _writeEnsureDir(buffer, destination);
+        buffer.writeln(
+          'cp -R -- ${posixShellQuote(p.posix.join(source, '.'))} '
+          '${posixShellQuote(destination)}',
+        );
+        // Server-side copy must still honour the materialization policy:
+        // no VCS metadata or per-session scratch caches in the overlay.
+        for (final name in RuntimeMaterializationPolicy.excludedSegments) {
+          buffer.writeln(
+            'find ${posixShellQuote(destination)} -type d '
+            '-name ${posixShellQuote(name)} -prune -exec rm -rf -- {} +',
+          );
+        }
       case ApplyWriteBlob() || ApplyTree():
         break;
     }
@@ -122,7 +150,9 @@ Map<String, _BlobMember> _compactedBlobMembers(ApplyPlan plan) {
           ApplyRemove() ||
           ApplyRename() ||
           ApplySymlink() ||
-          ApplyWriteInline():
+          ApplyWriteInline() ||
+          ApplyCopyFile() ||
+          ApplyCopyTree():
         break;
     }
   }
@@ -168,7 +198,11 @@ bool _mutationShadowsDestination(ApplyOp op, String destination) {
     ApplySymlink(:final linkPath) => atOrAbove(linkPath),
     ApplyWriteInline(:final path) =>
       normalizedDestination == p.posix.normalize(path),
-    ApplyEnsureDir() || ApplyWriteBlob() || ApplyTree() => false,
+    ApplyEnsureDir() ||
+        ApplyWriteBlob() ||
+        ApplyTree() ||
+        ApplyCopyFile() ||
+        ApplyCopyTree() => false,
   };
 }
 

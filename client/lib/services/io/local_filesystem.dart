@@ -13,6 +13,9 @@ class LocalFilesystem implements Filesystem, FsWatcher {
   }) : pathContext = pathContext ?? p.context,
        _renameFile = renameFile ?? ((from, to) => File(from).rename(to));
 
+  @override
+  bool get isRemote => false;
+
   final Future<File> Function(String from, String to) _renameFile;
 
   static int _tmpWriteCounter = 0;

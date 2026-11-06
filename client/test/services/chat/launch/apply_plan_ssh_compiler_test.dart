@@ -11,6 +11,33 @@ import 'package:teampilot/services/chat/launch/staging/manifest/work_path_projec
 import '../../../support/in_memory_filesystem.dart';
 
 void main() {
+  test('server-side copy ops stay in the script, never in the tar', () async {
+    final payload = await compileApplyPlanForSsh(
+      plan: ApplyPlan(
+        workRoot: '/w',
+        ops: [
+          ApplyCopyFile(
+            source: '/w/cache/key',
+            destination: '/w/session/key',
+            mode: applyPlanPrivateFileMode,
+          ),
+          ApplyCopyTree(
+            source: '/w/cache/plugins',
+            destination: '/w/session/plugins',
+          ),
+        ],
+      ),
+      blobs: MemoryBlobStore(),
+    );
+
+    expect(payload.gzipTar, isNull, reason: 'no file bytes cross the wire');
+    expect(payload.script, contains('install -m 600'));
+    expect(payload.script, contains("cp -R -- '/w/cache/plugins/.'"));
+    expect(payload.script, contains("find '/w/session/plugins'"));
+    expect(payload.script, contains('-name \'.git\''));
+    expect(payload.script, contains('rm -rf'));
+  });
+
   test('ensureDir symlink writeInline is one script and no tar', () async {
     final payload = await compileApplyPlanForSsh(
       plan: ApplyPlan(

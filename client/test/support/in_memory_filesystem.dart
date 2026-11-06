@@ -32,6 +32,8 @@ HomeStorage fakeHomeStorage({
 }
 
 class InMemoryFilesystem implements Filesystem {
+  @override
+  bool get isRemote => false;
   InMemoryFilesystem({p.Context? pathContext})
     : pathContext = pathContext ?? p.Context(style: p.Style.posix);
 

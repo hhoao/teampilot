@@ -142,6 +142,38 @@ void main() {
     expect(ids, ['new', 'mid', 'tie-a', 'tie-b', 'old']);
   });
 
+  test('orderedWorkspaceSessionIds re-sorts ids by createdAt desc', () {
+    final workspaces = [
+      _ws('p', sessionIds: ['dir-a', 'dir-b', 'ghost', 'dir-c']),
+      _ws('q', sessionIds: ['only']),
+    ];
+    final sessions = [
+      _sess('dir-a', 'p', createdAt: 1),
+      _sess('dir-b', 'p', createdAt: 9),
+      _sess('dir-c', 'p', createdAt: 5),
+    ];
+
+    final ordered = SessionDataStore.orderedWorkspaceSessionIds(
+      workspaces: workspaces,
+      sessions: sessions,
+    );
+
+    // Known ids by createdAt desc; the id with no loaded session keeps its
+    // relative position after the known ones instead of disappearing.
+    expect(ordered[0].sessionIds, ['dir-b', 'dir-c', 'dir-a', 'ghost']);
+    // Single-id / untouched workspaces are returned as-is.
+    expect(ordered[1], same(workspaces[1]));
+  });
+
+  test('orderedWorkspaceSessionIds leaves workspaces alone without sessions', () {
+    final workspaces = [_ws('p', sessionIds: ['b', 'a'])];
+    final ordered = SessionDataStore.orderedWorkspaceSessionIds(
+      workspaces: workspaces,
+      sessions: const [],
+    );
+    expect(ordered, same(workspaces));
+  });
+
   test(
     'appendSession inserts sessionId into workspace sessionIds (createdAt order)',
     () {

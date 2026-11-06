@@ -90,6 +90,8 @@ class _RecordingSpawner {
 }
 
 class _FakeFs implements Filesystem {
+  @override
+  bool get isRemote => false;
   final files = <String>{};
   final dirs = <String>{};
   final deleted = <String>[];

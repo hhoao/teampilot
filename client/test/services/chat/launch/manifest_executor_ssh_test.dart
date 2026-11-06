@@ -10,8 +10,10 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
-import 'package:teampilot/services/chat/launch/staging/manifest/launch_manifest.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/apply_plan.dart';
 import 'package:teampilot/services/chat/launch/staging/manifest/manifest_executor.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/work_path_projector.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/work_plane_applier.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/utils/logging/logger.dart';
 
@@ -112,6 +114,100 @@ void main() {
     expect(await fs.readSymlinkTarget('/dst/home/.npm'), '/dst/.npm');
   });
 
+  test('same-host remote-plane flush batches through ssh exec', () async {
+    final execs = <_RecordedExec>[];
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _RunnableClient(
+          onRun: (command, stdin) {
+            execs.add(_RecordedExec(command: command, stdin: stdin));
+          },
+        );
+      },
+    );
+
+    final fs = InMemoryFilesystem();
+    await fs.writeString('/src/tree/a.txt', 'A');
+    final manifest = LaunchManifest()
+      ..copyTree(source: '/src/tree', destination: '/dst/tree');
+
+    await ManifestExecutor(
+      sshClientFactory: factory,
+      profileById: (_) => profile,
+      remoteBatchOverride: true,
+    ).flush(
+      manifest: manifest,
+      targetFs: fs,
+      sourceFs: fs,
+      sshProfileId: profile.id,
+      symlinkProjectionRoot: '/dst',
+      homeRoot: '/dst',
+    );
+
+    expect(execs, isNotEmpty, reason: 'SFTP planes must not apply per-file');
+    expect(
+      execs.any(
+        (e) => e.command.contains('bash -s') || e.command.contains('tar'),
+      ),
+      isTrue,
+    );
+  });
+
+  test('same-host remote copy flushes without shipping file bytes', () async {
+    final execs = <_RecordedExec>[];
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _RunnableClient(
+          onRun: (command, stdin) {
+            execs.add(_RecordedExec(command: command, stdin: stdin));
+          },
+        );
+      },
+    );
+
+    final fs = InMemoryFilesystem();
+    await fs.writeString('/dst/cache/tree/a.txt', 'A');
+    final manifest = LaunchManifest()
+      ..copyTree(source: '/dst/cache/tree', destination: '/dst/session/tree');
+
+    await ManifestExecutor(
+      sshClientFactory: factory,
+      profileById: (_) => profile,
+      remoteBatchOverride: true,
+      serverSideCopyOverride: true,
+    ).flush(
+      manifest: manifest,
+      targetFs: fs,
+      sourceFs: fs,
+      sshProfileId: profile.id,
+      symlinkProjectionRoot: '/dst',
+      homeRoot: '/dst',
+    );
+
+    expect(execs, hasLength(1), reason: 'one script, no tar extract epoch');
+    expect(execs.single.command, 'bash -s');
+    expect(utf8.decode(execs.single.stdin!), contains('cp -R'));
+    expect(execs.single.stdin!.length < 4096, isTrue);
+  });
+
   test('off-home ssh flush rejects empty work root', () async {
     const profile = SshProfile(
       id: 'p1',
@@ -199,7 +295,7 @@ void main() {
   );
 
   test(
-    'off-home copyTree without provided work dir counts each tree blob',
+    'off-home copyTree outside shared bundles counts each tree blob',
     () async {
       final execs = <_RecordedExec>[];
       const profile = SshProfile(
@@ -223,12 +319,18 @@ void main() {
       final workFs = InMemoryFilesystem();
       const fileA = 'alpha';
       const fileB = 'beta';
-      await sourceFs.writeString('/h/plugins/installed/foo/a.txt', fileA);
-      await sourceFs.writeString('/h/plugins/installed/foo/b.txt', fileB);
+      await sourceFs.writeString(
+        '/h/workspace/workspaces/w1/config/claude/agents/a.txt',
+        fileA,
+      );
+      await sourceFs.writeString(
+        '/h/workspace/workspaces/w1/config/claude/agents/b.txt',
+        fileB,
+      );
       final manifest = LaunchManifest()
         ..copyTree(
-          source: '/h/plugins/installed/foo',
-          destination: '/w/sessions/pool/foo',
+          source: '/h/workspace/workspaces/w1/config/claude/agents',
+          destination: '/w/sessions/pool/agents',
         );
 
       final before = await appLogger.getPendingLogLines();
@@ -367,6 +469,128 @@ void main() {
     );
     expect(Link(sessionPlugins).targetSync(), sharedPlugins);
   });
+
+  test('off-home bundle link seeds the shared tree once', () async {
+    final execs = <_RecordedExec>[];
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+    final factory = _recordingFactory(execs);
+    final sourceFs = InMemoryFilesystem();
+    final workFs = InMemoryFilesystem();
+    const workRoot = '/w';
+    const linkPath = '$workRoot/sessions/s/runtime/claude/skills/foo';
+    await sourceFs.writeString('/h/skills/installed/foo/SKILL.md', '# foo');
+    final manifest = LaunchManifest()
+      ..symlink(linkPath: linkPath, target: '/h/skills/installed/foo');
+
+    await ManifestExecutor(
+      sshClientFactory: factory,
+      profileById: (_) => profile,
+    ).flush(
+      manifest: manifest,
+      targetFs: workFs,
+      sourceFs: sourceFs,
+      sshProfileId: profile.id,
+      symlinkProjectionRoot: workRoot,
+      homeRoot: '/h',
+    );
+
+    expect(execs, hasLength(2));
+    final script = utf8.decode(execs[0].stdin!);
+    // Seeding is additive: the shared generation is never removed (a running
+    // session may still read it), only the session link is replaced.
+    expect(script, isNot(contains("rm -rf -- '$workRoot/.teampilot-bundles/")));
+    expect(script, isNot(contains("rm -rf '$workRoot/.teampilot-bundles/")));
+    expect(script, contains("ln -sfn -- '$workRoot/.teampilot-bundles/"));
+    expect(script, contains("'$linkPath'"));
+    final tar = TarDecoder().decodeBytes(
+      GZipDecoder().decodeBytes(execs[1].stdin!),
+    );
+    final names = tar.files.map((f) => f.name).toList();
+    expect(
+      names.where((n) => n.endsWith('skills/installed/foo/SKILL.md')),
+      hasLength(1),
+    );
+    expect(
+      names.where((n) => n.endsWith('.teampilot-bundle-stamp')),
+      hasLength(1),
+    );
+  });
+
+  test('off-home bundle link with a matching stamp flushes one ln', () async {
+    final execs = <_RecordedExec>[];
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+    final factory = _recordingFactory(execs);
+    final sourceFs = InMemoryFilesystem();
+    final workFs = InMemoryFilesystem();
+    const workRoot = '/w';
+    const linkPath = '$workRoot/sessions/s/runtime/claude/skills/foo';
+    await sourceFs.writeString('/h/skills/installed/foo/SKILL.md', '# foo');
+    final manifest = LaunchManifest()
+      ..symlink(linkPath: linkPath, target: '/h/skills/installed/foo');
+    final executor = ManifestExecutor(
+      sshClientFactory: factory,
+      profileById: (_) => profile,
+    );
+
+    // Seed the work plane the way a first launch does, then re-flush.
+    final seeded = await buildApplyPlan(
+      manifest: manifest,
+      sourceFs: sourceFs,
+      workFs: workFs,
+      homeRoot: '/h',
+      workRoot: workRoot,
+    );
+    await WorkPlaneApplier(
+      fs: workFs,
+      blobs: seeded.blobs,
+      workRoot: workRoot,
+    ).apply(seeded.plan);
+    final seededTree = seeded.plan.ops.whereType<ApplyTree>().single;
+    expect(
+      await workFs.readString('${seededTree.dest}/.teampilot-bundle-stamp'),
+      isNotNull,
+    );
+
+    await executor.flush(
+      manifest: manifest,
+      targetFs: workFs,
+      sourceFs: sourceFs,
+      sshProfileId: profile.id,
+      symlinkProjectionRoot: workRoot,
+      homeRoot: '/h',
+    );
+
+    expect(execs, hasLength(1));
+    expect(execs.single.command, 'bash -s');
+    expect(
+      utf8.decode(execs.single.stdin!),
+      contains("ln -sfn -- '${seededTree.dest}' '$linkPath'"),
+    );
+  });
+}
+
+SshClientFactory _recordingFactory(List<_RecordedExec> execs) {
+  return SshClientFactory(
+    credentialStore: InMemorySshCredentialStore(),
+    knownHostRepository: InMemorySshKnownHostRepository(),
+    connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+      return _RunnableClient(
+        onRun: (command, stdin) {
+          execs.add(_RecordedExec(command: command, stdin: stdin));
+        },
+      );
+    },
+  );
 }
 
 class _RunnableClient extends SSHClient {

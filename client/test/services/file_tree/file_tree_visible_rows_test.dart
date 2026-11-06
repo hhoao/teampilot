@@ -6,6 +6,8 @@ import 'package:teampilot/services/file_tree/file_tree_visible_rows.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 
 class _FakeFilesystem implements Filesystem {
+  @override
+  bool get isRemote => false;
   _FakeFilesystem(this._dirs);
 
   final Map<String, List<FsDirEntry>> _dirs;

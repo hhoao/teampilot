@@ -10,6 +10,8 @@ import '../../../../support/in_memory_filesystem.dart';
 /// Delegates every [Filesystem] method to [inner], except [stat] which strips
 /// size/mtime — mirrors SFTP/WSL backends that historically returned kind only.
 class _StatWithoutSize implements Filesystem {
+  @override
+  bool get isRemote => false;
   _StatWithoutSize(this.inner);
 
   final Filesystem inner;
@@ -99,6 +101,8 @@ class _StatWithoutSize implements Filesystem {
 
 /// Counts [appendBytes] calls while delegating to [inner].
 class _CountingAppends implements Filesystem {
+  @override
+  bool get isRemote => false;
   _CountingAppends(this.inner);
 
   final Filesystem inner;
@@ -189,6 +193,8 @@ class _CountingAppends implements Filesystem {
 /// Delegates every [Filesystem] method to [inner], except [appendBytes] which
 /// fails after [failAfter] successful calls.
 class _FailAfterAppends implements Filesystem {
+  @override
+  bool get isRemote => false;
   _FailAfterAppends(this.inner, {required this.failAfter});
 
   final Filesystem inner;

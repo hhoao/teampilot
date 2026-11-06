@@ -60,6 +60,9 @@ final class WorkPlaneApplier {
       case ApplySymlink(:final linkPath, :final target):
         _assertPath(linkPath);
         _assertPath(target);
+      case ApplyCopyFile(:final destination) ||
+          ApplyCopyTree(:final destination):
+        _assertPath(destination);
     }
   }
 
@@ -92,6 +95,14 @@ final class WorkPlaneApplier {
       case ApplySymlink(:final linkPath, :final target):
         await _fs.removeRecursive(linkPath);
         await _fs.createSymlink(target: target, linkPath: linkPath);
+      // Server-side copy ops are emitted only for a remote work plane (SFTP),
+      // where the SSH compiler turns them into `cp`/`find` on the host. This
+      // in-process applier is kept for plan completeness / tests.
+      case ApplyCopyFile(:final source, :final destination):
+        await _fs.ensureDir(ctx.dirname(destination));
+        await _fs.copyFile(source, destination);
+      case ApplyCopyTree(:final source, :final destination):
+        await _fs.copyTree(source: source, destination: destination);
     }
   }
 

@@ -217,28 +217,51 @@ class SessionRepositoryFs {
         // Fall back to the filesystem abstraction below.
       }
     }
-    final dated = <({String id, int createdAt})>[];
     final stat = await fs.stat(dir);
     if (!stat.isDirectory) return const [];
-    for (final entry in await fs.listDir(dir)) {
-      if (!entry.isDirectory) continue;
-      final file = sessionFile(workspaceId, entry.name);
-      if (!(await fs.stat(file)).exists) continue;
-      var createdAt = 0;
-      try {
-        final text = await fs.readString(file);
-        if (text != null && text.isNotEmpty) {
-          final decoded = jsonDecode(text);
-          if (decoded is Map) {
-            createdAt = decoded['createdAt'] as int? ?? 0;
-          }
-        }
-      } on Object {
-        // best effort — fall back to directory order
-      }
-      dated.add((id: entry.name, createdAt: createdAt));
+    final ids = [
+      for (final entry in await fs.listDir(dir))
+        if (entry.isDirectory) entry.name,
+    ];
+    if (ids.isEmpty) return const [];
+
+    // Remote planes (SFTP/WSL) pay a round-trip per operation, so the previous
+    // serial stat+read loop turned into hundreds of round-trips for a workspace
+    // with many sessions (230s for 1.3k sessions over a 10ms link). Read with
+    // the same bounded concurrency as [listSessionJsonMapsForWorkspace]; the
+    // stat is dropped because a missing `session.json` already reads as null.
+    final dated = <({String id, int createdAt})>[];
+    for (var i = 0; i < ids.length; i += _sessionReadConcurrency) {
+      final batch = ids.skip(i).take(_sessionReadConcurrency);
+      final read = await Future.wait([
+        for (final id in batch) _readSessionCreatedAt(workspaceId, id),
+      ]);
+      dated.addAll(read.whereType<({String id, int createdAt})>());
     }
-    dated.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return [for (final e in dated) e.id];
+    // Stable createdAt-desc: equal timestamps keep directory order.
+    final ordered = [
+      for (var i = 0; i < dated.length; i++) (entry: dated[i], index: i),
+    ]..sort((a, b) {
+        final byCreated = b.entry.createdAt.compareTo(a.entry.createdAt);
+        return byCreated != 0 ? byCreated : a.index.compareTo(b.index);
+      });
+    return [for (final e in ordered) e.entry.id];
+  }
+
+  /// `createdAt` of one session document, or `null` when it is missing.
+  Future<({String id, int createdAt})?> _readSessionCreatedAt(
+    String workspaceId,
+    String sessionId,
+  ) async {
+    try {
+      final text = await fs.readString(sessionFile(workspaceId, sessionId));
+      if (text == null || text.isEmpty) return null;
+      final decoded = jsonDecode(text);
+      if (decoded is! Map) return (id: sessionId, createdAt: 0);
+      return (id: sessionId, createdAt: decoded['createdAt'] as int? ?? 0);
+    } on Object {
+      // best effort — keep the id, fall back to directory order
+      return (id: sessionId, createdAt: 0);
+    }
   }
 }

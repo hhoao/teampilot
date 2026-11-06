@@ -234,9 +234,17 @@ class SessionDataStore {
 
   Future<ChatDataSnapshot> loadWorkspaceData(SessionRepository repo) async {
     final sw = Stopwatch()..start();
-    final workspaces = await repo.loadWorkspaces();
+    // Index snapshot only: the per-session `createdAt` needed for sidebar
+    // order comes from [loadSessions] below, so reading every `session.json`
+    // twice (once for the manifest ids) is pure round-trip overhead — 230s for
+    // 1.3k sessions on an SSH storage plane.
+    final indexed = await repo.loadWorkspacesIndex();
     final workspacesMs = sw.elapsedMilliseconds;
     final sessions = await repo.loadSessions();
+    final workspaces = orderedWorkspaceSessionIds(
+      workspaces: indexed,
+      sessions: sessions,
+    );
     _markAllWorkspacesHydrated(workspaces.map((w) => w.workspaceId));
     _clearDocumentSessionIds();
     _markSessionsAsDocuments(sessions);
@@ -247,6 +255,44 @@ class SessionDataStore {
       'total=${sw.elapsedMilliseconds}ms',
     );
     return deriveSnapshot(workspaces: workspaces, sessions: sessions);
+  }
+
+  /// Re-sorts each workspace's [Workspace.sessionIds] by `createdAt` desc using
+  /// the already loaded [sessions], matching [sortedSessionIdsByCreatedAt].
+  ///
+  /// Ids without a loaded session (missing or unreadable documents) keep their
+  /// relative order after the known ones instead of being dropped.
+  static List<Workspace> orderedWorkspaceSessionIds({
+    required List<Workspace> workspaces,
+    required List<AppSession> sessions,
+  }) {
+    if (sessions.isEmpty) return workspaces;
+    final createdAtById = {
+      for (final session in sessions) session.sessionId: session.createdAt,
+    };
+    return [
+      for (final workspace in workspaces)
+        if (workspace.sessionIds.length < 2)
+          workspace
+        else
+          workspace.copyWith(
+            sessionIds: _orderedIds(workspace.sessionIds, createdAtById),
+          ),
+    ];
+  }
+
+  static List<String> _orderedIds(
+    List<String> ids,
+    Map<String, int> createdAtById,
+  ) {
+    final indexed = [
+      for (var i = 0; i < ids.length; i++)
+        (id: ids[i], createdAt: createdAtById[ids[i]] ?? -1, index: i),
+    ]..sort((a, b) {
+        final byCreated = b.createdAt.compareTo(a.createdAt);
+        return byCreated != 0 ? byCreated : a.index.compareTo(b.index);
+      });
+    return [for (final e in indexed) e.id];
   }
 
   Future<AppSession> createSession(

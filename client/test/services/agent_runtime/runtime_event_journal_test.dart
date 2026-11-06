@@ -349,6 +349,8 @@ String _fileFor(Filesystem fs, String journalRoot, RuntimeSeatKey seat) => fs
     .join(journalRoot, _seg(seat.sessionId), '${_seg(seat.memberId)}.jsonl');
 
 class _CountingFilesystem implements Filesystem {
+  @override
+  bool get isRemote => false;
   _CountingFilesystem(this._inner);
 
   final Filesystem _inner;
@@ -456,6 +458,8 @@ class _CountingFilesystem implements Filesystem {
 }
 
 class _FilesystemView implements Filesystem {
+  @override
+  bool get isRemote => false;
   _FilesystemView(this._delegate);
 
   final Filesystem _delegate;

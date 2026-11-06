@@ -10,6 +10,189 @@ import 'package:teampilot/services/storage/windows_cli_runtime_junction.dart';
 import '../../../support/in_memory_filesystem.dart';
 
 void main() {
+  test('same-host remote copy emits server-side ops without blobs', () async {
+    final fs = InMemoryFilesystem();
+    await fs.writeString('/w/cache/foo/a.txt', 'A');
+    await fs.writeString('/w/cache/foo/.git/HEAD', 'ref: x');
+
+    final manifest = LaunchManifest()
+      ..copyFile(source: '/w/cache/foo/a.txt', destination: '/w/session/a.txt')
+      ..copyTree(source: '/w/cache/foo', destination: '/w/session/foo');
+    final built = await buildApplyPlan(
+      manifest: manifest,
+      sourceFs: fs,
+      workFs: fs,
+      homeRoot: '/w',
+      workRoot: '/w',
+      serverSideCopyOverride: true,
+    );
+
+    expect(
+      built.plan.ops.whereType<ApplyCopyFile>().single.destination,
+      '/w/session/a.txt',
+    );
+    expect(
+      built.plan.ops.whereType<ApplyCopyTree>().single.source,
+      '/w/cache/foo',
+    );
+    expect(built.plan.ops.whereType<ApplyTree>(), isEmpty);
+    expect(built.plan.ops.whereType<ApplyWriteBlob>(), isEmpty);
+  });
+
+  test('copyTree skips VCS metadata segments', () async {
+    final sourceFs = InMemoryFilesystem();
+    final workFs = InMemoryFilesystem();
+    await sourceFs.writeString('/h/plugins/installed/foo/a.txt', 'A');
+    await sourceFs.writeString('/h/plugins/installed/foo/.git/HEAD', 'ref: x');
+    await sourceFs.writeString(
+      '/h/plugins/installed/foo/.git/objects/x',
+      'blob',
+    );
+    final manifest = LaunchManifest()
+      ..copyTree(
+        source: '/h/plugins/installed/foo',
+        destination: '/w/sessions/pool/foo',
+      );
+    final built = await buildApplyPlan(
+      manifest: manifest,
+      sourceFs: sourceFs,
+      workFs: workFs,
+      homeRoot: '/h',
+      workRoot: '/w',
+    );
+    final tree = built.plan.ops.whereType<ApplyTree>().single;
+    expect(tree.entries.map((e) => e.rel), ['a.txt']);
+  });
+
+  test('shared bundle is seeded once, then only re-linked', () async {
+    final sourceFs = InMemoryFilesystem();
+    final workFs = InMemoryFilesystem();
+    await sourceFs.writeString('/h/plugins/installed/foo/a.txt', 'A');
+    await sourceFs.writeString('/h/plugins/installed/foo/.git/HEAD', 'ref: x');
+    const linkPath = '/w/sessions/s/runtime/claude/plugins/foo';
+    final manifest = LaunchManifest()
+      ..symlink(linkPath: linkPath, target: '/h/plugins/installed/foo');
+
+    final first = await buildApplyPlan(
+      manifest: manifest,
+      sourceFs: sourceFs,
+      workFs: workFs,
+      homeRoot: '/h',
+      workRoot: '/w',
+    );
+    final tree = first.plan.ops.whereType<ApplyTree>().single;
+    expect(tree.dest, startsWith('/w/.teampilot-bundles/'));
+    expect(tree.dest, endsWith('/plugins/installed/foo'));
+    // Git metadata never leaves the control plane.
+    expect(tree.entries.map((e) => e.rel), ['a.txt']);
+    final stampOp = first.plan.ops.whereType<ApplyWriteBlob>().single;
+    expect(stampOp.path, '${tree.dest}/.teampilot-bundle-stamp');
+    final link = first.plan.ops.whereType<ApplySymlink>().single;
+    expect(link.linkPath, linkPath);
+    expect(link.target, tree.dest);
+
+    await WorkPlaneApplier(
+      fs: workFs,
+      blobs: first.blobs,
+      workRoot: '/w',
+    ).apply(first.plan);
+    expect(await workFs.readString('${tree.dest}/a.txt'), 'A');
+    expect(await workFs.readString('${tree.dest}/.git/HEAD'), isNull);
+
+    final second = await buildApplyPlan(
+      manifest: manifest,
+      sourceFs: sourceFs,
+      workFs: workFs,
+      homeRoot: '/h',
+      workRoot: '/w',
+    );
+    expect(second.plan.ops.whereType<ApplyTree>(), isEmpty);
+    expect(second.plan.ops.whereType<ApplyWriteBlob>(), isEmpty);
+    expect(second.plan.ops.whereType<ApplyRemove>(), isEmpty);
+    final secondLink = second.plan.ops.whereType<ApplySymlink>().single;
+    expect(secondLink.target, tree.dest);
+  });
+
+  test(
+    'changed shared bundle seeds a new generation without deleting',
+    () async {
+      final sourceFs = InMemoryFilesystem();
+      final workFs = InMemoryFilesystem();
+      await sourceFs.writeString('/h/skills/installed/foo/SKILL.md', '# one');
+      final manifest = LaunchManifest()
+        ..symlink(
+          linkPath: '/w/sessions/s/runtime/claude/skills/foo',
+          target: '/h/skills/installed/foo',
+        );
+
+      final first = await buildApplyPlan(
+        manifest: manifest,
+        sourceFs: sourceFs,
+        workFs: workFs,
+        homeRoot: '/h',
+        workRoot: '/w',
+      );
+      await WorkPlaneApplier(
+        fs: workFs,
+        blobs: first.blobs,
+        workRoot: '/w',
+      ).apply(first.plan);
+      final firstTree = first.plan.ops.whereType<ApplyTree>().single;
+
+      await sourceFs.writeString(
+        '/h/skills/installed/foo/SKILL.md',
+        '# v2 changed',
+      );
+      final second = await buildApplyPlan(
+        manifest: manifest,
+        sourceFs: sourceFs,
+        workFs: workFs,
+        homeRoot: '/h',
+        workRoot: '/w',
+      );
+      final tree = second.plan.ops.whereType<ApplyTree>().single;
+      expect(tree.dest, isNot(firstTree.dest));
+      expect(tree.dest, endsWith('/skills/installed/foo'));
+      // No destructive remove: a session still running from the old generation
+      // keeps its tree.
+      expect(second.plan.ops.whereType<ApplyRemove>(), isEmpty);
+      final link = second.plan.ops.whereType<ApplySymlink>().single;
+      expect(link.target, tree.dest);
+      expect(
+        await second.blobs.open(tree.entries.single.sha256),
+        utf8.encode('# v2 changed'),
+      );
+    },
+  );
+
+  test(
+    'mutable per-session state is not seeded into the shared plane',
+    () async {
+      final sourceFs = InMemoryFilesystem();
+      final workFs = InMemoryFilesystem();
+      await sourceFs.writeString(
+        '/h/identities-runtime/p/home/.claude.json',
+        '{"t":1}',
+      );
+      final manifest = LaunchManifest()
+        ..symlink(
+          linkPath: '/w/sessions/s/runtime/claude/home/.claude.json',
+          target: '/h/identities-runtime/p/home/.claude.json',
+        );
+      final built = await buildApplyPlan(
+        manifest: manifest,
+        sourceFs: sourceFs,
+        workFs: workFs,
+        homeRoot: '/h',
+        workRoot: '/w',
+      );
+      expect(built.plan.ops.whereType<ApplyTree>(), isEmpty);
+      expect(built.plan.ops.whereType<ApplySymlink>(), isEmpty);
+      final op = built.plan.ops.single as ApplyWriteBlob;
+      expect(op.path, '/w/sessions/s/runtime/claude/home/.claude.json');
+    },
+  );
+
   test('copyTree of provided install dir becomes symlink', () async {
     final sourceFs = InMemoryFilesystem();
     final workFs = InMemoryFilesystem();
@@ -34,7 +217,7 @@ void main() {
     expect(op.target, '/w/plugins/installed/foo');
   });
 
-  test('copyTree when work dir missing becomes hashed tree', () async {
+  test('copyTree when work dir missing seeds a shared generation', () async {
     final sourceFs = InMemoryFilesystem();
     final workFs = InMemoryFilesystem();
     await sourceFs.writeBytes('/h/plugins/installed/foo/bin.dat', [0, 1, 255]);
@@ -50,12 +233,16 @@ void main() {
       homeRoot: '/h',
       workRoot: '/w',
     );
-    expect(built.providedLinks, 0);
+    expect(built.providedLinks, 1);
     final tree = built.plan.ops.whereType<ApplyTree>().single;
-    expect(tree.dest, '/w/sessions/pool/foo');
+    expect(tree.dest, startsWith('/w/.teampilot-bundles/'));
+    expect(tree.dest, endsWith('/plugins/installed/foo'));
     expect(tree.entries.single.rel, 'bin.dat');
     final bytes = await built.blobs.open(tree.entries.single.sha256);
     expect(bytes, [0, 1, 255]);
+    final link = built.plan.ops.whereType<ApplySymlink>().single;
+    expect(link.linkPath, '/w/sessions/pool/foo');
+    expect(link.target, tree.dest);
   });
 
   test('provided copyTree is materialized when later op mutates it', () async {
@@ -268,7 +455,9 @@ void main() {
       homeRoot: '/tp',
       workRoot: '/tp',
     );
-    final op = built.plan.ops.whereType<ApplySymlink>().single;
+    final op = built.plan.ops.whereType<ApplySymlink>().firstWhere(
+      (e) => e.linkPath == linkPath,
+    );
     expect(op.linkPath, linkPath);
     expect(op.target, skills);
   });

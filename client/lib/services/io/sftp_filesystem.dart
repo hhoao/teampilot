@@ -11,6 +11,9 @@ class SftpFilesystem implements Filesystem {
   final RemoteFileStore store;
 
   @override
+  bool get isRemote => true;
+
+  @override
   p.Context get pathContext => p.Context(style: p.Style.posix);
 
   @override

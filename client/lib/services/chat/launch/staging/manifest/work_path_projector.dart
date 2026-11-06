@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../../../utils/logging/logger.dart';
 import '../../../../io/filesystem.dart';
+import '../../../../remote/runtime_materialization_policy.dart';
 import 'apply_plan.dart';
 import 'blob_store.dart';
 import 'launch_manifest.dart';
@@ -28,6 +29,8 @@ Future<ApplyPlanBuild> buildApplyPlan({
   required Filesystem workFs,
   required String homeRoot,
   required String workRoot,
+  RuntimeMaterializationPolicy policy = const RuntimeMaterializationPolicy(),
+  bool? serverSideCopyOverride,
 }) {
   return _WorkPathProjector(
     manifest: manifest,
@@ -35,8 +38,23 @@ Future<ApplyPlanBuild> buildApplyPlan({
     workFs: workFs,
     homeRoot: homeRoot,
     workRoot: workRoot,
+    policy: policy,
+    serverSideCopyOverride: serverSideCopyOverride,
   ).build();
 }
+
+/// Stamp written next to a work-machine shared bundle so later launches can
+/// keep the session link without re-uploading the tree.
+const String sharedBundleStampFileName = '.teampilot-bundle-stamp';
+
+/// Work-plane directory holding content-addressed copies of shared bundles
+/// (`<workRoot>/.teampilot-bundles/<stamp>/plugins/…`).
+const String bundleGenerationsDirName = '.teampilot-bundles';
+
+/// Work-plane top-level roots whose trees are shared by every session on a
+/// machine (`<workRoot>/plugins`, `<workRoot>/skills`). `cli-defaults` and
+/// workspace config are already mirrored by `WorkMachineMaterializer`.
+const Set<String> _sharedBundleRoots = {'plugins', 'skills'};
 
 final class _WorkPathProjector {
   _WorkPathProjector({
@@ -45,17 +63,33 @@ final class _WorkPathProjector {
     required this.workFs,
     required String homeRoot,
     required String workRoot,
+    this.policy = const RuntimeMaterializationPolicy(),
+    this.serverSideCopyOverride,
   }) : homeRoot = sourceFs.pathContext.normalize(homeRoot),
-       workRoot = workFs.pathContext.normalize(workRoot);
+       workRoot = workFs.pathContext.normalize(workRoot),
+       // When both planes are the same remote filesystem, the bytes are
+       // already on the work machine: copying them into the phone (as blobs)
+       // and uploading them back is pure overhead.
+       serverSideCopy =
+           serverSideCopyOverride ??
+           (identical(sourceFs, workFs) && workFs.isRemote);
 
   final LaunchManifest manifest;
   final Filesystem sourceFs;
   final Filesystem workFs;
+  final RuntimeMaterializationPolicy policy;
+  final bool? serverSideCopyOverride;
+  final bool serverSideCopy;
   final String homeRoot;
   final String workRoot;
   final MemoryBlobStore blobs = MemoryBlobStore();
   final List<ApplyOp> _ops = [];
   int _providedLinks = 0;
+
+  /// Shared bundles already emitted (or validated) in this plan, so a tree is
+  /// never shipped twice in the same overlay.
+  final Set<String> _seededBundles = <String>{};
+  final Map<String, String?> _remoteBundleStamps = <String, String?>{};
 
   Future<ApplyPlanBuild> build() async {
     for (
@@ -136,16 +170,31 @@ final class _WorkPathProjector {
       );
       return;
     }
+    // Keep the link when the target is created in this plan (a first-fill
+    // hole): seeding it from sourceFs would fight the later writes.
+    if (_planCreates(resolvedTarget)) {
+      _ops.add(ApplySymlink(linkPath: projectedLink, target: projectedTarget));
+      return;
+    }
+    // Shared bundles (plugins/skills) live once per work machine.
+    // Seed a content generation instead of copying the tree into every
+    // session's link path; later launches reuse it and only re-link.
+    final seededTarget = await _seedSharedBundle(
+      source: resolvedTarget,
+      candidate: projectedTarget,
+      linkPath: projectedLink,
+    );
+    if (seededTarget != null) {
+      _ops.add(ApplySymlink(linkPath: projectedLink, target: seededTarget));
+      return;
+    }
     if (await _isProvided(resolvedTarget, projectedTarget)) {
       _providedLinks++;
       _ops.add(ApplySymlink(linkPath: projectedLink, target: projectedTarget));
       return;
     }
-    // Keep the link when the target is created in this plan, or when it is a
-    // workRoot first-fill hole (empty CLI cache file). Copy only when
-    // sourceFs already has content that remote does not.
-    if (_planCreates(resolvedTarget) ||
-        !await _sourceHasContent(resolvedTarget)) {
+    // Copy only when sourceFs already has content that remote does not.
+    if (!await _sourceHasContent(resolvedTarget)) {
       _ops.add(ApplySymlink(linkPath: projectedLink, target: projectedTarget));
       return;
     }
@@ -154,6 +203,138 @@ final class _WorkPathProjector {
       destination: linkPath,
       entryIndex: entryIndex,
     );
+  }
+
+  /// Whether [candidate] sits under a machine-shared bundle root.
+  bool _isSharedBundleRoot(String candidate) {
+    final ctx = workFs.pathContext;
+    final normalized = ctx.normalize(candidate);
+    if (normalized == workRoot || !ctx.isWithin(workRoot, normalized)) {
+      return false;
+    }
+    final parts = ctx.split(ctx.relative(normalized, from: workRoot));
+    return parts.isNotEmpty && _sharedBundleRoots.contains(parts.first);
+  }
+
+  /// Seeds (or reuses) a machine-shared directory bundle on the work plane.
+  ///
+  /// Returns the path the session link must point at, or null when this is not
+  /// a shared bundle (non-bundle path, file target, same-machine flush, or a
+  /// nested/self link): those carry per-session mutable state and must keep the
+  /// caller's copy path.
+  ///
+  /// Seeded trees are content-addressed (`<workRoot>/.teampilot-bundles/<stamp>`)
+  /// so an update never deletes a tree another session is running from, and a
+  /// re-seed never needs a destructive `rm -rf` (which would race concurrent
+  /// team launches). Old generations are left in place; they are a few MB and
+  /// are shared by every later launch that resolves to the same stamp.
+  Future<String?> _seedSharedBundle({
+    required String source,
+    required String candidate,
+    required String linkPath,
+  }) async {
+    // Same filesystem: the target already is the source, nothing to ship.
+    if (identical(sourceFs, workFs)) return null;
+    if (candidate == linkPath) return null;
+    final ctx = workFs.pathContext;
+    if (ctx.isWithin(candidate, linkPath) ||
+        ctx.isWithin(linkPath, candidate)) {
+      return null;
+    }
+    if (!_isSharedBundleRoot(candidate)) return null;
+    if (!(await sourceFs.stat(source)).isDirectory) return null;
+
+    final relPaths = await _bundleFileRelPaths(source);
+    final stamp = await _bundleStamp(source, relPaths);
+    final generation = _bundleGenerationDir(candidate, stamp);
+    _providedLinks++;
+    // The marker member is written last, so a matching stamp also proves the
+    // previous extraction finished.
+    final remoteStamp = await _remoteBundleStamp(generation);
+    if (remoteStamp == stamp) return generation;
+    if (!_seededBundles.add(generation)) return generation;
+
+    appLogger.d(
+      '[session-launch] bundle-seed dest=$generation source=$candidate '
+      'files=${relPaths.length}',
+    );
+    final entries = <ApplyTreeEntry>[];
+    for (final rel in relPaths) {
+      final bytes = await sourceFs.readBytes(
+        sourceFs.pathContext.join(source, rel),
+      );
+      if (bytes == null) continue;
+      entries.add(ApplyTreeEntry(rel: rel, sha256: await _storeBlob(bytes)));
+    }
+    if (entries.isEmpty) {
+      _ops.add(ApplyEnsureDir(generation));
+    } else {
+      _ops.add(ApplyTree(dest: generation, entries: entries));
+    }
+    _ops.add(
+      ApplyWriteBlob(
+        path: ctx.join(generation, sharedBundleStampFileName),
+        sha256: await _storeBlob(utf8.encode(stamp)),
+        mode: 0x1a4,
+      ),
+    );
+    return generation;
+  }
+
+  /// Content-addressed location for a shared bundle generation.
+  String _bundleGenerationDir(String candidate, String stamp) {
+    final ctx = workFs.pathContext;
+    final rel = ctx.relative(candidate, from: workRoot);
+    return ctx.join(
+      workRoot,
+      bundleGenerationsDirName,
+      stamp.substring(0, 16),
+      rel,
+    );
+  }
+
+  Future<String?> _remoteBundleStamp(String generation) async {
+    if (_remoteBundleStamps.containsKey(generation)) {
+      return _remoteBundleStamps[generation];
+    }
+    final stamp = await workFs.readString(
+      workFs.pathContext.join(generation, sharedBundleStampFileName),
+    );
+    _remoteBundleStamps[generation] = stamp;
+    return stamp;
+  }
+
+  /// Files to ship for a shared bundle: directories dropped, VCS/scratch
+  /// metadata dropped, and any stale marker from the source ignored.
+  Future<List<String>> _bundleFileRelPaths(String source) async {
+    final entries = await sourceFs.listDirRecursive(source);
+    final rels = <String>[];
+    for (final entry in entries) {
+      if (entry.isDirectory) continue;
+      final rel = entry.name;
+      if (!policy.includesPath(rel)) continue;
+      if (sourceFs.pathContext.basename(rel) == sharedBundleStampFileName) {
+        continue;
+      }
+      rels.add(rel);
+    }
+    rels.sort();
+    return rels;
+  }
+
+  Future<String> _bundleStamp(String source, List<String> relPaths) async {
+    final buffer = StringBuffer();
+    for (final rel in relPaths) {
+      final stat = await sourceFs.stat(sourceFs.pathContext.join(source, rel));
+      buffer
+        ..write(rel)
+        ..write('\t')
+        ..write(stat.size ?? 0)
+        ..write('\t')
+        ..write(stat.mtime?.millisecondsSinceEpoch ?? 0)
+        ..write('\n');
+    }
+    return contentSha256Hex(utf8.encode(buffer.toString()));
   }
 
   Future<bool> _sourceHasContent(String path) async {
@@ -226,6 +407,16 @@ final class _WorkPathProjector {
     bool private = false,
   }) async {
     final projectedDest = _projectRequired(destination);
+    if (serverSideCopy && !_planCreates(source)) {
+      _ops.add(
+        ApplyCopyFile(
+          source: source,
+          destination: projectedDest,
+          mode: private ? applyPlanPrivateFileMode : null,
+        ),
+      );
+      return;
+    }
     final candidate = _project(source);
     if (candidate != null &&
         !_hasLaterMutationInside(projectedDest, entryIndex) &&
@@ -254,14 +445,39 @@ final class _WorkPathProjector {
     required int entryIndex,
   }) async {
     final projectedDest = _projectRequired(destination);
+    final ctx = workFs.pathContext;
+    final copiesIntoItself =
+        source == projectedDest || ctx.isWithin(source, projectedDest);
+    if (serverSideCopy && !_planCreates(source) && !copiesIntoItself) {
+      final sourceStat = await sourceFs.stat(source);
+      if (!sourceStat.exists) {
+        _ops.add(ApplyEnsureDir(projectedDest));
+        return;
+      }
+      _ops.add(ApplyCopyTree(source: source, destination: projectedDest));
+      return;
+    }
     final candidate = _project(source);
     if (candidate != null &&
-        !_hasLaterMutationInside(projectedDest, entryIndex) &&
-        await _isProvidedDirectory(candidate)) {
-      _assertPath(candidate);
-      _ops.add(ApplySymlink(linkPath: projectedDest, target: candidate));
-      _providedLinks++;
-      return;
+        !_hasLaterMutationInside(projectedDest, entryIndex)) {
+      if (await _isProvidedDirectory(candidate)) {
+        _assertPath(candidate);
+        _ops.add(ApplySymlink(linkPath: projectedDest, target: candidate));
+        _providedLinks++;
+        return;
+      }
+      // A copyTree of a machine-shared bundle behaves like a symlinked bundle:
+      // seed the shared generation and link, so the tree is shipped once per
+      // work machine instead of once per session.
+      final seeded = await _seedSharedBundle(
+        source: source,
+        candidate: candidate,
+        linkPath: projectedDest,
+      );
+      if (seeded != null) {
+        _ops.add(ApplySymlink(linkPath: projectedDest, target: seeded));
+        return;
+      }
     }
 
     final sourceStat = await sourceFs.stat(source);
@@ -276,8 +492,13 @@ final class _WorkPathProjector {
       throw StateError('copy tree source missing: $source');
     }
     final treeEntries = <ApplyTreeEntry>[];
+    var skipped = 0;
     for (final entry in await sourceFs.listDirRecursive(source)) {
       if (entry.isDirectory) continue;
+      if (!policy.includesPath(entry.name)) {
+        skipped++;
+        continue;
+      }
       final bytes = await sourceFs.readBytes(
         sourceFs.pathContext.join(source, entry.name),
       );
@@ -286,6 +507,12 @@ final class _WorkPathProjector {
       }
       treeEntries.add(
         ApplyTreeEntry(rel: entry.name, sha256: await _storeBlob(bytes)),
+      );
+    }
+    if (skipped > 0) {
+      appLogger.d(
+        '[session-launch] apply-plan skip metadata '
+        'dest=$projectedDest files=$skipped',
       );
     }
     if (treeEntries.isEmpty) {

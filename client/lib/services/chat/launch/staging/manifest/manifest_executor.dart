@@ -15,10 +15,24 @@ import 'work_plane_script_runner.dart';
 
 /// Applies a staged [LaunchManifest] in one batch (local disk or SSH script).
 class ManifestExecutor {
-  const ManifestExecutor({this.sshClientFactory, this.profileById});
+  const ManifestExecutor({
+    this.sshClientFactory,
+    this.profileById,
+    this.remoteBatchOverride,
+    this.serverSideCopyOverride,
+  });
 
   final SshClientFactory? sshClientFactory;
   final SshProfile? Function(String profileId)? profileById;
+
+  /// Test seam for non-SFTP filesystems that should still exercise the batch
+  /// path; `null` means "detect from [targetFs]".
+  @visibleForTesting
+  final bool? remoteBatchOverride;
+
+  /// Test seam for [buildApplyPlan]'s same-host server-side copy detection.
+  @visibleForTesting
+  final bool? serverSideCopyOverride;
 
   Future<void> flush({
     required LaunchManifest manifest,
@@ -36,12 +50,16 @@ class ManifestExecutor {
     final workRoot = (symlinkProjectionRoot ?? '').trim();
     final home = (homeRoot ?? workRoot).trim();
     final sameHost = identical(sourceFs, targetFs);
-    if (runner != null) {
-      if (!sameHost && workRoot.isEmpty) {
-        throw StateError(
-          'off-home SSH manifest flush requires a non-empty work app-data root',
-        );
-      }
+    // Source == target is usually cheap (local disk), but an SFTP plane still
+    // pays one round-trip per write: the in-process applier took 350-490s for
+    // ~380 ops on Android. Flush through the single-script remote batch
+    // whenever the work plane is remote, regardless of sameHost.
+    final remoteWorkPlane = remoteBatchOverride ?? targetFs.isRemote;
+    final useRemoteBatch = runner != null && (!sameHost || remoteWorkPlane);
+    if (runner != null && !sameHost && workRoot.isEmpty) {
+      throw StateError(
+        'off-home SSH manifest flush requires a non-empty work app-data root',
+      );
     }
 
     final effectiveWorkRoot = workRoot.isNotEmpty ? workRoot : home;
@@ -56,6 +74,7 @@ class ManifestExecutor {
       workFs: targetFs,
       homeRoot: home.isNotEmpty ? home : effectiveWorkRoot,
       workRoot: effectiveWorkRoot,
+      serverSideCopyOverride: serverSideCopyOverride,
     );
     var blobCount = 0;
     var blobBytes = 0;
@@ -82,7 +101,7 @@ class ManifestExecutor {
       'blobs=$blobCount blobBytes=$blobBytes inlineBytes=$inlineBytes',
     );
 
-    if (runner != null && !sameHost) {
+    if (useRemoteBatch) {
       final payload = await compileApplyPlanForSsh(
         plan: built.plan,
         blobs: built.blobs,

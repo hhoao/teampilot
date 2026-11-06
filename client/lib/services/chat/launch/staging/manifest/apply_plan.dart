@@ -119,6 +119,38 @@ final class ApplyWriteBlob extends ApplyOp {
   };
 }
 
+final class ApplyCopyFile extends ApplyOp {
+  ApplyCopyFile({required this.source, required this.destination, this.mode});
+
+  /// Existing file on the work machine itself (same host as the destination).
+  final String source;
+  final String destination;
+  final int? mode;
+
+  @override
+  Map<String, Object?> toJson() => {
+    'op': 'copyFile',
+    'source': source,
+    'destination': destination,
+    if (mode != null) 'mode': mode,
+  };
+}
+
+final class ApplyCopyTree extends ApplyOp {
+  ApplyCopyTree({required this.source, required this.destination});
+
+  /// Existing directory on the work machine itself.
+  final String source;
+  final String destination;
+
+  @override
+  Map<String, Object?> toJson() => {
+    'op': 'copyTree',
+    'source': source,
+    'destination': destination,
+  };
+}
+
 final class ApplyTree extends ApplyOp {
   ApplyTree({required this.dest, required this.entries});
 
@@ -214,6 +246,17 @@ final class ApplyPlan {
           path: json['path']! as String,
           sha256: json['sha256']! as String,
           mode: json['mode'] as int?,
+        );
+      case 'copyFile':
+        return ApplyCopyFile(
+          source: json['source']! as String,
+          destination: json['destination']! as String,
+          mode: json['mode'] as int?,
+        );
+      case 'copyTree':
+        return ApplyCopyTree(
+          source: json['source']! as String,
+          destination: json['destination']! as String,
         );
       case 'tree':
         final rawEntries = json['entries'] as List<Object?>? ?? const [];
