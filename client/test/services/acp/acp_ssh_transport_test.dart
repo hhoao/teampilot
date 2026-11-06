@@ -133,7 +133,7 @@ void main() {
 
   test('worker exec adapter forwards IO and maps exit code', () async {
     final channel = _FakeWorkerExecChannel();
-    final adapter = DartSsh2AcpChannel(channel);
+    final adapter = DartSsh2AcpChannel.worker(channel);
 
     adapter.write(Uint8List.fromList([1, 2]));
     await adapter.closeStdin();

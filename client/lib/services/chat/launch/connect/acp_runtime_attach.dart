@@ -329,7 +329,7 @@ class AcpRuntimeAttach {
             tab.memberSshSessions[key] ??
             await SshMemberSession.open(factory, profile);
         tab.memberSshSessions[key] = memberSession;
-        return DartSsh2AcpChannel(await memberSession.openExec(command));
+        return DartSsh2AcpChannel.worker(await memberSession.openExec(command));
       },
     );
   }

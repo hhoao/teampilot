@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:dartssh2/dartssh2.dart';
+
 import '../ssh/worker/ssh_worker_exec_proxy.dart';
 import 'acp_transport.dart';
 
@@ -32,35 +34,70 @@ abstract interface class AcpSshChannel {
   void dispose();
 }
 
-/// [AcpSshChannel] over the profile worker's primitive exec proxy.
-///
-/// The worker keeps dartssh2 on its own isolate; stdout/stderr stay separate
-/// and stdin is a bounded payload, which is exactly the ACP framing shape.
+/// [AcpSshChannel] over either a raw dartssh2 session (tests/embedded
+/// diagnostics) or the profile worker's primitive exec proxy.
 final class DartSsh2AcpChannel implements AcpSshChannel {
-  DartSsh2AcpChannel(this._channel);
+  DartSsh2AcpChannel(SSHSession session)
+    : _session = session,
+      _worker = null;
 
-  final SshWorkerExecChannel _channel;
+  DartSsh2AcpChannel.worker(SshWorkerExecChannel channel)
+    : _worker = channel,
+      _session = null;
 
-  @override
-  Stream<Uint8List> get stdout => _channel.stdout;
-
-  @override
-  Stream<Uint8List> get stderr => _channel.stderr;
-
-  @override
-  Future<int> get exitCode => _channel.done.catchError((_) => -1);
+  final SSHSession? _session;
+  final SshWorkerExecChannel? _worker;
 
   @override
-  void write(Uint8List data) => _channel.write(data);
+  Stream<Uint8List> get stdout => _worker?.stdout ?? _session!.stdout;
 
   @override
-  Future<void> closeStdin() async => _channel.closeStdin();
+  Stream<Uint8List> get stderr => _worker?.stderr ?? _session!.stderr;
 
   @override
-  void kill() => _channel.kill();
+  Future<int> get exitCode => _worker != null
+      ? _worker!.done.catchError((_) => -1)
+      : _session!.done.then((_) => _session!.exitCode ?? -1);
 
   @override
-  void dispose() => _channel.close();
+  void write(Uint8List data) {
+    final worker = _worker;
+    if (worker != null) {
+      worker.write(data);
+    } else {
+      _session!.write(data);
+    }
+  }
+
+  @override
+  Future<void> closeStdin() async {
+    final worker = _worker;
+    if (worker != null) {
+      worker.closeStdin();
+    } else {
+      await _session!.stdin.close();
+    }
+  }
+
+  @override
+  void kill() {
+    final worker = _worker;
+    if (worker != null) {
+      worker.kill();
+    } else {
+      _session!.kill(SSHSignal.KILL);
+    }
+  }
+
+  @override
+  void dispose() {
+    final worker = _worker;
+    if (worker != null) {
+      worker.close();
+    } else {
+      _session!.close();
+    }
+  }
 }
 
 /// [AcpTransport] over an SSH exec channel.
