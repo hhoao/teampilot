@@ -2,10 +2,10 @@ import 'dart:convert';
 
 import '../models/remote_target.dart';
 import '../models/ssh_profile.dart';
-import '../repositories/remote_target_repository.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/home_storage.dart';
 import '../services/storage/storage_failure.dart';
+import 'remote_target_repository.dart';
 
 class SshProfileRepository {
   /// When [targetRepo] is supplied this repository is a facade over the
@@ -32,10 +32,23 @@ class SshProfileRepository {
   final Filesystem? _fsOverride;
   final HomeStorage _storage;
 
-  /// Backing store for the lazily-derived [SshProfileRepositoryTargetRepo.targetRepo]
-  /// when no explicit catalog was injected. Private so it does not widen the
-  /// class interface (test fakes `implements SshProfileRepository`).
-  RemoteTargetRepository? _derivedTargetRepo;
+  /// The injected device-local [RemoteTargetRepository] backing this facade.
+  /// Sync consumers (a later task) read this directly. It is unavailable in
+  /// legacy `profiles.json` mode, where accessing it throws a clear
+  /// [StateError] instead of returning a disconnected catalog. Task 7 injects
+  /// the device-local catalog for production.
+  RemoteTargetRepository get targetRepo {
+    final explicit = _explicitTargetRepo;
+    if (explicit == null) {
+      throw StateError(
+        'SshProfileRepository.targetRepo is unavailable in legacy '
+        'profiles.json mode: no RemoteTargetRepository was injected. Inject '
+        'a device-local RemoteTargetRepository to use the target facade '
+        '(Task 7 wires this for production).',
+      );
+    }
+    return explicit;
+  }
 
   String get _root => _rootDirOverride ?? _storage.paths.sshProfilesDir;
 
@@ -127,40 +140,33 @@ class SshProfileRepository {
     await _fs.atomicWrite(_selectedProfileFile, profileId.trim());
   }
 
-  /// Facade projection of an [SshProfile] back into a [RemoteTarget]. A fresh
-  /// target carries this save's timestamp and is flagged for sync.
+  /// Facade projection of an [SshProfile] into a [RemoteTarget]. Constructed
+  /// explicitly (not via `copyWith`) so cleared nullable fields — e.g. a
+  /// removed credential reference — propagate as null instead of silently
+  /// persisting a stale value from an existing target.
   Future<void> _saveFacade(
     RemoteTargetRepository repo,
     SshProfile profile,
   ) async {
-    final existing = await repo.findById(profile.id);
-    final target =
-        (existing ??
-                RemoteTarget(
-                  id: profile.id,
-                  name: profile.name,
-                  host: profile.host,
-                  port: profile.port,
-                  username: profile.username,
-                ))
-            .copyWith(
-              name: profile.name,
-              host: profile.host,
-              port: profile.port,
-              username: profile.username,
-              authType: profile.authType,
-              vaultEntryId: profile.vaultEntryId,
-              endpoints: profile.endpoints,
-              hostKeyFingerprints: profile.hostKeyFingerprints,
-              lastGoodKind: profile.lastGoodKind,
-              lastHome: profile.lastHome,
-              lastAppDataRoot: profile.lastAppDataRoot,
-              embeddedTarget: profile.embeddedTarget,
-              relayUrl: profile.relayUrl,
-              pairedDesktopId: profile.pairedDesktopId,
-              updatedAt: DateTime.now().millisecondsSinceEpoch,
-              pendingSync: true,
-            );
+    final target = RemoteTarget(
+      id: profile.id,
+      name: profile.name,
+      host: profile.host,
+      port: profile.port,
+      username: profile.username,
+      authType: profile.authType,
+      vaultEntryId: profile.vaultEntryId,
+      endpoints: profile.endpoints,
+      hostKeyFingerprints: profile.hostKeyFingerprints,
+      lastGoodKind: profile.lastGoodKind,
+      lastHome: profile.lastHome,
+      lastAppDataRoot: profile.lastAppDataRoot,
+      embeddedTarget: profile.embeddedTarget,
+      relayUrl: profile.relayUrl,
+      pairedDesktopId: profile.pairedDesktopId,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+      pendingSync: true,
+    );
     await repo.save(target);
   }
 
@@ -190,23 +196,5 @@ class SshProfileRepository {
     await _fs.ensureDir(_root);
     final jsonList = profiles.map((p) => p.toJson()).toList();
     await _fs.atomicWrite(_profilesFile, jsonEncode(jsonList));
-  }
-}
-
-/// Public, non-null `targetRepo` accessor for sync consumers (a later task
-/// reads `sshProfileRepo.targetRepo`). Declared as a same-library extension
-/// rather than a class member so it adds nothing to the `SshProfileRepository`
-/// instance interface: several test fakes `implements SshProfileRepository`
-/// without `noSuchMethod`, and a new class getter would fail to compile there.
-/// It returns the injected catalog when present, otherwise one derived lazily
-/// from this repository's plane for callers that need it.
-extension SshProfileRepositoryTargetRepo on SshProfileRepository {
-  RemoteTargetRepository get targetRepo {
-    final explicit = _explicitTargetRepo;
-    if (explicit != null) return explicit;
-    return _derivedTargetRepo ??= RemoteTargetRepository(
-      rootDir: _root,
-      fs: _fs,
-    );
   }
 }

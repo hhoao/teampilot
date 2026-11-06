@@ -786,6 +786,9 @@ class _SlowFakeSshProfileRepository implements SshProfileRepository {
   @override
   Future<SshProfile?> findById(String profileId) async =>
       profileId == 'p1' ? _profile : null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FailingDeleteSshProfileRepository implements SshProfileRepository {
@@ -816,6 +819,9 @@ class _FailingDeleteSshProfileRepository implements SshProfileRepository {
   @override
   Future<SshProfile?> findById(String profileId) async =>
       profileId == _profile.id ? _profile : null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _ThrowingCredentialStore implements SshCredentialStore {
