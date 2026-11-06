@@ -11,6 +11,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/search/content_replacer.dart';
 import 'package:teampilot/services/search/content_search_runner.dart';
 import 'package:teampilot/services/search/multi_root_content_search.dart';
+import 'package:teampilot/widgets/find/find_bar_widgets.dart';
 import 'package:teampilot/widgets/right_tools/search_panel.dart';
 import 'package:teampilot_search/teampilot_search.dart';
 
@@ -613,5 +614,15 @@ void main() {
     expect(cubit.state.useGitignore, isFalse);
     expect(cubit.state.caseSensitive, isTrue);
     expect(cubit.state.isRegex, isFalse);
+  });
+
+  testWidgets('search fields render as standalone pills', (tester) async {
+    final cubit = buildCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(wrap(cubit));
+
+    final fields = tester.widgetList<FindField>(find.byType(FindField)).toList();
+    expect(fields, isNotEmpty);
+    expect(fields.every((field) => field.standalone), isTrue);
   });
 }
