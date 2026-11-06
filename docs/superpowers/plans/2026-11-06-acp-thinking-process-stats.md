@@ -154,6 +154,9 @@
     tester,
   ) async {
     Widget build(int count) => MaterialApp(
+      theme: ThemeData(
+        extensions: [AiMessageTheme.test(cotExpandReasoningOnOpen: true)],
+      ),
       home: Scaffold(
         body: AiMessageStringsScope(
           strings: const AiMessageStrings(
@@ -186,6 +189,13 @@
 String _statsLabel(int steps, int toolCalls) =>
     'Thinking process · $steps steps · $toolCalls tool calls';
 ```
+
+> 注意（计划级修正，方案 1）：第 5 个用例的 `build` fixture 必须带
+> `ThemeData(extensions: [AiMessageTheme.test(cotExpandReasoningOnOpen: true)])`。
+> 原因：`cotExpandReasoningOnOpen` 默认 `false`（`theme.dart:53/78`），展开外层折叠后
+> 只渲染内层 reasoning 的 trigger（`Reasoning`），不渲染 body（`'thought'`）；
+> 用例用 `'thought'` 作为"折叠保持展开"的标记，必须让 test theme 在展开时显示 body。
+> 这修的是测试 fixture，不改生产实现。
 
 - [ ] **Step 2: 跑测试确认失败**
 
