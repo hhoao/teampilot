@@ -73,6 +73,32 @@ void main() {
     expect(identical(next, previous), isTrue);
   });
 
+  test('derives each preview once per message instance', () {
+    final messages = [_user('u0', '  hello   world  '), _assistant('a0', 'x')];
+    final before = chatOutlinePreviewComputations;
+    final previous = buildChatOutline(messages, emptyPreview: 'Empty message');
+    expect(chatOutlinePreviewComputations, before + 1);
+
+    // Live stream updates rebuild the outline repeatedly with the same user
+    // message instances; the whitespace pass must not run again.
+    final next = buildChatOutline(
+      [...messages],
+      emptyPreview: 'Empty message',
+      previous: previous,
+    );
+    expect(identical(next, previous), isTrue);
+    expect(chatOutlinePreviewComputations, before + 1);
+
+    // A replaced instance is a new input even when the id is unchanged.
+    final rebuilt = buildChatOutline(
+      [_user('u0', 'other'), _assistant('a0', 'x')],
+      emptyPreview: 'Empty message',
+      previous: previous,
+    );
+    expect(rebuilt[0].preview, 'other');
+    expect(chatOutlinePreviewComputations, before + 2);
+  });
+
   test('prefix-preserving append reuses previous entry instances', () {
     final first = [_user('u0', 'a'), _assistant('a0', 'x')];
     final previous = buildChatOutline(first, emptyPreview: 'Empty message');

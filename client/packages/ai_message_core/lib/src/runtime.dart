@@ -82,15 +82,32 @@ class ExternalStoreAiThreadRuntime implements AiThreadRuntime {
     if (incoming.isEmpty) return const [];
     if (_messages.isEmpty) return List<AiMessage>.of(incoming);
 
-    final previousById = <String, AiMessage>{
-      for (final m in _messages) m.id: m,
-    };
+    // Streaming rewrites the tip and leaves the rest of the window identical.
+    // Skip the id map for that shared prefix so per-chunk merge work is
+    // proportional to the changed suffix, not the whole transcript.
+    var prefix = 0;
+    final minLength = incoming.length < _messages.length
+        ? incoming.length
+        : _messages.length;
+    while (prefix < minLength &&
+        identical(incoming[prefix], _messages[prefix])) {
+      prefix++;
+    }
+    if (prefix == incoming.length && prefix == _messages.length) {
+      return _messages;
+    }
 
     // Identity strings build every part's payload (text, reasoning, tool
     // results) — expensive for messages with large results. Only compute them
     // for messages whose instance changed; identical instances reuse directly.
-    final merged = <AiMessage>[];
-    for (final m in incoming) {
+    final previousById = <String, AiMessage>{
+      for (var i = prefix; i < _messages.length; i++)
+        _messages[i].id: _messages[i],
+    };
+
+    final merged = <AiMessage>[for (var i = 0; i < prefix; i++) incoming[i]];
+    for (var i = prefix; i < incoming.length; i++) {
+      final m = incoming[i];
       final prev = previousById[m.id];
       if (identical(prev, m)) {
         merged.add(m);

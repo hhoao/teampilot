@@ -573,12 +573,14 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   }
 
   static bool _isPrepend(List<AiMessage> current, List<AiMessage> next) {
-    if (current.isEmpty || next.length < current.length) return false;
+    // Streaming updates keep the length stable; return before scanning the
+    // whole window on every chunk.
+    if (current.isEmpty || next.length <= current.length) return false;
     final offset = next.length - current.length;
     for (var i = 0; i < current.length; i++) {
       if (current[i].id != next[i + offset].id) return false;
     }
-    return offset > 0;
+    return true;
   }
 
   static bool _tipGrew(
