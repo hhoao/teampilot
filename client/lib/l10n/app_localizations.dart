@@ -4316,6 +4316,18 @@ abstract class AppLocalizations {
   /// **'SSH servers'**
   String get sshProfilesSettingsTitle;
 
+  /// No description provided for @sshServersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH servers'**
+  String get sshServersTitle;
+
+  /// No description provided for @sshServersNotConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected to a remote host.'**
+  String get sshServersNotConnected;
+
   /// No description provided for @sshProfilesPageTitle.
   ///
   /// In en, this message translates to:

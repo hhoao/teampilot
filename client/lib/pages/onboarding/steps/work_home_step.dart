@@ -6,7 +6,7 @@ import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/ssh_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../services/app/connection_mode_service.dart';
-import '../../ssh_profiles_page.dart';
+import '../../remote_connections_page.dart';
 import '../../termux/termux_setup_page.dart';
 import '../../termux/work_environment_chooser_page.dart';
 import 'onboarding_step_scaffold.dart';
@@ -91,7 +91,7 @@ class _OnboardingWorkHomeStepState extends State<OnboardingWorkHomeStep> {
         embedded: true,
         onHomeBound: _notifyBound,
       ),
-      _WorkHomeSubpage.ssh => const SshProfilesPage(embedded: true),
+      _WorkHomeSubpage.ssh => const RemoteConnectionsPage(embedded: true),
     };
   }
 }

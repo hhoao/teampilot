@@ -409,7 +409,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(l10n.sshProfilesEmpty), findsOneWidget);
 
-    final ctx = tester.element(find.byType(SshProfilesPage));
+    final ctx = tester.element(find.byType(RemoteConnectionsPage));
     // ignore: unawaited_futures — completes when setup route pops
     openSshProfileEditor(ctx, useFullPageEditor: true);
     await tester.pump();
@@ -439,7 +439,7 @@ void main() {
 
     expect(find.text('APP_CHILD'), findsNothing);
     expect(profileCubit.state.hasProfiles, isTrue);
-    expect(find.byType(SshProfilesPage), findsOneWidget);
+    expect(find.byType(RemoteConnectionsPage), findsOneWidget);
   });
 
   testWidgets('after home becomes ssh:*, rebuilding gate shows child', (

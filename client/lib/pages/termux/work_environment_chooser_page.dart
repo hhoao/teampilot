@@ -10,7 +10,7 @@ import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../../services/app/connection_mode_service.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
-import '../ssh_profiles_page.dart';
+import '../remote_connections_page.dart';
 import 'termux_setup_page.dart';
 
 /// Android cold-start picker: on-device Termux or remote SSH home.
@@ -43,7 +43,7 @@ class WorkEnvironmentChooserPage extends StatelessWidget {
           onChooseSsh!();
           return;
         }
-        _pushWithGateProviders(context, const SshProfilesPage());
+        _pushWithGateProviders(context, const RemoteConnectionsPage());
       },
     );
 
