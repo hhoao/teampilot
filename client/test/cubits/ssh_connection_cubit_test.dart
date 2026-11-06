@@ -17,6 +17,13 @@ import 'package:teampilot/services/ssh/ssh_connection_failure.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
 import 'package:teampilot/services/ssh/ssh_transport_close.dart';
+import 'package:teampilot/models/remote_target.dart';
+import 'package:teampilot/models/ssh_server_profile.dart';
+import 'package:teampilot/repositories/remote_target_repository.dart';
+import 'package:teampilot/repositories/ssh_server_profile_repository.dart';
+import 'package:teampilot/services/ssh/remote_target_sync.dart';
+
+import '../support/in_memory_filesystem.dart';
 
 void main() {
   group('SshConnectionCubit', () {
@@ -687,6 +694,117 @@ void main() {
         harness.dispose();
       },
     );
+
+    group('post-connect target sync', () {
+      test('connect creates a remote server profile for a target with none',
+          () async {
+        final harness = _Harness();
+        final fs = InMemoryFilesystem();
+        final targets = RemoteTargetRepository(rootDir: '/tp', fs: fs);
+        final servers = SshServerProfileRepository(
+          storage: fakeHomeStorage(filesystem: fs),
+        );
+        final sync = RemoteTargetSync(targets: targets, servers: servers);
+
+        // A migrated device-local target (pendingSync=false) has no remote
+        // server profile yet: the first connect must create one.
+        await targets.save(const RemoteTarget(
+          id: 'p1',
+          name: 'dev',
+          host: 'example.com',
+          username: 'alice',
+        ));
+
+        final cubit = harness.createCubit(sync: sync);
+        cubit.syncProfiles(const [_p1]);
+        await cubit.connect(_p1.id);
+
+        final server = await servers.findById('p1');
+        expect(server, isNotNull);
+        expect(server!.name, 'dev');
+        expect(server.host, 'example.com');
+        expect(
+          cubit.state.hostsById['p1']!.status,
+          SshHostUiStatus.connected,
+        );
+
+        await cubit.close();
+        harness.dispose();
+      });
+
+      test('connect clears pendingSync via pull then push', () async {
+        final harness = _Harness();
+        final fs = InMemoryFilesystem();
+        final targets = RemoteTargetRepository(rootDir: '/tp', fs: fs);
+        final servers = SshServerProfileRepository(
+          storage: fakeHomeStorage(filesystem: fs),
+        );
+        final sync = RemoteTargetSync(targets: targets, servers: servers);
+
+        await targets.save(const RemoteTarget(
+          id: 'p1',
+          name: 'dev',
+          host: 'example.com',
+          username: 'alice',
+          pendingSync: true,
+          updatedAt: 10,
+        ));
+        // Older remote profile: pull() returns the target unchanged, and the
+        // pendingSync flag then drives a push that clears it.
+        await servers.save(const SshServerProfile(
+          id: 'p1',
+          name: 'stale',
+          host: 'stale.example.com',
+          username: 'alice',
+          updatedAt: 5,
+        ));
+
+        final cubit = harness.createCubit(sync: sync);
+        cubit.syncProfiles(const [_p1]);
+        await cubit.connect(_p1.id);
+
+        expect((await targets.findById('p1'))!.pendingSync, isFalse);
+        expect((await servers.findById('p1'))!.name, 'dev');
+        expect(
+          cubit.state.hostsById['p1']!.status,
+          SshHostUiStatus.connected,
+        );
+
+        await cubit.close();
+        harness.dispose();
+      });
+
+      test('a sync failure does not mark the connection as failed', () async {
+        final harness = _Harness();
+        final fs = InMemoryFilesystem();
+        final targets = RemoteTargetRepository(rootDir: '/tp', fs: fs);
+        final servers = SshServerProfileRepository(
+          storage: fakeHomeStorage(filesystem: fs),
+        );
+        await targets.save(const RemoteTarget(
+          id: 'p1',
+          name: 'dev',
+          host: 'example.com',
+          username: 'alice',
+        ));
+        // push() throws: the sync block must swallow it, not fall through to
+        // connect()'s outer catch (which would record an error detail).
+        final sync = _ThrowingSync(targets: targets, servers: servers);
+
+        final cubit = harness.createCubit(sync: sync);
+        cubit.syncProfiles(const [_p1]);
+        await cubit.connect(_p1.id);
+
+        expect(
+          cubit.state.hostsById['p1']!.status,
+          SshHostUiStatus.connected,
+        );
+        expect(cubit.state.hostsById['p1']!.errorDetail, isNull);
+
+        await cubit.close();
+        harness.dispose();
+      });
+    });
   });
 }
 
@@ -763,12 +881,14 @@ class _Harness {
   SshConnectionCubit createCubit({
     Future<void> Function(String id)? selectProfileOnConnect,
     PairedConnectAttempt? pairedConnectAttempt,
+    RemoteTargetSync? sync,
   }) {
     return SshConnectionCubit(
       factory: factory,
       coordinator: coordinator,
       selectProfileOnConnect: selectProfileOnConnect,
       pairedConnectAttempt: pairedConnectAttempt,
+      sync: sync,
     );
   }
 
@@ -835,4 +955,15 @@ class _NoopSink implements StreamSink<List<int>> {
 
   @override
   Future<void> get done async {}
+}
+
+/// A [RemoteTargetSync] whose [push] always throws, used to prove a sync
+/// failure cannot reach connect()'s outer catch.
+class _ThrowingSync extends RemoteTargetSync {
+  _ThrowingSync({required super.targets, required super.servers});
+
+  @override
+  Future<void> push(RemoteTarget target) async {
+    throw StateError('injected sync failure');
+  }
 }

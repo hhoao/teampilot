@@ -184,6 +184,7 @@ import '../repositories/skill_repository.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
+import '../repositories/ssh_server_profile_repository.dart';
 import '../repositories/extension_repository.dart';
 import '../repositories/workspace_project_config_repository.dart';
 import '../repositories/managed_provider_repository.dart';
@@ -341,6 +342,7 @@ import '../services/ssh/mcp/session_ssh_mcp_operations.dart';
 import '../services/ssh/mcp/session_ssh_mcp_resolver.dart';
 import '../services/ssh/ssh_transport_close.dart';
 import '../services/ssh/android_ssh_connect_home.dart';
+import '../services/ssh/remote_target_sync.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../services/file_tree/workspace_file_tree_store.dart';
 import '../services/git/git_command_runner.dart';
@@ -2921,6 +2923,10 @@ Future<AppShell> buildAppShell({
           pairedRelayTunnels.ensureSshTunnel(profile),
     );
 
+    final remoteTargetSync = RemoteTargetSync(
+      targets: sshProfileRepo.targetRepo,
+      servers: SshServerProfileRepository(storage: homeStorage),
+    );
     final sshConnectionCubit = SshConnectionCubit(
       factory: sshClientFactory,
       coordinator: sshProfileConnectionCoordinator,
@@ -2933,6 +2939,7 @@ Future<AppShell> buildAppShell({
           : null,
       pairedConnectAttempt: pairedConnectAttempt,
       relayTunnels: pairedRelayTunnels,
+      sync: remoteTargetSync,
     );
 
     TeamProfile? teamById(String teamId) =>
