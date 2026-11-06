@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
+import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/workspace_landing_context_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
@@ -325,9 +326,17 @@ class _WorkspacePageState extends State<WorkspacePage> {
   void _invalidateFrozenPage() => _frozenPage = null;
 
   void _activateRoute() {
+    // Mirror the user's session-scope preference instead of forcing it off.
+    // HomeShell applies the preference on the home route, so hard-coding
+    // `false` here flipped the scope on every workspace entry and emitted a
+    // full ChatState — rebuilding every ChatCubit consumer (including the
+    // thousand-session sidebar) for `visibleSessions`, which no production UI
+    // reads.
+    final scope = _teamSessionScope();
     context.read<ChatCubit>().activateWorkspaceTab(
       workspaceTabKey: widget.tabKey,
-      scopeSessionsToSelectedTeam: false,
+      scopeSessionsToSelectedTeam: scope.scope,
+      selectedTeamId: scope.teamId,
     );
     unawaited(
       context
@@ -335,6 +344,27 @@ class _WorkspacePageState extends State<WorkspacePage> {
           .ensureSessionsForWorkspace(widget.workspaceId)
           .then((_) => _restoreWorkbenchLayoutSnapshot()),
     );
+  }
+
+  ({bool scope, String? teamId}) _teamSessionScope() {
+    try {
+      final preferences = context
+          .read<SessionPreferencesCubit>()
+          .state
+          .preferences;
+      final selectedTeam = context
+          .read<LaunchProfileCubit>()
+          .state
+          .selectedTeam;
+      return (
+        scope: preferences.scopeSessionsToSelectedTeam,
+        teamId: selectedTeam?.id,
+      );
+    } on ProviderNotFoundException {
+      // Isolated widget tests may not mount these cubits; keep the historical
+      // unscoped default instead of throwing.
+      return (scope: false, teamId: null);
+    }
   }
 
   /// Applies the workspace's persisted workbench split-layout snapshot once
