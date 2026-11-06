@@ -1,8 +1,9 @@
 import 'package:flutter/foundation.dart';
 
+import 'ssh_auth_type.dart';
 import 'ssh_reachability.dart';
 
-enum SshAuthType { password, privateKey }
+export 'ssh_auth_type.dart';
 
 @immutable
 class SshProfile {
