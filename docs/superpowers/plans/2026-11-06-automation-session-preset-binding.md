@@ -1526,8 +1526,8 @@ git commit -m "fix(automations): address full-suite regressions"
 
 - [ ] **Step 5: Final status**
 
-Run: `cd /home/hhoa/git/hhoa/teampilot && git status --short && git log --oneline -6`
-Expected: the 4 feature commits on top of `adda9d0c4` (spec); no stray files staged. Report the exact analyze/test output when claiming done.
+Run: `cd /home/hhoa/git/hhoa/teampilot && git status --short && git log --oneline -8`
+Expected: the 4 feature commits present (other sessions may interleave their own commits — that is fine); no stray files staged. Report the exact analyze/test output when claiming done.
 
 ---
 
