@@ -16,10 +16,16 @@ class AiChainOfThoughtView extends StatefulWidget {
   const AiChainOfThoughtView({
     required this.parts,
     this.autoExpand = false,
+    this.toolCallCount = 0,
     super.key,
   });
 
   final List<AiMessagePart> parts;
+
+  /// Total [AiToolCallPart]s in the owning message. Non-zero only on the last
+  /// chain; renders the stats phrase instead of the steps phrase when the host
+  /// supplies [AiMessageStrings.formatThinkingProcessStats].
+  final int toolCallCount;
 
   /// While true, the chain stays expanded (including inner reasoning steps) so
   /// the live "thinking" content remains visible. The host turns this off once
@@ -62,9 +68,12 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
     final formatted = summary.hasActivity
         ? strings.formatThinkingProcessSummary(summary)
         : '';
+    final stats = strings.formatThinkingProcessStats;
     final phrase = formatted.isNotEmpty
         ? formatted
-        : strings.formatThinkingProcessSteps(widget.parts.length);
+        : (stats != null && widget.toolCallCount > 0
+            ? stats(widget.parts.length, widget.toolCallCount)
+            : strings.formatThinkingProcessSteps(widget.parts.length));
     final showDiff =
         formatted.isNotEmpty && (summary.added > 0 || summary.removed > 0);
     final semanticsLabel = [

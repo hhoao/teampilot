@@ -26,6 +26,7 @@ class AiMessageStrings {
     this.thinkingProcess = 'Thinking process',
     this.formatThinkingProcessSteps = _defaultThinkingProcessSteps,
     this.formatThinkingProcessSummary = defaultThinkingProcessSummaryLabel,
+    this.formatThinkingProcessStats,
     this.askUserAsking = 'Asking questions',
     this.formatAskUserAsked = _defaultAskUserAsked,
     this.askUserUnanswered = 'Unanswered',
@@ -77,6 +78,7 @@ class AiMessageStrings {
   final String thinkingProcess;
   final String Function(Object count) formatThinkingProcessSteps;
   final AiThinkingProcessSummaryFormatter formatThinkingProcessSummary;
+  final String Function(int steps, int toolCalls)? formatThinkingProcessStats;
   final String reasoning;
   final String result;
   final String copy;

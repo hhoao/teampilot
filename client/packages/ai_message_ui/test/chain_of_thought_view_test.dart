@@ -379,6 +379,131 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('live thought'), findsOneWidget);
   });
+
+  testWidgets('Cot trigger keeps steps phrase when stats hook is absent', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AiChainOfThoughtView(
+            parts: [AiReasoningPart(text: 'thought')],
+            toolCallCount: 3,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('Thinking process · 1 steps'), findsOneWidget);
+    expect(find.textContaining('tool calls'), findsNothing);
+  });
+
+  testWidgets('Cot trigger uses stats hook when toolCallCount is positive', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMessageStringsScope(
+            strings: const AiMessageStrings(
+              formatThinkingProcessStats: _statsLabel,
+            ),
+            child: AiChainOfThoughtView(
+              parts: const [AiReasoningPart(text: 'thought')],
+              toolCallCount: 3,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.textContaining('Thinking process · 1 steps · 3 tool calls'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Cot trigger falls back to steps when toolCallCount is zero', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMessageStringsScope(
+            strings: const AiMessageStrings(
+              formatThinkingProcessStats: _statsLabel,
+            ),
+            child: AiChainOfThoughtView(
+              parts: const [AiReasoningPart(text: 'thought')],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('Thinking process · 1 steps'), findsOneWidget);
+    expect(find.textContaining('tool calls'), findsNothing);
+  });
+
+  testWidgets('Cot trigger prefers summary over stats hook', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMessageStringsScope(
+            strings: const AiMessageStrings(
+              formatThinkingProcessStats: _statsLabel,
+            ),
+            child: AiChainOfThoughtView(
+              parts: const [
+                AiReasoningPart(text: 'thought'),
+                AiToolCallPart(
+                  toolCallId: 'e1',
+                  toolName: 'Edit',
+                  category: AiToolCallCategory.edit,
+                ),
+              ],
+              toolCallCount: 3,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('Edited 1 file'), findsOneWidget);
+    expect(find.textContaining('tool calls'), findsNothing);
+  });
+
+  testWidgets('Cot stats refresh without resetting manual open state', (
+    tester,
+  ) async {
+    Widget build(int count) => MaterialApp(
+      theme: ThemeData(
+        extensions: [AiMessageTheme.test(cotExpandReasoningOnOpen: true)],
+      ),
+      home: Scaffold(
+        body: AiMessageStringsScope(
+          strings: const AiMessageStrings(
+            formatThinkingProcessStats: _statsLabel,
+          ),
+          child: AiChainOfThoughtView(
+            parts: const [AiReasoningPart(text: 'thought')],
+            toolCallCount: count,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(build(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Thinking process'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('thought'), findsOneWidget);
+
+    await tester.pumpWidget(build(3));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('1 steps · 3 tool calls'), findsOneWidget);
+    expect(find.textContaining('thought'), findsOneWidget);
+  });
 }
 
 class _SummaryFileResolver implements AiToolFileTargetResolver {
@@ -412,3 +537,6 @@ class _NoopShellResolver implements AiShellToolTargetResolver {
   @override
   AiShellToolTarget? resolve(AiToolCallPart part) => null;
 }
+
+String _statsLabel(int steps, int toolCalls) =>
+    'Thinking process · $steps steps · $toolCalls tool calls';
