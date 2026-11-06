@@ -450,6 +450,24 @@ void main() {
     expect(find.textContaining('first thought'), findsOneWidget);
     expect(find.textContaining('third thought'), findsOneWidget);
   });
+
+  testWidgets('all reasoning folds when live auto-expand ends', (tester) async {
+    const parts = [
+      AiReasoningPart(text: 'first thought'),
+      AiReasoningPart(text: 'second thought'),
+    ];
+
+    await tester.pumpWidget(buildLiveChain(parts));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('second thought'), findsOneWidget);
+
+    await tester.pumpWidget(buildLiveChain(parts, autoExpand: false));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Thinking process'), findsOneWidget);
+    expect(find.textContaining('first thought'), findsNothing);
+    expect(find.textContaining('second thought'), findsNothing);
+  });
 }
 
 class _SummaryFileResolver implements AiToolFileTargetResolver {

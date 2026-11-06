@@ -1170,4 +1170,35 @@ void main() {
     position = tester.state<ScrollableState>(scrollable).position;
     expect(position.maxScrollExtent - position.pixels, greaterThan(30.0));
   });
+
+  testWidgets('live tip folds finished reasoning but keeps the active one open', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: const [
+            AiReasoningPart(text: 'finished thought'),
+            AiReasoningPart(text: 'active thought'),
+          ],
+        ),
+      ]);
+
+    await tester.pumpWidget(
+      _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
+    );
+    await _pumpLive(tester);
+
+    expect(find.textContaining('active thought'), findsOneWidget);
+    expect(find.textContaining('finished thought'), findsNothing);
+
+    await tester.pumpWidget(_harness(runtime: store));
+    await pumpUntilSettled(tester);
+
+    expect(find.textContaining('Thinking process'), findsOneWidget);
+    expect(find.textContaining('active thought'), findsNothing);
+    expect(find.textContaining('finished thought'), findsNothing);
+  });
 }
