@@ -138,7 +138,7 @@ class WorkbenchGroupHost extends StatelessWidget {
     final activeContext = _resolveActiveContext(context);
     final isPersonalContext = activeContext.isPersonal;
     final teamConfig = activeContext.team;
-    final tabById = {for (final t in runtimeTabs) t.info.id: t};
+    final tabById = {for (final t in runtimeTabs) t.sessionId: t};
     final sessionIds = [
       for (final t in order)
         if (t.kind == WorkbenchTabKind.session) t.id,

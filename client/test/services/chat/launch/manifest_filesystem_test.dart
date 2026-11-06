@@ -531,5 +531,48 @@ void main() {
       expect(target.files.containsKey('/old'), isFalse);
       expect(target.files['/new'], 'y');
     });
+    test('copyTree defers reads to the source instead of mirroring the tree',
+        () async {
+      final home = _CountingReadFilesystem();
+      home.directories.add('/src/tree');
+      for (var i = 0; i < 60; i++) {
+        home.files['/src/tree/f$i.txt'] = 'v$i';
+      }
+      final manifest = LaunchManifest();
+      final staging = ManifestFilesystem(
+        manifest: manifest,
+        readDelegate: home,
+      );
+
+      await staging.copyTree(source: '/src/tree', destination: '/dst/tree');
+
+      // Eagerly mirroring a 12MB marketplace tree over SFTP cost ~98s on
+      // Android. The real (mode-preserving) copy happens at flush.
+      expect(home.reads, 0);
+      expect(
+        manifest.entries.whereType<ManifestCopyTree>().single.destination,
+        '/dst/tree',
+      );
+      // A read in the same staging pass is redirected to the source on demand.
+      expect(await staging.readString('/dst/tree/f7.txt'), 'v7');
+      expect(home.reads, 1);
+      expect((await staging.listDir('/dst/tree')).length, 60);
+    });
   });
+}
+
+class _CountingReadFilesystem extends InMemoryFilesystem {
+  int reads = 0;
+
+  @override
+  Future<String?> readString(String path) async {
+    reads++;
+    return super.readString(path);
+  }
+
+  @override
+  Future<List<int>?> readBytes(String path) async {
+    reads++;
+    return super.readBytes(path);
+  }
 }

@@ -447,7 +447,7 @@ class SessionLaunchService
         repo: job.request.repo,
       );
     }
-    _h.updateTabRunning(tab.info.id);
+    _h.updateTabRunning(tab.sessionId);
   }
 
   @override
@@ -511,7 +511,7 @@ class SessionLaunchService
     if (resolved.team != null) {
       _assignSelectedMemberOnTab(tab: tab, memberId: resolved.member.id);
     }
-    _h.updateTabRunning(tab.info.id);
+    _h.updateTabRunning(tab.sessionId);
   }
 
   @override
@@ -610,7 +610,7 @@ class SessionLaunchService
         _memberConnect.scheduleMemberConnectAndWait(
           team,
           candidate,
-          tab.info.id,
+          tab.sessionId,
           repo: repo,
           selectMember: false,
           reason: LaunchReason.restore,
@@ -716,7 +716,7 @@ class SessionLaunchService
       shellKey: shellKey,
       cli: cli,
       needsRemoteLaunch: needsRemoteLaunch,
-      sessionId: tab.info.id,
+      sessionId: tab.sessionId,
     );
     return tab.memberShells.putIfAbsent(
       shellKey,
@@ -910,9 +910,9 @@ class SessionLaunchService
     tab.membersPendingConnect.remove(memberId);
     tab.memberShells[memberId]?.disconnect();
     unawaited(tab.closeMemberRemotePlane(memberId));
-    _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: memberId);
-    _h.clearLaunchError(tab.info.id);
-    _h.updateTabRunning(tab.info.id);
+    _h.clearAgentStatusSeat(sessionId: tab.sessionId, memberId: memberId);
+    _h.clearLaunchError(tab.sessionId);
+    _h.updateTabRunning(tab.sessionId);
   }
 
   /// Disconnects [memberId] on [sessionId]'s open tab (any tab, not only active).
@@ -928,9 +928,9 @@ class SessionLaunchService
     tab.membersPendingConnect.remove(mid);
     tab.memberShells[mid]?.disconnect();
     unawaited(tab.closeMemberRemotePlane(mid));
-    _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: mid);
-    _h.clearLaunchError(tab.info.id);
-    _h.updateTabRunning(tab.info.id);
+    _h.clearAgentStatusSeat(sessionId: tab.sessionId, memberId: mid);
+    _h.clearLaunchError(tab.sessionId);
+    _h.updateTabRunning(tab.sessionId);
   }
 
   /// Reclaims an idle member's live terminal (Chrome-style discard).
@@ -952,9 +952,9 @@ class SessionLaunchService
     tab.memberShells.remove(mid);
     tab.reclaimedMemberIds.add(mid);
     unawaited(tab.closeMemberRemotePlane(mid));
-    _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: mid);
-    _h.clearLaunchError(tab.info.id);
-    _h.updateTabRunning(tab.info.id);
+    _h.clearAgentStatusSeat(sessionId: tab.sessionId, memberId: mid);
+    _h.clearLaunchError(tab.sessionId);
+    _h.updateTabRunning(tab.sessionId);
   }
 
   /// Reclaims an idle ACP seat (Chrome-style discard).
@@ -979,9 +979,9 @@ class SessionLaunchService
     tab.memberAcpRuntimes.remove(mid);
     tab.reclaimedMemberIds.add(mid);
     unawaited(tab.closeMemberRemotePlane(mid));
-    _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: mid);
-    _h.clearLaunchError(tab.info.id);
-    _h.updateTabRunning(tab.info.id);
+    _h.clearAgentStatusSeat(sessionId: tab.sessionId, memberId: mid);
+    _h.clearLaunchError(tab.sessionId);
+    _h.updateTabRunning(tab.sessionId);
     await cubit.close();
   }
 
@@ -1005,12 +1005,12 @@ class SessionLaunchService
     tab.acpRuntime = null;
     tab.reclaimedAcpRuntime = true;
     _h.clearAgentStatusSeat(
-      sessionId: tab.info.id,
+      sessionId: tab.sessionId,
       memberId: AcpChatRuntimeCubit.acpMemberId,
     );
-    _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: id);
-    _h.clearLaunchError(tab.info.id);
-    _h.updateTabRunning(tab.info.id);
+    _h.clearAgentStatusSeat(sessionId: tab.sessionId, memberId: id);
+    _h.clearLaunchError(tab.sessionId);
+    _h.updateTabRunning(tab.sessionId);
     await cubit.close();
   }
 

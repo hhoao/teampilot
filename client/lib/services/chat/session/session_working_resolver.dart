@@ -26,7 +26,7 @@ final class SessionWorkingResolver {
     required bool presenceNonEmpty,
   }) {
     if (!presenceNonEmpty || activeSessionId == null) return false;
-    if (tab.info.id != activeSessionId) return false;
+    if (tab.sessionId != activeSessionId) return false;
     if (isPersonalTab(tab)) return false;
     // Native Claude roster + mixed bus both publish via [MemberPresenceCubit].
     return true;

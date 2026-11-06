@@ -566,6 +566,7 @@ class AppShell {
     required this.discoverySettingsCubit,
     required this.reinstallStorageContext,
     required this.bootstrapAppData,
+    required this.warmStartupCaches,
     this.catalogRuntime,
     required this.cliToolRegistry,
     required this.homeWorkspaceUiCache,
@@ -691,6 +692,10 @@ class AppShell {
   final DiscoverySettingsCubit discoverySettingsCubit;
   final Future<void> Function() reinstallStorageContext;
   final Future<void> Function() bootstrapAppData;
+
+  /// Cache warm-ups that must not compete with the first frame. Started after
+  /// the splash transition; swallows its own failures.
+  final Future<void> Function() warmStartupCaches;
 
   /// Retried-bootstrap teardown seam: the assembled catalog runtime, exposed so
   /// a bootstrap failure after [buildAppShell] succeeded can close its
@@ -1939,17 +1944,14 @@ Future<AppShell> buildAppShell({
       syncCursorUsage: sessionUsageServices.syncCursorUsage,
       storageChanges: homeStorage.changes.map<void>((_) {}),
     );
-    unawaited(sessionUsageCubit.ensureLoaded());
-
-    // Warm the caches once at boot so the session usage dashboard has account
-    // rows even when the Cursor page is never opened.
-    unawaited(
-      _warmCursorUsage(
-        accounts: () => cursorStack().registry.list(),
-        load: (accountId) => cursorStack().coordinator.load(
-          accountId: accountId,
-          range: const CursorUsagePresetRange(CursorUsagePreset.billingCycle),
-        ),
+    // Usage events are loaded on demand by the usage page. Loading them here
+    // would pull the whole event store through the home plane before the
+    // first frame — tens of MB over SSH, decrypted on the UI isolate.
+    Future<void> warmStartupCaches() => _warmCursorUsage(
+      accounts: () => cursorStack().registry.list(),
+      load: (accountId) => cursorStack().coordinator.load(
+        accountId: accountId,
+        range: const CursorUsagePresetRange(CursorUsagePreset.billingCycle),
       ),
     );
 
@@ -2114,6 +2116,20 @@ Future<AppShell> buildAppShell({
       localStore: localExpertStore,
     );
     final expertHubCatalog = ExpertHubCatalog(source: compositeExpertHubSource);
+    // The home-index load materializes every team roster, which blocks on this
+    // catalog's first snapshot (registry fetch on a cold cache). Warm it now so
+    // that read overlaps the rest of shell wiring instead of the splash.
+    unawaited(() async {
+      try {
+        await expertHubCatalog.snapshot();
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '[boot] expert catalog warm failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }());
     final expertCloneService = ExpertCloneService(
       source: compositeExpertHubSource,
       store: localExpertStore,
@@ -3173,13 +3189,17 @@ Future<AppShell> buildAppShell({
               workspace.workspaceId,
           ],
           activeSessionKeys: {
-            for (final tab in chatCubit.tabStore.openTabs) tab.info.id,
+            for (final tab in chatCubit.tabStore.openTabs) tab.sessionId,
           },
         );
       } on Object catch (e, st) {
         appLogger.w('[boot] marketplaceCloneSweep failed: $e\n$st');
       }
     }
+
+    // Assigned once the shell graph is wired. bootstrapAppData only runs after
+    // buildAppShell returns, so the reference below is safe at call time.
+    late final HomeInvalidationService homeInvalidationService;
 
     Future<void> bootstrapAppData() async {
       await notificationBootstrap;
@@ -3203,7 +3223,16 @@ Future<AppShell> buildAppShell({
               isSshMode: connectionModeService.isRemoteWorkPlane,
               homeSshProfileId: defaultTargetResolver().sshProfileId,
               sshProfileExists: (id) => sshProfileById(id) != null,
-              reinstallStorageContext: reinstallStorageContext,
+              // buildAppShell just materialized the home context from the same
+              // on-disk profiles this bootstrap reloads, so a rebind here would
+              // only repeat the path probe (~0.7s over SSH) with no new input.
+              reinstallSshHome: false,
+              // Not invoked while the flag above is false. Kept bracketed:
+              // a reinstall outside the invalidation service's reload would
+              // publish a swap that echoes back as an external home switch and
+              // schedules a duplicate full bootstrap.
+              reinstallStorageContext: () => homeInvalidationService
+                  .runSelfInitiatedSwap(reinstallStorageContext),
               storage: homeStorage,
               home: defaultTargetResolver(),
               expertHubCatalog: expertHubCatalog,
@@ -3248,18 +3277,34 @@ Future<AppShell> buildAppShell({
       );
       unawaited(sweepStaleMarketplaceClones());
       bootstrapCubit?.beginWarmAuxiliary();
-      await AppDataBootstrap.warmAuxiliaryData(
+      // Only host config the home shell renders stays on the splash path.
+      // Model catalogs are composer-only, and the rest (plugins, skills, MCP,
+      // extensions, team resource syncs, llmConfig) loads in the background
+      // behind its own loading states.
+      await AppDataBootstrap.warmShellConfig(
         boot: boot,
-        llmConfigCubit: llmConfigCubit,
         appProviderCubit: appProviderCubit,
-        teamCubit: teamCubit,
-        pluginCubit: pluginCubit,
-        skillCubit: skillCubit,
-        mcpCubit: mcpCubit,
-        extensionCubit: extensionCubit,
-        chatCubit: chatCubit,
-        sessionRepo: sessionRepo,
       );
+      unawaited(() async {
+        try {
+          await AppDataBootstrap.warmAuxiliaryData(
+            boot: boot,
+            llmConfigCubit: llmConfigCubit,
+            appProviderCubit: appProviderCubit,
+            teamCubit: teamCubit,
+            pluginCubit: pluginCubit,
+            skillCubit: skillCubit,
+            mcpCubit: mcpCubit,
+            extensionCubit: extensionCubit,
+          );
+        } on Object catch (error, stackTrace) {
+          appLogger.w(
+            '[boot] auxiliary warm-up failed',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
+      }());
       final showOnboarding = await AppDataBootstrap.prepareInteractiveShell(
         boot: boot,
         appSettings: appSettings,
@@ -3462,7 +3507,7 @@ Future<AppShell> buildAppShell({
     // before bootstrapAppData so the profile baseline is primed from the
     // current catalog; profile diffs and home plane swaps map to reload
     // levels, and a missing home profile falls back to the local home.
-    final homeInvalidationService = HomeInvalidationService(
+    homeInvalidationService = HomeInvalidationService(
       profileStates: sshProfileCubit.stream,
       storageChanges: homeStorage.changes,
       homeTargetId: () => defaultTargetResolver().id,
@@ -3633,6 +3678,7 @@ Future<AppShell> buildAppShell({
       discoverySettingsCubit: discoverySettingsCubit,
       reinstallStorageContext: reinstallStorageContext,
       bootstrapAppData: bootstrapAppData,
+      warmStartupCaches: warmStartupCaches,
       catalogRuntime: catalogRuntime,
       homeWorkspaceUiCache: homeWorkspaceUiCache,
       automationCubit: automationCubit,
@@ -3908,7 +3954,12 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         shell.cursorUsageApiClient.close();
         return;
       }
+      final frameSw = Stopwatch()..start();
       await yieldUiFrame();
+      appLogger.i(
+        '[boot] +${bootSw.elapsedMilliseconds}ms shell built, '
+        'bootstrap frame yielded +${frameSw.elapsedMilliseconds}ms',
+      );
       await shell.bootstrapAppData();
       if (!mounted) {
         await _eventTransportController.apply(EventTransportRole.none);
@@ -3940,6 +3991,10 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       await yieldUiFrame();
       if (!mounted) return;
       await completeBootSplashTransition();
+      // Cache warm-ups yield to the first painted frame: on SSH homes the
+      // reads are decrypted on the UI isolate, so starting them alongside
+      // bootstrap would stretch the splash for every extra byte.
+      unawaited(shell.warmStartupCaches());
     } on Object catch (error, stackTrace) {
       await _teardownConnect(builtShell);
       await builtShell?.managedProviderControlPlane.close();

@@ -99,7 +99,7 @@ class TabMemberReclaimWatch {
     final team = _activeTeam();
     final now = _now();
     for (final tab in _tabStore.openTabs) {
-      final sessionId = tab.info.id;
+      final sessionId = tab.sessionId;
       for (final entry in tab.memberShells.entries.toList()) {
         final memberId = entry.key;
         final shell = entry.value;
@@ -138,7 +138,7 @@ class TabMemberReclaimWatch {
             team,
             personal: personal,
           );
-          final key = (tab.info.id, memberId);
+          final key = (tab.sessionId, memberId);
           if (acpPolicy.isProtected(snapshot)) {
             _idleSince.remove(key);
             continue;
@@ -147,14 +147,14 @@ class TabMemberReclaimWatch {
           _idleSince[key] = idleSince;
           if (acpPolicy.shouldReclaim(snapshot, idleSince, now)) {
             appLogger.d(
-              '[reclaim-watch] discard acp member=$memberId session=${tab.info.id} '
+              '[reclaim-watch] discard acp member=$memberId session=${tab.sessionId} '
               'personal=$personal idle=${now.difference(idleSince).inSeconds}s',
             );
             _idleSince.remove(key);
             if (personal) {
-              _onDiscardPersonalAcp?.call(tab.info.id);
+              _onDiscardPersonalAcp?.call(tab.sessionId);
             } else {
-              _onDiscardAcpSeat?.call(tab.info.id, memberId);
+              _onDiscardAcpSeat?.call(tab.sessionId, memberId);
             }
           }
         }
@@ -170,7 +170,7 @@ class TabMemberReclaimWatch {
     required bool personal,
   }) {
     final phase = cubit.state.phase;
-    final sessionId = tab.info.id;
+    final sessionId = tab.sessionId;
     return TerminalReclaimSnapshot(
       sessionId: sessionId,
       memberId: memberId,
@@ -217,7 +217,7 @@ class TabMemberReclaimWatch {
         (tab.persistedSession?.sessionTeam.trim().isNotEmpty ?? false) ||
         (bus != null);
     return TerminalReclaimSnapshot(
-      sessionId: tab.info.id,
+      sessionId: tab.sessionId,
       memberId: memberId,
       shellRunning: shell.isRunning,
       shellConnecting:
@@ -228,14 +228,14 @@ class TabMemberReclaimWatch {
           (!isTeamSession || tab.selectedMemberId == memberId),
       inTurn:
           (bus?.isMemberInTurn(memberId) ?? shell.userTurnActive) ||
-          (_sessionBusyFromAttention?.call(tab.info.id) ?? false) ||
-          (_sessionBusyFromDeliveryInFlight?.call(tab.info.id) ?? false),
+          (_sessionBusyFromAttention?.call(tab.sessionId) ?? false) ||
+          (_sessionBusyFromDeliveryInFlight?.call(tab.sessionId) ?? false),
       hasUnread: (bus?.memberById(memberId)?.inbox.unreadCount ?? 0) > 0,
       isSessionPinned:
-          _isSessionPinned?.call(tab.info.id) ??
+          _isSessionPinned?.call(tab.sessionId) ??
           (tab.persistedSession?.pinned ?? false),
       hasActiveLeases:
-          _seatHasActiveLeases?.call(tab.info.id, memberId) ?? false,
+          _seatHasActiveLeases?.call(tab.sessionId, memberId) ?? false,
     );
   }
 

@@ -113,7 +113,7 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
     for (final tab in chat.tabStore.openTabs) {
       buf.write(tab.workspaceId);
       buf.write('\x1f');
-      buf.write(tab.info.id);
+      buf.write(tab.sessionId);
       buf.write('\x1f');
       buf.write(tab.info.title);
       for (final e in tab.memberShells.entries) {

@@ -175,6 +175,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     AcpBackgroundLivenessProbeFactory? backgroundLivenessFactory,
     Duration? backgroundSyncInterval,
     this.backgroundSyncWindow = defaultBackgroundSyncWindow,
+    this.chunkCoalesceWindow = defaultChunkCoalesceWindow,
     this.onTurnCheckpoint,
   }) : _runtime = runtime,
        _attention = attention,
@@ -259,6 +260,20 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// Test/embedding override for the history-sync poll cadence.
   final Duration? _backgroundSyncInterval;
   final Duration backgroundSyncWindow;
+
+  /// Upper bound on how long streamed text/reasoning deltas stay buffered
+  /// before one state emit carries them all.
+  ///
+  /// ACP adapters emit one `agent_message_chunk` per token, and every chunk
+  /// used to rebuild the whole transcript (identity merge, thread rebuild,
+  /// markdown compile of the entire growing message). Batching to roughly one
+  /// emit per frame window keeps those costs proportional to the window, not
+  /// to the token rate. [Duration.zero] disables batching for callers that
+  /// drive updates synchronously (tests).
+  final Duration chunkCoalesceWindow;
+
+  /// Production default: ~16 live tip updates per second.
+  static const defaultChunkCoalesceWindow = Duration(milliseconds: 60);
 
   AcpChatStrings? _strings;
   StreamSubscription<AcpSessionUpdate>? _updatesSub;
@@ -348,6 +363,15 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   /// Whether the current turn has emitted any message chunk yet.
   bool _seenChunkThisTurn = false;
+
+  /// Streamed text/reasoning runs buffered until [chunkCoalesceWindow] closes.
+  ///
+  /// A contiguous run appends into one [StringBuffer], so a burst of token
+  /// chunks costs O(delta) instead of re-concatenating the whole message for
+  /// every chunk. Runs are kept separate across text/thought switches so the
+  /// message part order is identical to the unbatched path.
+  final List<_PendingStreamRun> _pendingStreamRuns = [];
+  Timer? _chunkFlushTimer;
 
   /// Activity implied by the turn trackers. Callers must have already updated
   /// the trackers for the event in hand.
@@ -753,6 +777,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// are dropped until the next prompt owns the stream.
   void cancelTurn() {
     if (_closing || isClosed) return;
+    // Keep prose produced before Stop; only the abandoned tail is dropped.
+    _flushPendingStreamRuns();
     final hadQueued = _queuedPrompt != null;
     _turnSerial++;
     _queuedPrompt = null;
@@ -915,7 +941,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         stackTrace: stackTrace,
       );
     } finally {
-      if (_allowPersist) await _persist();
+      // `_persist` flushes queued stream runs before writing, and no-ops when
+      // persistence was never unlocked. Calling it unconditionally keeps that
+      // invariant in one place.
+      await _persist();
       // The exit watcher holds no handle to cancel, and a never-completing exit
       // future (the common no-crash case) must not keep close pending — its
       // callback is a no-op once the cubit is closed.
@@ -947,20 +976,28 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
           // Live user bubbles are app-owned (SendPrompt inserts them); a user
           // chunk only appears in a history replay, where it anchors the
           // assistant messages that follow it.
-          if (replaying) _appendReplayUserChunk(update.content);
+          if (replaying) {
+            _flushPendingStreamRuns();
+            _appendReplayUserChunk(update.content);
+          }
           return;
         }
         if (!replaying) {
-          _removeAuthNoticeMessage();
+          // The handshake probe row can only sit above the first chunk of a
+          // turn; scanning the whole transcript for it on every token would
+          // reintroduce the per-chunk cost this coalescer removes.
+          if (!_seenChunkThisTurn) _removeAuthNoticeMessage();
           _seenChunkThisTurn = true;
         }
-        _appendMessageParts(_chunkParts(update));
+        _queueStreamChunk(update);
       case AcpToolCallUpdate():
         if (isClosed) return;
+        _flushPendingStreamRuns();
         _applyToolCall(update);
         if (!replaying) unawaited(_persist());
       case AcpStop():
         if (isClosed || replaying) return;
+        _flushPendingStreamRuns();
         await _onStop(update);
       case AcpAuthNotice():
         if (isClosed || replaying) return;
@@ -990,6 +1027,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
           AcpTaskUpdate() ||
           AcpGeneratedImageUpdate():
         if (isClosed) return;
+        // Extension rows land after the prose that opened them.
+        _flushPendingStreamRuns();
         final folded = foldAcpExtensionNotification(
           messages: _replayMessages ?? state.messages,
           update: update,
@@ -1018,6 +1057,47 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         ? AiReasoningPart(text: chunk.content)
         : AiTextPart(text: chunk.content),
   ];
+
+  /// Buffers one streamed chunk, or appends it immediately when coalescing is
+  /// disabled (default for tests/embedders).
+  void _queueStreamChunk(AcpMessageChunk chunk) {
+    if (chunkCoalesceWindow <= Duration.zero) {
+      _appendMessageParts(_chunkParts(chunk));
+      return;
+    }
+    final last = _pendingStreamRuns.isEmpty ? null : _pendingStreamRuns.last;
+    if (last != null && last.isThought == chunk.isThought) {
+      last.text.write(chunk.content);
+    } else {
+      final run = _PendingStreamRun(isThought: chunk.isThought);
+      run.text.write(chunk.content);
+      _pendingStreamRuns.add(run);
+    }
+    _chunkFlushTimer ??= Timer(chunkCoalesceWindow, _flushPendingStreamRuns);
+  }
+
+  /// Emits the buffered runs as one message update.
+  ///
+  /// Called by the coalescing timer and before any update whose position
+  /// relative to the streamed text matters (tool cards, stops, extension rows,
+  /// replay anchors).
+  void _flushPendingStreamRuns() {
+    _chunkFlushTimer?.cancel();
+    _chunkFlushTimer = null;
+    if (_pendingStreamRuns.isEmpty) return;
+    if (isClosed) {
+      _pendingStreamRuns.clear();
+      return;
+    }
+    final parts = <AiMessagePart>[
+      for (final run in _pendingStreamRuns)
+        run.isThought
+            ? AiReasoningPart(text: run.text.toString())
+            : AiTextPart(text: run.text.toString()),
+    ];
+    _pendingStreamRuns.clear();
+    _appendMessageParts(parts);
+  }
 
   /// Persists one context-usage sample beside the chat transcript.
   ///
@@ -1368,6 +1448,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     if (_closing || isClosed) return;
     if (serial != _turnSerial || state.inTurn) return;
     if (updates.isEmpty) return;
+    // Do not let live text land in the replay buffer if a queued run is still
+    // waiting for its coalescing window.
+    _flushPendingStreamRuns();
     _replayMessages = <AiMessage>[];
     _replayedBackgroundToolCalls.clear();
     List<AiMessage> rebuilt;
@@ -1376,6 +1459,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         await _onUpdate(update);
       }
     } finally {
+      _flushPendingStreamRuns();
       rebuilt = _replayMessages ?? const <AiMessage>[];
       _replayMessages = null;
     }
@@ -2025,6 +2109,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   }
 
   Future<void> _persist() async {
+    // A queued text run is part of the snapshot: never write a transcript that
+    // is missing the last few tokens of the turn.
+    _flushPendingStreamRuns();
     if (!_allowPersist) return;
     final transcript = _transcript;
     if (transcript == null) return;
@@ -2041,6 +2128,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   void _endWith(AcpChatErrorKind kind, String message) {
     if (_closing || isClosed) return;
+    _flushPendingStreamRuns();
     _disarmCancelSettle();
     _stopBackgroundSync();
     _queuedPrompt = null;
@@ -2061,4 +2149,12 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       unawaited(_persist());
     }
   }
+}
+
+/// One contiguous run of streamed text or reasoning held for coalescing.
+class _PendingStreamRun {
+  _PendingStreamRun({required this.isThought});
+
+  final bool isThought;
+  final StringBuffer text = StringBuffer();
 }

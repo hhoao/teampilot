@@ -179,7 +179,7 @@ class MemberConnectStage {
             await scheduleMemberConnectAndWait(
               team,
               member,
-              tab.info.id,
+              tab.sessionId,
               repo: r,
               reason: LaunchReason.memberSelected,
             );
@@ -203,7 +203,7 @@ class MemberConnectStage {
     await scheduleMemberConnectAndWait(
       team,
       member,
-      tab.info.id,
+      tab.sessionId,
       repo: r,
       reason: LaunchReason.memberSelected,
     );
@@ -317,7 +317,7 @@ class MemberConnectStage {
         tab.persistedSession ?? _sessionForMemberConnect(sessionId, team);
     if (activeSession == null) {
       _host.failSessionConnect(
-        tab.info.id,
+        tab.sessionId,
         'No persisted session for this tab. Create a team session first.',
       );
       return;
@@ -328,8 +328,8 @@ class MemberConnectStage {
     if (shell != null &&
         (shell.isRunning || shell.isConnecting) &&
         !(waitForCompletion && memberConnectPending)) {
-      _host.memberMaterializer.markMemberReady(tab.info.id, memberId);
-      _host.updateTabRunning(tab.info.id);
+      _host.memberMaterializer.markMemberReady(tab.sessionId, memberId);
+      _host.updateTabRunning(tab.sessionId);
       return;
     }
     // Re-submit a pending identity for completion-aware callers so the
@@ -384,7 +384,7 @@ class MemberConnectStage {
     await scheduleMemberConnectAndWait(
       team,
       members.first,
-      tab.info.id,
+      tab.sessionId,
       repo: repo,
       selectMember: false,
       reason: LaunchReason.restore,
@@ -396,7 +396,7 @@ class MemberConnectStage {
         scheduleMemberConnectAndWait(
           team,
           member,
-          tab.info.id,
+          tab.sessionId,
           repo: repo,
           selectMember: false,
           reason: LaunchReason.restore,
@@ -524,7 +524,7 @@ class MemberConnectStage {
         '[session-launch] existing session already live '
         'session=${session.sessionId} member=$memberId',
       );
-      _host.updateTabRunning(tab.info.id);
+      _host.updateTabRunning(tab.sessionId);
       return;
     }
 
@@ -585,13 +585,13 @@ class MemberConnectStage {
     SessionRepository? repo,
   }) async {
     final r = repo ?? _host.sessionRepository;
-    final activeId = _activeTab()?.info.id ?? 'pending';
+    final activeId = _activeTab()?.sessionId ?? 'pending';
     _host.beginSessionConnect(activeId);
     // Restart disconnect() nulls onProcessExited without calling it, so sticky
     // waiting would survive until TTL unless seats are cleared here.
     final restartTab = _activeTab();
     if (restartTab != null) {
-      _host.clearAgentStatusSession(restartTab.info.id);
+      _host.clearAgentStatusSession(restartTab.sessionId);
     }
     if (shouldLaunchAllMembers(
       team: team,
@@ -607,7 +607,7 @@ class MemberConnectStage {
         for (final memberId in tab.memberSshSessions.keys.toList()) {
           unawaited(tab.closeMemberRemotePlane(memberId));
         }
-        _host.updateTabRunning(tab.info.id);
+        _host.updateTabRunning(tab.sessionId);
       }
       await launchAllMembers(team, repo: r);
       if (keepId.isNotEmpty &&
@@ -643,7 +643,7 @@ class MemberConnectStage {
     const message = 'No member selected. Choose a team member and try again.';
     final session = _ensureSession(team);
     session?.write('\r\n[$message]\r\n');
-    _host.failSessionConnect(_activeTab()?.info.id ?? 'pending', message);
+    _host.failSessionConnect(_activeTab()?.sessionId ?? 'pending', message);
   }
 }
 

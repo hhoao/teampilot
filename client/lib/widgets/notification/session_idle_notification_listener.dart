@@ -74,13 +74,13 @@ class _SessionIdleNotificationListenerState
         sessionIds: sessionIds,
         sessions: chat.state.sessions,
         openTabSessionIds: {
-          for (final tab in chat.tabStore.openTabs) tab.info.id,
+          for (final tab in chat.tabStore.openTabs) tab.sessionId,
         },
         l10n: l10n,
         notificationSubtitle: l10n.sessionIdleNotificationSubtitle,
         notificationBadge: l10n.sessionIdleNotificationTitle,
         systemNotificationEnabled: notifyOnSessionIdle,
-        activeSessionId: chat.activeTab?.info.id,
+        activeSessionId: chat.activeTab?.sessionId,
       ),
     );
   }

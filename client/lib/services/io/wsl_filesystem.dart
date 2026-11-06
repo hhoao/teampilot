@@ -15,6 +15,12 @@ class WslFilesystem implements Filesystem {
     : _distro = distro?.trim(),
       _processRunner = processRunner ?? Process.run;
 
+  /// WSL runs locally through `wsl.exe`, and launch staging already applies
+  /// manifests in-process for it (no SSH script runner), so it keeps the
+  /// per-file paths rather than the remote batch/same-host copy shortcuts.
+  @override
+  bool get isRemote => false;
+
   final String? _distro;
   final ProcessRunner _processRunner;
 

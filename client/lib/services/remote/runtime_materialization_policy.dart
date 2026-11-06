@@ -12,7 +12,15 @@ class RuntimeMaterializationPolicy {
   /// `.git`/`.hg`/`.svn`: repository metadata — large, host-specific, and
   /// meaningless on the remote side. `.tmp`: per-session scratch caches
   /// (e.g. Codex's shared plugin pool) that the remote launch recreates.
-  static const excludedSegments = {'.git', '.hg', '.svn', '.tmp'};
+  ///
+  /// Ordered: it is also iterated when generating remote shell scripts, and a
+  /// Set would emit a different byte sequence on every run.
+  static const List<String> excludedSegments = [
+    '.git',
+    '.hg',
+    '.svn',
+    '.tmp',
+  ];
 
   /// Whether [relativePath] (relative to the materialization root) should be
   /// copied for [tool]. [appToolTree] is true while enumerating app-level
@@ -22,13 +30,20 @@ class RuntimeMaterializationPolicy {
     required String tool,
     required bool appToolTree,
     required String relativePath,
-  }) {
+  }) => includesPath(relativePath);
+
+  /// Segment-only form of [include] for launch staging trees whose root is not
+  /// a CLI tool tree (workspace `plugins/` and `skills/` bundles, marketplace
+  /// flavors). Excluding VCS metadata there keeps multi-megabyte `.git` packs
+  /// out of the per-session SSH overlay.
+  bool includesPath(String relativePath) {
     for (final segment in _segments(relativePath)) {
       if (excludedSegments.contains(segment)) return false;
     }
     return true;
   }
 
-  Iterable<String> _segments(String relativePath) =>
-      relativePath.split('/').where((segment) => segment.isNotEmpty);
+  Iterable<String> _segments(String relativePath) => relativePath
+      .split(RegExp(r'[/\\]'))
+      .where((segment) => segment.isNotEmpty);
 }

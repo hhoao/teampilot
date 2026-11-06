@@ -36,7 +36,7 @@ final class ChatTabStoreSshReconnectSeats implements SshReconnectSeatPort {
     for (final tab in _tabs.openTabs)
       if (tab.persistedSession != null)
         SshReconnectOpenSession(
-          sessionId: tab.info.id,
+          sessionId: tab.sessionId,
           session: tab.persistedSession!,
         ),
   ];

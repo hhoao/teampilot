@@ -155,30 +155,30 @@ class _SessionKeepAliveHosts extends StatelessWidget {
       final tabs = c.tabStore.tabsForWorkspace(tabScopeId);
       return tabs
           .map(
-            (t) => '${t.info.id}:${t.selectedMemberId}:${t.info.launchError}',
+            (t) => '${t.sessionId}:${t.selectedMemberId}:${t.info.launchError}',
           )
           .join(',');
     });
     final groupSessions = sessionIds.toSet();
     final tabs = chat.tabStore
         .tabsForWorkspace(tabScopeId)
-        .where((t) => groupSessions.contains(t.info.id))
+        .where((t) => groupSessions.contains(t.sessionId))
         .toList(growable: false);
     final activeId = workbenchSlice.activeSessionId;
     return KeepAliveSessionStack(
-      sessionIds: [for (final t in tabs) t.info.id],
+      sessionIds: [for (final t in tabs) t.sessionId],
       activeSessionId: activeId,
       hosts: [
         for (var i = 0; i < tabs.length; i++)
           _SessionHostSlot(
-            key: ValueKey('session-host-${tabs[i].info.id}'),
-            tabSessionId: tabs[i].info.id,
+            key: ValueKey('session-host-${tabs[i].sessionId}'),
+            tabSessionId: tabs[i].sessionId,
             workspaceId: workspaceId,
             tabScopeId: tabScopeId,
             profileId: profileId,
             // Only the active host is route-active: offstage hosts must not
             // spawn placeholder shells or claim terminal input focus.
-            routeActive: routeActive && tabs[i].info.id == activeId,
+            routeActive: routeActive && tabs[i].sessionId == activeId,
             sessionId: sessionId,
             isPersonalContext: isPersonalContext,
             team: team,
@@ -268,7 +268,7 @@ class _SessionHostSlotState extends State<_SessionHostSlot> {
 /// only its own tab/shell — never the active conversation's.
 ChatWorkbenchSlice _sliceForSession(ChatState state, ChatTab tab) {
   return ChatWorkbenchSlice(
-    activeSessionId: tab.info.id,
+    activeSessionId: tab.sessionId,
     selectedMemberId: tab.selectedMemberId,
     sessionLaunchError: tab.info.launchError,
   );

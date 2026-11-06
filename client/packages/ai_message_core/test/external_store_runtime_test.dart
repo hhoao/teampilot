@@ -119,4 +119,25 @@ void main() {
 
     await sub.cancel();
   });
+
+  test('setMessages reuses moved instances by id', () {
+    final a = AiMessage(
+      id: 'a',
+      role: AiRole.user,
+      parts: const [AiTextPart(text: 'first')],
+    );
+    final b = AiMessage(
+      id: 'b',
+      role: AiRole.assistant,
+      parts: const [AiTextPart(text: 'second')],
+    );
+    final store = ExternalStoreAiThreadRuntime();
+    store.setMessages([a, b]);
+
+    // A reorder breaks the shared prefix, so the id map must still find and
+    // reuse both instances instead of minting new message objects.
+    store.setMessages([b, a]);
+    expect(identical(store.messages[0], b), isTrue);
+    expect(identical(store.messages[1], a), isTrue);
+  });
 }

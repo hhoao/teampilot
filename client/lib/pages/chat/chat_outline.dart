@@ -1,11 +1,25 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../services/chat/conversation/history/session_history_pagination.dart';
 
 const int kChatOutlinePreviewLimit = 160;
 
 final RegExp _whitespaceCollapse = RegExp(r'\s+');
+
+/// Preview cache keyed by message instance.
+///
+/// [buildChatOutline] runs from the transcript's live-update listeners, i.e.
+/// once per streamed chunk ×2. User messages are stable instances (the history
+/// loader reuses them), so re-running the whitespace-collapse regex over every
+/// prompt each time is pure churn. Only non-empty previews are cached: the
+/// empty placeholder is localized and may change with the locale.
+final Expando<String> _previewCache = Expando<String>('chatOutlinePreview');
+
+/// Number of previews actually derived from message text (test observability).
+@visibleForTesting
+int chatOutlinePreviewComputations = 0;
 
 enum ChatOutlineKind { userTurn }
 
@@ -91,6 +105,8 @@ bool shouldShowChatOutline({
 }
 
 String _previewFor(AiMessage message, String emptyPreview) {
+  final cached = _previewCache[message];
+  if (cached != null) return cached;
   final buf = StringBuffer();
   for (final part in message.parts) {
     if (part is! AiTextPart) continue;
@@ -101,8 +117,10 @@ String _previewFor(AiMessage message, String emptyPreview) {
   }
   var text = buf.toString().trim();
   if (text.isEmpty) return emptyPreview;
+  chatOutlinePreviewComputations++;
   if (text.length > kChatOutlinePreviewLimit) {
     text = text.substring(0, kChatOutlinePreviewLimit);
   }
+  _previewCache[message] = text;
   return text;
 }

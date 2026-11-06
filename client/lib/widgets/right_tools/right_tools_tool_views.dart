@@ -737,7 +737,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
   }
 
   SessionWorkbenchView _activeWorkbenchView(ChatCubit chat) {
-    final sessionId = chat.activeTab?.info.id;
+    final sessionId = chat.activeTab?.sessionId;
     if (sessionId == null || sessionId.isEmpty) {
       return SessionWorkbenchView.chat;
     }
@@ -765,7 +765,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
 
   void _openMember(BuildContext context, String id) {
     final chat = context.read<ChatCubit>();
-    final sessionId = chat.activeTab?.info.id;
+    final sessionId = chat.activeTab?.sessionId;
     if (sessionId != null && sessionId.isNotEmpty) {
       chat.setSessionWorkbenchView(sessionId, SessionWorkbenchView.terminal);
     }
@@ -783,12 +783,12 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
     final activeSession = activeTab == null
         ? null
         : chatCubit.state.sessions
-              .where((s) => s.sessionId == activeTab.info.id)
+              .where((s) => s.sessionId == activeTab.sessionId)
               .firstOrNull;
     await showMemberDetailDialog(
       context,
       workspaceId: widget.workspaceId,
-      sessionId: activeTab?.info.id ?? '',
+      sessionId: activeTab?.sessionId ?? '',
       team: widget.team,
       member: member,
       lifecycle: chatCubit.lifecycle,
@@ -804,7 +804,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
     final session = activeTab == null
         ? null
         : chatCubit.state.sessions
-              .where((s) => s.sessionId == activeTab.info.id)
+              .where((s) => s.sessionId == activeTab.sessionId)
               .firstOrNull;
     if (session == null) return;
 
@@ -829,7 +829,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
                 storage: chatCubit.lifecycle.storage,
               ).inspect(
                 workspaceId: widget.workspaceId,
-                sessionId: activeTab?.info.id ?? '',
+                sessionId: activeTab?.sessionId ?? '',
                 team: widget.team,
                 member: member,
                 workContext: workContext,

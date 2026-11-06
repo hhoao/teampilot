@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:acpd/acpd.dart' as acpd;
 import 'package:ai_message_core/ai_message_core.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
@@ -327,6 +328,7 @@ void main() {
     AcpBackgroundTranscriptSourceFactory? backgroundTranscriptFactory,
     AcpBackgroundLivenessProbeFactory? backgroundLivenessFactory,
     Duration? backgroundSyncInterval,
+    Duration chunkCoalesceWindow = Duration.zero,
     String launchProvider = '',
     String launchModel = '',
     void Function(String sessionId)? onUserActivity,
@@ -339,6 +341,7 @@ void main() {
       tool: CliTool.gemini,
       launchProvider: launchProvider,
       launchModel: launchModel,
+      chunkCoalesceWindow: chunkCoalesceWindow,
       onUserActivity: onUserActivity,
       onTurnCheckpoint: onTurnCheckpoint,
       attention: attention,
@@ -1138,6 +1141,134 @@ void main() {
     expect(cubit.state.messages.single.parts, hasLength(1));
     expect((cubit.state.messages.single.parts.single as AiTextPart).text, 'ok');
     await cubit.close();
+  });
+
+  group('stream chunk coalescing', () {
+    const window = Duration(milliseconds: 60);
+    AcpMessageChunk chunk(String text, {bool thought = false}) =>
+        AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: text,
+          isThought: thought,
+        );
+    void startCubit(AcpChatRuntimeCubit cubit) {
+      unawaited(
+        cubit.start(
+          executable: 'gemini',
+          sessionToolDir: '/tmp/tool',
+          workingDirectory: '/w',
+        ),
+      );
+    }
+
+    test('batches token chunks into one emit per window', () {
+      fakeAsync((async) {
+        final cubit = bootCubit(chunkCoalesceWindow: window);
+        startCubit(cubit);
+        async.flushMicrotasks();
+        var emits = 0;
+        final sub = cubit.stream.listen((_) => emits++);
+
+        runtime.emit(chunk('Hel'));
+        runtime.emit(chunk('lo'));
+        async.flushMicrotasks();
+        // Still buffered: the window has not elapsed yet.
+        expect(emits, 0);
+        expect(cubit.state.messages, isEmpty);
+
+        async.elapse(window);
+        expect(emits, 1);
+        expect(cubit.state.messages, hasLength(1));
+        expect(
+          (cubit.state.messages.single.parts.single as AiTextPart).text,
+          'Hello',
+        );
+
+        // A second window appends to the same tip instead of reopening it.
+        runtime.emit(chunk('!'));
+        async.flushMicrotasks();
+        async.elapse(window);
+        expect(cubit.state.messages, hasLength(1));
+        expect(
+          (cubit.state.messages.single.parts.single as AiTextPart).text,
+          'Hello!',
+        );
+
+        unawaited(sub.cancel());
+        unawaited(cubit.close());
+        async.flushMicrotasks();
+      });
+    });
+
+    test('keeps text/reasoning order across interleaved chunks', () {
+      fakeAsync((async) {
+        final cubit = bootCubit(chunkCoalesceWindow: window);
+        startCubit(cubit);
+        async.flushMicrotasks();
+
+        runtime.emit(chunk('think', thought: true));
+        runtime.emit(chunk('ing', thought: true));
+        runtime.emit(chunk('Answer'));
+        async.flushMicrotasks();
+        async.elapse(window);
+
+        final parts = cubit.state.messages.single.parts;
+        expect((parts[0] as AiReasoningPart).text, 'thinking');
+        expect((parts[1] as AiTextPart).text, 'Answer');
+
+        unawaited(cubit.close());
+        async.flushMicrotasks();
+      });
+    });
+
+    test('flushes buffered text before a tool call arrives', () {
+      fakeAsync((async) {
+        final cubit = bootCubit(chunkCoalesceWindow: window);
+        startCubit(cubit);
+        async.flushMicrotasks();
+
+        runtime.emit(chunk('plan: '));
+        async.flushMicrotasks();
+        runtime.emit(
+          const AcpToolCallUpdate(
+            toolCallId: 't1',
+            title: 'read file',
+            status: AcpToolCallStatus.inProgress,
+          ),
+        );
+        async.flushMicrotasks();
+
+        final parts = cubit.state.messages.single.parts;
+        expect(parts, hasLength(2));
+        expect((parts.first as AiTextPart).text, 'plan: ');
+        expect(parts.last, isA<AiToolCallPart>());
+
+        unawaited(cubit.close());
+        async.flushMicrotasks();
+      });
+    });
+
+    test('flushes buffered text before the turn stop', () {
+      fakeAsync((async) {
+        final cubit = bootCubit(chunkCoalesceWindow: window);
+        startCubit(cubit);
+        async.flushMicrotasks();
+
+        runtime.emit(chunk('final words'));
+        async.flushMicrotasks();
+        runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+        async.flushMicrotasks();
+
+        expect(cubit.state.inTurn, isFalse);
+        expect(
+          (cubit.state.messages.single.parts.single as AiTextPart).text,
+          'final words',
+        );
+
+        unawaited(cubit.close());
+        async.flushMicrotasks();
+      });
+    });
   });
 
   test('tool call update → tool card part with status lifecycle', () async {

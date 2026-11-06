@@ -23,6 +23,8 @@ import '../../support/post_frame_test_harness.dart';
 // Same enhanced fake as Task 1 (stat honors notFound; ensureDir/writeString
 // mutate state so create flows are observable).
 class _FakeFilesystem implements Filesystem {
+  @override
+  bool get isRemote => false;
   _FakeFilesystem(Map<String, List<FsDirEntry>> dirs) : _dirs = dirs;
 
   final Map<String, List<FsDirEntry>> _dirs;

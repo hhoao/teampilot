@@ -13,6 +13,8 @@ import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/utils/logging/logger.dart';
 
 class _CountingFs implements Filesystem {
+  @override
+  bool get isRemote => false;
   _CountingFs(this._inner);
   final Filesystem _inner;
   int sessionJsonReads = 0;

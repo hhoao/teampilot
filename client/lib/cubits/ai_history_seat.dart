@@ -1622,6 +1622,16 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
 
   void _remergePendingsOntoRuntime() {
     final slice = _visibleSlice();
+    if (_pendingQueue.isEmpty) {
+      // Common streaming path: no optimistic overlay, so skip the id set and
+      // the second list copy; the runtime merge already reuses the prefix.
+      if (slice.isEmpty) {
+        if (_allMessages.isEmpty) runtime.setEmpty();
+        return;
+      }
+      runtime.setMessages(slice);
+      return;
+    }
     final sliceIds = {for (final m in slice) m.id};
     final overlay = <AiMessage>[
       for (final p in _pendingQueue)
@@ -1712,6 +1722,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         : _allMessages.sublist(0, _committedLength);
     final count = math.min(_visibleCount, committed.length);
     final start = math.max(0, committed.length - count);
+    // Whole window visible (the common live-chat case): hand the list through
+    // without another O(n) copy. The runtime never mutates its input.
+    if (start == 0) return committed;
     return committed.sublist(start);
   }
 

@@ -30,7 +30,7 @@ List<ChatMemberShellRef> chatMemberShellRefsForWorkspace({
       refs.add(
         ChatMemberShellRef(
           workspaceId: workspaceId,
-          sessionId: tab.info.id,
+          sessionId: tab.sessionId,
           memberId: entry.key,
           sessionTitle: title,
           memberName: memberName(tab, entry.key),
@@ -89,7 +89,7 @@ List<AcpSeatRef> acpSeatRefsForWorkspace({
       refs.add(
         AcpSeatRef(
           workspaceId: workspaceId,
-          sessionId: tab.info.id,
+          sessionId: tab.sessionId,
           memberId: entry.key,
           sessionTitle: title,
           memberName: memberName(tab, entry.key),

@@ -356,8 +356,14 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     if (range.lastIndex < range.firstIndex || _turns.isEmpty) {
       return {};
     }
+    // Streamed turns are replaced (not only appended) between the frame that
+    // computed [range] and this update, so a stale index can point past the
+    // current list. Clamp before indexing: an exception here blanks the whole
+    // message viewport (red error box) instead of showing the assistant reply.
+    final first = range.firstIndex.clamp(0, _turns.length - 1).toInt();
+    final last = range.lastIndex.clamp(0, _turns.length - 1).toInt();
     final ids = <String>{};
-    for (var i = range.firstIndex; i <= range.lastIndex; i++) {
+    for (var i = first; i <= last; i++) {
       ids.add(_turns[i].id);
     }
     return ids;

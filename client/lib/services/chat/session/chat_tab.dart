@@ -76,6 +76,14 @@ class ChatTab {
   /// Persisted session for team member connect (may be absent before index load).
   AppSession? persistedSession;
 
+  /// Session id this tab's runtime is keyed by.
+  ///
+  /// [ChatTabInfo.id] is only a stable *tab* key: a scratch tab starts as
+  /// `local-<teamId>` until its session row is persisted, and the id never
+  /// changes afterwards. Anything keyed by session (pods, history, bar tabs,
+  /// member runtimes) must read this getter instead.
+  String get sessionId => persistedSession?.sessionId ?? info.id;
+
   /// Shared [LaunchPlan.memberConfigDir] from the most recent member connect
   /// (used by presence). Per-member paths live in [memberConfigDirs].
   String? memberToolConfigDir;
@@ -91,13 +99,10 @@ class ChatTab {
 
   /// Personal-session alias into [memberAcpRuntimes] for the tab's own session
   /// seat. Team UI must not use this for a selected teammate — use the map.
-  AcpChatRuntimeCubit? get acpRuntime {
-    final key = persistedSession?.sessionId ?? info.id;
-    return memberAcpRuntimes[key];
-  }
+  AcpChatRuntimeCubit? get acpRuntime => memberAcpRuntimes[sessionId];
 
   set acpRuntime(AcpChatRuntimeCubit? value) {
-    final key = persistedSession?.sessionId ?? info.id;
+    final key = sessionId;
     if (value == null) {
       memberAcpRuntimes.remove(key);
     } else {

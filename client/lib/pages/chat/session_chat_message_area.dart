@@ -515,6 +515,9 @@ class _ChatOutlineLayerState extends State<_ChatOutlineLayer> {
   StreamSubscription<void>? _runtimeSub;
   StreamSubscription<AiHistoryState>? _seatSub;
 
+  /// True while a post-frame outline rebuild is already queued.
+  var _refreshScheduled = false;
+
   @override
   void initState() {
     super.initState();
@@ -550,8 +553,12 @@ class _ChatOutlineLayerState extends State<_ChatOutlineLayer> {
   }
 
   void _refresh() {
-    if (!mounted) return;
-    void apply() {
+    if (!mounted || _refreshScheduled) return;
+    _refreshScheduled = true;
+    // The runtime change stream and the seat state stream both fire for one
+    // streamed chunk; coalesce them into a single outline pass per frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshScheduled = false;
       if (!mounted) return;
       final next = buildChatOutline(
         widget.historySeat.loadedMessages,
@@ -560,15 +567,10 @@ class _ChatOutlineLayerState extends State<_ChatOutlineLayer> {
       );
       if (identical(next, _outline)) return;
       setState(() => _outline = next);
-    }
-
-    final phase = SchedulerBinding.instance.schedulerPhase;
-    if (phase == SchedulerPhase.idle ||
-        phase == SchedulerPhase.postFrameCallbacks) {
-      apply();
-      return;
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) => apply());
+    });
+    // `addPostFrameCallback` does not schedule a frame by itself; a
+    // chunk-driven update may arrive while the scheduler is idle.
+    SchedulerBinding.instance.ensureVisualUpdate();
   }
 
   @override

@@ -76,6 +76,13 @@ abstract interface class FsWatcher {
 abstract interface class Filesystem {
   p.Context get pathContext;
 
+  /// Whether writes cross a network/exec hop instead of the local disk.
+  ///
+  /// Remote planes pay one round-trip per operation: launch staging batches a
+  /// manifest into a single remote script, and same-host trees are copied with
+  /// a server-side `cp` instead of streaming their bytes through this process.
+  bool get isRemote;
+
   Future<FsStat> stat(String path);
   Future<void> ensureDir(String path);
   Future<void> removeRecursive(String path);

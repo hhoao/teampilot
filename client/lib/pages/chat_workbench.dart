@@ -12,6 +12,7 @@ import '../services/chat/session/session_connect_request.dart';
 import '../services/chat/session/chat_tab.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/session/acp/acp_chat_runtime_cubit.dart';
+import '../cubits/session/session_pod.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
@@ -95,7 +96,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   Future<void> _openTerminalLink(String link) async {
     if (!mounted) return;
     final chatCubit = context.read<ChatCubit>();
-    final sessionId = chatCubit.activeTab?.info.id.trim() ?? '';
+    final sessionId = chatCubit.activeTab?.sessionId.trim() ?? '';
     AppSession? appSession;
     if (sessionId.isNotEmpty) {
       for (final s in chatCubit.state.sessions) {
@@ -354,21 +355,19 @@ class _ChatWorkbenchBody extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // Pod state (phase / view) is read from the pod ChangeNotifier, not from
-    // ChatCubit — pod changes no longer trigger global ChatState emits.
-    final pod = activeId.isNotEmpty ? chatCubit.podRuntime(activeId) : null;
-
     final launchError =
         routeActive && chatCubit.tabStore.activeWorkspaceId == tabScopeId
         ? (chatCubit.activeLaunchError ?? slice.sessionLaunchError)
         : slice.sessionLaunchError;
 
-    // Pod-state values cached here; the ListenableBuilder below re-reads them
-    // on every pod notification so sessionConnectInProgress / workbenchView
-    // stay current without a global ChatCubit emit.
-    bool readConnectInProgress() => pod?.state.phase.isLaunching ?? false;
+    // Pod state (phase / view) is read from the pod ChangeNotifier, not from
+    // ChatCubit — pod changes no longer trigger global ChatState emits. The
+    // pod itself is resolved inside the wrapper below, so a pod created after
+    // this build still reaches the body.
+    bool readConnectInProgress(SessionPod? pod) =>
+        pod?.state.phase.isLaunching ?? false;
 
-    SessionWorkbenchView readWorkbenchView() {
+    SessionWorkbenchView readWorkbenchView(SessionPod? pod) {
       if (activeId.isEmpty) {
         return SessionWorkbenchView.chat;
       }
@@ -378,9 +377,9 @@ class _ChatWorkbenchBody extends StatelessWidget {
       return tab?.workbenchView ?? SessionWorkbenchView.chat;
     }
 
-    Widget buildPodDependentBody(BuildContext context) {
-      final connectInProgress = readConnectInProgress();
-      final view = readWorkbenchView();
+    Widget buildPodDependentBody(BuildContext context, SessionPod? pod) {
+      final connectInProgress = readConnectInProgress(pod);
+      final view = readWorkbenchView(pod);
       // Chat docks bare icons into the task-board capsule; terminal and other
       // overlays float the standalone pill chrome.
       final dockedViewToggle = SessionWorkbenchViewIcons(
@@ -481,8 +480,9 @@ class _ChatWorkbenchBody extends StatelessWidget {
     }
 
     return wrapPodDependentBody(
-      pod: pod,
-      builder: (context) => buildPodDependentBody(context),
+      podRegistry: chatCubit.podRegistry,
+      resolvePod: () => activeId.isEmpty ? null : chatCubit.podRuntime(activeId),
+      builder: buildPodDependentBody,
     );
   }
 
@@ -496,7 +496,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
 
     ChatTab? matchedTab;
     for (final tab in chatCubit.tabStore.tabsForWorkspace(tabScopeId)) {
-      if (tab.info.id == activeId) {
+      if (tab.sessionId == activeId) {
         matchedTab = tab;
         break;
       }
@@ -531,7 +531,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     }
 
     for (final tab in chatCubit.tabStore.tabsForWorkspace(tabScopeId)) {
-      if (tab.info.id == activeId) {
+      if (tab.sessionId == activeId) {
         return tab.persistedSession;
       }
     }
@@ -1036,34 +1036,92 @@ class _ChatWorkbenchBody extends StatelessWidget {
     final activeId = slice.activeSessionId;
     if (activeId == null) return '';
     for (final tab in chatCubit.tabStore.tabsForWorkspace(tabScopeId)) {
-      if (tab.info.id == activeId) return tab.selectedMemberId;
+      if (tab.sessionId == activeId) return tab.selectedMemberId;
     }
     return '';
   }
 }
 
-/// Wraps the pod-dependent workbench body in a stable [ListenableBuilder].
+/// Keeps the chat subtree mounted across the lazy pod creation.
 ///
-/// A session's runtime pod is created lazily on the first connect. Returning
-/// the bare body while `pod == null` and a [ListenableBuilder] afterwards
-/// changes the widget type at the root of the workbench, so Flutter unmounts
-/// the whole subtree — the chat thread, compose draft, and scroll state are
-/// recreated the first time a seat connects (visible as a flash).
-Widget wrapPodDependentBody({
-  required Listenable? pod,
-  required WidgetBuilder builder,
-}) => ListenableBuilder(
-  listenable: pod ?? const _IdleListenable(),
-  builder: (context, _) => builder(context),
+/// A session's runtime pod is created on the first connect, after the body has
+/// already built with `pod == null`. Pod changes no longer emit ChatState, so
+/// the only signal for that transition is [podRegistry]; listening to it (and
+/// re-resolving) avoids both the old root-widget remount and a stale null pod
+/// that would keep `SessionChatView.acpRuntime` null forever.
+Widget wrapPodDependentBody<T extends Listenable>({
+  required Listenable podRegistry,
+  required T? Function() resolvePod,
+  required Widget Function(BuildContext, T?) builder,
+}) => _PodDependentBody<T>(
+  podRegistry: podRegistry,
+  resolvePod: resolvePod,
+  builder: builder,
 );
 
-/// No-op [Listenable] for the "pod not created yet" window.
-class _IdleListenable implements Listenable {
-  const _IdleListenable();
+class _PodDependentBody<T extends Listenable> extends StatefulWidget {
+  const _PodDependentBody({
+    required this.podRegistry,
+    required this.resolvePod,
+    required this.builder,
+  });
+
+  final Listenable podRegistry;
+  final T? Function() resolvePod;
+  final Widget Function(BuildContext, T?) builder;
 
   @override
-  void addListener(VoidCallback listener) {}
+  State<_PodDependentBody<T>> createState() => _PodDependentBodyState<T>();
+}
+
+class _PodDependentBodyState<T extends Listenable>
+    extends State<_PodDependentBody<T>> {
+  T? _pod;
 
   @override
-  void removeListener(VoidCallback listener) {}
+  void initState() {
+    super.initState();
+    _pod = widget.resolvePod();
+    widget.podRegistry.addListener(_onPodRegistryChanged);
+    _pod?.addListener(_onPodChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _PodDependentBody<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.podRegistry, widget.podRegistry)) {
+      oldWidget.podRegistry.removeListener(_onPodRegistryChanged);
+      widget.podRegistry.addListener(_onPodRegistryChanged);
+    }
+    // Already inside a build — rebind without a redundant setState.
+    _rebind(widget.resolvePod());
+  }
+
+  @override
+  void dispose() {
+    _pod?.removeListener(_onPodChanged);
+    widget.podRegistry.removeListener(_onPodRegistryChanged);
+    super.dispose();
+  }
+
+  void _onPodRegistryChanged() => _bind(widget.resolvePod());
+
+  void _onPodChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _bind(T? next) {
+    if (identical(next, _pod)) return;
+    _rebind(next);
+    if (mounted) setState(() {});
+  }
+
+  void _rebind(T? next) {
+    _pod?.removeListener(_onPodChanged);
+    _pod = next;
+    _pod?.addListener(_onPodChanged);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _pod);
 }

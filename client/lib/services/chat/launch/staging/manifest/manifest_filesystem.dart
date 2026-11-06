@@ -22,6 +22,10 @@ class ManifestFilesystem implements Filesystem, OverlayFilesystem {
   @override
   final Filesystem readDelegate;
 
+  /// Staging overlay inherits the transport of the plane it wraps.
+  @override
+  bool get isRemote => readDelegate.isRemote;
+
   /// When set, only symlink targets under this root may be represented as
   /// remote symlinks. Links to the local control plane are projected as copy
   /// operations by callers such as [copyTree].
@@ -139,9 +143,9 @@ class ManifestFilesystem implements Filesystem, OverlayFilesystem {
       if (_overlayDirs.contains(resolved)) {
         return const FsStat(kind: FsEntityKind.directory);
       }
-      return readDelegate.stat(resolved);
+      return readDelegate.stat(_resolveSourceForManifest(resolved));
     }
-    return readDelegate.stat(path);
+    return readDelegate.stat(_resolveSourceForManifest(path));
   }
 
   @override
@@ -217,13 +221,10 @@ class ManifestFilesystem implements Filesystem, OverlayFilesystem {
     path = _normalize(path);
     final overlay = _overlayFiles[path];
     if (overlay != null) return overlay;
-    final resolved = _resolveViaOverlaySymlink(path);
-    if (resolved != null) {
-      final resolvedOverlay = _overlayFiles[resolved];
-      if (resolvedOverlay != null) return resolvedOverlay;
-      return readDelegate.readString(resolved);
-    }
-    return readDelegate.readString(path);
+    final mapped = _resolveSourceForManifest(path);
+    final mappedOverlay = _overlayFiles[mapped];
+    if (mappedOverlay != null) return mappedOverlay;
+    return readDelegate.readString(mapped);
   }
 
   @override
@@ -231,13 +232,10 @@ class ManifestFilesystem implements Filesystem, OverlayFilesystem {
     path = _normalize(path);
     final overlay = _overlayFiles[path];
     if (overlay != null) return utf8.encode(overlay);
-    final resolved = _resolveViaOverlaySymlink(path);
-    if (resolved != null) {
-      final resolvedOverlay = _overlayFiles[resolved];
-      if (resolvedOverlay != null) return utf8.encode(resolvedOverlay);
-      return readDelegate.readBytes(resolved);
-    }
-    return readDelegate.readBytes(path);
+    final mapped = _resolveSourceForManifest(path);
+    final mappedOverlay = _overlayFiles[mapped];
+    if (mappedOverlay != null) return utf8.encode(mappedOverlay);
+    return readDelegate.readBytes(mapped);
   }
 
   @override
@@ -252,20 +250,6 @@ class ManifestFilesystem implements Filesystem, OverlayFilesystem {
   @override
   Future<void> writeBytes(String path, List<int> bytes) async {
     await writeString(path, utf8.decode(bytes, allowMalformed: true));
-  }
-
-  /// Overlay-only write: seeds `_overlayFiles` so a later read in the same
-  /// staging pass sees the content, but records **no** manifest entry.
-  ///
-  /// Used by `copyTree` to mirror a copied tree into the overlay. Recording
-  /// per-file `ManifestWriteFile` entries here would re-write every copied
-  /// file with the default mode at flush, stripping the source's executable
-  /// bit (e.g. superpowers `hooks/run-hook.cmd`); the `ManifestCopyTree`
-  /// entry already applies the real copy (mode-preserving) at flush.
-  Future<void> _writeOverlayOnly(String path, List<int> bytes) async {
-    path = _normalize(path);
-    await ensureDir(pathContext.dirname(path));
-    _overlayFiles[path] = utf8.decode(bytes, allowMalformed: true);
   }
 
   @override
@@ -296,7 +280,7 @@ class ManifestFilesystem implements Filesystem, OverlayFilesystem {
     }
     final resolved = _resolveViaOverlaySymlink(path);
     if (resolved != null) {
-      return readDelegate.listDir(resolved);
+      return readDelegate.listDir(_resolveSourceForManifest(resolved));
     }
 
     final names = <String>{};
@@ -304,10 +288,12 @@ class ManifestFilesystem implements Filesystem, OverlayFilesystem {
     // Base listing from the read delegate when the dir is already real there.
     // ensureDir walks parents into _overlayDirs (e.g. $HOME when staging a
     // session tree under it); a real home must still be listed (Cursor
-    // passthrough listDir($HOME)).
-    final realStat = await readDelegate.stat(path);
+    // passthrough listDir($HOME)). A copyTree recorded earlier in this pass is
+    // redirected to its source, since the real `cp` only happens at flush.
+    final realPath = _resolveSourceForManifest(path);
+    final realStat = await readDelegate.stat(realPath);
     if (realStat.exists && realStat.isDirectory) {
-      for (final entry in await readDelegate.listDir(path)) {
+      for (final entry in await readDelegate.listDir(realPath)) {
         names.add(entry.name);
         entries.add(entry);
       }
@@ -346,7 +332,7 @@ class ManifestFilesystem implements Filesystem, OverlayFilesystem {
 
   @override
   Future<List<FsDirEntry>> listDirRecursive(String path) async =>
-      readDelegate.listDirRecursive(path);
+      readDelegate.listDirRecursive(_resolveSourceForManifest(_normalize(path)));
 
   @override
   Future<bool> createSymlink({
@@ -396,44 +382,13 @@ class ManifestFilesystem implements Filesystem, OverlayFilesystem {
     );
     _overlayCopyOrigins.add((source: manifestSource, destination: destination));
     await ensureDir(pathContext.dirname(destination));
-    // Populate the overlay too, so a later read in the same staging pass sees
-    // the copied tree (e.g. the plugin writer scans the pool it just
-    // materialized). The manifest entry still applies the real copy at flush.
-    await _copyTreeIntoOverlay(source, destination);
-  }
-
-  Future<void> _copyTreeIntoOverlay(String source, String destination) async {
-    // Read through `this` (overlay-first): the source may itself have been
-    // staged earlier in this pass (e.g. a flavor projection copying from a
-    // just-copied bundle), not present on the read delegate.
-    final sourceStat = await stat(source);
-    if (sourceStat.isFile) {
-      final bytes = await readBytes(source);
-      // Overlay-only: no manifest entry (see [_writeOverlayOnly]).
-      if (bytes != null) await _writeOverlayOnly(destination, bytes);
-      return;
-    }
-    if (sourceStat.isSymlink) {
-      final target = await readSymlinkTarget(source);
-      if (target != null) {
-        if (await createSymlink(target: target, linkPath: destination)) {
-          return;
-        }
-        await _copyTreeIntoOverlay(
-          _resolvedSymlinkTarget(target, source),
-          destination,
-        );
-      }
-      return;
-    }
-    if (!sourceStat.isDirectory) return;
     await ensureDir(destination);
-    for (final entry in await listDir(source)) {
-      await _copyTreeIntoOverlay(
-        pathContext.join(source, entry.name),
-        pathContext.join(destination, entry.name),
-      );
-    }
+    // Do NOT eagerly mirror the tree into the overlay. On a remote plane that
+    // read every source file over SFTP just to satisfy a possible later read:
+    // materializing the 12MB marketplace cache cost ~98s on Android. The
+    // ManifestCopyTree applies the real (mode-preserving) `cp` at flush, and
+    // reads of the not-yet-flushed destination are redirected to the source
+    // via [_resolveSourceForManifest].
   }
 
   @override

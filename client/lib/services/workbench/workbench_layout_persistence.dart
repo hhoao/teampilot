@@ -231,7 +231,7 @@ class WorkbenchLayoutPersistence {
       }
     }
     for (final tabInfo in _chat.tabStore.openTabs) {
-      if (tabInfo.info.id == tab.id) return true;
+      if (tabInfo.sessionId == tab.id) return true;
     }
     return false;
   }

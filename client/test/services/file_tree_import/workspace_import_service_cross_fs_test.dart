@@ -36,6 +36,8 @@ Future<ImportPlan> _buildCrossFsPlan(
 
 /// Throws on [appendBytes] when [destPath] matches [failDestPath].
 class AppendFailingDestFilesystem implements Filesystem {
+  @override
+  bool get isRemote => false;
   AppendFailingDestFilesystem(this.delegate, {required this.failDestPath});
 
   final InMemoryFilesystem delegate;

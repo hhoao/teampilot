@@ -24,6 +24,8 @@ const svgV2 =
 /// Delegating wrapper counting [Filesystem.readBytes] calls (delegation style:
 /// test/services/agent_runtime/runtime_event_journal_test.dart).
 class _CountingFilesystem implements Filesystem {
+  @override
+  bool get isRemote => false;
   _CountingFilesystem(this._inner);
 
   final Filesystem _inner;
