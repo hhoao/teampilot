@@ -1570,6 +1570,7 @@ void main() {
 
     await tester.tap(find.text(l10n.save));
     await tester.pumpAndSettle();
+    expect(find.text(l10n.automationsPresetCliMismatch), findsOneWidget);
     expect(setup.cubit.state.automations, isEmpty);
   });
 
