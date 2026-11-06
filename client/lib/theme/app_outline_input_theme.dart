@@ -81,6 +81,28 @@ TextStyle appTextFieldStyle(TextTheme textTheme) {
   return textTheme.bodyLarge ?? textTheme.bodyMedium ?? const TextStyle();
 }
 
+/// Content insets for an outline input whose box is forced to [height].
+///
+/// [InputDecorator] lays its text out from the top using the content padding,
+/// and the box is then forced to [height]. Any slack below the text is dead
+/// space, so the typed text, hint, and suffix ride half of it above the box
+/// centre. Sizing the padding to fill [height] keeps them optically centred.
+EdgeInsets appOutlineInputPadding({
+  required double height,
+  required TextTheme textTheme,
+  required TpControlMetrics control,
+}) {
+  final inputStyle = textTheme.bodyLarge ?? textTheme.bodyMedium;
+  final lineHeight =
+      (inputStyle?.fontSize ?? 14) * (inputStyle?.height ?? 1.25);
+  // InputDecorator adds the visual density inset to its content height.
+  final densityInset = VisualDensity.compact.baseSizeAdjustment.dy;
+  return EdgeInsets.symmetric(
+    horizontal: control.input.horizontalPadding,
+    vertical: (height - lineHeight - densityInset) / 2,
+  );
+}
+
 /// Global [InputDecorationThemeData] for workspace text fields and dropdowns.
 InputDecorationThemeData buildAppOutlineInputDecorationTheme({
   required ColorScheme colorScheme,
@@ -117,11 +139,13 @@ InputDecorationThemeData buildAppOutlineInputDecorationTheme({
     // Match button geometry density so outline height agrees with the
     // shared track (ThemeData.compact alone shrinks decorator contentHeight).
     visualDensity: VisualDensity.compact,
-    // Input paddings/height stay on [control.input] (32), independent of
-    // button medium ([TpControlMetrics.heightBase]).
-    contentPadding: EdgeInsets.symmetric(
-      horizontal: control.input.horizontalPadding,
-      vertical: control.input.verticalPadding,
+    // Input height stays on [control.input] (32), independent of button medium
+    // ([TpControlMetrics.heightBase]); the padding must fill that height or the
+    // text sits high inside the pill.
+    contentPadding: appOutlineInputPadding(
+      height: control.input.height,
+      textTheme: textTheme,
+      control: control,
     ),
     constraints: BoxConstraints.tightFor(height: control.input.height),
     hintStyle: hintStyle,

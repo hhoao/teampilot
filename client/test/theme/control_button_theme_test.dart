@@ -58,7 +58,7 @@ void main() {
     expect(buttonInset.bottom, 0);
   });
 
-  test('outline inputs keep taller track with real vertical padding', () {
+  test('outline inputs fill their taller track so text centres', () {
     final theme = buildDarkTheme();
     final control = _controlFor(theme, AppTypographyScale.standard);
     expect(control.input.height, TpControlMetrics.inputHeightBase);
@@ -84,7 +84,19 @@ void main() {
     expect(padding, isA<EdgeInsets>());
     final inset = padding! as EdgeInsets;
     expect(inset.left, control.input.horizontalPadding);
-    expect(inset.top, control.input.verticalPadding);
+    expect(inset.top, inset.bottom);
+    // Padding + line box must fill the forced height (minus the compact
+    // density inset the decorator subtracts), or the text rides high.
+    final inputStyle = theme.textTheme.bodyLarge!;
+    final lineHeight =
+        inputStyle.fontSize! * (inputStyle.height ?? 1.25);
+    expect(
+      inset.top * 2 +
+          lineHeight +
+          VisualDensity.compact.baseSizeAdjustment.dy,
+      moreOrLessEquals(control.input.height, epsilon: 0.01),
+    );
+    expect(inset.top, greaterThan(control.input.verticalPadding));
   });
 
   test('control height tracks typography scale', () {
