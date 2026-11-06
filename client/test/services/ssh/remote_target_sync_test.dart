@@ -54,4 +54,44 @@ void main() {
     expect(merged.host, 'h2');
     expect(merged.vaultEntryId, isNull); // 凭据不动
   });
+
+  test('pull lets newer remote nulls clear local relay fields but keeps '
+      'local-only state', () async {
+    await targetRepo.save(RemoteTarget(
+      id: 't1',
+      name: 'old',
+      host: 'h',
+      username: 'u',
+      relayUrl: 'https://relay.example',
+      pairedDesktopId: 'desktop-1',
+      vaultEntryId: 'vault-1',
+      hostKeyFingerprints: const ['fp-1'],
+      lastHome: '/home/old',
+      lastAppDataRoot: '/data/old',
+      pendingSync: true,
+      updatedAt: 10,
+    ));
+    await serverRepo.save(const SshServerProfile(
+      id: 't1',
+      name: 'new',
+      host: 'h2',
+      username: 'u',
+      // relayUrl / pairedDesktopId intentionally null: a newer remote with
+      // nulls must clear the stale local relay fields.
+      updatedAt: 20,
+    ));
+
+    final merged = await sync.pull((await targetRepo.findById('t1'))!);
+
+    expect(merged.name, 'new');
+    expect(merged.host, 'h2');
+    expect(merged.relayUrl, isNull);
+    expect(merged.pairedDesktopId, isNull);
+    expect(merged.vaultEntryId, 'vault-1'); // 凭据不动
+    expect(merged.hostKeyFingerprints, ['fp-1']);
+    expect(merged.lastHome, '/home/old');
+    expect(merged.lastAppDataRoot, '/data/old');
+    expect(merged.pendingSync, isTrue); // pull 不清除 pendingSync
+    expect(await targetRepo.findById('t1'), merged); // 返回值即已保存值
+  });
 }

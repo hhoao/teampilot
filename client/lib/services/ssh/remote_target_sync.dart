@@ -30,16 +30,30 @@ class RemoteTargetSync {
     final server = await servers.findById(target.id);
     if (server == null) return target;
     if (server.updatedAt <= target.updatedAt) return target;
-    final merged = target.copyWith(
+    // Build explicitly rather than with copyWith: copyWith's `x ?? this.x`
+    // ignores a remote `null`, so a newer server that clears relayUrl or
+    // pairedDesktopId would otherwise leave the stale local value. Connection
+    // fields come from [server] (including its nulls); every local-only field
+    // is carried over untouched from [target] so credentials never sync and
+    // pull never clears pendingSync.
+    final merged = RemoteTarget(
+      id: target.id,
       name: server.name,
       host: server.host,
       port: server.port,
       username: server.username,
       authType: server.authType,
+      vaultEntryId: target.vaultEntryId,
+      endpoints: target.endpoints,
+      hostKeyFingerprints: target.hostKeyFingerprints,
+      lastGoodKind: target.lastGoodKind,
+      lastHome: target.lastHome,
+      lastAppDataRoot: target.lastAppDataRoot,
       embeddedTarget: server.embeddedTarget,
       relayUrl: server.relayUrl,
       pairedDesktopId: server.pairedDesktopId,
       updatedAt: server.updatedAt,
+      pendingSync: target.pendingSync,
     );
     await targets.save(merged);
     appLogger.d('[remote-target-sync] pulled ${target.id}');
