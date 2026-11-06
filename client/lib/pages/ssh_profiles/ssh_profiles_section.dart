@@ -26,7 +26,9 @@ import 'ssh_profile_target_config_dialog.dart';
 
 /// Orca-style SSH target list for settings (desktop + Android).
 class SshProfilesSection extends StatefulWidget {
-  const SshProfilesSection({super.key});
+  const SshProfilesSection({super.key, this.showRemoteConfig = true});
+
+  final bool showRemoteConfig;
 
   @override
   State<SshProfilesSection> createState() => _SshProfilesSectionState();
@@ -291,11 +293,13 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                         openSshProfileEditor(context, profile: profile),
                     onDelete: () => confirmDeleteSshProfile(context, profile),
                     onRefresh: () => context.read<SshProfileCubit>().load(),
-                    onConfigure: () => showSshProfileTargetConfigDialog(
-                      context,
-                      profile: profile,
-                      storage: context.read<HomeStorage>(),
-                    ),
+                    onConfigure: widget.showRemoteConfig
+                        ? () => showSshProfileTargetConfigDialog(
+                              context,
+                              profile: profile,
+                              storage: context.read<HomeStorage>(),
+                            )
+                        : null,
                   ),
                 ),
           ],

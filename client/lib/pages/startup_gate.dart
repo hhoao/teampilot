@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../services/app/connection_mode_service.dart';
-import 'ssh_profiles_page.dart';
+import 'remote_connections_page.dart';
 import 'termux/work_environment_chooser_page.dart';
 
 class StartupGate extends StatelessWidget {
@@ -33,7 +33,7 @@ class StartupGate extends StatelessWidget {
     }
 
     if (mode.requiresSshProfileSetup) {
-      return const SshProfilesPage();
+      return const RemoteConnectionsPage();
     }
 
     if (androidNeedsWorkHome) {
