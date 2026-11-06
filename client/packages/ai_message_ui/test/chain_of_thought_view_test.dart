@@ -459,6 +459,8 @@ void main() {
 
     await tester.pumpWidget(buildLiveChain(parts));
     await tester.pumpAndSettle();
+    // Only the active (last) reasoning body is open during live streaming.
+    expect(find.textContaining('first thought'), findsNothing);
     expect(find.textContaining('second thought'), findsOneWidget);
 
     await tester.pumpWidget(buildLiveChain(parts, autoExpand: false));

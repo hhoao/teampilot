@@ -155,7 +155,12 @@ void main() {
     );
     await _pumpLive(tester);
 
-    expect(find.textContaining('tip thinking'), findsOneWidget);
+    // Live tip chain still auto-expands (it is mounted open even with a
+    // tool-call tail), but the tool-call tail folds every reasoning body.
+    // A visible folded 'Reasoning' row proves the chain is open; exactly one
+    // such row also proves the older message (a1) stays collapsed.
+    expect(find.textContaining('tip thinking'), findsNothing);
+    expect(find.text('Reasoning'), findsOneWidget);
     expect(find.textContaining('old thinking'), findsNothing);
   });
 
@@ -176,13 +181,17 @@ void main() {
       _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
     );
     await _pumpLive(tester);
-    expect(find.textContaining('tip thinking'), findsOneWidget);
+    // Live: chain open, reasoning body folded to its 'Reasoning' row.
+    expect(find.textContaining('tip thinking'), findsNothing);
+    expect(find.text('Reasoning'), findsOneWidget);
 
     await tester.pumpWidget(_harness(runtime: store));
     await pumpUntilSettled(tester);
 
+    // Turn end: whole chain collapses to the 'Thinking process' header.
     expect(find.textContaining('Thinking process'), findsOneWidget);
     expect(find.textContaining('tip thinking'), findsNothing);
+    expect(find.text('Reasoning'), findsNothing);
   });
 
   testWidgets('tip thinking process folds when answer prose starts', (
@@ -205,13 +214,17 @@ void main() {
       _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
     );
     await _pumpLive(tester);
-    expect(find.textContaining('tip thinking'), findsOneWidget);
+    // Live: chain open, reasoning body folded to its 'Reasoning' row.
+    expect(find.textContaining('tip thinking'), findsNothing);
+    expect(find.text('Reasoning'), findsOneWidget);
 
     store.setMessages(messages('final answer'));
     await _pumpLive(tester);
 
+    // Prose start: chain collapses; prose rendered outside the chain.
     expect(find.text('final answer'), findsOneWidget);
     expect(find.textContaining('tip thinking'), findsNothing);
+    expect(find.text('Reasoning'), findsNothing);
   });
 
   testWidgets('tip thinking process stays collapsed when the pref is off', (
