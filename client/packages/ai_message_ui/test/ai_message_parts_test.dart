@@ -409,7 +409,7 @@ void main() {
     expect(lastView.actionBarReveal, AiActionBarReveal.always);
   });
 
-  testWidgets('tip thinking auto-expands chain and inner reasoning', (
+  testWidgets('tip thinking auto-expands chain and only its live reasoning', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -431,12 +431,14 @@ void main() {
     );
 
     expect(find.textContaining('Thinking process · 2 steps'), findsOneWidget);
-    // Inner reasoning steps are open — their content is visible.
-    expect(find.textContaining('first step'), findsOneWidget);
+    // Only the live (last) reasoning body opens; finished reasoning folds to
+    // its trigger row.
     expect(find.textContaining('second step'), findsOneWidget);
+    expect(find.textContaining('first step'), findsNothing);
+    expect(find.text('Reasoning'), findsNWidgets(2));
   });
 
-  testWidgets('tip message with tool calls auto-expands the thinking process', (
+  testWidgets('tip message with a trailing tool call keeps the thinking process', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -461,9 +463,12 @@ void main() {
       ),
     );
 
-    // Regression: a tool call no longer blocks the tip's thinking process.
+    // Regression: a trailing tool call no longer blocks the tip's thinking
+    // process from rendering.
     expect(find.textContaining('Thinking process'), findsOneWidget);
-    expect(find.textContaining('plan the work'), findsOneWidget);
+    // Only the live (last) reasoning opens; the tail here is a tool call, so
+    // the reasoning body stays folded.
+    expect(find.textContaining('plan the work'), findsNothing);
     // Inner tool payloads still need an explicit tap.
     expect(find.textContaining('tool output'), findsNothing);
   });
@@ -570,10 +575,7 @@ void main() {
         AiMessage(
           id: '2',
           role: AiRole.assistant,
-          parts: const [
-            AiReasoningPart(text: 'tip reasoning'),
-            AiToolCallPart(toolCallId: 'c1', toolName: 'Read'),
-          ],
+          parts: const [AiReasoningPart(text: 'tip reasoning')],
         ),
       ]);
 
