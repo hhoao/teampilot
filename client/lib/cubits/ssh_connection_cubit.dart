@@ -181,9 +181,25 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
 
     try {
       await _connectProfile(profile);
-      // Post-connect target sync. A sync failure must never fail the
-      // connection, so it lives in its own try/catch: leave pendingSync
-      // untouched and let the next connect retry.
+      _connectingIds.remove(profileId);
+      if (!_profilesById.containsKey(profileId)) {
+        await _coordinator.userDisconnect(profileId);
+        return;
+      }
+      final select = _selectProfileOnConnect;
+      if (select != null) {
+        await select(profileId);
+      }
+      if (!_profilesById.containsKey(profileId)) {
+        await _coordinator.userDisconnect(profileId);
+        return;
+      }
+      // Post-connect target sync runs AFTER select() has rebound the home
+      // plane (Android Connect rebinds home onto the SSH host), so the remote
+      // SshServerProfile lands on the connected host rather than the previous
+      // local/catalog plane. A sync failure must never fail the connection, so
+      // it lives in its own try/catch: leave pendingSync untouched and let the
+      // next connect retry. sync is optional, so guard the whole block.
       final sync = _sync;
       if (sync != null) {
         try {
@@ -204,19 +220,6 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
             'will retry on next connect',
           );
         }
-      }
-      _connectingIds.remove(profileId);
-      if (!_profilesById.containsKey(profileId)) {
-        await _coordinator.userDisconnect(profileId);
-        return;
-      }
-      final select = _selectProfileOnConnect;
-      if (select != null) {
-        await select(profileId);
-      }
-      if (!_profilesById.containsKey(profileId)) {
-        await _coordinator.userDisconnect(profileId);
-        return;
       }
       emit(_buildState());
     } catch (error, stackTrace) {

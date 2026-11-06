@@ -13,14 +13,13 @@ import '../utils/logging/logger.dart';
 /// the same home makes every server configuration available there. Credentials
 /// are never part of a profile — see [SshServerProfile].
 ///
-/// Constraint: this writes `<sshProfilesDir>/profiles.json`, the same file the
-/// existing `SshProfileRepository` writes when the home plane is local. Do not
-/// wire this class as a second live writer to that file until
-/// `SshProfileRepository` becomes the single facade over it: this repository
-/// persists only the sync-visible subset of fields, so a [save] here would
-/// rewrite the array from [SshServerProfile] and drop `createdAt`, `lastHome`,
-/// `lastAppDataRoot`, `endpoints`, `hostKeyFingerprints`, `lastGoodKind`, and
-/// `vaultEntryId`.
+/// Production `SshProfileRepository` is now the single facade over the
+/// device-local `remote-targets.json`; it no longer writes this file. This
+/// repository is the sole writer of `<home>/ssh_profiles/profiles.json` (the
+/// reduced, sync-visible server schema). Boot migration (`migrateSshProfiles`)
+/// relocates the legacy device-local `profiles.json` — which used the full
+/// `SshProfile` schema and, on a local home plane, shared this exact path — to
+/// `.legacy.v1` so it cannot be parsed here as ghost server profiles.
 class SshServerProfileRepository {
   SshServerProfileRepository({required HomeStorage storage})
     : _storage = storage;

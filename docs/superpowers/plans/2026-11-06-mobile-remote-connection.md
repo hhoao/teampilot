@@ -30,7 +30,7 @@
 | `client/lib/models/ssh_profile.dart` | 保留为运行时视图，新增 `fromTarget` |
 | `client/lib/repositories/remote_target_repository.dart` | 读写 `<nativeAppData>/remote-targets.json` |
 | `client/lib/repositories/ssh_server_profile_repository.dart` | 读写 `<home>/ssh_profiles/profiles.json` |
-| `client/lib/repositories/ssh_profile_repository.dart` | 改为门面：聚合 target + server profile |
+| `client/lib/repositories/ssh_profile_repository.dart` | 改为门面：RemoteTarget 支撑的投影（target-backed projection），只读写 `remote-targets.json` |
 | `client/lib/services/storage/remote_target_migration.dart` | 旧 `profiles.json` 一次性拆分迁移 |
 | `client/lib/services/ssh/remote_target_sync.dart` | 连上后 push / pull |
 | `client/lib/services/storage/device_local_control_plane.dart` | 新增 `deviceLocalRemoteTargetRepository` |
@@ -1575,7 +1575,7 @@ class SshServersPage extends StatelessWidget {
 }
 ```
 
-`SshServerProfileCard` 新建在同文件或 `pages/ssh_profiles/ssh_server_profile_card.dart`，只展示名称/host/embeddedTarget，编辑走 `showSshProfileTargetConfigDialog`。
+`SshServerProfileCard` 新建在同文件或 `pages/ssh_profiles/ssh_server_profile_card.dart`，只展示名称/host/embeddedTarget。注：本增量只读；`showSshProfileTargetConfigDialog` 接收的是本地 `SshProfile`，远端 `SshServerProfile` 无可编辑字段，完整配置编辑（credential push、端口转发、root sandbox）为已登记的后续 spec。
 
 - [ ] **Step 2: 验证**
 
@@ -1818,3 +1818,4 @@ git commit -m "test(storage): pin RemoteTarget repo and document mobile remote c
 - **Spec 覆盖**：两页拆分（Task 9/10）、远端权威（Task 3/5/6）、本地 bootstrap（Task 1/2）、vault 调整（Task 11）、迁移（Task 4/7）、测试（Task 13）均有对应任务。
 - **类型一致性**：`RemoteTarget` / `SshServerProfile` 字段在 Task 1/3 定义，Task 5/6 使用一致；`SshProfile.fromTarget` 在 Task 5 定义，Task 6/12 通过 `RemoteTarget` 使用。
 - **未覆盖**：端口转发 / root sandbox 的具体编辑 UI 目前只有 credential push，新增字段留到后续 spec；本计划只保证结构就位。
+- **编辑 UI 延期（本增量结论）**：SSH 服务器页实际交付为只读；`SshServerProfile` 无可编辑配置字段，`showSshProfileTargetConfigDialog` 接收本地 `SshProfile` 而非 `SshServerProfile`，故计划的「编辑/删除完整配置」在本增量不可实现，登记为后续 spec。`SshServerConfigCubit.save/delete` 与 `SshProfilesSection.showRemoteConfig` 管线按 dead-but-planned 保留。

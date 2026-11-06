@@ -22,6 +22,8 @@ import 'package:teampilot/models/ssh_server_profile.dart';
 import 'package:teampilot/repositories/remote_target_repository.dart';
 import 'package:teampilot/repositories/ssh_server_profile_repository.dart';
 import 'package:teampilot/services/ssh/remote_target_sync.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 
 import '../support/in_memory_filesystem.dart';
 
@@ -805,6 +807,92 @@ void main() {
         harness.dispose();
       });
     });
+
+    // Integration-style: exercise the real connect()/select()/sync wiring with
+    // an Android-style HomeStorage.swap() to a different home plane. The sync
+    // block must run AFTER select() rebinds home, so the remote server profile
+    // is seeded on the connected host, not the pre-rebind (local) plane.
+    test(
+      'post-connect sync seeds the rebound remote plane, not the old plane',
+      () async {
+        final harness = _Harness();
+        final fs = InMemoryFilesystem();
+
+        // Device-local target catalog: pinned, never rides the home plane.
+        final targets = RemoteTargetRepository(rootDir: '/device', fs: fs);
+        await targets.save(const RemoteTarget(
+          id: 'p1',
+          name: 'dev',
+          host: 'example.com',
+          username: 'alice',
+        ));
+        await targets.save(const RemoteTarget(
+          id: 'p2',
+          name: 'staging',
+          host: 'staging.example.com',
+          username: 'bob',
+        ));
+
+        // App-scoped home starts on the LOCAL plane. The sync's servers repo
+        // holds THIS HomeStorage, whose _root getter re-reads the live context.
+        final homeStorage = fakeHomeStorage(
+          filesystem: fs,
+          appDataRoot: '/local',
+        );
+        final servers = SshServerProfileRepository(storage: homeStorage);
+        final sync = RemoteTargetSync(targets: targets, servers: servers);
+
+        // Android-style select: rebind home onto each SSH host's own plane,
+        // over the SAME filesystem with a different appDataRoot.
+        RuntimeContext plane(String root) => RuntimeContext(
+              target: homeStorage.context.target,
+              filesystem: fs,
+              home: root,
+              cwd: root,
+              appDataRoot: root,
+              paths: AppPaths(root),
+            );
+        final p1Plane = plane('/remote/p1');
+        final p2Plane = plane('/remote/p2');
+
+        final cubit = harness.createCubit(
+          sync: sync,
+          selectProfileOnConnect: (id) =>
+              homeStorage.swap(id == 'p1' ? p1Plane : p2Plane),
+        );
+        cubit.syncProfiles(const [_p1, _p2]);
+        await cubit.connect('p1');
+
+        // (1) The remote profile lands on p1's REMOTE plane; the OLD local
+        // plane must stay empty (the bug wrote it there before the rebind).
+        final localCatalog = SshServerProfileRepository(
+          storage: fakeHomeStorage(filesystem: fs, appDataRoot: '/local'),
+        );
+        expect(await localCatalog.findById('p1'), isNull);
+
+        // (2) A second repository reading that remote plane finds the profile.
+        final p1Catalog = SshServerProfileRepository(
+          storage: fakeHomeStorage(filesystem: fs, appDataRoot: '/remote/p1'),
+        );
+        final seeded = await p1Catalog.findById('p1');
+        expect(seeded, isNotNull);
+        expect(seeded!.name, 'dev');
+        expect(seeded.host, 'example.com');
+
+        // (3) Home-switch regression: connect p2 while home is on p1's plane.
+        // With sync AFTER select, p2 must land on p2's plane and must NOT leak
+        // into p1's shared catalog (the bug wrote p2 into p1's plane).
+        await cubit.connect('p2');
+        expect(await p1Catalog.findById('p2'), isNull);
+        final p2Catalog = SshServerProfileRepository(
+          storage: fakeHomeStorage(filesystem: fs, appDataRoot: '/remote/p2'),
+        );
+        expect((await p2Catalog.findById('p2'))?.name, 'staging');
+
+        await cubit.close();
+        harness.dispose();
+      },
+    );
   });
 }
 

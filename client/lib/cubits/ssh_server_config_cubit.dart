@@ -36,6 +36,10 @@ class SshServerConfigCubit extends Cubit<SshServerConfigState> {
     }
   }
 
+  // Dead-but-planned: this increment ships the SSH servers page read-only
+  // (SshServerProfile has no editable config fields). save/delete are retained
+  // for the follow-up spec that adds full remote-config editing (credential
+  // push / port-forward / root sandbox); no shipped UI calls them yet.
   Future<void> save(SshServerProfile profile) async {
     await _repository.save(profile);
     await load();

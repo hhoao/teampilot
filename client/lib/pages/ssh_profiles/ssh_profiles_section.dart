@@ -28,6 +28,11 @@ import 'ssh_profile_target_config_dialog.dart';
 class SshProfilesSection extends StatefulWidget {
   const SshProfilesSection({super.key, this.showRemoteConfig = true});
 
+  /// Dead-but-planned: the "remote config" editor operates on a local
+  /// [SshProfile], not the remote server model, and production callers all
+  /// pass `false`. It is intentionally retained for the follow-up spec that
+  /// adds full remote-config editing (credential push / port-forward /
+  /// root sandbox); this increment ships the SSH servers page read-only.
   final bool showRemoteConfig;
 
   @override

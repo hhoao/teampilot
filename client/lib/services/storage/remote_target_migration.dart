@@ -67,6 +67,22 @@ Future<RemoteTargetMigrationResult> migrateSshProfiles({
     await targetRepo.saveAll([...current, ...migrated]);
   }
   await localFs.atomicWrite(marker, '1');
+  // On a local home plane the legacy device-local `profiles.json` shares this
+  // path with SshServerProfileRepository's catalog. A leftover would be parsed
+  // as ghost "server profiles" (full SshProfile schema) and a later save would
+  // rewrite it in the reduced schema, dropping vaultEntryId/endpoints/etc. and
+  // skipping the first-connect seed. Relocate it (recoverable), best-effort: a
+  // failed rename must never abort migration or skip the marker just written.
+  if ((await localFs.stat(legacyFile)).isFile) {
+    try {
+      await localFs.rename(legacyFile, '$legacyFile.legacy.v1');
+    } on Object {
+      // Content-free: never the caught error and never the file bytes.
+      AppLogger.instance.w(
+        '[remote-targets] failed to relocate legacy profiles at $legacyFile',
+      );
+    }
+  }
   return RemoteTargetMigrationResult(
     migrated: migrated.length,
     skipped: false,

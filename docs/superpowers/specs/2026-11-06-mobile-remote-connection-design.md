@@ -46,7 +46,7 @@
 |---|---|
 | 数据来源 | 远端 home plane |
 | 列出 | 连上后才加载远端 profile |
-| 编辑 | 完整配置：credential push、端口转发、root sandbox 等 |
+| 编辑 | 完整配置：credential push、端口转发、root sandbox 等（注：本增量只交付只读列表；`SshServerProfile` 无可编辑字段，完整编辑/删除为已登记的后续 spec） |
 | 操作 | 不提供连接、断开、切换 home |
 | 断线时 | 不可用，提示"去远程连接页连接" |
 

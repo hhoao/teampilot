@@ -1047,6 +1047,7 @@
   "sshProfilesSettingsTitle": "SSH 服务器",
   "sshServersTitle": "SSH 服务器",
   "sshServersNotConnected": "未连接远程主机。",
+  "sshServersLoadError": "无法加载 SSH 服务器，请检查连接后重试。",
   "sshProfilesPageTitle": "SSH 远程主机",
   "sshProfilesPageSubtitle": "通过 SSH 使用已有机器处理文件、终端、Git 和工作区。",
   "sshProfilesTargetsTitle": "目标",

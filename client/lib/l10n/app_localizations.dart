@@ -4328,6 +4328,12 @@ abstract class AppLocalizations {
   /// **'Not connected to a remote host.'**
   String get sshServersNotConnected;
 
+  /// No description provided for @sshServersLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the SSH servers. Check the connection and try again.'**
+  String get sshServersLoadError;
+
   /// No description provided for @sshProfilesPageTitle.
   ///
   /// In en, this message translates to:

@@ -62,6 +62,25 @@ class _SshServersView extends StatelessWidget {
           if (state.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
+          // A remote transport failure emits error with an empty catalog. Show
+          // a distinct message + retry instead of an empty ListView that looks
+          // exactly like "no servers".
+          if (state.error != null) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(l10n.sshServersLoadError),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: () =>
+                        context.read<SshServerConfigCubit>().load(),
+                    child: Text(l10n.retry),
+                  ),
+                ],
+              ),
+            );
+          }
           return ListView(
             children: [
               for (final profile in state.profiles)

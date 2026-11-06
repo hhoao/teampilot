@@ -914,14 +914,23 @@ Future<AppShell> buildAppShell({
   final sshProfileRepo = deviceLocalSshProfileRepository(nativeAppDataPath);
   // One-shot move of legacy `ssh_profiles/profiles.json` into the device-local
   // remote-target catalog. Must finish before SshProfileCubit's first load()
-  // so the facade sees migrated targets on first render.
-  await migrateSshProfiles(
-    nativeAppDataPath: nativeAppDataPath,
-    localFs: LocalFilesystem(
-      pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
-    ),
-    targetRepo: deviceLocalRemoteTargetRepository(nativeAppDataPath),
-  );
+  // so the facade sees migrated targets on first render. This is a convenience
+  // migration: it must never gate startup. The marker is written only on
+  // success, so a failed attempt retries on the next launch.
+  try {
+    await migrateSshProfiles(
+      nativeAppDataPath: nativeAppDataPath,
+      localFs: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
+      ),
+      targetRepo: deviceLocalRemoteTargetRepository(nativeAppDataPath),
+    );
+  } on Object {
+    // Content-free: never the caught error, no file bytes, no rethrow.
+    appLogger.w(
+      '[boot] ssh profile migration failed; continuing with current targets',
+    );
+  }
   Future<Map<CliTool, String>> locateRemoteClis(SshProfile profile) async {
     try {
       await sshClientFactory.ensureStorageConnected(profile);

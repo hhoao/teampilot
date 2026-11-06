@@ -144,10 +144,42 @@ class SshProfileRepository {
   /// explicitly (not via `copyWith`) so cleared nullable fields — e.g. a
   /// removed credential reference — propagate as null instead of silently
   /// persisting a stale value from an existing target.
+  ///
+  /// `save()` is also the write path for local-only state (path cache, host-key
+  /// fingerprints, last-good endpoint, credential reference). Only a change to
+  /// a sync-visible field makes the target dirty: a local-only write must keep
+  /// `updatedAt`/`pendingSync` unchanged, otherwise the next `pull` would skip
+  /// a newer remote config and `push` would clobber it (remote is the final
+  /// authority). A brand-new target is always dirty.
   Future<void> _saveFacade(
     RemoteTargetRepository repo,
     SshProfile profile,
   ) async {
+    final existing = await repo.findById(profile.id);
+    final int updatedAt;
+    final bool pendingSync;
+    if (existing == null) {
+      // A brand-new target is always dirty.
+      updatedAt = DateTime.now().millisecondsSinceEpoch;
+      pendingSync = true;
+    } else {
+      final syncChanged =
+          existing.name != profile.name ||
+          existing.host != profile.host ||
+          existing.port != profile.port ||
+          existing.username != profile.username ||
+          existing.authType != profile.authType ||
+          existing.embeddedTarget != profile.embeddedTarget ||
+          existing.relayUrl != profile.relayUrl ||
+          existing.pairedDesktopId != profile.pairedDesktopId;
+      if (syncChanged) {
+        updatedAt = DateTime.now().millisecondsSinceEpoch;
+        pendingSync = true;
+      } else {
+        updatedAt = existing.updatedAt;
+        pendingSync = existing.pendingSync;
+      }
+    }
     final target = RemoteTarget(
       id: profile.id,
       name: profile.name,
@@ -164,8 +196,8 @@ class SshProfileRepository {
       embeddedTarget: profile.embeddedTarget,
       relayUrl: profile.relayUrl,
       pairedDesktopId: profile.pairedDesktopId,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
-      pendingSync: true,
+      updatedAt: updatedAt,
+      pendingSync: pendingSync,
     );
     await repo.save(target);
   }

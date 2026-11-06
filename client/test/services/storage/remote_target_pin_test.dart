@@ -18,23 +18,32 @@ void main() {
       AppPathsBootstrapper.resetForTesting();
     });
 
+    // Android Connect rebinds the app-scoped home plane onto the SSH host.
+    // A repo that rode that plane would follow it and lose the very records
+    // needed to reconnect; this one must stay on the device. Bind the rebound
+    // home BEFORE constructing the repo so the pin is actually exercised.
+    bindTestNativeHome(remoteHome.path);
+
     // Boot-time repo is pinned to the device-local native app-data root.
     final repo = deviceLocalRemoteTargetRepository(native.path);
     expect(repo.fs, isA<LocalFilesystem>());
     expect(repo.rootDir, native.path);
-
-    // Android Connect rebinds the app-scoped home plane onto the SSH host.
-    // A repo that rode that plane would follow it and lose the very records
-    // needed to reconnect; this one must stay on the device.
-    bindTestNativeHome(remoteHome.path);
 
     await repo.save(
       const RemoteTarget(id: 't1', name: 'dev', host: 'h', username: 'u'),
     );
     expect(await repo.loadAll(), hasLength(1));
     expect((await repo.loadAll()).single.id, 't1');
-    expect(File('${native.path}/remote-targets.json').existsSync(), isTrue);
+    expect(
+      File(repo.fs.pathContext.join(native.path, 'remote-targets.json'))
+          .existsSync(),
+      isTrue,
+    );
     // The rebound (remote) home must never receive the catalog.
-    expect(File('${remoteHome.path}/remote-targets.json').existsSync(), isFalse);
+    expect(
+      File(repo.fs.pathContext.join(remoteHome.path, 'remote-targets.json'))
+          .existsSync(),
+      isFalse,
+    );
   });
 }
