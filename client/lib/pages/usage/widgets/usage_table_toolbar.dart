@@ -40,10 +40,9 @@ class UsageTableToolbar extends StatelessWidget {
         controller: searchController,
         onChanged: onQueryChanged,
         style: styles.sm,
-        decoration: InputDecoration(
-          isDense: true,
+        decoration: tpSearchPillDecoration(
+          context,
           hintText: context.l10n.sessionUsageSearchHint,
-          prefixIcon: const Icon(Icons.search, size: 18),
           suffixIcon: searchController.text.isEmpty
               ? null
               : IconButton(
@@ -55,7 +54,6 @@ class UsageTableToolbar extends StatelessWidget {
                   },
                   icon: const Icon(Icons.close),
                 ),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(9)),
         ),
       ),
     );

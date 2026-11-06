@@ -141,4 +141,20 @@ void main() {
     expect(find.text('INFO line one'), findsOneWidget);
     expect(find.text('ERROR line two'), findsOneWidget);
   });
+
+  testWidgets('search field uses the pill decoration', (tester) async {
+    await tester.pumpWidget(
+      _host(
+        _toolbar(onCopyAll: () async {}, onCopyPath: () async {}),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    final border = field.decoration!.enabledBorder! as OutlineInputBorder;
+    expect(
+      border.borderRadius,
+      const BorderRadius.all(Radius.circular(tpSearchPillRadius)),
+    );
+  });
 }
