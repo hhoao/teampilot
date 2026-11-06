@@ -39,10 +39,9 @@ class TeamHubBody extends StatelessWidget {
               // Search + fixed 180 sort + refresh exceeds narrow phone widths.
               final stackControls = constraints.maxWidth < 460;
               final searchField = TextField(
-                decoration: InputDecoration(
+                decoration: tpSearchPillDecoration(
+                  context,
                   hintText: l10n.teamHubSearchHint,
-                  prefixIcon: Icon(Icons.search, size: context.tpIconSizes.md),
-                  floatingLabelBehavior: FloatingLabelBehavior.never,
                 ),
                 onChanged: cubit.setSearch,
               );
