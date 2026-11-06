@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/vault_cubit.dart';
 import '../../l10n/app_localizations.dart';
@@ -68,9 +69,9 @@ class _VaultPageBodyState extends State<VaultPageBody> {
                       children: [
                         Expanded(
                           child: TextField(
-                            decoration: InputDecoration(
+                            decoration: tpSearchPillDecoration(
+                              context,
                               hintText: l10n.vaultSearchHint,
-                              prefixIcon: const Icon(Icons.search),
                             ),
                             onChanged: _onQueryChanged,
                           ),
