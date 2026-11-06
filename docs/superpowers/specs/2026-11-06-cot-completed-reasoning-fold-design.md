@@ -12,7 +12,7 @@
 `initiallyExpanded: widget.autoExpand || aiTheme.cotExpandReasoningOnOpen` 与
 `autoFollow: widget.autoExpand`（`chain_of_thought_view.dart:155`）。自动展开期间两者恒为
 true，于是这段链里所有已输出完的推理块全部摊开。每个推理体是最高 256px 的内部滚动区
-（`reasoning_part_view.dart:177`），10 块就是 2500px 以上；且多个内层
+（`reasoning_part_view.dart:177`），10 块累计可达 2500px 以上；且多个内层
 `SingleChildScrollView` 会吞掉滚轮事件，导致外层会话列表难以滚动。
 
 流式数据按 `(mid, index)` 顺序 append：`acp_chat_transcript_replay.dart:144` 对
@@ -38,7 +38,9 @@ reasoning 做 `previous.text + append`，新 part 只会出现在更大的 index
 1. **活跃块判定**：仅当 `AiChainOfThoughtView.autoExpand == true` 且
    `parts.last is AiReasoningPart` 时，活跃索引为 `parts.length - 1`；否则为 `-1`。
    链尾是工具调用（AI 正在执行工具、暂时没有推理输出）时活跃索引为 -1，所有推理块折叠。
-2. **渲染**：内部带索引遍历 `parts`。对 `AiReasoningPart`：
+2. **渲染**：build 中算出 `activeReasoningIndex` 后带索引遍历 `parts`，对每个 part 定义
+   `isActive = (index == activeReasoningIndex)`（活跃索引为 -1 时所有 part 均为 false）。
+   对 `AiReasoningPart`：
    - `initiallyExpanded = isActive || (!autoExpand && cotExpandReasoningOnOpen)`
    - `autoFollow = isActive`
    对 `AiToolCallPart` 保持不变（`initiallyExpanded: cotExpandToolsOnOpen`）。
@@ -75,7 +77,7 @@ reasoning 做 `previous.text + append`，新 part 只会出现在更大的 index
 - 不改 `AiMessageView`、`AiMessageParts`、`AiThread`、`SessionHistoryThread`、
   `LayoutPreferences`、l10n ARB。
 
-依赖 existing 机制：外层 `AiChainOfThoughtView.didUpdateWidget`（`autoExpand` 变化时开合）、
+沿用现有机制：外层 `AiChainOfThoughtView.didUpdateWidget`（`autoExpand` 变化时开合）、
 `AiMessageParts._NodeKey` 的 part 实例缓存（parts 变化时重建 chain widget 但复用其 State）、
 `AiReasoningPartView` 的 `ScrollMetricsNotification` 底部跟随。
 
