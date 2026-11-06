@@ -194,6 +194,7 @@ import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
 import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
+import '../services/storage/remote_target_migration.dart';
 import '../services/vault/credential_capture.dart';
 import '../services/vault/encrypted_vault_backend.dart';
 import '../services/vault/vault_access.dart';
@@ -909,6 +910,16 @@ Future<AppShell> buildAppShell({
   // follow the home context (Android Connect rebinds home onto SSH and would
   // otherwise reload an empty remote catalog → disconnect → gate again).
   final sshProfileRepo = deviceLocalSshProfileRepository(nativeAppDataPath);
+  // One-shot move of legacy `ssh_profiles/profiles.json` into the device-local
+  // remote-target catalog. Must finish before SshProfileCubit's first load()
+  // so the facade sees migrated targets on first render.
+  await migrateSshProfiles(
+    nativeAppDataPath: nativeAppDataPath,
+    localFs: LocalFilesystem(
+      pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
+    ),
+    targetRepo: deviceLocalRemoteTargetRepository(nativeAppDataPath),
+  );
   Future<Map<CliTool, String>> locateRemoteClis(SshProfile profile) async {
     try {
       await sshClientFactory.ensureStorageConnected(profile);

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/remote_target.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
@@ -61,5 +62,15 @@ void main() {
 
     expect((await repo.load()).targets, hasLength(1));
     expect((await repo.load()).targets.single.sshProfileId, 'p1');
+  });
+
+  test('remote target repo is pinned to native app data', () async {
+    final root = Directory.systemTemp.createTempSync('remote_target_pin_');
+    addTearDown(() => root.deleteSync(recursive: true));
+    final repo = deviceLocalRemoteTargetRepository(root.path);
+    await repo.save(
+      const RemoteTarget(id: 't1', name: 'dev', host: 'h', username: 'u'),
+    );
+    expect(File('${root.path}/remote-targets.json').existsSync(), isTrue);
   });
 }
