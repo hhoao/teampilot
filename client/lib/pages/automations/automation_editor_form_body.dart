@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../models/app_session.dart';
+import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
 import '../../services/automation/automation_schedule_defaults.dart';
+import '../../utils/session/session_display_title.dart';
+import '../../widgets/cli/cli_brand_icon.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'automation_editor_dialog.dart' show AutomationEditorKind;
 import 'automation_editor_launch_section.dart';
@@ -30,6 +34,11 @@ class AutomationEditorFormBody extends StatelessWidget {
     required this.reuseSession,
     required this.onReuseSessionChanged,
     required this.reuseSessionSubtitle,
+    this.boundSessionId,
+    this.boundSession,
+    this.boundCli,
+    this.onSwitchSession,
+    this.onUnbindSession,
     this.commandController,
     this.commandError,
     this.onCommandChanged,
@@ -68,6 +77,13 @@ class AutomationEditorFormBody extends StatelessWidget {
   final bool reuseSession;
   final ValueChanged<bool> onReuseSessionChanged;
   final String reuseSessionSubtitle;
+
+  /// Current binding (launchPrompt + reuseSession only).
+  final String? boundSessionId;
+  final AppSession? boundSession;
+  final CliTool? boundCli;
+  final VoidCallback? onSwitchSession;
+  final VoidCallback? onUnbindSession;
   final TextEditingController? commandController;
   final String? commandError;
   final ValueChanged<String>? onCommandChanged;
@@ -199,6 +215,7 @@ class AutomationEditorFormBody extends StatelessWidget {
             projectFolderPath: projectFolderPath,
             workingDirectoryPath: workingDirectoryPath,
             presetId: presetId,
+            cliFilter: boundCli,
             teamId: teamId,
             expertKey: expertKey,
             targetMemberId: targetMemberId,
@@ -232,6 +249,17 @@ class AutomationEditorFormBody extends StatelessWidget {
               );
             },
           ),
+          if (reuseSession) ...[
+            const SizedBox(height: 12),
+            _AutomationBoundSessionRow(
+              labelWidth: kAutomationEditorFormLabelWidth,
+              sessionId: boundSessionId,
+              session: boundSession,
+              cli: boundCli,
+              onSwitch: onSwitchSession ?? () {},
+              onUnbind: onUnbindSession ?? () {},
+            ),
+          ],
         ],
         const SizedBox(height: 12),
         AutomationSchedulePicker(
@@ -300,6 +328,112 @@ class AutomationEditorFormBody extends StatelessWidget {
               ),
             );
           },
+        ),
+      ],
+    );
+  }
+}
+
+class _AutomationBoundSessionRow extends StatelessWidget {
+  const _AutomationBoundSessionRow({
+    required this.labelWidth,
+    required this.sessionId,
+    required this.session,
+    required this.cli,
+    required this.onSwitch,
+    required this.onUnbind,
+  });
+
+  final double labelWidth;
+  final String? sessionId;
+  final AppSession? session;
+  final CliTool? cli;
+  final VoidCallback onSwitch;
+  final VoidCallback onUnbind;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final hasBinding = sessionId?.trim().isNotEmpty ?? false;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: labelWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(
+              l10n.automationsBoundSession,
+              style: TpTextStyles.of(context).md,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!hasBinding)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    l10n.automationsBoundSessionPending,
+                    style: TpTextStyles.of(context).sm,
+                  ),
+                )
+              else ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (session == null)
+                      Flexible(
+                        child: Text(
+                          l10n.automationsBoundSessionUnavailable,
+                          style: TpTextStyles.of(context).sm,
+                        ),
+                      )
+                    else ...[
+                      if (cli != null) ...[
+                        CliBrandIcon(cli: cli!, size: 20),
+                        const SizedBox(width: 8),
+                      ],
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              sessionListDisplayTitle(session!, l10n),
+                              overflow: TextOverflow.ellipsis,
+                              style: TpTextStyles.of(context).md,
+                            ),
+                            if (cli != null)
+                              Text(cli!.value, style: TpTextStyles.of(context).sm),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    OutlinedButton(
+                      key: const Key('automationSwitchSession'),
+                      onPressed: onSwitch,
+                      child: Text(l10n.automationsSwitchSession),
+                    ),
+                    OutlinedButton(
+                      key: const Key('automationUnbindSession'),
+                      onPressed: onUnbind,
+                      child: Text(l10n.automationsUnbindSession),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
         ),
       ],
     );

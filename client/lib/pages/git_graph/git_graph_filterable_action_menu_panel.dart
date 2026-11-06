@@ -48,14 +48,9 @@ class GitGraphFilterableActionMenuPanel extends StatelessWidget {
                     autofocus: true,
                     onChanged: onFilterChanged,
                     style: TpTextStyles.of(context).md,
-                    decoration: InputDecoration(
-                      isDense: true,
+                    decoration: tpSearchPillDecoration(
+                      context,
                       hintText: filterHint,
-                      prefixIcon: Icon(
-                        Icons.search,
-                        size: TpActionMenuMetrics.iconSize(context),
-                      ),
-                      border: const OutlineInputBorder(),
                     ),
                   ),
                 ),

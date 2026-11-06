@@ -71,6 +71,7 @@ class _MarkdownPreviewFindBarState extends State<MarkdownPreviewFindBar> {
             ? l10n.editorFindNoResults
             : c.counterLabel();
         return FindBarPanel(
+          focusNode: _focus,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
             child: Row(
@@ -100,6 +101,7 @@ class _MarkdownPreviewFindBarState extends State<MarkdownPreviewFindBar> {
                 ),
                 const SizedBox(width: 6),
                 FindCounterText(label: counterLabel, empty: noHits),
+                const FindBarDivider(),
                 FindActionButton(
                   tooltip: l10n.editorFindPrevious,
                   icon: Icons.keyboard_arrow_up_rounded,

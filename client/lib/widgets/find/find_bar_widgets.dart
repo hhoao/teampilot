@@ -18,35 +18,79 @@ abstract final class FindBarIcons {
 }
 
 /// Outer shell of a VS Code-style find widget: panel bg, hairline border,
-/// drop shadow, small radius. Rows are stacked inside by the caller.
+/// drop shadow. Rows are stacked inside by the caller.
 class FindBarPanel extends StatelessWidget {
-  const FindBarPanel({required this.child, super.key});
+  const FindBarPanel({
+    required this.child,
+    this.borderRadius = kPillRadius,
+    this.focusNode,
+    super.key,
+  });
+
+  static const double kPillRadius = tpSearchPillRadius;
+  static const double kCardRadius = 16;
 
   final Widget child;
+  final double borderRadius;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
     final palette = FindBarPalette.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        boxShadow: [
-          BoxShadow(
-            color: palette.shadow,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: palette.panelBg,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-          side: BorderSide(color: palette.panelBorder),
+    final radius = BorderRadius.circular(borderRadius);
+
+    Widget buildPanel(Color borderColor) {
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          boxShadow: [
+            BoxShadow(
+              color: palette.shadow,
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: child,
-      ),
+        child: Material(
+          color: palette.panelBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: radius,
+            side: BorderSide(color: borderColor),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: child,
+        ),
+      );
+    }
+
+    final node = focusNode;
+    if (node == null) {
+      return buildPanel(palette.panelBorder);
+    }
+    return ListenableBuilder(
+      listenable: node,
+      builder: (context, _) {
+        return buildPanel(
+          node.hasFocus ? palette.focusBorder : palette.panelBorder,
+        );
+      },
+    );
+  }
+}
+
+/// Vertical hairline separating search / counter / navigation groups.
+class FindBarDivider extends StatelessWidget {
+  const FindBarDivider({this.height = 18, super.key});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: height,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      color: FindBarPalette.of(context).panelBorder,
     );
   }
 }
@@ -63,8 +107,11 @@ class FindField extends StatelessWidget {
     this.showClear = false,
     this.autofocus = false,
     this.onChanged,
+    this.onSubmitted,
     this.onClear,
     this.width,
+    this.standalone = false,
+    this.trailing,
     super.key,
   });
 
@@ -74,20 +121,26 @@ class FindField extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final String hint;
-
-  /// Inline toggles rendered at the field's trailing edge.
   final List<Widget> toggles;
   final bool showClear;
-
-  /// Requests focus on the field as soon as it mounts.
   final bool autofocus;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
   final VoidCallback? onClear;
   final double? width;
+
+  /// When true the field is not inside a [FindBarPanel] and draws its own
+  /// pill border (right-tools search panel).
+  final bool standalone;
+
+  /// Optional non-interactive trailing content (e.g. terminal find status).
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final palette = FindBarPalette.of(context);
+    final styles = TpTextStyles.of(context);
+
     return SizedBox(
       width: width,
       height: kHeight,
@@ -95,56 +148,65 @@ class FindField extends StatelessWidget {
         listenable: focusNode,
         builder: (context, _) {
           final focused = focusNode.hasFocus;
+          final row = Row(
+            children: [
+              const SizedBox(width: 8),
+              Icon(
+                Icons.search_rounded,
+                size: context.tpIconSizes.md,
+                color: palette.mutedText,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  autofocus: autofocus,
+                  maxLines: 1,
+                  style: styles.md.copyWith(color: palette.text),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: hint,
+                    hintStyle: styles.md.copyWith(color: palette.mutedText),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 0,
+                      vertical: 5,
+                    ),
+                  ),
+                  onChanged: onChanged,
+                  onSubmitted: onSubmitted,
+                ),
+              ),
+              ...toggles,
+              if (trailing != null) trailing!,
+              if (showClear)
+                ListenableBuilder(
+                  listenable: controller,
+                  builder: (context, _) => _ClearButton(
+                    visible: controller.text.isNotEmpty,
+                    color: palette.icon,
+                    hoverColor: palette.hoverBg,
+                    onTap: onClear,
+                  ),
+                ),
+              const SizedBox(width: 4),
+            ],
+          );
+          if (!standalone) {
+            return row;
+          }
           return Container(
             decoration: BoxDecoration(
               color: palette.fieldBg,
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(FindBarPanel.kPillRadius),
               border: Border.all(
                 color: focused ? palette.focusBorder : palette.border,
               ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    autofocus: autofocus,
-                    maxLines: 1,
-                    style: TpTextStyles.of(
-                      context,
-                    ).md.copyWith(color: palette.text),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      hintText: hint,
-                      hintStyle: TpTextStyles.of(
-                        context,
-                      ).md.copyWith(color: palette.mutedText),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 5,
-                      ),
-                    ),
-                    onChanged: onChanged,
-                  ),
-                ),
-                ...toggles,
-                if (showClear)
-                  ListenableBuilder(
-                    listenable: controller,
-                    builder: (context, _) => _ClearButton(
-                      visible: controller.text.isNotEmpty,
-                      color: palette.icon,
-                      hoverColor: palette.hoverBg,
-                      onTap: onClear,
-                    ),
-                  ),
-                const SizedBox(width: 2),
-              ],
-            ),
+            child: row,
           );
         },
       ),

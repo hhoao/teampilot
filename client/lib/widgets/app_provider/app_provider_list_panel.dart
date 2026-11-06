@@ -341,9 +341,9 @@ class _ProviderListControls extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
           child: TextField(
             controller: search,
-            decoration: InputDecoration(
+            decoration: tpSearchPillDecoration(
+              context,
               hintText: l10n.filterProviders,
-              floatingLabelBehavior: FloatingLabelBehavior.never,
             ),
             onChanged: (v) => onQueryChanged(v.trim()),
           ),

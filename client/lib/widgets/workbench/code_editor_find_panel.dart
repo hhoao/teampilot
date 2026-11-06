@@ -28,7 +28,7 @@ class CodeEditorFindPanel extends StatelessWidget
   static const double _rowGap = 4;
   static const double _panelVerticalPadding = 8;
   static const double _panelWidth = 500;
-  static const double _findFieldWidth = 260;
+  static const double _findFieldWidth = 240;
   static const double _counterWidth = 76;
   static const double _chevronWidth = 16;
 
@@ -66,6 +66,10 @@ class CodeEditorFindPanel extends StatelessWidget
               width: _panelWidth,
               height: preferredSize.height,
               child: FindBarPanel(
+                focusNode: controller.findInputFocusNode,
+                borderRadius: showReplace
+                    ? FindBarPanel.kCardRadius
+                    : FindBarPanel.kPillRadius,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(0, 4, 4, 4),
                   child: Row(
@@ -160,6 +164,7 @@ class CodeEditorFindPanel extends StatelessWidget
             empty: !hasMatch,
             width: _counterWidth,
           ),
+          const FindBarDivider(),
           const SizedBox(width: 2),
           FindActionButton(
             icon: Icons.keyboard_arrow_up,
@@ -180,6 +185,7 @@ class CodeEditorFindPanel extends StatelessWidget
             checked: value.option.findInSelection,
             onTap: controller.toggleFindInSelection,
           ),
+          const FindBarDivider(),
           FindActionButton(
             icon: Icons.close,
             tooltip: l10n.editorFindClose,

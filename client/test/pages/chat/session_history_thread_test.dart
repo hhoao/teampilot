@@ -718,6 +718,57 @@ void main() {
     },
   );
 
+  testWidgets(
+    'nested reasoning scroll does not flap the transcript cursor lock',
+    (tester) async {
+      // The live reasoning body auto-follows its newest line with a
+      // `jumpTo` inside a max-height box. Those ScrollStart/Update/End
+      // notifications bubble up to the transcript's listener; they must not
+      // be mistaken for a history scroll (which forces the basic cursor over
+      // tool-call click targets and releases stick-to-end).
+      final longReasoning = List.generate(
+        120,
+        (i) => 'thinking line $i',
+      ).join('\n');
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages([
+          AiMessage(
+            id: 'a1',
+            role: AiRole.assistant,
+            parts: [AiReasoningPart(text: longReasoning)],
+          ),
+        ]);
+
+      await tester.pumpWidget(
+        _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
+      );
+      await _pumpLive(tester);
+      // Let any transcript stick jump finish and hover effects resume.
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump();
+
+      final innerScrollable = find.descendant(
+        of: find.byType(AiReasoningPartView),
+        matching: find.byType(Scrollable),
+      );
+      expect(innerScrollable, findsOneWidget);
+
+      ScrollCursorLock lock() => tester.widget<ScrollCursorLock>(
+        find.byType(ScrollCursorLock),
+      );
+      expect(lock().active, isFalse);
+
+      final position = tester.state<ScrollableState>(innerScrollable).position;
+      expect(position.maxScrollExtent, greaterThan(0));
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pump();
+
+      expect(lock().active, isFalse);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(lock().active, isFalse);
+    },
+  );
+
   testWidgets('running footer visible when liveChrome is running', (
     tester,
   ) async {

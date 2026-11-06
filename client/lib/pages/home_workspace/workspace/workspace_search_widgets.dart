@@ -35,25 +35,9 @@ class WorkspaceSearchField extends StatelessWidget {
         controller: controller,
         autofocus: true,
         style: styles.mdColored(cs.onSurface),
-        decoration: InputDecoration(
+        decoration: tpSearchPillDecoration(
+          context,
           hintText: hint,
-          hintStyle: styles.mdColored(cs.onSurfaceVariant),
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-          prefixIcon: Icon(
-            Icons.search_rounded,
-            size: 16,
-            color: cs.onSurfaceVariant,
-          ),
-          floatingLabelBehavior: FloatingLabelBehavior.never,
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: cs.outlineVariant),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: cs.primary),
-          ),
           suffixIcon: controller.text.isNotEmpty
               ? TpIconButton(
                   icon: Icons.clear,

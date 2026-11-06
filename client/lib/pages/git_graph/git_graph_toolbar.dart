@@ -240,6 +240,7 @@ class GitGraphToolbar extends StatelessWidget {
       initialValue: state.searchQuery.isEmpty ? null : state.searchQuery,
       textInputAction: TextInputAction.search,
       style: TpTextStyles.of(context).md,
+      borderRadius: tpSearchPillRadius,
       decoration: InputDecoration(
         hintText: l10n.gitGraphSearchHint,
         prefixIcon: Icon(

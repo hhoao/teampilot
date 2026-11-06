@@ -106,4 +106,12 @@ void main() {
     final field = tester.widget<TextField>(find.byType(TextField));
     expect(field.controller!.text, 'two');
   });
+
+  testWidgets('find bar uses the pill radius and group divider', (tester) async {
+    final controller = await pumpBar(tester);
+    final panel = tester.widget<FindBarPanel>(find.byType(FindBarPanel));
+    expect(panel.borderRadius, FindBarPanel.kPillRadius);
+    expect(find.byType(FindBarDivider), findsOneWidget);
+    controller.dispose();
+  });
 }

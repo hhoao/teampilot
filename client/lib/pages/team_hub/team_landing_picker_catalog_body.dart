@@ -66,10 +66,9 @@ class TeamLandingPickerCatalogBody extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           child: TextField(
-            decoration: InputDecoration(
+            decoration: tpSearchPillDecoration(
+              context,
               hintText: l10n.teamHubSearchHint,
-              prefixIcon: Icon(Icons.search, size: context.tpIconSizes.md),
-              floatingLabelBehavior: FloatingLabelBehavior.never,
             ),
             onChanged: onSearch,
           ),

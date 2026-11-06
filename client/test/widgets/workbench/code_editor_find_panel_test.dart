@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:re_editor/re_editor.dart';
 import 'package:teampilot/l10n/l10n_extensions.dart';
+import 'package:teampilot/widgets/find/find_bar_widgets.dart';
 import 'package:teampilot/widgets/workbench/code_editor_find_panel.dart';
 
 /// Verifies the workbench file-editor find/replace bar.
@@ -115,8 +116,7 @@ void main() {
 
   testWidgets('CodeEditor wires the find bar through findBuilder', (
     tester,
-  ) async {
-    final editing = CodeLineEditingController.fromText(
+  ) async {    final editing = CodeLineEditingController.fromText(
       'hello world\nhello again',
     );
     final ctrl = CodeFindController(editing);
@@ -148,5 +148,24 @@ void main() {
     ctrl.findMode();
     await tester.pump();
     expect(find.byType(TextField), findsOneWidget);
+  });
+
+  testWidgets('find row is a pill; replace row expands to a card', (
+    tester,
+  ) async {
+    final ctrl = await pumpPanel(tester);
+    ctrl.findMode();
+    await tester.pump();
+
+    FindBarPanel panel() =>
+        tester.widget<FindBarPanel>(find.byType(FindBarPanel));
+    expect(panel().borderRadius, FindBarPanel.kPillRadius);
+
+    ctrl.replaceMode();
+    await tester.pump();
+    expect(panel().borderRadius, FindBarPanel.kCardRadius);
+
+    ctrl.close();
+    await tester.pump();
   });
 }

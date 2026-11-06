@@ -57,10 +57,9 @@ class _ShortcutsConfigWorkspaceState extends State<ShortcutsConfigWorkspace> {
               child: TextField(
                 controller: _searchController,
                 onChanged: (value) => setState(() => _query = value),
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search),
+                decoration: tpSearchPillDecoration(
+                  context,
                   hintText: l10n.shortcutsSearchHint,
-                  isDense: true,
                 ),
               ),
             ),
