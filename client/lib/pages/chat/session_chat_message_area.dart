@@ -24,6 +24,7 @@ import '../../services/ai_history/workspace_edit_line_highlighter.dart';
 import '../../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../../services/cli/tasks/cli_task_board_controller.dart';
 import '../../services/chat/conversation/history/chat_transcript_find_controller.dart';
+import '../../services/chat/session/chat_tab.dart';
 import '../../services/workbench/ai_tool_file_open_coordinator.dart';
 import '../../services/workbench/session_member_filesystem.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
@@ -253,7 +254,11 @@ class SessionChatMessageArea extends StatelessWidget {
                           ),
                         ),
                         child: AiMessageStringsScope(
-                          strings: aiMessageStringsFromL10n(l10n),
+                          strings: aiMessageStringsFromL10n(
+                            l10n,
+                            thinkingProcessToolCalls:
+                                isAcpChatSession(session),
+                          ),
                           child: AiToolCallFoldScope(
                             shouldFold: (part) =>
                                 foldCategories.contains(part.category),

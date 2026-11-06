@@ -9,6 +9,7 @@ import '../../l10n/app_localizations.dart';
 AiMessageStrings aiMessageStringsFromL10n(
   AppLocalizations l10n, {
   String? permissionCliName,
+  bool thinkingProcessToolCalls = false,
 }) {
   final cliName = permissionCliName?.trim() ?? '';
   return AiMessageStrings(
@@ -32,6 +33,10 @@ AiMessageStrings aiMessageStringsFromL10n(
         l10n.aiMessageThinkingProcessSteps(count as int),
     formatThinkingProcessSummary: (summary) =>
         _thinkingProcessSummaryLabel(l10n, summary),
+    formatThinkingProcessStats: thinkingProcessToolCalls
+        ? (steps, toolCalls) =>
+            l10n.aiMessageThinkingProcessStats(steps, toolCalls)
+        : null,
     askUserAsking: l10n.askUserQuestionBubbleAsking,
     formatAskUserAsked: (count) =>
         l10n.askUserQuestionBubbleAsked(count as int),

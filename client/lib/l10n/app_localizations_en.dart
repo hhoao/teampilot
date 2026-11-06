@@ -1861,6 +1861,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String aiMessageThinkingProcessStats(int steps, int toolCalls) {
+    return 'Thinking process · $steps steps · $toolCalls tool calls this turn';
+  }
+
+  @override
   String aiMessageThinkingEditedFiles(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

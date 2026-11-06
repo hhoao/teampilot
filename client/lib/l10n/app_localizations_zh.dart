@@ -1777,6 +1777,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String aiMessageThinkingProcessStats(int steps, int toolCalls) {
+    return '思考过程 · $steps 步 · 本轮共 $toolCalls 次工具调用';
+  }
+
+  @override
   String aiMessageThinkingEditedFiles(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

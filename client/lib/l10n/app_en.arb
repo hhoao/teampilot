@@ -861,6 +861,13 @@
       }
     }
   },
+  "aiMessageThinkingProcessStats": "Thinking process · {steps} steps · {toolCalls} tool calls this turn",
+  "@aiMessageThinkingProcessStats": {
+    "placeholders": {
+      "steps": { "type": "int" },
+      "toolCalls": { "type": "int" }
+    }
+  },
   "aiMessageThinkingEditedFiles": "{count, plural, =1{edited 1 file} other{edited {count} files}}",
   "@aiMessageThinkingEditedFiles": {
     "placeholders": {
