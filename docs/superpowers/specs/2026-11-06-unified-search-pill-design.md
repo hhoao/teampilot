@@ -46,10 +46,10 @@
 新增 `tpSearchPillDecoration(BuildContext context, {...})`，位于
 `client/packages/shared_ui/lib/src/components/input/tp_search_pill.dart`，并从 `shared_ui.dart` 导出。
 
-- 返回标准胶囊 `InputDecoration`：stadium 圆角、填充、边框、聚焦边框、提示色、可选前置搜索图标、可选前置/后置控件。
+- 返回标准胶囊 `InputDecoration`：stadium 圆角、填充、边框、聚焦边框、提示色、可选前置搜索图标、可选前置/后置控件。同时导出 `tpSearchPillRadius`（999）作为唯一胶囊半径常量。
 - 内嵌搜索框只替换 `decoration`，controller、`onChanged`、清空按钮、chips、布局均不动。
 - `TpCatalogDiscoveryHeader` 与 `TpSelectSearchField` 在 shared_ui 内直接改用该助手。
-- `TpInput` 增加可选的 `decoration` 覆盖参数，供 Git 提交搜索这种"输入框内嵌选择器"的场景传入胶囊装饰。
+- `TpInput` 增加可选的 `borderRadius` 参数（现有 `decoration` 参数保留），供 Git 提交搜索这种"输入框内嵌选择器"的场景使用胶囊圆角。
 
 shared_ui 是 git 子模块：样式改动在子模块提交，再更新主仓子模块指针（仓库已有先例）。
 
