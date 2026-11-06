@@ -273,6 +273,36 @@ void main() {
     expect(loadCount, 2);
   });
 
+  test('storage plane change before any load stays idle', () async {
+    // Boot reinstalls the home plane while no usage surface has opened. The
+    // event store can be tens of MB over SSH, so the swap must not start a
+    // load that nobody asked for.
+    final changes = StreamController<void>();
+    var loadCount = 0;
+    final cubit = SessionUsageCubit(
+      loadEvents: () async {
+        loadCount++;
+        return [_event()];
+      },
+      syncAll: () async => const UsageSyncResult(),
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      storageChanges: changes.stream,
+      now: () => _now,
+    );
+    addTearDown(() async {
+      await changes.close();
+      await cubit.close();
+    });
+
+    changes.add(null);
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(loadCount, 0);
+    expect(cubit.state.status, SessionUsageStatus.initial);
+  });
+
   test('sync is single-flight', () async {
     final syncCompleter = Completer<UsageSyncResult>();
     var syncCount = 0;

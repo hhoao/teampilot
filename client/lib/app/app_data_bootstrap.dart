@@ -260,7 +260,24 @@ abstract final class AppDataBootstrap {
     );
   }
 
-  /// Plugins, skills, extensions, default-workspace seed, team resource sync.
+  /// Host config the home shell itself reads (provider rows). Model catalogs
+  /// are composer-only and load with [warmAuxiliaryData] instead: the home
+  /// page has no model picker, so they must not hold the splash.
+  static Future<void> warmShellConfig({
+    required BootLog boot,
+    required AppProviderCubit appProviderCubit,
+  }) async {
+    await _timed(
+      boot,
+      'appProvider',
+      () => appProviderCubit.load(reconcileCredentials: false),
+    );
+    await yieldUiFrame();
+  }
+
+  /// Plugins, skills, llm config, extensions, and team resource syncs. Boot
+  /// fires this without awaiting; a home reload awaits it so the shell never
+  /// shows a team whose plugins/MCP servers are still unsynced.
   static Future<void> warmAuxiliaryData({
     required BootLog boot,
     required LlmConfigCubit llmConfigCubit,
@@ -270,49 +287,40 @@ abstract final class AppDataBootstrap {
     required SkillCubit skillCubit,
     required McpCubit mcpCubit,
     required ExtensionCubit extensionCubit,
-    required ChatCubit chatCubit,
-    required SessionRepository sessionRepo,
   }) async {
     final phaseSw = Stopwatch()..start();
     boot('warmAuxiliaryData start');
 
-    await _timed(boot, 'llmConfig', llmConfigCubit.load);
-    await yieldUiFrame();
-    await _timed(
-      boot,
-      'appProvider',
-      () => appProviderCubit.load(reconcileCredentials: false),
-    );
-    await yieldUiFrame();
-    await _timed(boot, 'plugins', pluginCubit.load);
-    await yieldUiFrame();
-    await _timed(boot, 'skills', skillCubit.loadAll);
-    await yieldUiFrame();
-    await _timed(boot, 'mcp', () => mcpCubit.loadAll());
+    // Independent catalogs: overlap their round trips. Team syncs below need
+    // the installed plugin/MCP lists, so they form a second phase.
+    await Future.wait([
+      _timed(boot, 'llmConfig', llmConfigCubit.load),
+      _timed(boot, 'plugins', pluginCubit.load),
+      _timed(boot, 'skills', skillCubit.loadAll),
+      _timed(boot, 'mcp', () => mcpCubit.loadAll()),
+      _timed(boot, 'extensions', extensionCubit.loadForBootstrap),
+    ]);
     await yieldUiFrame();
 
-    await _timed(boot, 'extensions', extensionCubit.loadForBootstrap);
-    await yieldUiFrame();
-
-    await _timed(
-      boot,
-      'appProviderCredentials',
-      () => appProviderCubit.reconcileCredentials(),
-    );
-    await yieldUiFrame();
-    await _timed(
-      boot,
-      'syncTeamPlugins',
-      () => teamCubit.syncSelectedTeamPlugins(
-        installed: pluginCubit.state.installed,
+    await Future.wait([
+      _timed(
+        boot,
+        'appProviderCredentials',
+        () => appProviderCubit.reconcileCredentials(),
       ),
-    );
-    await yieldUiFrame();
-    await _timed(
-      boot,
-      'syncTeamMcp',
-      () => teamCubit.syncSelectedTeamMcp(installed: mcpCubit.state.servers),
-    );
+      _timed(
+        boot,
+        'syncTeamPlugins',
+        () => teamCubit.syncSelectedTeamPlugins(
+          installed: pluginCubit.state.installed,
+        ),
+      ),
+      _timed(
+        boot,
+        'syncTeamMcp',
+        () => teamCubit.syncSelectedTeamMcp(installed: mcpCubit.state.servers),
+      ),
+    ]);
 
     boot('warmAuxiliaryData complete +${phaseSw.elapsedMilliseconds}ms');
     await yieldUiFrame();
@@ -334,21 +342,35 @@ abstract final class AppDataBootstrap {
     final phaseSw = Stopwatch()..start();
     boot('prepareInteractiveShell start');
 
-    await _timed(boot, 'sshProfiles', () => sshProfileCubit.load());
+    // Independent small reads: run them together so the SSH round trips
+    // overlap instead of stacking one after another.
+    await Future.wait([
+      _timed(boot, 'sshProfiles', () => sshProfileCubit.load()),
+      _timed(boot, 'cliPresets', cliPresetsCubit.load),
+      _timed(boot, 'aiFeatureSettings', aiFeatureSettingsCubit.load),
+      _timed(boot, 'discoverySettings', discoverySettingsCubit.load),
+      _timed(boot, 'homeWorkspaceUi', homeWorkspaceUiCache.warm),
+    ]);
     await yieldUiFrame();
-    await _timed(boot, 'cliPresets', cliPresetsCubit.load);
-    await yieldUiFrame();
-    await _timed(boot, 'aiFeatureSettings', aiFeatureSettingsCubit.load);
-    await yieldUiFrame();
-    await _timed(boot, 'discoverySettings', discoverySettingsCubit.load);
-    await yieldUiFrame();
-    await _timed(boot, 'homeWorkspaceUi', homeWorkspaceUiCache.warm);
-    await yieldUiFrame();
-    await _timed(
-      boot,
-      'workspaceIcons',
-      () => WorkspaceIconWarmup.warm(workspaces, storage: storage),
-    );
+
+    // Icon caches are pure warm-up: the shell paints with placeholders and the
+    // icons stream in, so this must not hold the splash.
+    unawaited(() async {
+      final sw = Stopwatch()..start();
+      try {
+        await WorkspaceIconWarmup.warm(workspaces, storage: storage);
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '[boot] workspace icon warm failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      } finally {
+        appLogger.i(
+          '[boot] workspaceIcons +${sw.elapsedMilliseconds}ms (background)',
+        );
+      }
+    }());
 
     await yieldUiFrame();
 
@@ -401,6 +423,7 @@ abstract final class AppDataBootstrap {
       reinstallSshHome: reinstallSshHome,
       expertHubCatalog: expertHubCatalog,
     );
+    await warmShellConfig(boot: boot, appProviderCubit: appProviderCubit);
     await warmAuxiliaryData(
       boot: boot,
       llmConfigCubit: llmConfigCubit,
@@ -410,8 +433,6 @@ abstract final class AppDataBootstrap {
       skillCubit: skillCubit,
       mcpCubit: mcpCubit,
       extensionCubit: extensionCubit,
-      chatCubit: chatCubit,
-      sessionRepo: sessionRepo,
     );
     await _timed(
       boot,

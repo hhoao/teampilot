@@ -252,6 +252,10 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
        super(SessionUsageState()) {
     _engine = UsageDashboardEngine(isolateThreshold: isolateThreshold);
     _storageSub = storageChanges?.listen((_) {
+      // Nothing is loaded until a usage surface asks for it. Boot reinstalls
+      // the home plane before that, and reloading there would pull the whole
+      // event store for a page nobody opened.
+      if (state.status == SessionUsageStatus.initial) return;
       unawaited(reload());
     });
   }
