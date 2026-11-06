@@ -3,7 +3,9 @@ import 'dart:convert';
 import '../../models/remote_target.dart';
 import '../../models/ssh_profile.dart';
 import '../../repositories/remote_target_repository.dart';
+import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
+import 'storage_failure.dart';
 
 class RemoteTargetMigrationResult {
   const RemoteTargetMigrationResult({
@@ -43,9 +45,15 @@ Future<RemoteTargetMigrationResult> migrateSshProfiles({
           json.whereType<Map<String, Object?>>().map(SshProfile.fromJson),
         );
       }
-    } on Object {
-      // 解析失败：保留原文件，不写标记，下次启动重试。
-      return const RemoteTargetMigrationResult(migrated: 0, skipped: false);
+    } on FormatException catch (error) {
+      // Transport detection is partly message-based, so a closed channel can
+      // surface as a parse-typed error. It must never be swallowed here.
+      if (isStorageTransportFailure(error)) rethrow;
+      return _unreadableLegacy(legacyFile);
+    } on TypeError catch (error) {
+      // Malformed JSON shapes fail casts in SshProfile.fromJson as TypeError.
+      if (isStorageTransportFailure(error)) rethrow;
+      return _unreadableLegacy(legacyFile);
     }
   }
 
@@ -83,3 +91,15 @@ RemoteTarget _toTarget(SshProfile profile) => RemoteTarget(
       pairedDesktopId: profile.pairedDesktopId,
       updatedAt: profile.updatedAt,
     );
+
+RemoteTargetMigrationResult _unreadableLegacy(String legacyFile) {
+  // Content-free diagnostic: FormatException.message embeds a source excerpt
+  // that can carry host/username/vaultEntryId, so log the path only — never
+  // the caught error or the file bytes.
+  AppLogger.instance.w(
+    '[remote-targets] unreadable legacy profiles at $legacyFile; '
+    'keeping file for retry',
+  );
+  // 解析失败：保留原文件，不写标记，下次启动重试。
+  return const RemoteTargetMigrationResult(migrated: 0, skipped: false);
+}
