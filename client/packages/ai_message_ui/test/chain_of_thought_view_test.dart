@@ -4,6 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  Widget buildLiveChain(List<AiMessagePart> parts, {bool autoExpand = true}) {
+    return MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: AiChainOfThoughtView(parts: parts, autoExpand: autoExpand),
+        ),
+      ),
+    );
+  }
+
   testWidgets('Cot trigger does not overflow in a narrow parent', (
     tester,
   ) async {
@@ -344,6 +354,30 @@ void main() {
 
     expect(find.text('Reasoning'), findsOneWidget);
     expect(find.textContaining('live thought'), findsNothing);
+  });
+
+  testWidgets('reasoning body expands when it becomes the live target', (
+    tester,
+  ) async {
+    Widget build({required bool live}) {
+      return MaterialApp(
+        home: Scaffold(
+          body: AiReasoningPartView(
+            part: const AiReasoningPart(text: 'live thought'),
+            initiallyExpanded: live,
+            autoFollow: live,
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(build(live: false));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('live thought'), findsNothing);
+
+    await tester.pumpWidget(build(live: true));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('live thought'), findsOneWidget);
   });
 }
 

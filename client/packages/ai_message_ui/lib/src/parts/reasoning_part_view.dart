@@ -21,10 +21,12 @@ class AiReasoningPartView extends StatefulWidget {
   final AiReasoningPart part;
   final bool initiallyExpanded;
 
-  /// While true, the open body follows the streaming reasoning: the inner
-  /// scroll view stays pinned to the newest line. When this flips back to
-  /// false (the turn stopped streaming), the body collapses to its trigger
-  /// row so the final answer is not buried under a full thinking block.
+  /// True while this reasoning block is the live thinking target. The open
+  /// body follows the streaming reasoning: the inner scroll view stays pinned
+  /// to the newest line. Flipping to false (another block took over, or the
+  /// turn stopped streaming) collapses the body to its trigger row so finished
+  /// thinking does not bury the answer. Flipping from false to true opens the
+  /// body again and re-arms the follow.
   final bool autoFollow;
 
   @override
@@ -50,10 +52,15 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
   void didUpdateWidget(covariant AiReasoningPartView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.autoFollow && !widget.autoFollow) {
-      // The turn finished streaming: fold the body back into its row.
+      // No longer the live thinking target: fold the body back into its row.
       _open = false;
       _stickToBottom = true;
-    } else if (!oldWidget.autoFollow && widget.autoFollow && _open) {
+    } else if (!oldWidget.autoFollow && widget.autoFollow) {
+      // Became the live thinking target (the turn started while this block was
+      // already mounted, or the chain resumed after a tool call): open it and
+      // follow the newest line.
+      _open = true;
+      _stickToBottom = true;
       _scheduleScrollToBottom();
     }
   }
