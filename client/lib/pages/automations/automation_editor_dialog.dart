@@ -17,9 +17,9 @@ import '../../models/workspace.dart';
 import '../../pages/home_workspace/workspace/workspace_landing_selectors.dart';
 import '../../services/automation/automation_launch_session_binding.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
+import '../../services/automation/automation_schedule_defaults.dart';
 import '../../services/automation/automation_session_binding_resolver.dart';
 import '../../services/cli/preset_resolver.dart';
-import '../../services/automation/automation_schedule_defaults.dart';
 import '../../widgets/home_storage_scope.dart';
 import '../../utils/workspace/landing_draft_resolver.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
@@ -489,10 +489,12 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final form = _formKey.currentState;
     if (form == null) return;
     // A previous rejected save may have left a forced field error behind;
-    // clear it so this validation reflects the current field values. The
-    // once-time field only exists while the picker shows the once/countdown
-    // rows, so guard the lookup.
+    // clear it so this validation reflects the current field values. Both the
+    // once-time field (only present for once/countdown rows) and the preset
+    // field (only present for personal launch prompts) can carry a forced
+    // error, so clear each with a guarded lookup.
     form.fields['scheduleOnceTime']?.setError(null);
+    form.fields['presetId']?.setError(null);
     if (!form.validate()) return;
 
     final name = _nameCtl.text.trim();
@@ -522,7 +524,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           .where((p) => p.id == selectedPresetId)
           .firstOrNull;
       if (boundCli != null && selected != null && selected.cli != boundCli) {
-        form.setFieldError('presetId', l10n.automationsPresetCliMismatch);
+        form.fields['presetId']?.setError(l10n.automationsPresetCliMismatch);
         return;
       }
     }

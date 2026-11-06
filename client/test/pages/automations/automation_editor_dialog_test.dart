@@ -1574,6 +1574,69 @@ void main() {
     expect(setup.cubit.state.automations, isEmpty);
   });
 
+  testWidgets('rejected mismatch save recovers after unbind and re-save', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    final chatCubit = _chatCubitWithSessions([
+      _simpleSession('sess-codex', cli: CliTool.codex, display: 'Codex session'),
+    ]);
+    final cliPresetsCubit = _cliPresetsCubitWithTwoClis();
+    addTearDown(setup.cubit.close);
+    addTearDown(chatCubit.close);
+    addTearDown(cliPresetsCubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          chatCubit: chatCubit,
+          cliPresetsCubit: cliPresetsCubit,
+          child: AutomationEditorDialog(
+            workspaceId: 'ws1',
+            initial: _boundAutomation(
+              presetId: 'p-claude',
+              sessionId: 'sess-codex',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    // First save is rejected: the preset CLI does not match the bound
+    // session's CLI, leaving a forced error on the preset field.
+    await tester.tap(find.text(l10n.save));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.automationsPresetCliMismatch), findsOneWidget);
+    expect(setup.cubit.state.automations, isEmpty);
+
+    // Unbinding drops the CLI constraint. The preset field keeps its
+    // ValueKey (presetId is unchanged), so the forced error is not cleared by
+    // a remount and must be reset on the next save or form.validate() stays
+    // false forever.
+    await tester.ensureVisible(
+      find.byKey(const Key('automationUnbindSession')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('automationUnbindSession')));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.text(l10n.save));
+      await pumpUntilClosed(tester);
+    });
+
+    expect(setup.cubit.state.automations, hasLength(1));
+    final saved = setup.cubit.state.automations.single;
+    expect(saved.sessionId, isNull);
+    expect(saved.reuseSession, isTrue);
+  });
+
   testWidgets('team mode offers switch/unbind without a preset field', (
     tester,
   ) async {

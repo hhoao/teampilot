@@ -102,6 +102,12 @@ void main() {
       tester.widget<TpSelect<String>>(find.byType(TpSelect<String>)).items,
       ['p-codex'],
     );
+    // The selected id is filtered out, so initialItem re-resolves to the
+    // first (and only) filtered preset instead of keeping 'p-claude'.
+    expect(
+      tester.widget<TpSelect<String>>(find.byType(TpSelect<String>)).initialItem,
+      'p-codex',
+    );
   });
 
   testWidgets('emptyHint is shown when filter matches nothing', (tester) async {
