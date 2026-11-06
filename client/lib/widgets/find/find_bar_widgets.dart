@@ -166,6 +166,7 @@ class FindField extends StatelessWidget {
                   style: styles.md.copyWith(color: palette.text),
                   decoration: InputDecoration(
                     isDense: true,
+                    filled: false,
                     hintText: hint,
                     hintStyle: styles.md.copyWith(color: palette.mutedText),
                     border: InputBorder.none,
@@ -180,18 +181,22 @@ class FindField extends StatelessWidget {
                   onSubmitted: onSubmitted,
                 ),
               ),
-              ...toggles,
-              if (trailing != null) trailing!,
               if (showClear)
                 ListenableBuilder(
                   listenable: controller,
                   builder: (context, _) => _ClearButton(
                     visible: controller.text.isNotEmpty,
                     color: palette.icon,
+                    hoverIconColor: palette.text,
                     hoverColor: palette.hoverBg,
                     onTap: onClear,
                   ),
                 ),
+              for (final toggle in toggles) ...[
+                const SizedBox(width: 6),
+                toggle,
+              ],
+              if (trailing != null) trailing!,
               const SizedBox(width: 4),
             ],
           );
@@ -214,38 +219,52 @@ class FindField extends StatelessWidget {
   }
 }
 
-class _ClearButton extends StatelessWidget {
+class _ClearButton extends StatefulWidget {
   const _ClearButton({
     required this.visible,
     required this.color,
+    required this.hoverIconColor,
     required this.hoverColor,
     required this.onTap,
   });
 
   final bool visible;
   final Color color;
+  final Color hoverIconColor;
   final Color hoverColor;
   final VoidCallback? onTap;
 
   @override
+  State<_ClearButton> createState() => _ClearButtonState();
+}
+
+class _ClearButtonState extends State<_ClearButton> {
+  var _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    if (!visible) {
+    if (!widget.visible) {
       return const SizedBox(width: 18, height: 18);
     }
     return TpHover(
       width: 18,
       height: 18,
       borderRadius: BorderRadius.circular(3),
-      hoverColor: hoverColor,
-      onTap: onTap,
-      child: Icon(Icons.close, size: 12, color: color),
+      hoverColor: widget.hoverColor,
+      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+      onTap: widget.onTap,
+      child: Icon(
+        Icons.close,
+        size: 12,
+        color: _hovered ? widget.hoverIconColor : widget.color,
+      ),
     );
   }
 }
 
 /// Small `Aa` / `ab` / `.*` / `AB` option toggle with an on state shown only
 /// by the icon color (no background box), like VS Code's find-widget toggles.
-class FindToggleButton extends StatelessWidget {
+class FindToggleButton extends StatefulWidget {
   const FindToggleButton({
     required this.iconAsset,
     required this.tooltip,
@@ -265,23 +284,33 @@ class FindToggleButton extends StatelessWidget {
   final bool enabled;
 
   @override
+  State<FindToggleButton> createState() => _FindToggleButtonState();
+}
+
+class _FindToggleButtonState extends State<FindToggleButton> {
+  var _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final palette = FindBarPalette.of(context);
-    final color = checked ? palette.toggleOnText : palette.icon;
+    final color = widget.checked
+        ? palette.toggleOnText
+        : (_hovered && widget.enabled ? palette.text : palette.icon);
     return Tooltip(
-      message: tooltip,
+      message: widget.tooltip,
       child: TpHover(
-        width: kSize,
-        height: kSize,
+        width: FindToggleButton.kSize,
+        height: FindToggleButton.kSize,
         borderRadius: BorderRadius.circular(3),
         // Transparent surface: these live inside the input field, so the on
         // state is conveyed purely by the icon color.
         backgroundColor: Colors.transparent,
         hoverColor: Colors.transparent,
-        enabled: enabled,
-        onTap: enabled ? onTap : null,
+        enabled: widget.enabled,
+        onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+        onTap: widget.enabled ? widget.onTap : null,
         child: SvgPicture.asset(
-          iconAsset,
+          widget.iconAsset,
           width: context.tpIconSizes.md,
           height: context.tpIconSizes.md,
           colorFilter: ColorFilter.mode(color, BlendMode.srcIn),

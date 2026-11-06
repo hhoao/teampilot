@@ -361,6 +361,13 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
               SessionUsageProgressBridge(
                 child: WorkspaceStatusBar(
                   leadingItems: [
+                    ManagedProviderUsageStatusItem(
+                      onManage: () => context.go(
+                        HomeGlobalView.managedProviders.homeLocation,
+                      ),
+                    ),
+                  ],
+                  trailingItems: [
                     ScheduledTasksStatusItem(
                       onEditAutomation: (automation) =>
                           unawaited(_editAutomation(automation)),
@@ -372,13 +379,6 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
                         ),
                       ),
                     ),
-                    ManagedProviderUsageStatusItem(
-                      onManage: () => context.go(
-                        HomeGlobalView.managedProviders.homeLocation,
-                      ),
-                    ),
-                  ],
-                  trailingItems: [
                     ProgressActivitiesStatusItem(workspaceId: workspaceId),
                     ResourceUsageStatusItem(),
                     SshHostsStatusItem(

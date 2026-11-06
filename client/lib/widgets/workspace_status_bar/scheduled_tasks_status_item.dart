@@ -82,8 +82,8 @@ class _ScheduledTasksStatusSegmentState
           fixedPanelWidth: _ScheduledTasksPanel.panelWidth,
           closeOnTapOutside: true,
           anchor: const TpAnchor(
-            childAlignment: Alignment.bottomLeft,
-            overlayAlignment: Alignment.topLeft,
+            childAlignment: Alignment.bottomRight,
+            overlayAlignment: Alignment.topRight,
             offset: Offset(0, -8),
           ),
           popoverBuilder: (context, menu) => _ScheduledTasksPanel(
@@ -262,23 +262,26 @@ class _ScheduledTaskRow extends StatelessWidget {
       borderRadius: BorderRadius.circular(6),
       hoverColor: cs.onSurface.withValues(alpha: 0.06),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            automation.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: styles.smMediumColored(cs.onSurface),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            timeLabel,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: styles.xs.copyWith(color: cs.onSurfaceVariant),
-          ),
-        ],
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              automation.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: styles.smMediumColored(cs.onSurface),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              timeLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: styles.xs.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -95,7 +95,7 @@ void main() {
     await tester.pumpWidget(
       _host(
         cubit: setup.cubit,
-        child: WorkspaceStatusBar(leadingItems: [ScheduledTasksStatusItem()]),
+        child: WorkspaceStatusBar(trailingItems: [ScheduledTasksStatusItem()]),
       ),
     );
     await tester.pumpAndSettle();
@@ -150,7 +150,7 @@ void main() {
     await tester.pumpWidget(
       _host(
         cubit: setup.cubit,
-        child: WorkspaceStatusBar(leadingItems: [ScheduledTasksStatusItem()]),
+        child: WorkspaceStatusBar(trailingItems: [ScheduledTasksStatusItem()]),
       ),
     );
     await tester.pumpAndSettle();
@@ -191,7 +191,7 @@ void main() {
       _host(
         cubit: setup.cubit,
         child: WorkspaceStatusBar(
-          leadingItems: [
+          trailingItems: [
             ScheduledTasksStatusItem(
               onEditAutomation: (automation) => edited = automation,
               onManage: () => managed = true,
@@ -234,7 +234,7 @@ void main() {
     await tester.pumpWidget(
       _host(
         cubit: setup.cubit,
-        child: WorkspaceStatusBar(leadingItems: [ScheduledTasksStatusItem()]),
+        child: WorkspaceStatusBar(trailingItems: [ScheduledTasksStatusItem()]),
       ),
     );
     await tester.pumpAndSettle();
