@@ -12,6 +12,15 @@ import '../utils/logging/logger.dart';
 /// whichever machine is the current home plane: pairing a new device against
 /// the same home makes every server configuration available there. Credentials
 /// are never part of a profile — see [SshServerProfile].
+///
+/// Constraint: this writes `<sshProfilesDir>/profiles.json`, the same file the
+/// existing `SshProfileRepository` writes when the home plane is local. Do not
+/// wire this class as a second live writer to that file until
+/// `SshProfileRepository` becomes the single facade over it: this repository
+/// persists only the sync-visible subset of fields, so a [save] here would
+/// rewrite the array from [SshServerProfile] and drop `createdAt`, `lastHome`,
+/// `lastAppDataRoot`, `endpoints`, `hostKeyFingerprints`, `lastGoodKind`, and
+/// `vaultEntryId`.
 class SshServerProfileRepository {
   SshServerProfileRepository({required HomeStorage storage})
     : _storage = storage;

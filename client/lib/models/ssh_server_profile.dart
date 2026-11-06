@@ -5,9 +5,11 @@ import 'ssh_auth_type.dart';
 /// The remote half of an SSH connection: the full configuration for a server,
 /// stored on the current home plane so every paired device sees the same set.
 ///
-/// Credentials are deliberately absent — the profile names a vault entry (see
-/// `RemoteTarget`) and never carries a password or private key, because this
-/// record is written to, and read from, a machine the user may not control.
+/// Credentials are deliberately absent, and so is any reference to where they
+/// are stored: this model has no password, private key, or vault entry id.
+/// Both the secret and its vault reference live only on the device-local
+/// `RemoteTarget`/`SshProfile`, because this record is written to, and read
+/// from, a machine the user may not control.
 @immutable
 class SshServerProfile {
   const SshServerProfile({
