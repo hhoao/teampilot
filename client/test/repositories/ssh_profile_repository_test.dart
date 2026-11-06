@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/remote_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/repositories/remote_target_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import '../support/test_runtime_context.dart';
@@ -101,6 +103,58 @@ void main() {
     );
 
     expect(await repo.loadAll(), isEmpty);
+  });
+
+  test('projects a RemoteTarget into a runtime SshProfile', () {
+    const target = RemoteTarget(
+      id: 't1',
+      name: 'dev',
+      host: 'h',
+      port: 22,
+      username: 'u',
+      embeddedTarget: true,
+      updatedAt: 10,
+    );
+    final profile = SshProfile.fromTarget(target);
+    expect(profile.id, 't1');
+    expect(profile.name, 'dev');
+    expect(profile.embeddedTarget, isTrue);
+    expect(profile.updatedAt, 10);
+  });
+
+  test('facade delegates to an explicit RemoteTargetRepository', () async {
+    final fs = InMemoryFilesystem();
+    final targetRepo = RemoteTargetRepository(
+      rootDir: '/tp/ssh_profiles',
+      fs: fs,
+    );
+    final repo = SshProfileRepository(
+      targetRepo: targetRepo,
+      storage: fakeHomeStorage(filesystem: fs),
+    );
+
+    expect(identical(repo.targetRepo, targetRepo), isTrue);
+
+    await repo.save(
+      const SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'h',
+        username: 'u',
+        embeddedTarget: true,
+      ),
+    );
+
+    final targets = await targetRepo.loadAll();
+    expect(targets, hasLength(1));
+    expect(targets.single.id, 'p1');
+    expect(targets.single.embeddedTarget, isTrue);
+    expect(targets.single.pendingSync, isTrue);
+    expect(targets.single.updatedAt, greaterThan(0));
+
+    final profiles = await repo.loadAll();
+    expect(profiles.single.id, 'p1');
+    expect(profiles.single.embeddedTarget, isTrue);
   });
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'remote_target.dart';
 import 'ssh_auth_type.dart';
 import 'ssh_reachability.dart';
 
@@ -69,6 +70,29 @@ class SshProfile {
           ? json['embeddedTarget'] as bool
           : false,
       vaultEntryId: json['vaultEntryId']?.toString(),
+    );
+  }
+
+  /// Projects a device-local [RemoteTarget] into the runtime [SshProfile] view.
+  factory SshProfile.fromTarget(RemoteTarget target) {
+    return SshProfile(
+      id: target.id,
+      name: target.name,
+      host: target.host,
+      port: target.port,
+      username: target.username,
+      authType: target.authType,
+      createdAt: target.updatedAt,
+      updatedAt: target.updatedAt,
+      lastHome: target.lastHome,
+      lastAppDataRoot: target.lastAppDataRoot,
+      endpoints: target.endpoints,
+      hostKeyFingerprints: target.hostKeyFingerprints,
+      pairedDesktopId: target.pairedDesktopId,
+      relayUrl: target.relayUrl,
+      lastGoodKind: target.lastGoodKind,
+      embeddedTarget: target.embeddedTarget,
+      vaultEntryId: target.vaultEntryId,
     );
   }
 
