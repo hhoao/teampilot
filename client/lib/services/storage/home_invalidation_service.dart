@@ -111,6 +111,12 @@ class HomeInvalidationService {
     _storageSub = null;
   }
 
+  /// Runs a bootstrap-initiated storage-context reinstall while absorbing the
+  /// swap it publishes, so the reinstall is not mistaken for an external home
+  /// switch (which would schedule a duplicate full reload at boot).
+  Future<T> runSelfInitiatedSwap<T>(Future<T> Function() swap) =>
+      _withGenerationBarrier(swap);
+
   void _onProfileState(SshProfileState state) {
     if (listEquals(_lastProfiles, state.profiles)) return; // re-emit, no diff
     final previous = _lastProfiles;
@@ -205,14 +211,23 @@ class HomeInvalidationService {
   /// reinstalls the storage context and the resulting swap change must not
   /// re-request another reload, while a genuinely newer external swap queues
   /// a follow-up instead of being dropped.
-  Future<void> _runReload(ReloadLevel level) async {
+  Future<void> _runReload(ReloadLevel level) =>
+      _withGenerationBarrier(() => _reload(level));
+
+  /// Holds the generation barrier around [body], absorbing the single
+  /// self-initiated swap it publishes (a reinstall of the storage context)
+  /// and queueing anything newer as an external switch. Shared by reloads and
+  /// the bootstrap-time reinstall, which happens outside a reload.
+  Future<T> _withGenerationBarrier<T>(Future<T> Function() body) async {
+    final previousBarrier = _reloadBarrier;
+    final previousEchoAbsorbed = _echoAbsorbed;
     _reloadBarrier = _observedGeneration;
     _echoAbsorbed = false;
     try {
-      await _reload(level);
+      return await body();
     } finally {
-      _reloadBarrier = null;
-      _echoAbsorbed = false;
+      _reloadBarrier = previousBarrier;
+      _echoAbsorbed = previousEchoAbsorbed;
     }
   }
 }
