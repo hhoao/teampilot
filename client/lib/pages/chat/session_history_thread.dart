@@ -925,6 +925,13 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
+    // Only the transcript's own scrollable may drive hover suppression, stick
+    // release and pagination. Notifications from nested scrollables (the
+    // reasoning body's auto-follow `jumpTo`, tool output panes, …) bubble up
+    // here with depth > 0; treating them as history scrolls made the cursor
+    // lock flap between basic and click while reasoning streamed inside its
+    // max-height box, and let an inner drag cancel stick-to-end.
+    if (notification.depth != 0) return false;
     if (notification is UserScrollNotification &&
         notification.direction != ScrollDirection.idle) {
       _setStickToEnd(false);
