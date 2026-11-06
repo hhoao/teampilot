@@ -19,7 +19,7 @@ void main() {
     expect(hook, isNotNull);
     expect(
       hook!(1, 2),
-      'Thinking process · 1 steps · 2 tool calls this turn',
+      'Thinking process · 1 steps · 2 tool calls',
     );
   });
 }

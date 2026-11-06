@@ -811,7 +811,7 @@
       }
     }
   },
-  "aiMessageThinkingProcessStats": "思考过程 · {steps} 步 · 本轮共 {toolCalls} 次工具调用",
+  "aiMessageThinkingProcessStats": "思考过程 · {steps} 步 · {toolCalls} 次工具调用",
   "@aiMessageThinkingProcessStats": {
     "placeholders": {
       "steps": { "type": "int" },

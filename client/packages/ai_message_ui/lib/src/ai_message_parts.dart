@@ -56,14 +56,6 @@ class _AiMessagePartsState extends State<AiMessageParts> {
     final shouldFold = AiToolCallFoldScope.maybeOf(context)?.shouldFold;
     final nodes = groupMessageParts(widget.parts, shouldFold: shouldFold);
     final lastChainIndex = _lastChainOfThoughtIndex(nodes);
-    final toolCallCount = widget.parts.whereType<AiToolCallPart>().length;
-    var lastStatsChainIndex = -1;
-    for (var i = nodes.length - 1; i >= 0; i--) {
-      if (nodes[i] is AiRenderChainOfThought) {
-        lastStatsChainIndex = i;
-        break;
-      }
-    }
     // User bubbles size to content (capped upstream). Assistant tool cards need
     // the full thread width.
     final crossAxisAlignment = AiMessageRoleScope.of(context) == AiRole.user
@@ -75,22 +67,11 @@ class _AiMessagePartsState extends State<AiMessageParts> {
       if (i > 0) children.add(SizedBox(height: gap));
       final node = nodes[i];
       final autoExpand = i == lastChainIndex;
-      final nodeToolCallCount =
-          i == lastStatsChainIndex ? toolCallCount : 0;
-      final key = _NodeKey(
-        node,
-        autoExpand: autoExpand,
-        toolCallCount: nodeToolCallCount,
-      );
+      final key = _NodeKey(node, autoExpand: autoExpand);
       liveKeys.add(key);
       var child = _nodeWidgets[key];
       if (child == null) {
-        child = _buildNode(
-          context,
-          node,
-          autoExpand: autoExpand,
-          toolCallCount: nodeToolCallCount,
-        );
+        child = _buildNode(context, node, autoExpand: autoExpand);
         _nodeWidgets[key] = child;
       }
       children.add(child);
@@ -117,14 +98,12 @@ class _AiMessagePartsState extends State<AiMessageParts> {
     BuildContext context,
     AiRenderNode node, {
     required bool autoExpand,
-    required int toolCallCount,
   }) {
     if (node is AiRenderChainOfThought &&
         widget.registry.chainOfThoughtBuilder == null) {
       return AiChainOfThoughtView(
         parts: node.parts,
         autoExpand: autoExpand,
-        toolCallCount: toolCallCount,
       );
     }
     return widget.registry.buildNode(context, node);
@@ -134,11 +113,8 @@ class _AiMessagePartsState extends State<AiMessageParts> {
 /// Cache key for one rendered node: its parts (by instance — parts are
 /// immutable value objects) plus the auto-expand mode the chrome depends on.
 class _NodeKey {
-  _NodeKey(
-    AiRenderNode node, {
-    required this.autoExpand,
-    required this.toolCallCount,
-  }) : parts = switch (node) {
+  _NodeKey(AiRenderNode node, {required this.autoExpand})
+    : parts = switch (node) {
         AiRenderPart(:final part) => <AiMessagePart>[part],
         AiRenderChainOfThought(:final parts) => parts,
         AiRenderToolGroup(:final tools) => tools,
@@ -147,13 +123,11 @@ class _NodeKey {
 
   final List<AiMessagePart> parts;
   final bool autoExpand;
-  final int toolCallCount;
 
   @override
   bool operator ==(Object other) {
     if (other is! _NodeKey ||
         other.autoExpand != autoExpand ||
-        other.toolCallCount != toolCallCount ||
         other.parts.length != parts.length) {
       return false;
     }
@@ -166,7 +140,6 @@ class _NodeKey {
   @override
   int get hashCode => Object.hash(
     autoExpand,
-    toolCallCount,
     parts.length,
     parts.isEmpty ? null : identityHashCode(parts.first),
     parts.isEmpty ? null : identityHashCode(parts.last),

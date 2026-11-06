@@ -3431,7 +3431,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiMessageThinkingProcessStats.
   ///
   /// In en, this message translates to:
-  /// **'Thinking process · {steps} steps · {toolCalls} tool calls this turn'**
+  /// **'Thinking process · {steps} steps · {toolCalls} tool calls'**
   String aiMessageThinkingProcessStats(int steps, int toolCalls);
 
   /// No description provided for @aiMessageThinkingEditedFiles.

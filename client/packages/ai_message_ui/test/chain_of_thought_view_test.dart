@@ -387,18 +387,20 @@ void main() {
       const MaterialApp(
         home: Scaffold(
           body: AiChainOfThoughtView(
-            parts: [AiReasoningPart(text: 'thought')],
-            toolCallCount: 3,
+            parts: [
+              AiReasoningPart(text: 'thought'),
+              AiToolCallPart(toolCallId: 'c1', toolName: 'Tool'),
+            ],
           ),
         ),
       ),
     );
 
-    expect(find.textContaining('Thinking process · 1 steps'), findsOneWidget);
+    expect(find.textContaining('Thinking process · 2 steps'), findsOneWidget);
     expect(find.textContaining('tool calls'), findsNothing);
   });
 
-  testWidgets('Cot trigger uses stats hook when toolCallCount is positive', (
+  testWidgets('Cot trigger uses stats hook when the chain has tool calls', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -409,8 +411,10 @@ void main() {
               formatThinkingProcessStats: _statsLabel,
             ),
             child: AiChainOfThoughtView(
-              parts: const [AiReasoningPart(text: 'thought')],
-              toolCallCount: 3,
+              parts: const [
+                AiReasoningPart(text: 'thought'),
+                AiToolCallPart(toolCallId: 'c1', toolName: 'Tool'),
+              ],
             ),
           ),
         ),
@@ -418,12 +422,12 @@ void main() {
     );
 
     expect(
-      find.textContaining('Thinking process · 1 steps · 3 tool calls'),
+      find.textContaining('Thinking process · 2 steps · 1 tool calls'),
       findsOneWidget,
     );
   });
 
-  testWidgets('Cot trigger falls back to steps when toolCallCount is zero', (
+  testWidgets('Cot trigger falls back to steps when the chain has no tools', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -462,7 +466,6 @@ void main() {
                   category: AiToolCallCategory.edit,
                 ),
               ],
-              toolCallCount: 3,
             ),
           ),
         ),
@@ -486,8 +489,11 @@ void main() {
             formatThinkingProcessStats: _statsLabel,
           ),
           child: AiChainOfThoughtView(
-            parts: const [AiReasoningPart(text: 'thought')],
-            toolCallCount: count,
+            parts: [
+              const AiReasoningPart(text: 'thought'),
+              for (var i = 0; i < count; i++)
+                AiToolCallPart(toolCallId: 'c$i', toolName: 'Tool'),
+            ],
           ),
         ),
       ),
@@ -497,11 +503,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('Thinking process'));
     await tester.pumpAndSettle();
+    expect(find.textContaining('2 steps · 1 tool calls'), findsOneWidget);
     expect(find.textContaining('thought'), findsOneWidget);
 
     await tester.pumpWidget(build(3));
     await tester.pumpAndSettle();
-    expect(find.textContaining('1 steps · 3 tool calls'), findsOneWidget);
+    expect(find.textContaining('4 steps · 3 tool calls'), findsOneWidget);
     expect(find.textContaining('thought'), findsOneWidget);
   });
 

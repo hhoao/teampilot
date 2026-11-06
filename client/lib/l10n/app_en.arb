@@ -861,7 +861,7 @@
       }
     }
   },
-  "aiMessageThinkingProcessStats": "Thinking process · {steps} steps · {toolCalls} tool calls this turn",
+  "aiMessageThinkingProcessStats": "Thinking process · {steps} steps · {toolCalls} tool calls",
   "@aiMessageThinkingProcessStats": {
     "placeholders": {
       "steps": { "type": "int" },

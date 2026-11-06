@@ -1862,7 +1862,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String aiMessageThinkingProcessStats(int steps, int toolCalls) {
-    return 'Thinking process · $steps steps · $toolCalls tool calls this turn';
+    return 'Thinking process · $steps steps · $toolCalls tool calls';
   }
 
   @override
