@@ -21,11 +21,12 @@ class AiChainOfThoughtView extends StatefulWidget {
 
   final List<AiMessagePart> parts;
 
-  /// While true, the chain stays expanded (including inner reasoning steps) so
-  /// the live "thinking" content remains visible. The host turns this off once
-  /// the reasoning tail is finished (answer starts streaming / turn ends),
-  /// collapsing the reasoning back to its default collapsed chrome; open inner
-  /// reasoning bodies also follow the newest line while this is true.
+  /// While true, the chain stays expanded with only its live reasoning tail
+  /// open: the last reasoning part (when it is the last part of the chain)
+  /// follows the newest line, while already-finished reasoning parts stay
+  /// folded to their trigger rows. The host turns this off once the reasoning
+  /// tail is finished (answer starts streaming / turn ends), collapsing the
+  /// whole chain back to its default collapsed chrome.
   final bool autoExpand;
 
   @override
@@ -54,6 +55,14 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
     final markdown = aiTheme.markdown;
     final triggerColor = aiTheme.resolveToolTrigger(scheme);
     final actions = AiToolFileActions.of(context);
+    // Only the reasoning part currently being streamed stays open. A tool
+    // call at the tail means thinking paused, so nothing stays expanded.
+    final activeReasoningIndex =
+        widget.autoExpand &&
+                widget.parts.isNotEmpty &&
+                widget.parts.last is AiReasoningPart
+            ? widget.parts.length - 1
+            : -1;
     final summary = summarizeThinkingProcess(
       widget.parts,
       fileResolver: actions.fileResolver,
@@ -138,7 +147,8 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final part in widget.parts) _buildInnerPart(part),
+                  for (var i = 0; i < widget.parts.length; i++)
+                    _buildInnerPart(widget.parts[i], i, activeReasoningIndex),
                 ],
               ),
             ),
@@ -147,14 +157,20 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
     );
   }
 
-  Widget _buildInnerPart(AiMessagePart part) {
+  Widget _buildInnerPart(
+    AiMessagePart part,
+    int index,
+    int activeReasoningIndex,
+  ) {
     final aiTheme = AiMessageTheme.of(context);
+    final isActive = index == activeReasoningIndex;
     return switch (part) {
       AiReasoningPart() => AiReasoningPartView(
         part: part,
         initiallyExpanded:
-            widget.autoExpand || aiTheme.cotExpandReasoningOnOpen,
-        autoFollow: widget.autoExpand,
+            isActive ||
+            (!widget.autoExpand && aiTheme.cotExpandReasoningOnOpen),
+        autoFollow: isActive,
       ),
       AiToolCallPart() => AiToolCallPartView(
         part: part,

@@ -379,6 +379,77 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('live thought'), findsOneWidget);
   });
+
+  testWidgets('live Cot opens only the last reasoning part', (tester) async {
+    await tester.pumpWidget(
+      buildLiveChain(const [
+        AiReasoningPart(text: 'first thought'),
+        AiReasoningPart(text: 'second thought'),
+        AiReasoningPart(text: 'third thought'),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('first thought'), findsNothing);
+    expect(find.textContaining('second thought'), findsNothing);
+    expect(find.textContaining('third thought'), findsOneWidget);
+    expect(find.text('Reasoning'), findsNWidgets(3));
+  });
+
+  testWidgets('live Cot folds all reasoning when a tool call is the tail', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildLiveChain(const [
+        AiReasoningPart(text: 'first thought'),
+        AiToolCallPart(toolCallId: 'c1', toolName: 'Read'),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('first thought'), findsNothing);
+    expect(find.text('Reasoning'), findsOneWidget);
+  });
+
+  testWidgets('live Cot folds the previous reasoning when a new one arrives', (
+    tester,
+  ) async {
+    const first = AiReasoningPart(text: 'first thought');
+    const second = AiReasoningPart(text: 'second thought');
+    const third = AiReasoningPart(text: 'third thought');
+
+    await tester.pumpWidget(buildLiveChain(const [first, second]));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('second thought'), findsOneWidget);
+
+    await tester.pumpWidget(buildLiveChain(const [first, second, third]));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('second thought'), findsNothing);
+    expect(find.textContaining('third thought'), findsOneWidget);
+  });
+
+  testWidgets('manually opened finished reasoning survives a new live part', (
+    tester,
+  ) async {
+    const first = AiReasoningPart(text: 'first thought');
+    const second = AiReasoningPart(text: 'second thought');
+    const third = AiReasoningPart(text: 'third thought');
+
+    await tester.pumpWidget(buildLiveChain(const [first, second]));
+    await tester.pumpAndSettle();
+
+    // Manually open the already-finished first block.
+    await tester.tap(find.text('Reasoning').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('first thought'), findsOneWidget);
+
+    await tester.pumpWidget(buildLiveChain(const [first, second, third]));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('first thought'), findsOneWidget);
+    expect(find.textContaining('third thought'), findsOneWidget);
+  });
 }
 
 class _SummaryFileResolver implements AiToolFileTargetResolver {
