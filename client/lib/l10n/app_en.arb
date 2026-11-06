@@ -3640,6 +3640,16 @@
       }
     }
   },
+  "automationsBoundSession": "Bound session",
+  "automationsBoundSessionPending": "A session is bound after the first run",
+  "automationsBoundSessionUnavailable": "Session unavailable — switch or unbind",
+  "automationsSwitchSession": "Switch session",
+  "automationsUnbindSession": "Unbind",
+  "automationsSessionPickerTitle": "Select a session",
+  "automationsSessionPickerEmpty": "No sessions available to bind",
+  "automationsPresetScopeHint": "Bound to a session — only presets for that session's CLI are shown.",
+  "automationsPresetCliMismatch": "The selected preset does not match the bound session's CLI.",
+  "automationsPresetEmptyForCli": "No presets available for this CLI.",
   "automationsTargetMember": "Target member",
   "automationsCustomCron": "Cron expression",
   "automationsInvalidCron": "Invalid cron expression (5 fields required)",
