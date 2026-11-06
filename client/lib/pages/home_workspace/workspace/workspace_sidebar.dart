@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show immutable, listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/rendering.dart';
@@ -492,16 +492,10 @@ AppSession? _sessionById(ChatState state, String sessionId) {
 }
 
 List<AppSession> _sessionsForStructure(
-  ChatState state,
+  List<AppSession> sessions,
   SessionListStructure structure,
-  Workspace workspace,
 ) {
-  final byId = {
-    for (final session in activeSessions(
-      sessionsForWorkspace(workspace, state.sessions),
-    ))
-      session.sessionId: session,
-  };
+  final byId = {for (final session in sessions) session.sessionId: session};
   return [
     for (final row in structure.rows)
       if (byId[row.sessionId] case final session?) session,
@@ -680,7 +674,40 @@ class SplitSessionGroups {
   }
 }
 
-class _ConversationListHost extends StatelessWidget {
+/// Change key for the sidebar's derived session list.
+///
+/// Compares the source list / workspace by identity: [ChatState] replaces those
+/// instances whenever their content changes, so this is both cheap and exact
+/// enough to skip re-sorting thousands of sessions on unrelated emits.
+@immutable
+class _ConversationListInputs {
+  const _ConversationListInputs({
+    required this.sessions,
+    required this.workspace,
+    required this.sort,
+  });
+
+  final List<AppSession> sessions;
+  final Workspace workspace;
+  final AppSessionSort sort;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _ConversationListInputs &&
+        identical(other.sessions, sessions) &&
+        identical(other.workspace, workspace) &&
+        other.sort == sort;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    identityHashCode(sessions),
+    identityHashCode(workspace),
+    sort,
+  );
+}
+
+class _ConversationListHost extends StatefulWidget {
   const _ConversationListHost({
     required this.workspace,
     required this.tabScopeId,
@@ -696,21 +723,42 @@ class _ConversationListHost extends StatelessWidget {
   final ValueChanged<List<String>> onSessionsReordered;
 
   @override
+  State<_ConversationListHost> createState() => _ConversationListHostState();
+}
+
+class _ConversationListHostState extends State<_ConversationListHost> {
+  _ConversationListInputs? _inputs;
+  SessionListStructure? _structure;
+  List<AppSession>? _sortedSessions;
+
+  @override
   Widget build(BuildContext context) {
-    final structure = context.select<ChatCubit, SessionListStructure>(
-      (c) => SessionListStructure.fromSessions(
-        activeSessions(sessionsForWorkspace(workspace, c.state.sessions)),
-        sort: sessionSort,
+    // Register only a cheap identity key: every ChatCubit emit used to re-sort
+    // the whole workspace list (1300+ sessions) even when the emit was about
+    // something else (e.g. a scope flip on workspace tab activation).
+    final inputs = context.select<ChatCubit, _ConversationListInputs>(
+      (c) => _ConversationListInputs(
+        sessions: c.state.sessions,
+        workspace: widget.workspace,
+        sort: widget.sessionSort,
       ),
     );
+    if (_structure == null || inputs != _inputs) {
+      final sessions = activeSessions(
+        sessionsForWorkspace(widget.workspace, inputs.sessions),
+      );
+      final structure = SessionListStructure.fromSessions(
+        sessions,
+        sort: widget.sessionSort,
+      );
+      _structure = structure;
+      _sortedSessions = _sessionsForStructure(sessions, structure);
+      _inputs = inputs;
+    }
+    final structure = _structure!;
+    final sortedSessions = _sortedSessions!;
     final sessionsHydrated = context.select<ChatCubit, bool>(
-      (c) => c.sessionsLoadedForWorkspace(workspace.workspaceId),
-    );
-    final chatState = context.read<ChatCubit>().state;
-    final sortedSessions = _sessionsForStructure(
-      chatState,
-      structure,
-      workspace,
+      (c) => c.sessionsLoadedForWorkspace(widget.workspace.workspaceId),
     );
 
     final listArea = TpDeferredMountShell(
@@ -725,7 +773,7 @@ class _ConversationListHost extends StatelessWidget {
     );
     return SidebarRebuildProbe(
       key: const Key('workspace-sidebar-conversation-list-probe'),
-      child: view == _WorkspaceSidebarView.groups
+      child: widget.view == _WorkspaceSidebarView.groups
           ? _buildWithManualGroups(context, listArea)
           : listArea,
     );
@@ -743,12 +791,12 @@ class _ConversationListHost extends StatelessWidget {
             key: const ValueKey('workspace-sidebar-manual-groups-slot'),
             fit: FlexFit.loose,
             child: _ManualGroupsHost(
-              workspace: workspace,
-              tabScopeId: tabScopeId,
-              sessionSort: sessionSort,
+              workspace: widget.workspace,
+              tabScopeId: widget.tabScopeId,
+              sessionSort: widget.sessionSort,
               highlightSessionId: scopedActiveSessionId(
                 context.read<WorkbenchCubit>(),
-                tabScopeId,
+                widget.tabScopeId,
               ),
             ),
           ),
@@ -767,14 +815,14 @@ class _ConversationListHost extends StatelessWidget {
       return const _SessionListSkeleton();
     }
 
-    if (view == _WorkspaceSidebarView.projectTree) {
+    if (widget.view == _WorkspaceSidebarView.projectTree) {
       final worktreeCubit = context.watch<WorktreeCubit>();
       final worktreesByProjectPath = {
-        for (final folder in workspace.folders)
+        for (final folder in widget.workspace.folders)
           folder.path: worktreeCubit.worktreesForProject(folder.path),
       };
       final projectGroups = groupSessionsByProject(
-        folders: workspace.folders,
+        folders: widget.workspace.folders,
         sessions: sortedSessions,
         usesPosixPaths: homeStorageOf(context).usesPosixPaths,
         worktreesByProjectPath: worktreesByProjectPath,
@@ -783,11 +831,11 @@ class _ConversationListHost extends StatelessWidget {
         groups: projectGroups,
         worktreesByProjectPath: worktreesByProjectPath,
         usesPosixPaths: homeStorageOf(context).usesPosixPaths,
-        workspace: workspace,
-        tabScopeId: tabScopeId,
+        workspace: widget.workspace,
+        tabScopeId: widget.tabScopeId,
         highlightSessionId: scopedActiveSessionId(
           context.read<WorkbenchCubit>(),
-          tabScopeId,
+          widget.tabScopeId,
         ),
       );
     }
@@ -814,7 +862,7 @@ class _ConversationListHost extends StatelessWidget {
           oldIndex: oldIndex,
           newIndex: newIndex,
         );
-        onSessionsReordered(ordered);
+        widget.onSessionsReordered(ordered);
       },
       itemBuilder: (context, index) =>
           _sessionTile(context, sessionIds[index], index: index),
@@ -834,14 +882,14 @@ class _ConversationListHost extends StatelessWidget {
       index: index,
       highlightSessionId: scopedActiveSessionId(
         context.read<WorkbenchCubit>(),
-        tabScopeId,
+        widget.tabScopeId,
       ),
       tapThrottleKeyPrefix: 'workspace_sidebar_session',
       onTap: () => openWorkspaceSessionTab(
         context,
-        workspace,
+        widget.workspace,
         session,
-        tabScopeId: tabScopeId,
+        tabScopeId: widget.tabScopeId,
       ),
     );
   }
