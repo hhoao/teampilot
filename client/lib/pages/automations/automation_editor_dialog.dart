@@ -10,6 +10,7 @@ import '../../cubits/chat_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/app_session.dart';
 import '../../models/automation.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
@@ -17,12 +18,15 @@ import '../../pages/home_workspace/workspace/workspace_landing_selectors.dart';
 import '../../services/automation/automation_launch_session_binding.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
 import '../../services/automation/automation_schedule_defaults.dart';
+import '../../services/automation/automation_session_binding_resolver.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../widgets/home_storage_scope.dart';
 import '../../utils/workspace/landing_draft_resolver.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'automation_editor_form_body.dart';
 import 'automation_schedule_picker.dart';
+import 'automation_session_picker.dart';
 
 enum AutomationEditorKind { scheduledMessage, launchPrompt, runCommand }
 
@@ -93,6 +97,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       widget.initial?.catchUpPolicy == AutomationCatchUpPolicy.once;
   String? _commandError;
   late bool _reuseSession;
+  late String? _boundSessionId;
   late bool _enabled;
   late AutomationScheduleDraft _schedule;
   late bool _isPersonal;
@@ -156,6 +161,40 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
         .firstOrNull;
   }
 
+  List<AppSession> get _workspaceSessions {
+    final workspaceId = widget.initial?.workspaceId ?? widget.workspaceId ?? '';
+    return context
+        .read<ChatCubit>()
+        .state
+        .sessions
+        .where((s) => s.workspaceId == workspaceId)
+        .toList(growable: false);
+  }
+
+  AppSession? get _boundSession => _isScheduledMessage
+      ? null
+      : findBoundSession(_boundSessionId, _workspaceSessions);
+
+  CliTool? get _boundCli =>
+      _isScheduledMessage ? null : bindingCliFilter(_boundSession);
+
+  Automation? get _sessionMatchAutomation {
+    final initial = widget.initial;
+    if (initial == null) return null;
+    return initial.copyWith(
+      isPersonal: _isPersonal,
+      teamId: _teamId,
+      clearTeamId: _teamId == null,
+    );
+  }
+
+  List<AppSession> get _bindableSessions {
+    if (_isScheduledMessage) return const <AppSession>[];
+    final match = _sessionMatchAutomation;
+    if (match == null) return const <AppSession>[];
+    return bindableSessionsFor(automation: match, sessions: _workspaceSessions);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -176,6 +215,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     _workingDirectoryPath = initial?.workingDirectoryPath;
     _targetMemberId = initial?.targetMemberId ?? 'team-lead';
     _reuseSession = initial?.reuseSession ?? false;
+    _boundSessionId = initial?.sessionId;
     _enabled = initial?.enabled ?? true;
     _schedule = initial != null
         ? scheduleDraftFromAutomation(initial)
@@ -413,14 +453,48 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     }
   }
 
+  Future<void> _onSwitchSession() async {
+    final picked = await showAutomationSessionPicker(
+      context,
+      sessions: _bindableSessions,
+      selectedId: _boundSessionId,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _boundSessionId = picked;
+      _alignPresetWithSession(picked);
+    });
+  }
+
+  /// When rebinding to a different CLI, pick that CLI's first preset so the
+  /// stored presetId stays valid for the next fresh session.
+  void _alignPresetWithSession(String sessionId) {
+    if (!_isPersonal) return;
+    final target = findBoundSession(
+      sessionId,
+      context.read<ChatCubit>().state.sessions,
+    );
+    final targetCli = bindingCliFilter(target);
+    if (targetCli == null) return;
+    final presets = context.read<CliPresetsCubit>().state.presets;
+    final current = presets.where((p) => p.id == _presetId).firstOrNull;
+    if (current != null && current.cli == targetCli) return;
+    final replacement = presetsForCli(presets, targetCli).firstOrNull;
+    if (replacement != null) _presetId = replacement.id;
+  }
+
+  void _onUnbindSession() => setState(() => _boundSessionId = null);
+
   Future<void> _save() async {
     final form = _formKey.currentState;
     if (form == null) return;
     // A previous rejected save may have left a forced field error behind;
-    // clear it so this validation reflects the current field values. The
-    // once-time field only exists while the picker shows the once/countdown
-    // rows, so guard the lookup.
+    // clear it so this validation reflects the current field values. Both the
+    // once-time field (only present for once/countdown rows) and the preset
+    // field (only present for personal launch prompts) can carry a forced
+    // error, so clear each with a guarded lookup.
     form.fields['scheduleOnceTime']?.setError(null);
+    form.fields['presetId']?.setError(null);
     if (!form.validate()) return;
 
     final name = _nameCtl.text.trim();
@@ -437,6 +511,23 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final l10n = context.l10n;
     final schedule = _resolveScheduleSave(form, l10n, now);
     if (schedule.abort) return;
+    if (!_isScheduledMessage &&
+        _reuseSession &&
+        _isPersonal &&
+        _boundSessionId != null) {
+      final boundCli = _boundCli;
+      final selectedPresetId = _presetId?.trim() ?? '';
+      final selected = context
+          .read<CliPresetsCubit>()
+          .state
+          .presets
+          .where((p) => p.id == selectedPresetId)
+          .firstOrNull;
+      if (boundCli != null && selected != null && selected.cli != boundCli) {
+        form.fields['presetId']?.setError(l10n.automationsPresetCliMismatch);
+        return;
+      }
+    }
     final isOnceSchedule = schedule.runAtMs != null;
     if (isOnceSchedule) {
       // Once/countdown always fire exactly once; the run-limit field is
@@ -446,7 +537,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final workspaceId = widget.initial?.workspaceId ?? widget.workspaceId ?? '';
     final launchSessionId = _isScheduledMessage
         ? (widget.initial?.sessionId ?? widget.sessionId)
-        : (_reuseSession ? widget.initial?.sessionId : null);
+        : (_reuseSession ? _boundSessionId : null);
 
     final presetId = _presetId?.trim();
     final teamId = _teamId?.trim();
@@ -614,7 +705,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
   String _reuseSessionBoundSubtitle(AppLocalizations l10n) {
     if (!_reuseSession) return l10n.automationsReuseSessionSubtitleOff;
-    final bound = widget.initial?.sessionId?.trim() ?? '';
+    final bound = _boundSessionId?.trim() ?? '';
     if (bound.isEmpty) return l10n.automationsReuseSessionSubtitlePending;
     return l10n.automationsReuseSessionSubtitleBound(bound);
   }
@@ -659,8 +750,16 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             onEnabledChanged: (v) => setState(() => _enabled = v),
             runLimitReached: _runLimitReached,
             reuseSession: _reuseSession,
-            onReuseSessionChanged: (v) => setState(() => _reuseSession = v),
+            onReuseSessionChanged: (v) => setState(() {
+              _reuseSession = v;
+              if (!v) _boundSessionId = null;
+            }),
             reuseSessionSubtitle: _reuseSessionBoundSubtitle(l10n),
+            boundSessionId: _isScheduledMessage ? null : _boundSessionId,
+            boundSession: _boundSession,
+            boundCli: _boundCli,
+            onSwitchSession: _onSwitchSession,
+            onUnbindSession: _onUnbindSession,
             onMaxRunCountChanged: () => setState(() {
               if (_runLimitReached && _enabled) _enabled = false;
             }),

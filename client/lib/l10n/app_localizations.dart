@@ -12638,6 +12638,18 @@ abstract class AppLocalizations {
   /// **'No upcoming run'**
   String get automationsNextRunNone;
 
+  /// No description provided for @automationsManageAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage all scheduled tasks'**
+  String get automationsManageAll;
+
+  /// No description provided for @automationsStatusBarEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No active scheduled tasks'**
+  String get automationsStatusBarEmpty;
+
   /// No description provided for @automationsRunNow.
   ///
   /// In en, this message translates to:
@@ -12746,6 +12758,66 @@ abstract class AppLocalizations {
   /// **'Reuses conversation {sessionId}'**
   String automationsReuseSessionListHint(String sessionId);
 
+  /// No description provided for @automationsBoundSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Bound session'**
+  String get automationsBoundSession;
+
+  /// No description provided for @automationsBoundSessionPending.
+  ///
+  /// In en, this message translates to:
+  /// **'A session is bound after the first run'**
+  String get automationsBoundSessionPending;
+
+  /// No description provided for @automationsBoundSessionUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Session unavailable — switch or unbind'**
+  String get automationsBoundSessionUnavailable;
+
+  /// No description provided for @automationsSwitchSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch session'**
+  String get automationsSwitchSession;
+
+  /// No description provided for @automationsUnbindSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Unbind'**
+  String get automationsUnbindSession;
+
+  /// No description provided for @automationsSessionPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a session'**
+  String get automationsSessionPickerTitle;
+
+  /// No description provided for @automationsSessionPickerEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No sessions available to bind'**
+  String get automationsSessionPickerEmpty;
+
+  /// No description provided for @automationsPresetScopeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Bound to a session — only presets for that session\'s CLI are shown.'**
+  String get automationsPresetScopeHint;
+
+  /// No description provided for @automationsPresetCliMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The selected preset does not match the bound session\'s CLI.'**
+  String get automationsPresetCliMismatch;
+
+  /// No description provided for @automationsPresetEmptyForCli.
+  ///
+  /// In en, this message translates to:
+  /// **'No presets available for this CLI.'**
+  String get automationsPresetEmptyForCli;
+
   /// No description provided for @automationsTargetMember.
   ///
   /// In en, this message translates to:
@@ -12818,23 +12890,11 @@ abstract class AppLocalizations {
   /// **'Scheduled message'**
   String get automationsCompactTitle;
 
-  /// No description provided for @automationsHeaderCount.
-  ///
-  /// In en, this message translates to:
-  /// **'Automations · {count}'**
-  String automationsHeaderCount(int count);
-
   /// No description provided for @automationsSidebarTitle.
   ///
   /// In en, this message translates to:
-  /// **'Automations'**
+  /// **'Scheduled tasks'**
   String get automationsSidebarTitle;
-
-  /// No description provided for @automationsSidebarWithNextRun.
-  ///
-  /// In en, this message translates to:
-  /// **'Automations · {time}'**
-  String automationsSidebarWithNextRun(String time);
 
   /// No description provided for @automationsFilterAll.
   ///

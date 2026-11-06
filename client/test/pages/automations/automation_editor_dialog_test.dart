@@ -10,6 +10,7 @@ import 'package:teampilot/cubits/expert_hub_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/discoverable_member.dart';
@@ -18,6 +19,7 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/automations/automation_editor_dialog.dart';
 import 'package:teampilot/pages/automations/automation_schedule_picker.dart';
+import 'package:teampilot/widgets/cli/cli_preset_dropdown_field.dart';
 import 'package:teampilot/services/automation/automation_schedule_defaults.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -80,6 +82,85 @@ ChatCubit _chatCubitWithWorkspace() {
   );
   return cubit;
 }
+
+ChatCubit _chatCubitWithSessions(List<AppSession> sessions) {
+  final cubit = testChatCubit(executableResolver: () => 'claude');
+  cubit.applyState(
+    ChatState(
+      workspaces: [
+        Workspace(
+          workspaceId: 'ws1',
+          folders: [WorkspaceFolder(path: '/repo')],
+          createdAt: 1,
+        ),
+      ],
+      sessions: sessions,
+    ),
+  );
+  return cubit;
+}
+
+AppSession _simpleSession(
+  String id, {
+  required CliTool cli,
+  String display = 'Session',
+}) =>
+    AppSession(
+      sessionId: id,
+      workspaceId: 'ws1',
+      display: display,
+      cli: cli,
+      createdAt: 1,
+    );
+
+CliPresetsCubit _cliPresetsCubitWithTwoClis() {
+  final cubit = CliPresetsCubit(
+    repository: CliPresetsRepository(
+      fs: InMemoryFilesystem(),
+      presetsPath: '/cli-presets.json',
+    ),
+  );
+  cubit.emit(
+    CliPresetsState(
+      status: CliPresetsLoadStatus.ready,
+      presets: [
+        CliPreset(
+          id: 'p-claude',
+          name: 'Claude preset',
+          cli: CliTool.claude,
+          provider: 'anthropic',
+          model: 'sonnet',
+          createdAt: 1,
+          updatedAt: 1,
+        ),
+        CliPreset(
+          id: 'p-codex',
+          name: 'Codex preset',
+          cli: CliTool.codex,
+          provider: 'openai',
+          model: 'o3',
+          createdAt: 1,
+          updatedAt: 1,
+        ),
+      ],
+    ),
+  );
+  return cubit;
+}
+
+Automation _boundAutomation({
+  required String presetId,
+  required String sessionId,
+  bool isPersonal = true,
+  String? teamId,
+}) =>
+    sampleAutomation(
+      id: 'edit-bound',
+      workspaceId: 'ws1',
+      isPersonal: isPersonal,
+      presetId: presetId,
+      teamId: teamId,
+    ).copyWith(reuseSession: true, sessionId: sessionId);
 
 CliPresetsCubit _cliPresetsCubitWithPreset() {
   final cubit = CliPresetsCubit(
@@ -1298,6 +1379,322 @@ void main() {
       ),
       AutomationEditorKind.runCommand,
     );
+  });
+
+  testWidgets('bound session scopes preset dropdown to its CLI', (tester) async {
+    final setup = testAutomationSetup();
+    final chatCubit = _chatCubitWithSessions([
+      _simpleSession('sess-codex', cli: CliTool.codex, display: 'Codex session'),
+    ]);
+    final cliPresetsCubit = _cliPresetsCubitWithTwoClis();
+    addTearDown(setup.cubit.close);
+    addTearDown(chatCubit.close);
+    addTearDown(cliPresetsCubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          chatCubit: chatCubit,
+          cliPresetsCubit: cliPresetsCubit,
+          child: AutomationEditorDialog(
+            workspaceId: 'ws1',
+            initial: _boundAutomation(
+              presetId: 'p-codex',
+              sessionId: 'sess-codex',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+    final presetSelect = find.descendant(
+      of: find.byType(CliPresetDropdownField),
+      matching: find.byType(TpSelect<String>),
+    );
+    expect(
+      tester.widget<TpSelect<String>>(presetSelect).items,
+      ['p-codex'],
+    );
+    expect(find.text(l10n.automationsPresetScopeHint), findsOneWidget);
+    expect(find.text(l10n.automationsBoundSession), findsOneWidget);
+    expect(find.text('Codex session'), findsOneWidget);
+  });
+
+  testWidgets('unbind keeps reuseSession and clears sessionId on save', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    final chatCubit = _chatCubitWithSessions([
+      _simpleSession('sess-codex', cli: CliTool.codex, display: 'Codex session'),
+    ]);
+    final cliPresetsCubit = _cliPresetsCubitWithTwoClis();
+    addTearDown(setup.cubit.close);
+    addTearDown(chatCubit.close);
+    addTearDown(cliPresetsCubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          chatCubit: chatCubit,
+          cliPresetsCubit: cliPresetsCubit,
+          child: AutomationEditorDialog(
+            workspaceId: 'ws1',
+            initial: _boundAutomation(
+              presetId: 'p-codex',
+              sessionId: 'sess-codex',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('automationUnbindSession')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('automationUnbindSession')));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.text(l10n.save));
+      await pumpUntilClosed(tester);
+    });
+
+    expect(setup.cubit.state.automations, hasLength(1));
+    final saved = setup.cubit.state.automations.single;
+    expect(saved.sessionId, isNull);
+    expect(saved.reuseSession, isTrue);
+  });
+
+  testWidgets('switching session re-aligns presetId to the new CLI', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    final chatCubit = _chatCubitWithSessions([
+      _simpleSession('sess-codex', cli: CliTool.codex, display: 'Codex session'),
+      _simpleSession('sess-claude', cli: CliTool.claude, display: 'Claude session'),
+    ]);
+    final cliPresetsCubit = _cliPresetsCubitWithTwoClis();
+    addTearDown(setup.cubit.close);
+    addTearDown(chatCubit.close);
+    addTearDown(cliPresetsCubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          chatCubit: chatCubit,
+          cliPresetsCubit: cliPresetsCubit,
+          child: AutomationEditorDialog(
+            workspaceId: 'ws1',
+            initial: _boundAutomation(
+              presetId: 'p-codex',
+              sessionId: 'sess-codex',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('automationSwitchSession')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('automationSwitchSession')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Claude session').last);
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.text(l10n.save));
+      await pumpUntilClosed(tester);
+    });
+
+    expect(setup.cubit.state.automations, hasLength(1));
+    final saved = setup.cubit.state.automations.single;
+    expect(saved.sessionId, 'sess-claude');
+    expect(saved.presetId, 'p-claude');
+    expect(saved.reuseSession, isTrue);
+  });
+
+  testWidgets('preset CLI mismatch blocks save', (tester) async {
+    final setup = testAutomationSetup();
+    final chatCubit = _chatCubitWithSessions([
+      _simpleSession('sess-codex', cli: CliTool.codex, display: 'Codex session'),
+    ]);
+    final cliPresetsCubit = _cliPresetsCubitWithTwoClis();
+    addTearDown(setup.cubit.close);
+    addTearDown(chatCubit.close);
+    addTearDown(cliPresetsCubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          chatCubit: chatCubit,
+          cliPresetsCubit: cliPresetsCubit,
+          child: AutomationEditorDialog(
+            workspaceId: 'ws1',
+            initial: _boundAutomation(
+              presetId: 'p-claude',
+              sessionId: 'sess-codex',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    await tester.tap(find.text(l10n.save));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.automationsPresetCliMismatch), findsOneWidget);
+    expect(setup.cubit.state.automations, isEmpty);
+  });
+
+  testWidgets('rejected mismatch save recovers after unbind and re-save', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    final chatCubit = _chatCubitWithSessions([
+      _simpleSession('sess-codex', cli: CliTool.codex, display: 'Codex session'),
+    ]);
+    final cliPresetsCubit = _cliPresetsCubitWithTwoClis();
+    addTearDown(setup.cubit.close);
+    addTearDown(chatCubit.close);
+    addTearDown(cliPresetsCubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          chatCubit: chatCubit,
+          cliPresetsCubit: cliPresetsCubit,
+          child: AutomationEditorDialog(
+            workspaceId: 'ws1',
+            initial: _boundAutomation(
+              presetId: 'p-claude',
+              sessionId: 'sess-codex',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    // First save is rejected: the preset CLI does not match the bound
+    // session's CLI, leaving a forced error on the preset field.
+    await tester.tap(find.text(l10n.save));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.automationsPresetCliMismatch), findsOneWidget);
+    expect(setup.cubit.state.automations, isEmpty);
+
+    // Unbinding drops the CLI constraint. The preset field keeps its
+    // ValueKey (presetId is unchanged), so the forced error is not cleared by
+    // a remount and must be reset on the next save or form.validate() stays
+    // false forever.
+    await tester.ensureVisible(
+      find.byKey(const Key('automationUnbindSession')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('automationUnbindSession')));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.text(l10n.save));
+      await pumpUntilClosed(tester);
+    });
+
+    expect(setup.cubit.state.automations, hasLength(1));
+    final saved = setup.cubit.state.automations.single;
+    expect(saved.sessionId, isNull);
+    expect(saved.reuseSession, isTrue);
+  });
+
+  testWidgets('team mode offers switch/unbind without a preset field', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    final chatCubit = _chatCubitWithSessions([
+      AppSession(
+        sessionId: 'sess-team',
+        workspaceId: 'ws1',
+        display: 'Team session',
+        sessionTeam: 'team-1',
+        createdAt: 1,
+      ),
+    ]);
+    final launchProfileCubit = _teamLaunchProfileCubit();
+    addTearDown(setup.cubit.close);
+    addTearDown(chatCubit.close);
+    addTearDown(launchProfileCubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          chatCubit: chatCubit,
+          launchProfileCubit: launchProfileCubit,
+          child: AutomationEditorDialog(
+            workspaceId: 'ws1',
+            initial: _boundAutomation(
+              presetId: '',
+              sessionId: 'sess-team',
+              isPersonal: false,
+              teamId: 'team-1',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    expect(find.byKey(const Key('automationUnbindSession')), findsOneWidget);
+    expect(find.text(l10n.presetPickerTitle), findsNothing);
+    await tester.ensureVisible(
+      find.byKey(const Key('automationUnbindSession')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('automationUnbindSession')));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.text(l10n.save));
+      await pumpUntilClosed(tester);
+    });
+
+    expect(setup.cubit.state.automations, hasLength(1));
+    expect(setup.cubit.state.automations.single.sessionId, isNull);
   });
 }
 

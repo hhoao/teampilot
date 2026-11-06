@@ -155,7 +155,12 @@ void main() {
     );
     await _pumpLive(tester);
 
-    expect(find.textContaining('tip thinking'), findsOneWidget);
+    // Live tip chain still auto-expands (it is mounted open even with a
+    // tool-call tail), but the tool-call tail folds every reasoning body.
+    // A visible folded 'Reasoning' row proves the chain is open; exactly one
+    // such row also proves the older message (a1) stays collapsed.
+    expect(find.textContaining('tip thinking'), findsNothing);
+    expect(find.text('Reasoning'), findsOneWidget);
     expect(find.textContaining('old thinking'), findsNothing);
   });
 
@@ -176,13 +181,17 @@ void main() {
       _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
     );
     await _pumpLive(tester);
-    expect(find.textContaining('tip thinking'), findsOneWidget);
+    // Live: chain open, reasoning body folded to its 'Reasoning' row.
+    expect(find.textContaining('tip thinking'), findsNothing);
+    expect(find.text('Reasoning'), findsOneWidget);
 
     await tester.pumpWidget(_harness(runtime: store));
     await pumpUntilSettled(tester);
 
+    // Turn end: whole chain collapses to the 'Thinking process' header.
     expect(find.textContaining('Thinking process'), findsOneWidget);
     expect(find.textContaining('tip thinking'), findsNothing);
+    expect(find.text('Reasoning'), findsNothing);
   });
 
   testWidgets('tip thinking process folds when answer prose starts', (
@@ -205,13 +214,17 @@ void main() {
       _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
     );
     await _pumpLive(tester);
-    expect(find.textContaining('tip thinking'), findsOneWidget);
+    // Live: chain open, reasoning body folded to its 'Reasoning' row.
+    expect(find.textContaining('tip thinking'), findsNothing);
+    expect(find.text('Reasoning'), findsOneWidget);
 
     store.setMessages(messages('final answer'));
     await _pumpLive(tester);
 
+    // Prose start: chain collapses; prose rendered outside the chain.
     expect(find.text('final answer'), findsOneWidget);
     expect(find.textContaining('tip thinking'), findsNothing);
+    expect(find.text('Reasoning'), findsNothing);
   });
 
   testWidgets('tip thinking process stays collapsed when the pref is off', (
@@ -705,6 +718,57 @@ void main() {
     },
   );
 
+  testWidgets(
+    'nested reasoning scroll does not flap the transcript cursor lock',
+    (tester) async {
+      // The live reasoning body auto-follows its newest line with a
+      // `jumpTo` inside a max-height box. Those ScrollStart/Update/End
+      // notifications bubble up to the transcript's listener; they must not
+      // be mistaken for a history scroll (which forces the basic cursor over
+      // tool-call click targets and releases stick-to-end).
+      final longReasoning = List.generate(
+        120,
+        (i) => 'thinking line $i',
+      ).join('\n');
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages([
+          AiMessage(
+            id: 'a1',
+            role: AiRole.assistant,
+            parts: [AiReasoningPart(text: longReasoning)],
+          ),
+        ]);
+
+      await tester.pumpWidget(
+        _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
+      );
+      await _pumpLive(tester);
+      // Let any transcript stick jump finish and hover effects resume.
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump();
+
+      final innerScrollable = find.descendant(
+        of: find.byType(AiReasoningPartView),
+        matching: find.byType(Scrollable),
+      );
+      expect(innerScrollable, findsOneWidget);
+
+      ScrollCursorLock lock() => tester.widget<ScrollCursorLock>(
+        find.byType(ScrollCursorLock),
+      );
+      expect(lock().active, isFalse);
+
+      final position = tester.state<ScrollableState>(innerScrollable).position;
+      expect(position.maxScrollExtent, greaterThan(0));
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pump();
+
+      expect(lock().active, isFalse);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(lock().active, isFalse);
+    },
+  );
+
   testWidgets('running footer visible when liveChrome is running', (
     tester,
   ) async {
@@ -1169,5 +1233,36 @@ void main() {
 
     position = tester.state<ScrollableState>(scrollable).position;
     expect(position.maxScrollExtent - position.pixels, greaterThan(30.0));
+  });
+
+  testWidgets('live tip folds finished reasoning but keeps the active one open', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: const [
+            AiReasoningPart(text: 'finished thought'),
+            AiReasoningPart(text: 'active thought'),
+          ],
+        ),
+      ]);
+
+    await tester.pumpWidget(
+      _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
+    );
+    await _pumpLive(tester);
+
+    expect(find.textContaining('active thought'), findsOneWidget);
+    expect(find.textContaining('finished thought'), findsNothing);
+
+    await tester.pumpWidget(_harness(runtime: store));
+    await pumpUntilSettled(tester);
+
+    expect(find.textContaining('Thinking process'), findsOneWidget);
+    expect(find.textContaining('active thought'), findsNothing);
+    expect(find.textContaining('finished thought'), findsNothing);
   });
 }

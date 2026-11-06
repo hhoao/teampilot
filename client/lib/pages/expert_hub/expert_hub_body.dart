@@ -72,10 +72,9 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
               // Search + fixed 180 sort + refresh + create exceeds phone width.
               final stackControls = constraints.maxWidth < 520;
               final searchField = TextField(
-                decoration: InputDecoration(
+                decoration: tpSearchPillDecoration(
+                  context,
                   hintText: l10n.expertHubSearchHint,
-                  prefixIcon: Icon(Icons.search, size: context.tpIconSizes.md),
-                  floatingLabelBehavior: FloatingLabelBehavior.never,
                 ),
                 onChanged: _onSearchChanged,
               );

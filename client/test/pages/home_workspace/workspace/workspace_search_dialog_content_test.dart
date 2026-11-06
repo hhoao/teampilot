@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/workspace.dart';
@@ -326,4 +327,15 @@ void main() {
       expect(find.byType(WorkspaceSearchContentSection), findsNothing);
     },
   );
+
+  testWidgets('content search field uses the pill decoration', (tester) async {
+    await tester.pumpWidget(wrapSection(onOpenFile: (_) {}));
+
+    final field = tester.widget<TextField>(find.byType(TextField).first);
+    final border = field.decoration!.enabledBorder! as OutlineInputBorder;
+    expect(
+      border.borderRadius,
+      const BorderRadius.all(Radius.circular(tpSearchPillRadius)),
+    );
+  });
 }

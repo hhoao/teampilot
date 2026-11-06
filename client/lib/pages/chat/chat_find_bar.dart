@@ -110,6 +110,10 @@ class _ChatFindBarState extends State<ChatFindBar> {
                 child: SizedBox(
                   width: _width,
                   child: FindBarPanel(
+                    focusNode: widget.focusNode,
+                    borderRadius: total > 0
+                        ? FindBarPanel.kCardRadius
+                        : FindBarPanel.kPillRadius,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -117,35 +121,36 @@ class _ChatFindBarState extends State<ChatFindBar> {
                           padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
                           child: Row(
                             children: [
-                              FindField(
-                                width: 300,
-                                controller: widget.queryController,
-                                focusNode: widget.focusNode,
-                                hint: l10n.chatFindHint,
-                                autofocus: true,
-                                showClear: true,
-                                onChanged: _onChanged,
-                                onClear: _clear,
-                                toggles: [
-                                  FindToggleButton(
-                                    iconAsset: FindBarIcons.caseSensitive,
-                                    tooltip: l10n.chatFindMatchCase,
-                                    checked: controller.caseSensitive,
-                                    onTap: controller.toggleCaseSensitive,
-                                  ),
-                                  FindToggleButton(
-                                    iconAsset: FindBarIcons.wholeWord,
-                                    tooltip: l10n.chatFindWholeWord,
-                                    checked: controller.wholeWord,
-                                    onTap: controller.toggleWholeWord,
-                                  ),
-                                  FindToggleButton(
-                                    iconAsset: FindBarIcons.regexp,
-                                    tooltip: l10n.chatFindUseRegex,
-                                    checked: controller.regex,
-                                    onTap: controller.toggleRegex,
-                                  ),
-                                ],
+                              Expanded(
+                                child: FindField(
+                                  controller: widget.queryController,
+                                  focusNode: widget.focusNode,
+                                  hint: l10n.chatFindHint,
+                                  autofocus: true,
+                                  showClear: true,
+                                  onChanged: _onChanged,
+                                  onClear: _clear,
+                                  toggles: [
+                                    FindToggleButton(
+                                      iconAsset: FindBarIcons.caseSensitive,
+                                      tooltip: l10n.chatFindMatchCase,
+                                      checked: controller.caseSensitive,
+                                      onTap: controller.toggleCaseSensitive,
+                                    ),
+                                    FindToggleButton(
+                                      iconAsset: FindBarIcons.wholeWord,
+                                      tooltip: l10n.chatFindWholeWord,
+                                      checked: controller.wholeWord,
+                                      onTap: controller.toggleWholeWord,
+                                    ),
+                                    FindToggleButton(
+                                      iconAsset: FindBarIcons.regexp,
+                                      tooltip: l10n.chatFindUseRegex,
+                                      checked: controller.regex,
+                                      onTap: controller.toggleRegex,
+                                    ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(width: 4),
                               FindCounterText(
@@ -153,6 +158,7 @@ class _ChatFindBarState extends State<ChatFindBar> {
                                 empty: total == 0,
                                 width: 76,
                               ),
+                              const FindBarDivider(),
                               FindActionButton(
                                 icon: Icons.keyboard_arrow_up,
                                 tooltip: l10n.chatFindPrevious,
@@ -171,6 +177,7 @@ class _ChatFindBarState extends State<ChatFindBar> {
                                   _navigateCurrent();
                                 },
                               ),
+                              const FindBarDivider(),
                               FindActionButton(
                                 icon: Icons.close,
                                 tooltip: l10n.chatFindClose,

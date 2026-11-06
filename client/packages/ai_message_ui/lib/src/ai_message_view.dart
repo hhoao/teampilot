@@ -216,22 +216,32 @@ class _AiMessageViewState extends State<AiMessageView> {
             nextVersionLabel: widget.nextVersionLabel,
           ),
           AiRole.system => Align(
-            alignment: Alignment.center,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: aiTheme.resolveMutedSurface(scheme),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: aiTheme.threadMaxWidth,
                 ),
-                child: DefaultTextStyle.merge(
-                  style: aiTheme.markdown.systemMessage(
-                    scheme.onSurfaceVariant,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: aiTheme.resolveMutedSurface(scheme),
+                    borderRadius: BorderRadius.circular(
+                      aiTheme.userBubbleRadius,
+                    ),
                   ),
-                  child: parts,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    child: DefaultTextStyle.merge(
+                      style: aiTheme.markdown.systemMessage(
+                        scheme.onSurfaceVariant,
+                      ),
+                      child: parts,
+                    ),
+                  ),
                 ),
               ),
             ),

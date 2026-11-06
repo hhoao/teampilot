@@ -21,6 +21,7 @@ class AutomationEditorLaunchSection extends StatelessWidget {
     required this.projectFolderPath,
     required this.workingDirectoryPath,
     required this.presetId,
+    this.cliFilter,
     required this.teamId,
     required this.expertKey,
     required this.targetMemberId,
@@ -40,6 +41,9 @@ class AutomationEditorLaunchSection extends StatelessWidget {
   final String? projectFolderPath;
   final String? workingDirectoryPath;
   final String? presetId;
+
+  /// Bound-session CLI filter for the preset picker.
+  final CliTool? cliFilter;
   final String? teamId;
   final String? expertKey;
   final String targetMemberId;
@@ -104,6 +108,9 @@ class AutomationEditorLaunchSection extends StatelessWidget {
             id: 'presetId',
             initialValue: presetId ?? '',
             label: Text(l10n.presetPickerTitle),
+            description: cliFilter == null
+                ? null
+                : Text(l10n.automationsPresetScopeHint),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: labelWidth,
             validator: (v) => (v == null || v.trim().isEmpty)
@@ -112,6 +119,10 @@ class AutomationEditorLaunchSection extends StatelessWidget {
             builder: (state) {
               return CliPresetDropdownField(
                 selectedPresetId: state.value,
+                cliFilter: cliFilter,
+                emptyHint: cliFilter == null
+                    ? null
+                    : l10n.automationsPresetEmptyForCli,
                 onChanged: (value) {
                   state.didChange(value ?? '');
                   onPresetChanged(value);

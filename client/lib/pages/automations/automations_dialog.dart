@@ -15,9 +15,14 @@ import 'automations_list_body.dart';
 
 /// Workspace-scoped automations list in a modal dialog.
 class AutomationsDialog extends StatefulWidget {
-  const AutomationsDialog({required this.listScope, super.key});
+  const AutomationsDialog({
+    required this.listScope,
+    this.allowCreate = true,
+    super.key,
+  });
 
   final AutomationListScope listScope;
+  final bool allowCreate;
 
   @override
   State<AutomationsDialog> createState() => _AutomationsDialogState();
@@ -105,37 +110,39 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
               },
             ),
           ),
-          const SizedBox(width: 8),
-          TpActionMenuIconAnchor(
-            triggerBuilder: (context, controller) => TpIconButton(
-              icon: Icons.add_rounded,
-              tooltip: l10n.automationsNew,
-              onTap: controller.isOpen ? controller.close : controller.open,
+          if (widget.allowCreate) ...[
+            const SizedBox(width: 8),
+            TpActionMenuIconAnchor(
+              triggerBuilder: (context, controller) => TpIconButton(
+                icon: Icons.add_rounded,
+                tooltip: l10n.automationsNew,
+                onTap: controller.isOpen ? controller.close : controller.open,
+              ),
+              buildMenuChildren: (ctx, controller) => [
+                TpActionMenuItem(
+                  icon: Icons.send_rounded,
+                  label: l10n.automationsCompactTitle,
+                  menuController: controller,
+                  onTap: () =>
+                      unawaited(_create(AutomationEditorKind.scheduledMessage)),
+                ),
+                TpActionMenuItem(
+                  icon: Icons.play_arrow_rounded,
+                  label: l10n.automationsFilterLaunchPrompt,
+                  menuController: controller,
+                  onTap: () =>
+                      unawaited(_create(AutomationEditorKind.launchPrompt)),
+                ),
+                TpActionMenuItem(
+                  icon: Icons.terminal_rounded,
+                  label: l10n.automationsCommand,
+                  menuController: controller,
+                  onTap: () =>
+                      unawaited(_create(AutomationEditorKind.runCommand)),
+                ),
+              ],
             ),
-            buildMenuChildren: (ctx, controller) => [
-              TpActionMenuItem(
-                icon: Icons.send_rounded,
-                label: l10n.automationsCompactTitle,
-                menuController: controller,
-                onTap: () =>
-                    unawaited(_create(AutomationEditorKind.scheduledMessage)),
-              ),
-              TpActionMenuItem(
-                icon: Icons.play_arrow_rounded,
-                label: l10n.automationsFilterLaunchPrompt,
-                menuController: controller,
-                onTap: () =>
-                    unawaited(_create(AutomationEditorKind.launchPrompt)),
-              ),
-              TpActionMenuItem(
-                icon: Icons.terminal_rounded,
-                label: l10n.automationsCommand,
-                menuController: controller,
-                onTap: () =>
-                    unawaited(_create(AutomationEditorKind.runCommand)),
-              ),
-            ],
-          ),
+          ],
         ],
       ),
       child: Padding(
@@ -161,12 +168,14 @@ EdgeInsets _pageHostPadding(BuildContext context) {
 Future<void> showAutomationsPanelDialog(
   BuildContext context, {
   required AutomationListScope listScope,
+  bool allowCreate = true,
 }) {
   return showTpDialog<void>(
     context: context,
     presentation: TpDialogPresentation.page,
     mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
     maxWidth: 720,
-    builder: (_) => AutomationsDialog(listScope: listScope),
+    builder: (_) =>
+        AutomationsDialog(listScope: listScope, allowCreate: allowCreate),
   );
 }

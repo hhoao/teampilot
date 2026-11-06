@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../theme/app_outline_input_theme.dart';
 import '../../utils/debounce/debounce.dart';
 import 'session_config_constants.dart';
 
@@ -158,6 +159,15 @@ class _CliReadinessPathRowState extends State<CliReadinessPathRow> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final styles = TpTextStyles.of(context);
+    final control = context.tpControl;
+    // This row is a field + actions; one height track keeps the pill flush
+    // with the buttons, and the padding has to fill it so the text centres.
+    final fieldHeight = control.height;
+    final fieldPadding = appOutlineInputPadding(
+      height: fieldHeight,
+      textTheme: Theme.of(context).textTheme,
+      control: control,
+    );
     final showInstall = widget.installKey != null && widget.onInstall != null;
     final showUpgrade = widget.upgradeKey != null && widget.onUpgrade != null;
     final actionsEnabled = widget.enabled && !_busy;
@@ -174,6 +184,8 @@ class _CliReadinessPathRowState extends State<CliReadinessPathRow> {
             enabled: widget.enabled,
             decoration: InputDecoration(
               isDense: true,
+              constraints: BoxConstraints.tightFor(height: fieldHeight),
+              contentPadding: fieldPadding,
               floatingLabelBehavior: FloatingLabelBehavior.never,
               suffix: Text(widget.version, style: styles.mutedSm),
             ),

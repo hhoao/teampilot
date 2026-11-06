@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
+import '../../models/team_config.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'cli_brand_icon.dart';
@@ -14,12 +16,20 @@ class CliPresetDropdownField extends StatelessWidget {
     required this.selectedPresetId,
     required this.onChanged,
     this.label,
+    this.cliFilter,
+    this.emptyHint,
     super.key,
   });
 
   final String? selectedPresetId;
   final ValueChanged<String?> onChanged;
   final String? label;
+
+  /// When set, only presets for this CLI are offered (bound-session scoping).
+  final CliTool? cliFilter;
+
+  /// Shown instead of the generic empty hint when [cliFilter] matches nothing.
+  final String? emptyHint;
 
   @override
   Widget build(BuildContext context) {
@@ -30,10 +40,15 @@ class CliPresetDropdownField extends StatelessWidget {
       return const LinearProgressIndicator(minHeight: 2);
     }
 
-    final presets = presetsState.presets;
+    final allPresets = presetsState.presets;
+    final presets = cliFilter == null
+        ? allPresets
+        : presetsForCli(allPresets, cliFilter!);
     if (presets.isEmpty) {
       return Text(
-        l10n.workspaceCliPresetsEmptyHint,
+        cliFilter != null && emptyHint != null
+            ? emptyHint!
+            : l10n.workspaceCliPresetsEmptyHint,
         style: TpTextStyles.of(context).sm,
       );
     }

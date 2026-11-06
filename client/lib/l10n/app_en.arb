@@ -3615,6 +3615,8 @@
     }
   },
   "automationsNextRunNone": "No upcoming run",
+  "automationsManageAll": "Manage all scheduled tasks",
+  "automationsStatusBarEmpty": "No active scheduled tasks",
   "automationsRunNow": "Run now",
   "automationsRunHistory": "Run history",
   "automationsRunHistoryEmpty": "No runs yet",
@@ -3647,6 +3649,16 @@
       }
     }
   },
+  "automationsBoundSession": "Bound session",
+  "automationsBoundSessionPending": "A session is bound after the first run",
+  "automationsBoundSessionUnavailable": "Session unavailable — switch or unbind",
+  "automationsSwitchSession": "Switch session",
+  "automationsUnbindSession": "Unbind",
+  "automationsSessionPickerTitle": "Select a session",
+  "automationsSessionPickerEmpty": "No sessions available to bind",
+  "automationsPresetScopeHint": "Bound to a session — only presets for that session's CLI are shown.",
+  "automationsPresetCliMismatch": "The selected preset does not match the bound session's CLI.",
+  "automationsPresetEmptyForCli": "No presets available for this CLI.",
   "automationsTargetMember": "Target member",
   "automationsCustomCron": "Cron expression",
   "automationsInvalidCron": "Invalid cron expression (5 fields required)",
@@ -3659,23 +3671,7 @@
   "automationsCreateTitle": "New automation",
   "automationsEditTitle": "Edit automation",
   "automationsCompactTitle": "Scheduled message",
-  "automationsHeaderCount": "Automations · {count}",
-  "@automationsHeaderCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "automationsSidebarTitle": "Automations",
-  "automationsSidebarWithNextRun": "Automations · {time}",
-  "@automationsSidebarWithNextRun": {
-    "placeholders": {
-      "time": {
-        "type": "String"
-      }
-    }
-  },
+  "automationsSidebarTitle": "Scheduled tasks",
   "automationsFilterAll": "All",
   "automationsFilterEnabled": "Enabled only",
   "automationsFilterDisabled": "Disabled only",

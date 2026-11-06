@@ -235,6 +235,39 @@ void main() {
     },
   );
 
+  test(
+    'bootstrap self-initiated swap is absorbed instead of reloading',
+    () async {
+      final storage = HomeStorage(_context('/tp/a'));
+      final levels = <ReloadLevel>[];
+      final service = HomeInvalidationService(
+        profileStates: profileStates.stream,
+        storageChanges: storage.changes,
+        homeTargetId: () => 'ssh:p1',
+        reload: (level) async => levels.add(level),
+        switchHome: (id) async => switchedHomeIds.add(id),
+        initialProfiles: const [home],
+        initialGeneration: storage.generation,
+      );
+      service.start();
+
+      // bootstrapHomeIndex() reinstalls the SSH home context outside any
+      // reload; the swap it publishes must not schedule a second full boot.
+      await service.runSelfInitiatedSwap(
+        () => storage.swap(_context('/tp/a-fresh')),
+      );
+      await _flush();
+
+      expect(levels, isEmpty);
+
+      // An external home switch after the bootstrap swap still reloads.
+      await storage.swap(_context('/tp/b'));
+      await _flush();
+
+      expect(levels, [ReloadLevel.full]);
+    },
+  );
+
   test('same-context profile re-emit does not reload', () async {
     startService(initialProfiles: const [home]);
     profileStates.add(const SshProfileState(profiles: [home]));

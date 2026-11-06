@@ -482,10 +482,9 @@ class _FileTreeFilterField extends StatelessWidget {
       builder: (context, value, _) {
         return TextField(
           controller: controller,
-          decoration: InputDecoration(
+          decoration: tpSearchPillDecoration(
+            context,
             hintText: hintText,
-            prefixIcon: Icon(Icons.search, size: context.tpIconSizes.md),
-            floatingLabelBehavior: FloatingLabelBehavior.never,
             suffixIcon: value.text.isNotEmpty
                 ? TpIconButton(
                     icon: Icons.clear,

@@ -240,6 +240,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                                     controller: _queryController,
                                     focusNode: _focusNode,
                                     hint: l10n.workspaceSearchQueryHint,
+                                    standalone: true,
                                     toggles: [
                                       FindToggleButton(
                                         iconAsset: FindBarIcons.caseSensitive,
@@ -281,6 +282,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                                       controller: _replaceController,
                                       focusNode: _replaceFocusNode,
                                       hint: l10n.workspaceSearchReplaceHint,
+                                      standalone: true,
                                     ),
                                   ),
                                   const SizedBox(width: 4),

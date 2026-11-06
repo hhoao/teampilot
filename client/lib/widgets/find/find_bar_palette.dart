@@ -63,7 +63,7 @@ class FindBarPalette extends ThemeExtension<FindBarPalette> {
   /// Dark theme (the `find-replace.html` mockup).
   static const FindBarPalette dark = FindBarPalette(
     panelBg: Color(0xFF252526),
-    panelBorder: Color(0xFF454545),
+    panelBorder: Color(0xFF3A3A3A),
     fieldBg: Color(0xFF3C3C3C),
     border: Color(0xFF3C3C3C),
     focusBorder: Color(0xFF007FD4),
@@ -79,10 +79,10 @@ class FindBarPalette extends ThemeExtension<FindBarPalette> {
 
   /// Light theme (VS Code Light equivalents).
   static const FindBarPalette light = FindBarPalette(
-    panelBg: Color(0xFFF3F3F3),
-    panelBorder: Color(0xFFC8C8C8),
+    panelBg: Color(0xFFFFFFFF),
+    panelBorder: Color(0xFFE3E3E3),
     fieldBg: Color(0xFFFFFFFF),
-    border: Color(0xFFC8C8C8),
+    border: Color(0xFFE3E3E3),
     focusBorder: Color(0xFF006BB1),
     text: Color(0xFF333333),
     mutedText: Color(0xFF6B6B6B),
@@ -91,7 +91,7 @@ class FindBarPalette extends ThemeExtension<FindBarPalette> {
     activeBg: Color(0xFFC9E5FF),
     activeBorder: Color(0xFF006BB1),
     toggleOnText: Color(0xFF006BB1),
-    shadow: Color(0x26000000),
+    shadow: Color(0x1F000000),
   );
 
   /// Resolves the palette for [context], falling back on [Brightness] when no

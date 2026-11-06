@@ -7105,6 +7105,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsNextRunNone => 'No upcoming run';
 
   @override
+  String get automationsManageAll => 'Manage all scheduled tasks';
+
+  @override
+  String get automationsStatusBarEmpty => 'No active scheduled tasks';
+
+  @override
   String get automationsRunNow => 'Run now';
 
   @override
@@ -7165,6 +7171,41 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get automationsBoundSession => 'Bound session';
+
+  @override
+  String get automationsBoundSessionPending =>
+      'A session is bound after the first run';
+
+  @override
+  String get automationsBoundSessionUnavailable =>
+      'Session unavailable — switch or unbind';
+
+  @override
+  String get automationsSwitchSession => 'Switch session';
+
+  @override
+  String get automationsUnbindSession => 'Unbind';
+
+  @override
+  String get automationsSessionPickerTitle => 'Select a session';
+
+  @override
+  String get automationsSessionPickerEmpty => 'No sessions available to bind';
+
+  @override
+  String get automationsPresetScopeHint =>
+      'Bound to a session — only presets for that session\'s CLI are shown.';
+
+  @override
+  String get automationsPresetCliMismatch =>
+      'The selected preset does not match the bound session\'s CLI.';
+
+  @override
+  String get automationsPresetEmptyForCli =>
+      'No presets available for this CLI.';
+
+  @override
   String get automationsTargetMember => 'Target member';
 
   @override
@@ -7202,17 +7243,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsCompactTitle => 'Scheduled message';
 
   @override
-  String automationsHeaderCount(int count) {
-    return 'Automations · $count';
-  }
-
-  @override
-  String get automationsSidebarTitle => 'Automations';
-
-  @override
-  String automationsSidebarWithNextRun(String time) {
-    return 'Automations · $time';
-  }
+  String get automationsSidebarTitle => 'Scheduled tasks';
 
   @override
   String get automationsFilterAll => 'All';

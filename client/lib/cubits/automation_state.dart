@@ -10,6 +10,7 @@ enum AutomationLoadStatus { idle, loading, ready, error }
 class AutomationState extends Equatable {
   const AutomationState({
     this.automations = const [],
+    this.globalAutomations = const [],
     this.runsByAutomationId = const {},
     this.status = AutomationLoadStatus.idle,
     this.errorMessage,
@@ -18,6 +19,9 @@ class AutomationState extends Equatable {
   });
 
   final List<Automation> automations;
+
+  /// Every automation across workspaces, independent of [listScope].
+  final List<Automation> globalAutomations;
   final Map<String, List<AutomationRun>> runsByAutomationId;
   final AutomationLoadStatus status;
   final String? errorMessage;
@@ -31,6 +35,7 @@ class AutomationState extends Equatable {
 
   AutomationState copyWith({
     List<Automation>? automations,
+    List<Automation>? globalAutomations,
     Map<String, List<AutomationRun>>? runsByAutomationId,
     AutomationLoadStatus? status,
     String? errorMessage,
@@ -42,6 +47,7 @@ class AutomationState extends Equatable {
   }) {
     return AutomationState(
       automations: automations ?? this.automations,
+      globalAutomations: globalAutomations ?? this.globalAutomations,
       runsByAutomationId: runsByAutomationId ?? this.runsByAutomationId,
       status: status ?? this.status,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
@@ -55,6 +61,7 @@ class AutomationState extends Equatable {
   @override
   List<Object?> get props => [
     automations,
+    globalAutomations,
     runsByAutomationId,
     status,
     errorMessage,

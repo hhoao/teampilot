@@ -6821,6 +6821,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsNextRunNone => '暂无计划运行';
 
   @override
+  String get automationsManageAll => '管理全部定时任务';
+
+  @override
+  String get automationsStatusBarEmpty => '暂无启用的定时任务';
+
+  @override
   String get automationsRunNow => '立即运行';
 
   @override
@@ -6879,6 +6885,36 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get automationsBoundSession => '绑定会话';
+
+  @override
+  String get automationsBoundSessionPending => '首次运行后自动绑定会话';
+
+  @override
+  String get automationsBoundSessionUnavailable => '会话不可用，请切换或解绑';
+
+  @override
+  String get automationsSwitchSession => '切换会话';
+
+  @override
+  String get automationsUnbindSession => '解绑';
+
+  @override
+  String get automationsSessionPickerTitle => '选择会话';
+
+  @override
+  String get automationsSessionPickerEmpty => '没有可绑定的会话';
+
+  @override
+  String get automationsPresetScopeHint => '已绑定会话，仅显示该会话 CLI 的预设。';
+
+  @override
+  String get automationsPresetCliMismatch => '所选预设与绑定会话的 CLI 不一致。';
+
+  @override
+  String get automationsPresetEmptyForCli => '该 CLI 暂无可用预设。';
+
+  @override
   String get automationsTargetMember => '目标成员';
 
   @override
@@ -6915,17 +6951,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsCompactTitle => '定时消息';
 
   @override
-  String automationsHeaderCount(int count) {
-    return '自动化 · $count';
-  }
-
-  @override
-  String get automationsSidebarTitle => '自动化';
-
-  @override
-  String automationsSidebarWithNextRun(String time) {
-    return '自动化 · $time';
-  }
+  String get automationsSidebarTitle => '定时任务';
 
   @override
   String get automationsFilterAll => '全部';

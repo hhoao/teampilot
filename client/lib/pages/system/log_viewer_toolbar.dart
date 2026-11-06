@@ -235,24 +235,11 @@ class LogViewerToolbar extends StatelessWidget {
     Widget? prefixIcon,
   }) {
     final cs = Theme.of(context).colorScheme;
-    final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.55)),
-    );
-    return InputDecoration(
+    return tpSearchPillDecoration(
+      context,
       hintText: hintText,
-      hintStyle: TpTextStyles.of(context).mdColored(cs.onSurfaceVariant),
       prefixIcon: prefixIcon,
-      prefixIconConstraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-      isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      filled: true,
       fillColor: cs.workspaceInset,
-      border: border,
-      enabledBorder: border,
-      focusedBorder: border.copyWith(
-        borderSide: BorderSide(color: cs.primary.withValues(alpha: 0.65)),
-      ),
     );
   }
 
