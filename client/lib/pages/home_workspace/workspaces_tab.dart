@@ -276,7 +276,7 @@ class _WorkspacesFilterFieldState extends State<WorkspacesFilterField> {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
             color: cs.surfaceContainer,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(controlHeight / 2),
             border: Border.all(color: borderColor),
           ),
           child: Row(
@@ -284,7 +284,7 @@ class _WorkspacesFilterFieldState extends State<WorkspacesFilterField> {
             children: [
               Icon(
                 Icons.search_rounded,
-                size: context.tpIconSizes.sm,
+                size: context.tpIconSizes.md,
                 color: cs.onSurfaceVariant,
               ),
               const SizedBox(width: 6),
