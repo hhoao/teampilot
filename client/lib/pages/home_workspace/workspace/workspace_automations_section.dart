@@ -63,8 +63,7 @@ class _WorkspaceAutomationsSectionState
     final styles = TpTextStyles.of(context);
     return TpHover(
       onTap: () => unawaited(_openPanel()),
-      hoverColor: cs.onSurface.withValues(alpha: 0.10),
-      backgroundColor: cs.onSurface.withValues(alpha: 0.06),
+      hoverColor: cs.onSurface.withValues(alpha: 0.05),
       borderRadius: BorderRadius.circular(10),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
@@ -80,7 +79,7 @@ class _WorkspaceAutomationsSectionState
               context.l10n.automationsSidebarTitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: styles.lg.copyWith(fontWeight: FontWeight.w600),
+              style: styles.lg,
             ),
           ),
         ],

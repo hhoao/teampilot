@@ -131,8 +131,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (!_showingArchive) ...[
-            WorkspaceAutomationsSection(workspace: widget.workspace),
-            const SizedBox(height: 12),
             _SidebarActionTile(
               key: AppKeys.newChatSidebarTile,
               icon: Icons.edit_outlined,
@@ -143,6 +141,8 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                 () => _startNewConversation(context),
               ),
             ),
+            const SizedBox(height: 4),
+            WorkspaceAutomationsSection(workspace: widget.workspace),
             const SizedBox(height: 4),
             Builder(
               builder: (context) {
