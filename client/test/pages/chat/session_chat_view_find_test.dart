@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/chat/chat_find_bar.dart';
 import 'package:teampilot/services/chat/conversation/history/chat_transcript_find_controller.dart';
+import 'package:teampilot/widgets/find/find_bar_widgets.dart';
 
 void main() {
   testWidgets('ChatFindBar shows counter and navigates through hits', (
@@ -202,5 +203,51 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
     expect(closed, isTrue);
+  });
+
+  testWidgets('ChatFindBar is a pill until results expand it', (tester) async {
+    final messages = <AiMessage>[
+      AiMessage(
+        id: 'm-0',
+        role: AiRole.user,
+        parts: const [AiTextPart(text: 'alpha note')],
+      ),
+    ];
+    final controller = ChatTranscriptFindController(
+      messagesProvider: () => messages,
+    );
+    addTearDown(controller.dispose);
+    final query = TextEditingController();
+    final focus = FocusNode();
+    addTearDown(query.dispose);
+    addTearDown(focus.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: ChatFindBar(
+            controller: controller,
+            queryController: query,
+            focusNode: focus,
+            onNavigate: (_) {},
+            onClose: () {},
+          ),
+        ),
+      ),
+    );
+
+    FindBarPanel panel() =>
+        tester.widget<FindBarPanel>(find.byType(FindBarPanel));
+
+    expect(panel().borderRadius, FindBarPanel.kPillRadius);
+
+    await tester.enterText(find.byType(TextField), 'alpha');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+
+    expect(controller.hits, isNotEmpty);
+    expect(panel().borderRadius, FindBarPanel.kCardRadius);
   });
 }
