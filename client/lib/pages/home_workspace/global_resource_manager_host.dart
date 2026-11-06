@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+import '../../cubits/automation_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
@@ -14,6 +15,8 @@ import '../../widgets/home_storage_scope.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/automation.dart';
+import '../../models/automation_list_scope.dart';
 import '../../models/team_config.dart';
 import '../../services/resource_manager/process_metrics_service.dart';
 import '../../services/resource_manager/pty_process_registry.dart';
@@ -29,10 +32,13 @@ import '../../services/workbench/workbench_shell_launcher.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/managed_provider/managed_provider_usage_status_item.dart';
 import '../../widgets/workspace_status_bar/progress_activities_status_item.dart';
+import '../../widgets/workspace_status_bar/scheduled_tasks_status_item.dart';
 import '../../widgets/workspace_status_bar/session_usage_progress_bridge.dart';
 import '../../widgets/workspace_status_bar/resource_usage_status_item.dart';
 import '../../widgets/workspace_status_bar/ssh_hosts_status_item.dart';
 import '../../widgets/workspace_status_bar/workspace_status_bar.dart';
+import '../../pages/automations/automation_editor_dialog.dart';
+import '../../pages/automations/automations_dialog.dart';
 import '../config/config_workspace.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_route.dart';
@@ -55,6 +61,7 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
   final Map<String, WorkspaceTerminalGroup> _groups = {};
   final Map<String, VoidCallback> _groupListeners = {};
   String? _lastChatBindingsSignature;
+  var _automationGlobalLoaded = false;
 
   @override
   void initState() {
@@ -72,6 +79,10 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_automationGlobalLoaded) {
+      _automationGlobalLoaded = true;
+      unawaited(context.read<AutomationCubit>().loadGlobal());
+    }
     _bindChatListener();
     _syncTerminalGroupListeners();
   }
@@ -251,6 +262,20 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
     }
   }
 
+  Future<void> _editAutomation(Automation automation) async {
+    final cubit = context.read<AutomationCubit>();
+    final saved = await AutomationEditorDialog.show(
+      context,
+      initial: automation,
+      kind: kindForAutomation(automation),
+      workspaceId: automation.workspaceId,
+      sessionId: automation.sessionId,
+    );
+    if (saved != null && mounted) {
+      await cubit.reloadPreservingScope();
+    }
+  }
+
   /// Floating terminal for one saved SSH host (status-bar Remote Hosts panel).
   void _openSshHostTerminal(String profileId, String routeWorkspaceId) {
     final chat = context.read<ChatCubit>();
@@ -336,6 +361,17 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
               SessionUsageProgressBridge(
                 child: WorkspaceStatusBar(
                   leadingItems: [
+                    ScheduledTasksStatusItem(
+                      onEditAutomation: (automation) =>
+                          unawaited(_editAutomation(automation)),
+                      onManage: () => unawaited(
+                        showAutomationsPanelDialog(
+                          context,
+                          listScope: const AutomationListScope.all(),
+                          allowCreate: false,
+                        ),
+                      ),
+                    ),
                     ManagedProviderUsageStatusItem(
                       onManage: () => context.go(
                         HomeGlobalView.managedProviders.homeLocation,

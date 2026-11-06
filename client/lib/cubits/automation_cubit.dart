@@ -9,6 +9,7 @@ import '../models/automation_list_scope.dart';
 import '../repositories/automation_repository.dart';
 import '../services/automation/automation_schedule_calculator.dart';
 import '../services/automation/automation_scheduler.dart';
+import '../utils/logging/logger.dart';
 import 'automation_state.dart';
 
 int _automationCubitDefaultNowMs() => DateTime.now().millisecondsSinceEpoch;
@@ -42,11 +43,12 @@ class AutomationCubit extends Cubit<AutomationState> {
       ),
     );
     try {
-      final automations = await _repository.listAll();
-      final runsByAutomationId = await _loadRunsByAutomation(automations);
+      final all = await _repository.listAll();
+      final runsByAutomationId = await _loadRunsByAutomation(all);
       emit(
         state.copyWith(
-          automations: automations,
+          automations: all,
+          globalAutomations: all,
           runsByAutomationId: runsByAutomationId,
           status: AutomationLoadStatus.ready,
         ),
@@ -72,11 +74,13 @@ class AutomationCubit extends Cubit<AutomationState> {
       ),
     );
     try {
-      final automations = await _repository.listForWorkspace(workspaceId);
-      final runsByAutomationId = await _loadRunsByAutomation(automations);
+      final all = await _repository.listAll();
+      final scoped = filterAutomationsForScope(all, scope, null);
+      final runsByAutomationId = await _loadRunsByAutomation(scoped);
       emit(
         state.copyWith(
-          automations: automations,
+          automations: scoped,
+          globalAutomations: all,
           runsByAutomationId: runsByAutomationId,
           status: AutomationLoadStatus.ready,
         ),
@@ -105,11 +109,13 @@ class AutomationCubit extends Cubit<AutomationState> {
       ),
     );
     try {
-      final automations = await _repository.listForWorkspace(workspaceId);
-      final runsByAutomationId = await _loadRunsByAutomation(automations);
+      final all = await _repository.listAll();
+      final scoped = filterAutomationsForScope(all, scope, session);
+      final runsByAutomationId = await _loadRunsByAutomation(scoped);
       emit(
         state.copyWith(
-          automations: automations,
+          automations: scoped,
+          globalAutomations: all,
           runsByAutomationId: runsByAutomationId,
           status: AutomationLoadStatus.ready,
         ),
@@ -121,6 +127,17 @@ class AutomationCubit extends Cubit<AutomationState> {
           errorMessage: error.toString(),
         ),
       );
+    }
+  }
+
+  /// Refreshes the cross-workspace snapshot without changing the scoped list.
+  Future<void> loadGlobal() async {
+    try {
+      final all = await _repository.listAll();
+      if (isClosed) return;
+      emit(state.copyWith(globalAutomations: all));
+    } on Object catch (error) {
+      appLogger.w('[automations] global load failed: $error');
     }
   }
 

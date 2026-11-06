@@ -3608,6 +3608,8 @@
     }
   },
   "automationsNextRunNone": "No upcoming run",
+  "automationsManageAll": "Manage all scheduled tasks",
+  "automationsStatusBarEmpty": "No active scheduled tasks",
   "automationsRunNow": "Run now",
   "automationsRunHistory": "Run history",
   "automationsRunHistoryEmpty": "No runs yet",
@@ -3652,23 +3654,7 @@
   "automationsCreateTitle": "New automation",
   "automationsEditTitle": "Edit automation",
   "automationsCompactTitle": "Scheduled message",
-  "automationsHeaderCount": "Automations · {count}",
-  "@automationsHeaderCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "automationsSidebarTitle": "Automations",
-  "automationsSidebarWithNextRun": "Automations · {time}",
-  "@automationsSidebarWithNextRun": {
-    "placeholders": {
-      "time": {
-        "type": "String"
-      }
-    }
-  },
+  "automationsSidebarTitle": "Scheduled tasks",
   "automationsFilterAll": "All",
   "automationsFilterEnabled": "Enabled only",
   "automationsFilterDisabled": "Disabled only",

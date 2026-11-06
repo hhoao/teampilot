@@ -39,6 +39,7 @@ class _NoopBusGateway implements AutomationBusGateway {
 
 Automation _sampleAutomation({
   required String id,
+  String workspaceId = 'ws1',
   bool enabled = true,
   int? nextRunAtMs,
 }) {
@@ -46,7 +47,7 @@ Automation _sampleAutomation({
     id: id,
     name: 'Test $id',
     action: AutomationAction.scheduledMessage,
-    workspaceId: 'ws1',
+    workspaceId: workspaceId,
     sessionId: 'sess-1',
     message: 'ping',
     preset: AutomationSchedulePreset.daily,
@@ -315,5 +316,40 @@ void main() {
     final item = cubit.state.automations.single;
     expect(item.enabled, isFalse);
     expect(item.nextRunAtMs, isNull);
+  });
+
+  test('loadForWorkspace keeps every workspace in globalAutomations', () async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+    await setup.repo.upsert(_sampleAutomation(id: 'a1'));
+    await setup.repo.upsert(
+      _sampleAutomation(id: 'a2', workspaceId: 'ws2'),
+    );
+
+    await setup.cubit.loadForWorkspace('ws1');
+
+    expect(setup.cubit.state.automations.map((a) => a.id), ['a1']);
+    expect(
+      setup.cubit.state.globalAutomations.map((a) => a.id).toSet(),
+      {'a1', 'a2'},
+    );
+  });
+
+  test('loadGlobal refreshes globals without touching scoped list', () async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+    await setup.repo.upsert(_sampleAutomation(id: 'a1'));
+    await setup.cubit.loadForWorkspace('ws1');
+
+    await setup.repo.upsert(
+      _sampleAutomation(id: 'a2', workspaceId: 'ws2'),
+    );
+    await setup.cubit.loadGlobal();
+
+    expect(setup.cubit.state.automations.map((a) => a.id), ['a1']);
+    expect(
+      setup.cubit.state.globalAutomations.map((a) => a.id).toSet(),
+      {'a1', 'a2'},
+    );
   });
 }

@@ -7100,6 +7100,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsNextRunNone => 'No upcoming run';
 
   @override
+  String get automationsManageAll => 'Manage all scheduled tasks';
+
+  @override
+  String get automationsStatusBarEmpty => 'No active scheduled tasks';
+
+  @override
   String get automationsRunNow => 'Run now';
 
   @override
@@ -7197,17 +7203,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsCompactTitle => 'Scheduled message';
 
   @override
-  String automationsHeaderCount(int count) {
-    return 'Automations · $count';
-  }
-
-  @override
-  String get automationsSidebarTitle => 'Automations';
-
-  @override
-  String automationsSidebarWithNextRun(String time) {
-    return 'Automations · $time';
-  }
+  String get automationsSidebarTitle => 'Scheduled tasks';
 
   @override
   String get automationsFilterAll => 'All';

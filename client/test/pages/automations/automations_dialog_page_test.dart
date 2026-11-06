@@ -42,6 +42,7 @@ Future<void> _openAutomations(
   required Size viewport,
   required AutomationCubit automationCubit,
   required ChatCubit chatCubit,
+  bool allowCreate = true,
 }) async {
   tester.view.physicalSize = viewport;
   tester.view.devicePixelRatio = 1.0;
@@ -59,6 +60,7 @@ Future<void> _openAutomations(
               showAutomationsPanelDialog(
                 context,
                 listScope: AutomationListScope.workspace('ws1'),
+                allowCreate: allowCreate,
               );
             },
             child: const Text('open'),
@@ -219,6 +221,27 @@ void main() {
 
     expect(find.byType(AutomationEditorDialog), findsOneWidget);
     expect(find.byKey(const Key('automationCommandField')), findsOneWidget);
+  });
+
+  testWidgets('allowCreate false hides the new-automation action', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    addTearDown(chatCubit.close);
+
+    await _openAutomations(
+      tester,
+      viewport: const Size(1200, 800),
+      automationCubit: setup.cubit,
+      chatCubit: chatCubit,
+      allowCreate: false,
+    );
+
+    final l10n = lookupAppLocalizations(const Locale('en'));
+    expect(find.byTooltip(l10n.automationsNew), findsNothing);
+    expect(find.byIcon(Icons.add_rounded), findsNothing);
   });
 
   testWidgets('run history row shows the command stdout tail', (tester) async {

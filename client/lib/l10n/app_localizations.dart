@@ -12632,6 +12632,18 @@ abstract class AppLocalizations {
   /// **'No upcoming run'**
   String get automationsNextRunNone;
 
+  /// No description provided for @automationsManageAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage all scheduled tasks'**
+  String get automationsManageAll;
+
+  /// No description provided for @automationsStatusBarEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No active scheduled tasks'**
+  String get automationsStatusBarEmpty;
+
   /// No description provided for @automationsRunNow.
   ///
   /// In en, this message translates to:
@@ -12812,23 +12824,11 @@ abstract class AppLocalizations {
   /// **'Scheduled message'**
   String get automationsCompactTitle;
 
-  /// No description provided for @automationsHeaderCount.
-  ///
-  /// In en, this message translates to:
-  /// **'Automations · {count}'**
-  String automationsHeaderCount(int count);
-
   /// No description provided for @automationsSidebarTitle.
   ///
   /// In en, this message translates to:
-  /// **'Automations'**
+  /// **'Scheduled tasks'**
   String get automationsSidebarTitle;
-
-  /// No description provided for @automationsSidebarWithNextRun.
-  ///
-  /// In en, this message translates to:
-  /// **'Automations · {time}'**
-  String automationsSidebarWithNextRun(String time);
 
   /// No description provided for @automationsFilterAll.
   ///

@@ -6816,6 +6816,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsNextRunNone => '暂无计划运行';
 
   @override
+  String get automationsManageAll => '管理全部定时任务';
+
+  @override
+  String get automationsStatusBarEmpty => '暂无启用的定时任务';
+
+  @override
   String get automationsRunNow => '立即运行';
 
   @override
@@ -6910,17 +6916,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsCompactTitle => '定时消息';
 
   @override
-  String automationsHeaderCount(int count) {
-    return '自动化 · $count';
-  }
-
-  @override
-  String get automationsSidebarTitle => '自动化';
-
-  @override
-  String automationsSidebarWithNextRun(String time) {
-    return '自动化 · $time';
-  }
+  String get automationsSidebarTitle => '定时任务';
 
   @override
   String get automationsFilterAll => '全部';
