@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/managed_provider_cubit.dart';
 import 'package:teampilot/cubits/managed_provider_usage_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -647,4 +648,113 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('tall error list stays under panel max height and scrolls', (
+    tester,
+  ) async {
+    final fs = InMemoryFilesystem();
+    final usage = ManagedProviderUsageRepository(
+      storage: fakeHomeStorage(filesystem: fs),
+      fs: fs,
+      cachePath: '/tp/usage-cache.json',
+    );
+    final providersRepo = ManagedProviderRepository(
+      storage: fakeHomeStorage(filesystem: fs),
+      fs: fs,
+      configPath: '/tp/providers.json',
+      onProvidersDeleted: usage.deleteMany,
+    );
+    final coordinator = ManagedProviderUsageCoordinator(
+      providerRepository: providersRepo,
+      usageRepository: usage,
+      registry: ManagedProviderUsageRegistry([_Adapter()]),
+      credentials: _NoCredentials(),
+      http: _NoHttp(),
+    );
+    final providers = [
+      for (var i = 0; i < 12; i++) _provider(id: 'p$i', name: 'Provider $i'),
+    ];
+    final snapshots = <String, ProviderUsageSnapshot>{
+      for (final provider in providers)
+        provider.id: _snapshot(
+          id: provider.id,
+          status: ProviderUsageStatus.error,
+        ),
+    };
+    final providerCubit = ManagedProviderCubit(repository: providersRepo)
+      ..emit(
+        ManagedProviderState(
+          status: ManagedProviderLoadStatus.ready,
+          providers: providers,
+        ),
+      );
+    final usageCubit = ManagedProviderUsageCubit(coordinator: coordinator)
+      ..emit(
+        ManagedProviderUsageState(
+          status: ManagedProviderUsageLoadStatus.ready,
+          snapshots: snapshots,
+        ),
+      );
+    addTearDown(providerCubit.close);
+    addTearDown(usageCubit.close);
+
+    const surfaceHeight = 600.0;
+    await tester.binding.setSurfaceSize(const Size(800, surfaceHeight));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: providerCubit),
+            BlocProvider.value(value: usageCubit),
+          ],
+          child: const Scaffold(body: ManagedProviderUsagePanel()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final panel = tester.getRect(
+      find.byKey(const Key('managed-provider-usage-panel')),
+    );
+    final maxHeight = TpActionMenuMetrics.panelMaxHeight(
+      tester.element(find.byType(ManagedProviderUsagePanel)),
+    );
+    expect(panel.height, lessThanOrEqualTo(maxHeight + 0.5));
+    expect(panel.height, lessThan(surfaceHeight * 0.7));
+    expect(
+      find.byKey(const Key('managed-provider-usage-scroll')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('managed-provider-usage-row-p0')),
+      findsOneWidget,
+    );
+    // The panel stays compact and scrolls past the cap, so every row is
+    // built: the last one exists but starts below the scroll viewport.
+    const lastRowKey = Key('managed-provider-usage-row-p11');
+    final scrollRect = tester.getRect(
+      find.byKey(const Key('managed-provider-usage-scroll')),
+    );
+    expect(find.byKey(lastRowKey), findsOneWidget);
+    expect(
+      tester.getRect(find.byKey(lastRowKey)).top,
+      greaterThanOrEqualTo(scrollRect.bottom),
+    );
+
+    await tester.drag(
+      find.byKey(const Key('managed-provider-usage-scroll')),
+      const Offset(0, -2000),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getRect(find.byKey(lastRowKey)).top,
+      lessThan(scrollRect.bottom),
+    );
+    expect(tester.takeException(), isNull);
+  });
 }

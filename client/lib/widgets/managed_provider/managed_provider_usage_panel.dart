@@ -47,65 +47,82 @@ class ManagedProviderUsagePanel extends StatelessWidget {
                 onRefresh ??
                 () => context.read<ManagedProviderUsageCubit>().refreshAll();
 
+            final showGlobalError =
+                usageState.status == ManagedProviderUsageLoadStatus.error &&
+                providers.isNotEmpty;
+            final body = providers.isEmpty
+                ? _EmptyState(
+                    onManage: onManage,
+                    noneEnabled: providerState.providers.isNotEmpty,
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final provider in providers)
+                        _ProviderUsageRow(
+                          provider: provider,
+                          snapshot: usageState.snapshotFor(provider.id),
+                          onTap: onManage,
+                        ),
+                      if (showGlobalError)
+                        Padding(
+                          key: const Key(
+                            'managed-provider-usage-global-error',
+                          ),
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            usageState.errorMessage ??
+                                l10n.managedProvidersQueryFailed,
+                            style: TpTextStyles.of(context).xs.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+
             return SizedBox(
               key: const Key('managed-provider-usage-panel'),
               width: panelWidth,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _PanelHeader(
-                      refreshing: refreshing,
-                      onRefresh: refresh,
-                      onManage: onManage,
-                    ),
-                    if (usageState.status ==
-                            ManagedProviderUsageLoadStatus.loading &&
-                        usageState.snapshots.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: LinearProgressIndicator(
-                          key: const Key('managed-provider-usage-loading'),
-                          minHeight: 2,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    if (providers.isEmpty)
-                      _EmptyState(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: TpActionMenuMetrics.panelMaxHeight(context),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _PanelHeader(
+                        refreshing: refreshing,
+                        onRefresh: refresh,
                         onManage: onManage,
-                        noneEnabled: providerState.providers.isNotEmpty,
-                      )
-                    else
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Column(
-                          children: [
-                            for (final provider in providers)
-                              _ProviderUsageRow(
-                                provider: provider,
-                                snapshot: usageState.snapshotFor(provider.id),
-                                onTap: onManage,
-                              ),
-                          ],
-                        ),
                       ),
-                    if (usageState.status ==
-                            ManagedProviderUsageLoadStatus.error &&
-                        providers.isNotEmpty)
-                      Padding(
-                        key: const Key('managed-provider-usage-global-error'),
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          usageState.errorMessage ??
-                              l10n.managedProvidersQueryFailed,
-                          style: TpTextStyles.of(context).xs.copyWith(
-                            color: Theme.of(context).colorScheme.error,
+                      if (usageState.status ==
+                              ManagedProviderUsageLoadStatus.loading &&
+                          usageState.snapshots.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: LinearProgressIndicator(
+                            key: const Key('managed-provider-usage-loading'),
+                            minHeight: 2,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
-                      ),
-                  ],
+                      if (providers.isEmpty)
+                        body
+                      else
+                        Flexible(
+                          child: SingleChildScrollView(
+                            key: const Key('managed-provider-usage-scroll'),
+                            padding: const EdgeInsets.only(top: 6),
+                            child: body,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             );
