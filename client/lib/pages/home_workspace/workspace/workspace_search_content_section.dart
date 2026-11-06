@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot_search/teampilot_search.dart';
 
 import '../../../l10n/l10n_extensions.dart';
@@ -215,7 +216,8 @@ class _WorkspaceSearchContentSectionState
               child: TextField(
                 controller: _controller,
                 autofocus: true,
-                decoration: InputDecoration(
+                decoration: tpSearchPillDecoration(
+                  context,
                   hintText: l10n.workspaceSearchQueryHint,
                 ),
               ),
