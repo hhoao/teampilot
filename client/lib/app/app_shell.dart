@@ -562,6 +562,7 @@ class AppShell {
     required this.remoteDownloadCatalogCubit,
     required this.sshProfileCubit,
     required this.vaultService,
+    required this.homeVaultScope,
     required this.vaultCubit,
     required this.vaultCredentialCapture,
     required this.vaultUnlockGate,
@@ -689,6 +690,7 @@ class AppShell {
   final RemoteDownloadCatalogCubit remoteDownloadCatalogCubit;
   final SshProfileCubit sshProfileCubit;
   final VaultService vaultService;
+  final HomeVaultScope homeVaultScope;
   final VaultCubit vaultCubit;
   final VaultCredentialCapture vaultCredentialCapture;
   final VaultUnlockGate vaultUnlockGate;
@@ -843,6 +845,7 @@ Future<AppShell> buildAppShell({
       repository: deviceLocalVaultRepository(nativeAppDataPath),
     ),
     masterKeyStore: const FlutterSecureKeyValueStore(),
+    // Resolved lazily: before assignment, boot-time reads skip the home plane.
     homeVault: () => homeVaultScope?.service,
   );
   final vaultAccess = VaultAccess(vaultService);
@@ -1238,17 +1241,15 @@ Future<AppShell> buildAppShell({
 
   // Home-plane business vault. SSH login credentials remain in the device
   // vault; everything else is written to / read from <home>/vault/.
-  homeVaultScope = HomeVaultScope(
+  final scope = HomeVaultScope(
     storage: homeStorage,
     keyStore: const FlutterSecureKeyValueStore(),
   );
-  await homeVaultScope!.prepare();
+  homeVaultScope = scope;
+  await scope.prepare();
   if (homeStorage.fs.isRemote) {
     unawaited(
-      migrateBusinessVaultEntries(
-        device: vaultService,
-        home: homeVaultScope!.service,
-      ),
+      migrateBusinessVaultEntries(device: vaultService, home: scope.service),
     );
   }
 
@@ -4179,6 +4180,7 @@ Future<AppShell> buildAppShell({
       remoteDownloadCatalogCubit: remoteDownloadCatalogCubit,
       sshProfileCubit: sshProfileCubit,
       vaultService: vaultService,
+      homeVaultScope: scope,
       vaultCubit: vaultCubit,
       vaultCredentialCapture: vaultCredentialCapture,
       vaultUnlockGate: vaultUnlockGate,
@@ -4574,6 +4576,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     if (shell != null) {
       shell._automationCatalogSub?.cancel();
       shell._homeProfileWatchSub?.cancel();
+      unawaited(shell.homeVaultScope.dispose());
       shell.homeInvalidationService.stop();
       unawaited(_teardownConnect(shell));
       unawaited(shell.managedProviderControlPlane.close());
