@@ -62,4 +62,17 @@ class WorkspaceSearchIndexes {
     }
     _contentByWorkspace.remove(workspace.workspaceId.trim())?.dispose();
   }
+
+  /// Drops every index bound to the current transport.
+  ///
+  /// Called on a same-identity transport rebind: the plane and its value caches
+  /// survive, but indexes that captured the old `fs` must be rebuilt against
+  /// the new one. An identity change disposes the whole runtime instead.
+  void clear() {
+    _fileIndexes.clear();
+    for (final index in _contentByWorkspace.values) {
+      index.dispose();
+    }
+    _contentByWorkspace.clear();
+  }
 }
