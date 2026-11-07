@@ -33,25 +33,31 @@ const _allowlist = {
   'lib/repositories/managed_provider_repository.dart:_values',
 };
 
-/// Declarations of static fields that can hold a mutable collection.
-/// `const` is deliberately not accepted: const collections are immutable and
-/// cannot be plane caches.
+/// Declarations of static fields that can hold a mutable collection or a
+/// plane-bound cache. `const` is deliberately not accepted: const values are
+/// immutable and cannot be plane caches.
 ///
-/// 1. Explicitly typed: `static [late] [final] Map<K, V>? _x = ...`. Newlines
-///    are allowed inside `<...>` so wrapped generic types still match, while
-///    `{}`/`()` are not, which stops the span at method parameter lists.
+/// 1. Explicitly typed: `static [late] [final] Map<K, V>? _x = ...`, with or
+///    without an initializer (a declaration ending in `;` is just as much a
+///    cache the first load can populate). Newlines are allowed inside `<...>`
+///    so wrapped generic types still match, while `{}`/`()` are not, which
+///    stops the span at method parameter lists.
 /// 2. Type-inferred: `static [late] [final] _x = <K, V>{...}` (or `[...]`),
-///    which has no `Map`/`List`/`Set` token for pattern 1 to see.
+///    `= {}` / `= []`, or `= Map<K, V>()` / `= PlaneSnapshotCache<T>()`,
+///    none of which have the type token in pattern 1's position.
 final _collectionDeclarations = [
   RegExp(
     r'^\s*static\s+(?:late\s+)?(?:final\s+)?'
-    r'(?:Map|List|Set|HashMap|LinkedHashMap|SplayTreeMap)\s*<[^=;{}()]*>\??'
-    r'\s+([A-Za-z_]\w*)\s*=(?![=>])',
+    r'(?:Map|List|Set|HashMap|LinkedHashMap|SplayTreeMap|PlaneSnapshotCache)'
+    r'\s*<[^=;{}()]*>\??\s+([A-Za-z_]\w*)\s*(?:=|;)',
     multiLine: true,
   ),
   RegExp(
     r'^\s*static\s+(?:late\s+)?(?:final\s+)?([A-Za-z_]\w*)\s*=\s*'
-    r'<[^;{}()]*>\s*[\{\[]',
+    r'(?:<[^;{}()]*>\s*[\{\[]'
+    r'|(?:Map|List|Set|HashMap|LinkedHashMap|SplayTreeMap|PlaneSnapshotCache)'
+    r'\s*<[^;{}()]*>\s*\('
+    r'|[\{\[])',
     multiLine: true,
   ),
 ];
@@ -111,10 +117,23 @@ void main() {
         'static Map<String, int>? _cache = {};',
         // `late` in the modifier position.
         'static late final Map<String, int> _cache = {};',
+        // Declaration without an initializer: the first load can still fill it.
+        'static Map<String, int>? _cache;',
+        'static late final Map<String, int> _cache;',
         // Type-inferred map, list and set initializers.
         'static final _cache = <String, int>{};',
         'static final _cache = <String>[];',
         'static final _cache = <String>{};',
+        // Untyped literals.
+        'static final _cache = {};',
+        'static final _cache = [];',
+        // Typed constructors without a static type annotation.
+        'static final _cache = Map<String, int>();',
+        'static final _cache = PlaneSnapshotCache<Workspace>();',
+        // PlaneSnapshotCache is the cache type this plan introduces.
+        'static final PlaneSnapshotCache<Workspace> _cache = '
+            'PlaneSnapshotCache<Workspace>();',
+        'static PlaneSnapshotCache<Workspace>? _cache;',
         // Explicit map implementations.
         'static HashMap<String, int> _cache = HashMap();',
         'static LinkedHashMap<String, int> _cache = LinkedHashMap();',
