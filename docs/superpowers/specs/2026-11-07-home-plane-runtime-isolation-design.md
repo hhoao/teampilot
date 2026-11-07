@@ -100,8 +100,9 @@ final class HomeRuntimeIdentity {
 
 1. 只有**解析成功且身份不同**才进入平面替换。
 2. 身份相同（profile 只改了名称等）⇒ transport rebind，不替换平面。
-3. 身份不同 ⇒ 构造新 `HomeRuntime` 成功后再发布；旧运行时在新运行时可见之后异步销毁。
-4. 平面切换会把导航重置到 home：旧 workspace 路由引用旧平面数据，保留它们没有意义。
+3. **连接端点属于身份**：`targetId` 只含 profile id，因此同一 profile 被改为指向另一台主机（host/port/user 变化）时必须按身份变化处理，不能走 rebind。Plan 2 在解析出 `RuntimeContext` 后比较连接指纹（host/port/user），指纹不同即销毁并重建 runtime；否则两台解析出相同 `appDataRoot` 的主机会互相读到对方的值缓存。
+4. 身份不同 ⇒ 构造新 `HomeRuntime` 成功后再发布；旧运行时在新运行时可见之后异步销毁。
+5. 平面切换会把导航重置到 home：旧 workspace 路由引用旧平面数据，保留它们没有意义。
 
 ### 3. `HomeRuntime`
 
