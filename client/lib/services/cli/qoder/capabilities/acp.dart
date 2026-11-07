@@ -3,7 +3,11 @@ import 'dart:convert';
 import 'package:acpd/acpd.dart';
 
 import '../../../acp/acp_agent_translator.dart';
+import '../../../acp/acp_background_transcript.dart';
+import '../../../io/filesystem.dart';
+import '../../registry/capabilities/acp_background_transcript_capability.dart';
 import '../../registry/capabilities/acp_capability.dart';
+import 'acp_background_transcript.dart';
 
 /// Qoder CLI ACP quirks.
 ///
@@ -69,7 +73,8 @@ final class QoderAcpTranslator extends AcpAgentTranslator {
 /// `QODER_CONFIG_DIR` isolates settings **and** `.auth`. The provider
 /// capability seeds `.auth` into `sessionToolDir`; without it `session/new`
 /// fails with auth-required, which is why no `authenticate` call is made.
-final class QoderAcpCapability implements AcpCapability {
+final class QoderAcpCapability
+    implements AcpCapability, AcpBackgroundTranscriptCapability {
   const QoderAcpCapability();
 
   static const configDirEnvKey = 'QODER_CONFIG_DIR';
@@ -121,4 +126,19 @@ final class QoderAcpCapability implements AcpCapability {
     env[configDirEnvKey] = sessionToolDir;
     return env;
   }
+
+  /// Qoder writes `<QODER_CONFIG_DIR>/projects/<bucket>/<id>.jsonl`, the same
+  /// layout the Claude family uses (Qoder's CLI is Claude-compatible). The
+  /// ACP session cannot replay history in place, so tailing this file is the
+  /// only way to see out-of-turn work finish.
+  @override
+  AcpBackgroundTranscriptSource? createBackgroundTranscriptSource({
+    required Filesystem fs,
+    required String sessionToolDir,
+    required String sessionId,
+  }) => QoderAcpBackgroundTranscriptSource(
+    fs: fs,
+    sessionToolDir: sessionToolDir,
+    sessionId: sessionId,
+  );
 }

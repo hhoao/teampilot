@@ -8,8 +8,12 @@ import '../../../registry/capabilities/shared_tool_call_resolvers.dart';
 
 /// Qoder history: ACP sessions own their transcript
 /// (`acp-transcript.jsonl`), so this adapter never locates or parses the
-/// CLI-native `~/.qoder/projects/*.jsonl` transcript. `session/load` is never
-/// called either.
+/// CLI-native `~/.qoder/projects/*.jsonl` transcript for history browsing.
+/// `session/load` is never called either.
+///
+/// The native JSONL is still read by the ACP background watch
+/// (`QoderAcpBackgroundTranscriptSource`), which only needs appended records
+/// to notice that out-of-turn work finished.
 final class QoderAiHistoryCapability implements AiHistoryCapability {
   const QoderAiHistoryCapability();
 
