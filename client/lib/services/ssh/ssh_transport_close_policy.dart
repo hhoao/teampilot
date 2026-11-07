@@ -49,7 +49,11 @@ abstract final class SshTransportClosePolicy {
     }
 
     // Storage plane.
-    if (isExpectedLocalSshTransportClose(closed)) {
+    if (isExpectedLocalSshTransportClose(closed) ||
+        isNonRetryableTransportClose(closed)) {
+      // A changed host identity / bad credentials cannot be fixed by dialing
+      // again: every retry reopens the same mismatch and closes the transport
+      // once more. Stop the loop and let the user re-pair or edit credentials.
       return SshTransportCloseDecision.durableNoAutoReconnect;
     }
     return SshTransportCloseDecision.durableReconnect;

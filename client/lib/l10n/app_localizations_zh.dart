@@ -10012,11 +10012,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeConnectionErrorAuth => '认证失败';
 
   @override
+  String get homeConnectionErrorHostKey => '主机身份已变更 — 请重新配对或确认新密钥';
+
+  @override
   String get homeConnectionErrorTransport => '连接出错';
 
   @override
   String get homeConnectionErrorUnknown => '未知错误';
-
-  @override
-  String get homeConnectionRestartRequired => '已连接 — 请重启应用以切换此主目录的存储';
 }

@@ -34,23 +34,31 @@ class StartupGate extends StatelessWidget {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    if (mode.requiresSshProfileSetup) {
-      return const RemoteConnectionsPage();
-    }
-
     // Optional until the shell wires the provider: absence means "no status".
     final homeConn = _readHomeConnection(context);
+
+    // Resolve an active home connection BEFORE the setup gate. Otherwise, when
+    // the profile catalog is empty (`requiresSshProfileSetup` true) but a home
+    // is configured, tapping 「继续重试」 flips the cubit to `connecting`, falls
+    // through to the setup branch, and renders the target list instead of a
+    // progress view. Handled first, `connecting` shows progress and `connected`
+    // opens the app even if the catalog is momentarily empty.
     if (homeConn != null) {
       switch (homeConn.status) {
-        case HomeConnectionStatus.unreachable:
-        case HomeConnectionStatus.reconnecting:
-        case HomeConnectionStatus.restartRequired:
-          return const RemoteConnectionsPage();
         case HomeConnectionStatus.connecting:
           return _HomeConnectingPage(state: homeConn);
+        case HomeConnectionStatus.unreachable:
+        case HomeConnectionStatus.reconnecting:
+          return const RemoteConnectionsPage();
         case HomeConnectionStatus.connected:
           break;
       }
+    }
+
+    final homeConnected = homeConn?.status == HomeConnectionStatus.connected;
+
+    if (!homeConnected && mode.requiresSshProfileSetup) {
+      return const RemoteConnectionsPage();
     }
 
     if (androidNeedsWorkHome) {

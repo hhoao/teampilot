@@ -49,6 +49,15 @@ bool isGenericSshTransportClose(Object error) {
   return error is StateError && error.message == 'SSH transport closed';
 }
 
+/// Permanent, user-actionable failures: retrying cannot succeed until the user
+/// re-confirms the host key or fixes credentials. Auto-reconnect must stop for
+/// these — each retry re-triggers the same close, so the loop never converges.
+bool isNonRetryableTransportClose(Object error) {
+  if (error is! SshTransportClosed) return false;
+  return error.reason == SshTransportCloseReason.hostIdentityChanged ||
+      error.reason == SshTransportCloseReason.authFailed;
+}
+
 /// Local, intentional teardowns — log at info, not warn.
 bool isExpectedLocalSshTransportClose(SshTransportClosed closed) {
   switch (closed.reason) {

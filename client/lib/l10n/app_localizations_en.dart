@@ -10451,12 +10451,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeConnectionErrorAuth => 'Authentication failed';
 
   @override
+  String get homeConnectionErrorHostKey =>
+      'Host identity changed — re-pair or confirm the new key';
+
+  @override
   String get homeConnectionErrorTransport => 'Connection error';
 
   @override
   String get homeConnectionErrorUnknown => 'Unknown error';
-
-  @override
-  String get homeConnectionRestartRequired =>
-      'Connected — restart the app to switch this home\'s storage';
 }

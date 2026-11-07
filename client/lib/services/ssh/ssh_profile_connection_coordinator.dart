@@ -30,6 +30,12 @@ typedef SshReconnectedHandler = void Function(String profileId);
 /// [SshProfileReconnectPolicy.maxAttempts] instead of giving up.
 typedef SshPersistRetryPredicate = bool Function(String profileId);
 
+/// Fired when a permanent, non-retryable close (changed host identity / bad
+/// credentials) stops the loop, so the UI can surface it instead of leaving a
+/// stale `connected` state behind.
+typedef SshNonRetryableCloseHandler =
+    void Function(String profileId, Object error);
+
 /// Per-profile SSH liveness, disconnect coalescing, and serialized reconnect.
 ///
 /// One network blip can drop several TCP connections (storage pool + member
@@ -44,6 +50,7 @@ class SshProfileConnectionCoordinator {
     this.onReconnectSessionPlane,
     this.onReconnectAttempt,
     this.onReconnected,
+    this.onNonRetryableClose,
     this.persistRetry,
     this.policy = const SshProfileReconnectPolicy(),
   }) : _factory = factory,
@@ -66,6 +73,9 @@ class SshProfileConnectionCoordinator {
 
   /// Success surface: fires once per successful attempt, never on failure.
   final SshReconnectedHandler? onReconnected;
+
+  /// Permanent-failure surface for the home connection page.
+  final SshNonRetryableCloseHandler? onNonRetryableClose;
 
   /// When it returns true for a profile, retries continue at
   /// [SshProfileReconnectPolicy.maxDelay] past [SshProfileReconnectPolicy.maxAttempts]
@@ -148,6 +158,27 @@ class SshProfileConnectionCoordinator {
     _reconnectAttempts.remove(profileId);
     monitorFor(profileId).markDown();
     _scheduleReconnect(profileId);
+  }
+
+  /// Clears the user-disconnect latch and retries [profileId] immediately.
+  ///
+  /// The connection page's 「继续重试」 hands off here so the coordinator stays
+  /// the single retry driver. `reconnectStorage` is single-flight per profile,
+  /// so this cannot race a concurrent `ensureStorageConnected` (the old path
+  /// called `userConnect` in parallel and produced
+  /// `Duplicate SSH worker request id`).
+  void resumeRetries(String profileId) {
+    if (_disposed) return;
+    _userDisconnectLatched.remove(profileId);
+    resetReconnectAttempts(profileId);
+    final profile = _profileResolver(profileId);
+    if (profile == null) return;
+    monitorFor(profileId).markDown();
+    if (_reconnectInFlight[profileId] == true) {
+      _scheduleReconnect(profileId);
+      return;
+    }
+    unawaited(_runReconnect(profile));
   }
 
   void _onStoragePoolChanged(String profileId) {
@@ -260,13 +291,29 @@ class SshProfileConnectionCoordinator {
         appLogger.w(
           '[ssh] profile $profileId disconnect is not retryable: $error',
         );
+        // Drop any timer/attempt window left from an earlier wave and latch the
+        // profile: a permanent failure must not keep a persistent loop (or an
+        // in-flight attempt that reschedules on failure) alive behind the
+        // surface. Only an explicit resume clears the latch.
+        resetReconnectAttempts(profileId);
+        _userDisconnectLatched.add(profileId);
+        try {
+          onNonRetryableClose?.call(profileId, error);
+        } on Object catch (hookError, stackTrace) {
+          appLogger.w(
+            '[ssh] profile $profileId non-retryable hook failed',
+            error: hookError,
+            stackTrace: stackTrace,
+          );
+        }
       }
       return;
     }
     _scheduleReconnect(profileId);
   }
 
-  bool _shouldSkipReconnect(Object error) => isSshHostKeyFailure(error);
+  bool _shouldSkipReconnect(Object error) =>
+      isSshHostKeyFailure(error) || isNonRetryableTransportClose(error);
 
   bool _shouldPreferDisconnectError(Object incoming, Object existing) {
     if (_shouldSkipReconnect(incoming) && !_shouldSkipReconnect(existing)) {

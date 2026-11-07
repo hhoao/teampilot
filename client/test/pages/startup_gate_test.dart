@@ -630,7 +630,49 @@ void main() {
     expect(find.text(l10n.homeConnectionRetryNow), findsOneWidget);
   });
 
-  testWidgets('restart-required home keeps the connection page', (
+  testWidgets('connecting home with empty catalog shows progress, not list', (
+    tester,
+  ) async {
+    // Regression: with an empty profile catalog `requiresSshProfileSetup` is
+    // true; while the home is `connecting` the gate must show progress, not
+    // fall through to the target list (that looked like "retry opens targets").
+    final pending = Completer<HomeConnectResult>();
+    final homeCubit = HomeConnectionCubit(
+      connect: () => pending.future,
+      cancelRetry: () async {},
+      resumeRetry: () async {},
+      onConnected: () {},
+      profileId: 'p1',
+      host: 'example.com',
+      port: 22,
+    );
+    addTearDown(homeCubit.close);
+    unawaited(homeCubit.connectOnce());
+
+    await tester.pumpWidget(
+      await _gateHost(
+        mode: ConnectionModeService(
+          defaultTargetResolver: () => RuntimeTarget.ssh('p1', label: 'box'),
+          hasSshProfiles: () => false,
+        ),
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
+        homeConnectionCubit: homeCubit,
+      ),
+    );
+    await tester.pump();
+
+    expect(homeCubit.state.status, HomeConnectionStatus.connecting);
+    expect(find.text(l10n.sshProfileStatusConnecting), findsOneWidget);
+    expect(find.text(l10n.sshProfilesEmpty), findsNothing);
+  });
+
+  testWidgets('unrebindable home keeps the connection page with an error', (
     tester,
   ) async {
     await profileCubit.close();
@@ -650,7 +692,7 @@ void main() {
       port: 22,
     );
     addTearDown(homeCubit.close);
-    homeCubit.markRestartRequired();
+    homeCubit.markUnreachable(HomeErrorKind.hostIdentityChanged);
 
     await tester.pumpWidget(
       await _gateHost(
@@ -671,12 +713,11 @@ void main() {
     await tester.pumpAndSettle();
 
     // A recovered-but-unrebindable SSH home must never expose `child` (the
-    // local fallback plane); it stays on the connection page with a restart
-    // hint instead of a retry action.
+    // local fallback plane); it stays on the connection page with an
+    // actionable error that names the host-identity problem.
     expect(find.text('APP_CHILD'), findsNothing);
     expect(find.byType(RemoteConnectionsPage), findsOneWidget);
-    expect(find.text(l10n.homeConnectionRestartRequired), findsOneWidget);
-    expect(find.text(l10n.homeConnectionRetryNow), findsNothing);
+    expect(find.text(l10n.homeConnectionErrorHostKey), findsOneWidget);
   });
 
   testWidgets('connected home gate shows child without status card', (

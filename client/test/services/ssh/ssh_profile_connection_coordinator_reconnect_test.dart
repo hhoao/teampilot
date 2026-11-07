@@ -11,6 +11,8 @@ import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
+import 'package:teampilot/services/ssh/ssh_transport_close.dart';
+import 'package:teampilot/services/ssh/ssh_transport_close_policy.dart';
 import 'package:teampilot/services/storage/home_connect_attempt.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -101,6 +103,73 @@ void main() {
     expect(harness.reconnected, isEmpty);
 
     await harness.dispose();
+  });
+
+  test('resumeRetries clears the latch and retries again', () async {
+    final harness = _ReconnectHarness(
+      maxAttempts: 2,
+      persistRetry: (profileId) => profileId == _profile.id,
+    );
+
+    await harness.startDown();
+    await waitUntil(() => harness.attempts.length >= 2);
+
+    await harness.coordinator.userDisconnect(_profile.id);
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    final paused = harness.attempts.length;
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    expect(harness.attempts.length, paused);
+
+    // 「继续重试」 resumes through the coordinator (single driver) — no parallel
+    // `userConnect`, so it cannot race a `Duplicate SSH worker request id`.
+    harness.coordinator.resumeRetries(_profile.id);
+    await waitUntil(() => harness.attempts.length > paused);
+
+    await harness.dispose();
+  });
+
+  test('hostIdentityChanged is classified as non-retryable', () {
+    const changed = SshTransportClosed(
+      reason: SshTransportCloseReason.hostIdentityChanged,
+      plane: SshTransportPlane.storage,
+    );
+    expect(isNonRetryableTransportClose(changed), isTrue);
+    expect(
+      SshTransportClosePolicy.evaluate(changed).scheduleStorageReconnect,
+      isFalse,
+    );
+    // A plain network fault must stay retryable (the home resilience case).
+    const transient = SshTransportClosed(
+      reason: SshTransportCloseReason.transportError,
+      plane: SshTransportPlane.storage,
+    );
+    expect(isNonRetryableTransportClose(transient), isFalse);
+    expect(
+      SshTransportClosePolicy.evaluate(transient).scheduleStorageReconnect,
+      isTrue,
+    );
+  });
+
+  test('hostIdentityChanged stops the loop even with persistRetry', () async {
+    final stopped = <String>[];
+    final harness = _ReconnectHarness(
+      maxAttempts: 3,
+      // Unbounded: before the fix this looped forever on every close.
+      persistRetry: (_) => true,
+      onNonRetryableClose: (profileId, _) => stopped.add(profileId),
+    );
+    addTearDown(harness.dispose);
+
+    await harness.startDown();
+    await waitUntil(() => harness.attempts.isNotEmpty);
+
+    harness.emitHostIdentityChanged();
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    final settled = harness.attempts.length;
+
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    expect(harness.attempts.length, settled);
+    expect(stopped, [_profile.id]);
   });
 
   test('home switch cancellation stops the abandoned profile loop', () async {
@@ -240,8 +309,10 @@ class _ReconnectHarness {
     this.failFirstCreates,
     this.homeCubit,
     this.beforeAttempt,
+    this.onNonRetryableClose,
   }) {
     final events = SshConnectionEvents();
+    this.events = events;
     factory = SshClientFactory(
       credentialStore: InMemorySshCredentialStore(),
       knownHostRepository: InMemorySshKnownHostRepository(),
@@ -288,6 +359,7 @@ class _ReconnectHarness {
           cubit.markReconnected();
         }
       },
+      onNonRetryableClose: onNonRetryableClose,
     );
   }
 
@@ -303,6 +375,8 @@ class _ReconnectHarness {
 
   /// Runs inside `onReconnectAttempt`; a throw here must not wedge the loop.
   final void Function(String profileId, int attempt)? beforeAttempt;
+  final SshNonRetryableCloseHandler? onNonRetryableClose;
+  late final SshConnectionEvents events;
   late final SshClientFactory factory;
   late final SshProfileConnectionCoordinator coordinator;
   final List<({String profileId, int attempt})> attempts = [];
@@ -322,6 +396,19 @@ class _ReconnectHarness {
   Future<void> startDown() async {
     final client = await factory.clientForStorage(_profile);
     client.close();
+  }
+
+  /// Emits a permanent host-identity change on the storage plane (the signal
+  /// that used to spawn an endless reconnect loop).
+  void emitHostIdentityChanged() {
+    events.onTransportClosed?.call(
+      _profile.id,
+      const SshTransportClosed(
+        reason: SshTransportCloseReason.hostIdentityChanged,
+        plane: SshTransportPlane.storage,
+      ),
+      StackTrace.empty,
+    );
   }
 
   Future<void> dispose() => coordinator.dispose();

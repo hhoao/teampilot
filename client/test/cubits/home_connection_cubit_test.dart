@@ -99,19 +99,19 @@ void main() {
   );
 
   test('successful retry clears the last error kind', () async {
-    var reachable = false;
     final cubit = HomeConnectionCubit(
-      connect: () async => reachable
-          ? HomeConnectResult.connected(_ctx())
-          : const HomeConnectResult.unreachable(HomeErrorKind.sshTimeout),
+      connect: () async =>
+          const HomeConnectResult.unreachable(HomeErrorKind.sshTimeout),
       cancelRetry: () async {},
       resumeRetry: () async {},
       onConnected: () {},
     );
     await cubit.connectOnce();
     expect(cubit.state.lastErrorKind, HomeErrorKind.sshTimeout);
-    reachable = true;
+    // 「继续重试」 hands off; the coordinator reports success via markReconnected.
     await cubit.retryNow();
+    expect(cubit.state.status, HomeConnectionStatus.reconnecting);
+    cubit.markReconnected();
     expect(cubit.state.status, HomeConnectionStatus.connected);
     expect(cubit.state.lastErrorKind, isNull);
   });
@@ -136,6 +136,25 @@ void main() {
     expect(cubit.state.profileId, 'p1');
     expect(cubit.state.host, '10.0.0.9');
     expect(cubit.state.port, 22);
+  });
+
+  test('markUnreachable surfaces a permanent failure with its error kind', () {
+    final cubit = HomeConnectionCubit(
+      connect: () async => HomeConnectResult.connected(_ctx()),
+      cancelRetry: () async {},
+      resumeRetry: () async {},
+      onConnected: () {},
+    );
+    cubit.markInitial(
+      const HomeConnectResult.unreachable(HomeErrorKind.tcpUnreachable),
+    );
+    cubit.markBackgroundAttempt(3);
+    expect(cubit.state.status, HomeConnectionStatus.reconnecting);
+
+    cubit.markUnreachable(HomeErrorKind.transportError);
+    expect(cubit.state.status, HomeConnectionStatus.unreachable);
+    expect(cubit.state.attempt, 0);
+    expect(cubit.state.lastErrorKind, HomeErrorKind.transportError);
   });
 
   test('markInitial seeds connected without network or onConnected', () async {
@@ -187,7 +206,7 @@ void main() {
   });
 
   test(
-    'throwing resumeRetry lands unreachable instead of a permanent spinner',
+    'retryNow hands off to the coordinator without a competing connect',
     () async {
       var connectCalls = 0;
       final cubit = HomeConnectionCubit(
@@ -200,9 +219,11 @@ void main() {
         onConnected: () {},
       );
       await cubit.retryNow();
-      expect(cubit.state.status, HomeConnectionStatus.unreachable);
-      expect(cubit.state.lastErrorKind, HomeErrorKind.unknown);
+      // Single retry driver: `retryNow` must not run `connect` itself, and a
+      // throwing resume must stay `reconnecting` (the coordinator keeps
+      // trying) rather than flipping to `unreachable`.
       expect(connectCalls, 0);
+      expect(cubit.state.status, HomeConnectionStatus.reconnecting);
     },
   );
 
@@ -279,7 +300,7 @@ void main() {
     expect(cubit.state.lastErrorKind, HomeErrorKind.tcpUnreachable);
   });
 
-  test('markRestartRequired closes the gate without a retry action', () {
+  test('markUnreachable surfaces a host identity change as an actionable error', () {
     final cubit = HomeConnectionCubit(
       connect: () async => HomeConnectResult.connected(_ctx()),
       cancelRetry: () async {},
@@ -289,11 +310,11 @@ void main() {
     );
     cubit.markReconnected();
 
-    cubit.markRestartRequired();
+    cubit.markUnreachable(HomeErrorKind.hostIdentityChanged);
 
-    expect(cubit.state.status, HomeConnectionStatus.restartRequired);
-    expect(cubit.state.requiresRestart, isTrue);
-    expect(cubit.state.canRetryNow, isFalse);
+    expect(cubit.state.status, HomeConnectionStatus.unreachable);
+    expect(cubit.state.lastErrorKind, HomeErrorKind.hostIdentityChanged);
+    expect(cubit.state.canRetryNow, isTrue);
     expect(cubit.state.canCancelRetry, isFalse);
   });
 }

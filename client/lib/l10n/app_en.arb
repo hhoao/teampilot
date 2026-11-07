@@ -5272,7 +5272,7 @@
   "homeConnectionErrorTcp": "Network unreachable",
   "homeConnectionErrorTimeout": "Connection timed out",
   "homeConnectionErrorAuth": "Authentication failed",
+  "homeConnectionErrorHostKey": "Host identity changed — re-pair or confirm the new key",
   "homeConnectionErrorTransport": "Connection error",
-  "homeConnectionErrorUnknown": "Unknown error",
-  "homeConnectionRestartRequired": "Connected — restart the app to switch this home's storage"
+  "homeConnectionErrorUnknown": "Unknown error"
 }

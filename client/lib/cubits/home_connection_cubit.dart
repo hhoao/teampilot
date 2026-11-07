@@ -9,12 +9,6 @@ enum HomeConnectionStatus {
   connected,
   unreachable,
   reconnecting,
-
-  /// The home transport is back but the published storage plane could not be
-  /// moved onto it (first-ever-unreachable fallback). Unlike [unreachable]
-  /// this is not retryable from the page: the user must restart the app so the
-  /// SSH home resolves live before boot.
-  restartRequired,
 }
 
 class HomeConnectionState extends Equatable {
@@ -38,7 +32,6 @@ class HomeConnectionState extends Equatable {
   bool get canRetryNow =>
       status == HomeConnectionStatus.unreachable ||
       status == HomeConnectionStatus.reconnecting;
-  bool get requiresRestart => status == HomeConnectionStatus.restartRequired;
 
   static const Object _unset = Object();
 
@@ -132,28 +125,37 @@ class HomeConnectionCubit extends Cubit<HomeConnectionState> {
 
   Future<void> retryNow() async {
     if (isClosed) return;
-    emit(state.copyWith(attempt: 0, status: HomeConnectionStatus.connecting));
+    // The coordinator is the single retry driver. Surface `reconnecting` and
+    // hand off; do NOT run a competing `connectOnce` here — two drivers writing
+    // this state made the button flip between `unreachable` and `reconnecting`.
+    emit(state.copyWith(attempt: 0, status: HomeConnectionStatus.reconnecting));
     try {
       await _resumeRetry();
     } on Object catch (error) {
       appLogger.w('[home] resume retry failed: ${error.runtimeType}');
-      if (isClosed) return;
-      emit(
-        state.copyWith(
-          status: HomeConnectionStatus.unreachable,
-          lastErrorKind: HomeErrorKind.unknown,
-        ),
-      );
-      return;
+      // Stay `reconnecting`: the coordinator keeps trying. Only an explicit
+      // cancel moves to `unreachable`.
     }
-    if (isClosed) return;
-    await connectOnce();
   }
 
   Future<void> cancelRetry() async {
     await _cancelRetry();
     if (isClosed) return;
     emit(state.copyWith(status: HomeConnectionStatus.unreachable));
+  }
+
+  /// Surfaces a permanent failure (e.g. a changed host identity) on the
+  /// connection page instead of leaving a stale `connected` state behind after
+  /// the coordinator stopped its loop for that failure.
+  void markUnreachable(HomeErrorKind kind) {
+    if (isClosed) return;
+    emit(
+      state.copyWith(
+        status: HomeConnectionStatus.unreachable,
+        attempt: 0,
+        lastErrorKind: kind,
+      ),
+    );
   }
 
   /// Surfaces background retry progress on the connection page.
@@ -202,16 +204,6 @@ class HomeConnectionCubit extends Cubit<HomeConnectionState> {
         attempt: 0,
         lastErrorKind: null,
       ),
-    );
-  }
-
-  /// The home transport recovered but the published storage plane could not be
-  /// moved onto it; keep the gate closed until a restart resolves the SSH home
-  /// before boot.
-  void markRestartRequired() {
-    if (isClosed) return;
-    emit(
-      state.copyWith(status: HomeConnectionStatus.restartRequired, attempt: 0),
     );
   }
 

@@ -191,15 +191,9 @@ class _HomeBootHarness {
       connect: () => attempt.run(activeProfileId),
       cancelRetry: () => coordinator.userDisconnect(activeProfileId),
       resumeRetry: () async {
-        // Mirrors app_shell's 「继续重试」: clear the spent window, open the
-        // storage plane, and re-arm the loop if the manual connect fails.
-        coordinator.resetReconnectAttempts(activeProfileId);
-        try {
-          await coordinator.userConnect(_profileFor(activeProfileId)!);
-        } on Object {
-          coordinator.restartReconnect(activeProfileId);
-          rethrow;
-        }
+        // Mirrors app_shell's 「继续重试」: the coordinator is the single retry
+        // driver; no competing bounded `connectOnce` runs here.
+        coordinator.resumeRetries(activeProfileId);
       },
       onConnected: () {
         unawaited(remoteBoot.trigger());
@@ -213,12 +207,6 @@ class _HomeBootHarness {
   /// The home id the shell currently targets. Mirrors app_shell's mutable
   /// `activeHomeProfileId` (boot snapshot until a switch updates it).
   String activeProfileId = _profile.id;
-
-  static SshProfile? _profileFor(String id) => switch (id) {
-    'home' => _profile,
-    'home2' => _replacementProfile,
-    _ => null,
-  };
 
   final _SwitchableProbe probe;
   final RuntimeContext cachedContext = _ctx(fromCache: true);
@@ -291,11 +279,17 @@ void main() {
     harness.probe.reachable = true;
 
     await harness.cubit.retryNow();
+    // `retryNow` hands off to the coordinator; the reconnect completes async.
+    await waitUntil(
+      () => harness.cubit.state.status == HomeConnectionStatus.connected,
+    );
     await harness.remoteBoot.last;
 
     expect(harness.cubit.state.status, HomeConnectionStatus.connected);
     expect(harness.cubit.state.attempt, 0);
-    expect(harness.resolveCalls, 1);
+    // The coordinator is the single retry driver: `retryNow` hands off and
+    // does not run a second bounded `attempt.run` of its own.
+    expect(harness.resolveCalls, 0);
     // One real unreachable → connected transition drives one hot recovery.
     expect(harness.remoteBoot.runs, 1);
   });
@@ -361,6 +355,9 @@ void main() {
       expect(harness.cubit.state.profileId, _replacementProfile.id);
 
       await harness.cubit.retryNow();
+      await waitUntil(
+        () => harness.cubit.state.status == HomeConnectionStatus.connected,
+      );
       await harness.remoteBoot.last;
 
       // The gate can now leave the connection page: the cubit is connected and
@@ -541,10 +538,11 @@ void main() {
       );
       expect(
         src,
-        contains('markRestartRequired()'),
+        contains('markUnreachable(failure)'),
         reason:
             'when the plane cannot be rebound the gate must stay on the '
-            'connection page instead of operating on local storage',
+            'connection page with an actionable error instead of operating on '
+            'local storage or asking for a restart',
       );
     });
 

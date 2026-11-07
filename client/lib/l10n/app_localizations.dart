@@ -18570,6 +18570,12 @@ abstract class AppLocalizations {
   /// **'Authentication failed'**
   String get homeConnectionErrorAuth;
 
+  /// No description provided for @homeConnectionErrorHostKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Host identity changed — re-pair or confirm the new key'**
+  String get homeConnectionErrorHostKey;
+
   /// No description provided for @homeConnectionErrorTransport.
   ///
   /// In en, this message translates to:
@@ -18581,12 +18587,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unknown error'**
   String get homeConnectionErrorUnknown;
-
-  /// No description provided for @homeConnectionRestartRequired.
-  ///
-  /// In en, this message translates to:
-  /// **'Connected — restart the app to switch this home\'s storage'**
-  String get homeConnectionRestartRequired;
 }
 
 class _AppLocalizationsDelegate

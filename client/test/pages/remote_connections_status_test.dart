@@ -9,6 +9,7 @@ import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/remote_connections_page.dart';
+import 'package:teampilot/pages/remote_targets_page.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
@@ -107,7 +108,9 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         locale: const Locale('en'),
         theme: theme,
-        home: TpTheme(
+        // Wrap every route (including pushed ones) so the targets page reached
+        // through 「切换连接」 also sees the theme and the cubits.
+        builder: (context, child) => TpTheme(
           data: TpThemeData.fromColorScheme(
             theme.colorScheme,
             scale: 1.0,
@@ -120,9 +123,10 @@ void main() {
               if (homeCubit != null)
                 BlocProvider<HomeConnectionCubit>.value(value: homeCubit),
             ],
-            child: RemoteConnectionsPage(embedded: embedded),
+            child: child ?? const SizedBox.shrink(),
           ),
         ),
+        home: RemoteConnectionsPage(embedded: embedded),
       ),
     );
     await tester.pumpAndSettle();
@@ -147,7 +151,23 @@ void main() {
     expect(find.text(l10n.homeConnectionRetryNow), findsOneWidget);
     expect(find.text(l10n.homeConnectionSwitch), findsOneWidget);
     expect(find.text(l10n.homeConnectionCancelRetry), findsNothing);
-    expect(find.text(l10n.sshProfilesEmpty), findsOneWidget);
+    // The target list now lives on its own page; the status view shows the
+    // card alone.
+    expect(find.text(l10n.sshProfilesEmpty), findsNothing);
+  });
+
+  testWidgets('switch connection opens the targets page', (tester) async {
+    final homeCubit = buildHomeCubit();
+    addTearDown(homeCubit.close);
+    homeCubit.markInitial(
+      const HomeConnectResult.unreachable(HomeErrorKind.tcpUnreachable),
+    );
+
+    await pumpPage(tester, homeCubit: homeCubit);
+    await tester.tap(find.text(l10n.homeConnectionSwitch));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RemoteTargetsPage), findsOneWidget);
   });
 
   testWidgets('reconnecting shows attempt count and cancel calls cancelRetry', (
@@ -162,6 +182,8 @@ void main() {
 
     expect(find.text(l10n.homeConnectionRetrying(3)), findsOneWidget);
     expect(find.text(l10n.homeConnectionCancelRetry), findsOneWidget);
+    // While auto-retrying, only the stop action is offered — never both.
+    expect(find.text(l10n.homeConnectionRetryNow), findsNothing);
 
     await tester.tap(find.text(l10n.homeConnectionCancelRetry));
     await tester.pump();
@@ -172,18 +194,16 @@ void main() {
     expect(find.text(l10n.homeConnectionRetryNow), findsOneWidget);
   });
 
-  testWidgets('restart required shows the restart hint and no retry action', (
-    tester,
-  ) async {
+  testWidgets('host identity change shows the re-pair hint', (tester) async {
     final homeCubit = buildHomeCubit();
     addTearDown(homeCubit.close);
-    homeCubit.markRestartRequired();
+    homeCubit.markUnreachable(HomeErrorKind.hostIdentityChanged);
 
     await pumpPage(tester, homeCubit: homeCubit);
 
-    expect(find.text(l10n.homeConnectionRestartRequired), findsOneWidget);
+    expect(find.text(l10n.homeConnectionErrorHostKey), findsOneWidget);
     expect(find.text(l10n.homeConnectionSwitch), findsOneWidget);
-    expect(find.text(l10n.homeConnectionRetryNow), findsNothing);
+    expect(find.text(l10n.homeConnectionRetryNow), findsOneWidget);
     expect(find.text(l10n.homeConnectionCancelRetry), findsNothing);
   });
 

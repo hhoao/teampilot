@@ -345,6 +345,7 @@ import '../services/ssh/mcp/session_ssh_mcp_http.dart';
 import '../services/ssh/mcp/session_ssh_mcp_operations.dart';
 import '../services/ssh/mcp/session_ssh_mcp_resolver.dart';
 import '../services/ssh/ssh_transport_close.dart';
+import '../services/ssh/ssh_connection_failure.dart';
 import '../services/ssh/android_ssh_connect_home.dart';
 import '../services/ssh/remote_target_sync.dart';
 import '../services/terminal/terminal_transport_factory.dart';
@@ -3022,6 +3023,23 @@ Future<AppShell> buildAppShell({
           cubit.markReconnected();
         }
       },
+      onNonRetryableClose: (profileId, error) {
+        // A changed host identity / bad credentials stopped the loop for good:
+        // name the actual cause so the user knows to re-pair or fix credentials
+        // rather than retrying (or restarting) in vain.
+        final cubit = homeConnectionCubit;
+        if (cubit != null &&
+            !cubit.isClosed &&
+            profileId == activeHomeProfileId) {
+          cubit.markUnreachable(
+            isSshHostKeyFailure(error)
+                ? HomeErrorKind.hostIdentityChanged
+                : isSshAuthFailure(error)
+                    ? HomeErrorKind.authFailed
+                    : HomeErrorKind.transportError,
+          );
+        }
+      },
       persistRetry: (profileId) {
         final cubit = homeConnectionCubit;
         // Track the CURRENT home: after a home switch the abandoned profile
@@ -3365,13 +3383,12 @@ Future<AppShell> buildAppShell({
         defaultTargetResolver().kind == RuntimeKind.ssh &&
         homeStorage.context.mode != StorageBackendMode.ssh;
 
-    bool hasLiveSshHomeContext() =>
-        runtimeContextRegistry.home().mode == StorageBackendMode.ssh;
-
-    /// Publishes the live SSH home plane after recovery. Returns false when the
-    /// swap failed (or still left a non-SSH plane): the gate must then stay on
-    /// the connection page instead of letting the user write to the local root.
-    Future<bool> rebindHomeStoragePlane() async {
+    /// Publishes the live SSH home plane after recovery. `reinstallStorageContext`
+    /// re-resolves the target with the transport now live, so a successful swap
+    /// means the whole app object graph can keep running on the SSH plane — no
+    /// restart needed. Returns null on success, or the error kind to surface on
+    /// the connection page when the swap failed (or still left a native plane).
+    Future<HomeErrorKind?> rebindHomeStoragePlane() async {
       try {
         await homeInvalidationService.runSelfInitiatedSwap(
           reinstallStorageContext,
@@ -3382,9 +3399,15 @@ Future<AppShell> buildAppShell({
           error: error,
           stackTrace: stackTrace,
         );
-        return false;
+        return isSshHostKeyFailure(error)
+            ? HomeErrorKind.hostIdentityChanged
+            : isSshAuthFailure(error)
+                ? HomeErrorKind.authFailed
+                : HomeErrorKind.transportError;
       }
-      return homeStorage.context.mode == StorageBackendMode.ssh;
+      return homeStorage.context.mode == StorageBackendMode.ssh
+          ? null
+          : HomeErrorKind.transportError;
     }
 
     /// Warm the shell-hosted config + auxiliary data and resolve onboarding.
@@ -3588,21 +3611,10 @@ Future<AppShell> buildAppShell({
       resumeRetry: () async {
         final id = activeHomeProfileId;
         if (id == null) return;
-        final profile = sshProfileById(id);
-        if (profile == null) return;
-        // 「继续重试」 starts a fresh window: drop the spent attempt budget and
-        // any timer left from the loop that was cancelled or gave up.
-        sshProfileConnectionCoordinator.resetReconnectAttempts(id);
-        try {
-          await sshProfileConnectionCoordinator.userConnect(profile);
-        } on Object {
-          // A connect that never opened a transport emits no close event, so
-          // nothing else would restart the loop. The cubit surfaces the
-          // failure from `connectOnce`; the coordinator keeps retrying behind
-          // the connection page.
-          sshProfileConnectionCoordinator.restartReconnect(id);
-          rethrow;
-        }
+        // Single retry driver: hand off to the coordinator instead of opening
+        // storage here (that ran in parallel with the coordinator's own attempt
+        // and produced `Duplicate SSH worker request id`).
+        sshProfileConnectionCoordinator.resumeRetries(id);
       },
       // Hot recovery: make sure recovery landed on the SSH home plane, run the
       // deferred remote boot once, then let the SSH liveness/team-generation
@@ -3613,20 +3625,17 @@ Future<AppShell> buildAppShell({
         final cubit = homeConnectionCubit;
         final needsPlaneRebind = homeRecoveredOntoNativeFallback();
         if (needsPlaneRebind) {
-          // No live SSH context to publish: never open the gate on the local
-          // fallback plane. Keep the connection page with a clear restart hint.
-          if (!hasLiveSshHomeContext()) {
-            cubit?.markRestartRequired();
-            return;
-          }
-          // Hold the gate on the connection page while the plane swap runs.
+          // Hold the gate while the boot-time native fallback plane is swapped
+          // onto the live SSH home. The swap re-resolves the target with the
+          // transport now up, so it normally succeeds and needs no restart.
           cubit?.markPlaneRebinding();
         }
         unawaited(() async {
           try {
             if (needsPlaneRebind) {
-              if (!await rebindHomeStoragePlane()) {
-                cubit?.markRestartRequired();
+              final failure = await rebindHomeStoragePlane();
+              if (failure != null) {
+                cubit?.markUnreachable(failure);
                 return;
               }
               cubit?.markPlaneReady();

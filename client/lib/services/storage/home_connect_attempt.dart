@@ -9,6 +9,10 @@ enum HomeErrorKind {
   tcpUnreachable,
   sshTimeout,
   authFailed,
+
+  /// The host key / identity no longer matches the one this profile trusts.
+  /// Needs a deliberate re-pair or key confirmation, not a retry.
+  hostIdentityChanged,
   transportError,
   unknown,
 }
@@ -90,9 +94,11 @@ class HomeConnectAttempt {
       );
     } on Object catch (error) {
       return HomeConnectResult.unreachable(
-        isSshAuthFailure(error)
-            ? HomeErrorKind.authFailed
-            : HomeErrorKind.transportError,
+        isSshHostKeyFailure(error)
+            ? HomeErrorKind.hostIdentityChanged
+            : isSshAuthFailure(error)
+                ? HomeErrorKind.authFailed
+                : HomeErrorKind.transportError,
         context: await _cachedContext(),
       );
     }

@@ -60,6 +60,22 @@ void main() {
       expect(d.scheduleStorageReconnect, isTrue);
     });
 
+    test('permanent host identity / auth failures skip auto-reconnect', () {
+      for (final reason in [
+        SshTransportCloseReason.hostIdentityChanged,
+        SshTransportCloseReason.authFailed,
+      ]) {
+        final d = SshTransportClosePolicy.evaluate(
+          SshTransportClosed(reason: reason, plane: SshTransportPlane.storage),
+        );
+        expect(d.affectsDurableHome, isTrue, reason: reason.name);
+        expect(d.emitDisconnectNotification, isTrue, reason: reason.name);
+        // Retrying a changed host key / bad credentials only re-triggers the
+        // same close, so the loop must stop for good.
+        expect(d.scheduleStorageReconnect, isFalse, reason: reason.name);
+      }
+    });
+
     test(
       'expected local storage closes mark durable home but skip auto-reconnect',
       () {
