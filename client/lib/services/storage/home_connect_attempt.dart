@@ -33,7 +33,7 @@ class HomeConnectAttempt {
   HomeConnectAttempt({
     required TcpReachabilityProbe probe,
     required Future<RuntimeContext> Function() resolve,
-    Future<RuntimeContext> Function()? cacheContext,
+    Future<RuntimeContext?> Function()? cacheContext,
     required SshProfile? Function(String profileId) profileById,
     this.tcpTimeout = const Duration(seconds: 2),
     this.connectBudget = const Duration(seconds: 8),
@@ -46,9 +46,10 @@ class HomeConnectAttempt {
   final Future<RuntimeContext> Function() _resolve;
 
   /// Builds a context from persisted `lastHome`/`lastAppDataRoot` without any
-  /// network I/O. Optional so callers that lack cached paths can still report
-  /// unreachable; such results then carry no [HomeConnectResult.context].
-  final Future<RuntimeContext> Function()? _cacheContext;
+  /// network I/O, or `null` when nothing usable is cached yet. Optional so
+  /// callers that lack cached paths can still report unreachable; such results
+  /// then carry no [HomeConnectResult.context].
+  final Future<RuntimeContext?> Function()? _cacheContext;
   final SshProfile? Function(String profileId) _profileById;
   final Duration tcpTimeout;
   final Duration connectBudget;
@@ -97,6 +98,10 @@ class HomeConnectAttempt {
   Future<RuntimeContext?> _cachedContext() async {
     final cacheContext = _cacheContext;
     if (cacheContext == null) return null;
-    return cacheContext();
+    try {
+      return await cacheContext();
+    } on Object {
+      return null;
+    }
   }
 }

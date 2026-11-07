@@ -64,6 +64,33 @@ void main() {
     expect(resolved, 0);
   });
 
+  test('cache context is carried on tcp unreachable', () async {
+    final cached = _ctx(fromCache: true);
+    final attempt = HomeConnectAttempt(
+      probe: _FakeProbe(false),
+      resolve: () async => _ctx(fromCache: false),
+      cacheContext: () async => cached,
+      profileById: (_) => _profile(),
+    );
+    final result = await attempt.run('p1');
+    expect(result.reachable, isFalse);
+    expect(result.errorKind, HomeErrorKind.tcpUnreachable);
+    expect(result.context, same(cached));
+  });
+
+  test('throwing cache context yields unreachable without context', () async {
+    final attempt = HomeConnectAttempt(
+      probe: _FakeProbe(false),
+      resolve: () async => _ctx(fromCache: false),
+      cacheContext: () async => throw StateError('no cached paths'),
+      profileById: (_) => _profile(),
+    );
+    final result = await attempt.run('p1');
+    expect(result.reachable, isFalse);
+    expect(result.errorKind, HomeErrorKind.tcpUnreachable);
+    expect(result.context, isNull);
+  });
+
   test(
     'reachable + cached fallback reports unreachable transportError',
     () async {
