@@ -199,9 +199,11 @@ import '../services/storage/device_local_control_plane.dart';
 import '../services/storage/remote_target_migration.dart';
 import '../services/vault/credential_capture.dart';
 import '../services/vault/encrypted_vault_backend.dart';
+import '../services/vault/home_vault_service.dart';
 import '../services/vault/vault_access.dart';
 import '../services/vault/keychain_vault_backend.dart';
 import '../services/vault/legacy_import.dart';
+import '../services/vault/vault_split_migration.dart';
 import '../models/vault_reference.dart';
 import '../services/vault/provider_credential_link.dart';
 import '../services/vault/vault_reference_indexer.dart';
@@ -830,12 +832,18 @@ Future<AppShell> buildAppShell({
   final sshCredentialStore = const SecureSshCredentialStore(
     FlutterSecureKeyValueStore(),
   );
+  // Business credentials live on the current home plane (the remote host);
+  // SSH login credentials stay on the device vault so reconnection works while
+  // the host is down. The scope is assigned once `homeStorage` exists below;
+  // the resolver keeps routing correct across home-plane swaps.
+  HomeVaultScope? homeVaultScope;
   final vaultService = VaultService(
     keychainBackend: KeychainVaultBackend(const FlutterSecureKeyValueStore()),
     encryptedBackend: EncryptedVaultBackend(
       repository: deviceLocalVaultRepository(nativeAppDataPath),
     ),
     masterKeyStore: const FlutterSecureKeyValueStore(),
+    homeVault: () => homeVaultScope?.service,
   );
   final vaultAccess = VaultAccess(vaultService);
   try {
@@ -1227,6 +1235,22 @@ Future<AppShell> buildAppShell({
     '(${homeStorage.context.mode}, home=${homeTarget.id}, '
     'root=${homeStorage.appDataRoot})',
   );
+
+  // Home-plane business vault. SSH login credentials remain in the device
+  // vault; everything else is written to / read from <home>/vault/.
+  homeVaultScope = HomeVaultScope(
+    storage: homeStorage,
+    keyStore: const FlutterSecureKeyValueStore(),
+  );
+  await homeVaultScope!.prepare();
+  if (homeStorage.fs.isRemote) {
+    unawaited(
+      migrateBusinessVaultEntries(
+        device: vaultService,
+        home: homeVaultScope!.service,
+      ),
+    );
+  }
 
   vaultCubit = VaultCubit(
     service: vaultService,

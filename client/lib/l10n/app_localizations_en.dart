@@ -10469,4 +10469,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get remoteConnectionsSubtitle =>
       'Manage saved hosts, connect, and switch your work home. Available even while offline.';
+
+  @override
+  String get vaultHomeOfflineHint =>
+      'Not connected to the remote host. Business credentials stored there are unavailable until it reconnects.';
 }

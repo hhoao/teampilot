@@ -5,24 +5,39 @@ import '../../models/vault_document.dart';
 import '../../models/vault_entry.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../utils/logging/logger.dart';
+import 'credential_backend.dart';
 import 'encrypted_vault_backend.dart';
-import 'keychain_vault_backend.dart';
 import 'vault_errors.dart';
 
 class VaultDocumentStore {
   VaultDocumentStore({
-    required KeychainVaultBackend keychainBackend,
+    required CredentialBackend keychainBackend,
     required EncryptedVaultBackend encryptedBackend,
     SecureKeyValueStore? masterKeyStore,
+    VaultDocumentStore? Function()? homeVault,
   }) : _keychainBackend = keychainBackend,
        _encryptedBackend = encryptedBackend,
-       _masterKeyStore = masterKeyStore;
+       _masterKeyStore = masterKeyStore,
+       _homeVault = homeVault;
 
   static const _masterKey = 'teampilot.vault.v1.master';
 
-  final KeychainVaultBackend _keychainBackend;
+  final CredentialBackend _keychainBackend;
   final EncryptedVaultBackend _encryptedBackend;
   final SecureKeyValueStore? _masterKeyStore;
+
+  /// Resolves the current home-plane business vault. SSH login credentials
+  /// stay on this (device) vault; business credentials are routed to the home
+  /// plane so they follow the remote host. A resolver (not a fixed instance)
+  /// keeps routing correct across home-plane swaps.
+  final VaultDocumentStore? Function()? _homeVault;
+
+  /// SSH login credentials must stay on the device so a dropped home plane
+  /// can still be reconnected. Everything else belongs to the home plane.
+  static bool _isDeviceOnly(VaultEntry entry) =>
+      entry.extra['ownerKind'] == 'sshProfile' ||
+      entry.type == VaultEntryType.sshPassword ||
+      entry.type == VaultEntryType.sshPrivateKey;
 
   VaultDocument? _document;
   Map<String, VaultEntry> _index = const {};
@@ -37,6 +52,26 @@ class VaultDocumentStore {
   bool get isLocked => _locked;
 
   bool get isUnlocked => !_locked;
+
+  VaultDocumentStore? get _home => _homeVault?.call();
+
+  /// Applies a home-plane operation without ever breaking device-vault use:
+  /// a dropped transport is logged and swallowed so SSH login credentials
+  /// remain usable for reconnection.
+  Future<T?> _onHome<T>(Future<T> Function(VaultDocumentStore home) action) async {
+    final home = _home;
+    if (home == null || identical(home, this)) return null;
+    try {
+      return await action(home);
+    } on Object catch (error, stackTrace) {
+      AppLogger.instance.w(
+        '[vault] home-plane operation failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
 
   /// `0` until the one-shot legacy import has completed.
   int get legacyImportVersion => _requireDocument().legacyImportVersion;
@@ -88,6 +123,7 @@ class VaultDocumentStore {
     _locked = false;
     _setDocument(await _keychainBackend.load());
     _initialized = true;
+    await _onHome((home) => home.initialize());
   }
 
   /// Unlocks silently with the remembered master password when available.
@@ -106,6 +142,16 @@ class VaultDocumentStore {
     }
   }
 
+  /// Unlocks the home plane with the same master password (best effort): a
+  /// remote business vault uses the same remembered passphrase, and an
+  /// unreachable host must not block the device vault.
+  Future<void> unlockHome(String passphrase) async {
+    await _onHome((home) async {
+      await home.initialize();
+      if (home.isLocked) await home.unlock(passphrase, remember: false);
+    });
+  }
+
   /// Verifies a password entered for an explicit reveal.
   Future<bool> verifyMasterPassphrase(String passphrase) async {
     final expected = _masterPassphrase ?? await _readRememberedPassphrase();
@@ -120,6 +166,7 @@ class VaultDocumentStore {
     _locked = false;
     _masterPassphrase = passphrase;
     if (remember) await _writeRememberedPassphrase(passphrase);
+    await unlockHome(passphrase);
   }
 
   Future<void> lock() async {
@@ -132,6 +179,7 @@ class VaultDocumentStore {
     // read prompts instead of silently re-unlocking. Await the delete so a
     // quick unlock cannot race it and re-arm auto-unlock.
     await _deleteRememberedPassphrase();
+    await _onHome((home) => home.lock());
   }
 
   Future<List<VaultEntry>> list({
@@ -139,9 +187,22 @@ class VaultDocumentStore {
     VaultEntryType? type,
     Set<String> tags = const {},
   }) async {
-    final document = _requireDocument();
+    // Merge the device vault (SSH login credentials + pre-split business
+    // entries) with the home-plane business vault. The home copy wins on id
+    // collisions, so a one-shot migration can copy without deleting.
+    final merged = <String, VaultEntry>{
+      for (final entry in _requireDocument().entries) entry.id: entry,
+    };
+    final homeEntries = await _onHome(
+      (home) => home.list(query: query, type: type, tags: tags),
+    );
+    if (homeEntries != null) {
+      for (final entry in homeEntries) {
+        merged[entry.id] = entry;
+      }
+    }
     final needle = query.trim().toLowerCase();
-    final matches = document.entries.where((entry) {
+    final matches = merged.values.where((entry) {
       if (type != null && entry.type != type) return false;
       if (tags.isNotEmpty && !tags.every(entry.tags.contains)) return false;
       if (needle.isEmpty) return true;
@@ -162,10 +223,37 @@ class VaultDocumentStore {
 
   Future<VaultEntry?> get(String id) async {
     _requireDocument();
-    return _index[id];
+    final local = _index[id];
+    if (local != null) return local;
+    final home = _home;
+    if (home == null || identical(home, this)) return null;
+    try {
+      return await home.get(id);
+    } on Object catch (error, stackTrace) {
+      AppLogger.instance.w(
+        '[vault] home-plane read failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
   }
 
-  Future<void> upsert(VaultEntry entry) {
+  Future<void> upsert(VaultEntry entry) async {
+    final home = _home;
+    if (!_isDeviceOnly(entry) && home != null && !identical(home, this)) {
+      try {
+        await home.upsert(entry);
+        return;
+      } on Object catch (error, stackTrace) {
+        AppLogger.instance.w(
+          '[vault] business entry write to home plane failed: $error',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        // Fall through: never lose a credential because the host is down.
+      }
+    }
     return _mutate((document) {
       final now = DateTime.now().millisecondsSinceEpoch;
       final normalized = entry.copyWith(
@@ -183,7 +271,10 @@ class VaultDocumentStore {
     });
   }
 
-  Future<void> delete(String id) {
+  Future<void> delete(String id) async {
+    // Drop from both planes: business entries live on home, SSH creds on the
+    // device, and legacy pre-split copies may still exist on the device.
+    await _onHome((home) => home.delete(id));
     return _mutate(
       (document) => document.copyWith(
         entries: [
@@ -208,6 +299,13 @@ class VaultDocumentStore {
   /// already committed.
   Future<bool> verifyFields(String entryId, Map<String, String> fields) async {
     if (_locked) return false;
+    // A business entry was written to the home plane; verify there.
+    if (_index[entryId] == null) {
+      final verified = await _onHome(
+        (home) => home.verifyFields(entryId, fields),
+      );
+      if (verified != null) return verified;
+    }
     VaultDocument? source;
     if (_encrypted) {
       source = _document;
@@ -245,6 +343,10 @@ class VaultDocumentStore {
     _masterPassphrase = passphrase;
     AppLogger.instance.i('[vault] enable: remembering master');
     await _writeRememberedPassphrase(passphrase);
+    await _onHome((home) async {
+      await home.initialize();
+      if (!home.isEncrypted) await home.enableEncryptedBackend(passphrase);
+    });
     AppLogger.instance.i('[vault] enable: done');
   }
 
@@ -262,6 +364,9 @@ class VaultDocumentStore {
     _locked = false;
     _masterPassphrase = null;
     await _deleteRememberedPassphrase();
+    await _onHome((home) async {
+      if (home.isEncrypted) await home.disableEncryptedBackend();
+    });
   }
 
   Future<String?> _readRememberedPassphrase() async {

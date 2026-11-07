@@ -18605,6 +18605,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Manage saved hosts, connect, and switch your work home. Available even while offline.'**
   String get remoteConnectionsSubtitle;
+
+  /// No description provided for @vaultHomeOfflineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected to the remote host. Business credentials stored there are unavailable until it reconnects.'**
+  String get vaultHomeOfflineHint;
 }
 
 class _AppLocalizationsDelegate

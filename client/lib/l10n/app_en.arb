@@ -5277,5 +5277,6 @@
   "homeConnectionErrorTransport": "Connection error",
   "homeConnectionErrorUnknown": "Unknown error",
   "remoteConnectionsTitle": "Remote connections",
-  "remoteConnectionsSubtitle": "Manage saved hosts, connect, and switch your work home. Available even while offline."
+  "remoteConnectionsSubtitle": "Manage saved hosts, connect, and switch your work home. Available even while offline.",
+  "vaultHomeOfflineHint": "Not connected to the remote host. Business credentials stored there are unavailable until it reconnects."
 }

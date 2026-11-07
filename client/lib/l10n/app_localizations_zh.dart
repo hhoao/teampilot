@@ -10028,4 +10028,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get remoteConnectionsSubtitle => '管理已保存的主机、连接与切换工作主目录；断线时同样可用。';
+
+  @override
+  String get vaultHomeOfflineHint => '未连接远程主机，保存在该主机上的业务凭据暂时不可用，重连后即可查看。';
 }
