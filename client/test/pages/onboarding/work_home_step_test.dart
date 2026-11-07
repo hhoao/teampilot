@@ -17,6 +17,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/pages/onboarding/steps/work_home_step.dart';
+import 'package:teampilot/pages/remote_connections_page.dart';
 import 'package:teampilot/pages/ssh_profiles_page.dart';
 import 'package:teampilot/pages/termux/termux_setup_page.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
@@ -489,7 +490,7 @@ void main() {
 
     await tester.tap(find.text('Remote · SSH'));
     await tester.pumpAndSettle();
-    expect(find.byType(SshProfilesPage), findsOneWidget);
+    expect(find.byType(RemoteConnectionsPage), findsOneWidget);
     expect(boundCalls, 0);
 
     // Simulate production Connect: home bind + selectProfile emit (prefs may
@@ -524,7 +525,7 @@ void main() {
     await tester.tap(find.text('Remote · SSH'));
     await tester.pumpAndSettle();
 
-    final ctx = tester.element(find.byType(SshProfilesPage));
+    final ctx = tester.element(find.byType(RemoteConnectionsPage));
     // ignore: unawaited_futures — completes when setup route pops
     openSshProfileEditor(ctx, useFullPageEditor: true);
     await tester.pump();

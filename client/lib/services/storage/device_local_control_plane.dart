@@ -1,4 +1,5 @@
 import '../../models/runtime_target.dart';
+import '../../repositories/remote_target_repository.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../../repositories/vault_repository.dart';
 import '../cli/remote_cli_path_cache.dart';
@@ -24,6 +25,7 @@ SshProfileRepository deviceLocalSshProfileRepository(String nativeAppDataPath) {
     pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
   );
   return SshProfileRepository(
+    targetRepo: RemoteTargetRepository(rootDir: nativeAppDataPath, fs: fs),
     rootDir: paths.sshProfilesDir,
     fs: fs,
     storage: HomeStorage(
@@ -37,6 +39,20 @@ SshProfileRepository deviceLocalSshProfileRepository(String nativeAppDataPath) {
       ),
     ),
   );
+}
+
+/// Device-local `remote-targets.json` catalog, pinned to [nativeAppDataPath].
+///
+/// Shares the control-plane pin with [deviceLocalSshProfileRepository] so boot
+/// migration and the SSH profile facade read/write the same on-device catalog
+/// even when the app-scoped home is rebound onto a remote host.
+RemoteTargetRepository deviceLocalRemoteTargetRepository(
+  String nativeAppDataPath,
+) {
+  final fs = LocalFilesystem(
+    pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
+  );
+  return RemoteTargetRepository(rootDir: nativeAppDataPath, fs: fs);
 }
 
 /// Device-local `targets.json` (same control-plane pin as SSH profiles).

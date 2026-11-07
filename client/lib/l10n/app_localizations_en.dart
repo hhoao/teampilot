@@ -2396,6 +2396,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sshProfilesSettingsTitle => 'SSH servers';
 
   @override
+  String get sshServersTitle => 'SSH servers';
+
+  @override
+  String get sshServersNotConnected => 'Not connected to a remote host.';
+
+  @override
+  String get sshServersLoadError =>
+      'Could not load the SSH servers. Check the connection and try again.';
+
+  @override
   String get sshProfilesPageTitle => 'SSH remote hosts';
 
   @override

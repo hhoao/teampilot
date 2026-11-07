@@ -2286,6 +2286,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sshProfilesSettingsTitle => 'SSH 服务器';
 
   @override
+  String get sshServersTitle => 'SSH 服务器';
+
+  @override
+  String get sshServersNotConnected => '未连接远程主机。';
+
+  @override
+  String get sshServersLoadError => '无法加载 SSH 服务器，请检查连接后重试。';
+
+  @override
   String get sshProfilesPageTitle => 'SSH 远程主机';
 
   @override

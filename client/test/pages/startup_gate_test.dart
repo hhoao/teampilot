@@ -16,6 +16,7 @@ import 'package:teampilot/cubits/termux_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/pages/remote_connections_page.dart';
 import 'package:teampilot/pages/ssh_profiles_page.dart';
 import 'package:teampilot/pages/startup_gate.dart';
 import 'package:teampilot/pages/termux/work_environment_chooser_page.dart';
@@ -363,7 +364,7 @@ void main() {
   testWidgets('full-page editor push/pop returns to list', (tester) async {
     await pumpGatedEmptyList(tester);
 
-    final ctx = tester.element(find.byType(SshProfilesPage));
+    final ctx = tester.element(find.byType(RemoteConnectionsPage));
     // Do not await: push completes only after the route is popped.
     final editor = openSshProfileEditor(ctx, useFullPageEditor: true);
     await tester.pumpAndSettle();
@@ -408,7 +409,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(l10n.sshProfilesEmpty), findsOneWidget);
 
-    final ctx = tester.element(find.byType(SshProfilesPage));
+    final ctx = tester.element(find.byType(RemoteConnectionsPage));
     // ignore: unawaited_futures — completes when setup route pops
     openSshProfileEditor(ctx, useFullPageEditor: true);
     await tester.pump();
@@ -438,7 +439,7 @@ void main() {
 
     expect(find.text('APP_CHILD'), findsNothing);
     expect(profileCubit.state.hasProfiles, isTrue);
-    expect(find.byType(SshProfilesPage), findsOneWidget);
+    expect(find.byType(RemoteConnectionsPage), findsOneWidget);
   });
 
   testWidgets('after home becomes ssh:*, rebuilding gate shows child', (

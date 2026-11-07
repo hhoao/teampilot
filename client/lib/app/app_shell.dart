@@ -184,6 +184,7 @@ import '../repositories/skill_repository.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
+import '../repositories/ssh_server_profile_repository.dart';
 import '../repositories/extension_repository.dart';
 import '../repositories/workspace_project_config_repository.dart';
 import '../repositories/managed_provider_repository.dart';
@@ -194,6 +195,7 @@ import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
 import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
+import '../services/storage/remote_target_migration.dart';
 import '../services/vault/credential_capture.dart';
 import '../services/vault/encrypted_vault_backend.dart';
 import '../services/vault/vault_access.dart';
@@ -340,6 +342,7 @@ import '../services/ssh/mcp/session_ssh_mcp_operations.dart';
 import '../services/ssh/mcp/session_ssh_mcp_resolver.dart';
 import '../services/ssh/ssh_transport_close.dart';
 import '../services/ssh/android_ssh_connect_home.dart';
+import '../services/ssh/remote_target_sync.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../services/file_tree/workspace_file_tree_store.dart';
 import '../services/git/git_command_runner.dart';
@@ -909,6 +912,25 @@ Future<AppShell> buildAppShell({
   // follow the home context (Android Connect rebinds home onto SSH and would
   // otherwise reload an empty remote catalog → disconnect → gate again).
   final sshProfileRepo = deviceLocalSshProfileRepository(nativeAppDataPath);
+  // One-shot move of legacy `ssh_profiles/profiles.json` into the device-local
+  // remote-target catalog. Must finish before SshProfileCubit's first load()
+  // so the facade sees migrated targets on first render. This is a convenience
+  // migration: it must never gate startup. The marker is written only on
+  // success, so a failed attempt retries on the next launch.
+  try {
+    await migrateSshProfiles(
+      nativeAppDataPath: nativeAppDataPath,
+      localFs: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
+      ),
+      targetRepo: deviceLocalRemoteTargetRepository(nativeAppDataPath),
+    );
+  } on Object {
+    // Content-free: never the caught error, no file bytes, no rethrow.
+    appLogger.w(
+      '[boot] ssh profile migration failed; continuing with current targets',
+    );
+  }
   Future<Map<CliTool, String>> locateRemoteClis(SshProfile profile) async {
     try {
       await sshClientFactory.ensureStorageConnected(profile);
@@ -2910,6 +2932,10 @@ Future<AppShell> buildAppShell({
           pairedRelayTunnels.ensureSshTunnel(profile),
     );
 
+    final remoteTargetSync = RemoteTargetSync(
+      targets: sshProfileRepo.targetRepo,
+      servers: SshServerProfileRepository(storage: homeStorage),
+    );
     final sshConnectionCubit = SshConnectionCubit(
       factory: sshClientFactory,
       coordinator: sshProfileConnectionCoordinator,
@@ -2922,6 +2948,7 @@ Future<AppShell> buildAppShell({
           : null,
       pairedConnectAttempt: pairedConnectAttempt,
       relayTunnels: pairedRelayTunnels,
+      sync: remoteTargetSync,
     );
 
     TeamProfile? teamById(String teamId) =>

@@ -7,7 +7,6 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/vault_cubit.dart';
 import '../../l10n/app_localizations.dart';
 import 'vault_entry_detail.dart';
-import 'vault_entry_editor.dart';
 import 'vault_entry_list.dart';
 import 'vault_status_section.dart';
 
@@ -76,13 +75,8 @@ class _VaultPageBodyState extends State<VaultPageBody> {
                             onChanged: _onQueryChanged,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        FilledButton.icon(
-                          onPressed: () => showVaultEntryEditor(context),
-                          icon: const Icon(Icons.add),
-                          label: Text(l10n.vaultNewEntry),
-                        ),
                       ],
+                    ),
                     ),
                   if (state.errorMessage != null) ...[
                     const SizedBox(height: 12),

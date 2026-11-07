@@ -2,36 +2,123 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../cubits/ssh_profile_cubit.dart';
-import '../models/ssh_profile.dart';
-import '../repositories/ssh_credential_store.dart';
-import '../repositories/ssh_profile_repository.dart';
-import '../services/vault/vault_service.dart';
-import '../services/ssh/ssh_profile_connection_tester.dart';
-import '../services/terminal/terminal_transport_factory.dart';
-import 'ssh_profile_setup_page.dart';
-import 'ssh_profiles/ssh_profile_form_dialog.dart';
-import 'ssh_profiles/ssh_profiles_section.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-/// Full-page host for SSH profile management.
-class SshProfilesPage extends StatelessWidget {
-  const SshProfilesPage({super.key, this.embedded = false});
+import '../cubits/ssh_connection_cubit.dart';
+import '../cubits/ssh_profile_cubit.dart';
+import '../cubits/ssh_server_config_cubit.dart';
+import '../l10n/l10n_extensions.dart';
+import '../models/ssh_profile.dart';
+import '../models/ssh_server_profile.dart';
+import '../repositories/ssh_credential_store.dart';
+import '../repositories/ssh_profile_repository.dart';
+import '../repositories/ssh_server_profile_repository.dart';
+import '../services/ssh/ssh_profile_connection_tester.dart';
+import '../services/storage/home_storage.dart';
+import '../services/terminal/terminal_transport_factory.dart';
+import '../services/vault/vault_service.dart';
+import 'ssh_profile_setup_page.dart';
+import 'ssh_profiles/ssh_profile_form_dialog.dart';
 
-  /// When true, omits [Scaffold] so the settings shell supplies the app bar.
+/// Remote-only catalog of SSH server configurations.
+///
+/// When there is no live remote connection the page is intentionally inert:
+/// no connect action, no add-target action, and no list. Once connected it
+/// shows the read-only remote profiles from [SshServerConfigCubit].
+class SshServersPage extends StatelessWidget {
+  const SshServersPage({super.key, this.embedded = false});
+
+  /// When true, omits the [Scaffold] so the surrounding shell supplies chrome.
   final bool embedded;
 
   @override
   Widget build(BuildContext context) {
-    const body = SingleChildScrollView(
-      padding: EdgeInsets.all(16),
-      child: SshProfilesSection(),
+    return BlocProvider<SshServerConfigCubit>(
+      create: (_) => SshServerConfigCubit(
+        repository: SshServerProfileRepository(
+          storage: context.read<HomeStorage>(),
+        ),
+      )..load(),
+      child: _SshServersView(embedded: embedded),
     );
+  }
+}
+
+class _SshServersView extends StatelessWidget {
+  const _SshServersView({required this.embedded});
+
+  final bool embedded;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final connected = context.watch<SshConnectionCubit>().state.connectedHosts;
+    final Widget body;
+    if (connected.isEmpty) {
+      body = Center(child: Text(l10n.sshServersNotConnected));
+    } else {
+      body = BlocBuilder<SshServerConfigCubit, SshServerConfigState>(
+        builder: (context, state) {
+          if (state.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          // A remote transport failure emits error with an empty catalog. Show
+          // a distinct message + retry instead of an empty ListView that looks
+          // exactly like "no servers".
+          if (state.error != null) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(l10n.sshServersLoadError),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: () =>
+                        context.read<SshServerConfigCubit>().load(),
+                    child: Text(l10n.retry),
+                  ),
+                ],
+              ),
+            );
+          }
+          return ListView(
+            children: [
+              for (final profile in state.profiles)
+                SshServerProfileCard(profile: profile),
+            ],
+          );
+        },
+      );
+    }
     if (embedded) return body;
     return Scaffold(
-      appBar: AppBar(title: const Text('SSH Profiles')),
+      appBar: AppBar(title: Text(l10n.sshServersTitle)),
       body: body,
+    );
+  }
+}
+
+/// Read-only presentation of a single remote [SshServerProfile].
+///
+/// Shows the name, host and whether it is an embedded target. It deliberately
+/// offers no editing: [SshServerProfile] carries no editable config fields and
+/// the per-target editor operates on the local `SshProfile` model instead.
+class SshServerProfileCard extends StatelessWidget {
+  const SshServerProfileCard({super.key, required this.profile});
+
+  final SshServerProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(profile.name),
+      subtitle: Text(profile.host),
+      trailing: Icon(
+        profile.embeddedTarget
+            ? Icons.check_circle_outline
+            : Icons.radio_button_unchecked,
+        size: 18,
+      ),
     );
   }
 }

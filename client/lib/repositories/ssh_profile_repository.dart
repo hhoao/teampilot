@@ -1,25 +1,54 @@
 import 'dart:convert';
 
+import '../models/remote_target.dart';
 import '../models/ssh_profile.dart';
-import '../services/storage/home_storage.dart';
 import '../services/io/filesystem.dart';
+import '../services/storage/home_storage.dart';
 import '../services/storage/storage_failure.dart';
+import 'remote_target_repository.dart';
 
 class SshProfileRepository {
+  /// When [targetRepo] is supplied this repository is a facade over the
+  /// device-local remote-target catalog: profiles are projected from/to
+  /// [RemoteTarget] records. Otherwise it keeps the legacy `profiles.json`
+  /// behavior on the home control plane ([storage]) so existing callers and
+  /// tests keep working unchanged.
+  ///
   /// Defaults follow the home control plane ([storage], test convenience).
   /// Production must use [deviceLocalSshProfileRepository] so the catalog
   /// stays on-device when home is rebound to SSH.
   SshProfileRepository({
+    RemoteTargetRepository? targetRepo,
     String? rootDir,
     Filesystem? fs,
     required HomeStorage storage,
-  }) : _rootDirOverride = rootDir,
+  }) : _explicitTargetRepo = targetRepo,
+       _rootDirOverride = rootDir,
        _fsOverride = fs,
        _storage = storage;
 
+  final RemoteTargetRepository? _explicitTargetRepo;
   final String? _rootDirOverride;
   final Filesystem? _fsOverride;
   final HomeStorage _storage;
+
+  /// The injected device-local [RemoteTargetRepository] backing this facade.
+  /// Sync consumers (a later task) read this directly. It is unavailable in
+  /// legacy `profiles.json` mode, where accessing it throws a clear
+  /// [StateError] instead of returning a disconnected catalog. Task 7 injects
+  /// the device-local catalog for production.
+  RemoteTargetRepository get targetRepo {
+    final explicit = _explicitTargetRepo;
+    if (explicit == null) {
+      throw StateError(
+        'SshProfileRepository.targetRepo is unavailable in legacy '
+        'profiles.json mode: no RemoteTargetRepository was injected. Inject '
+        'a device-local RemoteTargetRepository to use the target facade '
+        '(Task 7 wires this for production).',
+      );
+    }
+    return explicit;
+  }
 
   String get _root => _rootDirOverride ?? _storage.paths.sshProfilesDir;
 
@@ -31,29 +60,63 @@ class SshProfileRepository {
       _fs.pathContext.join(_root, 'selected_profile.txt');
 
   Future<List<SshProfile>> loadAll() async {
-    if (!(await _fs.stat(_profilesFile)).isFile) return [];
-    try {
-      final raw = await _fs.readString(_profilesFile);
-      if (raw == null || raw.isEmpty) return [];
-      final json = jsonDecode(raw);
-      if (json is List) {
-        return json
-            .whereType<Map<String, Object?>>()
-            .map((e) => SshProfile.fromJson(e))
-            .toList();
-      }
-    } on Object catch (error) {
-      // A dropped transport must not read as "no profiles stored": the user
-      // would lose every SSH profile on a flaky connection.
-      if (isStorageTransportFailure(error)) rethrow;
+    final repo = _explicitTargetRepo;
+    if (repo != null) {
+      final targets = await repo.loadAll();
+      return targets.map(SshProfile.fromTarget).toList();
     }
-    return [];
+    return _loadAllLegacy();
+  }
+
+  Future<void> save(SshProfile profile) async {
+    final repo = _explicitTargetRepo;
+    if (repo != null) {
+      await _saveFacade(repo, profile);
+      return;
+    }
+    final profiles = await _loadAllLegacy();
+    final idx = profiles.indexWhere((p) => p.id == profile.id);
+    if (idx >= 0) {
+      profiles[idx] = profile;
+    } else {
+      profiles.add(profile);
+    }
+    await _saveAllLegacy(profiles);
   }
 
   Future<void> saveAll(List<SshProfile> profiles) async {
-    await _fs.ensureDir(_root);
-    final jsonList = profiles.map((p) => p.toJson()).toList();
-    await _fs.atomicWrite(_profilesFile, jsonEncode(jsonList));
+    if (_explicitTargetRepo != null) {
+      for (final profile in profiles) {
+        await save(profile);
+      }
+      return;
+    }
+    await _saveAllLegacy(profiles);
+  }
+
+  Future<void> delete(String profileId) async {
+    final repo = _explicitTargetRepo;
+    if (repo != null) {
+      await repo.delete(profileId);
+      return;
+    }
+    final profiles = await _loadAllLegacy();
+    profiles.removeWhere((p) => p.id == profileId);
+    await _saveAllLegacy(profiles);
+  }
+
+  Future<SshProfile?> findById(String profileId) async {
+    final repo = _explicitTargetRepo;
+    if (repo != null) {
+      final target = await repo.findById(profileId);
+      return target == null ? null : SshProfile.fromTarget(target);
+    }
+    final profiles = await _loadAllLegacy();
+    try {
+      return profiles.firstWhere((p) => p.id == profileId);
+    } on StateError {
+      return null;
+    }
   }
 
   Future<String> loadSelectedProfileId() async {
@@ -77,29 +140,93 @@ class SshProfileRepository {
     await _fs.atomicWrite(_selectedProfileFile, profileId.trim());
   }
 
-  Future<void> save(SshProfile profile) async {
-    final profiles = await loadAll();
-    final idx = profiles.indexWhere((p) => p.id == profile.id);
-    if (idx >= 0) {
-      profiles[idx] = profile;
+  /// Facade projection of an [SshProfile] into a [RemoteTarget]. Constructed
+  /// explicitly (not via `copyWith`) so cleared nullable fields — e.g. a
+  /// removed credential reference — propagate as null instead of silently
+  /// persisting a stale value from an existing target.
+  ///
+  /// `save()` is also the write path for local-only state (path cache, host-key
+  /// fingerprints, last-good endpoint, credential reference). Only a change to
+  /// a sync-visible field makes the target dirty: a local-only write must keep
+  /// `updatedAt`/`pendingSync` unchanged, otherwise the next `pull` would skip
+  /// a newer remote config and `push` would clobber it (remote is the final
+  /// authority). A brand-new target is always dirty.
+  Future<void> _saveFacade(
+    RemoteTargetRepository repo,
+    SshProfile profile,
+  ) async {
+    final existing = await repo.findById(profile.id);
+    final int updatedAt;
+    final bool pendingSync;
+    if (existing == null) {
+      // A brand-new target is always dirty.
+      updatedAt = DateTime.now().millisecondsSinceEpoch;
+      pendingSync = true;
     } else {
-      profiles.add(profile);
+      final syncChanged =
+          existing.name != profile.name ||
+          existing.host != profile.host ||
+          existing.port != profile.port ||
+          existing.username != profile.username ||
+          existing.authType != profile.authType ||
+          existing.embeddedTarget != profile.embeddedTarget ||
+          existing.relayUrl != profile.relayUrl ||
+          existing.pairedDesktopId != profile.pairedDesktopId;
+      if (syncChanged) {
+        updatedAt = DateTime.now().millisecondsSinceEpoch;
+        pendingSync = true;
+      } else {
+        updatedAt = existing.updatedAt;
+        pendingSync = existing.pendingSync;
+      }
     }
-    await saveAll(profiles);
+    final target = RemoteTarget(
+      id: profile.id,
+      name: profile.name,
+      host: profile.host,
+      port: profile.port,
+      username: profile.username,
+      authType: profile.authType,
+      vaultEntryId: profile.vaultEntryId,
+      endpoints: profile.endpoints,
+      hostKeyFingerprints: profile.hostKeyFingerprints,
+      lastGoodKind: profile.lastGoodKind,
+      lastHome: profile.lastHome,
+      lastAppDataRoot: profile.lastAppDataRoot,
+      embeddedTarget: profile.embeddedTarget,
+      relayUrl: profile.relayUrl,
+      pairedDesktopId: profile.pairedDesktopId,
+      updatedAt: updatedAt,
+      pendingSync: pendingSync,
+    );
+    await repo.save(target);
   }
 
-  Future<void> delete(String profileId) async {
-    final profiles = await loadAll();
-    profiles.removeWhere((p) => p.id == profileId);
-    await saveAll(profiles);
-  }
+  // ---- legacy `profiles.json` path, unchanged behavior ----
 
-  Future<SshProfile?> findById(String profileId) async {
-    final profiles = await loadAll();
+  Future<List<SshProfile>> _loadAllLegacy() async {
+    if (!(await _fs.stat(_profilesFile)).isFile) return [];
     try {
-      return profiles.firstWhere((p) => p.id == profileId);
-    } on StateError {
-      return null;
+      final raw = await _fs.readString(_profilesFile);
+      if (raw == null || raw.isEmpty) return [];
+      final json = jsonDecode(raw);
+      if (json is List) {
+        return json
+            .whereType<Map<String, Object?>>()
+            .map((e) => SshProfile.fromJson(e))
+            .toList();
+      }
+    } on Object catch (error) {
+      // A dropped transport must not read as "no profiles stored": the user
+      // would lose every SSH profile on a flaky connection.
+      if (isStorageTransportFailure(error)) rethrow;
     }
+    return [];
+  }
+
+  Future<void> _saveAllLegacy(List<SshProfile> profiles) async {
+    await _fs.ensureDir(_root);
+    final jsonList = profiles.map((p) => p.toJson()).toList();
+    await _fs.atomicWrite(_profilesFile, jsonEncode(jsonList));
   }
 }
