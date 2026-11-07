@@ -5,11 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../cubits/ssh_connection_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../cubits/ssh_server_config_cubit.dart';
 import '../l10n/l10n_extensions.dart';
-import '../models/ssh_auth_type.dart';
 import '../models/ssh_profile.dart';
 import '../models/ssh_server_profile.dart';
 import '../repositories/ssh_credential_store.dart';
