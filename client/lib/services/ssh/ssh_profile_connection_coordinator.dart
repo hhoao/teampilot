@@ -18,6 +18,18 @@ typedef SshSessionPlaneReconnectHandler =
 typedef SshProfileDisconnectHandler =
     void Function(String profileId, Object error, StackTrace stackTrace);
 
+/// Notified with the profile id and the 1-based attempt number when a
+/// reconnect attempt starts.
+typedef SshReconnectAttemptHandler =
+    void Function(String profileId, int attempt);
+
+/// Notified when a reconnect attempt brought [profileId] back.
+typedef SshReconnectedHandler = void Function(String profileId);
+
+/// Decides whether [profileId] must keep retrying past the policy's
+/// [SshProfileReconnectPolicy.maxAttempts] instead of giving up.
+typedef SshPersistRetryPredicate = bool Function(String profileId);
+
 /// Per-profile SSH liveness, disconnect coalescing, and serialized reconnect.
 ///
 /// One network blip can drop several TCP connections (storage pool + member
@@ -30,6 +42,9 @@ class SshProfileConnectionCoordinator {
     required SshProfileResolver profileResolver,
     this.onDisconnect,
     this.onReconnectSessionPlane,
+    this.onReconnectAttempt,
+    this.onReconnected,
+    this.persistRetry,
     this.policy = const SshProfileReconnectPolicy(),
   }) : _factory = factory,
        _profileResolver = profileResolver {
@@ -45,6 +60,17 @@ class SshProfileConnectionCoordinator {
   final SshProfileReconnectPolicy policy;
   final SshProfileDisconnectHandler? onDisconnect;
   final SshSessionPlaneReconnectHandler? onReconnectSessionPlane;
+
+  /// Progress surface for a persistent retry loop (the home connection page).
+  final SshReconnectAttemptHandler? onReconnectAttempt;
+
+  /// Success surface: fires once per successful attempt, never on failure.
+  final SshReconnectedHandler? onReconnected;
+
+  /// When it returns true for a profile, retries continue at
+  /// [SshProfileReconnectPolicy.maxDelay] past [SshProfileReconnectPolicy.maxAttempts]
+  /// instead of giving up. Other profiles keep the default give-up behavior.
+  final SshPersistRetryPredicate? persistRetry;
 
   final Map<String, RemoteConnectionMonitor> _monitors = {};
   final Map<String, Future<void>> _storageReconnects = {};
@@ -101,6 +127,27 @@ class SshProfileConnectionCoordinator {
       profileId,
       reason: SshTransportCloseReason.userDisconnect,
     );
+  }
+
+  /// Clears the spent backoff window for [profileId], cancelling any pending
+  /// retry timer. An explicit user retry then starts from attempt 1 again.
+  void resetReconnectAttempts(String profileId) {
+    _reconnectAttempts.remove(profileId);
+    _reconnectTimers.remove(profileId)?.cancel();
+  }
+
+  /// Schedules a fresh attempt for [profileId] after the loop stopped (gave up
+  /// or was cancelled). Used by an explicit "retry now"; the user-disconnect
+  /// latch must be cleared first (see [userConnect]).
+  ///
+  /// A home that never opened a transport has a healthy monitor (no close
+  /// event ever marked it down), so this marks it down first — otherwise
+  /// [_runReconnect] would treat the target as healthy and no-op.
+  void restartReconnect(String profileId) {
+    if (_disposed) return;
+    _reconnectAttempts.remove(profileId);
+    monitorFor(profileId).markDown();
+    _scheduleReconnect(profileId);
   }
 
   void _onStoragePoolChanged(String profileId) {
@@ -245,7 +292,9 @@ class SshProfileConnectionCoordinator {
     if (profile == null) return;
 
     final attempts = _reconnectAttempts[profileId] ?? 0;
-    if (attempts >= policy.maxAttempts) {
+    final exhausted = attempts >= policy.maxAttempts;
+    final persist = exhausted && (persistRetry?.call(profileId) ?? false);
+    if (exhausted && !persist) {
       appLogger.w(
         '[ssh] profile $profileId reconnect gave up after $attempts attempts',
       );
@@ -254,6 +303,8 @@ class SshProfileConnectionCoordinator {
 
     final delay = penaltyRefusal
         ? policy.penaltyBackoff
+        : persist
+        ? policy.maxDelay
         : policy.delayForAttempt(attempts);
     _reconnectTimers[profileId]?.cancel();
     _reconnectTimers[profileId] = Timer(delay, () {
@@ -271,11 +322,14 @@ class SshProfileConnectionCoordinator {
     _reconnectInFlight[profileId] = true;
     _reconnectAttempts[profileId] = (_reconnectAttempts[profileId] ?? 0) + 1;
     final attempt = _reconnectAttempts[profileId]!;
+    final persistent = persistRetry?.call(profileId) ?? false;
+    onReconnectAttempt?.call(profileId, attempt);
 
     final monitor = monitorFor(profileId);
     monitor.reconnectStarted();
     appLogger.i(
-      '[ssh] profile $profileId reconnect attempt $attempt/${policy.maxAttempts}',
+      '[ssh] profile $profileId reconnect attempt '
+      '$attempt${persistent ? '' : '/${policy.maxAttempts}'}',
     );
 
     // Rescheduling must happen after the finally block clears the in-flight
@@ -310,6 +364,7 @@ class SshProfileConnectionCoordinator {
       monitor.reconnected();
       _reconnectAttempts.remove(profileId);
       appLogger.i('[ssh] profile $profileId reconnect succeeded');
+      onReconnected?.call(profileId);
     } on Object catch (error, stackTrace) {
       if (_userDisconnectLatched.contains(profileId)) {
         monitor.reconnectFailed();

@@ -2975,6 +2975,32 @@ Future<AppShell> buildAppShell({
         );
       },
       onReconnectSessionPlane: chatCubit.reconnectSshProfile,
+      // The home connection page is the only surface while the home is down,
+      // so surface the coordinator's retry loop there instead of letting it
+      // stop silently. Other profiles keep the default give-up behavior.
+      onReconnectAttempt: (profileId, attempt) {
+        final cubit = homeConnectionCubit;
+        if (cubit != null && profileId == homeProfileId) {
+          cubit.markBackgroundAttempt(attempt);
+        }
+      },
+      onReconnected: (profileId) {
+        final cubit = homeConnectionCubit;
+        // Only a transition into `connected` runs hot recovery; a cycle that
+        // finishes after the cubit already connected must not repeat it.
+        if (cubit != null &&
+            profileId == homeProfileId &&
+            cubit.state.status != HomeConnectionStatus.connected) {
+          cubit.markReconnected();
+        }
+      },
+      persistRetry: (profileId) {
+        final cubit = homeConnectionCubit;
+        return cubit != null &&
+            !cubit.isClosed &&
+            profileId == homeProfileId &&
+            cubit.state.status != HomeConnectionStatus.connected;
+      },
     );
 
     // Paired profiles (QR scan) try lan → extra → relay and persist the winner
@@ -3471,7 +3497,19 @@ Future<AppShell> buildAppShell({
         if (!isSshHome) return;
         final profile = sshProfileById(homeProfileId);
         if (profile == null) return;
-        await sshProfileConnectionCoordinator.userConnect(profile);
+        // 「继续重试」 starts a fresh window: drop the spent attempt budget and
+        // any timer left from the loop that was cancelled or gave up.
+        sshProfileConnectionCoordinator.resetReconnectAttempts(homeProfileId);
+        try {
+          await sshProfileConnectionCoordinator.userConnect(profile);
+        } on Object {
+          // A connect that never opened a transport emits no close event, so
+          // nothing else would restart the loop. The cubit surfaces the
+          // failure from `connectOnce`; the coordinator keeps retrying behind
+          // the connection page.
+          sshProfileConnectionCoordinator.restartReconnect(homeProfileId);
+          rethrow;
+        }
       },
       // Hot recovery: run the deferred remote boot once, then let the SSH
       // liveness/team-generation path resume now that the transport is back.
