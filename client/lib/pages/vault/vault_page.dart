@@ -77,7 +77,6 @@ class _VaultPageBodyState extends State<VaultPageBody> {
                         ),
                       ],
                     ),
-                    ),
                   if (state.errorMessage != null) ...[
                     const SizedBox(height: 12),
                     Text(
