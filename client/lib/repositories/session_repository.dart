@@ -1396,25 +1396,27 @@ class SessionRepository {
           fs,
           workspace.copyWith(updatedAt: DateTime.now().millisecondsSinceEpoch),
         );
-        // Mirror the sessionIds change into the index snapshot.
-        final cachedList = _workspaceIndexCache.snapshot;
+        // Mirror the sessionIds change into the index snapshot. The in-memory
+        // cache may be cold on a fresh repository instance; the manifest read
+        // above already lists the surviving session directories, so use it as
+        // the base instead of skipping the mirror.
         Workspace? cached;
-        for (final w in cachedList ?? const <Workspace>[]) {
+        for (final w
+            in _workspaceIndexCache.snapshot ?? const <Workspace>[]) {
           if (w.workspaceId == workspaceId) {
             cached = w;
             break;
           }
         }
-        if (cached != null) {
-          await _rememberWorkspace(
-            cached.copyWith(
-              sessionIds: [
-                for (final id in cached.sessionIds)
-                  if (id != sessionId) id,
-              ],
-            ),
-          );
-        }
+        final base = cached ?? workspace;
+        await _rememberWorkspace(
+          base.copyWith(
+            sessionIds: [
+              for (final id in base.sessionIds)
+                if (id != sessionId) id,
+            ],
+          ),
+        );
       }
     });
   }
