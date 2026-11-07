@@ -103,6 +103,32 @@ void main() {
     await harness.dispose();
   });
 
+  test('home switch cancellation stops the abandoned profile loop', () async {
+    final harness = _ReconnectHarness(
+      maxAttempts: 3,
+      // Unbounded: without the switch cancellation this would retry forever.
+      persistRetry: (_) => true,
+    );
+
+    await harness.startDown();
+    await waitUntil(() => harness.attempts.length >= 2);
+
+    // Mirrors switchHomeTarget: latch the abandoned profile (in-flight attempts
+    // back out) and drop its pending timer/counter.
+    await harness.coordinator.userDisconnect(_profile.id);
+    harness.coordinator.resetReconnectAttempts(_profile.id);
+
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    final settled = harness.attempts.length;
+    await Future<void>.delayed(const Duration(milliseconds: 150));
+
+    expect(harness.attempts.length, settled);
+    expect(harness.coordinator.isUserDisconnectLatched(_profile.id), isTrue);
+    expect(harness.reconnected, isEmpty);
+
+    await harness.dispose();
+  });
+
   test('restartReconnect resumes after the loop gave up', () async {
     final harness = _ReconnectHarness(
       maxAttempts: 1,

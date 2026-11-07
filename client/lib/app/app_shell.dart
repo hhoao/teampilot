@@ -2996,9 +2996,12 @@ Future<AppShell> buildAppShell({
       },
       persistRetry: (profileId) {
         final cubit = homeConnectionCubit;
+        // Track the CURRENT home, not the boot-time id: after a home switch the
+        // abandoned profile must not keep a persistent loop alive (the switch
+        // path also cancels it, this is the second line of defence).
         return cubit != null &&
             !cubit.isClosed &&
-            profileId == homeProfileId &&
+            profileId == defaultTargetResolver().sshProfileId &&
             cubit.state.status != HomeConnectionStatus.connected;
       },
     );
@@ -3487,9 +3490,20 @@ Future<AppShell> buildAppShell({
     // connection page without re-probing. Local/wsl/termux homes are seeded
     // connected and never probe here (unchanged boot behavior).
     homeConnectionCubit = HomeConnectionCubit(
-      connect: () => homeAttempt != null
-          ? homeAttempt.run(homeProfileId!)
-          : Future.value(initialHome),
+      connect: () async {
+        final result = homeAttempt != null
+            ? await homeAttempt.run(homeProfileId!)
+            : initialHome;
+        // Re-arm the background loop when an explicit retry (「继续重试」 /
+        // 「重试」) ends unreachable: `userConnect` can succeed while the
+        // bounded resolve still fails, and without this the cubit would sit in
+        // `unreachable` with nothing retrying. The boot seed never runs this
+        // (it uses markInitial), so boot keeps its single auto-start.
+        if (!result.reachable && isSshHome) {
+          sshProfileConnectionCoordinator.restartReconnect(homeProfileId);
+        }
+        return result;
+      },
       cancelRetry: () => !isSshHome
           ? Future<void>.value()
           : sshProfileConnectionCoordinator.userDisconnect(homeProfileId),
@@ -3782,9 +3796,23 @@ Future<AppShell> buildAppShell({
     }
 
     Future<void> switchHomeTarget(String id) async {
+      final previousSshProfileId = defaultTargetResolver().sshProfileId;
       await setHomeTarget(
         id,
       ); // persists + rebinds home + republishes HomeStorage
+      final nextSshProfileId = defaultTargetResolver().sshProfileId;
+      if (previousSshProfileId != null &&
+          previousSshProfileId != nextSshProfileId) {
+        // The connection page's retry loop must not keep firing for (and
+        // re-opening storage to) the abandoned profile: latch it so an
+        // in-flight attempt backs out, and drop its timer entirely.
+        await sshProfileConnectionCoordinator.userDisconnect(
+          previousSshProfileId,
+        );
+        sshProfileConnectionCoordinator.resetReconnectAttempts(
+          previousSshProfileId,
+        );
+      }
       await applyHomeEventTransport(restart: true);
     }
 
