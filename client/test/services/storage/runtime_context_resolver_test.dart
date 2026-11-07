@@ -261,4 +261,58 @@ void main() {
     expect(ctx.appDataRoot, tmp.path);
     expect(ctx.usesPosixPaths, isFalse);
   });
+
+  test('resolveCached ssh uses persisted paths without any network', () async {
+    final factory = _MockSshClientFactory();
+    // No stubbing: any factory/path-resolver call would throw and fail the
+    // test, proving this path performs no network I/O.
+    final profile = SshProfile(
+      id: 'p1',
+      name: 'Remote',
+      host: 'example.com',
+      username: 'u',
+      lastHome: '/home/u',
+      lastAppDataRoot: '/home/u/.local/share/com.hhoa.teampilot',
+    );
+    final resolver = RuntimeContextResolver(
+      sshClientFactory: factory,
+      nativeAppDataPath: tmp.path,
+      remotePathResolver: _FakePathResolver(
+        clientFactory: factory,
+        onResolve: (_) => Future.error(StateError('network must not be hit')),
+      ),
+    );
+
+    final ctx = await resolver.resolveCached(
+      RuntimeTarget.ssh('p1', label: 'Remote'),
+      sshProfile: profile,
+    );
+
+    expect(ctx.target.kind, RuntimeKind.ssh);
+    expect(ctx.mode, StorageBackendMode.ssh);
+    expect(ctx.pathsFromCache, isTrue);
+    expect(ctx.home, '/home/u');
+    expect(ctx.appDataRoot, '/home/u/.local/share/com.hhoa.teampilot');
+    verifyNever(() => factory.ensureStorageConnected(any()));
+  });
+
+  test('resolveCached ssh without cached paths falls back to native', () async {
+    final resolver = RuntimeContextResolver(
+      nativeAppDataPath: tmp.path,
+      nativeHome: tmp.path,
+      nativeCwd: tmp.path,
+    );
+    final ctx = await resolver.resolveCached(
+      RuntimeTarget.ssh('p1', label: 'Remote'),
+      sshProfile: const SshProfile(
+        id: 'p1',
+        name: 'Remote',
+        host: 'example.com',
+        username: 'u',
+      ),
+    );
+    expect(ctx.pathsFromCache, isTrue);
+    expect(ctx.mode, StorageBackendMode.native);
+    expect(ctx.appDataRoot, tmp.path);
+  });
 }

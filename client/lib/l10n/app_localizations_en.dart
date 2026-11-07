@@ -10421,4 +10421,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vaultLockedQueryBlocked => 'Unlock the vault to query usage.';
+
+  @override
+  String homeConnectionUnreachable(String host, int port) {
+    return 'Can\'t reach $host:$port';
+  }
+
+  @override
+  String homeConnectionRetrying(int count) {
+    return 'Retrying… attempt $count';
+  }
+
+  @override
+  String get homeConnectionCancelRetry => 'Stop retrying';
+
+  @override
+  String get homeConnectionRetryNow => 'Retry now';
+
+  @override
+  String get homeConnectionSwitch => 'Switch connection';
+
+  @override
+  String get homeConnectionErrorTcp => 'Network unreachable';
+
+  @override
+  String get homeConnectionErrorTimeout => 'Connection timed out';
+
+  @override
+  String get homeConnectionErrorAuth => 'Authentication failed';
+
+  @override
+  String get homeConnectionErrorTransport => 'Connection error';
+
+  @override
+  String get homeConnectionErrorUnknown => 'Unknown error';
+
+  @override
+  String get homeConnectionRestartRequired =>
+      'Connected — restart the app to switch this home\'s storage';
 }

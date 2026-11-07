@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -51,6 +53,35 @@ class _FakeResolver extends RuntimeContextResolver {
       paths: AppPaths(root),
     );
   }
+}
+
+/// Live resolve never completes; [resolveCached] answers immediately.
+class _HangingResolver extends RuntimeContextResolver {
+  _HangingResolver() : super(nativeAppDataPath: '/native');
+
+  final live = Completer<RuntimeContext>();
+
+  @override
+  Future<RuntimeContext> resolve(
+    RuntimeTarget target, {
+    SshProfile? sshProfile,
+    String? cachedHome,
+    String? cachedAppDataRoot,
+  }) => live.future;
+
+  @override
+  Future<RuntimeContext> resolveCached(
+    RuntimeTarget target, {
+    SshProfile? sshProfile,
+  }) async => RuntimeContext(
+    target: target,
+    filesystem: InMemoryFilesystem(),
+    home: '/cached-home',
+    cwd: '/cached-home',
+    appDataRoot: '/cached-app',
+    paths: const AppPaths('/cached-app'),
+    pathsFromCache: true,
+  );
 }
 
 void main() {
@@ -127,6 +158,36 @@ void main() {
     final b = await reg.forTarget(RuntimeTarget.ssh('p1', label: 'box'));
     expect(identical(a, b), isTrue);
     expect(resolver.resolveCount['ssh:p1'], 1);
+  });
+
+  test('ensureHomeCached answers without waiting for a live resolve', () async {
+    final resolver = _HangingResolver();
+    final reg = RuntimeContextRegistry(
+      resolver: resolver,
+      homeTarget: RuntimeTarget.ssh('p1', label: 'Remote'),
+    );
+    final live = reg.ensureHome(); // in flight, never completes on its own
+    final cached = await reg.ensureHomeCached().timeout(
+      const Duration(milliseconds: 200),
+    );
+    expect(cached.pathsFromCache, isTrue);
+    expect(cached.appDataRoot, '/cached-app');
+    expect(reg.home(), same(cached));
+
+    // A live resolve finishing later still wins over the cached placeholder.
+    resolver.live.complete(
+      RuntimeContext(
+        target: RuntimeTarget.ssh('p1', label: 'Remote'),
+        filesystem: InMemoryFilesystem(),
+        home: '/live-home',
+        cwd: '/live-home',
+        appDataRoot: '/live-app',
+        paths: const AppPaths('/live-app'),
+      ),
+    );
+    await live;
+    expect(reg.home().appDataRoot, '/live-app');
+    expect(reg.home().pathsFromCache, isFalse);
   });
 
   test('two targets resolve to independent contexts', () async {

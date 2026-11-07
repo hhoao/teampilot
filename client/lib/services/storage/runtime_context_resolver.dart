@@ -70,7 +70,46 @@ class RuntimeContextResolver {
     return _resolveNative(target);
   }
 
-  Future<RuntimeContext> _resolveNative(RuntimeTarget target) {
+  /// Builds a [RuntimeContext] from persisted paths only — no network I/O.
+  ///
+  /// ssh/termux targets reuse the profile's saved `lastHome`/`lastAppDataRoot`
+  /// (the same shape as a live resolve that fell back to cache) and are marked
+  /// [RuntimeContext.pathsFromCache]. When nothing usable is cached yet the
+  /// native context is returned so bootstrap can still paint the connection
+  /// UI; a later live [resolve] replaces it.
+  Future<RuntimeContext> resolveCached(
+    RuntimeTarget target, {
+    SshProfile? sshProfile,
+  }) {
+    if (usesSshTransport(target.kind)) {
+      final factory = sshClientFactory;
+      if (sshProfile != null &&
+          factory != null &&
+          _hasPathCache(sshProfile.lastHome, sshProfile.lastAppDataRoot)) {
+        return Future.value(
+          _resolveSshFromCache(
+            target,
+            profile: sshProfile,
+            clientFactory: factory,
+            home: sshProfile.lastHome!.trim(),
+            appDataRoot: sshProfile.lastAppDataRoot!.trim(),
+          ),
+        );
+      }
+      // No cached remote paths yet (first-ever connect while down): fall back
+      // to the native control plane so boot can render the connection page.
+      return _resolveNative(target, pathsFromCache: true);
+    }
+    if (Platform.isWindows && target.kind == RuntimeKind.wsl) {
+      return _resolveWsl(target);
+    }
+    return _resolveNative(target);
+  }
+
+  Future<RuntimeContext> _resolveNative(
+    RuntimeTarget target, {
+    bool pathsFromCache = false,
+  }) {
     final root = nativeAppDataPath.trim();
     final pathCtx = AppPaths.pathContextForDataRoot(root);
     final fs = LocalFilesystem(pathContext: pathCtx);
@@ -90,6 +129,7 @@ class RuntimeContextResolver {
         cwd: resolvedCwd,
         appDataRoot: root,
         paths: AppPaths(root),
+        pathsFromCache: pathsFromCache,
       ),
     );
   }

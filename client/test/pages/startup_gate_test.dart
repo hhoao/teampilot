@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/cubits/home_connection_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/ssh_profile_cubit.dart';
@@ -28,6 +29,7 @@ import 'package:teampilot/repositories/vault_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/storage/home_connect_attempt.dart';
 import 'package:teampilot/services/termux/termux_config_store.dart';
 import 'package:teampilot/services/ssh/android_ssh_connect_home.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
@@ -218,6 +220,7 @@ Future<Widget> _gateHost({
   required SshProfileRepository profileRepository,
   required SessionPreferencesCubit sessionPrefs,
   required TermuxCubit termuxCubit,
+  HomeConnectionCubit? homeConnectionCubit,
   bool? isAndroid,
   Widget child = const Text('APP_CHILD'),
 }) async {
@@ -255,6 +258,10 @@ Future<Widget> _gateHost({
             BlocProvider<SshConnectionCubit>.value(value: connectionCubit),
             BlocProvider<SessionPreferencesCubit>.value(value: sessionPrefs),
             BlocProvider<TermuxCubit>.value(value: termuxCubit),
+            if (homeConnectionCubit != null)
+              BlocProvider<HomeConnectionCubit>.value(
+                value: homeConnectionCubit,
+              ),
           ],
           child: StartupGate(isAndroid: isAndroid, child: child),
         ),
@@ -571,5 +578,147 @@ void main() {
 
     expect(find.text('APP_CHILD'), findsOneWidget);
     expect(find.byType(WorkEnvironmentChooserPage), findsNothing);
+  });
+
+  testWidgets('unreachable home gate shows connection page with status card', (
+    tester,
+  ) async {
+    await profileCubit.close();
+    profileCubit = _SeededSshProfileCubit(
+      profileRepository: profileRepository,
+      credentialStore: harness.credentialStore,
+      profiles: const [_profile],
+    );
+    final homeCubit = HomeConnectionCubit(
+      connect: () async =>
+          const HomeConnectResult.unreachable(HomeErrorKind.tcpUnreachable),
+      cancelRetry: () async {},
+      resumeRetry: () async {},
+      onConnected: () {},
+      host: 'example.com',
+      port: 2222,
+    );
+    addTearDown(homeCubit.close);
+    homeCubit.markInitial(
+      const HomeConnectResult.unreachable(HomeErrorKind.tcpUnreachable),
+    );
+
+    await tester.pumpWidget(
+      await _gateHost(
+        mode: ConnectionModeService(
+          defaultTargetResolver: () => RuntimeTarget.ssh('p1', label: 'box'),
+          hasSshProfiles: () => profileCubit.state.hasProfiles,
+        ),
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
+        homeConnectionCubit: homeCubit,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('APP_CHILD'), findsNothing);
+    expect(find.byType(RemoteConnectionsPage), findsOneWidget);
+    expect(
+      find.text(l10n.homeConnectionUnreachable('example.com', 2222)),
+      findsOneWidget,
+    );
+    expect(find.text(l10n.homeConnectionRetryNow), findsOneWidget);
+  });
+
+  testWidgets('restart-required home keeps the connection page', (
+    tester,
+  ) async {
+    await profileCubit.close();
+    profileCubit = _SeededSshProfileCubit(
+      profileRepository: profileRepository,
+      credentialStore: harness.credentialStore,
+      profiles: const [_profile],
+    );
+    final homeCubit = HomeConnectionCubit(
+      connect: () async =>
+          const HomeConnectResult.unreachable(HomeErrorKind.unknown),
+      cancelRetry: () async {},
+      resumeRetry: () async {},
+      onConnected: () {},
+      profileId: 'p1',
+      host: 'example.com',
+      port: 22,
+    );
+    addTearDown(homeCubit.close);
+    homeCubit.markRestartRequired();
+
+    await tester.pumpWidget(
+      await _gateHost(
+        mode: ConnectionModeService(
+          defaultTargetResolver: () => RuntimeTarget.ssh('p1', label: 'box'),
+          hasSshProfiles: () => profileCubit.state.hasProfiles,
+        ),
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
+        homeConnectionCubit: homeCubit,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // A recovered-but-unrebindable SSH home must never expose `child` (the
+    // local fallback plane); it stays on the connection page with a restart
+    // hint instead of a retry action.
+    expect(find.text('APP_CHILD'), findsNothing);
+    expect(find.byType(RemoteConnectionsPage), findsOneWidget);
+    expect(find.text(l10n.homeConnectionRestartRequired), findsOneWidget);
+    expect(find.text(l10n.homeConnectionRetryNow), findsNothing);
+  });
+
+  testWidgets('connected home gate shows child without status card', (
+    tester,
+  ) async {
+    await profileCubit.close();
+    profileCubit = _SeededSshProfileCubit(
+      profileRepository: profileRepository,
+      credentialStore: harness.credentialStore,
+      profiles: const [_profile],
+    );
+    final homeCubit = HomeConnectionCubit(
+      connect: () async =>
+          const HomeConnectResult.unreachable(HomeErrorKind.unknown),
+      cancelRetry: () async {},
+      resumeRetry: () async {},
+      onConnected: () {},
+      host: 'example.com',
+      port: 22,
+    );
+    addTearDown(homeCubit.close);
+    homeCubit.markReconnected();
+
+    await tester.pumpWidget(
+      await _gateHost(
+        mode: ConnectionModeService(
+          defaultTargetResolver: () => RuntimeTarget.ssh('p1', label: 'box'),
+          hasSshProfiles: () => profileCubit.state.hasProfiles,
+        ),
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
+        homeConnectionCubit: homeCubit,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('APP_CHILD'), findsOneWidget);
+    expect(find.text(l10n.homeConnectionRetryNow), findsNothing);
   });
 }
