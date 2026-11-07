@@ -1076,6 +1076,10 @@ class SessionLaunchService
     allowTeamGeneration: allowTeamGeneration,
   );
 
+  /// Automation / explicit path: name an untitled session.
+  Future<void> applySessionTitle(String sessionId, String title) =>
+      _promptMetadata.applySessionTitle(sessionId, title);
+
   void touchOnUserActivity(String sessionId) =>
       _promptMetadata.touchOnUserActivity(sessionId);
 

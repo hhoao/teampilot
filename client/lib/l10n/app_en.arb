@@ -3631,6 +3631,8 @@
   "automationsEmpty": "No automations yet",
   "automationsName": "Name",
   "automationsMessage": "Message",
+  "automationsSessionTitle": "Session title",
+  "automationsSessionTitleHint": "Leave empty to use the automation name.",
   "automationsEnabled": "Enabled",
   "automationsCli": "CLI",
   "automationsReuseSession": "Reuse session",

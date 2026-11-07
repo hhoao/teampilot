@@ -92,6 +92,33 @@ Automation _scheduledMessageAutomation({
   );
 }
 
+Automation _launchTitleAutomation({
+  String name = 'Daily digest',
+  String? sessionTitle,
+  bool isPersonal = true,
+  String? teamId,
+}) {
+  return Automation(
+    id: 'launch-title',
+    name: name,
+    action: AutomationAction.launchPrompt,
+    workspaceId: 'ws1',
+    isPersonal: isPersonal,
+    presetId: isPersonal ? 'preset-1' : null,
+    teamId: isPersonal ? null : teamId,
+    message: 'summarize inbox',
+    sessionTitle: sessionTitle,
+    preset: AutomationSchedulePreset.daily,
+    hourMinute: '09:00',
+    timezone: 'UTC',
+    dtstartMs: 1,
+    enabled: true,
+    nextRunAtMs: 1,
+    createdAtMs: 1,
+    updatedAtMs: 1,
+  );
+}
+
 void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
@@ -1026,6 +1053,209 @@ void main() {
       () => dispatcher.dispatch(automation),
       throwsA(isA<ArgumentError>()),
     );
+  });
+
+  test('launchPrompt names a new session from the automation name', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    SessionCreateRequest? captured;
+    final renames = <(String, String)>[];
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository(const []),
+      busGateway: _RecordingBusGateway(),
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (request) async {
+        captured = request;
+        return SessionOpenStatus.opened;
+      },
+      workspaceById: (_) => workspace,
+      teamById: (_) => null,
+      sessionById: (sessionId, workspaceId) => AppSession(
+        sessionId: sessionId,
+        workspaceId: workspaceId,
+        createdAt: 1,
+      ),
+      applySessionTitle: (sessionId, title) async {
+        renames.add((sessionId, title));
+      },
+      nowMs: () => 100,
+    );
+
+    await dispatcher.dispatch(_launchTitleAutomation());
+
+    expect(captured!.emptyDisplayTitleFallback, 'Daily digest');
+    expect(renames, [(captured!.fixedSessionId!, 'Daily digest')]);
+  });
+
+  test('launchPrompt prefers the custom session title', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    SessionCreateRequest? captured;
+    final renames = <(String, String)>[];
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository(const []),
+      busGateway: _RecordingBusGateway(),
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (request) async {
+        captured = request;
+        return SessionOpenStatus.opened;
+      },
+      workspaceById: (_) => workspace,
+      teamById: (_) => null,
+      sessionById: (sessionId, workspaceId) => AppSession(
+        sessionId: sessionId,
+        workspaceId: workspaceId,
+        createdAt: 1,
+      ),
+      applySessionTitle: (sessionId, title) async {
+        renames.add((sessionId, title));
+      },
+      nowMs: () => 100,
+    );
+
+    await dispatcher.dispatch(
+      _launchTitleAutomation(sessionTitle: '  Inbox digest  '),
+    );
+
+    expect(captured!.emptyDisplayTitleFallback, 'Inbox digest');
+    expect(renames, [(captured!.fixedSessionId!, 'Inbox digest')]);
+  });
+
+  test(
+    'team launchPrompt passes the resolved title to session create',
+    () async {
+      final layout = WorkspaceLayout(
+        teampilotRoot: testHomeStorage.paths.basePath,
+        fs: testHomeStorage.fs,
+      );
+      final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+      final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+      final team = TeamProfile(
+        id: 'team-1',
+        name: 'Team',
+        members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+      );
+      SessionCreateRequest? captured;
+
+      final dispatcher = AutomationDispatcher(
+        repository: repo,
+        scheduleCalculator: AutomationScheduleCalculator(),
+        sessionRepository: _FakeSessionRepository(const []),
+        busGateway: _RecordingBusGateway(),
+        requestOpenSession: (_) async => SessionOpenStatus.opened,
+        requestCreateAndOpenSession: (request) async {
+          captured = request;
+          return SessionOpenStatus.opened;
+        },
+        workspaceById: (_) => workspace,
+        teamById: (id) => id == 'team-1' ? team : null,
+        sessionById: (sessionId, workspaceId) => AppSession(
+          sessionId: sessionId,
+          workspaceId: workspaceId,
+          sessionTeam: 'team-1',
+          createdAt: 1,
+        ),
+        applySessionTitle: (_, __) async {},
+        nowMs: () => 100,
+      );
+
+      await dispatcher.dispatch(
+        _launchTitleAutomation(
+          sessionTitle: 'Inbox digest',
+          isPersonal: false,
+          teamId: 'team-1',
+        ),
+      );
+
+      expect(captured!.emptyDisplayTitleFallback, 'Inbox digest');
+    },
+  );
+
+  test('scheduledMessage never applies a session title', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final session = AppSession(
+      sessionId: 'sess-1',
+      workspaceId: 'ws1',
+      sessionTeam: 'team-1',
+      createdAt: 1,
+    );
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    final team = TeamProfile(
+      id: 'team-1',
+      name: 'Team',
+      members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+    );
+    final renames = <(String, String)>[];
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository([session]),
+      busGateway: _RecordingBusGateway(),
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+      workspaceById: (_) => workspace,
+      teamById: (id) => id == 'team-1' ? team : null,
+      applySessionTitle: (sessionId, title) async {
+        renames.add((sessionId, title));
+      },
+      nowMs: () => 100,
+    );
+
+    await dispatcher.dispatch(
+      _scheduledMessageAutomation(sessionId: 'sess-1'),
+    );
+
+    expect(renames, isEmpty);
+  });
+
+  test('session title failure does not fail the run', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository(const []),
+      busGateway: _RecordingBusGateway(),
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+      workspaceById: (_) => workspace,
+      teamById: (_) => null,
+      sessionById: (sessionId, workspaceId) => AppSession(
+        sessionId: sessionId,
+        workspaceId: workspaceId,
+        createdAt: 1,
+      ),
+      applySessionTitle: (_, __) async => throw StateError('rename failed'),
+      nowMs: () => 100,
+    );
+
+    final result = await dispatcher.dispatch(_launchTitleAutomation());
+
+    expect(result.run.status, AutomationRunStatus.completed);
   });
 }
 

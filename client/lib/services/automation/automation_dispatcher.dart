@@ -49,6 +49,7 @@ class AutomationDispatcher {
     required AutomationTeamResolver teamById,
     CliPreset? Function(String id)? resolveCliPreset,
     AutomationSessionLookup? sessionById,
+    Future<void> Function(String sessionId, String title)? applySessionTitle,
     bool Function(CliTool cli)? acpDefaultFor,
     int Function()? nowMs,
     Duration memberReadyTimeout = const Duration(seconds: 60),
@@ -64,6 +65,7 @@ class AutomationDispatcher {
        _teamById = teamById,
        _resolveCliPreset = resolveCliPreset,
        _sessionById = sessionById,
+       _applySessionTitle = applySessionTitle,
        _acpDefaultFor = acpDefaultFor ?? _defaultAcpDefaultFor,
        _nowMs = nowMs ?? _automationDefaultNowMs,
        _memberReadyTimeout = memberReadyTimeout,
@@ -84,6 +86,8 @@ class AutomationDispatcher {
   final AutomationTeamResolver _teamById;
   final CliPreset? Function(String id)? _resolveCliPreset;
   final AutomationSessionLookup? _sessionById;
+  final Future<void> Function(String sessionId, String title)?
+  _applySessionTitle;
   final bool Function(CliTool cli) _acpDefaultFor;
   final int Function() _nowMs;
   final Duration _memberReadyTimeout;
@@ -94,6 +98,33 @@ class AutomationDispatcher {
     final run = _runDeliveryInFlight;
     if (run == null) return action();
     return run(sessionId, action);
+  }
+
+  String _resolvedSessionTitle(Automation automation) {
+    final custom = automation.sessionTitle?.trim() ?? '';
+    return custom.isNotEmpty ? custom : automation.name.trim();
+  }
+
+  /// Best-effort rename of a launchPrompt session that has no title yet.
+  Future<void> _applyLaunchTitle(
+    Automation automation,
+    AppSession session,
+  ) async {
+    if (!automation.isLaunchPrompt) return;
+    final title = _resolvedSessionTitle(automation);
+    if (title.isEmpty) return;
+    final apply = _applySessionTitle;
+    if (apply == null) return;
+    try {
+      await apply(session.sessionId, title);
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[automations] session title failed ${automation.id} '
+        'session=${session.sessionId}: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<AutomationDispatchResult> dispatch(
@@ -172,6 +203,8 @@ class AutomationDispatcher {
       );
       return (skipped, updated);
     }
+
+    await _applyLaunchTitle(automation, session);
 
     final memberId = automation.isScheduledMessage
         ? await _resolveLeadMemberId(session)
@@ -270,6 +303,7 @@ class AutomationDispatcher {
     final workspace = _workspaceById(automation.workspaceId);
     if (workspace == null) return null;
 
+    final resolvedTitle = _resolvedSessionTitle(automation);
     final workingDirectory = automationLaunchWorkingDirectory(
       automation,
       usesPosixPaths: _sessionRepository.storage.usesPosixPaths,
@@ -302,6 +336,7 @@ class AutomationDispatcher {
           simpleIdentity: simpleIdentity,
           expertKey: expertKey,
           workingDirectory: workingDirectory,
+          emptyDisplayTitleFallback: resolvedTitle,
           fixedSessionId: plannedSessionId,
           acp: acp,
           acpPermission: LaunchSecurityPolicy.fullAccess,
@@ -321,6 +356,7 @@ class AutomationDispatcher {
           member: member,
           repo: _sessionRepository,
           workingDirectory: workingDirectory,
+          emptyDisplayTitleFallback: resolvedTitle,
           fixedSessionId: plannedSessionId,
           seedClaudeMemberAcp: _acpDefaultFor(CliTool.claude),
           seedCodexMemberAcp: _acpDefaultFor(CliTool.codex),

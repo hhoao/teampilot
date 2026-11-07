@@ -12734,6 +12734,18 @@ abstract class AppLocalizations {
   /// **'Message'**
   String get automationsMessage;
 
+  /// No description provided for @automationsSessionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Session title'**
+  String get automationsSessionTitle;
+
+  /// No description provided for @automationsSessionTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to use the automation name.'**
+  String get automationsSessionTitleHint;
+
   /// No description provided for @automationsEnabled.
   ///
   /// In en, this message translates to:

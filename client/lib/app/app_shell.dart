@@ -2999,6 +2999,7 @@ Future<AppShell> buildAppShell({
             (s) => s.sessionId == sessionId && s.workspaceId == workspaceId,
           )
           .firstOrNull,
+      applySessionTitle: chatCubit.applySessionTitle,
       acpDefaultFor: sessionPreferencesCubit.acpDefaultFor,
       runDeliveryInFlight: chatCubit.withOperatorDeliveryInFlight,
     );

@@ -3106,6 +3106,8 @@
   "automationsEmpty": "暂无自动化",
   "automationsName": "名称",
   "automationsMessage": "消息",
+  "automationsSessionTitle": "会话标题",
+  "automationsSessionTitleHint": "留空则使用定时任务名称。",
   "automationsEnabled": "已启用",
   "automationsCli": "CLI",
   "automationsReuseSession": "复用会话",

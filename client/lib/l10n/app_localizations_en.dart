@@ -7154,6 +7154,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsMessage => 'Message';
 
   @override
+  String get automationsSessionTitle => 'Session title';
+
+  @override
+  String get automationsSessionTitleHint =>
+      'Leave empty to use the automation name.';
+
+  @override
   String get automationsEnabled => 'Enabled';
 
   @override

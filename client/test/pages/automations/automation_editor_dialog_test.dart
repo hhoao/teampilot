@@ -321,6 +321,7 @@ void main() {
     expect(find.text(l10n.presetPickerTitle), findsNothing);
     expect(find.text(l10n.automationsTargetMember), findsNothing);
     expect(find.text(l10n.automationsLaunchMode), findsNothing);
+    expect(find.text(l10n.automationsSessionTitle), findsNothing);
   });
 
   testWidgets('simple launch prompt shows landing-aligned fields', (
@@ -363,6 +364,8 @@ void main() {
     expect(find.byType(TpSelect<LaunchSecurityPolicy>), findsNothing);
     expect(find.byKey(const ValueKey('launchSecurityPolicy')), findsNothing);
     expect(find.text(l10n.automationsTargetMember), findsNothing);
+    expect(find.text(l10n.automationsSessionTitle), findsOneWidget);
+    expect(find.text(l10n.automationsSessionTitleHint), findsOneWidget);
   });
 
   testWidgets('team launch prompt shows team member picker', (tester) async {
@@ -1695,6 +1698,50 @@ void main() {
 
     expect(setup.cubit.state.automations, hasLength(1));
     expect(setup.cubit.state.automations.single.sessionId, isNull);
+  });
+
+  testWidgets('launch prompt saves the custom session title', (tester) async {
+    final setup = testAutomationSetup();
+    final chatCubit = _chatCubitWithWorkspace();
+    final cliPresetsCubit = _cliPresetsCubitWithPreset();
+    addTearDown(setup.cubit.close);
+    addTearDown(chatCubit.close);
+    addTearDown(cliPresetsCubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          chatCubit: chatCubit,
+          cliPresetsCubit: cliPresetsCubit,
+          child: AutomationEditorDialog(
+            initial: sampleAutomation(id: 'edit-title', workspaceId: 'ws1'),
+            workspaceId: 'ws1',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('automationSessionTitleField')),
+      '  Inbox digest  ',
+    );
+    await tester.runAsync(() async {
+      await tester.tap(find.text(l10n.save));
+      await pumpUntilClosed(tester);
+    });
+
+    final persisted = await tester.runAsync(
+      () => setup.repo.listForWorkspace('ws1'),
+    );
+    expect(persisted!.single.sessionTitle, 'Inbox digest');
   });
 }
 

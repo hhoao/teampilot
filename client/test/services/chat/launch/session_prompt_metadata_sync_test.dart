@@ -174,6 +174,32 @@ void main() {
     expect(repo.touched, ['sess-1', 'sess-1']);
     expect(host.state.sessions.single.updatedAt, 15_000);
   });
+
+  test('applySessionTitle renames an untitled session', () async {
+    await sync.applySessionTitle('sess-1', '  Inbox digest  ');
+
+    expect(host.renames, [('sess-1', 'Inbox digest')]);
+  });
+
+  test('applySessionTitle skips an already titled session', () async {
+    host.state = ChatState(sessions: [session(display: 'Manual title')]);
+
+    await sync.applySessionTitle('sess-1', 'Inbox digest');
+
+    expect(host.renames, isEmpty);
+  });
+
+  test('applySessionTitle ignores blank titles', () async {
+    await sync.applySessionTitle('sess-1', '   ');
+
+    expect(host.renames, isEmpty);
+  });
+
+  test('applySessionTitle skips an unknown session', () async {
+    await sync.applySessionTitle('missing', 'Inbox digest');
+
+    expect(host.renames, isEmpty);
+  });
 }
 
 class _FakeRepo extends Fake implements SessionRepository {

@@ -58,6 +58,7 @@ class Automation {
   const Automation({
     required this.id,
     required this.name,
+    this.sessionTitle,
     required this.action,
     required this.workspaceId,
     this.isPersonal = true,
@@ -95,6 +96,7 @@ class Automation {
     return Automation(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
+      sessionTitle: json['sessionTitle'] as String?,
       action: _requireEnum(
         AutomationAction.values,
         json['action'],
@@ -142,6 +144,11 @@ class Automation {
 
   final String id;
   final String name;
+
+  /// Optional display title for sessions created by this launchPrompt.
+  ///
+  /// Empty/null means "use [name]".
+  final String? sessionTitle;
   final AutomationAction action;
   final String workspaceId;
 
@@ -309,6 +316,8 @@ class Automation {
   Automation copyWith({
     String? id,
     String? name,
+    String? sessionTitle,
+    bool clearSessionTitle = false,
     AutomationAction? action,
     String? workspaceId,
     bool? isPersonal,
@@ -357,6 +366,9 @@ class Automation {
     return Automation(
       id: id ?? this.id,
       name: name ?? this.name,
+      sessionTitle: clearSessionTitle
+          ? null
+          : (sessionTitle ?? this.sessionTitle),
       action: action ?? this.action,
       workspaceId: workspaceId ?? this.workspaceId,
       isPersonal: isPersonal ?? this.isPersonal,
@@ -404,6 +416,8 @@ class Automation {
       'workspaceId': workspaceId,
       if (isLaunchPrompt) ...{
         'isPersonal': isPersonal,
+        if (sessionTitle != null && sessionTitle!.isNotEmpty)
+          'sessionTitle': sessionTitle,
         if (isPersonal) ...{
           if (presetId != null && presetId!.isNotEmpty) 'presetId': presetId,
           if (expertKey != null && expertKey!.isNotEmpty)
@@ -454,6 +468,7 @@ class Automation {
             runtimeType == other.runtimeType &&
             id == other.id &&
             name == other.name &&
+            sessionTitle == other.sessionTitle &&
             action == other.action &&
             workspaceId == other.workspaceId &&
             isPersonal == other.isPersonal &&
@@ -491,6 +506,7 @@ class Automation {
   int get hashCode => Object.hashAll([
     id,
     name,
+    sessionTitle,
     action,
     workspaceId,
     isPersonal,

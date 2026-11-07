@@ -3273,6 +3273,10 @@ class ChatCubit extends Cubit<ChatState>
     allowTeamGeneration: allowTeamGeneration,
   );
 
+  /// Automation / explicit path: name an untitled session.
+  Future<void> applySessionTitle(String sessionId, String title) =>
+      _launchService.applySessionTitle(sessionId, title);
+
   Future<void> touchSession(String sessionId) async {
     final repo = _sessionRepository;
     if (repo == null) return;

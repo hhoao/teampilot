@@ -24,6 +24,7 @@ class AutomationEditorFormBody extends StatelessWidget {
     required this.kind,
     required this.nameController,
     required this.messageController,
+    this.sessionTitleController,
     required this.maxRunCountController,
     required this.schedule,
     required this.onScheduleChanged,
@@ -67,6 +68,7 @@ class AutomationEditorFormBody extends StatelessWidget {
   final AutomationEditorKind kind;
   final TextEditingController nameController;
   final TextEditingController messageController;
+  final TextEditingController? sessionTitleController;
   final TextEditingController maxRunCountController;
   final AutomationScheduleDraft schedule;
   final ValueChanged<AutomationScheduleDraft> onScheduleChanged;
@@ -155,6 +157,25 @@ class AutomationEditorFormBody extends StatelessWidget {
             validator: (v) => (v == null || v.trim().isEmpty)
                 ? l10n.automationsValidationRequired
                 : null,
+          ),
+        ],
+        if (kind == AutomationEditorKind.launchPrompt) ...[
+          const SizedBox(height: 12),
+          TpFormField<String>(
+            id: 'sessionTitle',
+            initialValue: sessionTitleController?.text ?? '',
+            label: Text(l10n.automationsSessionTitle),
+            description: Text(l10n.automationsSessionTitleHint),
+            layoutStyle: TpFormFieldLayoutStyle.inline,
+            labelWidth: kAutomationEditorFormLabelWidth,
+            builder: (state) {
+              return TextField(
+                key: const Key('automationSessionTitleField'),
+                controller: sessionTitleController,
+                focusNode: state.focusNode,
+                onChanged: state.didChange,
+              );
+            },
           ),
         ],
         if (kind == AutomationEditorKind.runCommand) ...[

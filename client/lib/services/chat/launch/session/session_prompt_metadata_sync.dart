@@ -3,7 +3,6 @@ import 'dart:async';
 import '../chat_state_port.dart';
 import '../session_launch_host.dart';
 import '../../../../models/app_session.dart';
-import '../../../../repositories/session_repository.dart';
 import '../../../../utils/session/session_display_title.dart';
 
 /// Minimum gap between touch persists for one session.
@@ -42,14 +41,33 @@ class SessionPromptMetadataSync {
     bool allowTeamGeneration = false,
   }) async {
     if (sessionId.startsWith('local-')) return;
-    final repo = _host.sessionRepository;
-    if (repo == null) return;
     await _maybeAutoRenameFromFirstPrompt(
-      repo,
       sessionId,
       firstPrompt,
       allowTeamGeneration: allowTeamGeneration,
     );
+  }
+
+  /// Renames [sessionId] to [title] only when it has no display title yet.
+  ///
+  /// Manual renames, reused sessions that already carry a title, and builder
+  /// sessions with a persisted title are left untouched.
+  Future<void> applySessionTitle(String sessionId, String title) async {
+    if (sessionId.startsWith('local-')) return;
+    if (_host.isClosed) return;
+    final repo = _host.sessionRepository;
+    if (repo == null) return;
+    final trimmed = title.trim();
+    if (trimmed.isEmpty) return;
+    AppSession? session;
+    for (final s in _state().sessions) {
+      if (s.sessionId == sessionId) {
+        session = s;
+        break;
+      }
+    }
+    if (session == null || session.display.trim().isNotEmpty) return;
+    await _host.renameSession(repo, sessionId, trimmed);
   }
 
   /// Bumps [AppSession.updatedAt] for user activity (compose inject, mailbox,
@@ -91,7 +109,6 @@ class SessionPromptMetadataSync {
   }
 
   Future<void> _maybeAutoRenameFromFirstPrompt(
-    SessionRepository repo,
     String sessionId,
     String firstPrompt, {
     bool allowTeamGeneration = false,
@@ -104,7 +121,7 @@ class SessionPromptMetadataSync {
         break;
       }
     }
-    if (session == null || session.display.trim().isNotEmpty) return;
+    if (session == null) return;
     // Builder kickoff is an app-owned envelope, not an operator title source.
     if (session.purpose == SessionPurpose.teamGeneration &&
         !allowTeamGeneration) {
@@ -112,6 +129,6 @@ class SessionPromptMetadataSync {
     }
     final title = deriveSessionTitleFromFirstPrompt(firstPrompt);
     if (title.isEmpty) return;
-    await _host.renameSession(repo, sessionId, title);
+    await applySessionTitle(sessionId, title);
   }
 }

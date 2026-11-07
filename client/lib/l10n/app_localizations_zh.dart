@@ -6869,6 +6869,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsMessage => '消息';
 
   @override
+  String get automationsSessionTitle => '会话标题';
+
+  @override
+  String get automationsSessionTitleHint => '留空则使用定时任务名称。';
+
+  @override
   String get automationsEnabled => '已启用';
 
   @override

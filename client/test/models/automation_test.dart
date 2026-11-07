@@ -527,4 +527,52 @@ void main() {
     expect(restored.outputTruncated, isTrue);
     expect(restored.durationMs, 1234);
   });
+
+  test('launchPrompt round-trips sessionTitle and clears it', () {
+    final a = Automation(
+      id: 'launch-title',
+      name: 'Daily digest',
+      action: AutomationAction.launchPrompt,
+      workspaceId: 'ws1',
+      isPersonal: true,
+      presetId: 'preset-1',
+      message: 'summarize inbox',
+      sessionTitle: 'Inbox digest',
+      preset: AutomationSchedulePreset.daily,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 1,
+      createdAtMs: 1,
+      updatedAtMs: 1,
+    );
+
+    final back = Automation.fromJson(a.toJson());
+    expect(back.sessionTitle, 'Inbox digest');
+    expect(back, a);
+
+    final cleared = back.copyWith(clearSessionTitle: true);
+    expect(cleared.sessionTitle, isNull);
+  });
+
+  test('non-launchPrompt does not persist sessionTitle', () {
+    final a = Automation(
+      id: 'msg-title',
+      name: 'Reset',
+      action: AutomationAction.scheduledMessage,
+      workspaceId: 'ws1',
+      sessionId: 's1',
+      message: '/clear',
+      sessionTitle: 'ignored',
+      preset: AutomationSchedulePreset.hourly,
+      minute: 0,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 1,
+      enabled: true,
+      createdAtMs: 1,
+      updatedAtMs: 2,
+    );
+
+    expect(a.toJson().containsKey('sessionTitle'), isFalse);
+  });
 }

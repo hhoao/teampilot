@@ -86,6 +86,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   final _calculator = AutomationScheduleCalculator();
   late final TextEditingController _nameCtl;
   late final TextEditingController _messageCtl;
+  late final TextEditingController _sessionTitleCtl;
   late final TextEditingController _maxRunCountCtl;
   late final TextEditingController _commandCtl = TextEditingController(
     text: widget.initial?.command ?? '',
@@ -204,6 +205,9 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       text: initial?.name ?? widget.defaultName ?? '',
     );
     _messageCtl = TextEditingController(text: initial?.message ?? '');
+    _sessionTitleCtl = TextEditingController(
+      text: initial?.sessionTitle ?? '',
+    );
     _maxRunCountCtl = TextEditingController(
       text: initial?.maxRunCount?.toString() ?? '',
     );
@@ -401,6 +405,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   void dispose() {
     _nameCtl.dispose();
     _messageCtl.dispose();
+    _sessionTitleCtl.dispose();
     _maxRunCountCtl.dispose();
     _commandCtl.dispose();
     _timeoutCtl.dispose();
@@ -499,6 +504,9 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
     final name = _nameCtl.text.trim();
     final message = _messageCtl.text.trim();
+    final sessionTitle = _isScheduledMessage || _isRunCommand
+        ? null
+        : _sessionTitleCtl.text.trim();
 
     final maxRunRaw = _maxRunCountCtl.text.trim();
     int? maxRunCount;
@@ -659,6 +667,9 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       sessionId: launchSessionId,
       targetMemberId: _isPersonal ? 'team-lead' : _targetMemberId,
       message: message,
+      sessionTitle: sessionTitle == null || sessionTitle.isEmpty
+          ? null
+          : sessionTitle,
       reuseSession: _isScheduledMessage ? false : _reuseSession,
       preset: schedule.preset,
       customCron: isOnceSchedule ? null : _schedule.customCron,
@@ -732,6 +743,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             kind: widget.kind,
             nameController: _nameCtl,
             messageController: _messageCtl,
+            sessionTitleController: _sessionTitleCtl,
             maxRunCountController: _maxRunCountCtl,
             commandController: _commandCtl,
             commandError: _commandError,
