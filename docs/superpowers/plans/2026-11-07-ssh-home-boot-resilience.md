@@ -258,7 +258,7 @@ class HomeConnectAttempt {
 
 > `cacheContext` 由 `runtimeContextRegistry.ensureHomeCached()` 提供（Task 4 新增）：只用已保存的 `lastHome/lastAppDataRoot` 构造缓存上下文，**不发起任何网络连接**。
 
-> If `RuntimeContext.native(...)` has a different constructor signature, adapt the test helper to the real one; do not change the production types.
+> 测试 helper 直接使用真实的 `RuntimeContext({target, filesystem, home, cwd, appDataRoot, paths, pathsFromCache})` 构造函数（`filesystem: throw UnimplementedError()` 这些用例不会触碰它），不要改生产类型。
 
 - [ ] **Step 4: Run test to verify it passes**
 
