@@ -59,10 +59,19 @@ const _profile = SshProfile(
   username: 'alice',
 );
 
+const _replacementProfile = SshProfile(
+  id: 'home2',
+  name: 'replacement',
+  host: 'other.example.com',
+  port: 2222,
+  username: 'bob',
+);
+
 class _SwitchableProbe implements TcpReachabilityProbe {
-  _SwitchableProbe({required this.reachable});
+  _SwitchableProbe({required this.reachable, this.reachableHosts = const {}});
 
   bool reachable;
+  final Set<String> reachableHosts;
   int calls = 0;
   final List<Duration> timeouts = [];
 
@@ -74,7 +83,7 @@ class _SwitchableProbe implements TcpReachabilityProbe {
   }) async {
     calls += 1;
     timeouts.add(timeout);
-    return reachable;
+    return reachable || reachableHosts.contains(host);
   }
 }
 
@@ -107,8 +116,14 @@ class _RemoteBootCounter {
 /// [withCoordinator]) the real reconnect coordinator whose hooks mirror
 /// app_shell exactly.
 class _HomeBootHarness {
-  _HomeBootHarness({required bool reachable, this.failFirstCreates = 0})
-    : probe = _SwitchableProbe(reachable: reachable) {
+  _HomeBootHarness({
+    required bool reachable,
+    this.failFirstCreates = 0,
+    Set<String> reachableHosts = const {},
+  }) : probe = _SwitchableProbe(
+         reachable: reachable,
+         reachableHosts: reachableHosts,
+       ) {
     attempt = HomeConnectAttempt(
       probe: probe,
       resolve: () async {
@@ -116,7 +131,11 @@ class _HomeBootHarness {
         return _ctx(fromCache: false);
       },
       cacheContext: () async => cachedContext,
-      profileById: (id) => id == _profile.id ? _profile : null,
+      profileById: (id) => switch (id) {
+        'home' => _profile,
+        'home2' => _replacementProfile,
+        _ => null,
+      },
     );
 
     final events = SshConnectionEvents();
@@ -138,7 +157,11 @@ class _HomeBootHarness {
     coordinator = SshProfileConnectionCoordinator(
       factory: factory,
       events: events,
-      profileResolver: (id) => id == _profile.id ? _profile : null,
+      profileResolver: (id) => switch (id) {
+        'home' => _profile,
+        'home2' => _replacementProfile,
+        _ => null,
+      },
       policy: SshProfileReconnectPolicy(
         maxAttempts: 5,
         disconnectCoalesce: const Duration(milliseconds: 5),
@@ -147,32 +170,34 @@ class _HomeBootHarness {
       ),
       onReconnectAttempt: (profileId, attempt) {
         backgroundAttempts.add(attempt);
-        if (profileId == _profile.id) cubit.markBackgroundAttempt(attempt);
+        if (profileId == activeProfileId) cubit.markBackgroundAttempt(attempt);
       },
       onReconnected: (profileId) {
         // Same guard as app_shell: only a transition into `connected` runs
         // hot recovery.
-        if (profileId == _profile.id &&
+        if (profileId == activeProfileId &&
             cubit.state.status != HomeConnectionStatus.connected) {
           cubit.markReconnected();
         }
       },
       persistRetry: (profileId) =>
-          profileId == _profile.id &&
+          profileId == activeProfileId &&
           !cubit.isClosed &&
           cubit.state.status != HomeConnectionStatus.connected,
     );
     cubit = HomeConnectionCubit(
-      connect: () => attempt.run(_profile.id),
-      cancelRetry: () => coordinator.userDisconnect(_profile.id),
+      // Mirrors app_shell: the callback reads the live home identity rather
+      // than a captured boot id.
+      connect: () => attempt.run(activeProfileId),
+      cancelRetry: () => coordinator.userDisconnect(activeProfileId),
       resumeRetry: () async {
         // Mirrors app_shell's 「继续重试」: clear the spent window, open the
         // storage plane, and re-arm the loop if the manual connect fails.
-        coordinator.resetReconnectAttempts(_profile.id);
+        coordinator.resetReconnectAttempts(activeProfileId);
         try {
-          await coordinator.userConnect(_profile);
+          await coordinator.userConnect(_profileFor(activeProfileId)!);
         } on Object {
-          coordinator.restartReconnect(_profile.id);
+          coordinator.restartReconnect(activeProfileId);
           rethrow;
         }
       },
@@ -184,6 +209,16 @@ class _HomeBootHarness {
       port: _profile.port,
     );
   }
+
+  /// The home id the shell currently targets. Mirrors app_shell's mutable
+  /// `activeHomeProfileId` (boot snapshot until a switch updates it).
+  String activeProfileId = _profile.id;
+
+  static SshProfile? _profileFor(String id) => switch (id) {
+    'home' => _profile,
+    'home2' => _replacementProfile,
+    _ => null,
+  };
 
   final _SwitchableProbe probe;
   final RuntimeContext cachedContext = _ctx(fromCache: true);
@@ -300,6 +335,44 @@ void main() {
     expect(harness.remoteBoot.runs, 1);
   });
 
+  test(
+    'switching to a reachable home reseeds the cubit and connects the new id',
+    () async {
+      // Old home is down; only the replacement host answers.
+      final harness = _HomeBootHarness(
+        reachable: false,
+        reachableHosts: {_replacementProfile.host},
+      );
+      addTearDown(harness.dispose);
+
+      harness.seedBoot(await harness.attempt.run(_profile.id));
+      expect(harness.cubit.state.status, HomeConnectionStatus.unreachable);
+      expect(harness.cubit.state.profileId, _profile.id);
+
+      // Mirrors switchHomeTarget: the live id moves first, then the cubit is
+      // reseeded and one bounded attempt starts against the replacement.
+      harness.activeProfileId = _replacementProfile.id;
+      harness.cubit.rebind(
+        profileId: _replacementProfile.id,
+        host: _replacementProfile.host,
+        port: _replacementProfile.port,
+      );
+      expect(harness.cubit.state.status, HomeConnectionStatus.connecting);
+      expect(harness.cubit.state.profileId, _replacementProfile.id);
+
+      await harness.cubit.retryNow();
+      await harness.remoteBoot.last;
+
+      // The gate can now leave the connection page: the cubit is connected and
+      // carries the NEW identity, not the abandoned boot-time home.
+      expect(harness.cubit.state.status, HomeConnectionStatus.connected);
+      expect(harness.cubit.state.profileId, _replacementProfile.id);
+      expect(harness.cubit.state.host, _replacementProfile.host);
+      expect(harness.cubit.state.port, _replacementProfile.port);
+      expect(harness.remoteBoot.runs, 1);
+    },
+  );
+
   // `buildAppShell` is unmountable (see file header), so the wiring the
   // behavior cases cannot observe being deleted is pinned at the source
   // level, following `test/app/app_shell_bootstrap_retry_test.dart`.
@@ -391,13 +464,109 @@ void main() {
     test('a failed bounded connect re-arms the retry loop', () {
       expect(
         RegExp(
-          r'if \(!result\.reachable && isSshHome\) \{ '
-          r'sshProfileConnectionCoordinator\.restartReconnect\(homeProfileId\);',
+          r'if \(!result\.reachable && id != null\) \{ '
+          r'sshProfileConnectionCoordinator\.restartReconnect\(id\);',
         ).hasMatch(src),
         isTrue,
         reason:
             'an explicit retry whose bounded resolve still fails must leave '
-            'something retrying behind the connection page',
+            'something retrying behind the connection page (for the CURRENT '
+            'home id, not the boot snapshot)',
+      );
+    });
+
+    test('a home switch reseeds the connection cubit and retries the new '
+        'target', () {
+      final switchFn = src.indexOf(
+        'Future<void> switchHomeTarget(String id) async {',
+      );
+      expect(switchFn, greaterThanOrEqualTo(0));
+      final rebind = src.indexOf('cubit.rebind(', switchFn);
+      final retry = src.indexOf('unawaited(cubit.retryNow());', switchFn);
+      final transport = src.indexOf(
+        'await applyHomeEventTransport(restart: true);',
+        switchFn,
+      );
+      expect(
+        rebind,
+        greaterThan(switchFn),
+        reason:
+            'switchHomeTarget must reseed the cubit onto the selected home '
+            'instead of leaving it closed over the boot-time id',
+      );
+      expect(
+        retry,
+        greaterThan(rebind),
+        reason:
+            'the reseeded cubit must start a bounded attempt so the gate can '
+            'leave the connection page once the new home connects',
+      );
+      expect(
+        transport,
+        greaterThan(retry),
+        reason:
+            'the bounded retry belongs to the switch, before transport '
+            'restart',
+      );
+    });
+
+    test('cubit/coordinator hooks read the live home id', () {
+      expect(
+        src,
+        contains('profileId == activeHomeProfileId'),
+        reason:
+            'onReconnectAttempt/onReconnected/persistRetry must follow home '
+            'switches, not the captured boot id',
+      );
+      expect(
+        src,
+        contains('final id = activeHomeProfileId;'),
+        reason: 'the connect/resume/cancel callbacks must resolve the live id',
+      );
+    });
+
+    test('recovery rebinds the storage plane instead of using the native '
+        'fallback', () {
+      expect(
+        src,
+        contains('homeRecoveredOntoNativeFallback()'),
+        reason: 'recovery must detect the boot-time native fallback plane',
+      );
+      expect(
+        src,
+        contains('runSelfInitiatedSwap('),
+        reason:
+            'the SSH plane must be published through the invalidation '
+            'service so the swap echo does not schedule a duplicate reload',
+      );
+      expect(
+        src,
+        contains('markRestartRequired()'),
+        reason:
+            'when the plane cannot be rebound the gate must stay on the '
+            'connection page instead of operating on local storage',
+      );
+    });
+
+    test('editing the current home profile re-arms a bounded retry', () {
+      expect(
+        src,
+        contains('sshProfileCubit.stream.listen'),
+        reason:
+            'a saved host/port edit must be observed without a callback from '
+            'the editor widgets',
+      );
+      expect(
+        src,
+        contains('sshProfileConnectivityKey('),
+        reason:
+            'the watch must compare reachability-relevant identity fields, '
+            'not path-cache writes',
+      );
+      expect(
+        src,
+        contains('watchedHomeProfileConnectivityKey'),
+        reason: 'the listener re-arms only after the current profile changed',
       );
     });
   });

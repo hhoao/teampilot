@@ -205,4 +205,95 @@ void main() {
       expect(connectCalls, 0);
     },
   );
+
+  test(
+    'a background retry while connected does not blank the surface',
+    () async {
+      final cubit = HomeConnectionCubit(
+        connect: () async => HomeConnectResult.connected(_ctx()),
+        cancelRetry: () async {},
+        resumeRetry: () async {},
+        onConnected: () {},
+        profileId: 'p1',
+      );
+      await cubit.connectOnce();
+      expect(cubit.state.status, HomeConnectionStatus.connected);
+
+      cubit.markBackgroundAttempt(3);
+
+      // A mid-session Wi-Fi → LTE blip must not swap the editor/terminal for the
+      // connection page: the surface stays `connected` until recovery gives up.
+      expect(cubit.state.status, HomeConnectionStatus.connected);
+      expect(cubit.state.attempt, 0);
+    },
+  );
+
+  test(
+    'rebind moves the cubit onto a new home id and resets to connecting',
+    () {
+      final cubit = HomeConnectionCubit(
+        connect: () async =>
+            const HomeConnectResult.unreachable(HomeErrorKind.tcpUnreachable),
+        cancelRetry: () async {},
+        resumeRetry: () async {},
+        onConnected: () {},
+        profileId: 'old',
+        host: 'old.example.com',
+        port: 22,
+      );
+      cubit.markInitial(
+        const HomeConnectResult.unreachable(HomeErrorKind.tcpUnreachable),
+      );
+
+      cubit.rebind(profileId: 'new', host: 'new.example.com', port: 2222);
+
+      expect(cubit.state.status, HomeConnectionStatus.connecting);
+      expect(cubit.state.profileId, 'new');
+      expect(cubit.state.host, 'new.example.com');
+      expect(cubit.state.port, 2222);
+      expect(cubit.state.attempt, 0);
+      expect(cubit.state.lastErrorKind, isNull);
+    },
+  );
+
+  test('rebind for the same home id refreshes identity but keeps status', () {
+    final cubit = HomeConnectionCubit(
+      connect: () async =>
+          const HomeConnectResult.unreachable(HomeErrorKind.tcpUnreachable),
+      cancelRetry: () async {},
+      resumeRetry: () async {},
+      onConnected: () {},
+      profileId: 'p1',
+      host: 'old.example.com',
+      port: 22,
+    );
+    cubit.markInitial(
+      const HomeConnectResult.unreachable(HomeErrorKind.tcpUnreachable),
+    );
+
+    cubit.rebind(profileId: 'p1', host: 'fixed.example.com', port: 2200);
+
+    expect(cubit.state.status, HomeConnectionStatus.unreachable);
+    expect(cubit.state.host, 'fixed.example.com');
+    expect(cubit.state.port, 2200);
+    expect(cubit.state.lastErrorKind, HomeErrorKind.tcpUnreachable);
+  });
+
+  test('markRestartRequired closes the gate without a retry action', () {
+    final cubit = HomeConnectionCubit(
+      connect: () async => HomeConnectResult.connected(_ctx()),
+      cancelRetry: () async {},
+      resumeRetry: () async {},
+      onConnected: () {},
+      profileId: 'p1',
+    );
+    cubit.markReconnected();
+
+    cubit.markRestartRequired();
+
+    expect(cubit.state.status, HomeConnectionStatus.restartRequired);
+    expect(cubit.state.requiresRestart, isTrue);
+    expect(cubit.state.canRetryNow, isFalse);
+    expect(cubit.state.canCancelRetry, isFalse);
+  });
 }

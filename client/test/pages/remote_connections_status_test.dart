@@ -172,6 +172,21 @@ void main() {
     expect(find.text(l10n.homeConnectionRetryNow), findsOneWidget);
   });
 
+  testWidgets('restart required shows the restart hint and no retry action', (
+    tester,
+  ) async {
+    final homeCubit = buildHomeCubit();
+    addTearDown(homeCubit.close);
+    homeCubit.markRestartRequired();
+
+    await pumpPage(tester, homeCubit: homeCubit);
+
+    expect(find.text(l10n.homeConnectionRestartRequired), findsOneWidget);
+    expect(find.text(l10n.homeConnectionSwitch), findsOneWidget);
+    expect(find.text(l10n.homeConnectionRetryNow), findsNothing);
+    expect(find.text(l10n.homeConnectionCancelRetry), findsNothing);
+  });
+
   testWidgets('connected status renders no status card', (tester) async {
     final homeCubit = buildHomeCubit();
     addTearDown(homeCubit.close);

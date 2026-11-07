@@ -630,6 +630,55 @@ void main() {
     expect(find.text(l10n.homeConnectionRetryNow), findsOneWidget);
   });
 
+  testWidgets('restart-required home keeps the connection page', (
+    tester,
+  ) async {
+    await profileCubit.close();
+    profileCubit = _SeededSshProfileCubit(
+      profileRepository: profileRepository,
+      credentialStore: harness.credentialStore,
+      profiles: const [_profile],
+    );
+    final homeCubit = HomeConnectionCubit(
+      connect: () async =>
+          const HomeConnectResult.unreachable(HomeErrorKind.unknown),
+      cancelRetry: () async {},
+      resumeRetry: () async {},
+      onConnected: () {},
+      profileId: 'p1',
+      host: 'example.com',
+      port: 22,
+    );
+    addTearDown(homeCubit.close);
+    homeCubit.markRestartRequired();
+
+    await tester.pumpWidget(
+      await _gateHost(
+        mode: ConnectionModeService(
+          defaultTargetResolver: () => RuntimeTarget.ssh('p1', label: 'box'),
+          hasSshProfiles: () => profileCubit.state.hasProfiles,
+        ),
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
+        homeConnectionCubit: homeCubit,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // A recovered-but-unrebindable SSH home must never expose `child` (the
+    // local fallback plane); it stays on the connection page with a restart
+    // hint instead of a retry action.
+    expect(find.text('APP_CHILD'), findsNothing);
+    expect(find.byType(RemoteConnectionsPage), findsOneWidget);
+    expect(find.text(l10n.homeConnectionRestartRequired), findsOneWidget);
+    expect(find.text(l10n.homeConnectionRetryNow), findsNothing);
+  });
+
   testWidgets('connected home gate shows child without status card', (
     tester,
   ) async {

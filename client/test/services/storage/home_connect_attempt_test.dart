@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -126,5 +127,27 @@ void main() {
     final result = await attempt.run('p1');
     expect(result.reachable, isFalse);
     expect(result.errorKind, HomeErrorKind.sshTimeout);
+  });
+
+  test('SSH auth failures classify as authFailed', () async {
+    final attempt = HomeConnectAttempt(
+      probe: _FakeProbe(true),
+      resolve: () async => throw SSHAuthFailError('permission denied'),
+      profileById: (_) => _profile(),
+    );
+    final result = await attempt.run('p1');
+    expect(result.reachable, isFalse);
+    expect(result.errorKind, HomeErrorKind.authFailed);
+  });
+
+  test('non-auth resolve failures stay transportError', () async {
+    final attempt = HomeConnectAttempt(
+      probe: _FakeProbe(true),
+      resolve: () async => throw StateError('connection reset'),
+      profileById: (_) => _profile(),
+    );
+    final result = await attempt.run('p1');
+    expect(result.reachable, isFalse);
+    expect(result.errorKind, HomeErrorKind.transportError);
   });
 }

@@ -148,6 +148,25 @@ void main() {
     await harness.dispose();
   });
 
+  test('a throwing reconnect hook cannot wedge later attempts', () async {
+    final harness = _ReconnectHarness(
+      maxAttempts: 5,
+      persistRetry: (_) => true,
+      succeedOnCreate: 4,
+      // The first attempt throws from the progress hook, before the transport
+      // work. Without the try/finally guard `_reconnectInFlight` would stay
+      // latched and no later attempt would ever run.
+      beforeAttempt: (_, _) => throw StateError('hook boom'),
+    );
+
+    await harness.startDown();
+    await waitUntil(() => harness.attempts.length >= 3);
+
+    expect(harness.attempts.take(3).map((a) => a.attempt), [1, 2, 3]);
+
+    await harness.dispose();
+  });
+
   test('restartReconnect starts a loop for a never-connected home', () async {
     final harness = _ReconnectHarness(maxAttempts: 3);
 
@@ -220,6 +239,7 @@ class _ReconnectHarness {
     this.succeedOnCreate,
     this.failFirstCreates,
     this.homeCubit,
+    this.beforeAttempt,
   }) {
     final events = SshConnectionEvents();
     factory = SshClientFactory(
@@ -255,6 +275,7 @@ class _ReconnectHarness {
       persistRetry: persistRetry ?? _persistWhileHomeNotConnected,
       onReconnectAttempt: (profileId, attempt) {
         attempts.add((profileId: profileId, attempt: attempt));
+        beforeAttempt?.call(profileId, attempt);
         homeCubit?.markBackgroundAttempt(attempt);
       },
       onReconnected: (profileId) {
@@ -279,6 +300,9 @@ class _ReconnectHarness {
 
   /// Optional cubit wired exactly like app_shell's home hooks.
   final HomeConnectionCubit? homeCubit;
+
+  /// Runs inside `onReconnectAttempt`; a throw here must not wedge the loop.
+  final void Function(String profileId, int attempt)? beforeAttempt;
   late final SshClientFactory factory;
   late final SshProfileConnectionCoordinator coordinator;
   final List<({String profileId, int attempt})> attempts = [];
