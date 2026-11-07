@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart'
-    show listEquals, setEquals, visibleForTesting;
+import 'package:flutter/foundation.dart' show listEquals, setEquals;
 import 'package:uuid/uuid.dart';
 
 import '../models/workspace.dart';
@@ -25,6 +24,7 @@ import '../services/cli/registry/capabilities/acp_capability.dart';
 import '../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/storage/home_storage.dart';
+import '../services/storage/plane_snapshot_cache.dart';
 import '../services/storage/work_target_canonicalizer.dart';
 import '../models/workspace_icon_ref.dart';
 import '../services/workspace/target_liveness.dart';
@@ -59,64 +59,48 @@ class SessionRepository {
   HomeStorage get storage => _storage;
 
   final _sessionFileLocks = LockPool();
-  static final Map<String, List<Workspace>> _workspacesIndexByRoot = {};
-
-  @visibleForTesting
-  static void debugResetWorkspacesIndexCache() =>
-      _workspacesIndexByRoot.clear();
-
-  String _workspacesIndexCacheKey() {
-    if (_rootOverride != null) return _rootOverride;
-    return _storage.appDataRoot;
-  }
+  final PlaneSnapshotCache<Workspace> _workspaceIndexCache =
+      PlaneSnapshotCache<Workspace>();
 
   List<Workspace> _rememberWorkspacesIndex(List<Workspace> workspaces) {
-    final inferred = [
+    return _workspaceIndexCache.write([
       for (final workspace in workspaces)
         _withInferredMemberPlacementInit(workspace),
-    ];
-    final remembered = List<Workspace>.unmodifiable(inferred);
-    _workspacesIndexByRoot[_workspacesIndexCacheKey()] = remembered;
-    return remembered;
+    ]);
   }
 
   /// Incremental mirror of [Workspace] into the in-memory index cache and the
   /// workspaces-index.json snapshot. Mutations call this so the fast boot path
   /// (loadWorkspacesIndex) never returns a stale workspace.
   Future<void> _rememberWorkspace(Workspace workspace) async {
-    final key = _workspacesIndexCacheKey();
-    final current = _workspacesIndexByRoot[key];
+    final current = _workspaceIndexCache.snapshot;
     if (current != null) {
       final inferred = _withInferredMemberPlacementInit(workspace);
-      if (current.any((w) => w.workspaceId == workspace.workspaceId)) {
-        _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable([
-          for (final existing in current)
-            if (existing.workspaceId == workspace.workspaceId)
-              inferred
-            else
-              existing,
-        ]);
-      } else {
-        // Cache populated (e.g. boot loadWorkspacesIndex) but this workspace
-        // is not in it yet — append so later fast-path reads see it.
-        _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable([
-          ...current,
-          inferred,
-        ]);
-      }
+      final exists = current.any(
+        (existing) => existing.workspaceId == workspace.workspaceId,
+      );
+      _workspaceIndexCache.write(
+        exists
+            ? [
+                for (final existing in current)
+                  if (existing.workspaceId == workspace.workspaceId)
+                    inferred
+                  else
+                    existing,
+              ]
+            : [...current, inferred],
+      );
     }
     await WorkspaceIndexStore(await _fs()).upsert(workspace);
   }
 
   /// Incremental removal from the in-memory index cache and the index snapshot.
   Future<void> _forgetWorkspace(String workspaceId) async {
-    final key = _workspacesIndexCacheKey();
-    final current = _workspacesIndexByRoot[key];
+    final current = _workspaceIndexCache.snapshot;
     if (current != null) {
-      _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable([
-        for (final existing in current)
-          if (existing.workspaceId != workspaceId) existing,
-      ]);
+      _workspaceIndexCache.write(
+        current.where((existing) => existing.workspaceId != workspaceId),
+      );
     }
     await WorkspaceIndexStore(await _fs()).remove(workspaceId);
   }
@@ -256,7 +240,7 @@ class SessionRepository {
   /// Reads [workspaces-index.json] when present and workspace ids still match
   /// disk; otherwise rebuilds the snapshot from per-workspace manifests.
   Future<List<Workspace>> loadWorkspacesIndex() async {
-    final cached = _workspacesIndexByRoot[_workspacesIndexCacheKey()];
+    final cached = _workspaceIndexCache.snapshot;
     if (cached != null) {
       appLogger.i(
         '[boot] loadWorkspacesIndex from memory count=${cached.length}',
@@ -966,9 +950,8 @@ class SessionRepository {
     // the new id themselves. Base the mirror on the cached index entry when
     // present: its order is createdAt desc, whereas a fresh indexOnly read
     // returns raw session-directory order (filesystem dependent).
-    final key = _workspacesIndexCacheKey();
     Workspace? cachedWorkspace;
-    for (final w in _workspacesIndexByRoot[key] ?? const <Workspace>[]) {
+    for (final w in _workspaceIndexCache.snapshot ?? const <Workspace>[]) {
       if (w.workspaceId == workspaceId) {
         cachedWorkspace = w;
         break;
@@ -1025,8 +1008,7 @@ class SessionRepository {
       if (hinted.isNotEmpty) hinted,
       ...await fs.listWorkspaceDirectoryIds(),
       for (final workspace
-          in _workspacesIndexByRoot[_workspacesIndexCacheKey()] ??
-              const <Workspace>[])
+          in _workspaceIndexCache.snapshot ?? const <Workspace>[])
         workspace.workspaceId,
     };
     final indexed = await WorkspaceIndexStore(fs).tryRead();
@@ -1415,7 +1397,7 @@ class SessionRepository {
           workspace.copyWith(updatedAt: DateTime.now().millisecondsSinceEpoch),
         );
         // Mirror the sessionIds change into the index snapshot.
-        final cachedList = _workspacesIndexByRoot[_workspacesIndexCacheKey()];
+        final cachedList = _workspaceIndexCache.snapshot;
         Workspace? cached;
         for (final w in cachedList ?? const <Workspace>[]) {
           if (w.workspaceId == workspaceId) {
@@ -1525,9 +1507,8 @@ class SessionRepository {
       }
 
       // Index mirror — same prepend semantics as createSession.
-      final key = _workspacesIndexCacheKey();
       Workspace? cachedWorkspace;
-      for (final w in _workspacesIndexByRoot[key] ?? const <Workspace>[]) {
+      for (final w in _workspaceIndexCache.snapshot ?? const <Workspace>[]) {
         if (w.workspaceId == source.workspaceId) {
           cachedWorkspace = w;
           break;
