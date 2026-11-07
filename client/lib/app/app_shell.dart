@@ -300,6 +300,9 @@ import '../services/provider_usage/adapters/http_json_mapping_adapter.dart';
 import '../services/provider_usage/cli_credential_source.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/remote_cli_locator.dart';
+import '../cubits/home_connection_cubit.dart';
+import '../services/ssh/tcp_reachability_probe.dart';
+import '../services/storage/home_connect_attempt.dart';
 import '../services/storage/runtime_context_resolver.dart';
 import '../services/storage/runtime_context_registry.dart';
 import '../services/storage/home_invalidation_service.dart';
@@ -561,6 +564,7 @@ class AppShell {
     required this.homeStorageInvalidator,
     required this.homeInvalidationService,
     required this.homeStorage,
+    required this.homeConnectionCubit,
     required this.sshConnectionCubit,
     required this.githubCredentialsStore,
     required this.githubAccountCubit,
@@ -687,6 +691,7 @@ class AppShell {
   final HomeStorageInvalidator homeStorageInvalidator;
   final HomeInvalidationService homeInvalidationService;
   final HomeStorage homeStorage;
+  final HomeConnectionCubit homeConnectionCubit;
   final SshConnectionCubit sshConnectionCubit;
   final GithubCredentialsStore githubCredentialsStore;
   final GithubAccountCubit githubAccountCubit;
@@ -1138,9 +1143,37 @@ Future<AppShell> buildAppShell({
   );
   boot('installing home runtime context');
   final ensureHomeSw = Stopwatch()..start();
-  await runtimeContextRegistry.ensureHome();
+  // SSH homes get one bounded attempt (TCP probe + time-boxed resolve) so an
+  // unreachable/slow host cannot hold the splash indefinitely. Every other
+  // home kind keeps the existing unbounded resolve.
+  final homeProfileId = homeTarget.sshProfileId;
+  final isSshHome =
+      homeTarget.kind == RuntimeKind.ssh &&
+      homeProfileId != null &&
+      homeProfileId.isNotEmpty;
+  final homeSshProfile = isSshHome ? sshProfileById(homeProfileId) : null;
+  HomeConnectAttempt? homeAttempt;
+  HomeConnectResult initialHome;
+  if (isSshHome) {
+    homeAttempt = HomeConnectAttempt(
+      probe: const SocketTcpReachabilityProbe(),
+      resolve: () async {
+        await runtimeContextRegistry.ensureHome();
+        return runtimeContextRegistry.home();
+      },
+      cacheContext: runtimeContextRegistry.ensureHomeCached,
+      profileById: sshProfileById,
+    );
+    initialHome = await homeAttempt.run(homeProfileId);
+  } else {
+    await runtimeContextRegistry.ensureHome();
+    initialHome = HomeConnectResult.connected(runtimeContextRegistry.home());
+  }
   boot('home runtime context ensured +${ensureHomeSw.elapsedMilliseconds}ms');
-  final homeCtx = runtimeContextRegistry.home();
+  // A failed attempt already carries the cached-path context, so the shell can
+  // be built without waiting for any network round-trip.
+  final homeCtx =
+      initialHome.context ?? await runtimeContextRegistry.ensureHomeCached();
   final cfg = termuxConfigCache;
   if (homeTarget.kind == RuntimeKind.termux &&
       cfg != null &&
@@ -1504,6 +1537,9 @@ Future<AppShell> buildAppShell({
   // from the app-lifetime central dispatcher, so a retried bootstrap's
   // events never reach this (dead) shell's listeners.
   CatalogRuntime? catalogRuntime;
+  // Created after the bounded home attempt and seeded synchronously; declared
+  // here so the wiring-failure path can close a discarded instance.
+  HomeConnectionCubit? homeConnectionCubit;
 
   try {
     Future<void> persistSshHomePathCacheIfLive() async {
@@ -3228,69 +3264,10 @@ Future<AppShell> buildAppShell({
     // buildAppShell returns, so the reference below is safe at call time.
     late final HomeInvalidationService homeInvalidationService;
 
-    Future<void> bootstrapAppData() async {
-      await notificationBootstrap;
-      final indexReady = bootstrapCubit?.state.homeIndexReady ?? false;
-      if (!indexReady) {
-        bootstrapCubit?.beginHomeIndex();
-      }
-      boot('bootstrapAppData start');
-      if (!indexReady) {
-        if (connectionModeService.isRemoteWorkPlane) {
-          boot('awaiting remote home index snapshots');
-          try {
-            await homeIndexPrefetch;
-            await AppDataBootstrap.bootstrapHomeIndex(
-              boot: boot,
-              sshProfileCubit: sshProfileCubit,
-              teamCubit: teamCubit,
-              chatCubit: chatCubit,
-              sessionRepo: sessionRepo,
-              layoutCubit: layoutCubit,
-              isSshMode: connectionModeService.isRemoteWorkPlane,
-              homeSshProfileId: defaultTargetResolver().sshProfileId,
-              sshProfileExists: (id) => sshProfileById(id) != null,
-              // buildAppShell just materialized the home context from the same
-              // on-disk profiles this bootstrap reloads, so a rebind here would
-              // only repeat the path probe (~0.7s over SSH) with no new input.
-              reinstallSshHome: false,
-              // Not invoked while the flag above is false. Kept bracketed:
-              // a reinstall outside the invalidation service's reload would
-              // publish a swap that echoes back as an external home switch and
-              // schedules a duplicate full bootstrap.
-              reinstallStorageContext: () => homeInvalidationService
-                  .runSelfInitiatedSwap(reinstallStorageContext),
-              storage: homeStorage,
-              home: defaultTargetResolver(),
-              expertHubCatalog: expertHubCatalog,
-            );
-          } on Object catch (error, stackTrace) {
-            appLogger.w(
-              '[boot] remote home index bootstrap failed',
-              error: error,
-              stackTrace: stackTrace,
-            );
-          }
-          await persistSshHomePathCacheIfLive();
-        } else {
-          boot('awaiting home index snapshots');
-          await homeIndexPrefetch;
-          await AppDataBootstrap.hydrateNativeHomeIndex(
-            boot: boot,
-            teamCubit: teamCubit,
-            chatCubit: chatCubit,
-            sessionRepo: sessionRepo,
-            layoutCubit: layoutCubit,
-            storage: homeStorage,
-            home: defaultTargetResolver(),
-            expertHubCatalog: expertHubCatalog,
-          );
-        }
-        bootstrapCubit?.markHomeIndexReady();
-      }
-      // Team-generation jobs are not auto-resumed at cold start. Incomplete
-      // builder/destination sessions reconnect only when the user opens them.
-      await reconnectHomeSshIfNeeded();
+    /// Warm the shell-hosted config + auxiliary data and resolve onboarding.
+    /// Shared by the native path and the remote (post-connect) boot so both
+    /// stay identical; returns `showOnboardingWizard`.
+    Future<bool> warmShellAndPrepareInteractive() async {
       await yieldUiFrame();
       // Managed Provider cache hydration is deliberately background work. The
       // shell can paint while the global Cubits transition from initial to
@@ -3332,7 +3309,7 @@ Future<AppShell> buildAppShell({
           );
         }
       }());
-      final showOnboarding = await AppDataBootstrap.prepareInteractiveShell(
+      return AppDataBootstrap.prepareInteractiveShell(
         boot: boot,
         appSettings: appSettings,
         sshProfileCubit: sshProfileCubit,
@@ -3343,9 +3320,166 @@ Future<AppShell> buildAppShell({
         storage: homeStorage,
         workspaces: chatCubit.state.workspaces,
       );
+    }
+
+    // Remote (home-storage) boot steps, deferred until the SSH home is known
+    // reachable. Idempotent: the first connected boot runs it, and a later hot
+    // recovery (cubit onConnected after a retry) reuses the same guard, so the
+    // remote index/warm chain runs exactly once per shell.
+    var remoteBootStarted = false;
+    var remoteIndexBootstrapped = false;
+    var remoteShowOnboarding = false;
+    Future<bool> runRemoteBootAfterConnect() async {
+      if (remoteBootStarted) return remoteShowOnboarding;
+      remoteBootStarted = true;
+      // Deliberately not `bootstrapCubit.state.homeIndexReady`: that getter is
+      // also true once the phase is `ready`, which is exactly the state a
+      // deferred boot leaves behind, and hot recovery must still load the
+      // index it skipped.
+      if (!remoteIndexBootstrapped) {
+        remoteIndexBootstrapped = true;
+        boot('awaiting remote home index snapshots');
+        try {
+          await homeIndexPrefetch;
+          await AppDataBootstrap.bootstrapHomeIndex(
+            boot: boot,
+            sshProfileCubit: sshProfileCubit,
+            teamCubit: teamCubit,
+            chatCubit: chatCubit,
+            sessionRepo: sessionRepo,
+            layoutCubit: layoutCubit,
+            isSshMode: connectionModeService.isRemoteWorkPlane,
+            homeSshProfileId: defaultTargetResolver().sshProfileId,
+            sshProfileExists: (id) => sshProfileById(id) != null,
+            // buildAppShell just materialized the home context from the same
+            // on-disk profiles this bootstrap reloads, so a rebind here would
+            // only repeat the path probe (~0.7s over SSH) with no new input.
+            reinstallSshHome: false,
+            // Not invoked while the flag above is false. Kept bracketed:
+            // a reinstall outside the invalidation service's reload would
+            // publish a swap that echoes back as an external home switch and
+            // schedules a duplicate full bootstrap.
+            reinstallStorageContext: () => homeInvalidationService
+                .runSelfInitiatedSwap(reinstallStorageContext),
+            storage: homeStorage,
+            home: defaultTargetResolver(),
+            expertHubCatalog: expertHubCatalog,
+          );
+        } on Object catch (error, stackTrace) {
+          appLogger.w(
+            '[boot] remote home index bootstrap failed',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
+        await persistSshHomePathCacheIfLive();
+        bootstrapCubit?.markHomeIndexReady();
+      }
+      remoteShowOnboarding = await warmShellAndPrepareInteractive();
+      return remoteShowOnboarding;
+    }
+
+    // Seeded from the first bounded attempt so StartupGate can render the
+    // connection page without re-probing. Local/wsl/termux homes are seeded
+    // connected and never probe here (unchanged boot behavior).
+    homeConnectionCubit = HomeConnectionCubit(
+      connect: () => homeAttempt != null
+          ? homeAttempt.run(homeProfileId!)
+          : Future.value(initialHome),
+      cancelRetry: () => !isSshHome
+          ? Future<void>.value()
+          : sshProfileConnectionCoordinator.userDisconnect(homeProfileId),
+      resumeRetry: () async {
+        if (!isSshHome) return;
+        final profile = sshProfileById(homeProfileId);
+        if (profile == null) return;
+        await sshProfileConnectionCoordinator.userConnect(profile);
+      },
+      // Hot recovery: run the deferred remote boot once, then let the SSH
+      // liveness/team-generation path resume now that the transport is back.
+      // Errors are logged (the shell is already marked ready and must not crash
+      // on a late background failure).
+      onConnected: () {
+        unawaited(() async {
+          try {
+            await runRemoteBootAfterConnect();
+            await reconnectHomeSshIfNeeded();
+          } on Object catch (error, stackTrace) {
+            appLogger.w(
+              '[boot] remote boot after reconnect failed',
+              error: error,
+              stackTrace: stackTrace,
+            );
+          }
+        }());
+      },
+      profileId: isSshHome ? homeProfileId : null,
+      host: isSshHome ? homeSshProfile?.host : null,
+      port: isSshHome ? homeSshProfile?.port : null,
+    )..markInitial(initialHome);
+
+    Future<void> bootstrapAppData() async {
+      final connected =
+          homeConnectionCubit?.state.status == HomeConnectionStatus.connected;
+      final remoteWorkPlane = connectionModeService.isRemoteWorkPlane;
+      // An unreachable SSH home defers every home-storage read: the shell must
+      // paint the connection page without waiting on a dead transport. The
+      // deferred chain runs once on the first successful (re)connect.
+      final deferRemoteBoot = remoteWorkPlane && !connected;
+      var showOnboarding = false;
+      if (!deferRemoteBoot) {
+        await notificationBootstrap;
+        final indexReady = bootstrapCubit?.state.homeIndexReady ?? false;
+        if (!indexReady) {
+          bootstrapCubit?.beginHomeIndex();
+        }
+        boot('bootstrapAppData start');
+        if (remoteWorkPlane) {
+          showOnboarding = await runRemoteBootAfterConnect();
+        } else {
+          if (!indexReady) {
+            boot('awaiting home index snapshots');
+            await homeIndexPrefetch;
+            await AppDataBootstrap.hydrateNativeHomeIndex(
+              boot: boot,
+              teamCubit: teamCubit,
+              chatCubit: chatCubit,
+              sessionRepo: sessionRepo,
+              layoutCubit: layoutCubit,
+              storage: homeStorage,
+              home: defaultTargetResolver(),
+              expertHubCatalog: expertHubCatalog,
+            );
+            bootstrapCubit?.markHomeIndexReady();
+          }
+          showOnboarding = await warmShellAndPrepareInteractive();
+        }
+      } else {
+        boot('bootstrapAppData deferred: home unreachable');
+      }
+      // Unconditional: both the connected and the deferred (unreachable) path
+      // must finish boot so StartupGate can render the connection page.
       bootstrapCubit?.markAppReady(showOnboardingWizard: showOnboarding);
       LivePerfDriver.instance?.markAppReady();
       boot('bootstrapAppData complete');
+      if (connected) {
+        // Team-generation jobs are not auto-resumed at cold start. Incomplete
+        // builder/destination sessions reconnect only when the user opens them.
+        // Never on the splash path: the shell is already marked ready, so a
+        // failure here is logged rather than surfaced as a boot error.
+        unawaited(
+          reconnectHomeSshIfNeeded().catchError((
+            Object error,
+            StackTrace stackTrace,
+          ) {
+            appLogger.w(
+              '[boot] home ssh resume failed',
+              error: error,
+              stackTrace: stackTrace,
+            );
+          }),
+        );
+      }
       automationScheduler.start();
     }
 
@@ -3697,6 +3831,7 @@ Future<AppShell> buildAppShell({
       homeStorageInvalidator: homeStorageInvalidator,
       homeInvalidationService: homeInvalidationService,
       homeStorage: homeStorage,
+      homeConnectionCubit: homeConnectionCubit,
       sshConnectionCubit: sshConnectionCubit,
       githubCredentialsStore: githubCredentialsStore,
       githubAccountCubit: githubAccountCubit,
@@ -3733,6 +3868,7 @@ Future<AppShell> buildAppShell({
     await eventTransportController?.apply(EventTransportRole.none);
     await memberPresenceCubit?.close();
     await catalogRuntime?.bus.close();
+    await homeConnectionCubit?.close();
     await managedProviderControlPlaneLease.closeIfOwned();
     rethrow;
   }
@@ -3976,6 +4112,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       if (!mounted) {
         await _eventTransportController.apply(EventTransportRole.none);
         await shell.memberPresenceCubit.close();
+        await shell.homeConnectionCubit.close();
         await _teardownConnect(shell);
         await shell.managedProviderControlPlane.close();
         shell.cursorUsageApiClient.close();
@@ -3991,6 +4128,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       if (!mounted) {
         await _eventTransportController.apply(EventTransportRole.none);
         await shell.memberPresenceCubit.close();
+        await shell.homeConnectionCubit.close();
         await _teardownConnect(shell);
         await shell.managedProviderControlPlane.close();
         shell.cursorUsageApiClient.close();
@@ -4025,6 +4163,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     } on Object catch (error, stackTrace) {
       await _teardownConnect(builtShell);
       await builtShell?.managedProviderControlPlane.close();
+      await builtShell?.homeConnectionCubit.close();
       // The failed shell is discarded: stop its catalog mutation bus before a
       // bootstrap retry constructs a new one, so the app-lifetime dispatcher
       // no longer relays mutations into the dead shell's cubits (same seam as
@@ -4081,6 +4220,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       unawaited(_teardownConnect(shell));
       unawaited(shell.managedProviderControlPlane.close());
       unawaited(shell.sessionUsageCubit.close());
+      unawaited(shell.homeConnectionCubit.close());
       shell.cursorUsageApiClient.close();
     }
     // Drain queued events; dispose() is synchronous, so stop() is
@@ -4132,6 +4272,12 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     }
     return MultiBlocProvider(
       providers: [
+        // Above the router so StartupGate / RemoteConnectionsPage can read it.
+        // `buildAppShell` created the cubit before this subtree was built, so
+        // `.value` (no ownership transfer) is correct.
+        BlocProvider<HomeConnectionCubit>.value(
+          value: shell.homeConnectionCubit,
+        ),
         BlocProvider.value(value: shell.managedProviderCubit),
         BlocProvider.value(value: shell.managedProviderUsageCubit),
         BlocProvider.value(value: shell.sessionUsageCubit),

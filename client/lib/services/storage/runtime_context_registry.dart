@@ -43,6 +43,28 @@ class RuntimeContextRegistry {
     });
   }
 
+  /// Materialize + publish a cached home context without any network I/O.
+  ///
+  /// Used when the home is unreachable or the bounded connect attempt has not
+  /// completed: the shell must still be able to build on the persisted
+  /// `lastHome`/`lastAppDataRoot` paths. Reuses the already-materialized home
+  /// when there is one (a live resolve always wins).
+  ///
+  /// Deliberately NOT serialized through [_withTargetOperation]: a live
+  /// [ensureHome] that hit its budget may still be running, and queueing here
+  /// would reintroduce the unbounded splash wait the bounded attempt exists to
+  /// avoid. A live resolve that finishes later overwrites this value.
+  Future<RuntimeContext> ensureHomeCached() async {
+    final target = _homeTarget;
+    final profileId = target.sshProfileId;
+    final cached = await _resolver.resolveCached(
+      target,
+      sshProfile: profileId == null ? null : _sshProfileById?.call(profileId),
+    );
+    _home ??= cached;
+    return _home!;
+  }
+
   /// The control-plane context. Throws if [ensureHome] has not run.
   RuntimeContext home() =>
       _home ??
