@@ -79,8 +79,23 @@ class HomeConnectionCubit extends Cubit<HomeConnectionState> {
   final void Function() _onConnected;
 
   Future<void> connectOnce() async {
+    if (isClosed) return;
     emit(state.copyWith(status: HomeConnectionStatus.connecting));
-    final result = await _connect();
+    final HomeConnectResult result;
+    try {
+      result = await _connect();
+    } on Object {
+      // A throwing callback must never wedge the shell in `connecting`
+      // (permanent spinner). Content-free fallback: no error text is kept.
+      if (isClosed) return;
+      emit(
+        state.copyWith(
+          status: HomeConnectionStatus.unreachable,
+          lastErrorKind: HomeErrorKind.unknown,
+        ),
+      );
+      return;
+    }
     if (isClosed) return;
     if (result.reachable) {
       emit(
@@ -102,8 +117,21 @@ class HomeConnectionCubit extends Cubit<HomeConnectionState> {
   }
 
   Future<void> retryNow() async {
+    if (isClosed) return;
     emit(state.copyWith(attempt: 0, status: HomeConnectionStatus.connecting));
-    await _resumeRetry();
+    try {
+      await _resumeRetry();
+    } on Object {
+      if (isClosed) return;
+      emit(
+        state.copyWith(
+          status: HomeConnectionStatus.unreachable,
+          lastErrorKind: HomeErrorKind.unknown,
+        ),
+      );
+      return;
+    }
+    if (isClosed) return;
     await connectOnce();
   }
 

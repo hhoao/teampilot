@@ -173,4 +173,36 @@ void main() {
     expect(cubit.state.attempt, 0);
     expect(cubit.state.lastErrorKind, HomeErrorKind.authFailed);
   });
+
+  test('throwing connect callback lands unreachable, not connecting', () async {
+    final cubit = HomeConnectionCubit(
+      connect: () async => throw StateError('boom'),
+      cancelRetry: () async {},
+      resumeRetry: () async {},
+      onConnected: () {},
+    );
+    await cubit.connectOnce();
+    expect(cubit.state.status, HomeConnectionStatus.unreachable);
+    expect(cubit.state.lastErrorKind, HomeErrorKind.unknown);
+  });
+
+  test(
+    'throwing resumeRetry lands unreachable instead of a permanent spinner',
+    () async {
+      var connectCalls = 0;
+      final cubit = HomeConnectionCubit(
+        connect: () async {
+          connectCalls++;
+          return HomeConnectResult.connected(_ctx());
+        },
+        cancelRetry: () async {},
+        resumeRetry: () async => throw StateError('boom'),
+        onConnected: () {},
+      );
+      await cubit.retryNow();
+      expect(cubit.state.status, HomeConnectionStatus.unreachable);
+      expect(cubit.state.lastErrorKind, HomeErrorKind.unknown);
+      expect(connectCalls, 0);
+    },
+  );
 }
