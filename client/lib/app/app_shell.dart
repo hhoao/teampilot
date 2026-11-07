@@ -135,6 +135,7 @@ import '../cubits/managed_provider_cubit.dart';
 import '../cubits/managed_provider_usage_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../models/session_preferences.dart';
+import '../models/skill_registry_source.dart';
 import '../cubits/extension_cubit.dart';
 import '../cubits/hook_cubit.dart';
 import '../cubits/mcp_cubit.dart';
@@ -1174,6 +1175,11 @@ Future<AppShell> buildAppShell({
   // be built without waiting for any network round-trip.
   final homeCtx =
       initialHome.context ?? await runtimeContextRegistry.ensureHomeCached();
+  // True when an SSH home failed its first bounded attempt. Home-plane reads
+  // are then deferred to the post-connect chain: with no warm client every one
+  // of them starts a fresh storage open bounded by SshStorageIo.ioTimeout, and
+  // awaiting them here would reintroduce the splash stall this task removes.
+  final deferHomePlaneLoads = isSshHome && !initialHome.reachable;
   final cfg = termuxConfigCache;
   if (homeTarget.kind == RuntimeKind.termux &&
       cfg != null &&
@@ -2014,7 +2020,11 @@ Future<AppShell> buildAppShell({
     );
 
     final notificationCubit = NotificationCubit(storage: homeStorage);
-    final notificationBootstrap = notificationCubit.load();
+    // Lazy: the first read is home-plane I/O, so the unreachable splash must
+    // not start it. Memoized so every caller shares one load.
+    Future<void>? notificationBootstrapFuture;
+    Future<void> notificationBootstrap() =>
+        notificationBootstrapFuture ??= notificationCubit.load();
     NotificationRecorder.install(notificationCubit);
     final progressActivityCubit = ProgressActivityCubit(
       historyRecorder: notificationCubit,
@@ -2087,7 +2097,12 @@ Future<AppShell> buildAppShell({
       storage: homeStorage,
       legacySkillsMpKeyReader: () => appSettings.loadSkillsMpApiKey(),
     );
-    final skillRegistryConfig = await skillRegistryConfigService.load();
+    // Unreachable SSH home: skip the home-plane read; defaults keep the cubit
+    // constructible and `SkillCubit.loadAll()` reloads the real config when
+    // the deferred chain runs after connect.
+    final skillRegistryConfig = deferHomePlaneLoads
+        ? SkillRegistriesConfig.defaults()
+        : await skillRegistryConfigService.load();
     skillCubit = SkillCubit(
       skillRepo,
       storage: homeStorage,
@@ -2162,8 +2177,13 @@ Future<AppShell> buildAppShell({
       fs: homeStorage.fs,
       dirOverride: homeStorage.paths.memberHubLocalTemplatesDir,
     );
-    await localExpertStore.migrateLegacyLayout();
-    await localExpertStore.ensureIndexLoaded();
+    // Unreachable SSH home: defer these home-plane reads to the post-connect
+    // chain (the catalog warm below is already background and tolerates an
+    // empty local store meanwhile).
+    if (!deferHomePlaneLoads) {
+      await localExpertStore.migrateLegacyLayout();
+      await localExpertStore.ensureIndexLoaded();
+    }
     final compositeExpertHubSource = CompositeExpertHubSource.withDefaults(
       registry: GitRegistryExpertHubSource(
         storage: homeStorage,
@@ -3150,8 +3170,10 @@ Future<AppShell> buildAppShell({
       ),
     );
     floatingWorkspacePersistence.bind();
-    await shortcutCubit.load();
-    unawaited(notificationBootstrap);
+    if (!deferHomePlaneLoads) {
+      await shortcutCubit.load();
+      unawaited(notificationBootstrap());
+    }
     boot('layout ready (home index prefetched in background)');
     applyWorkspaceEntryMode(
       layoutCubit.state.preferences.workspaceEntryMode,
@@ -3323,21 +3345,46 @@ Future<AppShell> buildAppShell({
     }
 
     // Remote (home-storage) boot steps, deferred until the SSH home is known
-    // reachable. Idempotent: the first connected boot runs it, and a later hot
-    // recovery (cubit onConnected after a retry) reuses the same guard, so the
-    // remote index/warm chain runs exactly once per shell.
-    var remoteBootStarted = false;
+    // reachable. A completed chain retires the retry surface; an in-flight
+    // guard coalesces concurrent callers, and a failed chain leaves the flags
+    // unset so the next reconnect retries it.
+    var remoteBootCompleted = false;
     var remoteIndexBootstrapped = false;
+    var deferredHomePlaneLoadsDone = false;
     var remoteShowOnboarding = false;
-    Future<bool> runRemoteBootAfterConnect() async {
-      if (remoteBootStarted) return remoteShowOnboarding;
-      remoteBootStarted = true;
+    Future<bool>? remoteBootInFlight;
+
+    Future<bool> runRemoteBootAfterConnectOnce() async {
+      // A first-ever-unreachable SSH home has no persisted `lastHome`, so boot
+      // fell back to the native control plane (see `resolveCached`). Never
+      // write the remote index/config into that plane: it would silently
+      // diverge from the home the user believes they are on. The mismatch
+      // self-heals on the next launch, when the live home resolves before boot.
+      if (defaultTargetResolver().kind == RuntimeKind.ssh &&
+          homeStorage.context.mode != StorageBackendMode.ssh) {
+        appLogger.w(
+          '[boot] home storage plane mismatch; skipping remote boot until restart',
+        );
+        return remoteShowOnboarding;
+      }
+      // Home-plane reads skipped during an unreachable splash (they are not
+      // shown while the connection page is up). Run them once, now that the
+      // transport is live.
+      if (deferHomePlaneLoads && !deferredHomePlaneLoadsDone) {
+        await notificationBootstrap();
+        await shortcutCubit.load();
+        await localExpertStore.migrateLegacyLayout();
+        await localExpertStore.ensureIndexLoaded();
+        // The boot-time catalog warm cached a snapshot without the local
+        // templates; invalidate so the next read includes them.
+        expertHubCatalog.invalidate();
+        deferredHomePlaneLoadsDone = true;
+      }
       // Deliberately not `bootstrapCubit.state.homeIndexReady`: that getter is
       // also true once the phase is `ready`, which is exactly the state a
       // deferred boot leaves behind, and hot recovery must still load the
       // index it skipped.
       if (!remoteIndexBootstrapped) {
-        remoteIndexBootstrapped = true;
         boot('awaiting remote home index snapshots');
         try {
           await homeIndexPrefetch;
@@ -3365,6 +3412,9 @@ Future<AppShell> buildAppShell({
             home: defaultTargetResolver(),
             expertHubCatalog: expertHubCatalog,
           );
+          await persistSshHomePathCacheIfLive();
+          remoteIndexBootstrapped = true;
+          bootstrapCubit?.markHomeIndexReady();
         } on Object catch (error, stackTrace) {
           appLogger.w(
             '[boot] remote home index bootstrap failed',
@@ -3372,11 +3422,26 @@ Future<AppShell> buildAppShell({
             stackTrace: stackTrace,
           );
         }
-        await persistSshHomePathCacheIfLive();
-        bootstrapCubit?.markHomeIndexReady();
       }
       remoteShowOnboarding = await warmShellAndPrepareInteractive();
+      // Completed only once the whole chain succeeded: a transient failure
+      // after a flaky reconnect must remain retryable by the next onConnected
+      // (the status is `connected`, so the user has no manual retry surface).
+      remoteBootCompleted = remoteIndexBootstrapped;
       return remoteShowOnboarding;
+    }
+
+    Future<bool> runRemoteBootAfterConnect() {
+      if (remoteBootCompleted) return Future.value(remoteShowOnboarding);
+      final inFlight = remoteBootInFlight;
+      if (inFlight != null) return inFlight;
+      final future = runRemoteBootAfterConnectOnce();
+      remoteBootInFlight = future;
+      return future.whenComplete(() {
+        if (identical(remoteBootInFlight, future)) {
+          remoteBootInFlight = null;
+        }
+      });
     }
 
     // Seeded from the first bounded attempt so StartupGate can render the
@@ -3428,7 +3493,7 @@ Future<AppShell> buildAppShell({
       final deferRemoteBoot = remoteWorkPlane && !connected;
       var showOnboarding = false;
       if (!deferRemoteBoot) {
-        await notificationBootstrap;
+        await notificationBootstrap();
         final indexReady = bootstrapCubit?.state.homeIndexReady ?? false;
         if (!indexReady) {
           bootstrapCubit?.beginHomeIndex();
