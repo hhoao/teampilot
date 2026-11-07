@@ -1,6 +1,7 @@
 /// End-to-end contract for an SSH home that is unreachable at cold start:
 ///
-///   bounded first attempt → `unreachable` (no remote boot, no splash wait)
+///   bounded first attempt → `unreachable` (no remote boot, only a bounded
+///   attempt)
 ///     → background retry loop → successful reconnect → hot recovery once.
 ///
 /// `buildAppShell` wires the entire production app (storage plane, registries,
@@ -30,7 +31,6 @@ library;
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
-
 
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -242,69 +242,63 @@ void main() {
     },
   );
 
-  test(
-    'retryNow against a reachable host connects and replays the deferred '
-    'boot exactly once',
-    () async {
-      final harness = _HomeBootHarness(reachable: false);
-      addTearDown(harness.dispose);
+  test('retryNow against a reachable host connects and replays the deferred '
+      'boot exactly once', () async {
+    final harness = _HomeBootHarness(reachable: false);
+    addTearDown(harness.dispose);
 
-      harness.seedBoot(await harness.attempt.run(_profile.id));
-      expect(harness.cubit.state.status, HomeConnectionStatus.unreachable);
-      expect(harness.remoteBoot.runs, 0);
+    harness.seedBoot(await harness.attempt.run(_profile.id));
+    expect(harness.cubit.state.status, HomeConnectionStatus.unreachable);
+    expect(harness.remoteBoot.runs, 0);
 
-      // Host comes back: the probe flips healthy and the storage connect
-      // succeeds.
-      harness.probe.reachable = true;
+    // Host comes back: the probe flips healthy and the storage connect
+    // succeeds.
+    harness.probe.reachable = true;
 
-      await harness.cubit.retryNow();
-      await harness.remoteBoot.last;
+    await harness.cubit.retryNow();
+    await harness.remoteBoot.last;
 
-      expect(harness.cubit.state.status, HomeConnectionStatus.connected);
-      expect(harness.cubit.state.attempt, 0);
-      expect(harness.resolveCalls, 1);
-      // One real unreachable → connected transition drives one hot recovery.
-      expect(harness.remoteBoot.runs, 1);
-    },
-  );
+    expect(harness.cubit.state.status, HomeConnectionStatus.connected);
+    expect(harness.cubit.state.attempt, 0);
+    expect(harness.resolveCalls, 1);
+    // One real unreachable → connected transition drives one hot recovery.
+    expect(harness.remoteBoot.runs, 1);
+  });
 
-  test(
-    'the real reconnect loop reconnects the previously unreachable home and '
-    'hot-recovers once',
-    () async {
-      // The first two SSH creates are refused (host still down), the third
-      // succeeds — the background loop must keep going and then recover.
-      final harness = _HomeBootHarness(reachable: false, failFirstCreates: 2);
-      addTearDown(harness.dispose);
+  test('the real reconnect loop reconnects the previously unreachable home and '
+      'hot-recovers once', () async {
+    // The first two SSH creates are refused (host still down), the third
+    // succeeds — the background loop must keep going and then recover.
+    final harness = _HomeBootHarness(reachable: false, failFirstCreates: 2);
+    addTearDown(harness.dispose);
 
-      harness.seedBoot(await harness.attempt.run(_profile.id));
-      expect(harness.cubit.state.status, HomeConnectionStatus.unreachable);
+    harness.seedBoot(await harness.attempt.run(_profile.id));
+    expect(harness.cubit.state.status, HomeConnectionStatus.unreachable);
 
-      // Cold boot found the home down: the shell starts the loop itself.
-      harness.startBootRetryLoop();
+    // Cold boot found the home down: the shell starts the loop itself.
+    harness.startBootRetryLoop();
 
-      // Failed background attempts surface as `reconnecting` progress.
-      await waitUntil(() => harness.backgroundAttempts.length >= 2);
-      expect(harness.cubit.state.status, HomeConnectionStatus.reconnecting);
-      expect(harness.cubit.state.attempt, greaterThanOrEqualTo(1));
-      expect(harness.remoteBoot.runs, 0);
+    // Failed background attempts surface as `reconnecting` progress.
+    await waitUntil(() => harness.backgroundAttempts.length >= 2);
+    expect(harness.cubit.state.status, HomeConnectionStatus.reconnecting);
+    expect(harness.cubit.state.attempt, greaterThanOrEqualTo(1));
+    expect(harness.remoteBoot.runs, 0);
 
-      // The next attempt succeeds and hot recovery runs once.
-      await waitUntil(
-        () => harness.cubit.state.status == HomeConnectionStatus.connected,
-      );
-      await harness.remoteBoot.last;
+    // The next attempt succeeds and hot recovery runs once.
+    await waitUntil(
+      () => harness.cubit.state.status == HomeConnectionStatus.connected,
+    );
+    await harness.remoteBoot.last;
 
-      expect(harness.backgroundAttempts, [1, 2, 3]);
-      expect(harness.cubit.state.attempt, 0);
-      expect(harness.remoteBoot.runs, 1);
+    expect(harness.backgroundAttempts, [1, 2, 3]);
+    expect(harness.cubit.state.attempt, 0);
+    expect(harness.remoteBoot.runs, 1);
 
-      // The loop stopped after success: no further attempt / boot replay.
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-      expect(harness.backgroundAttempts, [1, 2, 3]);
-      expect(harness.remoteBoot.runs, 1);
-    },
-  );
+    // The loop stopped after success: no further attempt / boot replay.
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    expect(harness.backgroundAttempts, [1, 2, 3]);
+    expect(harness.remoteBoot.runs, 1);
+  });
 
   // `buildAppShell` is unmountable (see file header), so the wiring the
   // behavior cases cannot observe being deleted is pinned at the source
@@ -357,6 +351,13 @@ void main() {
         'await runRemoteBootAfterConnect();',
         onConnected,
       );
+      // Bound the window to the onConnected block: the same call also appears
+      // later in bootstrapAppData (`showOnboarding = await ...`), so without
+      // this upper bound deleting the hot-recovery call would still match.
+      final afterBoot = src.indexOf(
+        'await reconnectHomeSshIfNeeded();',
+        onConnected,
+      );
       expect(onConnected, greaterThanOrEqualTo(0));
       expect(
         bootCall,
@@ -364,6 +365,13 @@ void main() {
         reason:
             'HomeConnectionCubit.onConnected must replay the deferred remote '
             'boot through runRemoteBootAfterConnect',
+      );
+      expect(
+        bootCall,
+        lessThan(afterBoot),
+        reason:
+            'the matched call must be the one inside the onConnected block, '
+            'not the later bootstrapAppData call',
       );
     });
 
