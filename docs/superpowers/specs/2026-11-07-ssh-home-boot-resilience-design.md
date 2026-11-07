@@ -12,8 +12,8 @@
 |---|---|---|
 | +140ms | `installing home runtime context` | |
 | +17,433ms | `home runtime context ensured +17433ms` | home SSH 解析超时 ~17s，回退到缓存路径 |
-| +35s | `cli row sweep failed` / `home index prefetch failed`（`SSH worker storage opening was invalidated`） | 多个子系统各自再开一次 SSH 存储，各等 ~17s 后失败 |
-| +122,080ms | `loading layout` | 中间 ~87s 全耗在其它 subsystem 的 SSH 超时上 |
+| +35s | `cli row sweep failed` / `home index prefetch failed`（`SSH worker storage opening was invalidated`） | 首次失败后连接被 retire，等待 home 的子系统再次打开，又是一轮 ~17s |
+| +122,080ms | `loading layout` | 中间 ~87s 耗在后续子系统反复打开/超时与启动期重连上 |
 | +139,394ms | `layout ready` | |
 | +209,503ms | `bootstrap complete` | 合计 ≈3.5 分钟 |
 | 全程 | `reconnect attempt 1/5 … 5/5` 全部 `Worker storage operation failed`；`connect failed: TimeoutException after 0:00:05` | 后台重连 5 次全部失败 |
@@ -27,7 +27,7 @@
 
 1. **splash 阻塞在远端数据上**：`bootstrapAppData`（`client/lib/app/app_shell.dart:3231`）在 `markAppReady` 之前 `await` 了 `homeIndexPrefetch`、远端 `bootstrapHomeIndex`、`warmShellConfig`、`prepareInteractiveShell` 等远端重操作。
 2. **没有快速失败**：每次 SSH 存储打开要等 ~17s 才超时（`client/lib/services/ssh/ssh_client_factory_storage.dart` 的 `_open` → `storage.connect`）。
-3. **并发打开不去重**：`_SshWorkerStoragePool.clientFor` 对同一 profile 的并发调用各自新建一个 opening token 并替换前一个（`_isCurrentOpening`，`ssh_client_factory_storage.dart:311`），先到的被作废并抛 `SSH worker storage opening was invalidated`；~10 个子系统并行时相互作废，把等待成倍放大。
+3. **失败后反复重开 + 启动期重连放大**：`clientFor` 虽已对同一 profile 的在途打开去重（`ssh_client_factory_storage.dart:52-55`），但每次失败都会 retire 并移除 opening，下一个等待该 home 的子系统又新开一轮 ~17s；同时 `disconnectProfile`/`disconnectStorage` 会移除在途 opening（`:210/:229`），使尚未完成 `_manager.acquire` 的 open 命中 `_isCurrentOpening == false` 并抛 `SSH worker storage opening was invalidated`；此外 `bootstrapAppData` 还 `await reconnectHomeSshIfNeeded()`，把协调器的 5 次退避重连放进了 splash 关键路径。
 4. **零用户可见性**：splash 期间没有主机信息、没有进度、没有超时、没有退路。
 
 ## 目标
@@ -35,7 +35,7 @@
 1. splash **只等本地引导**，永不因远端 IO 卡住；本地引导完成后必定进入可交互的界面。
 2. home 连接改为**有界、可观测、可恢复**：一次有界尝试失败即进入连接页，后台持续重试。
 3. 连接页让用户**知情且可操作**：显示目标 `host:port`、尝试次数、错误类型，并提供「取消重试 / 继续重试 / 切换连接」。
-4. 消除并发打开放大：同一 profile 的进行中打开**单飞共享**。
+4. **快速失败**：主机不可达时在 ~2s 内判定（TCP 预探活），不再让每个子系统逐个等 ~17s 超时。
 5. 重连成功后**热恢复**：自动补跑被跳过的远端引导并进入正式界面，无需用户手动操作。
 6. 不改 SSH 协议 / worker / 传输层语义。
 
@@ -91,7 +91,7 @@
 | `StartupGate`（改） | `client/lib/pages/startup_gate.dart` | 新增分支：`connecting` → 带主机名的进度页；`unreachable/reconnecting` → 连接页；`connected` → 原有逻辑（`child`） |
 | `RemoteConnectionsPage`（改，复用） | `client/lib/pages/remote_connections_page.dart` | 顶部新增"连接状态卡"（`host:port`、第 N 次、错误类型）+ 三动作；页面本已列出目标，天然承载「切换连接」，不新建重复页 |
 | `SshProfileConnectionCoordinator`（改/复用） | `client/lib/services/ssh/ssh_profile_connection_coordinator.dart` | 后台退避重试；`cancelRetry` 复用 `userDisconnect` 的 latch 语义；`retryNow` 重置计数并立即重试；在连接页展示期间不因 `maxAttempts` 静默放弃（改为持续退避或交由用户取消） |
-| `_SshWorkerStoragePool`（改） | `client/lib/services/ssh/ssh_client_factory_storage.dart` | `clientFor` 对同一 profile **单飞**：命中 `_openings[id]` 的 pending 时 await 其 future，而不是新建 token 覆盖 |
+| `_SshWorkerStoragePool`（不改并发语义） | `client/lib/services/ssh/ssh_client_factory_storage.dart` | 已对同一 profile 的在途打开去重（`clientFor` 返回 `pending.future`）；本增量只新增"TCP 预探活前置"与"首连不触发重连风暴"，不改去重/作废语义 |
 | `bootstrapAppData` 及 boot 编排（改） | `client/lib/app/app_shell.dart:3227-3350` | 远端重步骤只在 `connected` 时跑；`unreachable` 时跳过并置 app-ready；重连成功后补跑（热恢复） |
 | home 解析入口（改） | `client/lib/app/app_shell.dart:1139-1143` + `runtime_context_resolver.dart` | 首次尝试改为"TCP 预探活 + 有界 SSH 联接"，并把结果（含是否回退缓存）交给 `HomeConnectionCubit` |
 | `SshProfileReconnectPolicy`（复用/微调） | `client/lib/services/ssh/ssh_profile_reconnect_policy.dart` | 退避 `2→4→8→16→30s`（封顶 30s）；连接页展示期间可持续重试直到用户取消 |
@@ -149,17 +149,25 @@
 - 补跑期间 UI 显示正常骨架/加载态；完成后 `markAppReady` 已在首次触发过，界面直接由骨架切换到数据（热恢复，不重进 splash）。
 - 若补跑失败，记录 `AppLogger.w`（内容无关），保留在 `connected` 但数据为空，用户可下拉/手动重试（沿用各面板现有重试）。
 
-### 7. 并发打开去重（存储池单飞）
+### 7. 快速失败与首连不放大
 
-`_SshWorkerStoragePool.clientFor(profile)` 当前逻辑：每次调用 `_openings[profile.id] = _WorkerStorageOpening(token: Object(), …)`，新 token 使旧 opening 失效。
+**现状核查（重要）**：`_SshWorkerStoragePool.clientFor` 已经对同一 profile 的进行中打开去重——`_openings[profile.id]` 存在且 `hostIdentifier` 相同时，直接返回同一个 `pending.future`（`ssh_client_factory_storage.dart:52-55`）。所以"并发重复打开"不是主因，本增量**不改**存储池的去重/作废语义。
 
-改为：
+真正的放大来自四件事：
 
-- 若 `_openings[profile.id]` 存在且未被取消，**返回/await 同一个 pending future**，不新建 token。
-- 仅在 pending 已结束或已被显式作废时才新建。
-- 保留 `_isCurrentOpening` 作为"作废/丢弃"的保护（例如 profile 被删除、home 被显式切换），但不再因"并发请求"而互相作废。
+1. **每次打开都很慢**：主机不可达时 SSH 连接要等 ~17s 才失败（`_open` → `_manager.acquire` → `storage.connect`）。
+2. **失败后反复重开**：失败会 `_retireConnection` 并移除 opening；下一个等待该 home 的子系统再次 `clientFor` 就新开一次，又是一轮 ~17s（启动期串行叠加）。
+3. **断线作废在途打开**：`disconnectProfile`/`disconnectStorage` 会 `_openings.remove()`（`:210/:229`），尚未完成 `_manager.acquire` 的在途 open 命中 `_isCurrentOpening == false` → 抛 `SSH worker storage opening was invalidated`。
+4. **启动期同步等待重连**：`bootstrapAppData` 的 `await reconnectHomeSshIfNeeded()` 把协调器 5 次退避重连放进了 splash 关键路径。
 
-效果：启动期 N 个子系统共享同一次 SSH 打开，消除 `opening was invalidated` 与 N×超时。
+修复（按顺序）：
+
+- **TCP 预探活（≤2s）**：发起任何 SSH 打开前先探测 `host:port`。主机不可达（本次实测主因）时 ~2s 内判失败，**根本不进入 SSH open**，从源头消除 17s 级联。
+- **有界 SSH 连接（≤8s）**：可达但握手慢/坏时单次尝试也封顶，不再 17s。
+- **首连不触发重连风暴**：首次尝试是单次、有界、不经过协调器的多轮退避重连；协调器后台重试在 UI 就绪后才开始。
+- **启动期不 `await` 重连**：`reconnectHomeSshIfNeeded` 从 splash 关键路径移出，改为在 `connected` 后的后台执行，或由热恢复路径触发。
+
+效果：不可达 home 从"数分钟 + 多轮 17s"降为"~2s 进连接页"，且后续子系统不再各自触发长时间打开。
 
 ### 8. 安全与日志
 
@@ -172,7 +180,7 @@
 | 情况 | 行为 |
 |---|---|
 | 首次即不可达（TCP 不通） | ~2s 内进入连接页（快速失败），后台退避重试 |
-| TCP 通但 SSH 认证失败 | `unreachable` + `authFailed`；提示检查凭据/主机；重试不放大（单飞） |
+| TCP 通但 SSH 认证失败 | `unreachable` + `authFailed`；提示检查凭据/主机；每次重试仍有界（≤8s） |
 | SSH 慢但可用（>8s 握手） | 首次判不可达进连接页，后台重试在退避窗口内成功 → 热恢复；用户几乎无感或短暂看到连接页 |
 | 用户在连接页取消重试 | 停止后台重试；状态 `unreachable`；可随时「继续重试」 |
 | 用户切换/编辑目标后 | 触发一次 `retryNow`；成功后热恢复 |
@@ -182,7 +190,7 @@
 ## 测试策略
 
 - **单测**：`HomeConnectionCubit` 全状态迁移（`connecting→connected`、`connecting→unreachable→reconnecting→connected`）、三动作（取消后不再自动重试、继续恢复、切换后重试）。
-- **单测**：`_SshWorkerStoragePool` 单飞——两个并发 `clientFor` 只触发一次 `_open`，二者得到同一 storage，且**不抛** `opening was invalidated`。
+- **单测**：TCP 预探活——`host:port` 不通时直接判 `unreachable`，且**不进入** SSH open（断言未调用 `clientFor`/`ensureStorageConnected`）。
 - **单测**：`HomeConnectResult` / 判定逻辑—— TCP 不通、SSH 超时回退缓存、正常连接三条路径分别映射到正确的 `status` 与 `lastErrorKind`。
 - **Widget**：`StartupGate` 在 `connecting/unreachable/connected` 三种状态下的渲染；连接页三动作接线（点击回调触发对应方法）。
 - **集成**：用不可达的 fake dialer 启动 → splash 在 `homeConnectBudget + 余量` 内撤下、连接页出现、无 17s 级联、无 `opening was invalidated`；随后模拟可达 → 热恢复进入正式界面。
@@ -192,7 +200,7 @@
 
 - 不改变 `RemoteConnectionsPage` 既有用法（`embedded`、无参数直开）；新增的状态卡仅在"作为启动门控展示且 home 不可达"时出现。
 - 不改变 `SshProfileConnectionCoordinator` 的对外契约；新增/调整的重试入口保持内部语义一致。
-- 单飞改动对现有调用方透明（返回类型不变）。
+- 不改存储池 `clientFor` 的去重/作废语义；新增 TCP 预探活对现有调用方透明。
 - `bootstrapAppData` 的远端步骤改为可重复调用，需保证幂等，避免热恢复时重复 hydrate。
 
 ## 未决 / 后续（非本增量）
