@@ -5,6 +5,8 @@ import '../models/team_config.dart';
 import '../models/launch_profile.dart';
 import '../services/io/filesystem.dart';
 import '../services/chat/session/session_lifecycle_service.dart';
+import '../models/runtime_target.dart';
+import '../services/storage/home_runtime_identity.dart';
 import '../services/storage/home_storage.dart';
 import '../services/storage/plane_snapshot_cache.dart';
 import '../utils/logging/logger.dart';
@@ -26,9 +28,30 @@ class LaunchProfileRepository {
   final HomeStorage _storage;
   final SessionLifecycleService? _lifecycleService;
 
-  final PlaneSnapshotCache<LaunchProfile> _cache =
-      PlaneSnapshotCache<LaunchProfile>();
+  late final PlaneSnapshotCache<LaunchProfile> _cache =
+      PlaneSnapshotCache<LaunchProfile>(plane: _planeIdentity);
   Future<void>? _revalidationFuture;
+
+  /// Identity of the plane this repository is currently reading.
+  ///
+  /// An explicit [rootDir] override (tests) is its own plane; otherwise the
+  /// published home context identifies it. Read synchronously so a load
+  /// captures the plane before its first `await` and can reject results that
+  /// a swap retired mid-flight.
+  HomeRuntimeIdentity _planeIdentity() {
+    final rootOverride = _rootDirOverride;
+    if (rootOverride != null) {
+      return HomeRuntimeIdentity(
+        targetId: RuntimeTarget.localId,
+        appDataRoot: rootOverride,
+      );
+    }
+    final context = _storage.context;
+    return HomeRuntimeIdentity(
+      targetId: context.target.id,
+      appDataRoot: context.appDataRoot,
+    );
+  }
 
   Future<void> _awaitIndexQuiescence() async {
     final pending = _revalidationFuture;
@@ -39,6 +62,7 @@ class LaunchProfileRepository {
     ({String dir, Filesystem fs}) paths,
     LaunchProfileIndexStore store,
     List<LaunchProfile> snapshot,
+    HomeRuntimeIdentity plane,
   ) {
     Future<void>? pending;
     pending =
@@ -46,6 +70,7 @@ class LaunchProfileRepository {
           paths,
           store,
           snapshot,
+          plane,
         ).whenComplete(() {
           if (identical(_revalidationFuture, pending)) {
             _revalidationFuture = null;
@@ -55,10 +80,13 @@ class LaunchProfileRepository {
     unawaited(pending);
   }
 
-  Future<({String dir, Filesystem fs})> _paths() async {
+  /// Synchronous so the paths and the plane captured by the caller always
+  /// come from the same published context.
+  ({String dir, Filesystem fs}) _paths() {
     // Explicit rootDir override (tests) wins; otherwise the home control plane.
-    if (_rootDirOverride != null) {
-      return (dir: _rootDirOverride, fs: _storage.fs);
+    final rootOverride = _rootDirOverride;
+    if (rootOverride != null) {
+      return (dir: rootOverride, fs: _storage.fs);
     }
     final snap = _storage.context;
     return (dir: snap.launchProfilesDir, fs: snap.fs);
@@ -114,6 +142,9 @@ class LaunchProfileRepository {
   }
 
   Future<List<LaunchProfile>> loadAll() async {
+    // Capture the plane before any `await`: the read and the cache write below
+    // must stay on one plane even if a home swap lands mid-load.
+    final plane = _planeIdentity();
     final cached = _cache.snapshot;
     if (cached != null) {
       appLogger.i(
@@ -121,7 +152,7 @@ class LaunchProfileRepository {
       );
       return cached;
     }
-    final paths = await _paths();
+    final paths = _paths();
     final store = _indexStore(paths);
     final readSw = Stopwatch()..start();
     final snapshot = await store.tryRead();
@@ -131,8 +162,8 @@ class LaunchProfileRepository {
         '[boot] loadLaunchProfiles from snapshot count=${snapshot.length} '
         'read=${readMs}ms (validate deferred)',
       );
-      _scheduleRevalidation(paths, store, snapshot);
-      return _cache.write(_sorted(snapshot));
+      _scheduleRevalidation(paths, store, snapshot, plane);
+      return _cache.write(_sorted(snapshot), forPlane: plane);
     } else {
       appLogger.i(
         '[boot] loadLaunchProfiles rebuilding snapshot read=${readMs}ms',
@@ -140,13 +171,14 @@ class LaunchProfileRepository {
     }
     final profiles = await _scanAll(paths);
     await store.writeAll(profiles);
-    return _cache.write(profiles);
+    return _cache.write(profiles, forPlane: plane);
   }
 
   Future<void> _revalidateLaunchProfilesSnapshot(
     ({String dir, Filesystem fs}) paths,
     LaunchProfileIndexStore store,
     List<LaunchProfile> snapshot,
+    HomeRuntimeIdentity plane,
   ) async {
     final validateSw = Stopwatch()..start();
     final diskIds = await _listProfileIds(paths);
@@ -162,7 +194,7 @@ class LaunchProfileRepository {
     );
     final profiles = await _scanAll(paths);
     await store.writeAll(profiles);
-    _cache.write(profiles);
+    _cache.write(profiles, forPlane: plane);
   }
 
   Future<List<LaunchProfile>> _scanAll(
@@ -229,7 +261,7 @@ class LaunchProfileRepository {
     final id = identity.id.trim();
     if (id.isEmpty) return;
     await _awaitIndexQuiescence();
-    final paths = await _paths();
+    final paths = _paths();
     final dir = paths.fs.pathContext.join(paths.dir, id);
     await paths.fs.ensureDir(dir);
     await paths.fs.atomicWrite(
@@ -260,7 +292,7 @@ class LaunchProfileRepository {
     if (destroyCliState) {
       await _lifecycleService?.destroyCliToolState(trimmed);
     }
-    final paths = await _paths();
+    final paths = _paths();
     try {
       await paths.fs.removeRecursive(
         paths.fs.pathContext.join(paths.dir, trimmed),

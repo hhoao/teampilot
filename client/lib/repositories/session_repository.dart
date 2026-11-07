@@ -23,6 +23,7 @@ import '../services/chat/launch/session/team_session_member_plan.dart';
 import '../services/cli/registry/capabilities/acp_capability.dart';
 import '../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
+import '../services/storage/home_runtime_identity.dart';
 import '../services/storage/home_storage.dart';
 import '../services/storage/plane_snapshot_cache.dart';
 import '../services/storage/work_target_canonicalizer.dart';
@@ -59,14 +60,41 @@ class SessionRepository {
   HomeStorage get storage => _storage;
 
   final _sessionFileLocks = LockPool();
-  final PlaneSnapshotCache<Workspace> _workspaceIndexCache =
-      PlaneSnapshotCache<Workspace>();
+  late final PlaneSnapshotCache<Workspace> _workspaceIndexCache =
+      PlaneSnapshotCache<Workspace>(plane: _planeIdentity);
 
-  List<Workspace> _rememberWorkspacesIndex(List<Workspace> workspaces) {
-    return _workspaceIndexCache.write([
-      for (final workspace in workspaces)
-        _withInferredMemberPlacementInit(workspace),
-    ]);
+  /// Identity of the plane this repository is currently reading.
+  ///
+  /// An explicit [rootDir] (tests) is its own plane; otherwise the published
+  /// home context identifies it. Read synchronously so a load captures the
+  /// plane before its first `await` and can reject results that a swap
+  /// retired mid-flight.
+  HomeRuntimeIdentity _planeIdentity() {
+    final rootOverride = _rootOverride;
+    if (rootOverride != null) {
+      return HomeRuntimeIdentity(
+        targetId: RuntimeTarget.localId,
+        appDataRoot: rootOverride,
+      );
+    }
+    final context = _storage.context;
+    return HomeRuntimeIdentity(
+      targetId: context.target.id,
+      appDataRoot: context.appDataRoot,
+    );
+  }
+
+  List<Workspace> _rememberWorkspacesIndex(
+    List<Workspace> workspaces, {
+    HomeRuntimeIdentity? forPlane,
+  }) {
+    return _workspaceIndexCache.write(
+      [
+        for (final workspace in workspaces)
+          _withInferredMemberPlacementInit(workspace),
+      ],
+      forPlane: forPlane,
+    );
   }
 
   /// Incremental mirror of [Workspace] into the in-memory index cache and the
@@ -233,13 +261,19 @@ class SessionRepository {
     );
   }
 
-  Future<List<Workspace>> loadWorkspaces() => _loadWorkspaces(indexOnly: false);
+  Future<List<Workspace>> loadWorkspaces() async {
+    final fs = await _fs();
+    return _loadWorkspaces(indexOnly: false, fs: fs);
+  }
 
   /// Manifest + session directory names only — no per-session JSON reads.
   ///
   /// Reads [workspaces-index.json] when present and workspace ids still match
   /// disk; otherwise rebuilds the snapshot from per-workspace manifests.
   Future<List<Workspace>> loadWorkspacesIndex() async {
+    // Capture the plane before any `await`: the read and the index write below
+    // must stay on one plane even if a home swap lands mid-load.
+    final plane = _planeIdentity();
     final cached = _workspaceIndexCache.snapshot;
     if (cached != null) {
       appLogger.i(
@@ -257,22 +291,25 @@ class SessionRepository {
         '[boot] loadWorkspacesIndex from snapshot count=${snapshot.length} '
         'read=${readMs}ms (validate deferred)',
       );
-      unawaited(_revalidateWorkspacesIndexSnapshot(fs, store, snapshot));
-      return _rememberWorkspacesIndex(snapshot);
+      unawaited(
+        _revalidateWorkspacesIndexSnapshot(fs, store, snapshot, plane),
+      );
+      return _rememberWorkspacesIndex(snapshot, forPlane: plane);
     } else {
       appLogger.i(
         '[boot] loadWorkspacesIndex rebuilding snapshot read=${readMs}ms',
       );
     }
-    final workspaces = await _loadWorkspaces(indexOnly: true);
+    final workspaces = await _loadWorkspaces(indexOnly: true, fs: fs);
     await store.writeAll(workspaces);
-    return _rememberWorkspacesIndex(workspaces);
+    return _rememberWorkspacesIndex(workspaces, forPlane: plane);
   }
 
   Future<void> _revalidateWorkspacesIndexSnapshot(
     SessionRepositoryFs fs,
     WorkspaceIndexStore store,
     List<Workspace> snapshot,
+    HomeRuntimeIdentity plane,
   ) async {
     final validateSw = Stopwatch()..start();
     final diskIds = await fs.listWorkspaceIds();
@@ -286,17 +323,26 @@ class SessionRepository {
       'disk=${diskIds.length} index=${snapshot.length} '
       'validate=${validateMs}ms',
     );
-    final workspaces = await _loadWorkspaces(indexOnly: true);
+    final workspaces = await _loadWorkspaces(indexOnly: true, fs: fs);
     await store.writeAll(workspaces);
-    _rememberWorkspacesIndex(workspaces);
+    _rememberWorkspacesIndex(workspaces, forPlane: plane);
   }
 
-  Future<List<Workspace>> _loadWorkspaces({required bool indexOnly}) async {
-    final fs = await _fs();
-    final workspaceIds = await fs.listWorkspaceIds();
+  /// Scans workspace manifests on [fs].
+  ///
+  /// Callers that write the result to a plane-scoped cache pass the
+  /// filesystem they captured together with that plane, so the scan and the
+  /// index write cannot straddle a home swap.
+  Future<List<Workspace>> _loadWorkspaces({
+    required bool indexOnly,
+    SessionRepositoryFs? fs,
+  }) async {
+    final boundFs = fs ?? await _fs();
+    final workspaceIds = await boundFs.listWorkspaceIds();
     final workspaces = await Future.wait(
       workspaceIds.map(
-        (workspaceId) => _readManifest(fs, workspaceId, indexOnly: indexOnly),
+        (workspaceId) =>
+            _readManifest(boundFs, workspaceId, indexOnly: indexOnly),
       ),
     );
     return [
