@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import '../cubits/ssh_connection_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../cubits/ssh_server_config_cubit.dart';
 import '../l10n/l10n_extensions.dart';
+import '../models/ssh_auth_type.dart';
 import '../models/ssh_profile.dart';
 import '../models/ssh_server_profile.dart';
 import '../repositories/ssh_credential_store.dart';
@@ -22,39 +24,81 @@ import 'ssh_profiles/ssh_profile_form_dialog.dart';
 
 /// Remote-only catalog of SSH server configurations.
 ///
-/// When there is no live remote connection the page is intentionally inert:
-/// no connect action, no add-target action, and no list. Once connected it
-/// shows the read-only remote profiles from [SshServerConfigCubit].
-class SshServersPage extends StatelessWidget {
+/// Reads `<home>/ssh_profiles/profiles.json` from the current home plane, so
+/// the list is the one stored on the remote host itself. It is available
+/// whenever the home plane is a remote (SSH) one — it does not depend on a
+/// session-level `connectedHosts` entry, which is a different plane. Switching
+/// the home plane reloads the catalog.
+class SshServersPage extends StatefulWidget {
   const SshServersPage({super.key, this.embedded = false});
 
   /// When true, omits the [Scaffold] so the surrounding shell supplies chrome.
   final bool embedded;
 
   @override
+  State<SshServersPage> createState() => _SshServersPageState();
+}
+
+class _SshServersPageState extends State<SshServersPage> {
+  StreamSubscription<StoragePlaneChange>? _planeSub;
+  late final HomeStorage _storage;
+  late final SshServerConfigCubit _cubit;
+  late bool _onRemoteHome;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_planeSub != null) return;
+    _storage = context.read<HomeStorage>();
+    _onRemoteHome = _storage.fs.isRemote;
+    _cubit = SshServerConfigCubit(
+      repository: SshServerProfileRepository(storage: _storage),
+    )..load();
+    // A home switch publishes a new plane; the catalog lives on that plane, so
+    // re-evaluate the gate and reload instead of showing the previous host's
+    // servers.
+    _planeSub = _storage.changes.listen((change) {
+      if (!mounted) return;
+      setState(() => _onRemoteHome = change.newContext.filesystem.isRemote);
+      unawaited(_cubit.load());
+    });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_planeSub?.cancel());
+    unawaited(_cubit.close());
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider<SshServerConfigCubit>(
-      create: (_) => SshServerConfigCubit(
-        repository: SshServerProfileRepository(
-          storage: context.read<HomeStorage>(),
-        ),
-      )..load(),
-      child: _SshServersView(embedded: embedded),
+    return BlocProvider<SshServerConfigCubit>.value(
+      value: _cubit,
+      child: _SshServersView(
+        embedded: widget.embedded,
+        onRemoteHome: _onRemoteHome,
+      ),
     );
   }
 }
 
 class _SshServersView extends StatelessWidget {
-  const _SshServersView({required this.embedded});
+  const _SshServersView({
+    required this.embedded,
+    required this.onRemoteHome,
+  });
 
   final bool embedded;
+  final bool onRemoteHome;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final connected = context.watch<SshConnectionCubit>().state.connectedHosts;
+    // The catalog belongs to the home plane, not to session connections: an
+    // SSH home is remote even when no member session is connected.
     final Widget body;
-    if (connected.isEmpty) {
+    if (!onRemoteHome) {
       body = Center(child: Text(l10n.sshServersNotConnected));
     } else {
       body = BlocBuilder<SshServerConfigCubit, SshServerConfigState>(
@@ -81,6 +125,9 @@ class _SshServersView extends StatelessWidget {
               ),
             );
           }
+          if (state.profiles.isEmpty) {
+            return Center(child: Text(l10n.sshServersEmpty));
+          }
           return ListView(
             children: [
               for (final profile in state.profiles)
@@ -100,9 +147,9 @@ class _SshServersView extends StatelessWidget {
 
 /// Read-only presentation of a single remote [SshServerProfile].
 ///
-/// Shows the name, host and whether it is an embedded target. It deliberately
-/// offers no editing: [SshServerProfile] carries no editable config fields and
-/// the per-target editor operates on the local `SshProfile` model instead.
+/// Shows the full shared configuration (host:port, username, auth type, relay
+/// and pairing). It deliberately offers no editing: the record is read from the
+/// home plane and credentials never live here.
 class SshServerProfileCard extends StatelessWidget {
   const SshServerProfileCard({super.key, required this.profile});
 
@@ -110,9 +157,19 @@ class SshServerProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final authLabel = switch (profile.authType) {
+      SshAuthType.password => l10n.sshProfileFormPassword,
+      SshAuthType.privateKey => l10n.vaultTypeSshPrivateKey,
+    };
     return ListTile(
+      isThreeLine: true,
       title: Text(profile.name),
-      subtitle: Text(profile.host),
+      subtitle: Text(
+        '${profile.username}@${profile.host}:${profile.port} · $authLabel'
+        '${profile.relayUrl != null ? '\n${profile.relayUrl}' : ''}'
+        '${profile.pairedDesktopId != null ? '\n${profile.pairedDesktopId}' : ''}',
+      ),
       trailing: Icon(
         profile.embeddedTarget
             ? Icons.check_circle_outline

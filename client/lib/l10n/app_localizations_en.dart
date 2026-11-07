@@ -2406,6 +2406,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not load the SSH servers. Check the connection and try again.';
 
   @override
+  String get sshServersEmpty => 'No SSH servers saved on this host yet.';
+
+  @override
   String get sshProfilesPageTitle => 'SSH remote hosts';
 
   @override

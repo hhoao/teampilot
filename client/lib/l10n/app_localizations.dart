@@ -4340,6 +4340,12 @@ abstract class AppLocalizations {
   /// **'Could not load the SSH servers. Check the connection and try again.'**
   String get sshServersLoadError;
 
+  /// No description provided for @sshServersEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No SSH servers saved on this host yet.'**
+  String get sshServersEmpty;
+
   /// No description provided for @sshProfilesPageTitle.
   ///
   /// In en, this message translates to:

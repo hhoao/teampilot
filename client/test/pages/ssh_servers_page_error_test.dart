@@ -61,7 +61,7 @@ void main() {
 
   testWidgets('not-connected branch shows the not-connected message',
       (tester) async {
-    // Default state has no connected hosts; no config cubit is even created.
+    // A native home plane has no remote server catalog to read.
     await tester.pumpWidget(host(fakeHomeStorage()));
     await tester.pumpAndSettle();
 
@@ -69,21 +69,25 @@ void main() {
     expect(find.text('Retry'), findsNothing);
   });
 
+  testWidgets('reads profiles stored on the remote home plane', (tester) async {
+    // Profiles already present on the host are listed without any local
+    // connect/push having created them.
+    final fs = _RemoteFilesystem();
+    fs.files['/tp/ssh_profiles/profiles.json'] =
+        '[{"schemaVersion":1,"id":"p1","name":"prod-db","host":"10.0.0.5",'
+        '"port":2222,"username":"alice","authType":"privateKey"}]';
+    await tester.pumpWidget(host(fakeHomeStorage(filesystem: fs)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('prod-db'), findsOneWidget);
+    expect(find.textContaining('alice@10.0.0.5:2222'), findsOneWidget);
+    expect(find.text('Not connected to a remote host.'), findsNothing);
+  });
+
   testWidgets('remote load failure shows a localized message and retry',
       (tester) async {
-    connectionCubit.seed(const SshConnectionState(
-      hostsById: {
-        'p1': SshHostConnectionVm(
-          profileId: 'p1',
-          label: 'dev',
-          host: 'example.com',
-          status: SshHostUiStatus.connected,
-        ),
-      },
-      profileOrder: ['p1'],
-    ));
-
     // A dropped remote transport makes the repository rethrow from loadAll().
+    // The gate now follows the home plane (isRemote), not connectedHosts.
     await tester.pumpWidget(
       host(fakeHomeStorage(filesystem: _TransportFailingFilesystem())),
     );
@@ -126,9 +130,16 @@ class _SeededSshConnectionCubit extends SshConnectionCubit {
   void seed(SshConnectionState state) => emit(state);
 }
 
+/// In-memory filesystem that reports a remote (SSH) home plane.
+class _RemoteFilesystem extends InMemoryFilesystem {
+  @override
+  bool get isRemote => true;
+}
+
 /// Filesystem whose reads fail the way a closed SSH/SFTP channel does, so
-/// SshServerProfileRepository.loadAll() rethrows a transport failure.
-class _TransportFailingFilesystem extends InMemoryFilesystem {
+/// SshServerProfileRepository.loadAll() rethrows a transport failure. It
+/// reports a remote plane so the SSH servers page takes the read branch.
+class _TransportFailingFilesystem extends _RemoteFilesystem {
   @override
   Future<FsStat> stat(String path) async =>
       const FsStat(kind: FsEntityKind.file);
