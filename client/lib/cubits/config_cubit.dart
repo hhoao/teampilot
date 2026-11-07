@@ -8,6 +8,7 @@ enum ConfigSection {
   session,
   cli,
   aiFeatures,
+  remoteConnections,
   sshProfiles,
   vault,
   connect,
@@ -22,6 +23,7 @@ enum ConfigSection {
 extension ConfigSectionRoute on ConfigSection {
   String get routeSegment => switch (this) {
     ConfigSection.aiFeatures => 'ai-features',
+    ConfigSection.remoteConnections => 'remote-connections',
     ConfigSection.sshProfiles => 'ssh-profiles',
     ConfigSection.downloadSources => 'download-sources',
     ConfigSection.discovery => 'discovery',
@@ -43,6 +45,7 @@ class ConfigState extends Equatable {
     ConfigSection.session => 'Session Configuration',
     ConfigSection.cli => 'CLI Configuration',
     ConfigSection.aiFeatures => 'AI Features',
+    ConfigSection.remoteConnections => 'Remote Connections',
     ConfigSection.sshProfiles => 'SSH Servers',
     ConfigSection.vault => 'Credential Vault',
     ConfigSection.connect => 'Phone',
@@ -59,6 +62,7 @@ class ConfigState extends Equatable {
     ConfigSection.session => 'Config / Session',
     ConfigSection.cli => 'Config / CLI',
     ConfigSection.aiFeatures => 'Config / AI Features',
+    ConfigSection.remoteConnections => 'Config / Remote Connections',
     ConfigSection.sshProfiles => 'Config / SSH Servers',
     ConfigSection.vault => 'Config / Credential Vault',
     ConfigSection.connect => 'Config / Phone',

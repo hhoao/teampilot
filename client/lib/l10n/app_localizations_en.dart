@@ -10459,4 +10459,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeConnectionErrorUnknown => 'Unknown error';
+
+  @override
+  String get remoteConnectionsTitle => 'Remote connections';
+
+  @override
+  String get remoteConnectionsSubtitle =>
+      'Manage saved hosts, connect, and switch your work home. Available even while offline.';
 }

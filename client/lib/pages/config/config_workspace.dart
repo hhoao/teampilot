@@ -20,6 +20,7 @@ import 'github_config_section.dart';
 import 'download_sources_config_section.dart';
 import 'discovery_config_section.dart';
 import 'layout_config_section.dart';
+import 'remote_connections_config_section.dart';
 import 'session_config_section.dart';
 import 'shortcuts_config_section.dart';
 import 'ssh_profiles_config_section.dart';
@@ -31,15 +32,16 @@ int _configSectionDialogIndex(ConfigSection section) {
     ConfigSection.session => 1,
     ConfigSection.cli => 2,
     ConfigSection.aiFeatures => 3,
-    ConfigSection.sshProfiles => 4,
-    ConfigSection.vault => 5,
-    ConfigSection.connect => 6,
-    ConfigSection.github => 7,
-    ConfigSection.downloadSources => 8,
-    ConfigSection.discovery => 9,
-    ConfigSection.shortcuts => 10,
-    ConfigSection.about => 11,
-    ConfigSection.logs => 11,
+    ConfigSection.remoteConnections => 4,
+    ConfigSection.sshProfiles => 5,
+    ConfigSection.vault => 6,
+    ConfigSection.connect => 7,
+    ConfigSection.github => 8,
+    ConfigSection.downloadSources => 9,
+    ConfigSection.discovery => 10,
+    ConfigSection.shortcuts => 11,
+    ConfigSection.about => 12,
+    ConfigSection.logs => 12,
   };
 }
 
@@ -106,6 +108,14 @@ Future<void> showWorkspaceSettingsDialog(
         title: (l10n) => l10n.aiFeatures,
         subtitle: (l10n) => l10n.aiFeaturesPageSubtitle,
         bodyBuilder: (_) => const AiFeaturesConfigWorkspace(showHeading: false),
+      ),
+      SettingsDialogEntry(
+        icon: Icons.link_outlined,
+        navLabel: (l10n) => l10n.remoteConnectionsTitle,
+        title: (l10n) => l10n.remoteConnectionsTitle,
+        subtitle: (l10n) => l10n.remoteConnectionsSubtitle,
+        bodyBuilder: (_) =>
+            const RemoteConnectionsConfigSection(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.dns_outlined,
@@ -222,6 +232,19 @@ class ConfigSettingsHubPage extends StatelessWidget {
           onTap: throttledTap('config_hub_ai_features', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.aiFeatures);
             context.push('/config/${ConfigSection.aiFeatures.routeSegment}');
+          }),
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configRemoteConnectionsSectionButton,
+          title: l10n.remoteConnectionsTitle,
+          icon: Icons.link_outlined,
+          onTap: throttledTap('config_hub_remote_connections', () {
+            context.read<ConfigCubit>().selectSection(
+              ConfigSection.remoteConnections,
+            );
+            context.push(
+              '/config/${ConfigSection.remoteConnections.routeSegment}',
+            );
           }),
         ),
         WorkspaceHubEntry(
@@ -351,6 +374,9 @@ class ConfigWorkspace extends StatelessWidget {
         ConfigSection.aiFeatures => AiFeaturesConfigWorkspace(
           showHeading: showHeading,
         ),
+        ConfigSection.remoteConnections => RemoteConnectionsConfigSection(
+          showHeading: showHeading,
+        ),
         ConfigSection.sshProfiles => SshProfilesConfigWorkspace(
           showHeading: showHeading,
         ),
@@ -430,6 +456,16 @@ class ConfigNavPanel extends StatelessWidget {
           onTap: throttledTap(
             'config_nav_ai_features',
             () => onSelectSection(ConfigSection.aiFeatures),
+          ),
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configRemoteConnectionsSectionButton,
+          title: l10n.remoteConnectionsTitle,
+          icon: Icons.link_outlined,
+          selected: section == ConfigSection.remoteConnections,
+          onTap: throttledTap(
+            'config_nav_remote_connections',
+            () => onSelectSection(ConfigSection.remoteConnections),
           ),
         ),
         WorkspaceHubEntry(

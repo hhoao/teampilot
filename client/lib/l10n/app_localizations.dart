@@ -18587,6 +18587,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unknown error'**
   String get homeConnectionErrorUnknown;
+
+  /// No description provided for @remoteConnectionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote connections'**
+  String get remoteConnectionsTitle;
+
+  /// No description provided for @remoteConnectionsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage saved hosts, connect, and switch your work home. Available even while offline.'**
+  String get remoteConnectionsSubtitle;
 }
 
 class _AppLocalizationsDelegate

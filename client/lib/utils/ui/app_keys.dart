@@ -175,6 +175,9 @@ class AppKeys {
   static const configAiFeaturesSectionButton = Key(
     'config-ai-features-section-button',
   );
+  static const configRemoteConnectionsSectionButton = Key(
+    'config-remote-connections-section-button',
+  );
   static const configSshProfilesSectionButton = Key(
     'config-ssh-profiles-section-button',
   );

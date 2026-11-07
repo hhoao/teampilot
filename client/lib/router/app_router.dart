@@ -266,6 +266,14 @@ final appRouter = GoRouter(
               ),
             ),
             GoRoute(
+              path: '/config/remote-connections',
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: ConfigWorkspace(
+                  section: ConfigSection.remoteConnections,
+                ),
+              ),
+            ),
+            GoRoute(
               path: '/config/ssh-profiles',
               pageBuilder: (context, state) => const NoTransitionPage(
                 child: ConfigWorkspace(section: ConfigSection.sshProfiles),

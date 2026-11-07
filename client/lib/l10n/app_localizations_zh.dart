@@ -10019,4 +10019,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeConnectionErrorUnknown => '未知错误';
+
+  @override
+  String get remoteConnectionsTitle => '远程连接';
+
+  @override
+  String get remoteConnectionsSubtitle => '管理已保存的主机、连接与切换工作主目录；断线时同样可用。';
 }

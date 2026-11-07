@@ -5274,5 +5274,7 @@
   "homeConnectionErrorAuth": "Authentication failed",
   "homeConnectionErrorHostKey": "Host identity changed — re-pair or confirm the new key",
   "homeConnectionErrorTransport": "Connection error",
-  "homeConnectionErrorUnknown": "Unknown error"
+  "homeConnectionErrorUnknown": "Unknown error",
+  "remoteConnectionsTitle": "Remote connections",
+  "remoteConnectionsSubtitle": "Manage saved hosts, connect, and switch your work home. Available even while offline."
 }

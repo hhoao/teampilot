@@ -4538,5 +4538,7 @@
   "homeConnectionErrorAuth": "认证失败",
   "homeConnectionErrorHostKey": "主机身份已变更 — 请重新配对或确认新密钥",
   "homeConnectionErrorTransport": "连接出错",
-  "homeConnectionErrorUnknown": "未知错误"
+  "homeConnectionErrorUnknown": "未知错误",
+  "remoteConnectionsTitle": "远程连接",
+  "remoteConnectionsSubtitle": "管理已保存的主机、连接与切换工作主目录；断线时同样可用。"
 }
