@@ -367,6 +367,7 @@ import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_run_service.dart';
 import '../services/terminal/workspace_terminal_session_ops.dart';
 import '../utils/logging/logger.dart';
+import '../utils/retryable_memo.dart';
 import 'ui_zoom_baseline.dart';
 
 /// This is the control-plane owner for Managed Provider state. It is created
@@ -2021,10 +2022,9 @@ Future<AppShell> buildAppShell({
 
     final notificationCubit = NotificationCubit(storage: homeStorage);
     // Lazy: the first read is home-plane I/O, so the unreachable splash must
-    // not start it. Memoized so every caller shares one load.
-    Future<void>? notificationBootstrapFuture;
-    Future<void> notificationBootstrap() =>
-        notificationBootstrapFuture ??= notificationCubit.load();
+    // not start it. Success is memoized; a transient failure is not, so the
+    // next hot-recovery attempt retries instead of reusing a rejected future.
+    final notificationBootstrap = retryableMemo(notificationCubit.load);
     NotificationRecorder.install(notificationCubit);
     final progressActivityCubit = ProgressActivityCubit(
       historyRecorder: notificationCubit,
@@ -3368,17 +3368,30 @@ Future<AppShell> buildAppShell({
         return remoteShowOnboarding;
       }
       // Home-plane reads skipped during an unreachable splash (they are not
-      // shown while the connection page is up). Run them once, now that the
+      // shown while the connection page is up). Run them now that the
       // transport is live.
-      if (deferHomePlaneLoads && !deferredHomePlaneLoadsDone) {
-        await notificationBootstrap();
-        await shortcutCubit.load();
-        await localExpertStore.migrateLegacyLayout();
-        await localExpertStore.ensureIndexLoaded();
-        // The boot-time catalog warm cached a snapshot without the local
-        // templates; invalidate so the next read includes them.
-        expertHubCatalog.invalidate();
-        deferredHomePlaneLoadsDone = true;
+      if (deferHomePlaneLoads) {
+        try {
+          await notificationBootstrap();
+        } on Object catch (error, stackTrace) {
+          // Notifications are off the shell's critical path. Keep warming the
+          // rest; `retryableMemo` clears the failed attempt, so the next
+          // reconnect tries it again.
+          appLogger.w(
+            '[boot] notification bootstrap failed after reconnect',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
+        if (!deferredHomePlaneLoadsDone) {
+          await shortcutCubit.load();
+          await localExpertStore.migrateLegacyLayout();
+          await localExpertStore.ensureIndexLoaded();
+          // The boot-time catalog warm cached a snapshot without the local
+          // templates; invalidate so the next read includes them.
+          expertHubCatalog.invalidate();
+          deferredHomePlaneLoadsDone = true;
+        }
       }
       // Deliberately not `bootstrapCubit.state.homeIndexReady`: that getter is
       // also true once the phase is `ready`, which is exactly the state a
