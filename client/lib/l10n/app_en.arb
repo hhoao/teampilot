@@ -5271,5 +5271,6 @@
   "homeConnectionErrorTimeout": "Connection timed out",
   "homeConnectionErrorAuth": "Authentication failed",
   "homeConnectionErrorTransport": "Connection error",
-  "homeConnectionErrorUnknown": "Unknown error"
+  "homeConnectionErrorUnknown": "Unknown error",
+  "homeConnectionRestartRequired": "Connected — restart the app to switch this home's storage"
 }

@@ -719,6 +719,10 @@ class AppShell {
   /// Refreshes the Automations page after catalog-driven writes; owned by the
   /// shell so bootstrap teardown can cancel it.
   StreamSubscription<CatalogMutationEvent>? _automationCatalogSub;
+
+  /// Re-arms the home connection after the current SSH profile's identity is
+  /// edited; owned by the shell so teardown can cancel it.
+  StreamSubscription<SshProfileState>? _homeProfileWatchSub;
   final CommandBus commandBus;
   final ShortcutCubit shortcutCubit;
   final WorkspaceChromeCommands workspaceChromeCommands;
@@ -1089,6 +1093,13 @@ Future<AppShell> buildAppShell({
     return null;
   }
 
+  /// Identity fields that decide how an SSH home is reached. Deliberately
+  /// excludes `updatedAt` and the persisted path cache: a successful connect
+  /// writes those back and must not look like a user edit.
+  String sshProfileConnectivityKey(SshProfile profile) =>
+      '${profile.host}|${profile.port}|${profile.username}|'
+      '${profile.authType.name}|${profile.vaultEntryId ?? ''}';
+
   final remoteCliReadiness = RemoteCliReadinessService(
     registry: cliToolRegistry,
     sshClientFactory: sshClientFactory,
@@ -1153,19 +1164,25 @@ Future<AppShell> buildAppShell({
       homeTarget.kind == RuntimeKind.ssh &&
       homeProfileId != null &&
       homeProfileId.isNotEmpty;
+  // The live home identity. [homeProfileId] is the boot-time snapshot; every
+  // connection hook below reads this mutable value so a home switch inside the
+  // running shell retargets the cubit/coordinator instead of retrying the
+  // abandoned profile until the next restart.
+  var activeHomeProfileId = isSshHome ? homeProfileId : null;
   final homeSshProfile = isSshHome ? sshProfileById(homeProfileId) : null;
-  HomeConnectAttempt? homeAttempt;
+  // One bounded attempt factory reused by boot and every later retry: it reads
+  // the registry's CURRENT home target, so it follows [setHomeTarget] too.
+  final homeAttempt = HomeConnectAttempt(
+    probe: const SocketTcpReachabilityProbe(),
+    resolve: () async {
+      await runtimeContextRegistry.ensureHome();
+      return runtimeContextRegistry.home();
+    },
+    cacheContext: runtimeContextRegistry.ensureHomeCached,
+    profileById: sshProfileById,
+  );
   HomeConnectResult initialHome;
   if (isSshHome) {
-    homeAttempt = HomeConnectAttempt(
-      probe: const SocketTcpReachabilityProbe(),
-      resolve: () async {
-        await runtimeContextRegistry.ensureHome();
-        return runtimeContextRegistry.home();
-      },
-      cacheContext: runtimeContextRegistry.ensureHomeCached,
-      profileById: sshProfileById,
-    );
     initialHome = await homeAttempt.run(homeProfileId);
   } else {
     await runtimeContextRegistry.ensureHome();
@@ -1547,6 +1564,10 @@ Future<AppShell> buildAppShell({
   // Created after the bounded home attempt and seeded synchronously; declared
   // here so the wiring-failure path can close a discarded instance.
   HomeConnectionCubit? homeConnectionCubit;
+  // Watches the current home profile for identity edits so saving a fixed
+  // host/port re-arms the connection instead of leaving the page dead.
+  StreamSubscription<SshProfileState>? homeProfileWatchSub;
+  String? watchedHomeProfileConnectivityKey;
 
   try {
     Future<void> persistSshHomePathCacheIfLive() async {
@@ -1578,6 +1599,13 @@ Future<AppShell> buildAppShell({
       if (id != previousHomeId) await runtimeContextRegistry.dispose(id);
       await runtimeContextRegistry.rebindHome(nextHomeTarget);
       homeTarget = nextHomeTarget;
+      final nextProfileId = nextHomeTarget.sshProfileId;
+      activeHomeProfileId =
+          nextHomeTarget.kind == RuntimeKind.ssh &&
+              nextProfileId != null &&
+              nextProfileId.isNotEmpty
+          ? nextProfileId
+          : null;
       // Publish the new home plane synchronously, then retire the outgoing
       // context — its registry entry is evicted and the SSH transport closed
       // only after in-flight ops drain (Task 5 deferred close).
@@ -2980,7 +3008,7 @@ Future<AppShell> buildAppShell({
       // stop silently. Other profiles keep the default give-up behavior.
       onReconnectAttempt: (profileId, attempt) {
         final cubit = homeConnectionCubit;
-        if (cubit != null && profileId == homeProfileId) {
+        if (cubit != null && profileId == activeHomeProfileId) {
           cubit.markBackgroundAttempt(attempt);
         }
       },
@@ -2989,19 +3017,19 @@ Future<AppShell> buildAppShell({
         // Only a transition into `connected` runs hot recovery; a cycle that
         // finishes after the cubit already connected must not repeat it.
         if (cubit != null &&
-            profileId == homeProfileId &&
+            profileId == activeHomeProfileId &&
             cubit.state.status != HomeConnectionStatus.connected) {
           cubit.markReconnected();
         }
       },
       persistRetry: (profileId) {
         final cubit = homeConnectionCubit;
-        // Track the CURRENT home, not the boot-time id: after a home switch the
-        // abandoned profile must not keep a persistent loop alive (the switch
-        // path also cancels it, this is the second line of defence).
+        // Track the CURRENT home: after a home switch the abandoned profile
+        // must not keep a persistent loop alive (the switch path also cancels
+        // it, this is the second line of defence).
         return cubit != null &&
             !cubit.isClosed &&
-            profileId == defaultTargetResolver().sshProfileId &&
+            profileId == activeHomeProfileId &&
             cubit.state.status != HomeConnectionStatus.connected;
       },
     );
@@ -3201,7 +3229,20 @@ Future<AppShell> buildAppShell({
     floatingWorkspacePersistence.bind();
     if (!deferHomePlaneLoads) {
       await shortcutCubit.load();
-      unawaited(notificationBootstrap());
+      unawaited(
+        notificationBootstrap().catchError((
+          Object error,
+          StackTrace stackTrace,
+        ) {
+          // Background warm-up off the critical path: keep the queue alive
+          // instead of surfacing an uncaught async error.
+          appLogger.w(
+            '[boot] notification bootstrap failed',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }),
+      );
     }
     boot('layout ready (home index prefetched in background)');
     applyWorkspaceEntryMode(
@@ -3314,6 +3355,36 @@ Future<AppShell> buildAppShell({
     // Assigned once the shell graph is wired. bootstrapAppData only runs after
     // buildAppShell returns, so the reference below is safe at call time.
     late final HomeInvalidationService homeInvalidationService;
+
+    /// True when a recovered target claims SSH but the published home plane is
+    /// still the boot-time native fallback (`resolveCached` with no
+    /// `lastHome`). Operating on that plane silently diverges from the home the
+    /// user believes they are on.
+    bool homeRecoveredOntoNativeFallback() =>
+        defaultTargetResolver().kind == RuntimeKind.ssh &&
+        homeStorage.context.mode != StorageBackendMode.ssh;
+
+    bool hasLiveSshHomeContext() =>
+        runtimeContextRegistry.home().mode == StorageBackendMode.ssh;
+
+    /// Publishes the live SSH home plane after recovery. Returns false when the
+    /// swap failed (or still left a non-SSH plane): the gate must then stay on
+    /// the connection page instead of letting the user write to the local root.
+    Future<bool> rebindHomeStoragePlane() async {
+      try {
+        await homeInvalidationService.runSelfInitiatedSwap(
+          reinstallStorageContext,
+        );
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '[boot] home storage plane rebind failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return false;
+      }
+      return homeStorage.context.mode == StorageBackendMode.ssh;
+    }
 
     /// Warm the shell-hosted config + auxiliary data and resolve onboarding.
     /// Shared by the native path and the remote (post-connect) boot so both
@@ -3491,29 +3562,36 @@ Future<AppShell> buildAppShell({
     // connected and never probe here (unchanged boot behavior).
     homeConnectionCubit = HomeConnectionCubit(
       connect: () async {
-        final result = homeAttempt != null
-            ? await homeAttempt.run(homeProfileId!)
-            : initialHome;
+        // Read the LIVE home id, not the boot snapshot: a home switch must
+        // retry the replacement target instead of the abandoned profile.
+        final id = activeHomeProfileId;
+        final result = id == null
+            ? HomeConnectResult.connected(runtimeContextRegistry.home())
+            : await homeAttempt.run(id);
         // Re-arm the background loop when an explicit retry (「继续重试」 /
         // 「重试」) ends unreachable: `userConnect` can succeed while the
         // bounded resolve still fails, and without this the cubit would sit in
         // `unreachable` with nothing retrying. The boot seed never runs this
         // (it uses markInitial), so boot keeps its single auto-start.
-        if (!result.reachable && isSshHome) {
-          sshProfileConnectionCoordinator.restartReconnect(homeProfileId);
+        if (!result.reachable && id != null) {
+          sshProfileConnectionCoordinator.restartReconnect(id);
         }
         return result;
       },
-      cancelRetry: () => !isSshHome
-          ? Future<void>.value()
-          : sshProfileConnectionCoordinator.userDisconnect(homeProfileId),
+      cancelRetry: () {
+        final id = activeHomeProfileId;
+        return id == null
+            ? Future<void>.value()
+            : sshProfileConnectionCoordinator.userDisconnect(id);
+      },
       resumeRetry: () async {
-        if (!isSshHome) return;
-        final profile = sshProfileById(homeProfileId);
+        final id = activeHomeProfileId;
+        if (id == null) return;
+        final profile = sshProfileById(id);
         if (profile == null) return;
         // 「继续重试」 starts a fresh window: drop the spent attempt budget and
         // any timer left from the loop that was cancelled or gave up.
-        sshProfileConnectionCoordinator.resetReconnectAttempts(homeProfileId);
+        sshProfileConnectionCoordinator.resetReconnectAttempts(id);
         try {
           await sshProfileConnectionCoordinator.userConnect(profile);
         } on Object {
@@ -3521,17 +3599,37 @@ Future<AppShell> buildAppShell({
           // nothing else would restart the loop. The cubit surfaces the
           // failure from `connectOnce`; the coordinator keeps retrying behind
           // the connection page.
-          sshProfileConnectionCoordinator.restartReconnect(homeProfileId);
+          sshProfileConnectionCoordinator.restartReconnect(id);
           rethrow;
         }
       },
-      // Hot recovery: run the deferred remote boot once, then let the SSH
-      // liveness/team-generation path resume now that the transport is back.
-      // Errors are logged (the shell is already marked ready and must not crash
-      // on a late background failure).
+      // Hot recovery: make sure recovery landed on the SSH home plane, run the
+      // deferred remote boot once, then let the SSH liveness/team-generation
+      // path resume now that the transport is back. Errors are logged (the
+      // shell is already marked ready and must not crash on a late background
+      // failure).
       onConnected: () {
+        final cubit = homeConnectionCubit;
+        final needsPlaneRebind = homeRecoveredOntoNativeFallback();
+        if (needsPlaneRebind) {
+          // No live SSH context to publish: never open the gate on the local
+          // fallback plane. Keep the connection page with a clear restart hint.
+          if (!hasLiveSshHomeContext()) {
+            cubit?.markRestartRequired();
+            return;
+          }
+          // Hold the gate on the connection page while the plane swap runs.
+          cubit?.markPlaneRebinding();
+        }
         unawaited(() async {
           try {
+            if (needsPlaneRebind) {
+              if (!await rebindHomeStoragePlane()) {
+                cubit?.markRestartRequired();
+                return;
+              }
+              cubit?.markPlaneReady();
+            }
             await runRemoteBootAfterConnect();
             await reconnectHomeSshIfNeeded();
           } on Object catch (error, stackTrace) {
@@ -3556,6 +3654,33 @@ Future<AppShell> buildAppShell({
     if (isSshHome && !initialHome.reachable) {
       sshProfileConnectionCoordinator.restartReconnect(homeProfileId);
     }
+
+    // Saving an edited SSH target used to only reload the profile catalog, so
+    // fixing the host while the connection page was up left it retrying the
+    // old address until a restart. Watch the CURRENT home profile's identity
+    // and re-arm one bounded attempt when it changes.
+    watchedHomeProfileConnectivityKey = () {
+      final id = activeHomeProfileId;
+      if (id == null) return null;
+      final profile = sshProfileById(id);
+      return profile == null ? null : sshProfileConnectivityKey(profile);
+    }();
+    homeProfileWatchSub = sshProfileCubit.stream.listen((_) {
+      final id = activeHomeProfileId;
+      if (id == null) return;
+      final profile = sshProfileById(id);
+      if (profile == null) return;
+      final key = sshProfileConnectivityKey(profile);
+      final previous = watchedHomeProfileConnectivityKey;
+      watchedHomeProfileConnectivityKey = key;
+      if (previous == key) return;
+      final cubit = homeConnectionCubit;
+      if (cubit == null || cubit.isClosed) return;
+      if (cubit.state.status == HomeConnectionStatus.connected) return;
+      appLogger.i('[home] current profile edited; retrying the connection');
+      cubit.rebind(profileId: id, host: profile.host, port: profile.port);
+      unawaited(cubit.retryNow());
+    });
 
     Future<void> bootstrapAppData() async {
       final connected =
@@ -3796,11 +3921,26 @@ Future<AppShell> buildAppShell({
     }
 
     Future<void> switchHomeTarget(String id) async {
-      final previousSshProfileId = defaultTargetResolver().sshProfileId;
+      final previousSshProfileId = activeHomeProfileId;
+      // Prime the edit-watch baseline before the switch publishes anything, so
+      // the path-cache write inside setHomeTarget is not mistaken for a user
+      // edit of the new target.
+      final pendingTarget = homeTargetFromId(id);
+      final pendingProfileId =
+          pendingTarget.kind == RuntimeKind.ssh &&
+              (pendingTarget.sshProfileId ?? '').isNotEmpty
+          ? pendingTarget.sshProfileId
+          : null;
+      final pendingProfile = pendingProfileId == null
+          ? null
+          : sshProfileById(pendingProfileId);
+      watchedHomeProfileConnectivityKey = pendingProfile == null
+          ? null
+          : sshProfileConnectivityKey(pendingProfile);
       await setHomeTarget(
         id,
       ); // persists + rebinds home + republishes HomeStorage
-      final nextSshProfileId = defaultTargetResolver().sshProfileId;
+      final nextSshProfileId = activeHomeProfileId;
       if (previousSshProfileId != null &&
           previousSshProfileId != nextSshProfileId) {
         // The connection page's retry loop must not keep firing for (and
@@ -3812,6 +3952,34 @@ Future<AppShell> buildAppShell({
         sshProfileConnectionCoordinator.resetReconnectAttempts(
           previousSshProfileId,
         );
+      }
+      // Reseed the connection cubit onto the new target. Its callbacks read
+      // `activeHomeProfileId`, so without this the gate would keep showing the
+      // connection page and 「继续重试」 would retry the abandoned home.
+      final nextProfile = nextSshProfileId == null
+          ? null
+          : sshProfileById(nextSshProfileId);
+      watchedHomeProfileConnectivityKey = nextProfile == null
+          ? null
+          : sshProfileConnectivityKey(nextProfile);
+      final cubit = homeConnectionCubit;
+      if (cubit != null && !cubit.isClosed) {
+        cubit.rebind(
+          profileId: nextSshProfileId,
+          host: nextProfile?.host,
+          port: nextProfile?.port,
+        );
+        if (nextSshProfileId == null) {
+          // setHomeTarget already resolved and published the new non-SSH plane;
+          // seed connected without replaying hot recovery.
+          cubit.markInitial(
+            HomeConnectResult.connected(runtimeContextRegistry.home()),
+          );
+        } else {
+          // One bounded attempt against the replacement target: this is what
+          // lets the gate leave the connection page once the new home connects.
+          unawaited(cubit.retryNow());
+        }
       }
       await applyHomeEventTransport(restart: true);
     }
@@ -4007,6 +4175,7 @@ Future<AppShell> buildAppShell({
       uiZoomBaseline: uiZoomBaseline,
     );
     shell._automationCatalogSub = automationCatalogSub;
+    shell._homeProfileWatchSub = homeProfileWatchSub;
     managedProviderControlPlaneLease.transferOwnership();
     await applyHomeEventTransport();
     return shell;
@@ -4019,6 +4188,7 @@ Future<AppShell> buildAppShell({
     // cubit from a discarded shell. `memberPresenceCubit` is nullable because
     // construction may throw before it is assigned.
     await eventTransportController?.apply(EventTransportRole.none);
+    await homeProfileWatchSub?.cancel();
     await memberPresenceCubit?.close();
     await catalogRuntime?.bus.close();
     await homeConnectionCubit?.close();
@@ -4369,6 +4539,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     final shell = _shell;
     if (shell != null) {
       shell._automationCatalogSub?.cancel();
+      shell._homeProfileWatchSub?.cancel();
       shell.homeInvalidationService.stop();
       unawaited(_teardownConnect(shell));
       unawaited(shell.managedProviderControlPlane.close());

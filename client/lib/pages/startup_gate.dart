@@ -44,6 +44,7 @@ class StartupGate extends StatelessWidget {
       switch (homeConn.status) {
         case HomeConnectionStatus.unreachable:
         case HomeConnectionStatus.reconnecting:
+        case HomeConnectionStatus.restartRequired:
           return const RemoteConnectionsPage();
         case HomeConnectionStatus.connecting:
           return _HomeConnectingPage(state: homeConn);

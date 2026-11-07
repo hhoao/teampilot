@@ -18569,6 +18569,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unknown error'**
   String get homeConnectionErrorUnknown;
+
+  /// No description provided for @homeConnectionRestartRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected — restart the app to switch this home\'s storage'**
+  String get homeConnectionRestartRequired;
 }
 
 class _AppLocalizationsDelegate

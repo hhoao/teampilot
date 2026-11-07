@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../models/ssh_profile.dart';
+import '../ssh/ssh_connection_failure.dart';
 import '../ssh/tcp_reachability_probe.dart';
 import 'runtime_context.dart';
 
@@ -87,9 +88,11 @@ class HomeConnectAttempt {
         HomeErrorKind.sshTimeout,
         context: await _cachedContext(),
       );
-    } on Object {
+    } on Object catch (error) {
       return HomeConnectResult.unreachable(
-        HomeErrorKind.transportError,
+        isSshAuthFailure(error)
+            ? HomeErrorKind.authFailed
+            : HomeErrorKind.transportError,
         context: await _cachedContext(),
       );
     }

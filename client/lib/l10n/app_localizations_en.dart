@@ -10448,4 +10448,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeConnectionErrorUnknown => 'Unknown error';
+
+  @override
+  String get homeConnectionRestartRequired =>
+      'Connected — restart the app to switch this home\'s storage';
 }

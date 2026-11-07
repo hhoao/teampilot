@@ -46,7 +46,8 @@ class _RemoteConnectionsPageState extends State<RemoteConnectionsPage> {
     final showStatus =
         homeConn != null &&
         (homeConn.status == HomeConnectionStatus.unreachable ||
-            homeConn.status == HomeConnectionStatus.reconnecting);
+            homeConn.status == HomeConnectionStatus.reconnecting ||
+            homeConn.status == HomeConnectionStatus.restartRequired);
     final body = SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -83,13 +84,19 @@ class _ConnectionStatusCard extends StatelessWidget {
     final host = state.host;
     final port = state.port ?? 22;
     final errorKind = state.lastErrorKind;
+    final restartRequired = state.requiresRestart;
     return TpCard.outlined(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (host != null)
+            if (restartRequired)
+              Text(
+                l10n.homeConnectionRestartRequired,
+                style: TpTextStyles.of(context).mdBoldTightSnug,
+              )
+            else if (host != null)
               Text(
                 l10n.homeConnectionUnreachable(host, port),
                 style: TpTextStyles.of(context).mdBoldTightSnug,

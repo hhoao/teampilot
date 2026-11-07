@@ -293,7 +293,7 @@ class SshProfileConnectionCoordinator {
 
     final attempts = _reconnectAttempts[profileId] ?? 0;
     final exhausted = attempts >= policy.maxAttempts;
-    final persist = exhausted && (persistRetry?.call(profileId) ?? false);
+    final persist = exhausted && _persistRetry(profileId);
     if (exhausted && !persist) {
       appLogger.w(
         '[ssh] profile $profileId reconnect gave up after $attempts attempts',
@@ -322,21 +322,24 @@ class SshProfileConnectionCoordinator {
     _reconnectInFlight[profileId] = true;
     _reconnectAttempts[profileId] = (_reconnectAttempts[profileId] ?? 0) + 1;
     final attempt = _reconnectAttempts[profileId]!;
-    final persistent = persistRetry?.call(profileId) ?? false;
-    onReconnectAttempt?.call(profileId, attempt);
 
     final monitor = monitorFor(profileId);
-    monitor.reconnectStarted();
-    appLogger.i(
-      '[ssh] profile $profileId reconnect attempt '
-      '$attempt${persistent ? '' : '/${policy.maxAttempts}'}',
-    );
 
     // Rescheduling must happen after the finally block clears the in-flight
-    // flag — scheduling while it is still set is a silent no-op.
+    // flag — scheduling while it is still set is a silent no-op. Hook
+    // invocations live INSIDE the try/finally so a throwing hook cannot leave
+    // `_reconnectInFlight` latched and wedge every later attempt.
     var reschedule = false;
     var reschedulePenalty = false;
     try {
+      final persistent = _persistRetry(profileId);
+      _notifyReconnectAttempt(profileId, attempt);
+      monitor.reconnectStarted();
+      appLogger.i(
+        '[ssh] profile $profileId reconnect attempt '
+        '$attempt${persistent ? '' : '/${policy.maxAttempts}'}',
+      );
+
       await reconnectStorage(profile);
       if (_userDisconnectLatched.contains(profileId)) {
         _factory.disconnectProfile(
@@ -364,7 +367,7 @@ class SshProfileConnectionCoordinator {
       monitor.reconnected();
       _reconnectAttempts.remove(profileId);
       appLogger.i('[ssh] profile $profileId reconnect succeeded');
-      onReconnected?.call(profileId);
+      _notifyReconnected(profileId);
     } on Object catch (error, stackTrace) {
       if (_userDisconnectLatched.contains(profileId)) {
         monitor.reconnectFailed();
@@ -391,6 +394,46 @@ class SshProfileConnectionCoordinator {
     }
     if (reschedule) {
       _scheduleReconnect(profileId, penaltyRefusal: reschedulePenalty);
+    }
+  }
+
+  /// Runs a progress hook without letting it fail the reconnect itself.
+  void _notifyReconnectAttempt(String profileId, int attempt) {
+    try {
+      onReconnectAttempt?.call(profileId, attempt);
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[ssh] reconnect attempt hook failed: ${error.runtimeType}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Runs a success hook without turning a healthy reconnect into a failure.
+  void _notifyReconnected(String profileId) {
+    try {
+      onReconnected?.call(profileId);
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[ssh] reconnect success hook failed: ${error.runtimeType}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Evaluates [persistRetry] without wedging the loop on a throwing hook.
+  bool _persistRetry(String profileId) {
+    try {
+      return persistRetry?.call(profileId) ?? false;
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[ssh] persistRetry hook failed: ${error.runtimeType}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 

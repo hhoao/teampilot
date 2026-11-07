@@ -10010,4 +10010,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeConnectionErrorUnknown => '未知错误';
+
+  @override
+  String get homeConnectionRestartRequired => '已连接 — 请重启应用以切换此主目录的存储';
 }
