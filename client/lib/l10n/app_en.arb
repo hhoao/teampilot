@@ -5244,5 +5244,32 @@
   "vaultLockedSaveBlocked": "Unlock the vault to save credentials.",
   "vaultUnavailable": "Credential vault is unavailable.",
   "vaultStoredInVault": "Stored in vault",
-  "vaultLockedQueryBlocked": "Unlock the vault to query usage."
+  "vaultLockedQueryBlocked": "Unlock the vault to query usage.",
+  "homeConnectionUnreachable": "Can't reach {host}:{port}",
+  "@homeConnectionUnreachable": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "homeConnectionRetrying": "Retrying… attempt {count}",
+  "@homeConnectionRetrying": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeConnectionCancelRetry": "Stop retrying",
+  "homeConnectionRetryNow": "Retry now",
+  "homeConnectionSwitch": "Switch connection",
+  "homeConnectionErrorTcp": "Network unreachable",
+  "homeConnectionErrorTimeout": "Connection timed out",
+  "homeConnectionErrorAuth": "Authentication failed",
+  "homeConnectionErrorTransport": "Connection error",
+  "homeConnectionErrorUnknown": "Unknown error"
 }

@@ -9976,4 +9976,38 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get vaultLockedQueryBlocked => '请先解锁保险库再查询用量。';
+
+  @override
+  String homeConnectionUnreachable(String host, int port) {
+    return '无法连接 $host:$port';
+  }
+
+  @override
+  String homeConnectionRetrying(int count) {
+    return '正在重试…第 $count 次';
+  }
+
+  @override
+  String get homeConnectionCancelRetry => '取消重试';
+
+  @override
+  String get homeConnectionRetryNow => '继续重试';
+
+  @override
+  String get homeConnectionSwitch => '切换连接';
+
+  @override
+  String get homeConnectionErrorTcp => '网络不可达';
+
+  @override
+  String get homeConnectionErrorTimeout => '连接超时';
+
+  @override
+  String get homeConnectionErrorAuth => '认证失败';
+
+  @override
+  String get homeConnectionErrorTransport => '连接出错';
+
+  @override
+  String get homeConnectionErrorUnknown => '未知错误';
 }

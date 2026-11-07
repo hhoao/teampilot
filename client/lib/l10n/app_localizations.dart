@@ -18509,6 +18509,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unlock the vault to query usage.'**
   String get vaultLockedQueryBlocked;
+
+  /// No description provided for @homeConnectionUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach {host}:{port}'**
+  String homeConnectionUnreachable(String host, int port);
+
+  /// No description provided for @homeConnectionRetrying.
+  ///
+  /// In en, this message translates to:
+  /// **'Retrying… attempt {count}'**
+  String homeConnectionRetrying(int count);
+
+  /// No description provided for @homeConnectionCancelRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop retrying'**
+  String get homeConnectionCancelRetry;
+
+  /// No description provided for @homeConnectionRetryNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry now'**
+  String get homeConnectionRetryNow;
+
+  /// No description provided for @homeConnectionSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch connection'**
+  String get homeConnectionSwitch;
+
+  /// No description provided for @homeConnectionErrorTcp.
+  ///
+  /// In en, this message translates to:
+  /// **'Network unreachable'**
+  String get homeConnectionErrorTcp;
+
+  /// No description provided for @homeConnectionErrorTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection timed out'**
+  String get homeConnectionErrorTimeout;
+
+  /// No description provided for @homeConnectionErrorAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication failed'**
+  String get homeConnectionErrorAuth;
+
+  /// No description provided for @homeConnectionErrorTransport.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection error'**
+  String get homeConnectionErrorTransport;
+
+  /// No description provided for @homeConnectionErrorUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown error'**
+  String get homeConnectionErrorUnknown;
 }
 
 class _AppLocalizationsDelegate
