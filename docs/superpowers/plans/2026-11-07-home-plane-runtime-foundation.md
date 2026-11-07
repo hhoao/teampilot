@@ -937,3 +937,13 @@ If no files changed, skip this step.
 **Type consistency:** `PlaneSnapshotCache<T>.write(Iterable<T>)` returns `List<T>` and is used identically in both repositories. `HomeRuntimeIdentity` fields are `targetId`/`appDataRoot` everywhere. `WorkspaceSearchIndexes.clear()` matches the spec's rebind step naming.
 
 **Known behavior change:** `main.dart:500` calls `prefetchHomeIndexSnapshots`, which constructs throwaway repositories. After this plan those instances still warm the on-disk index snapshots but no longer populate the app repositories' in-memory caches. Plan 2 replaces that prefetch with `HomeRuntime.warm()` on the runtime-owned repositories, restoring the in-memory warm path.
+
+## Handoff notes for Plan 2
+
+Findings from the per-task and final reviews that Plan 2 must close:
+
+- **Identity vs. connection endpoint.** `HomeRuntimeIdentity` is `targetId` + `appDataRoot`, and `targetId` is only `ssh:<profileId>`. A profile edited to point at another host that resolves the same `appDataRoot` would keep value caches. The spec now requires comparing a connection fingerprint (host/port/user) and treating any change as an identity change (new runtime), not a rebind.
+- **Mutation racing a swap.** A mutation that started on plane A and reaches `_rememberWorkspace` / `_forgetWorkspace` after B is published can merge A's workspace into B's list and upsert on B's disk. Disposal/drain of the runtime, not the cache, is the intended close.
+- **`WorkspaceSearchIndexes.clear()` ordering.** Call it only after in-flight index builds are quiesced; add the disposal assertion the Task 5 test currently lacks.
+- **Boot warm path.** `main.dart`'s throwaway prefetch warms only on-disk snapshots; `HomeRuntime.warm()` on the runtime-owned repositories restores the in-memory warm path, and at that point the `home_index_prefetch.dart` doc can be tightened again.
+- **Identity-based invalidation is now in the repositories** (`PlaneSnapshotCache` is plane-bound). Runtime-owned repositories will never see an identity change, so this layer stays as a harmless safety net; do not remove it in Plan 2.

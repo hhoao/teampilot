@@ -1020,7 +1020,7 @@ void main() {
       final wsJson = list.single as Map<String, Object?>;
       expect(wsJson['sessionIds'], [created.session.sessionId]);
 
-      // 全新实例走快路径也能读到(缓存键按 rootDir 隔离):
+      // 全新实例走快路径也能读到(内存缓存属于实例,不从旧实例继承):
       final fresh = SessionRepository(
         rootDir: tmp.path,
         storage: _repoStorage(tmp),

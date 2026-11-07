@@ -11,9 +11,12 @@ import '../storage/runtime_layout.dart';
 /// ([WorkspaceSessionContentIndex]) — shared by the Search dialog and the
 /// compose `@`-mention picker so each workspace root is indexed once.
 ///
-/// Indexes are cached for the app lifetime and dropped when a workspace tab
-/// closes ([disposeWorkspace]); each index also self-freshens via root mtime /
-/// transcript cache token + TTL, so no filesystem watch is kept here.
+/// Indexes are scoped to the owning runtime (one instance per home plane, its
+/// lifetime bounded by the plane): [clear] drops them on a same-identity
+/// transport rebind, while a plane change disposes the whole owner. A
+/// workspace tab closing drops just that workspace ([disposeWorkspace]); each
+/// index also self-freshens via root mtime / transcript cache token + TTL, so
+/// no filesystem watch is kept here.
 class WorkspaceSearchIndexes {
   WorkspaceSearchIndexes({required HomeStorage storage}) : _storage = storage;
 
@@ -61,5 +64,18 @@ class WorkspaceSearchIndexes {
       _fileIndexes.remove(folder.path);
     }
     _contentByWorkspace.remove(workspace.workspaceId.trim())?.dispose();
+  }
+
+  /// Drops every index bound to the current transport.
+  ///
+  /// Called on a same-identity transport rebind: the plane and its value caches
+  /// survive, but indexes that captured the old `fs` must be rebuilt against
+  /// the new one. An identity change disposes the whole runtime instead.
+  void clear() {
+    _fileIndexes.clear();
+    for (final index in _contentByWorkspace.values) {
+      index.dispose();
+    }
+    _contentByWorkspace.clear();
   }
 }

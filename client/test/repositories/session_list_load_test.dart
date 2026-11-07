@@ -165,7 +165,6 @@ void main() {
     File(
       WorkspaceLayout(teampilotRoot: tmp.path, fs: inner).workspacesIndexFile,
     ).deleteSync();
-    SessionRepository.debugResetWorkspacesIndexCache();
     counting.sessionJsonReads = 0;
     final fresh = SessionRepository(
       rootDir: tmp.path,

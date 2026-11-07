@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart'
-    show listEquals, setEquals, visibleForTesting;
+import 'package:flutter/foundation.dart' show listEquals, setEquals;
 import 'package:uuid/uuid.dart';
 
 import '../models/workspace.dart';
@@ -24,7 +23,9 @@ import '../services/chat/launch/session/team_session_member_plan.dart';
 import '../services/cli/registry/capabilities/acp_capability.dart';
 import '../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
+import '../services/storage/home_runtime_identity.dart';
 import '../services/storage/home_storage.dart';
+import '../services/storage/plane_snapshot_cache.dart';
 import '../services/storage/work_target_canonicalizer.dart';
 import '../models/workspace_icon_ref.dart';
 import '../services/workspace/target_liveness.dart';
@@ -59,64 +60,75 @@ class SessionRepository {
   HomeStorage get storage => _storage;
 
   final _sessionFileLocks = LockPool();
-  static final Map<String, List<Workspace>> _workspacesIndexByRoot = {};
+  late final PlaneSnapshotCache<Workspace> _workspaceIndexCache =
+      PlaneSnapshotCache<Workspace>(plane: _planeIdentity);
 
-  @visibleForTesting
-  static void debugResetWorkspacesIndexCache() =>
-      _workspacesIndexByRoot.clear();
-
-  String _workspacesIndexCacheKey() {
-    if (_rootOverride != null) return _rootOverride;
-    return _storage.appDataRoot;
+  /// Identity of the plane this repository is currently reading.
+  ///
+  /// An explicit [rootDir] (tests) is its own plane; otherwise the published
+  /// home context identifies it. Read synchronously so a load captures the
+  /// plane before its first `await` and can reject results that a swap
+  /// retired mid-flight.
+  HomeRuntimeIdentity _planeIdentity() {
+    final rootOverride = _rootOverride;
+    if (rootOverride != null) {
+      return HomeRuntimeIdentity(
+        targetId: RuntimeTarget.localId,
+        appDataRoot: rootOverride,
+      );
+    }
+    final context = _storage.context;
+    return HomeRuntimeIdentity(
+      targetId: context.target.id,
+      appDataRoot: context.appDataRoot,
+    );
   }
 
-  List<Workspace> _rememberWorkspacesIndex(List<Workspace> workspaces) {
-    final inferred = [
-      for (final workspace in workspaces)
-        _withInferredMemberPlacementInit(workspace),
-    ];
-    final remembered = List<Workspace>.unmodifiable(inferred);
-    _workspacesIndexByRoot[_workspacesIndexCacheKey()] = remembered;
-    return remembered;
+  List<Workspace> _rememberWorkspacesIndex(
+    List<Workspace> workspaces, {
+    HomeRuntimeIdentity? forPlane,
+  }) {
+    return _workspaceIndexCache.write(
+      [
+        for (final workspace in workspaces)
+          _withInferredMemberPlacementInit(workspace),
+      ],
+      forPlane: forPlane,
+    );
   }
 
   /// Incremental mirror of [Workspace] into the in-memory index cache and the
   /// workspaces-index.json snapshot. Mutations call this so the fast boot path
   /// (loadWorkspacesIndex) never returns a stale workspace.
   Future<void> _rememberWorkspace(Workspace workspace) async {
-    final key = _workspacesIndexCacheKey();
-    final current = _workspacesIndexByRoot[key];
+    final current = _workspaceIndexCache.snapshot;
     if (current != null) {
       final inferred = _withInferredMemberPlacementInit(workspace);
-      if (current.any((w) => w.workspaceId == workspace.workspaceId)) {
-        _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable([
-          for (final existing in current)
-            if (existing.workspaceId == workspace.workspaceId)
-              inferred
-            else
-              existing,
-        ]);
-      } else {
-        // Cache populated (e.g. boot loadWorkspacesIndex) but this workspace
-        // is not in it yet — append so later fast-path reads see it.
-        _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable([
-          ...current,
-          inferred,
-        ]);
-      }
+      final exists = current.any(
+        (existing) => existing.workspaceId == workspace.workspaceId,
+      );
+      _workspaceIndexCache.write(
+        exists
+            ? [
+                for (final existing in current)
+                  if (existing.workspaceId == workspace.workspaceId)
+                    inferred
+                  else
+                    existing,
+              ]
+            : [...current, inferred],
+      );
     }
     await WorkspaceIndexStore(await _fs()).upsert(workspace);
   }
 
   /// Incremental removal from the in-memory index cache and the index snapshot.
   Future<void> _forgetWorkspace(String workspaceId) async {
-    final key = _workspacesIndexCacheKey();
-    final current = _workspacesIndexByRoot[key];
+    final current = _workspaceIndexCache.snapshot;
     if (current != null) {
-      _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable([
-        for (final existing in current)
-          if (existing.workspaceId != workspaceId) existing,
-      ]);
+      _workspaceIndexCache.write(
+        current.where((existing) => existing.workspaceId != workspaceId),
+      );
     }
     await WorkspaceIndexStore(await _fs()).remove(workspaceId);
   }
@@ -249,14 +261,20 @@ class SessionRepository {
     );
   }
 
-  Future<List<Workspace>> loadWorkspaces() => _loadWorkspaces(indexOnly: false);
+  Future<List<Workspace>> loadWorkspaces() async {
+    final fs = await _fs();
+    return _loadWorkspaces(indexOnly: false, fs: fs);
+  }
 
   /// Manifest + session directory names only — no per-session JSON reads.
   ///
   /// Reads [workspaces-index.json] when present and workspace ids still match
   /// disk; otherwise rebuilds the snapshot from per-workspace manifests.
   Future<List<Workspace>> loadWorkspacesIndex() async {
-    final cached = _workspacesIndexByRoot[_workspacesIndexCacheKey()];
+    // Capture the plane before any `await`: the read and the index write below
+    // must stay on one plane even if a home swap lands mid-load.
+    final plane = _planeIdentity();
+    final cached = _workspaceIndexCache.snapshot;
     if (cached != null) {
       appLogger.i(
         '[boot] loadWorkspacesIndex from memory count=${cached.length}',
@@ -273,22 +291,25 @@ class SessionRepository {
         '[boot] loadWorkspacesIndex from snapshot count=${snapshot.length} '
         'read=${readMs}ms (validate deferred)',
       );
-      unawaited(_revalidateWorkspacesIndexSnapshot(fs, store, snapshot));
-      return _rememberWorkspacesIndex(snapshot);
+      unawaited(
+        _revalidateWorkspacesIndexSnapshot(fs, store, snapshot, plane),
+      );
+      return _rememberWorkspacesIndex(snapshot, forPlane: plane);
     } else {
       appLogger.i(
         '[boot] loadWorkspacesIndex rebuilding snapshot read=${readMs}ms',
       );
     }
-    final workspaces = await _loadWorkspaces(indexOnly: true);
+    final workspaces = await _loadWorkspaces(indexOnly: true, fs: fs);
     await store.writeAll(workspaces);
-    return _rememberWorkspacesIndex(workspaces);
+    return _rememberWorkspacesIndex(workspaces, forPlane: plane);
   }
 
   Future<void> _revalidateWorkspacesIndexSnapshot(
     SessionRepositoryFs fs,
     WorkspaceIndexStore store,
     List<Workspace> snapshot,
+    HomeRuntimeIdentity plane,
   ) async {
     final validateSw = Stopwatch()..start();
     final diskIds = await fs.listWorkspaceIds();
@@ -302,17 +323,26 @@ class SessionRepository {
       'disk=${diskIds.length} index=${snapshot.length} '
       'validate=${validateMs}ms',
     );
-    final workspaces = await _loadWorkspaces(indexOnly: true);
+    final workspaces = await _loadWorkspaces(indexOnly: true, fs: fs);
     await store.writeAll(workspaces);
-    _rememberWorkspacesIndex(workspaces);
+    _rememberWorkspacesIndex(workspaces, forPlane: plane);
   }
 
-  Future<List<Workspace>> _loadWorkspaces({required bool indexOnly}) async {
-    final fs = await _fs();
-    final workspaceIds = await fs.listWorkspaceIds();
+  /// Scans workspace manifests on [fs].
+  ///
+  /// Callers that write the result to a plane-scoped cache pass the
+  /// filesystem they captured together with that plane, so the scan and the
+  /// index write cannot straddle a home swap.
+  Future<List<Workspace>> _loadWorkspaces({
+    required bool indexOnly,
+    SessionRepositoryFs? fs,
+  }) async {
+    final boundFs = fs ?? await _fs();
+    final workspaceIds = await boundFs.listWorkspaceIds();
     final workspaces = await Future.wait(
       workspaceIds.map(
-        (workspaceId) => _readManifest(fs, workspaceId, indexOnly: indexOnly),
+        (workspaceId) =>
+            _readManifest(boundFs, workspaceId, indexOnly: indexOnly),
       ),
     );
     return [
@@ -966,9 +996,8 @@ class SessionRepository {
     // the new id themselves. Base the mirror on the cached index entry when
     // present: its order is createdAt desc, whereas a fresh indexOnly read
     // returns raw session-directory order (filesystem dependent).
-    final key = _workspacesIndexCacheKey();
     Workspace? cachedWorkspace;
-    for (final w in _workspacesIndexByRoot[key] ?? const <Workspace>[]) {
+    for (final w in _workspaceIndexCache.snapshot ?? const <Workspace>[]) {
       if (w.workspaceId == workspaceId) {
         cachedWorkspace = w;
         break;
@@ -1025,8 +1054,7 @@ class SessionRepository {
       if (hinted.isNotEmpty) hinted,
       ...await fs.listWorkspaceDirectoryIds(),
       for (final workspace
-          in _workspacesIndexByRoot[_workspacesIndexCacheKey()] ??
-              const <Workspace>[])
+          in _workspaceIndexCache.snapshot ?? const <Workspace>[])
         workspace.workspaceId,
     };
     final indexed = await WorkspaceIndexStore(fs).tryRead();
@@ -1414,25 +1442,27 @@ class SessionRepository {
           fs,
           workspace.copyWith(updatedAt: DateTime.now().millisecondsSinceEpoch),
         );
-        // Mirror the sessionIds change into the index snapshot.
-        final cachedList = _workspacesIndexByRoot[_workspacesIndexCacheKey()];
+        // Mirror the sessionIds change into the index snapshot. The in-memory
+        // cache may be cold on a fresh repository instance; the manifest read
+        // above already lists the surviving session directories, so use it as
+        // the base instead of skipping the mirror.
         Workspace? cached;
-        for (final w in cachedList ?? const <Workspace>[]) {
+        for (final w
+            in _workspaceIndexCache.snapshot ?? const <Workspace>[]) {
           if (w.workspaceId == workspaceId) {
             cached = w;
             break;
           }
         }
-        if (cached != null) {
-          await _rememberWorkspace(
-            cached.copyWith(
-              sessionIds: [
-                for (final id in cached.sessionIds)
-                  if (id != sessionId) id,
-              ],
-            ),
-          );
-        }
+        final base = cached ?? workspace;
+        await _rememberWorkspace(
+          base.copyWith(
+            sessionIds: [
+              for (final id in base.sessionIds)
+                if (id != sessionId) id,
+            ],
+          ),
+        );
       }
     });
   }
@@ -1525,9 +1555,8 @@ class SessionRepository {
       }
 
       // Index mirror — same prepend semantics as createSession.
-      final key = _workspacesIndexCacheKey();
       Workspace? cachedWorkspace;
-      for (final w in _workspacesIndexByRoot[key] ?? const <Workspace>[]) {
+      for (final w in _workspaceIndexCache.snapshot ?? const <Workspace>[]) {
         if (w.workspaceId == source.workspaceId) {
           cachedWorkspace = w;
           break;
