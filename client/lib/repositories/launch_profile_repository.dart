@@ -6,6 +6,7 @@ import '../models/launch_profile.dart';
 import '../services/io/filesystem.dart';
 import '../services/chat/session/session_lifecycle_service.dart';
 import '../services/storage/home_storage.dart';
+import '../services/storage/plane_snapshot_cache.dart';
 import '../utils/logging/logger.dart';
 import 'launch_profile_index_store.dart';
 import '../services/storage/storage_failure.dart';
@@ -25,7 +26,8 @@ class LaunchProfileRepository {
   final HomeStorage _storage;
   final SessionLifecycleService? _lifecycleService;
 
-  static final Map<String, List<LaunchProfile>> _loadAllByRoot = {};
+  final PlaneSnapshotCache<LaunchProfile> _cache =
+      PlaneSnapshotCache<LaunchProfile>();
   Future<void>? _revalidationFuture;
 
   Future<void> _awaitIndexQuiescence() async {
@@ -34,7 +36,6 @@ class LaunchProfileRepository {
   }
 
   void _scheduleRevalidation(
-    String cacheKey,
     ({String dir, Filesystem fs}) paths,
     LaunchProfileIndexStore store,
     List<LaunchProfile> snapshot,
@@ -42,7 +43,6 @@ class LaunchProfileRepository {
     Future<void>? pending;
     pending =
         _revalidateLaunchProfilesSnapshot(
-          cacheKey,
           paths,
           store,
           snapshot,
@@ -53,24 +53,6 @@ class LaunchProfileRepository {
         });
     _revalidationFuture = pending;
     unawaited(pending);
-  }
-
-  String _loadAllCacheKey() {
-    if (_rootDirOverride != null) return _rootDirOverride;
-    return _storage.appDataRoot;
-  }
-
-  void _invalidateLoadAllCache() {
-    _loadAllByRoot.remove(_loadAllCacheKey());
-  }
-
-  List<LaunchProfile> _rememberLoadAll(
-    String cacheKey,
-    List<LaunchProfile> profiles,
-  ) {
-    final remembered = List<LaunchProfile>.unmodifiable(profiles);
-    _loadAllByRoot[cacheKey] = remembered;
-    return remembered;
   }
 
   Future<({String dir, Filesystem fs})> _paths() async {
@@ -132,11 +114,7 @@ class LaunchProfileRepository {
   }
 
   Future<List<LaunchProfile>> loadAll() async {
-    // Capture the cache key once: the deferred revalidation below runs after
-    // awaits and must not re-read AppPathsBootstrapper, which a test may have
-    // torn down by then (and which can change in production).
-    final cacheKey = _loadAllCacheKey();
-    final cached = _loadAllByRoot[cacheKey];
+    final cached = _cache.snapshot;
     if (cached != null) {
       appLogger.i(
         '[boot] loadLaunchProfiles from memory count=${cached.length}',
@@ -153,8 +131,8 @@ class LaunchProfileRepository {
         '[boot] loadLaunchProfiles from snapshot count=${snapshot.length} '
         'read=${readMs}ms (validate deferred)',
       );
-      _scheduleRevalidation(cacheKey, paths, store, snapshot);
-      return _rememberLoadAll(cacheKey, _sorted(snapshot));
+      _scheduleRevalidation(paths, store, snapshot);
+      return _cache.write(_sorted(snapshot));
     } else {
       appLogger.i(
         '[boot] loadLaunchProfiles rebuilding snapshot read=${readMs}ms',
@@ -162,11 +140,10 @@ class LaunchProfileRepository {
     }
     final profiles = await _scanAll(paths);
     await store.writeAll(profiles);
-    return _rememberLoadAll(cacheKey, profiles);
+    return _cache.write(profiles);
   }
 
   Future<void> _revalidateLaunchProfilesSnapshot(
-    String cacheKey,
     ({String dir, Filesystem fs}) paths,
     LaunchProfileIndexStore store,
     List<LaunchProfile> snapshot,
@@ -185,7 +162,7 @@ class LaunchProfileRepository {
     );
     final profiles = await _scanAll(paths);
     await store.writeAll(profiles);
-    _rememberLoadAll(cacheKey, profiles);
+    _cache.write(profiles);
   }
 
   Future<List<LaunchProfile>> _scanAll(
@@ -259,7 +236,7 @@ class LaunchProfileRepository {
       _profileFile(paths.fs, paths.dir, id),
       const JsonEncoder.withIndent('  ').convert(identity.toJson()),
     );
-    _invalidateLoadAllCache();
+    _cache.invalidate();
     await _indexStore(paths).upsert(identity);
   }
 
@@ -291,7 +268,7 @@ class LaunchProfileRepository {
     } on Object {
       // best effort
     }
-    _invalidateLoadAllCache();
+    _cache.invalidate();
     await _indexStore(paths).remove(trimmed);
   }
 }
