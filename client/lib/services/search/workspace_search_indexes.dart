@@ -11,9 +11,12 @@ import '../storage/runtime_layout.dart';
 /// ([WorkspaceSessionContentIndex]) — shared by the Search dialog and the
 /// compose `@`-mention picker so each workspace root is indexed once.
 ///
-/// Indexes are cached for the app lifetime and dropped when a workspace tab
-/// closes ([disposeWorkspace]); each index also self-freshens via root mtime /
-/// transcript cache token + TTL, so no filesystem watch is kept here.
+/// Indexes are scoped to the owning runtime (one instance per home plane, its
+/// lifetime bounded by the plane): [clear] drops them on a same-identity
+/// transport rebind, while a plane change disposes the whole owner. A
+/// workspace tab closing drops just that workspace ([disposeWorkspace]); each
+/// index also self-freshens via root mtime / transcript cache token + TTL, so
+/// no filesystem watch is kept here.
 class WorkspaceSearchIndexes {
   WorkspaceSearchIndexes({required HomeStorage storage}) : _storage = storage;
 

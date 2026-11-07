@@ -3,9 +3,13 @@ import '../repositories/session_repository.dart';
 import '../services/storage/home_storage.dart';
 import '../utils/logging/logger.dart';
 
-/// Warms workspace / launch-profile index caches as early as [main] allows.
+/// Warms the on-disk workspace / launch-profile index snapshots as early as
+/// [main] allows, so the app repositories' first read hits a warm index file.
 ///
-/// Sequential reads avoid two isolates fighting for cold disk at once.
+/// It builds throwaway repositories, so this does **not** populate the
+/// app-lifetime repositories' in-memory value caches (Plan 2's `HomeRuntime`
+/// warm path owns those). Sequential reads avoid two isolates fighting for
+/// cold disk at once.
 Future<void> prefetchHomeIndexSnapshots(
   String teampilotRoot,
   HomeStorage storage,
