@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/home_connection_cubit.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
@@ -10,6 +11,7 @@ import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
+import 'package:teampilot/services/storage/home_connect_attempt.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -132,6 +134,54 @@ void main() {
 
     await harness.dispose();
   });
+
+  test(
+    'boot-unreachable seed reconnects through the cubit automatically',
+    () async {
+      var onConnectedCalls = 0;
+      final cubit = HomeConnectionCubit(
+        connect: () async =>
+            const HomeConnectResult.unreachable(HomeErrorKind.tcpUnreachable),
+        cancelRetry: () async {},
+        resumeRetry: () async {},
+        onConnected: () => onConnectedCalls += 1,
+        profileId: _profile.id,
+      );
+      addTearDown(cubit.close);
+      final reconnectingAttempts = <int>[];
+      final subscription = cubit.stream.listen((state) {
+        if (state.status == HomeConnectionStatus.reconnecting) {
+          reconnectingAttempts.add(state.attempt);
+        }
+      });
+      addTearDown(subscription.cancel);
+
+      final harness = _ReconnectHarness(
+        maxAttempts: 5,
+        failFirstCreates: 2,
+        homeCubit: cubit,
+      );
+      addTearDown(harness.dispose);
+
+      // Seeded like a cold boot whose first bounded attempt failed.
+      cubit.markInitial(
+        const HomeConnectResult.unreachable(HomeErrorKind.tcpUnreachable),
+      );
+      expect(cubit.state.status, HomeConnectionStatus.unreachable);
+
+      // Mirrors the boot auto-start in app_shell.
+      harness.coordinator.restartReconnect(_profile.id);
+
+      await waitUntil(
+        () => cubit.state.status == HomeConnectionStatus.connected,
+      );
+      // Every attempt onset surfaces as progress; the third attempt succeeds.
+      expect(harness.attempts.map((a) => a.attempt), [1, 2, 3]);
+      expect(reconnectingAttempts, [1, 2, 3]);
+      expect(onConnectedCalls, 1);
+      expect(cubit.state.attempt, 0);
+    },
+  );
 }
 
 /// Drives one profile whose first connect succeeds (so a storage client can be
@@ -142,6 +192,8 @@ class _ReconnectHarness {
     required int maxAttempts,
     bool Function(String profileId)? persistRetry,
     this.succeedOnCreate,
+    this.failFirstCreates,
+    this.homeCubit,
   }) {
     final events = SshConnectionEvents();
     factory = SshClientFactory(
@@ -151,6 +203,12 @@ class _ReconnectHarness {
       connector: (profile, {timeout = const Duration(seconds: 10)}) async {
         createCount += 1;
         final attempt = createCount;
+        if (failFirstCreates != null) {
+          if (attempt <= failFirstCreates!) {
+            throw StateError('reconnect refused');
+          }
+          return _InstantAuthClient();
+        }
         if (attempt > 1 &&
             (succeedOnCreate == null || attempt < succeedOnCreate!)) {
           throw StateError('reconnect refused');
@@ -168,20 +226,46 @@ class _ReconnectHarness {
         initialDelay: const Duration(milliseconds: 5),
         maxDelay: const Duration(milliseconds: 25),
       ),
-      persistRetry: persistRetry,
-      onReconnectAttempt: (profileId, attempt) =>
-          attempts.add((profileId: profileId, attempt: attempt)),
-      onReconnected: reconnected.add,
+      persistRetry: persistRetry ?? _persistWhileHomeNotConnected,
+      onReconnectAttempt: (profileId, attempt) {
+        attempts.add((profileId: profileId, attempt: attempt));
+        homeCubit?.markBackgroundAttempt(attempt);
+      },
+      onReconnected: (profileId) {
+        reconnected.add(profileId);
+        final cubit = homeCubit;
+        // Same guard as app_shell: only a transition into `connected` runs
+        // hot recovery.
+        if (cubit != null &&
+            cubit.state.status != HomeConnectionStatus.connected) {
+          cubit.markReconnected();
+        }
+      },
     );
   }
 
   /// When set, reconnect creates at or after this count succeed.
   final int? succeedOnCreate;
+
+  /// When set, every create up to and including this count fails, so a test
+  /// can start the loop without first opening a client.
+  final int? failFirstCreates;
+
+  /// Optional cubit wired exactly like app_shell's home hooks.
+  final HomeConnectionCubit? homeCubit;
   late final SshClientFactory factory;
   late final SshProfileConnectionCoordinator coordinator;
   final List<({String profileId, int attempt})> attempts = [];
   final List<String> reconnected = [];
   var createCount = 0;
+
+  bool _persistWhileHomeNotConnected(String profileId) {
+    final cubit = homeCubit;
+    return cubit != null &&
+        !cubit.isClosed &&
+        profileId == _profile.id &&
+        cubit.state.status != HomeConnectionStatus.connected;
+  }
 
   /// Opens the storage plane once, then drops it so the coordinator schedules
   /// its first reconnect.

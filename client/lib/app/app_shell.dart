@@ -3534,6 +3534,15 @@ Future<AppShell> buildAppShell({
       port: isSshHome ? homeSshProfile?.port : null,
     )..markInitial(initialHome);
 
+    // A cold start that could not reach the SSH home never opened a transport,
+    // so no close event will ever start the coordinator's loop. Start it once
+    // here (the cubit's `persistRetry` then keeps it alive) so recovery is
+    // automatic; the connection page shows progress and can cancel/continue it.
+    // Reachable and non-SSH homes keep their previous boot behavior.
+    if (isSshHome && !initialHome.reachable) {
+      sshProfileConnectionCoordinator.restartReconnect(homeProfileId);
+    }
+
     Future<void> bootstrapAppData() async {
       final connected =
           homeConnectionCubit?.state.status == HomeConnectionStatus.connected;
