@@ -1271,6 +1271,75 @@ void main() {
     });
   });
 
+  group('streaming text split', () {
+    Future<AcpChatRuntimeCubit> startedCubit() async {
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+      return cubit;
+    }
+
+    test('splits oversized prose at a paragraph boundary', () async {
+      final cubit = await startedCubit();
+      final first = 'A' * 5000;
+      final second = 'B' * 5000;
+      runtime.emit(
+        AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: '$first\n\n$second',
+          isThought: false,
+        ),
+      );
+      await pumpEventQueue();
+
+      final message = cubit.state.messages.single;
+      final texts = message.parts.whereType<AiTextPart>().toList();
+      expect(texts.length, greaterThan(1));
+      expect(texts.map((p) => p.text).join(), '$first\n\n$second');
+
+      // Completed head parts keep their instance, so their rendered markdown
+      // subtree stays cached while the tail streams.
+      final head = texts.first;
+      runtime.emit(
+        const AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: ' tail',
+          isThought: false,
+        ),
+      );
+      await pumpEventQueue();
+      final nextTexts = cubit.state.messages.single.parts
+          .whereType<AiTextPart>()
+          .toList();
+      expect(identical(nextTexts.first, head), isTrue);
+      expect(nextTexts.map((p) => p.text).join(), '$first\n\n$second tail');
+      await cubit.close();
+    });
+
+    test('never splits inside a fenced code block', () async {
+      final cubit = await startedCubit();
+      final body = '```dart\n${'x\n\n' * 3000}```\n';
+      final text = 'intro\n\n$body';
+      runtime.emit(
+        AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: text,
+          isThought: false,
+        ),
+      );
+      await pumpEventQueue();
+
+      final message = cubit.state.messages.single;
+      expect(message.parts.whereType<AiTextPart>().length, 1);
+      expect(_textOf(message), text);
+      await cubit.close();
+    });
+  });
+
   test('tool call update → tool card part with status lifecycle', () async {
     final cubit = bootCubit();
     await cubit.start(
@@ -2710,6 +2779,55 @@ void main() {
       expect(cubit.state.messages, hasLength(2));
       expect(cubit.state.messages.last.id, mergedId);
       expect(_textOf(cubit.state.messages.last), 'Started\n\nAll tests passed');
+      await cubit.close();
+    },
+  );
+
+  test(
+    'syncHistory keeps split live prose when the replay adds text',
+    () async {
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+      cubit.sendPrompt('run the suite');
+      await pumpEventQueue();
+      final first = 'A' * 5000;
+      final second = 'B' * 5000;
+      runtime.emit(
+        AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: '$first\n\n$second',
+          isThought: false,
+        ),
+      );
+      runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+      await pumpEventQueue();
+      expect(cubit.state.messages.last.parts.length, greaterThan(1));
+
+      runtime.historyUpdates = [
+        const AcpMessageChunk(
+          role: AcpRole.user,
+          content: 'run the suite',
+          isThought: false,
+        ),
+        AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: '$first\n\n$second\n\nAll tests passed',
+          isThought: false,
+        ),
+      ];
+      await cubit.syncHistory();
+
+      // The replay's single text part must win over the live split shape: the
+      // old part-count check would have mistaken it for stale content.
+      expect(
+        _textOf(cubit.state.messages.last),
+        '$first\n\n$second\n\nAll tests passed',
+      );
       await cubit.close();
     },
   );

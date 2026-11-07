@@ -1881,9 +1881,19 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   }
 
   AiMessage _mergeMatchedMessage(AiMessage current, AiMessage replayed) {
-    // The replay is the authoritative agent-side view; it can only have more
-    // or fresher parts than the live transcript for the matched message.
-    if (replayed.parts.length < current.parts.length) return current;
+    // The replay is the authoritative agent-side view, but a live message can
+    // carry the same prose split into several streamed text parts. Compare
+    // prose length and tool count instead of part count so the split is not
+    // mistaken for missing content.
+    final currentProse = _textOf(current).length;
+    final replayedProse = _textOf(replayed).length;
+    if (replayedProse < currentProse) return current;
+    final currentTools = _toolIdsOf(current).length;
+    final replayedTools = _toolIdsOf(replayed).length;
+    if (replayedProse == currentProse && replayedTools <= currentTools) {
+      // Same content; keep the local instance (and its streamed text split).
+      return current;
+    }
     if (_messageShapeEqual([replayed], [current])) return current;
     return current.copyWith(parts: replayed.parts);
   }
@@ -1986,6 +1996,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         ),
       );
     }
+    final tipIndex = messages.length - 1;
+    final tip = messages[tipIndex];
+    if (tip.role == AiRole.assistant) {
+      messages[tipIndex] = tip.copyWith(parts: _splitStreamingText(tip.parts));
+    }
     if (replaying) {
       _replayMessages = messages;
       return;
@@ -2045,6 +2060,75 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       return AiReasoningPart(text: '${a.text}${b.text}');
     }
     return null;
+  }
+
+  /// Character budget for one live assistant text part.
+  ///
+  /// Completed paragraphs move into their own [AiTextPart]. [AiMessageParts]
+  /// caches rendered nodes by part instance (and markdown compiles by text), so
+  /// only the tail part is re-parsed on each streamed update instead of the
+  /// whole message. ~8 KB keeps one parse cheap and bounds part churn.
+  static const _kStreamingTextSplitChars = 8000;
+
+  /// Splits an oversized live assistant text part at a paragraph boundary.
+  ///
+  /// Only the last text part is considered, and only when it is plain prose
+  /// growth. The split keeps `parts.map((p) => p.text).join()` identical, so
+  /// replay matching and copy/export semantics do not change. Fenced code
+  /// blocks are never split: their blank lines are content, not boundaries.
+  static List<AiMessagePart> _splitStreamingText(List<AiMessagePart> parts) {
+    if (parts.isEmpty) return parts;
+    final last = parts.last;
+    if (last is! AiTextPart || last.text.length <= _kStreamingTextSplitChars) {
+      return parts;
+    }
+    final split = _streamingTextSplitIndex(last.text);
+    if (split <= 0 || split >= last.text.length) return parts;
+    return [
+      ...parts.sublist(0, parts.length - 1),
+      AiTextPart(text: last.text.substring(0, split)),
+      AiTextPart(text: last.text.substring(split)),
+    ];
+  }
+
+  /// Index just after the paragraph boundary to split at, or -1.
+  ///
+  /// Prefers the last blank line inside the budget (but past half of it, so a
+  /// tiny head does not create a still-oversized tail), then the first blank
+  /// line after the budget. Returns -1 when the only boundaries are too early
+  /// or all blank lines live inside a fenced block — a giant single block is
+  /// cheaper to parse once than to render as broken fragments.
+  static int _streamingTextSplitIndex(String text) {
+    const limit = _kStreamingTextSplitChars;
+    // Bound the scan: once a part has no usable boundary in the first two
+    // budgets (e.g. one huge fenced block), keep it whole instead of walking
+    // a multi-MB string on every update.
+    final scanEnd = text.length < limit * 2 ? text.length : limit * 2;
+    var inFence = false;
+    var lineStart = 0;
+    int? lastBefore;
+    int? firstAfter;
+    for (var i = 0; i < scanEnd; i++) {
+      if (text.codeUnitAt(i) != 0x0A) continue; // '\n'
+      final line = text.substring(lineStart, i);
+      final trimmed = line.trimLeft();
+      if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+        inFence = !inFence;
+      } else if (!inFence && line.trim().isEmpty) {
+        final end = i + 1;
+        if (end <= limit) {
+          lastBefore = end;
+        } else {
+          firstAfter ??= end;
+          break;
+        }
+      }
+      lineStart = i + 1;
+    }
+    if (lastBefore != null && lastBefore >= limit ~/ 2) {
+      return lastBefore;
+    }
+    return firstAfter ?? -1;
   }
 
   void _applyAttention(AgentStatusEvent event) {
