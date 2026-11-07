@@ -64,11 +64,14 @@ class HomeConnectionCubit extends Cubit<HomeConnectionState> {
     required Future<void> Function() cancelRetry,
     required Future<void> Function() resumeRetry,
     required void Function() onConnected,
+    String? profileId,
+    String? host,
+    int? port,
   }) : _connect = connect,
        _cancelRetry = cancelRetry,
        _resumeRetry = resumeRetry,
        _onConnected = onConnected,
-       super(const HomeConnectionState());
+       super(HomeConnectionState(profileId: profileId, host: host, port: port));
 
   final Future<HomeConnectResult> Function() _connect;
   final Future<void> Function() _cancelRetry;

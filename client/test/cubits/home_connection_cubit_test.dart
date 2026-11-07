@@ -116,6 +116,28 @@ void main() {
     expect(cubit.state.lastErrorKind, isNull);
   });
 
+  test('carries home target identity through connectOnce', () async {
+    final cubit = HomeConnectionCubit(
+      profileId: 'p1',
+      host: '10.0.0.9',
+      port: 22,
+      connect: () async =>
+          const HomeConnectResult.unreachable(HomeErrorKind.tcpUnreachable),
+      cancelRetry: () async {},
+      resumeRetry: () async {},
+      onConnected: () {},
+    );
+    expect(cubit.state.profileId, 'p1');
+    expect(cubit.state.host, '10.0.0.9');
+    expect(cubit.state.port, 22);
+
+    await cubit.connectOnce();
+    expect(cubit.state.status, HomeConnectionStatus.unreachable);
+    expect(cubit.state.profileId, 'p1');
+    expect(cubit.state.host, '10.0.0.9');
+    expect(cubit.state.port, 22);
+  });
+
   test('markInitial seeds connected without network or onConnected', () async {
     var connected = 0;
     var connectCalls = 0;
