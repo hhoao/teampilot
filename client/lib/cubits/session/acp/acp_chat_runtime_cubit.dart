@@ -1883,14 +1883,16 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   AiMessage _mergeMatchedMessage(AiMessage current, AiMessage replayed) {
     // The replay is the authoritative agent-side view, but a live message can
     // carry the same prose split into several streamed text parts. Compare
-    // prose length and tool count instead of part count so the split is not
+    // content length and tool count instead of part count so the split is not
     // mistaken for missing content.
-    final currentProse = _textOf(current).length;
-    final replayedProse = _textOf(replayed).length;
-    if (replayedProse < currentProse) return current;
+    final currentContent =
+        _textOf(current).length + _reasoningOf(current).length;
+    final replayedContent =
+        _textOf(replayed).length + _reasoningOf(replayed).length;
+    if (replayedContent < currentContent) return current;
     final currentTools = _toolIdsOf(current).length;
     final replayedTools = _toolIdsOf(replayed).length;
-    if (replayedProse == currentProse && replayedTools <= currentTools) {
+    if (replayedContent == currentContent && replayedTools <= currentTools) {
       // Same content; keep the local instance (and its streamed text split).
       return current;
     }
