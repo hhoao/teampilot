@@ -358,10 +358,10 @@ wire protocol against an SSH server.
 
 ## Home connection resilience
 
-Boot never blocks the splash on remote home I/O. The first home connect is a
-bounded attempt (2s TCP probe + 8s SSH budget). On failure the shell still
-builds, `StartupGate` shows a connection page (host/port, attempt, error kind)
-with Stop retrying / Retry now / Switch connection, and the reconnect
-coordinator keeps retrying in the background. A successful reconnect replays
-the deferred remote boot once (hot recovery). The storage pool's existing
-single-flight open semantics are unchanged.
+Boot never blocks the splash on unbounded remote home I/O. The first home
+connect is a bounded attempt (2s TCP probe + 8s SSH budget). On failure the
+shell still builds, `StartupGate` shows a connection page (host/port, attempt,
+error kind) with Stop retrying / Retry now / Switch connection, and the
+reconnect coordinator keeps retrying in the background. A successful reconnect
+replays the deferred remote boot once (hot recovery). The storage pool's
+existing single-flight open semantics are unchanged.

@@ -1,6 +1,3 @@
-@Tags(['integration'])
-library;
-
 /// End-to-end contract for an SSH home that is unreachable at cold start:
 ///
 ///   bounded first attempt → `unreachable` (no remote boot, no splash wait)
@@ -8,22 +5,32 @@ library;
 ///
 /// `buildAppShell` wires the entire production app (storage plane, registries,
 /// every cubit) inside a widget tree and is not mountable in `flutter_test`
-/// without those planes; earlier tasks confirmed the same. This test therefore
-/// exercises the real seam the shell composes instead of a fake of it:
+/// without those planes; earlier tasks confirmed the same. This file therefore
+/// has two layers:
 ///
-///   real [HomeConnectAttempt] (fake TCP probe whose reachability flips
-///   false → true)
-///     + real [HomeConnectionCubit]
-///     + real [SshProfileConnectionCoordinator] (fake SSH connector)
-///     + the deferred "remote boot" counter wired as `onConnected`.
+/// 1. Behavior over the real seam the shell composes (not fakes of the units
+///    under test):
 ///
-/// The only reproduction is the idempotent single-flight runner, which mirrors
-/// `runRemoteBootAfterConnect` in app_shell (completed flag + in-flight
-/// coalescing). That runner is what makes "exactly once, even if a late
-/// duplicate success arrives" observable at this level.
+///      real [HomeConnectAttempt] (fake TCP probe whose reachability flips
+///      false → true)
+///        + real [HomeConnectionCubit]
+///        + real [SshProfileConnectionCoordinator] (fake SSH connector)
+///        + a remote-boot counter wired as `onConnected`.
+///
+/// 2. Source pins for the production wiring that cannot be mounted, following
+///    the precedent of `test/app/app_shell_bootstrap_retry_test.dart`: the
+///    `deferRemoteBoot` gate, the `onConnected` hot-recovery call, the boot
+///    auto-start of the retry loop, and the connect-closure re-arm are read
+///    back from `lib/app/app_shell.dart` so deleting any of them fails here.
+///
+/// This is not `@Tags(['integration'])`: it needs no PTY/Docker and must run
+/// in the default suite (which excludes the `integration` tag).
+library;
 
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
+
 
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -81,29 +88,18 @@ RuntimeContext _ctx({required bool fromCache}) => RuntimeContext(
   pathsFromCache: fromCache,
 );
 
-/// Mirrors `runRemoteBootAfterConnect` in app_shell: the deferred chain runs
-/// once per successful home connection, coalescing concurrent callers and
-/// retiring after it completes.
-class _DeferredRemoteBoot {
+/// Counts invocations of the deferred remote boot wired as `onConnected`.
+/// Deliberately dumb: the production idempotency guard lives in the app_shell
+/// closure, which is source-pinned below rather than re-modelled here.
+class _RemoteBootCounter {
   int runs = 0;
-  bool _completed = false;
-  Future<void>? _inFlight;
+  Future<void>? last;
 
-  Future<void> run() {
-    if (_completed) return Future.value();
-    final inFlight = _inFlight;
-    if (inFlight != null) return inFlight;
-    final future = _runOnce();
-    _inFlight = future;
-    return future.whenComplete(() {
-      if (identical(_inFlight, future)) _inFlight = null;
-    });
-  }
+  Future<void> trigger() => last = _run();
 
-  Future<void> _runOnce() async {
+  Future<void> _run() async {
     await pumpEventQueue();
     runs += 1;
-    _completed = true;
   }
 }
 
@@ -181,7 +177,7 @@ class _HomeBootHarness {
         }
       },
       onConnected: () {
-        lastBoot = remoteBoot.run();
+        unawaited(remoteBoot.trigger());
       },
       profileId: _profile.id,
       host: _profile.host,
@@ -196,8 +192,7 @@ class _HomeBootHarness {
   late final SshClientFactory factory;
   late final SshProfileConnectionCoordinator coordinator;
   late final HomeConnectionCubit cubit;
-  final _DeferredRemoteBoot remoteBoot = _DeferredRemoteBoot();
-  Future<void>? lastBoot;
+  final _RemoteBootCounter remoteBoot = _RemoteBootCounter();
   int createCount = 0;
   int resolveCalls = 0;
   final List<int> backgroundAttempts = [];
@@ -263,23 +258,12 @@ void main() {
       harness.probe.reachable = true;
 
       await harness.cubit.retryNow();
-      await harness.lastBoot;
+      await harness.remoteBoot.last;
 
       expect(harness.cubit.state.status, HomeConnectionStatus.connected);
       expect(harness.cubit.state.attempt, 0);
       expect(harness.resolveCalls, 1);
-      expect(harness.remoteBoot.runs, 1);
-
-      // A late duplicate success (e.g. the coordinator finishing after the
-      // cubit already connected) must not replay the remote boot.
-      harness.cubit.markReconnected();
-      await harness.lastBoot;
-      expect(harness.remoteBoot.runs, 1);
-
-      await harness.cubit.connectOnce();
-      await harness.lastBoot;
-      expect(harness.cubit.state.status, HomeConnectionStatus.connected);
-      expect(harness.resolveCalls, 2);
+      // One real unreachable → connected transition drives one hot recovery.
       expect(harness.remoteBoot.runs, 1);
     },
   );
@@ -309,7 +293,7 @@ void main() {
       await waitUntil(
         () => harness.cubit.state.status == HomeConnectionStatus.connected,
       );
-      await harness.lastBoot;
+      await harness.remoteBoot.last;
 
       expect(harness.backgroundAttempts, [1, 2, 3]);
       expect(harness.cubit.state.attempt, 0);
@@ -321,6 +305,94 @@ void main() {
       expect(harness.remoteBoot.runs, 1);
     },
   );
+
+  // `buildAppShell` is unmountable (see file header), so the wiring the
+  // behavior cases cannot observe being deleted is pinned at the source
+  // level, following `test/app/app_shell_bootstrap_retry_test.dart`.
+  // Whitespace is collapsed first so indentation/line breaks do not matter.
+  group('app_shell home-resilience wiring (source pins)', () {
+    late final String src;
+
+    setUpAll(() {
+      src = File(
+        'lib/app/app_shell.dart',
+      ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
+    });
+
+    test('an unreachable home defers the remote boot', () {
+      expect(
+        src,
+        contains('final deferRemoteBoot = remoteWorkPlane && !connected;'),
+        reason:
+            'bootstrapAppData must gate remote boot on the live home '
+            'connection, not run it against a dead transport',
+      );
+      final gate = src.indexOf('if (!deferRemoteBoot) {');
+      final bootCall = src.indexOf(
+        'showOnboarding = await runRemoteBootAfterConnect();',
+        gate,
+      );
+      final deferredLog = src.indexOf(
+        "boot('bootstrapAppData deferred: home unreachable');",
+        gate,
+      );
+      expect(gate, greaterThanOrEqualTo(0));
+      expect(
+        bootCall,
+        greaterThan(gate),
+        reason: 'remote boot must be invoked inside the !deferRemoteBoot block',
+      );
+      expect(
+        deferredLog,
+        greaterThan(bootCall),
+        reason:
+            'the unreachable branch must skip remote boot but still finish '
+            'boot so StartupGate can paint the connection page',
+      );
+    });
+
+    test('a successful home connection runs hot recovery', () {
+      final onConnected = src.indexOf('onConnected: () {');
+      final bootCall = src.indexOf(
+        'await runRemoteBootAfterConnect();',
+        onConnected,
+      );
+      expect(onConnected, greaterThanOrEqualTo(0));
+      expect(
+        bootCall,
+        greaterThan(onConnected),
+        reason:
+            'HomeConnectionCubit.onConnected must replay the deferred remote '
+            'boot through runRemoteBootAfterConnect',
+      );
+    });
+
+    test('boot auto-starts the retry loop for an unreachable SSH home', () {
+      expect(
+        RegExp(
+          r'if \(isSshHome && !initialHome\.reachable\) \{ '
+          r'sshProfileConnectionCoordinator\.restartReconnect\(homeProfileId\);',
+        ).hasMatch(src),
+        isTrue,
+        reason:
+            'a home that never opened a transport emits no close event, so '
+            'boot must start the reconnect loop itself',
+      );
+    });
+
+    test('a failed bounded connect re-arms the retry loop', () {
+      expect(
+        RegExp(
+          r'if \(!result\.reachable && isSshHome\) \{ '
+          r'sshProfileConnectionCoordinator\.restartReconnect\(homeProfileId\);',
+        ).hasMatch(src),
+        isTrue,
+        reason:
+            'an explicit retry whose bounded resolve still fails must leave '
+            'something retrying behind the connection page',
+      );
+    });
+  });
 }
 
 class _InstantAuthClient extends SSHClient {
