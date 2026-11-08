@@ -1995,6 +1995,11 @@ class AppLocalizationsZh extends AppLocalizations {
       '可直接在此安装，或在设置 → CLI 中指定可执行文件路径。';
 
   @override
+  String landingLaunchAcpUnsupported(String cli, String target) {
+    return '$cli 仅支持 ACP 对话，当前目标（$target）无法运行 ACP。请选择本机、SSH 或 Termux 目标，或改用支持终端的 CLI。';
+  }
+
+  @override
   String get landingLaunchLocalCliOpenSettings => '打开设置';
 
   @override

@@ -6,6 +6,8 @@ import '../../../../models/team_config.dart';
 import '../../../../models/workspace.dart';
 import '../../../../models/workspace_topology.dart';
 import '../../../../utils/workspace/landing_draft_resolver.dart';
+import '../../../cli/preset_resolver.dart';
+import '../../../cli/registry/cli_tool_registry.dart';
 import '../../../remote/remote_cli_readiness.dart';
 import '../../../remote/remote_cli_requirements.dart';
 import '../../../storage/home_storage.dart';
@@ -58,6 +60,17 @@ final class LocalCliMissingLaunchBlock extends WorkspaceLandingLaunchBlock {
   const LocalCliMissingLaunchBlock(this.missing);
 
   final List<LocalBinaryRequirement> missing;
+}
+
+/// ACP-only CLI cannot run on this target and has no PTY fallback.
+final class AcpUnsupportedTargetLaunchBlock extends WorkspaceLandingLaunchBlock {
+  const AcpUnsupportedTargetLaunchBlock({
+    required this.cli,
+    required this.targetId,
+  });
+
+  final CliTool cli;
+  final String targetId;
 }
 
 /// Placement used by the landing gate (saved pins or in-memory defaults).
@@ -122,6 +135,13 @@ class WorkspaceLandingLaunchGate {
       team: team,
     );
     if (placementBlock != null) return placementBlock;
+    final acpUnsupported = _acpUnsupportedBlock(
+      workspace: workspace,
+      draft: draft,
+      team: team,
+      globalPresets: globalPresets,
+    );
+    if (acpUnsupported != null) return acpUnsupported;
     return localBlock(
       workspace: workspace,
       draft: draft,
@@ -183,6 +203,72 @@ class WorkspaceLandingLaunchGate {
     ];
     if (missing.isEmpty) return null;
     return LocalCliMissingLaunchBlock(missing);
+  }
+
+  /// Blocks an ACP-only CLI placed on a target without an exec channel.
+  WorkspaceLandingLaunchBlock? _acpUnsupportedBlock({
+    required Workspace workspace,
+    required LandingLaunchContext draft,
+    TeamProfile? team,
+    List<CliPreset> globalPresets = const [],
+  }) {
+    if (draft.isPersonal) {
+      final cli = resolveLandingSimpleLaunchIdentity(
+        presets: globalPresets,
+        presetId: draft.presetId,
+        cli: draft.cli,
+        provider: draft.provider,
+        model: draft.model,
+        effort: draft.effort,
+        expertKey: draft.expertKey,
+      ).cli;
+      final target = projectFolderTarget(
+        workspace: workspace,
+        projectFolderPath: draft.projectFolderPath ?? '',
+        home: _home,
+        usesPosixPaths: _storage.usesPosixPaths,
+      );
+      return _unsupportedFor(cli: cli, targetId: target?.id ?? _home.id);
+    }
+    if (team == null) return null;
+    final placement = memberPlacementForLaunch(
+      workspace: workspace,
+      team: team,
+    );
+    for (final entry in placement.entries) {
+      for (final memberEntry in entry.value.entries) {
+        if (memberEntry.value <= 0) continue;
+        TeamMemberConfig? member;
+        for (final candidate in team.members) {
+          if (candidate.id == memberEntry.key) {
+            member = candidate;
+            break;
+          }
+        }
+        if (member == null || !member.isValid) continue;
+        final cli = memberLaunchCli(
+          team: team,
+          member: member,
+          globalPresets: globalPresets,
+        );
+        final block = _unsupportedFor(cli: cli, targetId: entry.key);
+        if (block != null) return block;
+      }
+    }
+    return null;
+  }
+
+  WorkspaceLandingLaunchBlock? _unsupportedFor({
+    required CliTool? cli,
+    required String targetId,
+  }) {
+    if (cli == null) return null;
+    if (!CliToolRegistry.builtIn().launchesAcpOnly(cli)) return null;
+    if (acpAvailabilityFor(cli: cli, targetId: targetId) !=
+        AcpAvailability.unsupported) {
+      return null;
+    }
+    return AcpUnsupportedTargetLaunchBlock(cli: cli, targetId: targetId);
   }
 
   WorkspaceLandingLaunchBlock? _placementBlock({

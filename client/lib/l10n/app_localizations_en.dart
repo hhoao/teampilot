@@ -2098,6 +2098,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Install it here, or set its executable path in Settings → CLI.';
 
   @override
+  String landingLaunchAcpUnsupported(String cli, String target) {
+    return '$cli only supports ACP chat, and the selected target ($target) cannot run ACP. Choose a local, SSH, or Termux target, or pick a CLI with terminal support.';
+  }
+
+  @override
   String get landingLaunchLocalCliOpenSettings => 'Open settings';
 
   @override

@@ -7,6 +7,7 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/chat/launch/pre_send/local_binary_requirements.dart';
+import 'package:teampilot/services/chat/launch/session/launch_acp_policy.dart';
 import 'package:teampilot/services/chat/launch/pre_send/workspace_landing_launch_gate.dart';
 import 'package:teampilot/services/remote/remote_cli_readiness.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
@@ -35,6 +36,26 @@ void main() {
         team: null,
       );
       expect(block, isNull);
+    });
+
+    test('blocks ACP-only CLI on WSL', () {
+      final workspace = Workspace(
+        workspaceId: 'ws-wsl',
+        folders: const [
+          WorkspaceFolder(path: '/repo', targetId: 'wsl:Ubuntu'),
+        ],
+        createdAt: 1,
+      );
+      final block = gate.syncBlock(
+        workspace: workspace,
+        draft: const LandingLaunchContext(
+          isPersonal: true,
+          cli: CliTool.gemini,
+          projectFolderPath: '/repo',
+        ),
+        team: null,
+      );
+      expect(block, isA<AcpUnsupportedTargetLaunchBlock>());
     });
 
     test('blocks mixed workspace when placement not initialized', () {
@@ -292,7 +313,7 @@ void main() {
         homeTargetResolver: RuntimeTarget.local,
         localBinaryKnown: (cli, kind) =>
             known.contains('${kind.name}|${cli.value}'),
-        localMemberAcpSeed: acpSeed,
+        memberAcpSeed: acpSeed,
       );
     }
 

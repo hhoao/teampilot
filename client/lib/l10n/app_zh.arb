@@ -926,6 +926,17 @@
     }
   },
   "landingLaunchLocalCliMissingHint": "可直接在此安装，或在设置 → CLI 中指定可执行文件路径。",
+  "landingLaunchAcpUnsupported": "{cli} 仅支持 ACP 对话，当前目标（{target}）无法运行 ACP。请选择本机、SSH 或 Termux 目标，或改用支持终端的 CLI。",
+  "@landingLaunchAcpUnsupported": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
   "landingLaunchLocalCliOpenSettings": "打开设置",
   "remoteCliMachineReadinessTitle": "此机器上需要的 CLI",
   "remoteCliMachineReadinessProbing": "正在检测…",

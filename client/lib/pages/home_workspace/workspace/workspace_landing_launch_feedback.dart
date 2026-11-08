@@ -29,7 +29,21 @@ String landingLaunchBlockMessage(
       landingLaunchRemoteCliMissingMessage(l10n, missing, registry: registry),
     LocalCliMissingLaunchBlock(:final missing) =>
       landingLaunchLocalCliMissingMessage(l10n, missing, registry: registry),
+    AcpUnsupportedTargetLaunchBlock() =>
+      landingLaunchAcpUnsupportedMessage(l10n, block),
   };
+}
+
+String landingLaunchAcpUnsupportedMessage(
+  AppLocalizations l10n,
+  AcpUnsupportedTargetLaunchBlock block,
+) {
+  final registry = CliToolRegistry.builtIn();
+  final def = registry.tryGet(block.cli);
+  final label = def != null
+      ? cliDisplayName(def, l10n, registry: registry)
+      : block.cli.value;
+  return l10n.landingLaunchAcpUnsupported(label, block.targetId);
 }
 
 String landingLaunchLocalCliMissingMessage(

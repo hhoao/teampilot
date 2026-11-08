@@ -3770,6 +3770,12 @@ abstract class AppLocalizations {
   /// **'Install it here, or set its executable path in Settings → CLI.'**
   String get landingLaunchLocalCliMissingHint;
 
+  /// No description provided for @landingLaunchAcpUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'{cli} only supports ACP chat, and the selected target ({target}) cannot run ACP. Choose a local, SSH, or Termux target, or pick a CLI with terminal support.'**
+  String landingLaunchAcpUnsupported(String cli, String target);
+
   /// No description provided for @landingLaunchLocalCliOpenSettings.
   ///
   /// In en, this message translates to:
