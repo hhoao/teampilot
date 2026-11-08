@@ -1165,8 +1165,8 @@
   "sshServersNotConnected": "Not connected to a remote host.",
   "sshServersLoadError": "Could not load the SSH servers. Check the connection and try again.",
   "sshServersEmpty": "No SSH servers saved on this host yet.",
-  "sshProfilesPageTitle": "SSH remote hosts",
-  "sshProfilesPageSubtitle": "Connect to existing machines over SSH for files, terminals, Git, and workspaces.",
+  "sshProfilesPageTitle": "Remote SSH servers",
+  "sshProfilesPageSubtitle": "SSH server configurations stored on the host behind the current home; every device paired to it shares this list.",
   "sshProfilesTargetsTitle": "Targets",
   "sshProfilesTargetsSubtitle": "Add a remote host to connect from TeamPilot.",
   "sshProfilesImport": "Import",
@@ -5277,6 +5277,6 @@
   "homeConnectionErrorTransport": "Connection error",
   "homeConnectionErrorUnknown": "Unknown error",
   "remoteConnectionsTitle": "Remote connections",
-  "remoteConnectionsSubtitle": "Manage saved hosts, connect, and switch your work home. Available even while offline.",
+  "remoteConnectionsSubtitle": "Manage the hosts saved on this device, connect, and switch your work home. Available even while offline.",
   "vaultHomeOfflineHint": "Not connected to the remote host. Business credentials stored there are unavailable until it reconnects."
 }

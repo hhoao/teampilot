@@ -1056,8 +1056,8 @@
   "sshServersNotConnected": "未连接远程主机。",
   "sshServersLoadError": "无法加载 SSH 服务器，请检查连接后重试。",
   "sshServersEmpty": "此主机上还没有保存的 SSH 服务器。",
-  "sshProfilesPageTitle": "SSH 远程主机",
-  "sshProfilesPageSubtitle": "通过 SSH 使用已有机器处理文件、终端、Git 和工作区。",
+  "sshProfilesPageTitle": "远程 SSH 服务器",
+  "sshProfilesPageSubtitle": "当前主目录所在主机上保存的 SSH 服务器配置；配对了同一主目录的设备共享这份清单。",
   "sshProfilesTargetsTitle": "目标",
   "sshProfilesTargetsSubtitle": "添加远程主机以在 TeamPilot 中连接到它。",
   "sshProfilesImport": "导入",
@@ -4541,6 +4541,6 @@
   "homeConnectionErrorTransport": "连接出错",
   "homeConnectionErrorUnknown": "未知错误",
   "remoteConnectionsTitle": "远程连接",
-  "remoteConnectionsSubtitle": "管理已保存的主机、连接与切换工作主目录；断线时同样可用。",
+  "remoteConnectionsSubtitle": "管理本机保存的远程主机、连接与切换工作主目录；断线时同样可用。",
   "vaultHomeOfflineHint": "未连接远程主机，保存在该主机上的业务凭据暂时不可用，重连后即可查看。"
 }

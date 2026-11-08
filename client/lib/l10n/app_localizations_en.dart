@@ -2409,11 +2409,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sshServersEmpty => 'No SSH servers saved on this host yet.';
 
   @override
-  String get sshProfilesPageTitle => 'SSH remote hosts';
+  String get sshProfilesPageTitle => 'Remote SSH servers';
 
   @override
   String get sshProfilesPageSubtitle =>
-      'Connect to existing machines over SSH for files, terminals, Git, and workspaces.';
+      'SSH server configurations stored on the host behind the current home; every device paired to it shares this list.';
 
   @override
   String get sshProfilesTargetsTitle => 'Targets';
@@ -10468,7 +10468,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get remoteConnectionsSubtitle =>
-      'Manage saved hosts, connect, and switch your work home. Available even while offline.';
+      'Manage the hosts saved on this device, connect, and switch your work home. Available even while offline.';
 
   @override
   String get vaultHomeOfflineHint =>

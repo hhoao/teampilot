@@ -2298,10 +2298,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sshServersEmpty => '此主机上还没有保存的 SSH 服务器。';
 
   @override
-  String get sshProfilesPageTitle => 'SSH 远程主机';
+  String get sshProfilesPageTitle => '远程 SSH 服务器';
 
   @override
-  String get sshProfilesPageSubtitle => '通过 SSH 使用已有机器处理文件、终端、Git 和工作区。';
+  String get sshProfilesPageSubtitle =>
+      '当前主目录所在主机上保存的 SSH 服务器配置；配对了同一主目录的设备共享这份清单。';
 
   @override
   String get sshProfilesTargetsTitle => '目标';
@@ -10027,7 +10028,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get remoteConnectionsTitle => '远程连接';
 
   @override
-  String get remoteConnectionsSubtitle => '管理已保存的主机、连接与切换工作主目录；断线时同样可用。';
+  String get remoteConnectionsSubtitle => '管理本机保存的远程主机、连接与切换工作主目录；断线时同样可用。';
 
   @override
   String get vaultHomeOfflineHint => '未连接远程主机，保存在该主机上的业务凭据暂时不可用，重连后即可查看。';

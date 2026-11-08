@@ -4349,13 +4349,13 @@ abstract class AppLocalizations {
   /// No description provided for @sshProfilesPageTitle.
   ///
   /// In en, this message translates to:
-  /// **'SSH remote hosts'**
+  /// **'Remote SSH servers'**
   String get sshProfilesPageTitle;
 
   /// No description provided for @sshProfilesPageSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Connect to existing machines over SSH for files, terminals, Git, and workspaces.'**
+  /// **'SSH server configurations stored on the host behind the current home; every device paired to it shares this list.'**
   String get sshProfilesPageSubtitle;
 
   /// No description provided for @sshProfilesTargetsTitle.
@@ -18603,7 +18603,7 @@ abstract class AppLocalizations {
   /// No description provided for @remoteConnectionsSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Manage saved hosts, connect, and switch your work home. Available even while offline.'**
+  /// **'Manage the hosts saved on this device, connect, and switch your work home. Available even while offline.'**
   String get remoteConnectionsSubtitle;
 
   /// No description provided for @vaultHomeOfflineHint.
