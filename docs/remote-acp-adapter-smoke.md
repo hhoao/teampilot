@@ -40,3 +40,13 @@ Run with a host reachable over SSH from the app (`ssh:<profile>` target).
    - Move/install the adapter to a location outside the ssh exec `PATH`
      (e.g. `/opt/acp/`), set the override via Settings Locate, and relaunch.
    - Expect: the session still starts (proof the absolute-path injection works).
+
+8. **Android client**
+   - Repeat 1-7 from the Android app against the same SSH target.
+   - Expect: the ACP transport pill and Ask / Full access chip render; adapter
+     install/locate run against the remote host; the first turn works.
+
+9. **Antigravity**
+   - Install the `agy` CLI and `agy_acp_server` adapter on the remote host.
+   - Start an Antigravity ACP session and send one prompt.
+   - Follow `docs/remote-antigravity-oauth-smoke.md` for the OAuth path.
