@@ -37,6 +37,8 @@ Typical `<teampilotRoot>` paths:
   vault/
     vault.json                   # optional: master-passphrase encrypted credential vault
     vault.json.bak               # previous copy kept when encryption is disabled
+    business.json                # optional: business credentials, home-plane scoped
+    business.json.bak
   targets.json                   # runtime targets registry (local / WSL / SSH)
   team-hub/                      # Team Hub template registry + cache
   member-hub/                    # Expert Hub catalog UX state + local templates
@@ -47,15 +49,22 @@ Typical `<teampilotRoot>` paths:
   event-transport.json           # loopback Event Transport advertisement (desktop server)
 ```
 
-`vault/` is **device-local** data (same pin as `ssh_profiles/`): Android Connect can
-rebind the home plane to a remote host, and the vault must not follow it. The default
-backend is the OS keychain (`teampilot.vault.v1.document`); after enabling encryption
-the document lives in `vault/vault.json`.
+Credentials are **split by ownership**:
 
-Credentials are **vault-first**: SSH passwords/keys/relay grants, provider API keys,
-managed-provider (balance/usage) credentials and the GitHub token are captured into the
-vault on save. Legacy keychain entries and `providers.json` `apiKey` values are imported
-once in the background (marker: `VaultDocument.legacyImportVersion`) and then deleted.
+- **Device vault** (`<nativeAppData>/vault/`, keychain by default, `vault.json` after
+  enabling encryption) holds **SSH login credentials** only. It stays on the device so a
+  dropped home plane can still be reconnected — Android Connect can rebind the home plane
+  to a remote host, and these credentials must not follow it.
+- **Home vault** (`<home>/vault/business.json`) holds **business credentials** (provider
+  API keys, managed-provider balance/usage credentials, GitHub token) and follows the home
+  plane, so every device attached to the same remote host sees the same set.
+  `VaultDocumentStore` merges both on read and routes writes by owner kind
+  (`VaultOwnerKind.ssh` → device, everything else → home). A home-plane failure is
+  non-fatal: SSH credentials keep working offline. On first use after the split, existing
+  business entries are copied to the home vault once (originals are not deleted).
+
+Legacy keychain entries and `providers.json` `apiKey` values are imported once in the
+background (marker: `VaultDocument.legacyImportVersion`) and then deleted.
 
 ## Workspace directory
 
