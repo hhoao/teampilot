@@ -22,6 +22,7 @@ void main() {
         willLaunchAcp(
           cli: CliTool.gemini,
           requested: false,
+          targetId: 'local',
         ),
         isTrue,
       );
@@ -29,15 +30,16 @@ void main() {
         willLaunchAcp(
           cli: CliTool.codebuddy,
           requested: false,
+          targetId: 'ssh:box',
         ),
         isTrue,
-        reason: 'CodeBuddy is ACP-only on desktop',
+        reason: 'CodeBuddy is ACP-only on remote targets',
       );
       expect(
         willLaunchAcp(
           cli: CliTool.codebuddy,
           requested: true,
-          isAndroidOverride: true,
+          targetId: 'wsl:Ubuntu',
         ),
         isFalse,
       );
@@ -45,15 +47,16 @@ void main() {
         willLaunchAcp(
           cli: CliTool.qoder,
           requested: false,
+          targetId: 'ssh:box',
         ),
         isTrue,
-        reason: 'Qoder is ACP-only on desktop',
+        reason: 'Qoder is ACP-only on remote targets',
       );
       expect(
         willLaunchAcp(
           cli: CliTool.qoder,
           requested: true,
-          isAndroidOverride: true,
+          targetId: 'wsl:Ubuntu',
         ),
         isFalse,
       );
@@ -61,6 +64,7 @@ void main() {
         willLaunchAcp(
           cli: CliTool.claude,
           requested: true,
+          targetId: 'ssh:box',
         ),
         isTrue,
       );
@@ -68,6 +72,7 @@ void main() {
         willLaunchAcp(
           cli: CliTool.claude,
           requested: false,
+          targetId: 'local',
         ),
         isFalse,
       );
@@ -75,7 +80,7 @@ void main() {
         willLaunchAcp(
           cli: CliTool.claude,
           requested: true,
-          isAndroidOverride: true,
+          targetId: 'wsl:Ubuntu',
         ),
         isFalse,
       );
@@ -89,7 +94,7 @@ void main() {
           isPersonal: true,
           cli: CliTool.gemini,
           requested: false,
-          isAndroidOverride: false,
+          targetId: 'local',
         ),
         isTrue,
       );
@@ -101,7 +106,7 @@ void main() {
           isPersonal: true,
           cli: CliTool.claude,
           requested: false,
-          isAndroidOverride: false,
+          targetId: 'local',
         ),
         isFalse,
       );
@@ -113,7 +118,7 @@ void main() {
           isPersonal: true,
           cli: CliTool.claude,
           requested: true,
-          isAndroidOverride: false,
+          targetId: 'local',
         ),
         isTrue,
       );
@@ -125,7 +130,7 @@ void main() {
           isPersonal: true,
           cli: CliTool.gemini,
           requested: false,
-          isAndroidOverride: true,
+          targetId: 'wsl:Ubuntu',
         ),
         isFalse,
       );
@@ -134,7 +139,7 @@ void main() {
           isPersonal: true,
           cli: CliTool.claude,
           requested: true,
-          isAndroidOverride: true,
+          targetId: 'wsl:Ubuntu',
         ),
         isFalse,
       );
@@ -159,7 +164,7 @@ void main() {
               acp: true,
             ),
           ],
-          isAndroidOverride: false,
+          targetId: 'local',
         ),
         isTrue,
       );
@@ -183,7 +188,7 @@ void main() {
               cli: CliTool.opencode,
             ),
           ],
-          isAndroidOverride: false,
+          targetId: 'local',
         ),
         isFalse,
       );
@@ -251,7 +256,7 @@ void main() {
           cli: null,
           requested: false,
           stampedMembers: stamped,
-          isAndroidOverride: false,
+          targetId: 'local',
         ),
         isTrue,
       );
@@ -291,7 +296,7 @@ void main() {
           isPersonal: true,
           cli: CliTool.gemini,
           requested: false,
-          isAndroidOverride: false,
+          targetId: 'local',
         ),
         isTrue,
       );
@@ -304,7 +309,7 @@ void main() {
         registry: registry,
         l10n: l10n,
         onSelected: (_) {},
-        isAndroidOverride: false,
+        targetId: 'local',
       );
       expect(control, isNotNull);
       expect(control!.askLabel, l10n.acpPermissionAskLabel);
@@ -321,7 +326,7 @@ void main() {
           registry: registry,
           l10n: l10n,
           onSelected: (_) {},
-          isAndroidOverride: false,
+          targetId: 'local',
         ),
         isNull,
       );
@@ -398,6 +403,7 @@ void main() {
                 isPersonal: true,
                 launchCli: CliTool.gemini,
                 l10n: l10n,
+                targetId: 'local',
               );
               return const SizedBox.shrink();
             },

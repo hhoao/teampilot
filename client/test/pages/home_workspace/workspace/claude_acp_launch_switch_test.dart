@@ -5,9 +5,10 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/pages/home_workspace/workspace/claude_acp_launch_switch.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_session_actions.dart';
+import 'package:teampilot/services/chat/launch/session/launch_acp_policy.dart';
 
 void main() {
-  group('resolveLaunchAcp', () {
+  group('resolveAcpOnTarget', () {
     test('true for desktop Claude, Cursor, Codex and OpenCode', () {
       for (final cli in [
         CliTool.claude,
@@ -16,10 +17,10 @@ void main() {
         CliTool.opencode,
       ]) {
         expect(
-          resolveLaunchAcp(
+          resolveAcpOnTarget(
             cli: cli,
             requested: true,
-            isAndroidOverride: false,
+            targetId: 'local',
           ),
           isTrue,
           reason: '$cli should honour the ACP preference on desktop',
@@ -27,37 +28,33 @@ void main() {
       }
     });
 
-    test('false when not requested, ACP-only, null, or Android', () {
+    test('false when not requested, null, or on WSL', () {
       expect(
-        resolveLaunchAcp(
+        resolveAcpOnTarget(
           cli: CliTool.claude,
           requested: false,
-          isAndroidOverride: false,
+          targetId: 'local',
         ),
         isFalse,
       );
       expect(
-        resolveLaunchAcp(
+        resolveAcpOnTarget(
           cli: CliTool.gemini,
           requested: true,
-          isAndroidOverride: false,
+          targetId: 'ssh:prod',
         ),
-        isFalse,
-        reason: 'Gemini is ACP-only and has no transport choice',
+        isTrue,
+        reason: 'Gemini is ACP-only on a supported target',
       );
       expect(
-        resolveLaunchAcp(
-          cli: null,
-          requested: true,
-          isAndroidOverride: false,
-        ),
+        resolveAcpOnTarget(cli: null, requested: true, targetId: 'local'),
         isFalse,
       );
       expect(
-        resolveLaunchAcp(
+        resolveAcpOnTarget(
           cli: CliTool.claude,
           requested: true,
-          isAndroidOverride: true,
+          targetId: 'wsl:Ubuntu',
         ),
         isFalse,
       );
@@ -73,7 +70,6 @@ void main() {
         isPersonal: true,
         cli: CliTool.codex,
         acp: true,
-        isAndroidOverride: false,
       );
       expect(request.acp, isTrue);
     });
@@ -84,7 +80,6 @@ void main() {
         isPersonal: true,
         cli: CliTool.opencode,
         acp: true,
-        isAndroidOverride: false,
       );
       expect(request.acp, isTrue);
     });
@@ -95,7 +90,6 @@ void main() {
         isPersonal: true,
         cli: CliTool.claude,
         acp: true,
-        isAndroidOverride: false,
       );
       expect(request.acp, isTrue);
     });
@@ -105,7 +99,6 @@ void main() {
         workspace: workspace,
         isPersonal: true,
         cli: CliTool.claude,
-        isAndroidOverride: false,
       );
       expect(request.acp, isFalse);
     });
@@ -118,20 +111,18 @@ void main() {
         isPersonal: false,
         cli: null,
         acp: true,
-        isAndroidOverride: false,
       );
       expect(request.acp, isFalse);
     });
 
-    test('Android forces acp false', () {
+    test('request carries the user preference for the repository to resolve', () {
       final request = buildWorkspaceConversationCreateRequest(
         workspace: workspace,
         isPersonal: true,
         cli: CliTool.claude,
         acp: true,
-        isAndroidOverride: true,
       );
-      expect(request.acp, isFalse);
+      expect(request.acp, isTrue);
     });
 
     test('team create copies CLI seeds and leaves request.acp false', () {
@@ -144,7 +135,6 @@ void main() {
         seedCodexMemberAcp: true,
         seedCursorMemberAcp: true,
         seedOpencodeMemberAcp: true,
-        isAndroidOverride: false,
       );
       expect(request.acp, isFalse);
       expect(request.seedClaudeMemberAcp, isTrue);
@@ -158,7 +148,6 @@ void main() {
         workspace: workspace,
         isPersonal: false,
         cli: CliTool.claude,
-        isAndroidOverride: false,
       );
       expect(request.acp, isFalse);
       expect(request.seedClaudeMemberAcp, isTrue);
@@ -174,12 +163,10 @@ void main() {
         CliTool? cli = CliTool.claude,
         bool requested = true,
         String targetId = 'local',
-        bool android = false,
       }) => resolveMemberBindingAcp(
         targetId: targetId,
         cli: cli,
         requested: requested,
-        isAndroidOverride: android,
       );
 
       expect(resolve(), isTrue);
@@ -191,7 +178,6 @@ void main() {
       expect(resolve(cli: CliTool.flashskyai), isFalse);
       expect(resolve(targetId: 'ssh:prod'), isTrue);
       expect(resolve(targetId: 'termux:default'), isTrue);
-      expect(resolve(android: true), isFalse);
     });
 
     test('WSL has no ACP transport, so its seats stay PTY', () {
@@ -200,7 +186,6 @@ void main() {
           targetId: 'wsl:Ubuntu',
           cli: CliTool.claude,
           requested: true,
-          isAndroidOverride: false,
         ),
         isFalse,
       );
@@ -209,7 +194,6 @@ void main() {
           targetId: 'wsl:Ubuntu',
           cli: CliTool.gemini,
           requested: true,
-          isAndroidOverride: false,
         ),
         isFalse,
         reason: 'ACP-only CLIs still need an ACP transport on the target',
@@ -228,7 +212,6 @@ void main() {
       bool seedCodex = false,
       bool seedCursor = true,
       bool seedOpencode = true,
-      bool android = false,
       LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
     }) => stampMemberAcp(
       members: members,
@@ -238,7 +221,6 @@ void main() {
       seedCodexMemberAcp: seedCodex,
       seedCursorMemberAcp: seedCursor,
       seedOpencodeMemberAcp: seedOpencode,
-      isAndroidOverride: android,
       acpPermission: acpPermission,
     );
 
@@ -324,13 +306,6 @@ void main() {
         stamp(
           members: [member(CliTool.claude, 'wsl')],
           targets: const {'wsl': 'wsl:Ubuntu'},
-        ).single.acp,
-        isFalse,
-      );
-      expect(
-        stamp(
-          members: [member(CliTool.claude, 'lead')],
-          android: true,
         ).single.acp,
         isFalse,
       );

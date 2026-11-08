@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import '../../../../models/runtime_target.dart';
 import '../../../../models/team_config.dart';
 import '../../../cli/registry/capabilities/acp_capability.dart';
@@ -69,25 +67,3 @@ bool canChooseAcpTransport({
     acpAvailabilityFor(cli: cli, targetId: targetId) ==
     AcpAvailability.optional;
 
-bool _isAndroid(bool? isAndroidOverride) =>
-    isAndroidOverride ?? Platform.isAndroid;
-
-/// Final ACP flag for a launch.
-///
-/// [requested] only counts when the CLI declares both transports, on a platform
-/// where ACP is available. Session scope (personal / native team / mixed team)
-/// and member placement (local / remote) no longer restrict ACP — the CLI
-/// preference is the single source of truth. ACP-only CLIs (Gemini, CodeBuddy)
-/// are inferred by session create, so `requested` stays false for them.
-bool resolveLaunchAcp({
-  required CliTool? cli,
-  required bool requested,
-  bool? isAndroidOverride,
-}) {
-  if (!requested || cli == null) return false;
-  if (_isAndroid(isAndroidOverride)) return false;
-  return CliToolRegistry.builtIn()
-          .capability<CliTransportCapability>(cli)
-          ?.canChooseTransport ??
-      false;
-}

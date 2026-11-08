@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:uuid/uuid.dart';
 
-import '../chat/launch/session/launch_acp_policy.dart';
 import '../chat/launch/session/seat_prompt_delivery.dart';
 import '../chat/session/session_create_request.dart';
 import '../chat/session/session_open_request.dart';
@@ -323,10 +322,7 @@ class AutomationDispatcher {
         expertKey: expertKey,
         officialProviderId: CliToolRegistry.builtIn().defaultOfficialProviderId,
       );
-      final acp = resolveLaunchAcp(
-        cli: simpleIdentity.cli,
-        requested: _acpDefaultFor(simpleIdentity.cli),
-      );
+      final acp = _acpDefaultFor(simpleIdentity.cli);
       status = await _requestCreateAndOpenSession(
         SessionCreateRequest(
           workspace: workspace,

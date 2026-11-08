@@ -6,9 +6,6 @@ import '../../../models/team_config.dart';
 import '../../../services/cli/registry/capabilities/cli_transport_capability.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
 
-export '../../../services/chat/launch/session/launch_acp_policy.dart'
-    show resolveLaunchAcp;
-
 export '../../../services/chat/launch/session/member_acp_stamp.dart'
     show resolveMemberBindingAcp, shouldAttachMemberAcp, stampMemberAcp;
 

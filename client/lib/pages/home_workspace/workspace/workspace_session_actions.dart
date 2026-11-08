@@ -825,11 +825,11 @@ Future<bool> _ensureLandingSessionConnected({
 
 /// Builds the create request for a workspace conversation.
 ///
-/// [acp] is honoured for personal launches only; the platform and whether the
-/// CLI offers a transport choice can still veto it (see [resolveLaunchAcp]),
-/// and Android always gets false. Team ACP is seeded per member from the four
-/// CLI settings seeds (Claude / Codex / Cursor / OpenCode), never from [acp].
-/// Gemini ACP is inferred by session create, so it needs no flag here.
+/// [acp] is the user's ACP preference. [SessionRepository] resolves it against
+/// the launch target, so this function must not pre-resolve it. Team ACP is
+/// seeded per member from the four CLI settings seeds (Claude / Codex / Cursor /
+/// OpenCode), never from [acp]. Gemini ACP is inferred by session create, so it
+/// needs no flag here.
 SessionCreateRequest buildWorkspaceConversationCreateRequest({
   required Workspace workspace,
   required bool isPersonal,
@@ -852,7 +852,6 @@ SessionCreateRequest buildWorkspaceConversationCreateRequest({
   bool seedCursorMemberAcp = true,
   bool seedOpencodeMemberAcp = true,
   LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
-  bool? isAndroidOverride,
 }) {
   return SessionCreateRequest(
     workspace: workspace,
@@ -870,11 +869,7 @@ SessionCreateRequest buildWorkspaceConversationCreateRequest({
     preserveWorkbenchView: preserveWorkbenchView,
     purpose: purpose,
     workflowId: workflowId,
-    acp: resolveLaunchAcp(
-      cli: cli,
-      requested: acp,
-      isAndroidOverride: isAndroidOverride,
-    ),
+    acp: isPersonal ? acp : false,
     seedClaudeMemberAcp: seedClaudeMemberAcp,
     seedCodexMemberAcp: seedCodexMemberAcp,
     seedCursorMemberAcp: seedCursorMemberAcp,
