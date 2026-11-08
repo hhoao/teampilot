@@ -119,7 +119,6 @@ Future<SessionPreferencesCubit> _makeCubit({
 
 Widget _wrap(
   SessionPreferencesCubit cubit, {
-  bool? isAndroidOverride,
   List<String>? adapterInstalls,
 }) {
   final progressCubit = ProgressActivityCubit(historyRecorder: _FakeRecorder());
@@ -154,7 +153,6 @@ Widget _wrap(
         home: Scaffold(
           body: CliConfigWorkspace(
             showHeading: false,
-            isAndroidOverride: isAndroidOverride,
             versionProbe: _silentProbe(),
           ),
         ),
@@ -626,27 +624,24 @@ void main() {
     expect(find.byKey(AppKeys.cursorCliInstallButton), findsNothing);
   });
 
-  testWidgets(
-    'Android override hides the ACP pill and adapter actions',
-    (tester) async {
-      final cubit = await _makeCubit(
-        locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
-      );
-      addTearDown(cubit.close);
+  testWidgets('ACP pill and adapter actions render for Claude', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit(
+      locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
+    );
+    addTearDown(cubit.close);
 
-      await tester.pumpWidget(_wrap(cubit, isAndroidOverride: true));
-      await tester.pump();
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
 
-      expect(find.byType(SwitchListTile), findsNothing);
-      expect(find.byType(Switch), findsNothing);
-      expect(
-        find.byKey(AppKeys.personalAcpSwitchFor(CliTool.claude)),
-        findsNothing,
-      );
-      expect(find.byKey(AppKeys.claudeAcpAdapterInstallButton), findsNothing);
-      expect(find.byKey(AppKeys.claudeAcpAdapterLocateButton), findsNothing);
-    },
-  );
+    expect(
+      find.byKey(AppKeys.personalAcpSwitchFor(CliTool.claude)),
+      findsOneWidget,
+    );
+    expect(find.byKey(AppKeys.claudeAcpAdapterInstallButton), findsOneWidget);
+    expect(find.byKey(AppKeys.claudeAcpAdapterLocateButton), findsOneWidget);
+  });
 
   testWidgets('Codex adapter install uses the shared install label and key', (
     tester,

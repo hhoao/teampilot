@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -72,7 +71,6 @@ class CliReadinessCard extends StatefulWidget {
   const CliReadinessCard({
     required this.cli,
     required this.cubit,
-    this.isAndroidOverride,
     this.versionProbe,
     this.locateOverride,
     super.key,
@@ -80,7 +78,6 @@ class CliReadinessCard extends StatefulWidget {
 
   final CliTool cli;
   final SessionPreferencesCubit cubit;
-  final bool? isAndroidOverride;
   final CliVersionProbe? versionProbe;
 
   /// Test seam to avoid spawning discovery subprocesses.
@@ -98,8 +95,6 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
   bool _installingRemoteAdapter = false;
 
   CliToolRegistry get _registry => CliToolRegistry.builtIn();
-
-  bool get _isAndroid => widget.isAndroidOverride ?? Platform.isAndroid;
 
   CliExecutableCapability? get _executable =>
       _registry.capability<CliExecutableCapability>(widget.cli);
@@ -119,14 +114,15 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
   void initState() {
     super.initState();
     _probe = widget.versionProbe ?? CliVersionProbe();
-    if (!_isAndroid) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(_refreshLatest());
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(_refreshRemoteAdapter());
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final remote = context.read<ConnectionModeService>().isRemoteWorkPlane;
+      if (remote) {
+        unawaited(_refreshRemoteAdapter());
+      } else {
+        unawaited(_refreshLatest());
+      }
+    });
   }
 
   NpmInstallerCapability? _npmInstaller(CliExecutableCapability? exec) {
@@ -563,7 +559,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
                     ? TpStatusBadgeTone.success
                     : TpStatusBadgeTone.warning,
               ),
-              if (_canChooseTransport && !_isAndroid) ...[
+              if (_canChooseTransport) ...[
                 const SizedBox(width: 10),
                 KeyedSubtree(
                   key: AppKeys.personalAcpSwitchFor(widget.cli),
@@ -671,7 +667,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
           ? () => _installOrUpgradeAdapter(upgrading: true)
           : null,
       locating: _locatingAdapter,
-      enabled: !_isAndroid,
+      enabled: true,
     );
   }
 }

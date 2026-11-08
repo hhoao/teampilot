@@ -16,15 +16,11 @@ import 'toolchain_path_settings_row.dart';
 class CliConfigWorkspace extends StatelessWidget {
   const CliConfigWorkspace({
     this.showHeading = true,
-    this.isAndroidOverride,
     this.versionProbe,
     super.key,
   });
 
   final bool showHeading;
-
-  /// Test seam / Android settings: ACP switch disabled, adapter actions hidden.
-  final bool? isAndroidOverride;
 
   /// Test seam: skip real `npm view` when pumping settings.
   final CliVersionProbe? versionProbe;
@@ -43,10 +39,7 @@ class CliConfigWorkspace extends StatelessWidget {
           const SizedBox(height: 16),
         ],
         Expanded(
-          child: _CliControls(
-            isAndroidOverride: isAndroidOverride,
-            versionProbe: versionProbe,
-          ),
+          child: _CliControls(versionProbe: versionProbe),
         ),
       ],
     );
@@ -74,9 +67,8 @@ class _CliHeading extends StatelessWidget {
 }
 
 class _CliControls extends StatelessWidget {
-  const _CliControls({this.isAndroidOverride, this.versionProbe});
+  const _CliControls({this.versionProbe});
 
-  final bool? isAndroidOverride;
   final CliVersionProbe? versionProbe;
 
   @override
@@ -102,7 +94,6 @@ class _CliControls extends StatelessWidget {
                   child: CliReadinessCard(
                     cli: def.id,
                     cubit: cubit,
-                    isAndroidOverride: isAndroidOverride,
                     versionProbe: versionProbe,
                   ),
                 ),
