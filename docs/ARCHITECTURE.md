@@ -350,7 +350,7 @@ wire protocol against an SSH server.
 ## Mobile remote connection contract
 
 - 远程连接（本地）：所有目标条目、连接/断开/重连、切换 home；断线可用。设置里常驻入口（`ConfigSection.remoteConnections`），不依赖启动门控。
-- SSH 服务器（远端）：仅 home plane 落在远端时可用，读 `<home>/ssh_profiles/`，按 home plane 变化重载，不依赖会话连接或一次性 push。
+- SSH 服务器（远端）：仅 home plane 落在远端时可用，读 `<home>/ssh_profiles/` 并按 home plane 变化重载，不依赖会话连接或一次性 push。列表同时合并该平面自己配置的 `<home>/remote-targets.json`（远端主机本机配置的服务器），因此新配对的 home 不会因为还没 push 过而显示为空。
 - SSH 服务器页本增量为只读；编辑/删除完整配置（credential push、端口转发、root sandbox 等字段）为已登记的后续 spec，`SshServerConfigCubit.save/delete` 保留给该后续工作。
 - 字段归属：断线重连要用的字段放本地；只有连上后才用的配置放远端。
 - 凭据拆分：SSH 登录凭据留在设备 vault（断线仍可重连）；业务凭据（provider key、GitHub token 等）写 `<home>/vault/business.json`，随 home plane 走。`VaultDocumentStore` 合并两侧读取，按 owner kind 路由写入，远端侧故障不阻断本地 SSH 凭据；拆分前的业务条目做一次性复制迁移，不删除原数据。
