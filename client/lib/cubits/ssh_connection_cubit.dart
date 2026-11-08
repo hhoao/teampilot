@@ -170,7 +170,10 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
     emit(_buildState());
   }
 
-  Future<void> connect(String profileId) async {
+  /// [switchHome] is the Android Connect side effect (rebind the home plane to
+  /// the connected host). The SSH servers page passes false: its connect is
+  /// the desktop one — open a connection and keep the current home.
+  Future<void> connect(String profileId, {bool switchHome = true}) async {
     final profile = _profilesById[profileId];
     if (profile == null) return;
 
@@ -186,7 +189,7 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
         await _coordinator.userDisconnect(profileId);
         return;
       }
-      final select = _selectProfileOnConnect;
+      final select = switchHome ? _selectProfileOnConnect : null;
       if (select != null) {
         await select(profileId);
       }

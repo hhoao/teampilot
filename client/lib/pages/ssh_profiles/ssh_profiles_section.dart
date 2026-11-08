@@ -26,7 +26,11 @@ import 'ssh_profile_target_config_dialog.dart';
 
 /// Orca-style SSH target list for settings (desktop + Android).
 class SshProfilesSection extends StatefulWidget {
-  const SshProfilesSection({super.key, this.showRemoteConfig = true});
+  const SshProfilesSection({
+    super.key,
+    this.showRemoteConfig = true,
+    this.switchHomeOnConnect = true,
+  });
 
   /// Dead-but-planned: the "remote config" editor operates on a local
   /// [SshProfile], not the remote server model, and production callers all
@@ -34,6 +38,11 @@ class SshProfilesSection extends StatefulWidget {
   /// adds full remote-config editing (credential push / port-forward /
   /// root sandbox); this increment ships the SSH servers page read-only.
   final bool showRemoteConfig;
+
+  /// Android Connect rebinds the home plane to the connected host. The SSH
+  /// servers page turns this off so its connect matches the desktop one; the
+  /// remote-connections surfaces keep the mobile behaviour.
+  final bool switchHomeOnConnect;
 
   @override
   State<SshProfilesSection> createState() => _SshProfilesSectionState();
@@ -91,7 +100,10 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
   Future<void> _connect(SshProfile profile) async {
     if (!await _ensureVaultUnlockedFor(profile)) return;
     if (!mounted) return;
-    await context.read<SshConnectionCubit>().connect(profile.id);
+    await context.read<SshConnectionCubit>().connect(
+      profile.id,
+      switchHome: widget.switchHomeOnConnect,
+    );
     if (!mounted) return;
     final host = context.read<SshConnectionCubit>().state.hostsById[profile.id];
     if (host?.status == SshHostUiStatus.connected) {

@@ -147,6 +147,42 @@ void main() {
     expect(find.text('Section A Title'), findsOneWidget);
   });
 
+  testWidgets('wide: ListTile body does not warn about hidden ink', (
+    tester,
+  ) async {
+    final messages = <String>[];
+    final old = FlutterError.onError;
+    FlutterError.onError = (details) {
+      messages.add(details.exceptionAsString());
+    };
+    addTearDown(() => FlutterError.onError = old);
+
+    await _openSettingsDialog(
+      tester,
+      viewport: const Size(1200, 800),
+      entries: [
+        SettingsDialogEntry(
+          icon: Icons.home_outlined,
+          navLabel: (_) => 'Section A',
+          title: (_) => 'Section A Title',
+          subtitle: (_) => '',
+          bodyBuilder: (_) => ListView(
+            children: [
+              for (var i = 0; i < 5; i++)
+                ListTile(title: Text('row $i'), onTap: () {}),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    expect(
+      messages.where((m) => m.contains('ink splashes may be invisible')),
+      isEmpty,
+      reason: messages.join('\n---\n'),
+    );
+  });
+
   testWidgets('wide: A→B→A keeps pane state', (tester) async {
     await _openSettingsDialog(
       tester,

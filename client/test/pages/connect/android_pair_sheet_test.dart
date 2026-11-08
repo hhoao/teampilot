@@ -170,7 +170,7 @@ class _RecordingSshConnectionCubit extends SshConnectionCubit {
   final connectCalls = <String>[];
 
   @override
-  Future<void> connect(String profileId) async {
+  Future<void> connect(String profileId, {bool switchHome = true}) async {
     connectCalls.add(profileId);
   }
 }

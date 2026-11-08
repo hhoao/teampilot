@@ -27,7 +27,7 @@ class _StubSshConnectionCubit extends SshConnectionCubit {
   _StubSshConnectionCubit({required super.factory, required super.coordinator});
 
   @override
-  Future<void> connect(String profileId) async {}
+  Future<void> connect(String profileId, {bool switchHome = true}) async {}
 
   @override
   Future<void> disconnect(String profileId) async {}

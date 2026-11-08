@@ -78,7 +78,12 @@ class _SshProfilesConfigWorkspaceState extends State<SshProfilesConfigWorkspace>
             const Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.all(16),
-                child: SshProfilesSection(showRemoteConfig: true),
+                child: SshProfilesSection(
+                  showRemoteConfig: true,
+                  // Desktop semantics: connect opens the host and keeps the
+                  // current home. Switching home belongs to Remote connections.
+                  switchHomeOnConnect: false,
+                ),
               ),
             ),
           ],

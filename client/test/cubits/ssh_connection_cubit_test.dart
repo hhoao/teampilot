@@ -118,6 +118,27 @@ void main() {
       },
     );
 
+    test('connect with switchHome: false keeps the current home', () async {
+      final harness = _Harness();
+      const profile = _p1;
+      final selected = <String>[];
+      final cubit = harness.createCubit(
+        selectProfileOnConnect: (id) async => selected.add(id),
+      );
+      cubit.syncProfiles(const [profile]);
+
+      await cubit.connect(profile.id, switchHome: false);
+
+      expect(
+        cubit.state.hostsById[profile.id]!.status,
+        SshHostUiStatus.connected,
+      );
+      expect(selected, isEmpty);
+
+      await cubit.close();
+      harness.dispose();
+    });
+
     test('disconnect → disconnected + coordinator.userDisconnect', () async {
       final harness = _Harness();
       const profile = _p1;

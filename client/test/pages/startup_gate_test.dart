@@ -61,7 +61,7 @@ class _ControllableSshConnectionCubit extends SshConnectionCubit {
   });
 
   @override
-  Future<void> connect(String profileId) async {}
+  Future<void> connect(String profileId, {bool switchHome = true}) async {}
 
   @override
   Future<void> disconnect(String profileId) async {}
