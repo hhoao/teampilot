@@ -1,13 +1,12 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/antigravity/capabilities/acp.dart';
 
 void main() {
-  test('uses the separate ACP server with no CLI flags', () {
-    const cap = AntigravityAcpCapability(linuxUid: false);
+  test('uses the separate ACP server with the uid probe first', () {
+    const cap = AntigravityAcpCapability();
     expect(cap.agentExecutable('/usr/bin/agy'), 'agy_acp_server.par');
     expect(cap.launchArgCandidates('agy_acp_server.par'), [
+      ['agy_acp_server.par', '--uid='],
       ['agy_acp_server.par'],
     ]);
     expect(cap.forwardSessionNewMcpServers, isFalse);
@@ -16,10 +15,7 @@ void main() {
   });
 
   test('isolates HOME and passes the model env', () {
-    const cap = AntigravityAcpCapability(
-      linuxUid: false,
-      model: 'gemini-3.8-flash-medium',
-    );
+    const cap = AntigravityAcpCapability(model: 'gemini-3.8-flash-medium');
     final env = cap.buildEnvironment(
       sessionToolDir: '/runtime/sessions/s1/antigravity',
       workingDirectory: '/work',
@@ -32,23 +28,8 @@ void main() {
     expect(env['PATH'], '/bin');
   });
 
-  test('production default enables the empty uid form on Linux only', () {
+  test('always tries the empty uid form first', () {
     const cap = AntigravityAcpCapability();
-    expect(
-      cap.launchArgCandidates('server'),
-      Platform.isLinux
-          ? [
-              ['server', '--uid='],
-              ['server'],
-            ]
-          : [
-              ['server'],
-            ],
-    );
-  });
-
-  test('Linux adapter candidates include the empty uid form first', () {
-    const cap = AntigravityAcpCapability(linuxUid: true);
     expect(cap.launchArgCandidates('server'), [
       ['server', '--uid='],
       ['server'],

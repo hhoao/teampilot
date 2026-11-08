@@ -36,13 +36,10 @@ final class AntigravityAcpTranslator extends AcpAgentTranslator {
 
 final class AntigravityAcpCapability
     implements AcpCapability, AcpNoPtyFallbackCapability, AcpUsageLogCapability {
-  const AntigravityAcpCapability({this.model, this.adapterPath, this.linuxUid});
+  const AntigravityAcpCapability({this.model, this.adapterPath});
 
   final String? model;
   final String? adapterPath;
-  final bool? linuxUid;
-
-  bool get _usesUid => linuxUid ?? Platform.isLinux;
 
   @override
   String agentExecutable(String cliExecutable) =>
@@ -53,7 +50,9 @@ final class AntigravityAcpCapability
   List<List<String>> launchArgCandidates(String executable) => [
     // Probe 1.4.3: --uid is a privilege-drop flag, not an account id.
     // Empty disables the switch; a non-empty value must be an existing group.
-    if (_usesUid) [executable, '--uid='],
+    // Always try the empty form first so Android/Windows clients launching a
+    // Linux remote adapter also get it; unsupported hosts fall back below.
+    [executable, '--uid='],
     [executable],
   ];
 
