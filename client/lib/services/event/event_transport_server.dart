@@ -45,6 +45,7 @@ final class EventTransportServer {
 
   ServerSocket? _socket;
   Future<void>? _accept;
+  Timer? _advertisementTimer;
   final Set<_ConnectionHandler> _handlers = {};
 
   static int _currentPid() => pid;
@@ -54,15 +55,17 @@ final class EventTransportServer {
       InternetAddress.loopbackIPv4,
       0,
     );
-    await _fs.writeString(
-      _advertisementPath,
-      jsonEncode({
-        'v': eventTransportProtocolVersion,
-        'bindHost': '127.0.0.1',
-        'port': _socket!.port,
-        'pid': _pid(),
-        'startedAt': _clock().toUtc().toIso8601String(),
-      }),
+    await _writeAdvertisement();
+    appLogger.i(
+      '[$_tag] advertised path=$_advertisementPath port=${_socket!.port} '
+      'pid=${_pid()}',
+    );
+    // Some home-plane/file-watch races can delete the advertisement while the
+    // server is still listening. Recreate only when it is missing; never fight
+    // another live server's port.
+    _advertisementTimer ??= Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => unawaited(_ensureAdvertisement()),
     );
     final socket = _socket!;
     _accept = () async {
@@ -76,7 +79,40 @@ final class EventTransportServer {
     }();
   }
 
+  Future<void> _writeAdvertisement() async {
+    final socket = _socket;
+    if (socket == null) return;
+    await _fs.writeString(
+      _advertisementPath,
+      jsonEncode({
+        'v': eventTransportProtocolVersion,
+        'bindHost': '127.0.0.1',
+        'port': socket.port,
+        'pid': _pid(),
+        'startedAt': _clock().toUtc().toIso8601String(),
+      }),
+    );
+  }
+
+  Future<void> _ensureAdvertisement() async {
+    if (_socket == null) return;
+    try {
+      final existing = await _fs.readString(_advertisementPath);
+      if (existing != null && existing.trim().isNotEmpty) return;
+      await _writeAdvertisement();
+      appLogger.i('[$_tag] re-advertised missing $_advertisementPath');
+    } on Object catch (error, stackTrace) {
+      appLogger.d(
+        '[$_tag] advertisement refresh failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
   Future<void> stop() async {
+    _advertisementTimer?.cancel();
+    _advertisementTimer = null;
     final socket = _socket;
     _socket = null;
     await socket?.close();

@@ -2285,6 +2285,28 @@ class ChatCubit extends Cubit<ChatState>
     }
   }
 
+  /// Re-reads one workspace's session list even when it was already hydrated.
+  ///
+  /// Used by the mobile session-plane client when the desktop creates or
+  /// removes a session: the home-plane files changed but SFTP has no watcher.
+  Future<void> refreshSessionsForWorkspace(String workspaceId) async {
+    final repo = _sessionRepository;
+    final id = workspaceId.trim();
+    if (repo == null || id.isEmpty) return;
+    final inflight = _sessionHydrationByWorkspace[id];
+    if (inflight != null) {
+      await inflight;
+      return;
+    }
+    final load = _hydrateWorkspaceSessions(repo, id);
+    _sessionHydrationByWorkspace[id] = load;
+    try {
+      await load;
+    } finally {
+      _sessionHydrationByWorkspace.remove(id);
+    }
+  }
+
   Future<List<AppSession>> sessionsForWorkspaceReady(String workspaceId) async {
     await ensureSessionsForWorkspace(workspaceId);
     return sessionsForWorkspace(

@@ -23,6 +23,9 @@ class AppPaths {
 
   String get eventTransportJson => eventTransportJsonForTeampilotRoot(basePath);
 
+  String get sessionProtocolJson =>
+      sessionProtocolJsonForTeampilotRoot(basePath);
+
   String get cliPresetsJson => _ctx.join(basePath, 'cli-presets.json');
 
   /// Linux desktop / `path_provider` app-data id (e.g. `~/.local/share/com.hhoa.teampilot`).
@@ -130,6 +133,9 @@ class AppPaths {
 
   static String eventTransportJsonForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'event-transport.json');
+
+  static String sessionProtocolJsonForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'session-protocol.json');
 
   static String managedProviderDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'providers/managed');
@@ -366,7 +372,6 @@ class AppPaths {
 
   String get cursorUsageAccountsFile =>
       _ctx.join(cursorUsageDir, 'accounts.json');
-
 
   String cursorUsageCacheFile(String accountId) =>
       _ctx.join(cursorUsageDir, 'cache', '$accountId.json');

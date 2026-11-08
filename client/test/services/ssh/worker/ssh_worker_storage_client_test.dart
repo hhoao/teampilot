@@ -317,6 +317,30 @@ void main() {
     },
   );
 
+  test('separate transports share the lease request id space', () async {
+    final ids = <String>[];
+    var sequence = 0;
+    String newId(String prefix) => '$prefix-${sequence++}';
+    Future<SshWorkerReply> send(SshWorkerRequest request) {
+      ids.add(request.requestId);
+      return Future.value(SshWorkerReply.success(request.requestId));
+    }
+
+    final first = SshWorkerLeaseStorageTransport.forTesting(
+      send,
+      newRequestId: newId,
+    );
+    final second = SshWorkerLeaseStorageTransport.forTesting(
+      send,
+      newRequestId: newId,
+    );
+
+    await first.mkdir('/a');
+    await second.mkdir('/b');
+
+    expect(ids, ['storage-0', 'storage-1']);
+  });
+
   test('lease transport bounds a silently hung UI request', () async {
     final transport = SshWorkerLeaseStorageTransport.forTesting(
       (_) => Completer<SshWorkerReply>().future,

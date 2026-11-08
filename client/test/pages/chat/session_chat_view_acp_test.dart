@@ -75,6 +75,18 @@ import 'package:teampilot/widgets/follow_up/follow_up_queue_strip.dart';
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
+/// [InMemoryFilesystem] that can simulate a dropped SSH home connection on
+/// the next transcript read (mobile remote-viewer path).
+class _FailingReadFilesystem extends InMemoryFilesystem {
+  bool failReads = false;
+
+  @override
+  Future<String?> readString(String path) async {
+    if (failReads) throw StateError('ssh connection lost');
+    return super.readString(path);
+  }
+}
+
 /// `SessionChatMessageArea` reads the non-nullable `sessionScrollAnchors`
 /// field, so the mock must provide a real empty map instead of mocktail's
 /// implicit null.
@@ -232,6 +244,7 @@ void _stubCubit<TState>(Cubit<TState> cubit, TState state) {
 void main() {
   late _MockAiHistorySeat seat;
   late InMemoryFilesystem memoryFs;
+  late _FailingReadFilesystem failingFs;
 
   setUpAll(() {
     final fbWorkspace = Workspace(workspaceId: 'ws-fb', createdAt: 0);
@@ -270,7 +283,8 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
-    memoryFs = InMemoryFilesystem();
+    failingFs = _FailingReadFilesystem();
+    memoryFs = failingFs;
     installTestHomeStorage(
       filesystem: memoryFs,
       paths: const AppPaths('/acp-chat-view-test'),
@@ -743,6 +757,61 @@ void main() {
       ).captured;
       expect(adopted, isNotEmpty, reason: 'the loading state must be released');
       expect(adopted.last as List<AiMessage>, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'ACP snapshot poll keeps the loaded thread when the remote read fails',
+    (tester) async {
+      // The seat already shows a transcript (e.g. loaded before the SSH home
+      // dropped). A failed poll read must never be published as an empty
+      // snapshot, or the chat history would be wiped on connection failure.
+      when(
+        () => seat.loadedMessages,
+      ).thenReturn([
+        const AiMessage(
+          id: 'u1',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'already loaded')],
+        ),
+      ]);
+
+      await pumpSession(tester, session: session('s-acp', acp: true));
+      failingFs.failReads = true;
+      clearInteractions(seat);
+
+      // Fire the 2s app-transcript poll with a dead connection.
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      verifyNever(() => seat.adoptExternalMessages(any()));
+    },
+  );
+
+  testWidgets(
+    'ACP snapshot poll keeps the loaded thread on a transient empty read',
+    (tester) async {
+      when(
+        () => seat.loadedMessages,
+      ).thenReturn([
+        const AiMessage(
+          id: 'u1',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'already loaded')],
+        ),
+      ]);
+
+      await pumpSession(tester, session: session('s-acp', acp: true));
+      clearInteractions(seat);
+
+      // A missing/empty remote snapshot must not be treated as "CLI cleared" —
+      // the next poll re-reads once the remote file is available again.
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      verifyNever(() => seat.adoptExternalMessages(any()));
     },
   );
 

@@ -75,6 +75,7 @@ final class SshWorkerLeaseStorageTransport
     void Function()? onTimeout,
   }) => SshWorkerLeaseStorageTransport._(
     lease.send,
+    newRequestId: lease.resourceId,
     requestTimeout: requestTimeout,
     cleanupTimeout: cleanupTimeout,
     onTimeout: onTimeout,
@@ -85,8 +86,10 @@ final class SshWorkerLeaseStorageTransport
     Duration requestTimeout = SshStorageIo.ioTimeout,
     Duration cleanupTimeout = _sshWorkerStorageCleanupTimeout,
     void Function()? onTimeout,
+    String Function(String prefix)? newRequestId,
   }) : this._(
          send,
+         newRequestId: newRequestId ?? _testRequestIds(),
          requestTimeout: requestTimeout,
          cleanupTimeout: cleanupTimeout,
          onTimeout: onTimeout,
@@ -94,16 +97,22 @@ final class SshWorkerLeaseStorageTransport
 
   SshWorkerLeaseStorageTransport._(
     this._send, {
+    required String Function(String prefix) newRequestId,
     required this.requestTimeout,
     required this.cleanupTimeout,
     this.onTimeout,
-  });
+  }) : _newRequestId = newRequestId;
+
+  static String Function(String prefix) _testRequestIds() {
+    var sequence = 0;
+    return (prefix) => '$prefix-test-${sequence++}';
+  }
 
   final SshWorkerRequestSender _send;
+  final String Function(String prefix) _newRequestId;
   final Duration requestTimeout;
   final Duration cleanupTimeout;
   final void Function()? onTimeout;
-  var _requestSequence = 0;
   var _streamSequence = 0;
 
   @override
@@ -323,7 +332,7 @@ final class SshWorkerLeaseStorageTransport
         ? effectiveTimeout
         : this.cleanupTimeout;
     final request = SshWorkerRequest(
-      requestId: 'storage-${_requestSequence++}',
+      requestId: _newRequestId('storage'),
       operation: SshWorkerOperation.cancelRequest,
       args: {'streamId': streamId, 'timeoutMs': cleanupTimeout.inMilliseconds},
     );
@@ -354,7 +363,7 @@ final class SshWorkerLeaseStorageTransport
   }) async {
     final effectiveTimeout = timeout ?? requestTimeout;
     final request = SshWorkerRequest(
-      requestId: 'storage-${_requestSequence++}',
+      requestId: _newRequestId('storage'),
       operation: operation,
       args: {...args, 'timeoutMs': effectiveTimeout.inMilliseconds},
       payload: payload,

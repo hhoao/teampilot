@@ -71,6 +71,7 @@ import 'chat_reveal_controller.dart';
 import 'session_follow_up_compose_submit.dart';
 import 'history_continue_delivery.dart';
 import 'operator_history_send.dart';
+import 'remote_session_control_banner.dart';
 import 'session_history_review_submit.dart';
 import 'subagent_preview_controller.dart';
 
@@ -188,6 +189,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// against re-reading the file on every refresh/rebuild for an unattached
   /// runtime (history-only open, reclaimed runtime).
   String? _acpSnapshotSeatKey;
+  Timer? _acpSnapshotPoll;
 
   /// True from optimistic enqueue through connect/boot/inject settle so idle
   /// grace cannot blank tip chrome while History continue is still in flight.
@@ -297,6 +299,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         });
     unawaited(_loadHistoryThenHydratePersistedPendingUsers());
     _bindAcpRuntime();
+    _syncAcpSnapshotPoll();
     unawaited(_loadWorkspaceProjectBundle());
   }
 
@@ -341,7 +344,10 @@ class _SessionChatViewState extends State<SessionChatView> {
   ///
   /// Opening a session to read its history must never spawn the agent — the
   /// runtime attaches lazily on the first send (see [_deliverComposeMessage]).
-  Future<void> _loadAcpTranscriptSnapshot({AppSession? session}) async {
+  Future<void> _loadAcpTranscriptSnapshot({
+    AppSession? session,
+    bool force = false,
+  }) async {
     final seat = _seat;
     if (seat == null || seat.isClosed) return;
     final source = session ?? widget.session;
@@ -349,13 +355,14 @@ class _SessionChatViewState extends State<SessionChatView> {
       sessionId: widget.session.sessionId,
       selectedMemberId: widget.selectedMemberId,
     );
-    if (_acpSnapshotSeatKey == key) return;
+    if (!force && _acpSnapshotSeatKey == key) return;
     _acpSnapshotSeatKey = key;
     // A reclaimed runtime leaves its transcript on the seat; re-reading the
-    // file would only replace identical content and drop pendings.
-    if (seat.loadedMessages.isNotEmpty) return;
-    seat.markExternalLoading();
-    List<AiMessage> messages;
+    // file would only replace identical content and drop pendings. A poll must
+    // bypass this because the file may have grown after the first snapshot.
+    if (!force && seat.loadedMessages.isNotEmpty) return;
+    if (!force) seat.markExternalLoading();
+    List<AiMessage>? messages;
     try {
       messages = await AcpSeatTranscriptReader(storage: homeStorageOf(context))
           .load(
@@ -371,11 +378,22 @@ class _SessionChatViewState extends State<SessionChatView> {
         error: error,
         stackTrace: stackTrace,
       );
-      messages = const <AiMessage>[];
     }
     // The runtime may have attached while the read was in flight — it owns the
     // transcript from then on (and may already have newer live turns).
     if (!mounted || _seat != seat || widget.acpRuntime != null) return;
+    final hasContent = seat.loadedMessages.isNotEmpty;
+    // On a mobile SSH home the poll reads the transcript remotely: a dropped
+    // connection (or a transient empty/missing snapshot) is not "no messages".
+    // Publishing an empty snapshot would wipe the thread the user is reading;
+    // keep the cached transcript and let the next poll retry. Only a cold,
+    // non-forced seat releases its loading state with an empty snapshot.
+    if (messages == null || (messages.isEmpty && hasContent)) {
+      if (!force && !hasContent) {
+        seat.adoptExternalMessages(const <AiMessage>[]);
+      }
+      return;
+    }
     seat.adoptExternalMessages(messages);
   }
 
@@ -460,6 +478,24 @@ class _SessionChatViewState extends State<SessionChatView> {
     } else if (oldWidget.routeActive != widget.routeActive) {
       unawaited(_refreshWhenHot());
     }
+    _syncAcpSnapshotPoll();
+  }
+
+  /// ACP history-only seats (no attached runtime) live off the shared
+  /// app-owned transcript file. Poll it while the route is visible so a remote
+  /// desktop's ACP turn lands without a per-commit event hook.
+  void _syncAcpSnapshotPoll() {
+    final shouldPoll =
+        _usesAcpTranscript && widget.acpRuntime == null && widget.routeActive;
+    if (!shouldPoll) {
+      _acpSnapshotPoll?.cancel();
+      _acpSnapshotPoll = null;
+      return;
+    }
+    _acpSnapshotPoll ??= Timer.periodic(const Duration(seconds: 2), (_) {
+      if (!mounted) return;
+      unawaited(_loadAcpTranscriptSnapshot(force: true));
+    });
   }
 
   Future<void> _hydratePersistedPendingUsers() async {
@@ -539,6 +575,8 @@ class _SessionChatViewState extends State<SessionChatView> {
   void dispose() {
     _awaitingIdleGraceTimer?.cancel();
     _awaitingIdleGraceTimer = null;
+    _acpSnapshotPoll?.cancel();
+    _acpSnapshotPoll = null;
     unawaited(_operatorMailboxSub.cancel());
     unawaited(_acpRuntimeSub?.cancel());
     _acpRuntimeSub = null;
@@ -1583,6 +1621,14 @@ class _SessionChatViewState extends State<SessionChatView> {
       children: [
         Positioned.fill(child: _buildContent(context)),
         Positioned(top: spacing.sm, right: spacing.sm, child: capsule()),
+        Positioned(
+          top: 48,
+          left: spacing.sm,
+          child: RemoteSessionControlBanner(
+            sessionId: widget.session.sessionId,
+            memberId: _shellMemberId,
+          ),
+        ),
       ],
     );
   }

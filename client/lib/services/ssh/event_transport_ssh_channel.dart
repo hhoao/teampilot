@@ -37,7 +37,14 @@ Future<EventTransportByteChannel> openSshEventTransportChannel({
   final path = homeStorage.paths.eventTransportJson;
   final raw = await homeStorage.fs.readString(path);
   if (raw == null || raw.trim().isEmpty) {
-    throw StateError('event-transport advertisement missing');
+    appLogger.w(
+      '[event-transport] advertisement missing path=$path '
+      'homeRoot=${homeStorage.appDataRoot}',
+    );
+    throw StateError(
+      'event-transport advertisement missing: $path '
+      '(homeRoot=${homeStorage.appDataRoot})',
+    );
   }
   final Object decoded;
   try {

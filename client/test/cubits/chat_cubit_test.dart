@@ -994,7 +994,10 @@ void main() {
       _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
 
       await cubit.loadWorkspaceData(repo);
-      composeDraftCache.setLandingDraft(workspace.workspaceId, ComposeDraft(text: 'draft'));
+      composeDraftCache.setLandingDraft(
+        workspace.workspaceId,
+        ComposeDraft(text: 'draft'),
+      );
 
       await cubit.deleteWorkspace(repo, workspace.workspaceId);
       await drainPendingAsyncWork();
@@ -1474,6 +1477,42 @@ void main() {
         same(otherBefore),
       );
     });
+
+    test(
+      'refreshSessionsForWorkspace picks up a session created after hydration',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp(
+          'chat_cubit_refresh_',
+        );
+        final repo = SessionRepository(
+          rootDir: tmp.path,
+          storage: testHomeStorage,
+        );
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
+          sessionRepository: repo,
+          postFrameScheduler: postFrame.scheduler,
+        );
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+        final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+        await cubit.loadWorkspaceIndex(repo);
+        await cubit.ensureSessionsForWorkspace(ws.workspaceId);
+        expect(cubit.state.sessions, isEmpty);
+
+        final created = await repo.createSession(ws.workspaceId);
+        await cubit.refreshSessionsForWorkspace(ws.workspaceId);
+
+        expect(cubit.state.sessions, hasLength(1));
+        expect(
+          cubit.state.sessions.single.sessionId,
+          created.session.sessionId,
+        );
+      },
+    );
 
     test('toggleSessionPin patches pinned and updatedAt in memory', () async {
       final tmp = await Directory.systemTemp.createTemp(

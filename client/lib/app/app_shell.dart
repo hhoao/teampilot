@@ -21,6 +21,15 @@ import '../cubits/remote_download_catalog_cubit.dart';
 import '../cubits/automation_cubit.dart';
 import '../cubits/agent_attention_cubit.dart';
 import '../cubits/seat_lease_cubit.dart';
+import '../cubits/session_remote_activity_cubit.dart';
+import '../services/event/dispatcher.dart' as event_bus;
+import '../services/event/session_lifecycle_event.dart';
+import '../services/session_protocol/session_authority.dart';
+import '../services/session_protocol/session_models.dart';
+import '../services/session_sync/chat_session_activity_source.dart';
+import '../services/session_sync/chat_session_control_port.dart';
+import '../services/session_sync/session_protocol_controller.dart';
+import 'session_protocol_home.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/session_groups_cubit.dart';
 import '../cubits/session_usage_cubit.dart';
@@ -85,7 +94,11 @@ import '../cubits/board_cubit.dart';
 import '../utils/session/workspace_tab_session_scope.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
+import 'package:shared_ui/shared_ui.dart';
+
 import '../cubits/notification_cubit.dart';
+import '../pages/home_workspace/home_workspace_route.dart';
+import '../services/notification/desktop_system_notifier.dart';
 import '../cubits/progress_activity_cubit.dart';
 import '../cubits/repo_clone_cubit.dart';
 import '../services/app/app_update_service.dart';
@@ -194,6 +207,8 @@ import '../router/app_router.dart';
 import '../services/extension/builtin_manifests.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
+import '../services/shared_state/device_id_store.dart';
+import '../services/shared_state/shared_state_identity.dart';
 import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
 import '../services/storage/remote_target_migration.dart';
@@ -484,6 +499,11 @@ class AppShell {
     required this.remoteCliReadiness,
     this.teamGenerationGraph,
     required this.memberPresenceCubit,
+    required this.sessionRemoteActivityCubit,
+    required this.sessionProtocolController,
+    required this.sessionActivitySource,
+    required this.sessionAuthority,
+    this.sessionLifecycleHandler,
     required this.agentAttentionCubit,
     required this.seatLeaseCubit,
     required this.agentStatusSeatLookup,
@@ -602,6 +622,11 @@ class AppShell {
   final RemoteCliReadinessService remoteCliReadiness;
   final TeamGenerationGraph? teamGenerationGraph;
   final MemberPresenceCubit memberPresenceCubit;
+  final SessionRemoteActivityCubit sessionRemoteActivityCubit;
+  final SessionProtocolController sessionProtocolController;
+  final ChatSessionActivitySource sessionActivitySource;
+  final SessionAuthority sessionAuthority;
+  final event_bus.EventHandler<SessionLifecycleEvent>? sessionLifecycleHandler;
   final AgentAttentionCubit agentAttentionCubit;
   final SeatLeaseCubit seatLeaseCubit;
   final AgentStatusSeatLookup agentStatusSeatLookup;
@@ -732,6 +757,7 @@ class AppShell {
   /// Re-syncs the business vault after a home-plane switch; owned by the shell
   /// so teardown can cancel it.
   StreamSubscription<StoragePlaneChange>? _vaultPlaneSyncSub;
+  StreamSubscription<SessionRemoteActivityState>? _sessionRemoteRefreshSub;
   final CommandBus commandBus;
   final ShortcutCubit shortcutCubit;
   final WorkspaceChromeCommands workspaceChromeCommands;
@@ -744,6 +770,7 @@ class AppShell {
 Future<AppShell> buildAppShell({
   required SharedPreferences preferences,
   required String nativeAppDataPath,
+  event_bus.Dispatcher? eventDispatcher,
   Future<String>? defaultWorkspaceDirectoryFuture,
   Future<void>? homeIndexPrefetchFuture,
   AppBootstrapCubit? bootstrapCubit,
@@ -1233,6 +1260,15 @@ Future<AppShell> buildAppShell({
     homeCtx,
     retire: (old) => runtimeContextRegistry.disposeContext(old),
   );
+  // Shared-state stamps are device-scoped, so the id lives in the device
+  // plane and never travels through the home plane.
+  final deviceId = await DeviceIdStore(
+    fs: deviceLocalHomeStorage(nativeAppDataPath).fs,
+    path: AppPaths.pathContextForDataRoot(
+      nativeAppDataPath,
+    ).join(nativeAppDataPath, 'shared-state', 'device-id'),
+  ).loadOrCreate();
+  SharedStateIdentity.configure(deviceId: deviceId);
   homeWorkspaceUiCache = HomeWorkspaceUiCache(storage: homeStorage);
   // Disk cache for markdown network images lives under the home
   // <teampilotRoot>/cache; bind it before any editor surface loads a badge.
@@ -3099,8 +3135,8 @@ Future<AppShell> buildAppShell({
             isSshHostKeyFailure(error)
                 ? HomeErrorKind.hostIdentityChanged
                 : isSshAuthFailure(error)
-                    ? HomeErrorKind.authFailed
-                    : HomeErrorKind.transportError,
+                ? HomeErrorKind.authFailed
+                : HomeErrorKind.transportError,
           );
         }
       },
@@ -3282,8 +3318,78 @@ Future<AppShell> buildAppShell({
         return bus.memberMailRecords(memberId);
       },
     );
-    chatCubit.onSessionHistoryStale = (sessionId) {
+    final sessionRemoteActivityCubit = SessionRemoteActivityCubit();
+    final sessionAuthority = SessionAuthority(
+      authorityId: SharedStateIdentity.deviceId,
+      controlPort: ChatSessionControlPort(chatCubit),
+    );
+    final sessionActivitySource = ChatSessionActivitySource(chatCubit);
+    final sessionRemoteRefreshSub = sessionRemoteActivityCubit.stream.listen((
+      state,
+    ) {
+      if (!connectionModeService.isSshMode) return;
+      final known = {
+        for (final session in chatCubit.state.sessions) session.sessionId,
+      };
+      for (final snapshot in state.sessions.values) {
+        if (known.contains(snapshot.sessionId)) continue;
+        final workspaceId = snapshot.workspaceId;
+        if (workspaceId.isEmpty) continue;
+        unawaited(chatCubit.refreshSessionsForWorkspace(workspaceId));
+      }
+    });
+    Future<void> notifyRemoteAttention(SessionAttention attention) async {
+      if (attention.kind != 'idle') return;
+      final session = chatCubit.state.sessions
+          .where((item) => item.sessionId == attention.sessionId)
+          .firstOrNull;
+      final title = (session?.display.trim().isNotEmpty ?? false)
+          ? session!.display.trim()
+          : attention.sessionId;
+      final locale = PlatformDispatcher.instance.locale;
+      final l10n = lookupAppLocalizations(
+        basicLocaleListResolution([locale], AppLocalizations.supportedLocales),
+      );
+      final payload = HomeWorkspaceRoute.sessionLocation(
+        workspaceId: session?.workspaceId ?? '',
+        sessionId: attention.sessionId,
+      );
+      notificationCubit.record(
+        title: title,
+        message: l10n.sessionIdleNotificationSubtitle,
+        variant: TpToastVariant.success,
+        payload: payload,
+      );
+      final notifier = DesktopSystemNotifier.instance;
+      if (await notifier.isAppFocused()) return;
+      await notifier.showNotification(
+        title: title,
+        body: l10n.sessionIdleNotificationSubtitle,
+        subtitle: l10n.sessionIdleNotificationTitle,
+        payload: payload,
+      );
+    }
+
+    final sessionProtocolController = SessionProtocolController(
+      deviceId: SharedStateIdentity.deviceId,
+      remoteCubit: sessionRemoteActivityCubit,
+      authority: sessionAuthority,
+      onContentInvalidated: (invalidation) {
+        chatCubit.onSessionHistoryStale?.call(invalidation.sessionId);
+      },
+      onAttention: (attention) {
+        unawaited(notifyRemoteAttention(attention));
+      },
+    );
+    void reloadHistorySeat(String sessionId) {
       unawaited(aiHistoryCubit.softReloadIfSession(sessionId));
+    }
+
+    chatCubit.onSessionHistoryStale = (sessionId) {
+      reloadHistorySeat(sessionId);
+      if (connectionModeService.isLocalMode) {
+        sessionAuthority.publishContentInvalidated(sessionId: sessionId);
+      }
     };
     chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
     // Landing seed routing: pods own the store; these sinks are the fallback.
@@ -3466,8 +3572,8 @@ Future<AppShell> buildAppShell({
         return isSshHostKeyFailure(error)
             ? HomeErrorKind.hostIdentityChanged
             : isSshAuthFailure(error)
-                ? HomeErrorKind.authFailed
-                : HomeErrorKind.transportError;
+            ? HomeErrorKind.authFailed
+            : HomeErrorKind.transportError;
       }
       return homeStorage.context.mode == StorageBackendMode.ssh
           ? null
@@ -3978,10 +4084,29 @@ Future<AppShell> buildAppShell({
         }
       }
       final controller = eventTransportController;
-      if (controller == null) return;
-      bindEventTransportHome?.call(homeStorage);
-      await applyEventTransportForHome(
-        controller: controller,
+      if (controller != null) {
+        bindEventTransportHome?.call(homeStorage);
+        await applyEventTransportForHome(
+          controller: controller,
+          connectionMode: connectionModeService,
+          homeStorage: homeStorage,
+          sshClientFactory: sshClientFactory,
+          homeProfile: () {
+            final id = defaultTargetResolver().sshProfileId;
+            if (id == null || id.isEmpty) return null;
+            return sshProfileById(id);
+          },
+          restart: restart,
+        );
+      }
+      if (connectionModeService.isLocalMode) {
+        sessionAuthority.clear();
+        sessionActivitySource.start(sessionAuthority);
+      } else {
+        sessionActivitySource.stop();
+      }
+      await applySessionProtocolForHome(
+        controller: sessionProtocolController,
         connectionMode: connectionModeService,
         homeStorage: homeStorage,
         sshClientFactory: sshClientFactory,
@@ -4133,6 +4258,18 @@ Future<AppShell> buildAppShell({
       listTargets: () => runtimeTargetRegistry.listTargets(),
     );
 
+    final sessionLifecycleHandler = eventDispatcher == null
+        ? null
+        : _SessionLifecycleRefreshHandler(
+            chatCubit,
+            () => connectionModeService.isSshMode,
+          );
+    if (eventDispatcher != null && sessionLifecycleHandler != null) {
+      eventDispatcher.registerFamily<SessionLifecycleKind>(
+        SessionLifecycleKind.sessionSpawned.runtimeType,
+        sessionLifecycleHandler,
+      );
+    }
     final shell = AppShell(
       cliToolRegistry: cliToolRegistry,
       homeTargetController: homeTargetController,
@@ -4141,6 +4278,11 @@ Future<AppShell> buildAppShell({
       remoteCliReadiness: remoteCliReadiness,
       teamGenerationGraph: teamGenerationGraph,
       memberPresenceCubit: memberPresenceCubit,
+      sessionRemoteActivityCubit: sessionRemoteActivityCubit,
+      sessionProtocolController: sessionProtocolController,
+      sessionActivitySource: sessionActivitySource,
+      sessionAuthority: sessionAuthority,
+      sessionLifecycleHandler: sessionLifecycleHandler,
       agentAttentionCubit: agentAttentionCubit,
       seatLeaseCubit: seatLeaseCubit,
       agentStatusSeatLookup: agentStatusSeatLookup,
@@ -4252,6 +4394,7 @@ Future<AppShell> buildAppShell({
     shell._automationCatalogSub = automationCatalogSub;
     shell._homeProfileWatchSub = homeProfileWatchSub;
     shell._vaultPlaneSyncSub = vaultPlaneSyncSub;
+    shell._sessionRemoteRefreshSub = sessionRemoteRefreshSub;
     managedProviderControlPlaneLease.transferOwnership();
     await applyHomeEventTransport();
     return shell;
@@ -4497,6 +4640,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       builtShell = await buildAppShell(
         preferences: widget.preferences,
         nativeAppDataPath: widget.nativeAppDataPath,
+        eventDispatcher: _eventDispatcher,
         defaultWorkspaceDirectoryFuture: widget.defaultWorkspaceDirectoryFuture,
         homeIndexPrefetchFuture: widget.homeIndexPrefetchFuture,
         bootstrapCubit: widget.bootstrapCubit,
@@ -4617,12 +4761,21 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       shell._automationCatalogSub?.cancel();
       shell._homeProfileWatchSub?.cancel();
       shell._vaultPlaneSyncSub?.cancel();
+      unawaited(shell._sessionRemoteRefreshSub?.cancel());
+      final lifecycleHandler = shell.sessionLifecycleHandler;
+      if (lifecycleHandler != null) {
+        _eventDispatcher.unregister(lifecycleHandler);
+      }
       unawaited(shell.homeVaultScope.dispose());
       shell.homeInvalidationService.stop();
       unawaited(_teardownConnect(shell));
       unawaited(shell.managedProviderControlPlane.close());
       unawaited(shell.sessionUsageCubit.close());
       unawaited(shell.homeConnectionCubit.close());
+      shell.sessionActivitySource.dispose();
+      unawaited(shell.sessionProtocolController.applyNone());
+      unawaited(shell.sessionAuthority.dispose());
+      unawaited(shell.sessionRemoteActivityCubit.close());
       shell.cursorUsageApiClient.close();
     }
     // Drain queued events; dispose() is synchronous, so stop() is
@@ -4707,4 +4860,24 @@ Future<void> _teardownConnect(AppShell? shell) async {
   await shell?.embeddedSshServer?.stop();
   await shell?.systemSshdBackend?.stop();
   shell?.connectDeviceStore?.dispose();
+}
+
+/// Mobile-side consumer of the desktop's `sessionLifecycle` family.
+///
+/// SFTP has no watcher, so a session created/closed on the desktop must refresh
+/// this workspace's cached session list explicitly.
+final class _SessionLifecycleRefreshHandler
+    implements event_bus.EventHandler<SessionLifecycleEvent> {
+  _SessionLifecycleRefreshHandler(this._chat, this._isSsh);
+
+  final ChatCubit _chat;
+  final bool Function() _isSsh;
+
+  @override
+  void handle(SessionLifecycleEvent event) {
+    if (!_isSsh() || event.memberId != null) return;
+    final workspaceId = event.workspaceId.trim();
+    if (workspaceId.isEmpty) return;
+    unawaited(_chat.refreshSessionsForWorkspace(workspaceId));
+  }
 }

@@ -1,92 +1,166 @@
-import 'dart:convert';
-
 import '../../models/home_closed_workspace_entry.dart';
+import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
+import '../shared_state/device_lane.dart';
+import '../shared_state/hlc.dart';
+import '../shared_state/shared_state_identity.dart';
+import '../shared_state/shared_state_store.dart';
 import '../storage/home_storage.dart';
+import 'home_workspace_shared_state.dart';
 
-/// Persists recently closed title-bar workspace tabs (most recent first).
+/// Persists this device's recently closed title-bar workspace tabs.
 class HomeClosedWorkspacesStore {
   HomeClosedWorkspacesStore({
     required HomeStorage storage,
     Filesystem? fs,
     String? pathOverride,
-  }) : _storage = storage,
-       _fsOverride = fs,
-       _pathOverride = pathOverride;
+    SharedStateStore? stateStore,
+    String? deviceId,
+    HlcClock? clock,
+  }) : _deviceId = _device(deviceId),
+       _clock = clock ?? SharedStateIdentity.clockFor(deviceId),
+       _state =
+           stateStore ??
+           SharedStateStore(
+             fs: fs ?? storage.fs,
+             path:
+                 pathOverride ??
+                 storage.paths.homeWorkspaceClosedWorkspacesJson,
+             clock: clock ?? SharedStateIdentity.clockFor(deviceId),
+             mergeRegistry: homeWorkspaceSharedStateRegistry,
+           );
 
   static const maxEntries = 20;
 
-  final HomeStorage _storage;
-  final Filesystem? _fsOverride;
-  final String? _pathOverride;
-
-  Filesystem get _fs => _fsOverride ?? _storage.fs;
-  String get _path =>
-      _pathOverride ?? _storage.paths.homeWorkspaceClosedWorkspacesJson;
+  final SharedStateStore _state;
+  final HlcClock _clock;
+  final String _deviceId;
 
   Future<List<HomeClosedWorkspaceEntry>> load() async {
     try {
-      final text = await _fs.readString(_path);
-      if (text == null || text.isEmpty) return [];
-      final root = (jsonDecode(text) as Map).cast<String, Object?>();
-      final entries = root['entries'];
-      if (entries is! List) return [];
-      final parsed = <HomeClosedWorkspaceEntry>[];
-      for (final raw in entries) {
-        if (raw is! Map) continue;
-        try {
-          final entry = HomeClosedWorkspaceEntry.fromJson(
-            raw.cast<String, Object?>(),
-          );
-          parsed.add(entry);
-        } catch (_) {
-          continue;
-        }
-      }
-      parsed.sort((a, b) => b.closedAt.compareTo(a.closedAt));
-      return parsed;
-    } catch (_) {
-      return [];
+      await _migrateLegacy();
+      final document = await _state.read();
+      final entries = closedWorkspacesOf(document).itemsFor(_deviceId);
+      return [...entries]..sort((a, b) => b.closedAt.compareTo(a.closedAt));
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[shared-state] closed workspaces load failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return const [];
     }
   }
 
   Future<void> recordClosed(HomeClosedWorkspaceEntry entry) async {
-    final trimmedId = entry.workspaceId.trim();
-    if (trimmedId.isEmpty) return;
-    final existing = await load();
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final next = [
-      HomeClosedWorkspaceEntry(
-        workspaceId: trimmedId,
-        displayName: entry.displayName,
-        primaryPath: entry.primaryPath,
-        closedAt: now,
-        topology: entry.topology,
-      ),
-      for (final e in existing)
-        if (e.tabKey != entry.tabKey) e,
-    ].take(maxEntries).toList();
-    await _save(next);
+    final workspaceId = entry.workspaceId.trim();
+    if (workspaceId.isEmpty) return;
+    try {
+      await _migrateLegacy();
+      await _state.update((document) {
+        final now = DateTime.now().millisecondsSinceEpoch;
+        final stamped = HomeClosedWorkspaceEntry(
+          workspaceId: workspaceId,
+          displayName: entry.displayName,
+          primaryPath: entry.primaryPath,
+          closedAt: now,
+          topology: entry.topology,
+        );
+        final current = closedWorkspacesOf(document).itemsFor(_deviceId);
+        final next = [
+          stamped,
+          for (final existing in current)
+            if (existing.tabKey != stamped.tabKey) existing,
+        ].take(maxEntries).toList();
+        final lanes = closedWorkspacesOf(document).put(
+          _deviceId,
+          DeviceLane<HomeClosedWorkspaceEntry>(
+            items: next,
+            stamp: _clock.now(),
+          ),
+        );
+        return document.withSection(
+          homeWorkspaceClosedWorkspacesSection,
+          encodeClosedLanes(lanes),
+        );
+      });
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[shared-state] closed workspaces record failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<void> remove(String tabKey) async {
     final trimmed = tabKey.trim();
     if (trimmed.isEmpty) return;
-    final next = [
-      for (final e in await load())
-        if (e.tabKey != trimmed) e,
-    ];
-    await _save(next);
+    try {
+      await _migrateLegacy();
+      await _state.update((document) {
+        final current = closedWorkspacesOf(document).itemsFor(_deviceId);
+        final next = [
+          for (final entry in current)
+            if (entry.tabKey != trimmed) entry,
+        ];
+        final lanes = closedWorkspacesOf(document).put(
+          _deviceId,
+          DeviceLane<HomeClosedWorkspaceEntry>(
+            items: next,
+            stamp: _clock.now(),
+          ),
+        );
+        return document.withSection(
+          homeWorkspaceClosedWorkspacesSection,
+          encodeClosedLanes(lanes),
+        );
+      });
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[shared-state] closed workspaces remove failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
-  Future<void> _save(List<HomeClosedWorkspaceEntry> entries) async {
-    final ctx = _fs.pathContext;
-    await _fs.ensureDir(ctx.dirname(_path));
-    await _fs.atomicWrite(
-      _path,
-      jsonEncode({
-        'entries': [for (final e in entries) e.toJson()],
-      }),
-    );
+  Future<void> _migrateLegacy() async {
+    final raw = await _state.readJson();
+    if (raw is! Map || raw['sections'] is Map) return;
+    final entriesRaw = raw['entries'];
+    if (entriesRaw is! List) return;
+    final entries = <HomeClosedWorkspaceEntry>[];
+    for (final rawEntry in entriesRaw) {
+      if (rawEntry is! Map) continue;
+      try {
+        entries.add(
+          HomeClosedWorkspaceEntry.fromJson(rawEntry.cast<String, Object?>()),
+        );
+      } on Object {
+        continue;
+      }
+    }
+    entries.sort((a, b) => b.closedAt.compareTo(a.closedAt));
+    await _state.update((document) {
+      final lanes = closedWorkspacesOf(document);
+      if (lanes.byDevice.containsKey(_deviceId)) return document;
+      final next = lanes.put(
+        _deviceId,
+        DeviceLane<HomeClosedWorkspaceEntry>(
+          items: entries.take(maxEntries).toList(),
+          stamp: legacyHlc(0),
+        ),
+      );
+      return document.withSection(
+        homeWorkspaceClosedWorkspacesSection,
+        encodeClosedLanes(next),
+      );
+    });
   }
+}
+
+String _device(String? deviceId) {
+  final trimmed = deviceId?.trim() ?? '';
+  return trimmed.isEmpty ? SharedStateIdentity.deviceId : trimmed;
 }

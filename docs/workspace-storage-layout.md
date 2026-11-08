@@ -47,6 +47,7 @@ Typical `<teampilotRoot>` paths:
   ui/                            # home workspace UI prefs (tabs, favorites, …)
   notifications.json
   event-transport.json           # loopback Event Transport advertisement (desktop server)
+  session-protocol.json          # loopback session protocol advertisement (desktop authority)
 ```
 
 Credentials are **split by ownership**:
@@ -113,6 +114,27 @@ This tree is **not** `~/.cursor` and **not** `cli-defaults`. `cli-defaults/{tool
 For `opencode`, `workspace/cache/cli/opencode/_shared/{package.json,package-lock.json,node_modules}` holds `@opencode/plugin`. A one-shot migrate moves those names out of `cli-defaults/opencode/` when the cache is empty.
 
 For `codex`, session `.tmp/plugins` and `plugins/cache` inherit `workspace/cache/cli/codex/_shared/`. Native plugin writes go through the session `CODEX_HOME` symlink into that cache. `cli-defaults/codex/.tmp` stays excluded from remote `cli-defaults` copy.
+
+### Off-home shared bundles (`<workRoot>/.teampilot-bundles/`)
+
+A session link into the global `plugins/` / `skills/` stores must also resolve on
+an **off-home** work machine (SSH, Termux). Instead of copying the tree into
+every session overlay, the launch apply-plan seeds it once per content
+generation:
+
+```
+<workRoot>/.teampilot-bundles/{stamp16}/{relative path}
+  .teampilot-bundle-stamp        # completion marker + source stamp
+```
+
+The session link (`runtime/{tool}/plugins/…`, `runtime/{tool}/skills/…`) points at
+that generation dir; a later launch with the same stamp only re-links (no bytes
+uploaded). VCS metadata (`.git`/`.hg`/`.svn`) and `.tmp` are never shipped. Old
+generations are not garbage-collected (a few MB each) so a session that is
+already running keeps its tree.
+
+Code: `services/chat/launch/staging/manifest/work_path_projector.dart`
+(`_seedSharedBundle`), `services/remote/runtime_materialization_policy.dart`.
 
 Session skills/plugins/MCP ids merge as `team > expert > workspace` via `LayeredConfigBundle` / `SessionRuntimePlan` (see [2026-07-10 expert capability pack](superpowers/specs/2026-07-10-expert-capability-pack-design.md)).
 

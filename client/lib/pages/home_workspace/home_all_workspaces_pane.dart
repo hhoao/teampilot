@@ -67,16 +67,12 @@ class _HomeAllWorkspacesPaneState extends State<HomeAllWorkspacesPane> {
 
   Future<void> _setGridView(bool gridView) async {
     setState(() => _gridView = gridView);
-    await _displayPrefsStore.save(
-      WorkspaceDisplayPrefs(gridView: gridView, sort: _workspaceSort),
-    );
+    await _displayPrefsStore.setGridView(gridView);
   }
 
   Future<void> _setWorkspaceSort(WorkspaceSort sort) async {
     setState(() => _workspaceSort = sort);
-    await _displayPrefsStore.save(
-      WorkspaceDisplayPrefs(gridView: _gridView, sort: sort),
-    );
+    await _displayPrefsStore.setSort(sort);
   }
 
   Future<void> _toggleWorkspaceFavorite(String workspaceId) async {

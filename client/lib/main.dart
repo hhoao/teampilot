@@ -732,6 +732,10 @@ void main() async {
                     BlocProvider.value(value: shell.sessionUsageCubit),
                     BlocProvider.value(value: shell.chatCubit),
                     BlocProvider.value(value: shell.memberPresenceCubit),
+                    BlocProvider.value(value: shell.sessionRemoteActivityCubit),
+                    RepositoryProvider.value(
+                      value: shell.sessionProtocolController,
+                    ),
                     BlocProvider.value(value: shell.agentAttentionCubit),
                     BlocProvider.value(value: shell.seatLeaseCubit),
                     BlocProvider.value(value: shell.mailboxCubit),
