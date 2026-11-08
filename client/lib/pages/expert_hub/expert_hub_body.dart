@@ -97,19 +97,13 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
                 onChanged: (s) => s == null ? null : widget.cubit.setSort(s),
               );
               final sourceWarning = _sourceWarning(context, state);
-              final refreshButton = IconButton(
+              final refreshButton = TpAnimatedIconButton(
                 key: const Key('expert-hub-refresh'),
                 tooltip: l10n.expertHubRefresh,
-                onPressed: state.refreshing
-                    ? null
-                    : () => widget.cubit.load(forceRefresh: true),
-                icon: state.refreshing
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(Icons.refresh, size: context.tpIconSizes.md),
+                icon: Icons.refresh,
+                busy: state.refreshing,
+                enabled: !state.refreshing,
+                onPressed: () => widget.cubit.load(forceRefresh: true),
               );
               final createButton = widget.showCreate
                   ? FilledButton.tonalIcon(

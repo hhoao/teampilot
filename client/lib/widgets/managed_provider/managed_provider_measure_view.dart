@@ -107,16 +107,14 @@ class ManagedProviderMeasureView extends StatelessWidget {
                 tone: TpStatusBadgeTone.warning,
               ),
             if (onRefresh != null)
-              IconButton(
+              TpAnimatedIconButton(
                 key: const Key('managed-provider-test-query'),
                 tooltip: l10n.managedProvidersTestQuery,
-                onPressed: refreshing ? null : onRefresh,
-                icon: refreshing
-                    ? const SizedBox.square(
-                        dimension: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.refresh_outlined),
+                icon: Icons.refresh_outlined,
+                iconSize: 20,
+                busy: refreshing,
+                enabled: !refreshing,
+                onPressed: onRefresh,
               ),
           ],
         ),

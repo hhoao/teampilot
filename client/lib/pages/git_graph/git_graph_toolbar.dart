@@ -62,57 +62,48 @@ class GitGraphToolbar extends StatelessWidget {
                       _branchFilterChip(context),
                     ],
                     const SizedBox(width: 6),
-                    TpIconButton(
+                    TpAnimatedIconButton(
                       key: const ValueKey('git-graph-fetch-button'),
                       icon: Icons.cloud_download_outlined,
-                      iconWidget: _spinnerFor(
-                        state.operation,
-                        GitOperation.fetch,
-                      ),
+                      busy: state.operation == GitOperation.fetch,
                       tooltip: state.operation == GitOperation.fetch
                           ? l10n.gitFetching
                           : l10n.gitGraphFetch,
                       compact: true,
                       enabled: !state.busy,
-                      onTap: () => _runAction(
+                      onPressed: () => _runAction(
                         context,
                         (actions) => actions.fetchAll(),
                         title: l10n.gitFetching,
                         doneMessage: l10n.gitFetchDone,
                       ),
                     ),
-                    TpIconButton(
+                    TpAnimatedIconButton(
                       key: const ValueKey('git-graph-pull-button'),
                       icon: Icons.arrow_downward_rounded,
-                      iconWidget: _spinnerFor(
-                        state.operation,
-                        GitOperation.pull,
-                      ),
+                      busy: state.operation == GitOperation.pull,
                       tooltip: state.operation == GitOperation.pull
                           ? l10n.gitPulling
                           : l10n.gitGraphPull,
                       compact: true,
                       enabled: !state.busy,
-                      onTap: () => _runAction(
+                      onPressed: () => _runAction(
                         context,
                         (actions) => actions.pull(),
                         title: l10n.gitPulling,
                         doneMessage: l10n.gitPullDone,
                       ),
                     ),
-                    TpIconButton(
+                    TpAnimatedIconButton(
                       key: const ValueKey('git-graph-push-button'),
                       icon: Icons.arrow_upward_rounded,
-                      iconWidget: _spinnerFor(
-                        state.operation,
-                        GitOperation.push,
-                      ),
+                      busy: state.operation == GitOperation.push,
                       tooltip: state.operation == GitOperation.push
                           ? l10n.gitPushing
                           : l10n.gitGraphPush,
                       compact: true,
                       enabled: !state.busy,
-                      onTap: () => _runAction(
+                      onPressed: () => _runAction(
                         context,
                         (actions) => actions.push(),
                         title: l10n.gitPushing,
@@ -136,22 +127,16 @@ class GitGraphToolbar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 4),
-          TpIconButton(
+          TpAnimatedIconButton(
             key: const ValueKey('git-graph-refresh-button'),
             icon: Icons.refresh_rounded,
-            iconWidget: state.isRefreshing
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : null,
+            busy: state.isRefreshing,
             tooltip: state.isRefreshing
                 ? l10n.gitRefreshing
                 : l10n.gitGraphRefresh,
             compact: true,
             enabled: !state.isRefreshing && !state.busy,
-            onTap: () => unawaited(
+            onPressed: () => unawaited(
               runGitOperation(
                 context,
                 workspaceId: workspaceId,
@@ -323,16 +308,6 @@ class GitGraphToolbar extends StatelessWidget {
       body: () => run(GitGraphActionsController(cubit: cubit)),
     );
   }
-}
-
-/// 14 px in-button spinner for the operation that owns the click.
-Widget? _spinnerFor(GitOperation? current, GitOperation target) {
-  if (current != target) return null;
-  return const SizedBox(
-    width: 14,
-    height: 14,
-    child: CircularProgressIndicator(strokeWidth: 2),
-  );
 }
 
 /// Stash 弹层：主菜单列出 `stashList`，选中条目再弹 Pop/Applly/Drop 子菜单

@@ -119,15 +119,11 @@ class _SkillInstalledSectionState extends State<SkillInstalledSection> {
                                 'skill_check_updates',
                                 cubit.checkUpdates,
                               ),
-                        icon: state.updatesLoading
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Icon(Icons.refresh, size: context.tpIconSizes.md),
+                        icon: TpAnimatedIcon(
+                          icon: Icons.refresh,
+                          size: context.tpIconSizes.md,
+                          loading: state.updatesLoading,
+                        ),
                         label: Text(
                           state.updatesLoading
                               ? l10n.skillsCheckingUpdates

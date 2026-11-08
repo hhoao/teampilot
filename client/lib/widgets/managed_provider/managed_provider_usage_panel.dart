@@ -165,7 +165,7 @@ class _PanelHeader extends StatelessWidget {
             expanded: true,
           ),
         ),
-        TpIconButton(
+        TpAnimatedIconButton(
           key: const Key('managed-provider-usage-refresh'),
           icon: Icons.refresh,
           tooltip: l10n.managedProvidersRetry,
@@ -173,8 +173,9 @@ class _PanelHeader extends StatelessWidget {
           iconSize: 15,
           compact: true,
           color: cs.onSurfaceVariant,
+          busy: refreshing,
           enabled: !refreshing,
-          onTap: onRefresh,
+          onPressed: onRefresh,
         ),
         TpIconButton(
           key: const Key('managed-provider-usage-manage'),

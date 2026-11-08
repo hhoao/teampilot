@@ -398,12 +398,12 @@ class _FileTreePanelState extends State<FileTreePanel> {
             : l10n.fileTreeShowFilter,
         onTap: _toggleFilterVisible,
       ),
-      TpIconButton(
+      TpAnimatedIconButton(
         icon: Icons.refresh,
         compact: true,
         size: TpIconButton.kCompactSize,
         tooltip: l10n.fileTreeRefresh,
-        onTap: _cubit.refresh,
+        onPressed: _cubit.refresh,
       ),
       TpIconButton(
         icon: Icons.my_location_outlined,

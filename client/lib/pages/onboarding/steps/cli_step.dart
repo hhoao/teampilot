@@ -368,7 +368,11 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
               builder: (context, busy, _) {
                 return OutlinedButton.icon(
                   onPressed: busy ? null : _detect,
-                  icon: Icon(Icons.refresh, size: context.tpIconSizes.md),
+                  icon: TpAnimatedIcon(
+                    icon: Icons.refresh,
+                    size: context.tpIconSizes.md,
+                    loading: busy,
+                  ),
                   label: Text(l10n.onboardingCliRedetect),
                 );
               },

@@ -154,14 +154,13 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
             title: l10n.mcpInstalledCount(servers.length),
             trailing: TpActionRow(
               children: [
-                IconButton(
+                TpAnimatedIconButton(
                   key: const Key('mcp-probe-refresh-all'),
                   tooltip: l10n.mcpProbeRefreshAll,
-                  onPressed: toolbarBusy ? null : cubit.refreshAll,
-                  icon: Icon(
-                    Icons.refresh_outlined,
-                    size: context.tpIconSizes.md,
-                  ),
+                  icon: Icons.refresh_outlined,
+                  busy: toolbarBusy,
+                  enabled: !toolbarBusy,
+                  onPressed: cubit.refreshAll,
                 ),
                 OutlinedButton.icon(
                   onPressed: toolbarBusy ? null : widget.onImport,

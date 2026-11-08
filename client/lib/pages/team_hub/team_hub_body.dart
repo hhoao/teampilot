@@ -64,19 +64,13 @@ class TeamHubBody extends StatelessWidget {
                 onChanged: (s) => s == null ? null : cubit.setSort(s),
               );
               final sourceWarning = _sourceWarning(context, state);
-              final refreshButton = IconButton(
+              final refreshButton = TpAnimatedIconButton(
                 key: const Key('team-hub-refresh'),
                 tooltip: l10n.teamHubRefresh,
-                onPressed: state.refreshing
-                    ? null
-                    : () => cubit.load(forceRefresh: true),
-                icon: state.refreshing
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(Icons.refresh, size: context.tpIconSizes.md),
+                icon: Icons.refresh,
+                busy: state.refreshing,
+                enabled: !state.refreshing,
+                onPressed: () => cubit.load(forceRefresh: true),
               );
               if (stackControls) {
                 return Column(

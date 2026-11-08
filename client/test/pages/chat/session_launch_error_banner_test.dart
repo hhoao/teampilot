@@ -80,7 +80,13 @@ void main() {
       find.byKey(AppKeys.sessionLaunchErrorRetryButton),
     );
     expect(button.onPressed, isNull);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    final icon = tester.widget<TpAnimatedIcon>(
+      find.descendant(
+        of: find.byKey(AppKeys.sessionLaunchErrorRetryButton),
+        matching: find.byType(TpAnimatedIcon),
+      ),
+    );
+    expect(icon.loading, isTrue);
   });
 
   testWidgets('compact shows short title, not raw error', (tester) async {

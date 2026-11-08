@@ -237,9 +237,11 @@ class _McpToolsDialogFooter extends StatelessWidget {
               OutlinedButton.icon(
                 key: const Key('mcp-tools-reload'),
                 onPressed: checking ? null : onReload,
-                icon: checking
-                    ? TpIndeterminateSpinner(size: iconSize)
-                    : Icon(Icons.refresh, size: iconSize),
+                icon: TpAnimatedIcon(
+                  icon: Icons.refresh,
+                  size: iconSize,
+                  loading: checking,
+                ),
                 label: Text(l10n.mcpToolsReload),
               ),
               const Spacer(),

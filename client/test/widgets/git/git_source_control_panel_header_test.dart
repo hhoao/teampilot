@@ -221,40 +221,34 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('git-push-button')));
     await tester.pump();
 
-    expect(
-      find.descendant(
-        of: find.byKey(const ValueKey('git-push-button')),
-        matching: find.byType(CircularProgressIndicator),
-      ),
-      findsOneWidget,
+    final pushSpin = find.descendant(
+      of: find.byKey(const ValueKey('git-push-button')),
+      matching: find.byType(RotationTransition),
     );
-    expect(
-      tester
-          .widget<TpIconButton>(find.byKey(const ValueKey('git-fetch-button')))
-          .enabled,
-      isFalse,
-    );
-    expect(
-      tester
-          .widget<TpIconButton>(
-            find.byKey(const ValueKey('git-refresh-button')),
-          )
-          .enabled,
-      isFalse,
-    );
+    expect(pushSpin, findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(tester.widget<RotationTransition>(pushSpin).turns.value, isNot(0));
+    expect(_buttonEnabled(tester, 'git-fetch-button'), isFalse);
+    expect(_buttonEnabled(tester, 'git-refresh-button'), isFalse);
 
     stub.pushGate!.complete();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(
-      tester
-          .widget<TpIconButton>(find.byKey(const ValueKey('git-fetch-button')))
-          .enabled,
-      isTrue,
-    );
+    expect(_buttonEnabled(tester, 'git-fetch-button'), isTrue);
 
     AppToast.dismiss();
     await tester.pump(const Duration(seconds: 1));
   });
+}
+
+bool _buttonEnabled(WidgetTester tester, String key) {
+  return tester
+      .widget<TpIconButton>(
+        find.descendant(
+          of: find.byKey(ValueKey(key)),
+          matching: find.byType(TpIconButton),
+        ),
+      )
+      .enabled;
 }

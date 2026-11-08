@@ -1151,59 +1151,53 @@ class _HeaderState extends State<_Header> {
                           enabled: widget.canGenerate,
                           onTap: widget.onGenerate,
                         ),
-                        TpIconButton(
+                        TpAnimatedIconButton(
                           key: const ValueKey('git-fetch-button'),
                           icon: Icons.cloud_download_outlined,
-                          iconWidget: _spinnerFor(
-                            operation,
-                            GitOperation.fetch,
-                          ),
+                          busy: operation == GitOperation.fetch,
                           compact: true,
                           size: TpIconButton.kCompactSize,
                           tooltip: operation == GitOperation.fetch
                               ? l10n.gitFetching
                               : l10n.gitFetch,
                           enabled: !busy,
-                          onTap: widget.onFetch,
+                          onPressed: widget.onFetch,
                         ),
-                        TpIconButton(
+                        TpAnimatedIconButton(
                           key: const ValueKey('git-pull-button'),
                           icon: Icons.download_outlined,
-                          iconWidget: _spinnerFor(operation, GitOperation.pull),
+                          busy: operation == GitOperation.pull,
                           compact: true,
                           size: TpIconButton.kCompactSize,
                           tooltip: operation == GitOperation.pull
                               ? l10n.gitPulling
                               : l10n.gitPull,
                           enabled: !busy,
-                          onTap: widget.onPull,
+                          onPressed: widget.onPull,
                         ),
-                        TpIconButton(
+                        TpAnimatedIconButton(
                           key: const ValueKey('git-push-button'),
                           icon: Icons.upload_outlined,
-                          iconWidget: _spinnerFor(operation, GitOperation.push),
+                          busy: operation == GitOperation.push,
                           compact: true,
                           size: TpIconButton.kCompactSize,
                           tooltip: operation == GitOperation.push
                               ? l10n.gitPushing
                               : l10n.gitPush,
                           enabled: !busy,
-                          onTap: widget.onPush,
+                          onPressed: widget.onPush,
                         ),
-                        TpIconButton(
+                        TpAnimatedIconButton(
                           key: const ValueKey('git-refresh-button'),
                           icon: Icons.refresh,
-                          iconWidget: _spinnerFor(
-                            operation,
-                            GitOperation.refresh,
-                          ),
+                          busy: operation == GitOperation.refresh,
                           compact: true,
                           size: TpIconButton.kCompactSize,
                           tooltip: operation == GitOperation.refresh
                               ? l10n.gitRefreshing
                               : l10n.gitRefresh,
                           enabled: !busy,
-                          onTap: widget.onRefresh,
+                          onPressed: widget.onRefresh,
                         ),
                       ],
                     ),

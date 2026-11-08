@@ -49,7 +49,7 @@ class ResourceManagerPanel extends StatelessWidget {
             children: [
               _Header(
                 hasError: state.error != null,
-                onRefresh: () => unawaited(cubit.refresh()),
+                onRefresh: cubit.refresh,
                 onKillAll: () => unawaited(_confirmKillAll(context, cubit)),
               ),
               if (state.error != null)
@@ -124,7 +124,7 @@ class _Header extends StatelessWidget {
   });
 
   final bool hasError;
-  final VoidCallback onRefresh;
+  final Future<void> Function() onRefresh;
   final VoidCallback onKillAll;
 
   @override
@@ -156,14 +156,14 @@ class _Header extends StatelessWidget {
                 color: cs.error.withValues(alpha: 0.8),
               ),
             ),
-          TpIconButton(
+          TpAnimatedIconButton(
             icon: Icons.refresh,
             tooltip: l10n.resourceManagerRefresh,
             size: 26,
             iconSize: 14,
             compact: true,
             color: cs.onSurfaceVariant,
-            onTap: onRefresh,
+            onPressed: onRefresh,
           ),
           TpIconButton(
             icon: Icons.delete_outline,

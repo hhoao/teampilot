@@ -313,20 +313,16 @@ class _Actions extends StatelessWidget {
       key: Key('managed-provider-actions-${provider.id}'),
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconButton(
+        TpAnimatedIconButton(
           key: const Key('managed-provider-test-query'),
           tooltip: l10n.managedProvidersTestQuery,
-          onPressed: refreshing ? null : () => onRefresh(provider),
-          icon: refreshing
-              ? SizedBox.square(
-                  dimension: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: cs.primary,
-                  ),
-                )
-              : const Icon(Icons.refresh_outlined, size: 20),
-          visualDensity: VisualDensity.compact,
+          icon: Icons.refresh_outlined,
+          iconSize: 20,
+          compact: true,
+          color: cs.onSurfaceVariant,
+          busy: refreshing,
+          enabled: !refreshing,
+          onPressed: () => onRefresh(provider),
         ),
         IconButton(
           tooltip: provider.enabled

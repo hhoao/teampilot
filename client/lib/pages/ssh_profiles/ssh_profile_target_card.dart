@@ -209,10 +209,15 @@ class SshProfileTargetCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _IconAction(
+        TpAnimatedIconButton(
           tooltip: l10n.sshProfileRefresh,
           icon: Icons.refresh,
-          onPressed: busy ? null : onRefresh,
+          iconSize: 20,
+          compact: true,
+          color: cs.onSurfaceVariant,
+          busy: busy,
+          enabled: !busy,
+          onPressed: onRefresh,
         ),
         _IconAction(
           tooltip: l10n.sshProfileEdit,

@@ -93,16 +93,11 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
                   ),
                   SessionLaunchFailureActionKind.retry => TextButton.icon(
                     key: AppKeys.sessionLaunchErrorRetryButton,
-                    icon: widget.isRetrying
-                        ? SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: cs.primary,
-                            ),
-                          )
-                        : const Icon(Icons.refresh_rounded, size: 16),
+                    icon: TpAnimatedIcon(
+                      icon: Icons.refresh_rounded,
+                      size: 16,
+                      loading: widget.isRetrying,
+                    ),
                     label: Text(l10n.sessionRetryButton),
                     onPressed: widget.isRetrying ? null : widget.onRetry,
                   ),

@@ -157,7 +157,11 @@ class _OnboardingProviderImportStepState
               alignment: Alignment.centerLeft,
               child: OutlinedButton.icon(
                 onPressed: _import,
-                icon: Icon(Icons.refresh, size: context.tpIconSizes.md),
+                icon: TpAnimatedIcon(
+                  icon: Icons.refresh,
+                  size: context.tpIconSizes.md,
+                  loading: _importing,
+                ),
                 label: Text(l10n.onboardingProviderImportRescan),
               ),
             ),
