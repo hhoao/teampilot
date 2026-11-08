@@ -28,7 +28,7 @@ bool _memberAcpGates({
   if (cli == null) return false;
   final registry = CliToolRegistry.builtIn();
   if (registry.capability<AcpCapability>(cli) == null) return false;
-  if (registry.capability<AcpLocalOnlyCapability>(cli) != null &&
+  if (registry.capability<AcpNoPtyFallbackCapability>(cli) != null &&
       runtimeKindOfId(targetId) != RuntimeKind.local) {
     return false;
   }

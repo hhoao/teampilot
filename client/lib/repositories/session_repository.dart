@@ -935,7 +935,7 @@ class SessionRepository {
     final registry = CliToolRegistry.builtIn();
     final localOnly =
         cli != null &&
-        registry.capability<AcpLocalOnlyCapability>(cli) != null;
+        registry.capability<AcpNoPtyFallbackCapability>(cli) != null;
     final primaryTargetId = workspace.folders.isEmpty
         ? WorkspaceFolder.localTargetId
         : workspace.folders.first.targetId;

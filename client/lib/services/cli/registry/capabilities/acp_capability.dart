@@ -11,10 +11,10 @@ typedef AcpCredentialSource = String? Function();
 /// Each ACP-capable CLI exposes: the argv candidates to probe (preference
 /// order — the runtime tries the first, falls back on failure), its
 /// per-agent translator, and the isolated environment for the agent process.
-/// Marker for an ACP agent whose adapter is local-only (no remote install).
-/// Mixed seats on SSH/Termux targets stay on PTY instead of starting a broken
-/// ACP session.
-abstract interface class AcpLocalOnlyCapability implements CliCapability {}
+/// Marker for an ACP agent that has no useful PTY fallback when ACP attach
+/// fails. Gemini/CodeBuddy/Qoder historically fall through to PTY; Antigravity
+/// does not.
+abstract interface class AcpNoPtyFallbackCapability implements CliCapability {}
 
 /// Marker for an ACP agent that appends `usage_update` samples to the per-seat
 /// ACP usage JSONL sink. Call sites read this instead of comparing CLI ids.

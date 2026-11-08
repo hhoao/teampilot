@@ -50,7 +50,7 @@ AppSession buildProvisionalSession({
   final launchCli = identity?.cli ?? cli;
   final localOnly =
       launchCli != null &&
-      registry.capability<AcpLocalOnlyCapability>(launchCli) != null;
+      registry.capability<AcpNoPtyFallbackCapability>(launchCli) != null;
   final targetLocal = home == null || home.kind == RuntimeKind.local;
   final resolvedAcp =
       trimmedTeam.isEmpty &&

@@ -206,10 +206,9 @@ class SessionLaunchService
   /// connect as failed instead of spawning a PTY for a CLI that never uses one.
   @override
   bool supportsPtyTransport(CliTool cli) {
-    // Only local-only adapters (Antigravity in Phase 1) have no useful PTY
-    // fallback. Gemini/CodeBuddy are ACP-only but keep their existing
-    // attach-decline behavior.
-    return _h.cliRegistry.capability<AcpLocalOnlyCapability>(cli) == null;
+    // Antigravity has no useful PTY fallback. Gemini/CodeBuddy are ACP-only
+    // but keep their existing attach-decline behavior.
+    return _h.cliRegistry.capability<AcpNoPtyFallbackCapability>(cli) == null;
   }
 
   ChatDataSnapshot get _state => _h.stateSnapshot();

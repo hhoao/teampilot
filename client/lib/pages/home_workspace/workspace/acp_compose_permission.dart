@@ -44,7 +44,7 @@ bool willLaunchAcp({
   if (_isAndroid(isAndroidOverride)) return false;
   if (targetId != null &&
       cli != null &&
-      CliToolRegistry.builtIn().capability<AcpLocalOnlyCapability>(cli) !=
+      CliToolRegistry.builtIn().capability<AcpNoPtyFallbackCapability>(cli) !=
           null &&
       runtimeKindOfId(targetId) != RuntimeKind.local) {
     return false;
