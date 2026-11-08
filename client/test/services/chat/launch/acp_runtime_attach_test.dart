@@ -42,9 +42,15 @@ import 'package:teampilot/services/chat/session/session_lifecycle_service.dart'
 import 'package:teampilot/services/chat/session/session_open_request.dart';
 import 'package:teampilot/services/chat/team_bus/agent_node.dart';
 import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_gateway_port.dart';
+import 'package:teampilot/services/chat/team_bus/remote/member_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/remote/remote_member_bus_setup.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
+import 'package:teampilot/services/ssh/ssh_member_session.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/acp.dart'
     show opencodeEnableQuestionToolEnvKey;
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
@@ -413,6 +419,55 @@ void main() {
     expect(harness.runtime.baseEnv['PATH'], isNot(Platform.environment['PATH']));
   });
 
+  test('remote mixed ACP seat binds the remote bus', () async {
+    final gateway = _FakeAgentStatusGateway()..sessionRegistered = true;
+    final busSetup = _RecordingRemoteBusSetup();
+    final harness = _Harness(
+      extra: null,
+      gateway: gateway,
+      remoteBusSetup: busSetup,
+      sshLaunchFactory: ({required session, required launchTarget}) => (
+        profile: const SshProfile(
+          id: 'p1',
+          name: 'host',
+          host: 'host',
+          username: 'u',
+          authType: SshAuthType.password,
+        ),
+        openChannel: (_) async => throw UnimplementedError(),
+      ),
+    );
+    harness.tab.teamBus = TeamBus(launcher: FakeMemberLauncher());
+    harness.tab.memberSshSessions['lead'] = _FakeMemberSshSession();
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      sessionTeam: 'team-1',
+      members: const [
+        SessionMemberBinding(
+          rosterMemberId: 'lead',
+          taskId: 'task-lead',
+          cli: CliTool.claude,
+          acp: true,
+        ),
+      ],
+      memberTargets: const {'lead': 'ssh:p1'},
+      createdAt: 1,
+    );
+    final team = _mixedTeam();
+    final member = _lead();
+
+    final handled = await harness.service.attachMemberAcpRuntime(
+      _job(session, team, member),
+      session,
+      (team: team, member: member, cli: CliTool.claude),
+    );
+
+    expect(handled, isTrue);
+    expect(busSetup.calls, 1);
+    expect(harness.runtime.mcpServers, isNotEmpty);
+  });
+
   test(
     'attachMemberAcpRuntime fails loudly when a remote seat has no staged CLI',
     () async {
@@ -702,7 +757,11 @@ void main() {
 
 class _FakeAgentStatusGateway implements TeammateBusMcpGatewayPort {
   int ensureStartedCalls = 0;
+  bool sessionRegistered = false;
   final registeredSessions = <String>[];
+
+  @override
+  bool isSessionRegistered(String sessionId) => sessionRegistered;
 
   @override
   Future<void> ensureStarted() async {
@@ -792,6 +851,7 @@ class _Harness {
     this.sshLaunchFactory,
     this.gateway,
     this.seatLookup,
+    this.remoteBusSetup,
     this.onTeamAgentStatus,
   }) : launchTarget = launchTarget ?? RuntimeTarget.local() {
     tabStore.setActiveWorkspaceId('w1');
@@ -804,6 +864,7 @@ class _Harness {
         this.launchTarget,
         gateway: gateway,
         seatLookup: seatLookup,
+        remoteBusSetup: remoteBusSetup,
       ),
       storage: fakeHomeStorage(),
       acpRuntimeFactory: ({required logger, required tool}) => runtime,
@@ -840,14 +901,16 @@ class _Harness {
               remoteCliPath: prepareTeamRemoteCliPath,
             );
           },
-      acpMemberExtraMcp: ({required session, required member}) => extra,
+      acpMemberExtraMcp: extra == null
+          ? null
+          : ({required session, required member}) => extra!,
       acpMemberLifecycleGate: gate,
       prepareAcpRemoteStaging: remoteStaging,
       prepareAcpSshLaunch: sshLaunchFactory,
     );
   }
 
-  final Map<String, Map<String, Object?>> extra;
+  final Map<String, Map<String, Object?>>? extra;
   final AcpMemberLifecycleGate? gate;
   final String prepareTeamRemoteCliPath;
   final RuntimeTarget launchTarget;
@@ -855,6 +918,7 @@ class _Harness {
   final AcpSshLaunchFactory? sshLaunchFactory;
   final TeammateBusMcpGatewayPort? gateway;
   final AgentStatusSeatLookupPort? seatLookup;
+  final RemoteMemberBusSetupPort? remoteBusSetup;
   final void Function(MemberAgentStatusEndpoint? endpoint)? onTeamAgentStatus;
   final runtime = _RecordingAcpRuntime();
   late final _RecordingMaterializer materializer;
@@ -953,6 +1017,17 @@ class _FakeLifecycle implements SessionLifecycleService {
   }) => _target;
 
   @override
+  Future<RuntimeContext> resolveWorkContextForTargetId(String targetId) async =>
+      RuntimeContext(
+        target: _target,
+        filesystem: InMemoryFilesystem(),
+        home: '/home',
+        cwd: '/home',
+        appDataRoot: '/app',
+        paths: AppPaths('/app'),
+      );
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -963,6 +1038,7 @@ class _Host implements SessionLaunchHost {
     this._launchTarget, {
     this.gateway,
     this.seatLookup,
+    this.remoteBusSetup,
     ChatSessionShellFactory? shellFactory,
   }) : _shellFactory = shellFactory;
 
@@ -977,6 +1053,9 @@ class _Host implements SessionLaunchHost {
   final RuntimeTarget _launchTarget;
 
   final TeammateBusMcpGatewayPort? gateway;
+
+  @override
+  final RemoteMemberBusSetupPort? remoteBusSetup;
 
   @override
   TeammateBusMcpGatewayPort get teammateBusMcpGateway =>
@@ -1231,4 +1310,47 @@ class _NoopSink implements StreamSink<List<int>> {
 
   @override
   Future<void> get done async {}
+}
+class _RecordingRemoteBusSetup implements RemoteMemberBusSetupPort {
+  int calls = 0;
+
+  @override
+  Future<RemoteBusBinding> mountAndBindMixed({
+    required ChatTab tab,
+    required String memberId,
+    required CliTool cli,
+    required SshMemberSession memberSession,
+    required TeammateBusMcpGatewayPort gateway,
+    required Filesystem storageFs,
+    required String arch,
+  }) async {
+    calls++;
+    return const RemoteBusBinding(
+      token: 'token',
+      idleHttpTunnelPort: 4567,
+      mcpRawTunnelPort: 4568,
+      mcpRelayArgv: ['/usr/local/bin/teammate-bus-relay', '4568'],
+      mcpHttpTunnelPort: 4567,
+    );
+  }
+
+  @override
+  Future<RemoteBusBinding> mountAndBindStatusOnly({
+    required ChatTab tab,
+    required String memberId,
+    required SshMemberSession memberSession,
+    required TeammateBusMcpGatewayPort gateway,
+    required Filesystem storageFs,
+    required String arch,
+    required String token,
+  }) async => throw UnimplementedError();
+}
+
+class _FakeMemberSshSession implements SshMemberSession {
+  @override
+  Future<String> run(String command) async =>
+      command == 'uname -m' ? 'x86_64' : '';
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

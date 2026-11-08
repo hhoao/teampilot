@@ -27,6 +27,8 @@ import '../../../ssh/ssh_member_session.dart';
 import '../../../storage/home_storage.dart';
 import '../../../storage/runtime_context.dart';
 import '../../team_bus/mcp/member_bus_mcp_transport_resolver.dart';
+import '../../team_bus/remote/member_bus_mcp_config.dart';
+import '../../team_bus/remote/remote_member_bus_setup.dart';
 import '../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../team_bus/mcp/teammate_bus_mcp_gateway_port.dart';
 import '../../runtime/runtime_extra_mcp_servers.dart';
@@ -363,6 +365,29 @@ class AcpRuntimeAttach {
       throw StateError('Team session requires workspace');
     }
     final cli = resolved.cli;
+    final remote = usesSshTransport(launchTarget.kind);
+    RemoteBusBinding? mixedRemoteBinding;
+    if (remote && team.teamMode == TeamMode.mixed && tab.teamBus != null) {
+      final gateway = _host.teammateBusMcpGateway;
+      await gateway.ensureStarted();
+      final mixedBus = gateway.isSessionRegistered(session.sessionId);
+      if (mixedBus && remote) {
+        final memberSession = await _memberSshSession(
+          tab: tab,
+          session: session,
+          launchTarget: launchTarget,
+          key: member.id,
+        );
+        mixedRemoteBinding = await _bindMixedRemoteBus(
+          tab: tab,
+          session: session,
+          launchTarget: launchTarget,
+          member: member,
+          cli: cli,
+          memberSession: memberSession,
+        );
+      }
+    }
     final injectedExtra = extraMcpForMember?.call(
       session: session,
       member: member,
@@ -377,6 +402,7 @@ class AcpRuntimeAttach {
           cli: cli,
           launchTarget: launchTarget,
           workspace: workspace,
+          mixedRemoteBinding: mixedRemoteBinding,
         );
     final work = session.workDirsForMember(
       member.id,
@@ -428,7 +454,6 @@ class AcpRuntimeAttach {
         '[session-launch] acp member lifecycle gate done member=${member.id}',
       );
     }
-    final remote = usesSshTransport(launchTarget.kind);
     final executable = remote
         ? _remoteMemberExecutable(staged)
         : _host.shellFactory.executableFor(cli);
@@ -923,6 +948,57 @@ class AcpRuntimeAttach {
     return launchWorkTarget(session, memberId: memberId);
   }
 
+  Future<SshMemberSession> _memberSshSession({
+    required ChatTab tab,
+    required AppSession session,
+    required RuntimeTarget launchTarget,
+    required String key,
+  }) async {
+    final existing = tab.memberSshSessions[key];
+    if (existing != null) return existing;
+    final factory = _host.shellFactory.sshClientFactory;
+    final profile = _host.shellFactory.profileFor(launchTarget);
+    if (factory == null || profile == null) {
+      throw StateError(
+        'ACP remote session requires an SSH profile and client factory',
+      );
+    }
+    final opened = await SshMemberSession.open(factory, profile);
+    tab.memberSshSessions[key] = opened;
+    return opened;
+  }
+
+  Future<RemoteBusBinding> _bindMixedRemoteBus({
+    required ChatTab tab,
+    required AppSession session,
+    required RuntimeTarget launchTarget,
+    required TeamMemberConfig member,
+    required CliTool cli,
+    required SshMemberSession memberSession,
+  }) async {
+    final setup = _host.remoteBusSetup;
+    if (setup == null) {
+      throw StateError(
+        'remoteBusSetup is not wired for a remote mixed ACP seat',
+      );
+    }
+    final workCtx = await _host.lifecycle.resolveWorkContextForTargetId(
+      launchTarget.id,
+    );
+    final arch = archFromUname(await memberSession.run('uname -m'));
+    return setup
+        .mountAndBindMixed(
+          tab: tab,
+          memberId: member.id,
+          cli: cli,
+          memberSession: memberSession,
+          gateway: _host.teammateBusMcpGateway,
+          storageFs: workCtx.fs,
+          arch: arch,
+        )
+        .timeout(const Duration(seconds: 45));
+  }
+
   Future<Map<String, Map<String, Object?>>> _productionExtraMcp({
     required ChatTab tab,
     required AppSession session,
@@ -931,6 +1007,7 @@ class AcpRuntimeAttach {
     required CliTool cli,
     required RuntimeTarget launchTarget,
     required Workspace workspace,
+    RemoteBusBinding? mixedRemoteBinding,
   }) async {
     final gateway = _host.teammateBusMcpGateway;
     await gateway.ensureStarted();
@@ -948,6 +1025,7 @@ class AcpRuntimeAttach {
           memberId: member.id,
           cli: cli,
           isLocalNative: isLocalNative,
+          remoteBinding: mixedRemoteBinding,
         ),
     };
     return composeRuntimeExtraMcpServers(
@@ -961,6 +1039,7 @@ class AcpRuntimeAttach {
       composerEndpoint: gateway.teamComposerMcpEndpoint,
       isLocalNative: isLocalNative,
       teamGenerationTokenIssuer: _host.teamGenerationTokenIssuer,
+      mixedRemoteBinding: mixedRemoteBinding,
       workspace: workspace,
       sessionSshMcpEndpoint: gateway.sessionSshMcpEndpoint,
     );
