@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/ssh_connection_cubit.dart';
 import '../../cubits/ssh_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/remote_target.dart';
+import '../../models/ssh_profile.dart';
+import '../../repositories/plane_ssh_profile_repository.dart';
 import '../../repositories/remote_target_repository.dart';
 import '../../repositories/ssh_credential_store.dart';
-import '../../repositories/plane_ssh_profile_repository.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../../repositories/ssh_server_profile_repository.dart';
 import '../../services/storage/home_storage.dart';
@@ -19,17 +21,18 @@ import '../ssh_profiles/ssh_profiles_section.dart';
 
 /// SSH server management for the current home plane.
 ///
-/// This is the same full-featured list as the normal SSH servers page — add,
-/// import, edit, test, connect, delete — but bound to the catalog stored *on
-/// the home plane*: the remote host's own `remote-targets.json` merged with the
-/// shared `ssh_profiles/profiles.json`. This device's own targets never appear
-/// here, and every add/edit/delete executes on the home plane, so the list is
-/// shared by every device paired to it.
+/// Same page and same actions as the desktop SSH servers page — add, import,
+/// edit, test, connect, delete — but bound to the catalog stored *on the home
+/// plane*: the remote host's own `remote-targets.json` merged with the shared
+/// `ssh_profiles/profiles.json`. On a local home this is exactly the desktop
+/// catalog; on a remote home it is that host's catalog. This device's own
+/// targets never appear here, and every add/edit/delete executes on the plane,
+/// so paired devices share the list.
 ///
-/// Credentials and the live SSH transport cannot travel, so plane entries are
-/// mirrored into the device catalog without credentials: that is what lets the
-/// shared row actions test and connect. Missing credentials are entered through
-/// the editor on first use.
+/// Credentials and the live SSH transport cannot travel. A plane server is
+/// registered in the device catalog only when the user connects to it, which is
+/// what makes it show up under "Remote connections" — the mobile list of
+/// connections this device has actually made.
 class SshProfilesConfigWorkspace extends StatefulWidget {
   const SshProfilesConfigWorkspace({this.showHeading = true, super.key});
 
@@ -45,6 +48,7 @@ class _SshProfilesConfigWorkspaceState extends State<SshProfilesConfigWorkspace>
   SshProfileCubit? _planeCubit;
   RemoteTargetRepository? _deviceTargets;
   SshProfileCubit? _deviceCubit;
+  SshConnectionCubit? _connections;
 
   @override
   void didChangeDependencies() {
@@ -55,6 +59,7 @@ class _SshProfilesConfigWorkspaceState extends State<SshProfilesConfigWorkspace>
     // catalog, the one the rest of the app and the connection layer use.
     _deviceTargets = context.read<SshProfileRepository>().targetRepo;
     _deviceCubit = context.read<SshProfileCubit>();
+    _connections = context.read<SshConnectionCubit>();
     final plane = PlaneSshProfileRepository(
       storage: storage,
       servers: SshServerProfileRepository(storage: storage),
@@ -65,7 +70,6 @@ class _SshProfilesConfigWorkspaceState extends State<SshProfilesConfigWorkspace>
       credentialStore: context.read<SshCredentialStore>(),
       vaultCapture: context.read<VaultCredentialCapture>(),
     )..load();
-    _mirrorPlaneServers();
   }
 
   @override
@@ -74,21 +78,18 @@ class _SshProfilesConfigWorkspaceState extends State<SshProfilesConfigWorkspace>
     super.dispose();
   }
 
-  /// Mirrors plane-only servers into the device catalog without credentials so
-  /// test/connect can run against them. The page itself still lists the plane
-  /// catalog, so local-only targets never show up here.
-  Future<void> _mirrorPlaneServers() async {
-    final plane = _planeRepository;
+  /// Registers a plane server in the device catalog right before connecting, so
+  /// the connection layer knows it and it appears under "Remote connections".
+  /// Servers merely browsed here are not recorded as connections.
+  Future<bool> _registerConnection(SshProfile profile) async {
     final device = _deviceTargets;
     final deviceCubit = _deviceCubit;
-    if (plane == null || device == null || deviceCubit == null) return;
+    final connections = _connections;
+    if (device == null || deviceCubit == null || connections == null) {
+      return true;
+    }
     try {
-      final planes = await plane.loadAll();
-      if (planes.isEmpty) return;
-      final known = (await device.loadAll()).map((t) => t.id).toSet();
-      var added = false;
-      for (final profile in planes) {
-        if (known.contains(profile.id)) continue;
+      if (await device.findById(profile.id) == null) {
         await device.save(
           RemoteTarget(
             id: profile.id,
@@ -103,16 +104,17 @@ class _SshProfilesConfigWorkspaceState extends State<SshProfilesConfigWorkspace>
             updatedAt: profile.updatedAt,
           ),
         );
-        added = true;
       }
-      if (added) await deviceCubit.load();
+      await deviceCubit.load();
+      await connections.syncProfiles(deviceCubit.state.profiles);
+      return true;
     } on Object catch (error, stackTrace) {
-      // Never let mirroring hide the catalog the user does have.
       AppLogger.instance.w(
-        '[ssh-servers] could not mirror home-plane servers',
+        '[ssh-servers] could not register the connection',
         error: error,
         stackTrace: stackTrace,
       );
+      return true;
     }
   }
 
@@ -132,10 +134,13 @@ class _SshProfilesConfigWorkspaceState extends State<SshProfilesConfigWorkspace>
           children: [
             if (widget.showHeading)
               WorkspacePaneHeader(title: context.l10n.sshProfilesPageTitle),
-            const Expanded(
+            Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.all(16),
-                child: SshProfilesSection(showRemoteConfig: true),
+                padding: const EdgeInsets.all(16),
+                child: SshProfilesSection(
+                  showRemoteConfig: true,
+                  beforeConnect: _registerConnection,
+                ),
               ),
             ),
           ],

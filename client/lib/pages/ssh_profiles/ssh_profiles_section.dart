@@ -26,7 +26,11 @@ import 'ssh_profile_target_config_dialog.dart';
 
 /// Orca-style SSH target list for settings (desktop + Android).
 class SshProfilesSection extends StatefulWidget {
-  const SshProfilesSection({super.key, this.showRemoteConfig = true});
+  const SshProfilesSection({
+    super.key,
+    this.showRemoteConfig = true,
+    this.beforeConnect,
+  });
 
   /// Dead-but-planned: the "remote config" editor operates on a local
   /// [SshProfile], not the remote server model, and production callers all
@@ -34,6 +38,11 @@ class SshProfilesSection extends StatefulWidget {
   /// adds full remote-config editing (credential push / port-forward /
   /// root sandbox); this increment ships the SSH servers page read-only.
   final bool showRemoteConfig;
+
+  /// Runs before a connect starts and can abort it by returning false. The
+  /// home-plane surface uses it to register the plane server in the device
+  /// catalog, which is what the connection layer reads.
+  final Future<bool> Function(SshProfile profile)? beforeConnect;
 
   @override
   State<SshProfilesSection> createState() => _SshProfilesSectionState();
@@ -90,6 +99,9 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
 
   Future<void> _connect(SshProfile profile) async {
     if (!await _ensureVaultUnlockedFor(profile)) return;
+    if (!mounted) return;
+    final before = widget.beforeConnect;
+    if (before != null && !await before(profile)) return;
     if (!mounted) return;
     await context.read<SshConnectionCubit>().connect(profile.id);
     if (!mounted) return;
