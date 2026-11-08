@@ -405,6 +405,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(readiness.probedKinds, contains(CliBinaryKind.adapter));
+      expect(
+        find.text('/home/u/.local/bin/claude-agent-acp'),
+        findsOneWidget,
+      );
     },
   );
 

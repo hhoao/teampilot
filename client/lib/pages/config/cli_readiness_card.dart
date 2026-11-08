@@ -89,6 +89,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
   bool _locatingCli = false;
   bool _locatingAdapter = false;
   bool? _remoteAdapterKnown;
+  String _remoteAdapterPath = '';
   bool _installingRemoteAdapter = false;
 
   CliToolRegistry get _registry => CliToolRegistry.builtIn();
@@ -220,8 +221,19 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       cli: widget.cli,
       kind: CliBinaryKind.adapter,
     );
+    final stored =
+        (await scope.readiness.acpAdapterPathOverride(
+          scope.target.id,
+          widget.cli.value,
+        ))?.trim() ??
+        '';
     if (!mounted) return;
-    setState(() => _remoteAdapterKnown = result is RemoteCliReady);
+    setState(() {
+      _remoteAdapterKnown = result is RemoteCliReady;
+      _remoteAdapterPath = result is RemoteCliReady
+          ? result.path
+          : (stored.isNotEmpty ? stored : '');
+    });
   }
 
   InstallJobKey _cliJobKey(BuildContext context) {
@@ -259,6 +271,20 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
   }
 
   Future<void> _resetAdapterPath() async {
+    final scope = _remoteAdapterScope();
+    if (scope != null) {
+      await scope.readiness.setAcpAdapterPathOverride(
+        scope.target.id,
+        widget.cli.value,
+        '',
+      );
+      if (!mounted) return;
+      setState(() {
+        _remoteAdapterPath = '';
+        _remoteAdapterKnown = null;
+      });
+      return;
+    }
     await widget.cubit.setAcpAdapterPathFor(widget.cli, '');
   }
 
@@ -370,7 +396,10 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
         );
         if (!mounted) return;
         final ready = result is RemoteCliReady;
-        setState(() => _remoteAdapterKnown = ready);
+        setState(() {
+          _remoteAdapterKnown = ready;
+          if (ready) _remoteAdapterPath = result.path;
+        });
         AppToast.show(
           context,
           message: ready
@@ -430,7 +459,10 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
           ),
         );
         if (!mounted) return;
-        setState(() => _remoteAdapterKnown = result is RemoteCliReady);
+        setState(() {
+          _remoteAdapterKnown = result is RemoteCliReady;
+          if (result is RemoteCliReady) _remoteAdapterPath = result.path;
+        });
         AppToast.show(
           context,
           message: result is RemoteCliReady
@@ -515,8 +547,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       (service) => service.isRemoteWorkPlane,
     );
     final adapterKnown = isRemote
-        ? (_remoteAdapterKnown ??
-              _looksAbsolute(cubit.configuredAcpAdapterPath(widget.cli)))
+        ? (_remoteAdapterKnown ?? _looksAbsolute(_remoteAdapterPath))
         : cubit.hasKnownAcpAdapter(widget.cli);
     final cliUpdate =
         _npmInstaller(exec) != null &&
@@ -643,7 +674,11 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     required bool isRemote,
   }) {
     final cubit = widget.cubit;
-    final adapterStored = cubit.configuredAcpAdapterPath(widget.cli);
+    final scope = _remoteAdapterScope();
+    final remote = scope != null;
+    final adapterStored = remote
+        ? _remoteAdapterPath
+        : cubit.configuredAcpAdapterPath(widget.cli);
     final adapterVersion = displayCliVersion(
       cubit.installedVersion(widget.cli, CliBinaryKind.adapter),
       l10n.cliReadinessVersionUnknown,
@@ -656,9 +691,24 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       label: l10n.cliReadinessRowAcp,
       fieldKey: AppKeys.acpAdapterPathFieldFor(widget.cli),
       storedPath: adapterStored,
-      discoveredPath: cubit.discoveredAcpAdapterPath(widget.cli),
+      discoveredPath: remote ? '' : cubit.discoveredAcpAdapterPath(widget.cli),
       version: adapterVersion,
-      onPersist: (value) => cubit.setAcpAdapterPathFor(widget.cli, value),
+      onPersist: (value) async {
+        if (scope != null) {
+          await scope.readiness.setAcpAdapterPathOverride(
+            scope.target.id,
+            widget.cli.value,
+            value,
+          );
+          if (!mounted) return;
+          setState(() {
+            _remoteAdapterPath = value.trim();
+            _remoteAdapterKnown = _looksAbsolute(_remoteAdapterPath);
+          });
+          return;
+        }
+        await cubit.setAcpAdapterPathFor(widget.cli, value);
+      },
       browseKey: AppKeys.acpAdapterBrowseButtonFor(widget.cli),
       onBrowse: (isRemote || busyAdapter) ? null : _pickAdapterFile,
       locateOrResetKey: adapterStored.trim().isEmpty
