@@ -38,6 +38,7 @@ import '../../../services/chat/conversation/compose/compose_landing_bundle.dart'
 import '../../../services/chat/conversation/compose/compose_text_controller.dart';
 import '../../../services/chat/conversation/compose/compose_text_edit.dart';
 import '../../../services/chat/conversation/compose/compose_voice_input.dart';
+import '../../../services/remote/remote_cli_requirements.dart';
 import '../../../services/storage/home_storage.dart';
 import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_hub_recent_store.dart';
@@ -982,12 +983,19 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
             selectedTeam: null,
           )
         : null;
+    final homeTarget = _homeTargetForLaunch();
+    final projectTarget = projectFolderTarget(
+      workspace: widget.workspace,
+      projectFolderPath: selectedProjectPath,
+      home: homeTarget,
+      usesPosixPaths: _homeStorage.usesPosixPaths,
+    );
     return LandingLaunchContext(
       isPersonal: isSimple,
       acp: willLaunchAcp(
         cli: launchCli,
         requested: readAcpDefault(context, launchCli),
-        targetId: _homeTargetForLaunch().id,
+        targetId: projectTarget?.id ?? homeTarget.id,
       ),
       generateLaunch: !isSimple && _generateLaunch,
       presetId: _selectedPresetId,
@@ -1146,7 +1154,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       }
     } else {
       final readiness = context.read<ChatCubit>().remoteCliReadiness;
-      if (readiness != null && _runtimeTargets.isNotEmpty) {
+      if (readiness != null) {
         final projectPath = _projectResolver().resolveSelectedProjectPath();
         final remoteBlock = await _launchGate.asyncRemoteCliBlockForSimple(
           workspace: workspace,

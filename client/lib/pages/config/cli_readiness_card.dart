@@ -107,18 +107,37 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
           ?.canChooseTransport ??
       false;
 
+  String? _remoteTargetId;
+  bool _localRefreshStarted = false;
+
   @override
   void initState() {
     super.initState();
     _probe = widget.versionProbe ?? CliVersionProbe();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final mode = context.read<ConnectionModeService>();
+    if (!mode.isRemoteWorkPlane) {
+      if (_localRefreshStarted) return;
+      _localRefreshStarted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_refreshLatest());
+      });
+      return;
+    }
+    if (!_separateAdapter) return;
+    final profile = remoteSshProfileFromContext(context);
+    if (profile == null) return;
+    final targetId = mode.isTermuxMode
+        ? RuntimeTarget.termuxDefaultId
+        : 'ssh:${profile.id}';
+    if (targetId == _remoteTargetId) return;
+    _remoteTargetId = targetId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final remote = context.read<ConnectionModeService>().isRemoteWorkPlane;
-      if (remote) {
-        unawaited(_refreshRemoteAdapter());
-      } else {
-        unawaited(_refreshLatest());
-      }
+      if (mounted) unawaited(_refreshRemoteAdapter());
     });
   }
 

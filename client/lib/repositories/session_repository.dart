@@ -932,9 +932,19 @@ class SessionRepository {
     // Personal-only by contract: team ACP is stamped per member seat
     // (`SessionMemberBinding.acp` / `isAcpChatSeat`), so a team session keeps
     // `acp: false` no matter what the caller requests.
-    final primaryTargetId = workspace.folders.isEmpty
+    final sessionFolders = Workspace.foldersForPrimaryPath(
+      workspace.folders,
+      workingDirectory ?? '',
+      usesPosixPaths: _storage.usesPosixPaths,
+      defaultTargetId: _lifecycleService == null
+          ? null
+          : WorkTargetCanonicalizer.defaultFolderTargetId(
+              _lifecycleService.currentHome,
+            ),
+    );
+    final primaryTargetId = sessionFolders.isEmpty
         ? WorkspaceFolder.localTargetId
-        : workspace.folders.first.targetId;
+        : sessionFolders.first.targetId;
     final resolvedAcp =
         trimmedTeam.isEmpty &&
         resolveAcpOnTarget(
@@ -945,16 +955,7 @@ class SessionRepository {
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: workspaceId,
-      folders: Workspace.foldersForPrimaryPath(
-        workspace.folders,
-        workingDirectory ?? '',
-        usesPosixPaths: _storage.usesPosixPaths,
-        defaultTargetId: _lifecycleService == null
-            ? null
-            : WorkTargetCanonicalizer.defaultFolderTargetId(
-                _lifecycleService.currentHome,
-              ),
-      ),
+      folders: sessionFolders,
       display: '',
       sessionTeam: sessionTeam,
       profileId: '',

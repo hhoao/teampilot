@@ -159,6 +159,21 @@ void main() {
     expect(session.acp, isTrue);
   });
 
+  test('uses the working directory target, not the first folder', () async {
+    final mixed = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/wsl', targetId: 'wsl:Ubuntu'),
+      const WorkspaceFolder(path: '/remote', targetId: 'ssh:box'),
+    ]);
+    final session = (await repo.createSession(
+      mixed.workspaceId,
+      cli: CliTool.claude,
+      workingDirectory: '/remote',
+      acp: true,
+    )).session;
+    expect(session.acp, isTrue);
+    expect(session.folders.first.targetId, 'ssh:box');
+  });
+
   test(
     'personal Gemini acp false + acpPermission ask persists ask',
     () async {
