@@ -6,15 +6,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/session_preferences_cubit.dart';
-import '../../cubits/ssh_profile_cubit.dart';
-import '../../cubits/termux_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_binary_kind.dart';
 import '../../models/install_job/install_cancel_policy.dart';
 import '../../models/install_job/install_job_key.dart';
 import '../../models/install_job/install_job_spec.dart';
 import '../../models/runtime_target.dart';
-import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../services/app/connection_mode_service.dart';
 import '../../services/cli/acp_adapter_discovery.dart';
@@ -32,8 +29,8 @@ import '../../services/install/install_job_keys.dart';
 import '../../services/install/install_job_registry.dart';
 import '../../services/install/install_job_scope_resolver.dart';
 import '../../services/remote/remote_cli_readiness.dart';
+import '../../services/remote/remote_profile_context.dart';
 import '../../services/ssh/ssh_client_factory.dart';
-import '../../services/termux/termux_transport_profile.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
@@ -184,7 +181,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
   _remoteAdapterScope() {
     final mode = context.read<ConnectionModeService>();
     if (!mode.isRemoteWorkPlane) return null;
-    final profile = _remoteSshProfile(context, mode);
+    final profile = remoteSshProfileFromContext(context);
     if (profile == null) return null;
     final readiness = context.read<RemoteCliReadinessService>();
     return (
@@ -289,7 +286,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     if (widget.locateOverride != null) return widget.locateOverride!();
     final connectionMode = context.read<ConnectionModeService>();
     if (connectionMode.isRemoteWorkPlane) {
-      final profile = _remoteSshProfile(context, connectionMode);
+      final profile = remoteSshProfileFromContext(context);
       if (profile == null) return null;
       final factory = context.read<SshClientFactory>();
       await factory.ensureStorageConnected(profile);
@@ -707,14 +704,3 @@ class _CliTransportPill extends StatelessWidget {
   }
 }
 
-SshProfile? _remoteSshProfile(
-  BuildContext context,
-  ConnectionModeService mode,
-) {
-  if (!mode.isRemoteWorkPlane) return null;
-  if (mode.isTermuxMode) {
-    final config = context.read<TermuxCubit>().state.config;
-    return config == null ? null : termuxTransportProfile(config);
-  }
-  return context.read<SshProfileCubit>().state.selectedProfile;
-}

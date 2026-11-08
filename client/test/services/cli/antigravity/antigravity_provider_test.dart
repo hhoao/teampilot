@@ -127,23 +127,21 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
       expect(cap.loginArguments, isEmpty);
 
       final official = AntigravityProviderPresets.all.first.template;
-      if (!Platform.isAndroid && !Platform.isIOS) {
-        expect(cap.appliesTo(official), isTrue);
-        final action = cap.actionsFor(official).single;
-        expect(action.kind, ProviderCredentialActionKind.login);
-        expect(action.primary, isTrue);
-        expect(action.showWhenReady, isTrue);
-        expect(cap.hidesApiKeyFields(official), isTrue);
+      expect(cap.appliesTo(official), isTrue);
+      final action = cap.actionsFor(official).single;
+      expect(action.kind, ProviderCredentialActionKind.login);
+      expect(action.primary, isTrue);
+      expect(action.showWhenReady, isTrue);
+      expect(cap.hidesApiKeyFields(official), isTrue);
 
-        final officialCategory = AppProviderConfig(
-          id: 'google-official',
-          cli: CliTool.antigravity,
-          name: 'Google account',
-          category: AppProviderCategory.official,
-        );
-        expect(cap.appliesTo(officialCategory), isTrue);
-        expect(cap.hidesApiKeyFields(officialCategory), isTrue);
-      }
+      final officialCategory = AppProviderConfig(
+        id: 'google-official',
+        cli: CliTool.antigravity,
+        name: 'Google account',
+        category: AppProviderCategory.official,
+      );
+      expect(cap.appliesTo(officialCategory), isTrue);
+      expect(cap.hidesApiKeyFields(officialCategory), isTrue);
 
       final apiKey = official.copyWith(
         id: 'gemini-api-key',

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 
 import 'package:flutter/widgets.dart';
 
@@ -146,9 +145,7 @@ final class AntigravityProviderCapability extends CatalogModelCapability
   // ---- ProviderCredentialCapability (Google account via agy login) ----
   @override
   bool appliesTo(AppProviderConfig provider) =>
-      _resolveAuthMode(provider) == _AntigravityAuthMode.official &&
-      !Platform.isAndroid &&
-      !Platform.isIOS;
+      _resolveAuthMode(provider) == _AntigravityAuthMode.official;
 
   @override
   List<ProviderCredentialActionSpec> actionsFor(AppProviderConfig provider) {

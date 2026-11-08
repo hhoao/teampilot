@@ -21,7 +21,6 @@ import '../services/chat/session/session_team_counter.dart';
 import '../services/chat/launch/session/launch_acp_policy.dart';
 import '../services/chat/launch/session/member_acp_stamp.dart';
 import '../services/chat/launch/session/team_session_member_plan.dart';
-import '../services/cli/registry/capabilities/acp_capability.dart';
 import '../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/storage/home_runtime_identity.dart';
