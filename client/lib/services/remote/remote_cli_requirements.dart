@@ -9,6 +9,7 @@ import '../../models/workspace_folder.dart';
 import '../../models/workspace_topology.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 import '../cli/preset_resolver.dart';
+import '../chat/launch/session/launch_acp_policy.dart';
 import '../cli/registry/capabilities/acp_settings_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../storage/work_target_canonicalizer.dart';
@@ -45,6 +46,7 @@ List<RemoteCliRequirement> remoteCliRequirementsForPlacement({
   required MemberPlacementByTarget placement,
   required List<CliPreset> globalPresets,
   required List<RuntimeTarget> selectableTargets,
+  MemberAcpSeed? acpSeed,
 }) {
   final byId = {for (final t in selectableTargets) t.id: t};
   final out = <String, RemoteCliRequirement>{};
@@ -65,15 +67,29 @@ List<RemoteCliRequirement> remoteCliRequirementsForPlacement({
         member: member,
         globalPresets: globalPresets,
       );
-      final key = '$targetId|${cli.value}';
-      out.putIfAbsent(
-        key,
-        () => RemoteCliRequirement(
-          target: target,
-          cli: cli,
-          hostLabel: target.label.trim().isNotEmpty ? target.label : target.id,
-        ),
+      final hostLabel = target.label.trim().isNotEmpty
+          ? target.label
+          : target.id;
+      final requirement = RemoteCliRequirement(
+        target: target,
+        cli: cli,
+        hostLabel: hostLabel,
       );
+      out.putIfAbsent(requirement.cacheKey, () => requirement);
+
+      final memberAcp = resolveAcpOnTarget(
+        cli: cli,
+        targetId: target.id,
+        requested: acpSeed?.call(cli) ?? false,
+      );
+      if (!memberAcp || !cliUsesSeparateAcpAdapter(cli)) continue;
+      final adapter = RemoteCliRequirement(
+        target: target,
+        cli: cli,
+        hostLabel: hostLabel,
+        kind: CliBinaryKind.adapter,
+      );
+      out.putIfAbsent(adapter.cacheKey, () => adapter);
     }
   }
   return out.values.toList();

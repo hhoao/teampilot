@@ -9,6 +9,7 @@ import '../../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../remote/remote_cli_readiness.dart';
 import '../../../remote/remote_cli_requirements.dart';
 import '../../../storage/home_storage.dart';
+import '../session/launch_acp_policy.dart';
 import '../session/team_config_launch_validator.dart';
 import 'local_binary_requirements.dart';
 
@@ -87,18 +88,18 @@ class WorkspaceLandingLaunchGate {
     TeamConfigLaunchValidator? teamConfigValidator,
     required HomeStorage storage,
     LocalBinaryKnown? localBinaryKnown,
-    MemberAcpSeed? localMemberAcpSeed,
+    MemberAcpSeed? memberAcpSeed,
     RuntimeTarget Function()? homeTargetResolver,
   }) : _storage = storage,
        _localBinaryKnown = localBinaryKnown,
-       _localMemberAcpSeed = localMemberAcpSeed,
+       _memberAcpSeed = memberAcpSeed,
        _homeTargetResolver = homeTargetResolver,
        _teamConfigValidator =
            teamConfigValidator ?? TeamConfigLaunchValidator(storage: storage);
 
   final HomeStorage _storage;
   final LocalBinaryKnown? _localBinaryKnown;
-  final MemberAcpSeed? _localMemberAcpSeed;
+  final MemberAcpSeed? _memberAcpSeed;
   final RuntimeTarget Function()? _homeTargetResolver;
   final TeamConfigLaunchValidator _teamConfigValidator;
 
@@ -173,7 +174,7 @@ class WorkspaceLandingLaunchGate {
             ),
             globalPresets: globalPresets,
             home: _home,
-            acpSeed: _localMemberAcpSeed,
+            acpSeed: _memberAcpSeed,
           );
 
     final missing = [
@@ -254,6 +255,7 @@ class WorkspaceLandingLaunchGate {
       placement: placement,
       globalPresets: globalPresets,
       selectableTargets: selectableTargets,
+      acpSeed: _memberAcpSeed,
     );
     return _probeRemoteCliRequirements(requirements, readiness);
   }

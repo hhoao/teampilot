@@ -96,28 +96,25 @@ void main() {
           cli: CliTool.antigravity,
           targetId: 'local',
           requested: false,
-          isAndroidOverride: false,
         ),
         isTrue,
       );
     });
 
-    test('resolveMemberBindingAcp rejects non-local or Android seats', () {
+    test('resolveMemberBindingAcp accepts SSH and rejects WSL seats', () {
       expect(
         resolveMemberBindingAcp(
           cli: CliTool.antigravity,
           targetId: 'ssh:prod',
-          requested: true,
-          isAndroidOverride: false,
+          requested: false,
         ),
-        isFalse,
+        isTrue,
       );
       expect(
         resolveMemberBindingAcp(
           cli: CliTool.antigravity,
-          targetId: 'local',
+          targetId: 'wsl:Ubuntu',
           requested: true,
-          isAndroidOverride: true,
         ),
         isFalse,
       );
@@ -129,18 +126,16 @@ void main() {
         memberTargets: const {'agy': 'local'},
         seedClaudeMemberAcp: false,
         seedCodexMemberAcp: false,
-        isAndroidOverride: false,
       );
       expect(stamped.single.acp, isTrue);
     });
 
-    test('stampMemberAcp keeps ACP off on Android', () {
+    test('stampMemberAcp keeps ACP off on WSL', () {
       final stamped = stampMemberAcp(
         members: [member('agy')],
-        memberTargets: const {'agy': 'local'},
+        memberTargets: const {'agy': 'wsl:Ubuntu'},
         seedClaudeMemberAcp: false,
         seedCodexMemberAcp: false,
-        isAndroidOverride: true,
       );
       expect(stamped.single.acp, isFalse);
     });

@@ -9,13 +9,11 @@ void main() {
   List<SessionMemberBinding> stamp({
     required List<SessionMemberBinding> members,
     required Map<String, String> targets,
-    bool? isAndroidOverride,
   }) => stampMemberAcp(
     members: members,
     memberTargets: targets,
     seedClaudeMemberAcp: false,
     seedCodexMemberAcp: false,
-    isAndroidOverride: isAndroidOverride,
   );
 
   // `CliToolRegistry.builtIn()` lazily installs the built-in CLIs (including
@@ -39,12 +37,11 @@ void main() {
         ),
       ],
       targets: const {'r1': 'local'},
-      isAndroidOverride: false,
     );
     expect(stamped.single.acp, isTrue);
   });
 
-  test('android qoder seat stays PTY', () {
+  test('qoder seat stays off on WSL', () {
     final stamped = stamp(
       members: const [
         SessionMemberBinding(
@@ -53,8 +50,7 @@ void main() {
           cli: CliTool.qoder,
         ),
       ],
-      targets: const {'r1': 'local'},
-      isAndroidOverride: true,
+      targets: const {'r1': 'wsl:Ubuntu'},
     );
     expect(stamped.single.acp, isFalse);
   });
@@ -69,7 +65,6 @@ void main() {
         ),
       ],
       targets: const {},
-      isAndroidOverride: false,
     );
     expect(stamped.single.acp, isFalse);
   });
@@ -84,7 +79,6 @@ void main() {
         ),
       ],
       targets: const {'r1': 'ssh:prod'},
-      isAndroidOverride: false,
     );
     expect(stamped.single.acp, isTrue);
   });
@@ -109,7 +103,6 @@ void main() {
         ),
       ],
       targets: const {'r1': 'local', 'r2': 'local', 'r3': 'local'},
-      isAndroidOverride: false,
     );
     expect(stamped.map((m) => m.acp), [true, true, false]);
   });

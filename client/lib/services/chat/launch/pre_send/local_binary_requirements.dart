@@ -9,10 +9,7 @@ import '../../../../models/workspace_topology.dart';
 import '../../../cli/preset_resolver.dart';
 import '../../../remote/remote_cli_requirements.dart';
 import '../../../storage/work_target_canonicalizer.dart';
-import '../session/member_acp_stamp.dart';
-
-/// Settings seed: does this CLI default to ACP chat (personal + mixed members)?
-typedef MemberAcpSeed = bool Function(CliTool cli);
+import '../session/launch_acp_policy.dart';
 
 /// One binary the current draft will spawn on a non-SSH (local) host.
 ///
@@ -40,7 +37,6 @@ List<LocalBinaryRequirement> localBinaryRequirementsForPlacement({
   required List<CliPreset> globalPresets,
   required RuntimeTarget home,
   MemberAcpSeed? acpSeed,
-  bool? isAndroidOverride,
 }) {
   final out = <LocalBinaryRequirement>[];
   final seen = <String>{};
@@ -63,11 +59,10 @@ List<LocalBinaryRequirement> localBinaryRequirementsForPlacement({
       final cliRequirement = LocalBinaryRequirement(cli);
       if (seen.add(cliRequirement.key)) out.add(cliRequirement);
 
-      final memberAcp = resolveMemberBindingAcp(
+      final memberAcp = resolveAcpOnTarget(
         targetId: target.id,
         cli: cli,
         requested: acpSeed?.call(cli) ?? false,
-        isAndroidOverride: isAndroidOverride,
       );
       if (!memberAcp || !cliUsesSeparateAcpAdapter(cli)) continue;
       final adapterRequirement = LocalBinaryRequirement(

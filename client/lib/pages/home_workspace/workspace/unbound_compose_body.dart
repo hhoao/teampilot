@@ -177,7 +177,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     },
     // Mixed-team local members run ACP chat when the CLI settings default says
     // so; the adapter must exist on this device too.
-    localMemberAcpSeed: (cli) => readAcpDefault(context, cli),
+    memberAcpSeed: (cli) => readAcpDefault(context, cli),
   );
   WorkspaceLandingLaunchBlock? _launchWarningBlock;
   int _teamLaunchReadinessGeneration = 0;

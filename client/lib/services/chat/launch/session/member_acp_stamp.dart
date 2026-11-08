@@ -1,55 +1,27 @@
-import 'dart:io' show Platform;
-
 import '../../../../models/app_session.dart';
-import '../../../../models/runtime_target.dart';
 import '../../../../models/session_member_binding.dart';
 import '../../../../models/team_config.dart';
 import '../../session/chat_tab.dart';
-import '../../../cli/registry/capabilities/acp_capability.dart';
-import '../../../cli/registry/cli_tool_registry.dart';
+import 'launch_acp_policy.dart';
 
-bool _isAndroid(bool? isAndroidOverride) =>
-    isAndroidOverride ?? Platform.isAndroid;
-
-/// Targets that have an ACP transport: local spawn, SSH exec, or the synthetic
-/// Termux loopback profile. WSL seats have no exec channel, so they stay PTY.
-bool _memberAcpTargetSupported(String targetId) {
-  final kind = runtimeKindOfId(targetId);
-  return kind == RuntimeKind.local || usesSshTransport(kind);
-}
-
-bool _memberAcpGates({
+bool _memberAcpSupported({
   required String targetId,
   required CliTool? cli,
-  bool? isAndroidOverride,
-}) {
-  if (_isAndroid(isAndroidOverride)) return false;
-  if (!_memberAcpTargetSupported(targetId)) return false;
-  if (cli == null) return false;
-  final registry = CliToolRegistry.builtIn();
-  if (registry.capability<AcpCapability>(cli) == null) return false;
-  if (registry.capability<AcpNoPtyFallbackCapability>(cli) != null &&
-      runtimeKindOfId(targetId) != RuntimeKind.local) {
-    return false;
-  }
-  return true;
-}
+}) =>
+    acpAvailabilityFor(cli: cli, targetId: targetId) !=
+    AcpAvailability.unsupported;
 
 bool resolveMemberBindingAcp({
   required String targetId,
   required CliTool? cli,
   required bool requested,
-  bool? isAndroidOverride,
 }) {
-  if (!_memberAcpGates(
-    targetId: targetId,
+  if (!_memberAcpSupported(targetId: targetId, cli: cli)) return false;
+  return resolveAcpOnTarget(
     cli: cli,
-    isAndroidOverride: isAndroidOverride,
-  )) {
-    return false;
-  }
-  if (CliToolRegistry.builtIn().launchesAcpOnly(cli)) return true;
-  return requested;
+    targetId: targetId,
+    requested: requested,
+  );
 }
 
 bool _requestedMemberAcpSeed(
@@ -68,10 +40,10 @@ bool _requestedMemberAcpSeed(
 
 /// Stamps member bindings with ACP from CLI settings seeds.
 ///
-/// Gemini is true whenever the gates pass. Team session `acp` stays on the
-/// session, not on this list. Every seat follows the CLI preference; only the
-/// platform, the launch target's transport, and the CLI's ACP capability gate
-/// it.
+/// ACP-only CLIs are forced whenever the target supports ACP. Team session
+/// `acp` stays on the session, not on this list. Every seat follows the CLI
+/// preference; only the launch target's transport and the CLI's ACP capability
+/// gate it.
 List<SessionMemberBinding> stampMemberAcp({
   required List<SessionMemberBinding> members,
   required Map<String, String> memberTargets,
@@ -80,7 +52,6 @@ List<SessionMemberBinding> stampMemberAcp({
   bool seedCursorMemberAcp = true,
   bool seedOpencodeMemberAcp = true,
   LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
-  bool? isAndroidOverride,
 }) {
   return [
     for (final member in members)
@@ -97,7 +68,6 @@ List<SessionMemberBinding> stampMemberAcp({
               seedCursorMemberAcp: seedCursorMemberAcp,
               seedOpencodeMemberAcp: seedOpencodeMemberAcp,
             ),
-            isAndroidOverride: isAndroidOverride,
           ),
           null => false,
         },
@@ -132,13 +102,8 @@ bool shouldAttachMemberAcp({
   required AppSession session,
   required String memberId,
   required String targetId,
-  bool? isAndroidOverride,
 }) {
   if (!isAcpChatSeat(session, memberId)) return false;
   final cli = session.bindingFor(memberId)?.cli;
-  return _memberAcpGates(
-    targetId: targetId,
-    cli: cli,
-    isAndroidOverride: isAndroidOverride,
-  );
+  return _memberAcpSupported(targetId: targetId, cli: cli);
 }

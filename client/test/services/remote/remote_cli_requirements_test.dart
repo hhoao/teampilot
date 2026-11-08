@@ -67,6 +67,33 @@ void main() {
     expect(requirements, isEmpty);
   });
 
+  test('adds adapter requirements for ACP team seats', () {
+    final acpTeam = TeamProfile(
+      id: 'team-acp',
+      name: 'Team',
+      cli: CliTool.claude,
+      members: const [
+        TeamMemberConfig(id: 'team-lead', name: 'Lead', cli: CliTool.claude),
+      ],
+      createdAt: 1,
+    );
+    final requirements = remoteCliRequirementsForPlacement(
+      workspace: workspace,
+      team: acpTeam,
+      placement: {
+        'ssh:host-a': {'team-lead': 1},
+      },
+      globalPresets: const [],
+      selectableTargets: [localTarget, sshTarget],
+      acpSeed: (cli) => cli == CliTool.claude,
+    );
+
+    expect(requirements.map((r) => r.kind), [
+      CliBinaryKind.cli,
+      CliBinaryKind.adapter,
+    ]);
+  });
+
   test('dedupes same target and CLI', () {
     final requirements = remoteCliRequirementsForPlacement(
       workspace: workspace,

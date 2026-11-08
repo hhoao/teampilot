@@ -110,7 +110,6 @@ List<SessionMemberBinding> stampedLandingMembers({
   bool seedOpencodeMemberAcp = true,
   List<CliPreset> globalPresets = const [],
   LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
-  bool? isAndroidOverride,
 }) {
   try {
     final memberClis = resolveSessionMemberCliLocks(
@@ -132,7 +131,6 @@ List<SessionMemberBinding> stampedLandingMembers({
       seedCursorMemberAcp: seedCursorMemberAcp,
       seedOpencodeMemberAcp: seedOpencodeMemberAcp,
       acpPermission: acpPermission,
-      isAndroidOverride: isAndroidOverride,
     );
   } on Object {
     return const [];
