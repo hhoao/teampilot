@@ -778,6 +778,18 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
                     style: textStyle,
                     cursorColor: widget.mutedColor,
                     textAlignVertical: TextAlignVertical.top,
+                    // extended_text_field ships its own EditableText copy, so
+                    // the stock `contextMenuBuilder` slot is unavailable; use
+                    // the extended slot to surface the Tp action menu instead
+                    // of the platform toolbar.
+                    extendedContextMenuBuilder: (context, editableTextState) =>
+                        buildTpTextSelectionContextMenu(
+                          items: editableTextState.contextMenuButtonItems,
+                          anchor: editableTextState
+                              .contextMenuAnchors
+                              .primaryAnchor,
+                          hideToolbar: editableTextState.hideToolbar,
+                        ),
                     decoration: InputDecoration(
                       filled: false,
                       hoverColor: Colors.transparent,

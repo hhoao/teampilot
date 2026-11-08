@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:extended_text_field/extended_text_field.dart';
@@ -86,6 +87,50 @@ void main() {
     );
     await tester.pump();
   }
+
+  testWidgets('right-click opens the Tp action menu, not the platform toolbar', (
+    tester,
+  ) async {
+    final bus = CommandBus();
+    final controller = ComposeTextController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+    );
+    focusNode.requestFocus();
+    await tester.pump();
+    await enterComposeText(tester, 'hello world');
+
+    final field = find.byType(ExtendedTextField);
+    controller.selection = const TextSelection(baseOffset: 0, extentOffset: 5);
+    await tester.pump();
+
+    final topLeft = tester.getTopLeft(field);
+    final size = tester.getSize(field);
+    final gesture = await tester.startGesture(
+      topLeft + Offset(30, size.height / 2),
+      buttons: kSecondaryMouseButton,
+    );
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(isTpActionMenuOpen, isTrue);
+    expect(find.byType(TpActionMenuItem), findsWidgets);
+
+    dismissTpActionMenuIfOpen();
+    await tester.pumpAndSettle();
+    expect(isTpActionMenuOpen, isFalse);
+  });
 
   testWidgets('native command shows source and inserts argument space', (
     tester,
