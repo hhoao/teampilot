@@ -107,12 +107,37 @@ class VaultLegacyImportService {
     return next;
   }
 
-  Future<void> _run() async {
+  /// Idempotent repair pass, independent of the one-shot marker.
+  ///
+  /// Every owner import skips rows that already hold a resolvable vault
+  /// reference, so re-running is cheap and safe. Used after a home-plane
+  /// switch and at every boot so credentials captured while the plane was
+  /// unavailable — or written before the vault existed — still land in the
+  /// current plane's vault. Never marks or clears the marker.
+  Future<void> runRepair() {
+    final existing = _runningByKey[_importKey];
+    if (existing != null) return existing;
+    late final Future<void> next;
+    next = _run(markComplete: false).catchError((
+      Object error,
+      StackTrace stackTrace,
+    ) {
+      _warn('repair', error, stackTrace);
+    }).whenComplete(() {
+      if (identical(_runningByKey[_importKey], next)) {
+        _runningByKey.remove(_importKey);
+      }
+    });
+    _runningByKey[_importKey] = next;
+    return next;
+  }
+
+  Future<void> _run({bool markComplete = true}) async {
     // Another shell may have finished a pass after this service loaded its
     // document: re-read the marker so a retried bootstrap no-ops.
     await _vault.refreshMarkerFromBackend();
     if (!_vault.isUnlocked) return;
-    if (_vault.legacyImportVersion >= _version) return;
+    if (markComplete && _vault.legacyImportVersion >= _version) return;
 
     AppLogger.instance.i('[vault-import] start');
     var failed = false;
@@ -128,6 +153,14 @@ class VaultLegacyImportService {
     }
     failed = !await _guard('managedProvider', _importManaged) || failed;
 
+    if (!markComplete) {
+      if (failed) {
+        AppLogger.instance.w('[vault-import] repair finished with failures');
+      } else {
+        AppLogger.instance.i('[vault-import] repair complete');
+      }
+      return;
+    }
     if (failed) {
       AppLogger.instance.w('[vault-import] finished with failures; will retry');
       return;

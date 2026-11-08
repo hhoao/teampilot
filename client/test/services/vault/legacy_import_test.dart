@@ -240,8 +240,39 @@ void main() {
     expect((await h.vault.list()).length, before, reason: 'idempotent');
   });
 
-  test('a failed owner keeps its legacy data and blocks the marker', () async {
+  test('runRepair imports a provider saved after the marker', () async {
     final h = await _harness();
+    await h.vault.markLegacyImported(1);
+    final appProviders = AppProviderRepository(storage: h.storage);
+    await appProviders.saveProviders(CliTool.claude, [
+      const AppProviderConfig(
+        id: 'late',
+        cli: CliTool.claude,
+        name: 'Late',
+        apiKey: 'sk-late',
+      ),
+    ]);
+
+    final importer = _importer(h, appProviders: appProviders);
+    await importer.runRepair();
+
+    final provider = (await appProviders.loadProviders(CliTool.claude)).single;
+    expect(provider.credentialLink, startsWith('vault:'));
+    expect(provider.apiKey, isEmpty);
+    expect(
+      h.vault.legacyImportVersion,
+      1,
+      reason: 'repair never touches the one-shot marker',
+    );
+    expect(
+      (await h.vault.list()).any(
+        (entry) => entry.extra['ownerKind'] == vaultOwnerKindAppProvider,
+      ),
+      isTrue,
+    );
+  });
+
+  test('a failed owner keeps its legacy data and blocks the marker', () async {    final h = await _harness();
     final sshProfiles = SshProfileRepository(storage: h.storage);
     final sshCredentials = InMemorySshCredentialStore();
     await sshProfiles.save(

@@ -354,6 +354,7 @@ wire protocol against an SSH server.
 - 连接语义按入口分离：SSH 服务器页的「连接」= 桌面语义（`connect(id, switchHome: false)`，只建立连接、不切 home）；「远程连接」页的「连接」= 移动端语义（连接成功后 `applyAndroidSshConnectHome` 把 home 切到该主机）。
 - 字段归属：断线重连要用的字段放本地；只有连上后才用的配置放远端。
 - 凭据拆分：SSH 登录凭据留在设备 vault（断线仍可重连）；业务凭据（provider key、GitHub token 等）写 `<home>/vault/business.json`，随 home plane 走。`VaultDocumentStore` 合并两侧读取，按 owner kind 路由写入，远端侧故障不阻断本地 SSH 凭据；拆分前的业务条目做一次性复制迁移，不删除原数据。
+- 凭据迁移：启动时 + 每次 home 平面切换后都执行（`migrateBusinessVaultEntries` + `VaultLegacyImportService.runRepair`），两者幂等。`runRepair` 不受 `legacyImportVersion` 一次性标记限制，会把仍带明文 `apiKey` 且没有 vault 引用的 provider 回填进 home vault 并清掉明文；设备 vault 里的业务条目会复制到当前平面，SSH 登录凭据跳过。因此桌面端作为手机的 home 时会把自己的业务凭据发布成 `business.json`。注意：未启用加密时该文件是明文。
 - 同步：本地先行（`pendingSync`），连上后 `updatedAt` 新者胜。
 
 ## Home connection resilience

@@ -728,6 +728,10 @@ class AppShell {
   /// Re-arms the home connection after the current SSH profile's identity is
   /// edited; owned by the shell so teardown can cancel it.
   StreamSubscription<SshProfileState>? _homeProfileWatchSub;
+
+  /// Re-syncs the business vault after a home-plane switch; owned by the shell
+  /// so teardown can cancel it.
+  StreamSubscription<StoragePlaneChange>? _vaultPlaneSyncSub;
   final CommandBus commandBus;
   final ShortcutCubit shortcutCubit;
   final WorkspaceChromeCommands workspaceChromeCommands;
@@ -1247,11 +1251,14 @@ Future<AppShell> buildAppShell({
   );
   homeVaultScope = scope;
   await scope.prepare();
-  if (homeStorage.fs.isRemote) {
-    unawaited(
-      migrateBusinessVaultEntries(device: vaultService, home: scope.service),
-    );
-  }
+  // Copy this device's business entries onto the plane it belongs to — also
+  // when the plane is local: a desktop acting as the home for a phone must
+  // publish them as `<home>/vault/business.json`, or the phone can never see
+  // them (its own keychain is not readable remotely). SSH login credentials
+  // are skipped by the migration and stay device-local.
+  unawaited(
+    migrateBusinessVaultEntries(device: vaultService, home: scope.service),
+  );
 
   vaultCubit = VaultCubit(
     service: vaultService,
@@ -1556,6 +1563,10 @@ Future<AppShell> buildAppShell({
     try {
       await githubAccountCubit.hydrate();
       await legacyImporter.runOnce();
+      // Repair pass: imports only rows that still carry a plaintext secret and
+      // no vault reference, so a provider key added after the one-shot marker
+      // (or captured while the plane was down) still reaches the vault.
+      await legacyImporter.runRepair();
       // Boot import runs in the background; refresh rows on a possibly-open page.
       await vaultCubit.reloadEntries();
     } on Object catch (error, stackTrace) {
@@ -1565,6 +1576,34 @@ Future<AppShell> buildAppShell({
       );
     }
   }());
+
+  // A home switch changes which plane holds the business vault. Both passes are
+  // idempotent: copy this device's business entries onto the new plane, then
+  // re-run the owner imports so credentials captured while the plane was down
+  // (or written before the split) reach it. SSH login credentials stay on the
+  // device — the migration skips them.
+  final vaultPlaneSyncSub = homeStorage.changes.listen((change) {
+    if (!change.newContext.filesystem.isRemote) return;
+    final scope = homeVaultScope;
+    if (scope == null) return;
+    unawaited(() async {
+      try {
+        await scope.prepare();
+        await migrateBusinessVaultEntries(
+          device: vaultService,
+          home: scope.service,
+        );
+        await legacyImporter.runRepair();
+        await vaultCubit.reloadEntries();
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '[vault] home-plane vault sync failed: $error',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }());
+  });
 
   // One-shot startup sweep: reclaim orphaned `-mp-` rows and the legacy
   // shared rows. Fire-and-forget and failure-tolerant — the control plane
@@ -4212,6 +4251,7 @@ Future<AppShell> buildAppShell({
     );
     shell._automationCatalogSub = automationCatalogSub;
     shell._homeProfileWatchSub = homeProfileWatchSub;
+    shell._vaultPlaneSyncSub = vaultPlaneSyncSub;
     managedProviderControlPlaneLease.transferOwnership();
     await applyHomeEventTransport();
     return shell;
@@ -4576,6 +4616,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     if (shell != null) {
       shell._automationCatalogSub?.cancel();
       shell._homeProfileWatchSub?.cancel();
+      shell._vaultPlaneSyncSub?.cancel();
       unawaited(shell.homeVaultScope.dispose());
       shell.homeInvalidationService.stop();
       unawaited(_teardownConnect(shell));
