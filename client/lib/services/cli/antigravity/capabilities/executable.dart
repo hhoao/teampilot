@@ -26,10 +26,7 @@ final class AntigravityExecutableCapability implements CliExecutableCapability {
   @override
   Future<CliInstallResult> install(CliInstallContext context) async {
     if (context.mode == CliInstallMode.ssh) {
-      return const CliInstallResult(
-        success: false,
-        message: 'Remote Antigravity CLI install is not available yet.',
-      );
+      return _installSsh(context);
     }
     context.host.report(CliInstallPhase.installingCli);
     final script = context.host.isWindows
@@ -60,6 +57,56 @@ final class AntigravityExecutableCapability implements CliExecutableCapability {
       success: path != null,
       message: path == null
           ? 'agy installed but was not found on PATH.'
+          : 'Antigravity CLI installed.',
+      executablePath: path,
+    );
+  }
+
+  Future<CliInstallResult> _installSsh(CliInstallContext context) async {
+    final profile = context.sshProfile;
+    if (profile == null) {
+      return const CliInstallResult(
+        success: false,
+        message: 'Select an SSH server before installing Antigravity remotely.',
+      );
+    }
+    context.host.report(
+      CliInstallPhase.installingCli,
+      detail: 'Antigravity CLI',
+    );
+    final install = await context.host.runSsh(
+      profile,
+      CliInstallerCommand.unixShellScript(
+        'curl -fsSL https://antigravity.google/cli/install.sh | bash',
+      ),
+    );
+    if (install.exitCode != 0) {
+      return CliInstallResult(
+        success: false,
+        message: installerFailureMessage(
+          'Remote Antigravity CLI install failed',
+          install,
+        ),
+      );
+    }
+    context.host.report(CliInstallPhase.locatingExecutable);
+    final path = await const DefaultRemoteCliLocator('agy').locate((
+      command,
+    ) async {
+      final result = await context.host.runSsh(
+        profile,
+        CliInstallerCommand.unixShellScript(command),
+      );
+      return SshCommandResult(
+        exitCode: result.exitCode,
+        stdout: result.stdout,
+        stderr: result.stderr,
+      );
+    });
+    return CliInstallResult(
+      success: path != null,
+      message: path == null
+          ? 'agy installed but was not found on the remote PATH.'
           : 'Antigravity CLI installed.',
       executablePath: path,
     );
