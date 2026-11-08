@@ -73,6 +73,114 @@ final class AntigravityAcpAdapterInstaller implements AcpAdapterInstaller {
   @override
   bool get supportsInstaller => true;
 
+  Future<CliInstallResult> _installSsh(CliInstallContext context) async {
+    final profile = context.sshProfile;
+    if (profile == null) {
+      return const CliInstallResult(
+        success: false,
+        message:
+            'Select an SSH server before installing the Antigravity adapter.',
+      );
+    }
+
+    Future<CliInstallerCommandResult> probe(String command) {
+      return context.host.runSsh(
+        profile,
+        CliInstallerCommand.unixShellScript(command),
+      );
+    }
+
+    final osResult = await probe('uname -s');
+    final archResult = await probe('uname -m');
+    if (osResult.exitCode != 0 || archResult.exitCode != 0) {
+      return CliInstallResult(
+        success: false,
+        message: installerFailureMessage(
+          'Remote Antigravity adapter probe failed',
+          osResult.exitCode != 0 ? osResult : archResult,
+        ),
+      );
+    }
+    final os = osResult.stdout.trim();
+    final archRaw = archResult.stdout.trim();
+    final arch = (archRaw == 'arm64' || archRaw == 'aarch64')
+        ? 'arm64'
+        : 'x64';
+    final assetKey = switch (os) {
+      'Linux' => antigravityAcpAssetKey(os: 'linux', arch: arch),
+      'Darwin' => antigravityAcpAssetKey(os: 'darwin', arch: arch),
+      _ => '',
+    };
+    final sha = antigravityAcpSha256[assetKey];
+    if (assetKey.isEmpty || sha == null) {
+      return CliInstallResult(
+        success: false,
+        message:
+            'Remote Antigravity adapter only supports POSIX hosts; '
+            'detected os=$os arch=$archRaw.',
+      );
+    }
+
+    final url = antigravityAcpArchiveUrl(assetKey);
+    final script =
+        '''
+set -eu
+dest="\$HOME/.local/share/teampilot/toolchain/antigravity-acp/$antigravityAcpVersion"
+mkdir -p "\$dest"
+tmp="\$(mktemp -d)"
+trap 'rm -rf "\$tmp"' EXIT
+if command -v curl >/dev/null 2>&1; then
+  curl -fsSL '$url' -o "\$tmp/adapter.zip"
+elif command -v wget >/dev/null 2>&1; then
+  wget -q '$url' -O "\$tmp/adapter.zip"
+else
+  echo "curl or wget is required" >&2
+  exit 1
+fi
+if command -v sha256sum >/dev/null 2>&1; then
+  echo '$sha  \$tmp/adapter.zip' | sha256sum -c -
+else
+  echo '$sha  \$tmp/adapter.zip' | shasum -a 256 -c -
+fi
+if command -v unzip >/dev/null 2>&1; then
+  unzip -oq "\$tmp/adapter.zip" -d "\$dest"
+else
+  python3 -m zipfile -e "\$tmp/adapter.zip" "\$dest"
+fi
+chmod +x "\$dest/agy_acp_server.par" "\$dest/localharness_external"
+printf '%s\\n' "\$dest/agy_acp_server.par"
+''';
+
+    context.host.report(CliInstallPhase.downloading);
+    final installed = await context.host.runSsh(
+      profile,
+      CliInstallerCommand.unixShellScript(script),
+    );
+    if (installed.exitCode != 0) {
+      return CliInstallResult(
+        success: false,
+        message: installerFailureMessage(
+          'Remote Antigravity adapter install failed',
+          installed,
+        ),
+      );
+    }
+    context.host.report(CliInstallPhase.extracting);
+    final lines = installed.stdout
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    final path = lines.isEmpty ? null : lines.last;
+    return CliInstallResult(
+      success: path != null,
+      message: path == null
+          ? 'Remote Antigravity adapter install did not report a path.'
+          : 'Antigravity ACP adapter installed.',
+      executablePath: path,
+    );
+  }
+
   String _installDir(HomeStorage s) => s.fs.pathContext.join(
     s.appDataRoot,
     'toolchain',
@@ -102,18 +210,15 @@ final class AntigravityAcpAdapterInstaller implements AcpAdapterInstaller {
 
   @override
   Future<CliInstallResult> install(CliInstallContext context) async {
+    if (context.mode == CliInstallMode.ssh) {
+      return _installSsh(context);
+    }
     final s = storage;
     final installer = binary;
     if (s == null || installer == null) {
       return const CliInstallResult(
         success: false,
         message: 'Antigravity adapter installer is not configured.',
-      );
-    }
-    if (context.mode == CliInstallMode.ssh) {
-      return const CliInstallResult(
-        success: false,
-        message: 'Remote Antigravity adapter install is not available yet.',
       );
     }
     final asset = antigravityAcpAssetKey(

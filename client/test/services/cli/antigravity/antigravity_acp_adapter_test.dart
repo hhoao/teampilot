@@ -14,6 +14,8 @@ import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
+import '../fake_cli_installer_host.dart';
+
 void main() {
   test('maps platform/arch to the pinned ACP asset key', () {
     expect(antigravityAcpAssetKey(os: 'linux', arch: 'x64'), 'linux-x86_64');
@@ -121,21 +123,24 @@ void main() {
     },
   );
 
-  test('ssh install returns a failure and never downloads', () async {
-    final root = await Directory.systemTemp.createTemp('agy-acp-ssh-');
-    addTearDown(() => root.delete(recursive: true));
-    var fetched = false;
-    final installer = AntigravityAcpAdapterInstaller(
-      storage: _storageAt(root.path),
-      binary: BinaryArchiveInstaller(
-        fs: LocalFilesystem(),
-        fetch: (uri, {expectedSha256, onProgress, isCancelled}) async {
-          fetched = true;
-          throw StateError('ssh install must not download');
-        },
-      ),
+  test('ssh install probes, downloads, extracts, and returns the path', () async {
+    final host = FakeCliInstallerHost(
+      sshResponses: (command) {
+        final line = command.commandLine;
+        if (line.contains('uname -s')) {
+          return const CliInstallerCommandResult(exitCode: 0, stdout: 'Linux\n');
+        }
+        if (line.contains('uname -m')) {
+          return const CliInstallerCommandResult(exitCode: 0, stdout: 'x86_64\n');
+        }
+        return const CliInstallerCommandResult(
+          exitCode: 0,
+          stdout:
+              '/home/dev/.local/share/teampilot/toolchain/antigravity-acp/1.4.3/agy_acp_server.par\n',
+        );
+      },
     );
-    final host = _FakeHost();
+    const installer = AntigravityAcpAdapterInstaller();
     final result = await installer.install(
       CliInstallContext(
         mode: CliInstallMode.ssh,
@@ -149,11 +154,15 @@ void main() {
         ),
       ),
     );
-    expect(result.success, isFalse);
-    expect(result.executablePath, isNull);
-    expect(fetched, isFalse);
-    expect(host.reported, isEmpty);
-    expect(Directory('${root.path}/toolchain').existsSync(), isFalse);
+    expect(result.success, isTrue);
+    expect(
+      result.executablePath,
+      '/home/dev/.local/share/teampilot/toolchain/antigravity-acp/1.4.3/agy_acp_server.par',
+    );
+    final script = host.sshCommands.last;
+    expect(script, contains('linux-x86_64'));
+    expect(script, contains(antigravityAcpSha256['linux-x86_64']!));
+    expect(script, contains('chmod +x'));
   });
 
   test('local install downloads the pinned asset plus the sidecar', () async {
