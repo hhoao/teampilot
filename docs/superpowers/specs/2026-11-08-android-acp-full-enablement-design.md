@@ -231,7 +231,7 @@ switch (acpAvailabilityFor(cli: cli, targetId: targetId)) {
 #### 9.1 目标解析
 
 - 从 `cli_readiness_card.dart` 抽出 `remoteSshProfileFromContext(context)`（`ConnectionModeService` + `SshProfileCubit` + `TermuxCubit`），供 readiness 与 login 共用。
-- 在 `client/lib/app/app_shell.dart` 的 widget tree 暴露 `Provider<SshClientFactory>.value`，供登录对话框打开 `SshMemberSession`。
+- `SshClientFactory` 已经在 `client/lib/main.dart` 通过 `RepositoryProvider<SshClientFactory>.value(value: shell.sshClientFactory)` 暴露，登录对话框直接 `context.read<SshClientFactory>()`。
 - `AntigravityProviderCapability.appliesTo` 对 official 模式返回 true（桌面和 Android 都显示登录按钮）。
 - `AntigravityProviderCapability.buildLoginDialog`：
   - 能解析到远程 profile 且当前是 remote work plane：返回 `AntigravityRemoteLoginDialog`。
