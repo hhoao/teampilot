@@ -35,12 +35,27 @@ class SshProfilesConfigWorkspace extends StatefulWidget {
 class _SshProfilesConfigWorkspaceState extends State<SshProfilesConfigWorkspace> {
   SshProfileRepository? _planeRepository;
   SshProfileCubit? _planeCubit;
+  StreamSubscription<StoragePlaneChange>? _planeSub;
+  bool _started = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_planeCubit != null) return;
+    if (_started) return;
+    _started = true;
     final storage = context.read<HomeStorage>();
+    _installPlane(storage);
+    // A home switch replaces the plane this page is bound to: rebuild the
+    // repository/cubit on the new context and reload instead of leaving the
+    // previous host's catalog on screen.
+    _planeSub = storage.changes.listen((_) {
+      if (!mounted) return;
+      _installPlane(storage, rebuild: true);
+    });
+  }
+
+  void _installPlane(HomeStorage storage, {bool rebuild = false}) {
+    final previous = _planeCubit;
     final plane = PlaneSshProfileRepository(
       storage: storage,
       servers: SshServerProfileRepository(storage: storage),
@@ -51,10 +66,19 @@ class _SshProfilesConfigWorkspaceState extends State<SshProfilesConfigWorkspace>
       credentialStore: context.read<SshCredentialStore>(),
       vaultCapture: context.read<VaultCredentialCapture>(),
     )..load();
+    if (rebuild) setState(() {});
+    if (previous != null) {
+      // The swap is published to the tree first; retire the old cubit after the
+      // frame that stops referencing it.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(previous.close());
+      });
+    }
   }
 
   @override
   void dispose() {
+    unawaited(_planeSub?.cancel());
     unawaited(_planeCubit?.close());
     super.dispose();
   }
