@@ -28,19 +28,35 @@ Future<void> showSshProfileFormDialog(
   BuildContext context, {
   SshProfile? profile,
 }) {
+  // Resolve from the caller's context. The SSH servers settings page provides
+  // the home-plane repository/cubit for its own subtree; a dialog route built
+  // on the root navigator would otherwise read the app-level device-local ones,
+  // saving into the wrong catalog and refreshing a list nobody is looking at.
+  final repository = context.read<SshProfileRepository>();
+  final profileCubit = context.read<SshProfileCubit>();
   return showTpDialog<void>(
     context: context,
     presentation: TpDialogPresentation.page,
     mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
     maxWidth: 560,
     maxHeight: kTpDialogPageWideMaxHeight,
-    builder: (ctx) => _SshProfileFormDialog(initialProfile: profile),
+    builder: (ctx) => _SshProfileFormDialog(
+      initialProfile: profile,
+      repository: repository,
+      profileCubit: profileCubit,
+    ),
   );
 }
 
 class _SshProfileFormDialog extends StatefulWidget {
-  const _SshProfileFormDialog({this.initialProfile});
+  const _SshProfileFormDialog({
+    required this.repository,
+    required this.profileCubit,
+    this.initialProfile,
+  });
 
+  final SshProfileRepository repository;
+  final SshProfileCubit profileCubit;
   final SshProfile? initialProfile;
 
   @override
@@ -157,7 +173,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       final linked = (widget.initialProfile?.vaultEntryId ?? '').isNotEmpty;
       final capture = context.read<VaultCredentialCapture>();
       final unlockGate = context.read<VaultUnlockGate>();
-      final repository = context.read<SshProfileRepository>();
+      final repository = widget.repository;
       final credentialStore = context.read<SshCredentialStore>();
       final usesPassword = _usesPasswordAuth;
       final privateKeyPem = usesPassword
@@ -182,7 +198,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       );
       if (!mounted) return result.profile;
       if (notify) {
-        await context.read<SshProfileCubit>().load();
+        if (!widget.profileCubit.isClosed) await widget.profileCubit.load();
         if (mounted) Navigator.of(context).pop();
       }
       return result.profile;
@@ -216,34 +232,26 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
         .sshClientFactory;
     try {
       final profile = _buildProfile();
-      final linkedId = widget.initialProfile?.vaultEntryId;
-      String? password;
-      String? privateKey;
-      String? passphrase;
-      if (linkedId != null && linkedId.isNotEmpty) {
-        final vault = context.read<VaultService>();
-        if (_usesPasswordAuth) {
-          password = await vault.readField(linkedId, 'password');
-        } else {
-          privateKey = await vault.readField(linkedId, 'privateKey');
-          passphrase = await vault.readField(linkedId, 'passphrase');
-        }
-      } else if (_usesPasswordAuth) {
-        password = _passwordController.text;
-      } else {
-        privateKey = await _readIdentityFile();
-        if ((privateKey == null || privateKey.isEmpty) && _isEditing) {
-          privateKey = await credentialStore.loadPrivateKey(profile.id);
-        }
-        passphrase = _passphraseController.text.isEmpty
-            ? await credentialStore.loadPrivateKeyPassphrase(profile.id)
-            : _passphraseController.text;
-      }
+      final usesPassword = _usesPasswordAuth;
+      final linkedId = widget.initialProfile?.vaultEntryId ?? '';
+      final vault = linkedId.isNotEmpty ? context.read<VaultService>() : null;
+      final secrets = await resolveSshEditorTestSecrets(
+        authType: usesPassword ? SshAuthType.password : SshAuthType.privateKey,
+        profileId: profile.id,
+        passwordText: _passwordController.text,
+        privateKeyPem: usesPassword ? '' : (await _readIdentityFile() ?? ''),
+        passphraseText: _passphraseController.text,
+        vaultEntryId: linkedId,
+        readVaultField: vault == null
+            ? null
+            : (field) => vault.readField(linkedId, field),
+        credentialStore: credentialStore,
+      );
       await SshProfileConnectionTester(clientFactory: sshClientFactory).test(
         profile,
-        password: password,
-        privateKey: privateKey,
-        privateKeyPassphrase: passphrase,
+        password: secrets.password,
+        privateKey: secrets.privateKey,
+        privateKeyPassphrase: secrets.passphrase,
       );
       if (!mounted) return;
       AppToast.show(

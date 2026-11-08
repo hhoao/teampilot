@@ -179,40 +179,25 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
     setState(() => _testing = true);
     try {
       final profile = _buildProfile();
-      final vault = widget.vaultService;
-      final linkedId = widget.initialProfile?.vaultEntryId;
-      String? password;
-      String? privateKey;
-      String? passphrase;
-      if (vault != null && linkedId != null && linkedId.isNotEmpty) {
-        if (_authType == SshAuthType.password) {
-          password = await vault.readField(linkedId, 'password');
-        } else {
-          privateKey = await vault.readField(linkedId, 'privateKey');
-          passphrase = await vault.readField(linkedId, 'passphrase');
-        }
-      } else {
-        password =
-            _authType == SshAuthType.password &&
-                _passwordController.text.isNotEmpty
-            ? _passwordController.text
-            : null;
-        privateKey =
-            _authType == SshAuthType.privateKey &&
-                _privateKeyController.text.isNotEmpty
-            ? _privateKeyController.text
-            : null;
-        passphrase =
-            _authType == SshAuthType.privateKey &&
-                _passphraseController.text.isNotEmpty
-            ? _passphraseController.text
-            : null;
-      }
+      final linkedId = widget.initialProfile?.vaultEntryId ?? '';
+      final vault = linkedId.isNotEmpty ? widget.vaultService : null;
+      final secrets = await resolveSshEditorTestSecrets(
+        authType: _authType,
+        profileId: profile.id,
+        passwordText: _passwordController.text,
+        privateKeyPem: _privateKeyController.text,
+        passphraseText: _passphraseController.text,
+        vaultEntryId: linkedId,
+        readVaultField: vault == null
+            ? null
+            : (field) => vault.readField(linkedId, field),
+        credentialStore: widget.credentialStore,
+      );
       await tester.test(
         profile,
-        password: password,
-        privateKey: privateKey,
-        privateKeyPassphrase: passphrase,
+        password: secrets.password,
+        privateKey: secrets.privateKey,
+        privateKeyPassphrase: secrets.passphrase,
       );
       if (!mounted) return;
       AppToast.show(

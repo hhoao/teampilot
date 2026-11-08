@@ -36,6 +36,25 @@ class VaultCaptureException implements Exception {
 ///
 /// Merge semantics for [fields]: `null` keeps the existing value, an empty
 /// string removes the field, and a non-empty string overwrites it.
+/// Finds the vault entry that owns [ownerKind]/[ownerId].
+///
+/// Also the recovery path for owners whose catalog record cannot carry a
+/// `vaultEntryId` — the home-plane `SshServerProfile` projection — because the
+/// secret stays on the device that saved it, keyed by the owner.
+Future<VaultEntry?> findVaultOwnerEntry(
+  VaultService vault, {
+  required String ownerKind,
+  required String ownerId,
+}) async {
+  for (final entry in await vault.list()) {
+    if (entry.extra['ownerKind'] == ownerKind &&
+        entry.extra['ownerId'] == ownerId) {
+      return entry;
+    }
+  }
+  return null;
+}
+
 class VaultCredentialCapture {
   VaultCredentialCapture({required VaultService vault, Uuid? uuid})
     : _vault = vault,
@@ -44,14 +63,8 @@ class VaultCredentialCapture {
   final VaultService _vault;
   final Uuid _uuid;
 
-  Future<VaultEntry?> findOwner(String ownerKind, String ownerId) async {
-    for (final entry in await _vault.list()) {
-      if (entry.extra['ownerKind'] == ownerKind &&
-          entry.extra['ownerId'] == ownerId) {
-        return entry;
-      }
-    }
-    return null;
+  Future<VaultEntry?> findOwner(String ownerKind, String ownerId) {
+    return findVaultOwnerEntry(_vault, ownerKind: ownerKind, ownerId: ownerId);
   }
 
   Future<VaultCaptureResult> captureSsh(

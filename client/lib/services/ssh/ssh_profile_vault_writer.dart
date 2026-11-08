@@ -69,19 +69,37 @@ Future<SshProfileVaultWriteResult> saveSshProfileWithVault({
       relayGrant: relayGrant,
     ),
     persist: (captured) async {
-      await repository.save(
-        profile.copyWith(vaultEntryId: captured.entryId),
-      );
+      await repository.save(profile.copyWith(vaultEntryId: captured.entryId));
       return captured;
     },
   );
   final saved = profile.copyWith(vaultEntryId: result.entryId);
-  try {
-    await credentialStore.deleteAll(profile.id);
-  } on Object {
-    // Best effort: the vault already holds the values.
+  // Only drop the legacy keychain copy once the persisted row actually points
+  // at the vault entry. The home-plane server catalog stores `SshServerProfile`
+  // (no credential reference), so deleting there would leave that row with no
+  // reachable secret at all.
+  if (await _persistedVaultEntryId(repository, profile.id) == result.entryId) {
+    try {
+      await credentialStore.deleteAll(profile.id);
+    } on Object {
+      // Best effort: the vault already holds the values.
+    }
   }
   return SshProfileVaultWriteResult(profile: saved, capture: result);
+}
+
+/// The vault reference the catalog actually kept for [profileId], if any.
+Future<String?> _persistedVaultEntryId(
+  SshProfileRepository repository,
+  String profileId,
+) async {
+  try {
+    final stored = await repository.findById(profileId);
+    final entryId = stored?.vaultEntryId?.trim() ?? '';
+    return entryId.isEmpty ? null : entryId;
+  } on Object {
+    return null;
+  }
 }
 
 typedef SshEditorSecretInputs = ({
@@ -115,3 +133,44 @@ SshEditorSecretInputs sshEditorSecretInputs({
     passphrase: passphraseText.isEmpty ? null : passphraseText,
   );
 }
+
+/// Reads one secret field from a linked vault entry.
+typedef SshVaultFieldReader = Future<String?> Function(String field);
+
+/// Credentials a "test connection" click should use from an editor.
+///
+/// Form input wins: a user who just retyped the password must test that
+/// password, not the one already stored. An empty field falls back to the
+/// linked vault entry and then to the legacy keychain, which is the only
+/// remaining source for rows whose catalog record cannot carry a vault
+/// reference.
+Future<SshEditorSecretInputs> resolveSshEditorTestSecrets({
+  required SshAuthType authType,
+  required String profileId,
+  required String passwordText,
+  required String privateKeyPem,
+  required String passphraseText,
+  required String? vaultEntryId,
+  required SshVaultFieldReader? readVaultField,
+  required SshCredentialStore credentialStore,
+}) async {
+  final readVault = (vaultEntryId ?? '').isNotEmpty ? readVaultField : null;
+  if (authType == SshAuthType.password) {
+    var password = _nonEmpty(passwordText);
+    password ??= await readVault?.call('password');
+    password ??= _nonEmpty(await credentialStore.loadPassword(profileId));
+    return (password: password, privateKey: null, passphrase: null);
+  }
+  var privateKey = _nonEmpty(privateKeyPem);
+  privateKey ??= await readVault?.call('privateKey');
+  privateKey ??= _nonEmpty(await credentialStore.loadPrivateKey(profileId));
+  var passphrase = _nonEmpty(passphraseText);
+  passphrase ??= await readVault?.call('passphrase');
+  passphrase ??= _nonEmpty(
+    await credentialStore.loadPrivateKeyPassphrase(profileId),
+  );
+  return (password: null, privateKey: privateKey, passphrase: passphrase);
+}
+
+String? _nonEmpty(String? value) =>
+    value == null || value.isEmpty ? null : value;

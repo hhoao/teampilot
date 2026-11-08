@@ -151,6 +151,143 @@ void main() {
     expect(await credentials.loadPassword('p1'), isNull);
   });
 
+  test(
+    'keeps the legacy keychain copy when the saved row drops the vault link',
+    () async {
+      // The home-plane catalog stores `SshServerProfile`, which has no
+      // `vaultEntryId`. Deleting the keychain copy would leave that row with
+      // no reachable credential at all.
+      final vault = await _vault();
+      final credentials = InMemorySshCredentialStore();
+      await credentials.savePassword('p1', 'legacy');
+      final capture = VaultCredentialCapture(vault: vault);
+
+      final result = await saveSshProfileWithVault(
+        profile: profile,
+        password: '',
+        privateKey: null,
+        passphrase: null,
+        capture: capture,
+        unlockGate: VaultUnlockGate(vault: vault, prompt: () async => true),
+        repository: _VaultReferenceDroppingRepository(),
+        credentialStore: credentials,
+      );
+
+      expect(
+        await vault.readField(result.capture.entryId, 'password'),
+        'legacy',
+      );
+      expect(await credentials.loadPassword('p1'), 'legacy');
+    },
+  );
+
+  test(
+    'owner lookup recovers the entry for a credential-free projection',
+    () async {
+      final vault = await _vault();
+      final capture = VaultCredentialCapture(vault: vault);
+      final result = await capture.captureSsh(profile, password: 'secret');
+
+      final found = await findVaultOwnerEntry(
+        vault,
+        ownerKind: vaultOwnerKindSshProfile,
+        ownerId: profile.id,
+      );
+
+      expect(found?.id, result.entryId);
+      expect(await vault.readField(found!.id, 'password'), 'secret');
+    },
+  );
+
+  group('editor test credentials', () {
+    late InMemorySshCredentialStore credentials;
+
+    setUp(() => credentials = InMemorySshCredentialStore());
+
+    test('typed password wins over the stored vault value', () async {
+      final secrets = await resolveSshEditorTestSecrets(
+        authType: SshAuthType.password,
+        profileId: 'p1',
+        passwordText: 'typed',
+        privateKeyPem: '',
+        passphraseText: '',
+        vaultEntryId: 'v1',
+        readVaultField: (_) async => 'stored',
+        credentialStore: credentials,
+      );
+
+      expect(secrets.password, 'typed');
+      expect(secrets.privateKey, isNull);
+      expect(secrets.passphrase, isNull);
+    });
+
+    test('empty password falls back to the vault, then the keychain', () async {
+      await credentials.savePassword('p1', 'legacy');
+      Future<SshEditorSecretInputs> resolve({
+        required String? vaultEntryId,
+        required String? stored,
+      }) {
+        return resolveSshEditorTestSecrets(
+          authType: SshAuthType.password,
+          profileId: 'p1',
+          passwordText: '',
+          privateKeyPem: '',
+          passphraseText: '',
+          vaultEntryId: vaultEntryId,
+          readVaultField: stored == null ? null : (_) async => stored,
+          credentialStore: credentials,
+        );
+      }
+
+      expect(
+        (await resolve(vaultEntryId: 'v1', stored: 'stored')).password,
+        'stored',
+      );
+      expect(
+        (await resolve(vaultEntryId: null, stored: null)).password,
+        'legacy',
+      );
+    });
+
+    test('private key falls back to the vault, then the keychain', () async {
+      await credentials.savePrivateKey('p1', 'legacy-pem');
+      await credentials.savePrivateKeyPassphrase('p1', 'legacy-pass');
+      Future<SshEditorSecretInputs> resolve({
+        required String? vaultEntryId,
+        required String? storedKey,
+      }) {
+        return resolveSshEditorTestSecrets(
+          authType: SshAuthType.privateKey,
+          profileId: 'p1',
+          passwordText: 'ignored',
+          privateKeyPem: '',
+          passphraseText: '',
+          vaultEntryId: vaultEntryId,
+          readVaultField: storedKey == null
+              ? null
+              : (field) async => switch (field) {
+                  'privateKey' => storedKey,
+                  'passphrase' => 'vault-pass',
+                  _ => null,
+                },
+          credentialStore: credentials,
+        );
+      }
+
+      final fromVault = await resolve(
+        vaultEntryId: 'v1',
+        storedKey: 'vault-pem',
+      );
+      expect(fromVault.privateKey, 'vault-pem');
+      expect(fromVault.passphrase, 'vault-pass');
+      expect(fromVault.password, isNull);
+
+      final fromKeychain = await resolve(vaultEntryId: null, storedKey: null);
+      expect(fromKeychain.privateKey, 'legacy-pem');
+      expect(fromKeychain.passphrase, 'legacy-pass');
+    });
+  });
+
   test('blocked vault aborts without saving the profile or an entry', () async {
     final vault = await _vault();
     final repository = SshProfileRepository(storage: fakeHomeStorage());
@@ -220,6 +357,32 @@ class _ThrowingSshProfileRepository implements SshProfileRepository {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Mimics the home-plane server catalog: the row it keeps has no
+/// `vaultEntryId`.
+class _VaultReferenceDroppingRepository extends SshProfileRepository {
+  _VaultReferenceDroppingRepository() : super(storage: fakeHomeStorage());
+
+  SshProfile? _stored;
+
+  @override
+  Future<void> save(SshProfile profile) async {
+    _stored = SshProfile(
+      id: profile.id,
+      name: profile.name,
+      host: profile.host,
+      port: profile.port,
+      username: profile.username,
+      authType: profile.authType,
+      createdAt: profile.createdAt,
+      updatedAt: profile.updatedAt,
+    );
+  }
+
+  @override
+  Future<SshProfile?> findById(String profileId) async =>
+      _stored?.id == profileId ? _stored : null;
 }
 
 class _LockedVaultService implements VaultService {

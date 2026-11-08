@@ -13,6 +13,7 @@ import '../../repositories/ssh_credential_store.dart';
 import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_credentials_resolver.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
+import '../../services/vault/credential_capture.dart';
 import '../../services/vault/vault_service.dart';
 import '../../services/vault/vault_unlock_gate.dart';
 import '../../services/storage/home_storage.dart';
@@ -134,12 +135,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
   /// error; a cancelled prompt aborts the action.
   Future<bool> _ensureVaultUnlockedFor(SshProfile profile) async {
     if ((profile.vaultEntryId ?? '').trim().isEmpty) return true;
-    VaultService? vault;
-    try {
-      vault = context.read<VaultService>();
-    } on ProviderNotFoundException {
-      vault = null;
-    }
+    final vault = _vaultService();
     if (vault == null || vault.isUnlocked) return true;
     VaultUnlockGate? gate;
     try {
@@ -164,17 +160,18 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
   Future<({String? password, String? privateKey, String? passphrase})>
   _loadCredentials(SshProfile profile) async {
     final store = context.read<SshCredentialStore>();
-    VaultService? vault;
-    try {
-      vault = context.read<VaultService>();
-    } on ProviderNotFoundException {
-      vault = null;
-    }
+    final vault = _vaultService();
+    final resolvedEntryId = vault == null
+        ? null
+        : await _vaultEntryIdFor(profile, vault);
+    final effective = resolvedEntryId == null
+        ? profile
+        : profile.copyWith(vaultEntryId: resolvedEntryId);
     final resolved = await resolveSshCredentials(
-      profile,
+      effective,
       vault: vault == null
           ? null
-          : (entryId, field) => vault!.readField(entryId, field),
+          : (entryId, field) => vault.readField(entryId, field),
       legacyPassword: store.loadPassword,
       legacyPrivateKey: store.loadPrivateKey,
       legacyPassphrase: store.loadPrivateKeyPassphrase,
@@ -184,6 +181,41 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
       privateKey: resolved.privateKey,
       passphrase: resolved.passphrase,
     );
+  }
+
+  /// Recovers the device vault entry for a profile whose catalog record cannot
+  /// carry the reference.
+  ///
+  /// The "SSH servers" page reads the home-plane server catalog, whose records
+  /// deliberately have no `vaultEntryId`: the secret stays on the device that
+  /// saved it. Without this lookup the row would resolve credentials from the
+  /// legacy keychain only — empty after a vault-backed save — leaving every
+  /// test/connect with no password at all.
+  Future<String?> _vaultEntryIdFor(
+    SshProfile profile,
+    VaultService vault,
+  ) async {
+    final linked = (profile.vaultEntryId ?? '').trim();
+    if (linked.isNotEmpty) return linked;
+    try {
+      final entry = await findVaultOwnerEntry(
+        vault,
+        ownerKind: vaultOwnerKindSshProfile,
+        ownerId: profile.id,
+      );
+      return entry?.id;
+    } on Object {
+      // A locked or unreachable vault must not break the keychain fallback.
+      return null;
+    }
+  }
+
+  VaultService? _vaultService() {
+    try {
+      return context.read<VaultService>();
+    } on ProviderNotFoundException {
+      return null;
+    }
   }
 
   @override
@@ -312,10 +344,10 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                     onRefresh: () => context.read<SshProfileCubit>().load(),
                     onConfigure: widget.showRemoteConfig
                         ? () => showSshProfileTargetConfigDialog(
-                              context,
-                              profile: profile,
-                              storage: context.read<HomeStorage>(),
-                            )
+                            context,
+                            profile: profile,
+                            storage: context.read<HomeStorage>(),
+                          )
                         : null,
                   ),
                 ),
