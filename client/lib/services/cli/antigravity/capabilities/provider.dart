@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_action_result.dart';
@@ -10,11 +11,14 @@ import '../../../io/filesystem.dart';
 import '../../../provider/credential_binding.dart';
 import '../../../provider/passthrough_provider_form_capability.dart';
 import '../../../remote/remote_credential_materializer.dart';
+import '../../../remote/remote_profile_context.dart';
+import '../../../ssh/ssh_client_factory.dart';
 import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/interactive_login_capability.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../provider/antigravity_login_dialog.dart';
 import '../provider/antigravity_model_catalog.dart';
+import '../provider/antigravity_remote_login_dialog.dart';
 import '../provider/antigravity_provider_settings_resolver.dart';
 import '../provider_presets.dart';
 
@@ -201,11 +205,22 @@ final class AntigravityProviderCapability extends CatalogModelCapability
     BuildContext context, {
     required AppProviderConfig provider,
     required String executable,
-  }) => AntigravityLoginDialog(
-    provider: provider,
-    executable: executable,
-    storage: storage ?? homeStorageOf(context),
-  );
+  }) {
+    final profile = remoteSshProfileFromContext(context);
+    if (profile != null) {
+      return AntigravityRemoteLoginDialog(
+        provider: provider,
+        executable: executable,
+        profile: profile,
+        factory: context.read<SshClientFactory>(),
+      );
+    }
+    return AntigravityLoginDialog(
+      provider: provider,
+      executable: executable,
+      storage: storage ?? homeStorageOf(context),
+    );
+  }
 
   // ---- CredentialBindingCapability (no concept: isolated) ----
   @override
