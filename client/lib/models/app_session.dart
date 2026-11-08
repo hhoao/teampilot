@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../services/cli/registry/cli_tool_registry.dart';
+import '../services/chat/launch/session/launch_acp_policy.dart';
 import 'member_instance.dart';
 import 'session_continue_overrides.dart';
 import 'session_member_binding.dart';
@@ -185,9 +185,7 @@ class AppSession {
   }) {
     final trimmedTeam = sessionTeam.trim();
     final resolvedAcp =
-        acp ??
-        (trimmedTeam.isEmpty &&
-            CliToolRegistry.builtIn().launchesAcpOnly(cli));
+        acp ?? (trimmedTeam.isEmpty && acpForcedByCli(cli));
     return AppSession._(
       sessionId: sessionId,
       workspaceId: workspaceId,

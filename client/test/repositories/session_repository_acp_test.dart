@@ -135,6 +135,30 @@ void main() {
     expect(session.acp, isTrue);
   });
 
+  test('ACP-only CLI stays false on WSL', () async {
+    final wsl = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/repo/main', targetId: 'wsl:Ubuntu'),
+    ]);
+    final session = (await repo.createSession(
+      wsl.workspaceId,
+      cli: CliTool.gemini,
+      acp: false,
+    )).session;
+    expect(session.acp, isFalse);
+  });
+
+  test('Antigravity ACP persists true on SSH', () async {
+    final remote = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/repo/main', targetId: 'ssh:box'),
+    ]);
+    final session = (await repo.createSession(
+      remote.workspaceId,
+      cli: CliTool.antigravity,
+      acp: false,
+    )).session;
+    expect(session.acp, isTrue);
+  });
+
   test(
     'personal Gemini acp false + acpPermission ask persists ask',
     () async {
