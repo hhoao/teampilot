@@ -7,7 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/ssh_profile.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/antigravity/provider/antigravity_remote_login_dialog.dart';
 import 'package:teampilot/services/ssh/ssh_member_session.dart';
 import 'package:teampilot/services/ssh/worker/ssh_worker_member_session.dart';

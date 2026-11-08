@@ -225,12 +225,21 @@ member executable, while the staged env keeps the remote `PATH` (the desktop
 roster member id (`ChatTab.memberSshSessions`), closed on disconnect, discard,
 and tab disposal.
 
-Targets without an exec channel stay PTY: the gate whitelists
-`local | ssh | termux` (`usesSshTransport` covers the last two), so `wsl:` seats
-keep spawning a terminal. Android is still gated off (`_memberAcpGates`
-`_isAndroid` and `resolveLaunchAcp`). Remote MCP reachability, remote adapter
-install, and SSH reconnect for an in-flight ACP seat remain unimplemented. The
-remote attach paths are unit-tested with injected staging / SSH-launch seams
+ACP availability is resolved by
+`services/chat/launch/session/launch_acp_policy.dart` from two inputs: the CLI's
+declared capabilities and the work target's exec channel. `local`, `ssh`, and
+`termux` targets support ACP; `wsl` does not. Android is no longer special-cased.
+ACP-only CLIs are forced when the target supports ACP; dual-transport CLIs
+follow the user preference.
+
+Remote mixed-team ACP seats bind the same `RemoteBusMount` reverse tunnel as PTY
+seats, so `teammate-bus` MCP points at the remote tunnel ports instead of an
+unreachable loopback address. Remote adapter install is wired through
+`RemoteCliReadinessService`; Antigravity also supports remote CLI/adapter
+install and remote OAuth login. SSH reconnect for an in-flight ACP seat remains
+unimplemented.
+
+The remote attach paths are unit-tested with injected staging / SSH-launch seams
 plus the `_Host` / `_FakeLifecycle` harness, and the production SSH factory is
 covered through a connector-backed `SshClientFactory`; the only gap is that no
 test opens a real channel against a real sshd.
@@ -238,8 +247,7 @@ test opens a real channel against a real sshd.
 The personal remote ACP working directory is the session folder's target-owned
 path (`session.folders.first.path`) — the same value the personal PTY path
 derives via `personalWorkDirsForPrimaryPath`. `termux` targets also satisfy
-`usesSshTransport` (`models/runtime_target.dart`), though Android ACP is gated
-off in the launch switch (`resolveLaunchAcp`).
+`usesSshTransport` (`models/runtime_target.dart`).
 
 ## Member placement machines
 

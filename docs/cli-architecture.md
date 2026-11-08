@@ -2,6 +2,11 @@
 
 TeamPilot 支持多个 CLI 工具（Claude Code、Cursor、Codex、OpenCode、FlashskyAI、Gemini、CodeBuddy、Antigravity、Qoder）。其中 Antigravity 与 Qoder 是 **ACP-only**（无 PTY）。Antigravity 能力形状见 [cli-formats/antigravity.md](cli-formats/antigravity.md)。本文档定义 CLI 代码的组织规范、能力接口模式、以及新增 CLI 的完整流程。
 
+ACP 启动判定统一在
+`services/chat/launch/session/launch_acp_policy.dart`。新增 CLI 时只声明
+`AcpCapability` / `CliTransportCapability`，不要在 launch 代码里写
+`Platform.isAndroid` 或 `cli == <value>` 分支。
+
 ## 目录结构
 
 每个 CLI 的所有代码集中在 `services/cli/{cli_name}/` 一个目录下：
