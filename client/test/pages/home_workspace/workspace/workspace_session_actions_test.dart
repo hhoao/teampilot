@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -525,4 +526,121 @@ void main() {
       );
     },
   );
+
+  testWidgets('new conversation from the narrow drawer closes it', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final chat = _RecordingChatCubit();
+    final workbench = WorkbenchCubit();
+    final bridge = WorkbenchChatBridge(workbench: workbench, chat: chat);
+    final layout = LayoutCubit();
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    final contextKey = GlobalKey();
+    addTearDown(chat.close);
+    addTearDown(workbench.close);
+    addTearDown(layout.close);
+    workbench.port = bridge;
+    chat.workbenchPort = bridge;
+    chat.applyState(chat.state.copyWith(workspaces: [workspace]));
+    layout.openMobileWorkspaceDrawer();
+    expect(layout.state.preferences.sidebarVisible, isTrue);
+
+    await tester.pumpWidget(
+      TpTheme(
+        data: TpThemeData.fromColorScheme(
+          ThemeData(useMaterial3: true).colorScheme,
+          scale: 1.0,
+        ),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider<ChatCubit>.value(value: chat),
+            BlocProvider<WorkbenchCubit>.value(value: workbench),
+            BlocProvider<LayoutCubit>.value(value: layout),
+          ],
+          child: TpSidebarProvider(
+            mobileBreakpoint: 840,
+            child: MaterialApp.router(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              routerConfig: GoRouter(
+                routes: [
+                  GoRoute(
+                    path: '/',
+                    builder: (context, state) => Builder(
+                      builder: (context) => SizedBox(key: contextKey),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await showWorkspaceComposeLanding(
+      tester.element(find.byKey(contextKey)),
+      workspace,
+      tabScopeId: workspace.workspaceId,
+    );
+    await tester.pump();
+
+    expect(workbench.centerLandingActive(workspace.workspaceId), isTrue);
+    expect(layout.state.preferences.sidebarVisible, isFalse);
+    expect(layout.state.preferences.rightToolsVisible, isFalse);
+  });
+
+  testWidgets('session navigation keeps the docked sidebar on desktop', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final layout = LayoutCubit();
+    final workbench = WorkbenchCubit();
+    final contextKey = GlobalKey();
+    addTearDown(layout.close);
+    addTearDown(workbench.close);
+    layout.openMobileWorkspaceDrawer();
+    expect(layout.state.preferences.sidebarVisible, isTrue);
+
+    await tester.pumpWidget(
+      TpTheme(
+        data: TpThemeData.fromColorScheme(
+          ThemeData(useMaterial3: true).colorScheme,
+          scale: 1.0,
+        ),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider<WorkbenchCubit>.value(value: workbench),
+            BlocProvider<LayoutCubit>.value(value: layout),
+          ],
+          child: TpSidebarProvider(
+            mobileBreakpoint: 840,
+            child: MaterialApp(
+              home: Builder(
+                builder: (context) => SizedBox(key: contextKey),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    dismissMobileWorkspaceDrawerForNavigation(
+      tester.element(find.byKey(contextKey)),
+      workspaceId: 'ws1',
+    );
+
+    expect(layout.state.preferences.sidebarVisible, isTrue);
+  });
 }

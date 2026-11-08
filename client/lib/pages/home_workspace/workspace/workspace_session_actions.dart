@@ -13,7 +13,9 @@ import '../../../services/chat/launch/session/member_input_ready_wait.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
+import '../../../cubits/layout_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
+import '../../../cubits/mobile_workspace_drawer.dart';
 import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/workbench/workbench_tab.dart';
@@ -49,6 +51,41 @@ void leaveWorkspaceManagementRoute(BuildContext context) {
   final next = HomeWorkspaceRoute.locationWithoutManage(current);
   if (current == next) return;
   context.go(next);
+}
+
+/// Dismisses the narrow-layout workspace drawer after a session navigation so
+/// the conversation the user just opened (or the new-chat Landing) fills the
+/// screen without an extra dismiss tap.
+///
+/// No-op on desktop, where the sidebar is a persistent docked pane, and in
+/// isolated tests that do not mount [LayoutCubit] / [WorkbenchCubit].
+void dismissMobileWorkspaceDrawerForNavigation(
+  BuildContext context, {
+  required String workspaceId,
+}) {
+  if (!(TpSidebarScope.maybeOf(context)?.isMobile ?? false)) return;
+  var composeLanding = false;
+  try {
+    composeLanding = context
+        .read<WorkbenchCubit>()
+        .centerLandingActive(workspaceId);
+  } on ProviderNotFoundException {
+    // Isolated tests may not mount [WorkbenchCubit].
+  }
+  final LayoutCubit layout;
+  try {
+    layout = context.read<LayoutCubit>();
+  } on ProviderNotFoundException {
+    // Isolated tests may not mount [LayoutCubit].
+    return;
+  }
+  if (!mobileWorkspaceDrawerOpen(
+    layoutState: layout.state,
+    composeLanding: composeLanding,
+  )) {
+    return;
+  }
+  layout.closeMobileWorkspaceDrawer(composeLanding: composeLanding);
 }
 
 /// Builds the [SessionOpenRequest] for opening a persisted session from the
@@ -156,6 +193,10 @@ Future<void> openWorkspaceSessionTab(
     blockedMixedMessage: context.l10n.mixedWorkspaceSessionLaunchBlocked,
   );
   if (status != SessionOpenStatus.opened) return;
+  dismissMobileWorkspaceDrawerForNavigation(
+    context,
+    workspaceId: workspace.workspaceId,
+  );
 }
 
 /// [openWorkspaceSessionTab] + "Open to the Side": after the open (or
@@ -321,6 +362,10 @@ Future<void> showWorkspaceComposeLanding(
     tabScopeId,
     initialText: initialText,
     referencedSessionId: referencedSessionId,
+  );
+  dismissMobileWorkspaceDrawerForNavigation(
+    context,
+    workspaceId: tabScopeId,
   );
 }
 
