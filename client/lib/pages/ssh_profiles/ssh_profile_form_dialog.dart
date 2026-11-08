@@ -223,6 +223,26 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     }
   }
 
+  /// Explicit reveal for this row.
+  ///
+  /// A device-local profile carries its vault entry id. A home-plane row does
+  /// not (the shared record has no credential reference), so fall back to the
+  /// vault entry that owns the profile id.
+  Future<String?> _revealPassword() {
+    final linkedId = widget.initialProfile?.vaultEntryId;
+    if ((linkedId ?? '').trim().isNotEmpty) {
+      return revealVaultSecret(context, linkedId, 'password');
+    }
+    final profileId = widget.initialProfile?.id ?? '';
+    if (profileId.isEmpty) return Future.value(null);
+    return revealVaultOwnerSecret(
+      context,
+      ownerKind: vaultOwnerKindSshProfile,
+      ownerId: profileId,
+      field: 'password',
+    );
+  }
+
   Future<void> _testConnection() async {
     if (_formKey.currentState?.validate() != true) return;
     setState(() => _testing = true);
@@ -373,11 +393,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           helper: l10n.sshProfileFormPasswordHelper,
           obscure: true,
           onChanged: () => setState(() {}),
-          onReveal: () => revealVaultSecret(
-            context,
-            widget.initialProfile?.vaultEntryId,
-            'password',
-          ),
+          onReveal: _revealPassword,
         ),
       ],
     );

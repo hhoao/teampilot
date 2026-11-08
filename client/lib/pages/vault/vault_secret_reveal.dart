@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../models/vault_entry.dart';
+import '../../services/vault/credential_capture.dart';
 import '../../services/vault/vault_service.dart';
 import 'vault_status_section.dart';
 
@@ -23,16 +25,12 @@ Future<bool> authorizeVaultReveal(BuildContext context) async {
       await vault.unlock(passphrase, remember: false);
       return true;
     } on Object {
-      messenger?.showSnackBar(
-        SnackBar(content: Text(l10n.vaultUnlockFailed)),
-      );
+      messenger?.showSnackBar(SnackBar(content: Text(l10n.vaultUnlockFailed)));
       return false;
     }
   }
   if (await vault.verifyMasterPassphrase(passphrase)) return true;
-  messenger?.showSnackBar(
-    SnackBar(content: Text(l10n.vaultUnlockFailed)),
-  );
+  messenger?.showSnackBar(SnackBar(content: Text(l10n.vaultUnlockFailed)));
   return false;
 }
 
@@ -44,35 +42,54 @@ Future<String?> revealVaultSecret(
   BuildContext context,
   String? entryId,
   String field,
-) async {
+) {
   final id = entryId?.trim() ?? '';
-  if (id.isEmpty || field.isEmpty) return null;
-  final vault = context.read<VaultService>();
-  if (!vault.isEncrypted) return _readAllowed(vault, id, field);
+  if (id.isEmpty || field.isEmpty) return Future.value(null);
+  return _revealField(context, field, (vault) => vault.get(id));
+}
 
+/// Reads a stored vault field for an explicit reveal, locating the entry by its
+/// owner when the caller has no vault entry id.
+///
+/// The "SSH servers" page reads the home-plane server catalog, whose records
+/// cannot carry a credential reference. The owner pair is the record the vault
+/// itself keeps, so it still identifies the secret saved from this device.
+Future<String?> revealVaultOwnerSecret(
+  BuildContext context, {
+  required String ownerKind,
+  required String ownerId,
+  required String field,
+}) {
+  final id = ownerId.trim();
+  if (id.isEmpty || field.isEmpty) return Future.value(null);
+  return _revealField(
+    context,
+    field,
+    (vault) => findVaultOwnerEntry(vault, ownerKind: ownerKind, ownerId: id),
+  );
+}
+
+Future<String?> _revealField(
+  BuildContext context,
+  String field,
+  Future<VaultEntry?> Function(VaultService vault) resolve,
+) async {
+  final vault = context.read<VaultService>();
   final wasLocked = vault.isLocked;
   if (!await authorizeVaultReveal(context)) {
     if (wasLocked && vault.isUnlocked) await vault.lock();
     return null;
   }
-  final value = await _readAllowed(vault, id, field);
-  // A locked vault was decrypted only to answer this reveal; do not leave it
-  // unlocked (and never re-remember the password).
-  if (wasLocked && vault.isUnlocked) await vault.lock();
-  return value;
-}
-
-Future<String?> _readAllowed(
-  VaultService vault,
-  String entryId,
-  String field,
-) async {
   try {
-    final entry = await vault.get(entryId);
+    final entry = await resolve(vault);
     if (entry == null || !entry.revealAllowed) return null;
     final value = entry.fields[field];
     return (value == null || value.isEmpty) ? null : value;
   } on Object {
     return null;
+  } finally {
+    // A locked vault was decrypted only to answer this reveal; do not leave it
+    // unlocked (and never re-remember the password).
+    if (wasLocked && vault.isUnlocked) await vault.lock();
   }
 }

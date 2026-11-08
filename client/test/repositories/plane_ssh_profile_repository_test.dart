@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/plane_ssh_profile_repository.dart';
+import 'package:teampilot/repositories/remote_target_repository.dart';
 import 'package:teampilot/repositories/ssh_server_profile_repository.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
@@ -26,9 +27,17 @@ void main() {
     if (planeDir.existsSync()) planeDir.deleteSync(recursive: true);
   });
 
-  PlaneSshProfileRepository buildRepo() => PlaneSshProfileRepository(
+  PlaneSshProfileRepository buildRepo({
+    RemoteTargetRepository? deviceTargets,
+  }) => PlaneSshProfileRepository(
     storage: planeStorage,
     servers: SshServerProfileRepository(storage: planeStorage),
+    deviceTargets: deviceTargets,
+  );
+
+  RemoteTargetRepository deviceTargets() => RemoteTargetRepository(
+    rootDir: testHomeStorage.appDataRoot,
+    fs: testHomeStorage.fs,
   );
 
   test('lists the plane catalog and ignores this device targets', () async {
@@ -57,6 +66,62 @@ void main() {
 
     expect(profiles.map((p) => p.id), ['plane-1']);
   });
+
+  test(
+    'attaches this device vault reference to the matching plane server',
+    () async {
+      final deviceFs = testHomeStorage.fs;
+      await _writeJson(
+        deviceFs,
+        deviceFs.pathContext.join(
+          testHomeStorage.appDataRoot,
+          'remote-targets.json',
+        ),
+        [_json(id: 'plane-1', name: 'shared', vaultEntryId: 'vault-1')],
+      );
+      final planeFs = planeStorage.fs;
+      await _writeJson(
+        planeFs,
+        planeFs.pathContext.join(
+          planeStorage.paths.sshProfilesDir,
+          'profiles.json',
+        ),
+        [_json(id: 'plane-1', name: 'shared')],
+      );
+
+      final profiles = await buildRepo(
+        deviceTargets: deviceTargets(),
+      ).loadAll();
+
+      expect(profiles.single.vaultEntryId, 'vault-1');
+    },
+  );
+
+  test(
+    'save never writes the vault reference into the plane projection',
+    () async {
+      final repo = buildRepo(deviceTargets: deviceTargets());
+
+      await repo.save(
+        const SshProfile(
+          id: 'plane-1',
+          name: 'shared',
+          host: 'h',
+          username: 'u',
+          vaultEntryId: 'vault-1',
+        ),
+      );
+
+      final planeFs = planeStorage.fs;
+      final planeFile = await planeFs.readString(
+        planeFs.pathContext.join(
+          planeStorage.paths.sshProfilesDir,
+          'profiles.json',
+        ),
+      );
+      expect(planeFile, isNot(contains('vaultEntryId')));
+    },
+  );
 
   test('save writes the plane projection, never the device catalog', () async {
     final repo = buildRepo();
@@ -130,7 +195,11 @@ Future<void> _writeJson(
   await fs.atomicWrite(path, jsonEncode(rows));
 }
 
-Map<String, Object?> _json({required String id, required String name}) => {
+Map<String, Object?> _json({
+  required String id,
+  required String name,
+  String? vaultEntryId,
+}) => {
   'schemaVersion': 1,
   'id': id,
   'name': name,
@@ -138,6 +207,7 @@ Map<String, Object?> _json({required String id, required String name}) => {
   'port': 22,
   'username': 'u',
   'authType': 'password',
+  if (vaultEntryId != null) 'vaultEntryId': vaultEntryId,
   'updatedAt': 10,
   'pendingSync': false,
 };

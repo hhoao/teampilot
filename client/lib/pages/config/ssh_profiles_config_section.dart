@@ -32,7 +32,8 @@ class SshProfilesConfigWorkspace extends StatefulWidget {
       _SshProfilesConfigWorkspaceState();
 }
 
-class _SshProfilesConfigWorkspaceState extends State<SshProfilesConfigWorkspace> {
+class _SshProfilesConfigWorkspaceState
+    extends State<SshProfilesConfigWorkspace> {
   SshProfileRepository? _planeRepository;
   SshProfileCubit? _planeCubit;
   StreamSubscription<StoragePlaneChange>? _planeSub;
@@ -59,6 +60,10 @@ class _SshProfilesConfigWorkspaceState extends State<SshProfilesConfigWorkspace>
     final plane = PlaneSshProfileRepository(
       storage: storage,
       servers: SshServerProfileRepository(storage: storage),
+      // Lends the plane rows this device's vault references. This resolves to
+      // the device-local facade; the plane repository is only provided to the
+      // subtree in build.
+      deviceTargets: context.read<SshProfileRepository>().targetRepo,
     );
     _planeRepository = plane;
     _planeCubit = SshProfileCubit(
