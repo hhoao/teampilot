@@ -349,9 +349,8 @@ wire protocol against an SSH server.
 
 ## Mobile remote connection contract
 
-- 远程连接（本地）：所有目标条目、连接/断开/重连、切换 home；断线可用。设置里常驻入口（`ConfigSection.remoteConnections`），不依赖启动门控。
-- SSH 服务器（远端）：设置页与桌面端同一页面/同一套操作（导入/添加/编辑/测试/连接/删除），绑定 home 平面目录（`PlaneSshProfileRepository`）。读取合并 `<home>/remote-targets.json`（远端主机本机配置）与 `<home>/ssh_profiles/profiles.json`（同步投影）；新增/编辑/删除落投影，对配对了同一平面的设备共享。本机 target 不会出现在此页。凭据与传输仍在设备本地：平面条目只在用户**发起连接时**才登记到本机目录（并进入「远程连接」列表），首次使用通过编辑器录入凭据。
-- SSH 服务器页本增量为只读；编辑/删除完整配置（credential push、端口转发、root sandbox 等字段）为已登记的后续 spec，`SshServerConfigCubit.save/delete` 保留给该后续工作。
+- 远程连接（本地，移动端新增页面）：本机 `remote-targets.json` 的全量管理（增删改查、导入、连接/断开/重连、切换 home）；断线可用。设置里常驻入口（`ConfigSection.remoteConnections`），不依赖启动门控。数据与 SSH 服务器页完全分离：这里新增只写本机，不会出现在 SSH 服务器页。
+- SSH 服务器（远端）：与桌面端**同一页面、同一入口/标题**，绑定 home 平面目录（`PlaneSshProfileRepository`）。读取合并 `<home>/remote-targets.json`（远端主机本机配置）与 `<home>/ssh_profiles/profiles.json`（同步投影）；新增/编辑/删除落投影，对配对了同一平面的设备共享。本机连接目标不会出现在此页。连接入口在「远程连接」（本机），连接成功后 `RemoteTargetSync` 把服务器写入平面投影，因此从任一设备连过的服务器都会出现在此页。
 - 字段归属：断线重连要用的字段放本地；只有连上后才用的配置放远端。
 - 凭据拆分：SSH 登录凭据留在设备 vault（断线仍可重连）；业务凭据（provider key、GitHub token 等）写 `<home>/vault/business.json`，随 home plane 走。`VaultDocumentStore` 合并两侧读取，按 owner kind 路由写入，远端侧故障不阻断本地 SSH 凭据；拆分前的业务条目做一次性复制迁移，不删除原数据。
 - 同步：本地先行（`pendingSync`），连上后 `updatedAt` 新者胜。
