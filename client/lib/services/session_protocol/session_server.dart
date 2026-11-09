@@ -36,6 +36,7 @@ final class SessionServer {
   StreamSubscription<List<int>>? _incoming;
   StreamSubscription<SessionDelta>? _deltaSub;
   StreamSubscription<SessionContentInvalidated>? _contentSub;
+  StreamSubscription<SessionContentDelta>? _contentDeltaSub;
   StreamSubscription<SessionAttention>? _attentionSub;
   Timer? _helloTimer;
   final Completer<void> _done = Completer<void>();
@@ -76,6 +77,7 @@ final class SessionServer {
     _helloTimer?.cancel();
     await _deltaSub?.cancel();
     await _contentSub?.cancel();
+    await _contentDeltaSub?.cancel();
     await _attentionSub?.cancel();
     await _incoming?.cancel();
     if (!_done.isCompleted) _done.complete();
@@ -179,6 +181,13 @@ final class SessionServer {
     _contentSub = _authority.content.listen(
       (event) => _send(
         SessionMessageType.content,
+        channel: SessionChannel.content,
+        body: event.toJson(),
+      ),
+    );
+    _contentDeltaSub = _authority.contentDeltas.listen(
+      (event) => _send(
+        SessionMessageType.contentDelta,
         channel: SessionChannel.content,
         body: event.toJson(),
       ),

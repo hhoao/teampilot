@@ -30,16 +30,20 @@ final class SessionAuthority {
   final Map<String, int> _revisions = {};
   final Map<String, String> _workspaceIds = {};
   final Map<String, int> _contentSeq = {};
+  final Map<String, int> _contentDeltaSeq = {};
 
   final StreamController<SessionDelta> _deltas =
       StreamController<SessionDelta>.broadcast();
   final StreamController<SessionContentInvalidated> _content =
       StreamController<SessionContentInvalidated>.broadcast();
+  final StreamController<SessionContentDelta> _contentDeltas =
+      StreamController<SessionContentDelta>.broadcast();
   final StreamController<SessionAttention> _attention =
       StreamController<SessionAttention>.broadcast();
 
   Stream<SessionDelta> get deltas => _deltas.stream;
   Stream<SessionContentInvalidated> get content => _content.stream;
+  Stream<SessionContentDelta> get contentDeltas => _contentDeltas.stream;
   Stream<SessionAttention> get attention => _attention.stream;
 
   List<SessionSnapshot> snapshots() {
@@ -116,6 +120,7 @@ final class SessionAuthority {
     }
     _workspaceIds.clear();
     _contentSeq.clear();
+    _contentDeltaSeq.clear();
   }
 
   SessionDelta? removeSession(String sessionId) {
@@ -123,6 +128,8 @@ final class SessionAuthority {
     final previous = _sessions.remove(trimmed);
     if (previous == null) return null;
     final workspaceId = _workspaceIds.remove(trimmed) ?? '';
+    _contentDeltaSeq.removeWhere((key, _) => key.startsWith('$trimmed|'));
+    _contentSeq.remove(trimmed);
     final base = _revisions[trimmed] ?? 0;
     final revision = base + 1;
     _revisions[trimmed] = revision;
@@ -244,6 +251,33 @@ final class SessionAuthority {
     return event;
   }
 
+  /// Publishes one semantic content patch. Sequence is per session+seat stream.
+  SessionContentDelta publishContentDelta({
+    required String sessionId,
+    required String memberId,
+    required String kind,
+    required String payload,
+    bool partial = true,
+  }) {
+    final trimmedSession = sessionId.trim();
+    final trimmedMember = memberId.trim();
+    final streamKey = '$trimmedSession|$trimmedMember';
+    final seq = (_contentDeltaSeq[streamKey] ?? 0) + 1;
+    _contentDeltaSeq[streamKey] = seq;
+    final event = SessionContentDelta(
+      sessionId: trimmedSession,
+      memberId: trimmedMember,
+      seq: seq,
+      baseSeq: seq - 1,
+      epoch: epoch,
+      kind: kind,
+      payload: payload,
+      partial: partial,
+    );
+    if (!_contentDeltas.isClosed) _contentDeltas.add(event);
+    return event;
+  }
+
   SessionAttention publishAttention({
     required String sessionId,
     required String kind,
@@ -266,6 +300,7 @@ final class SessionAuthority {
   Future<void> dispose() async {
     await _deltas.close();
     await _content.close();
+    await _contentDeltas.close();
     await _attention.close();
   }
 

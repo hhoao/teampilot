@@ -166,6 +166,171 @@ AcpTranscriptDecodeResult decodeAcpChatTranscriptResult(String? jsonl) {
 List<AiMessage> decodeAcpChatTranscript(String? jsonl) =>
     decodeAcpChatTranscriptResult(jsonl).messages;
 
+/// Result of folding a v2 delta into an already-loaded transcript.
+final class AcpChatTranscriptDeltaResult {
+  const AcpChatTranscriptDeltaResult({
+    required this.messages,
+    required this.removedIds,
+    required this.replaceAll,
+  });
+
+  /// Touched messages (updated or newly added), in record order.
+  final List<AiMessage> messages;
+
+  /// Messages the delta dropped. Ignored when [replaceAll] is true.
+  final Set<String> removedIds;
+
+  /// True when the delta began with a `reset`; the caller must replace its
+  /// whole message list with [messages].
+  final bool replaceAll;
+}
+
+/// Applies incremental v2 records (see [buildAcpChatTranscriptDelta]) to
+/// [current] without rebuilding untouched messages.
+///
+/// Only messages with a record are rebuilt; unchanged parts are carried over by
+/// instance, so a text-only append costs one message allocation, not a full
+/// transcript replay.
+AcpChatTranscriptDeltaResult applyAcpChatTranscriptDelta({
+  required List<AiMessage> current,
+  required String? jsonl,
+}) {
+  if (jsonl == null || jsonl.isEmpty) {
+    return const AcpChatTranscriptDeltaResult(
+      messages: [],
+      removedIds: {},
+      replaceAll: false,
+    );
+  }
+  final currentById = {for (final message in current) message.id: message};
+  final builders = <String, _MessageBuilder>{};
+  final order = <String>[];
+  final removed = <String>{};
+  var reset = false;
+
+  _MessageBuilder builderFor(String id, [Map<String, Object?>? header]) {
+    final existing = builders[id];
+    if (existing != null) {
+      if (header != null) {
+        existing.role = _role(header['type']);
+        final at = _at(header);
+        if (at != null) existing.createdAt = at;
+        if (header.containsKey('status')) {
+          existing.status = _messageStatus(header['status']);
+        }
+        if (header.containsKey('channel')) {
+          existing.deliveryChannel = _string(header['channel']);
+        }
+      }
+      return existing;
+    }
+    final seeded = currentById[id];
+    final builder = seeded != null
+        ? _MessageBuilder.of(seeded)
+        : _MessageBuilder(
+            id: id,
+            role: _role(header?['type']),
+            createdAt: header == null ? null : _at(header),
+            status: _messageStatus(header?['status']),
+            deliveryChannel: _string(header?['channel']),
+          );
+    builders[id] = builder;
+    order.add(id);
+    return builder;
+  }
+
+  for (final raw in _lines(jsonl)) {
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } on FormatException {
+      continue;
+    }
+    if (decoded is! Map) continue;
+    final entry = Map<String, Object?>.from(decoded);
+    if (entry['v'] != acpChatTranscriptVersion) continue;
+    final type = entry['type'];
+    if (type == 'reset') {
+      reset = true;
+      builders.clear();
+      order.clear();
+      removed.addAll(currentById.keys);
+      continue;
+    }
+    if (type == 'drop') {
+      final id = entry['id'];
+      if (id is String) {
+        removed.add(id);
+        builders.remove(id);
+        order.remove(id);
+      }
+      continue;
+    }
+    if (type == 'user' || type == 'assistant' || type == 'system') {
+      final id = entry['id'];
+      if (id is! String || id.isEmpty) continue;
+      builderFor(id, entry);
+      continue;
+    }
+    if (type == 'part') {
+      final mid = entry['mid'];
+      final index = entry['i'];
+      if (mid is! String || index is! int || index < 0) continue;
+      if (removed.contains(mid)) continue;
+      final part = entry['part'];
+      builderFor(mid).setPart(
+        index,
+        part is Map ? _decodePart(Map<String, Object?>.from(part)) : null,
+      );
+      continue;
+    }
+    if (type == 'text') {
+      final mid = entry['mid'];
+      final index = entry['i'];
+      final append = entry['append'];
+      if (mid is! String ||
+          index is! int ||
+          index < 0 ||
+          append is! String ||
+          removed.contains(mid)) {
+        continue;
+      }
+      final builder = builderFor(mid);
+      final previous = index < builder.parts.length
+          ? builder.parts[index]
+          : null;
+      if (entry['kind'] == 'reasoning') {
+        final text = previous is AiReasoningPart
+            ? previous.text + append
+            : append;
+        builder.setPart(index, AiReasoningPart(text: text));
+      } else {
+        final text = previous is AiTextPart ? previous.text + append : append;
+        builder.setPart(index, AiTextPart(text: text));
+      }
+    }
+  }
+
+  if (reset) {
+    // Reset always carries a full snapshot; fold it from empty so parts that
+    // disappeared from a message are not resurrected from [current].
+    return AcpChatTranscriptDeltaResult(
+      messages: decodeAcpChatTranscript(jsonl),
+      removedIds: const {},
+      replaceAll: true,
+    );
+  }
+
+  return AcpChatTranscriptDeltaResult(
+    messages: [
+      for (final id in order)
+        if (builders[id] case final builder?) builder.build(),
+    ],
+    removedIds: removed,
+    replaceAll: false,
+  );
+}
+
 /// Records that bring [previous] to [next], or `null` when the change is
 /// structural (reordering / part removal) and requires a compact rewrite.
 ///
@@ -173,9 +338,15 @@ List<AiMessage> decodeAcpChatTranscript(String? jsonl) =>
 /// rebuilds messages with `copyWith`, which keeps untouched part instances.
 /// `identical` is therefore a zero-cost "unchanged" test — no deep JSON
 /// comparison of thousands of tool results on the UI isolate.
+///
+/// [fullParts] makes text growth a full `part` record instead of a `text`
+/// append. The on-disk writer keeps the compact append form; the live stream
+/// uses full parts so applying the same patch twice (or applying one that the
+/// receiver already loaded from disk) is idempotent.
 List<Map<String, Object?>>? buildAcpChatTranscriptDelta({
   required List<AiMessage> previous,
   required List<AiMessage> next,
+  bool fullParts = false,
 }) {
   final prevById = <String, AiMessage>{for (final m in previous) m.id: m};
   final nextIds = <String>{for (final m in next) m.id};
@@ -218,7 +389,11 @@ List<Map<String, Object?>>? buildAcpChatTranscriptDelta({
       earlierChanged = true;
       if (suffix != null) {
         if (suffix.isEmpty) continue;
-        records.add(_textRecord(message.id, i, part, suffix));
+        records.add(
+          fullParts
+              ? _partRecord(message.id, i, part)
+              : _textRecord(message.id, i, part, suffix),
+        );
         continue;
       }
       records.add(_partRecord(message.id, i, part));
@@ -259,11 +434,7 @@ Map<String, Object?> _messageRecord(AiMessage message) {
   };
 }
 
-Map<String, Object?> _partRecord(
-  String mid,
-  int index,
-  AiMessagePart part,
-) => {
+Map<String, Object?> _partRecord(String mid, int index, AiMessagePart part) => {
   'v': acpChatTranscriptVersion,
   'type': 'part',
   'mid': mid,
@@ -371,7 +542,10 @@ class _MessageBuilder {
   AiMessage build() => AiMessage(
     id: id,
     role: role,
-    parts: [for (final part in parts) if (part != null) part],
+    parts: [
+      for (final part in parts)
+        if (part != null) part,
+    ],
     createdAt: createdAt,
     status: status,
     deliveryChannel: deliveryChannel,

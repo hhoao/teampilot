@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:acpd/acpd.dart' as acpd;
 import 'package:ai_message_core/ai_message_core.dart';
@@ -15,6 +16,8 @@ import '../../../services/acp/acp_chat_extension_fold.dart';
 import '../../../services/acp/acp_chat_strings.dart';
 import '../../../services/acp/acp_chat_transcript.dart';
 import '../../../services/acp/acp_chat_transcript_replay.dart';
+import '../../../services/session_sync/session_content_invalidation_bus.dart';
+import '../../../services/session_sync/session_content_stream_bus.dart';
 import '../../../services/acp/acp_client_extensions.dart';
 import '../../../services/acp/acp_model_ref.dart';
 import '../../../services/acp/acp_rpc_error.dart';
@@ -372,6 +375,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// message part order is identical to the unbatched path.
   final List<_PendingStreamRun> _pendingStreamRuns = [];
   Timer? _chunkFlushTimer;
+  Timer? _contentInvalidationTimer;
+  Timer? _streamPublishTimer;
+  List<AiMessage> _lastStreamedMessages = const [];
+  List<AiMessage>? _pendingStreamSnapshot;
 
   /// Activity implied by the turn trackers. Callers must have already updated
   /// the trackers for the event in hand.
@@ -706,6 +713,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       emit(state.copyWith(historyHydrated: true));
       return;
     }
+    // Existing history is already on disk; the stream only carries changes
+    // after this point, so a subscriber never receives the whole transcript.
+    _lastStreamedMessages = loaded;
     emit(
       state.copyWith(
         historyHydrated: true,
@@ -923,6 +933,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     // Mark before killing the agent: `_runtime.close()` awaits process exit,
     // so the watcher fires with 0 while this cubit is still open.
     _closing = true;
+    _contentInvalidationTimer?.cancel();
+    _contentInvalidationTimer = null;
+    _streamPublishTimer?.cancel();
+    _streamPublishTimer = null;
     _disarmCancelSettle();
     _stopBackgroundSync();
     await _updatesSub?.cancel();
@@ -1306,6 +1320,12 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     // Attention done after inTurn is false so sync consumers (and ChatCubit's
     // attention-driven sessionActivities recompute) do not read a stale turn.
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
+    // Flush the last stream patch and persist the final transcript before the
+    // idle/background branches return. The invalidation is only a reconciliation
+    // hint; the live subscriber already merged the streamed messages.
+    await _persist();
+    _flushStreamSnapshot(cancelTimer: true);
+    _scheduleContentInvalidation();
     // The turn is over but a background shell it launched is still running:
     // ACP goes silent, so watch the agent's history and hold the seat lease so
     // the UI shows "background work running" instead of `done`.
@@ -2201,8 +2221,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     if (!_allowPersist) return;
     final transcript = _transcript;
     if (transcript == null) return;
+    final snapshot = _messagesForDisk();
     try {
-      await transcript.saveMessages(_messagesForDisk());
+      await transcript.saveMessages(snapshot);
+      _queueStreamSnapshot(snapshot);
     } on Object catch (error, stackTrace) {
       appLogger.e(
         '[acp-chat] persist failed session=$sessionId: $error',
@@ -2210,6 +2232,58 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  void _queueStreamSnapshot(List<AiMessage> snapshot) {
+    _pendingStreamSnapshot = snapshot;
+    _streamPublishTimer ??= Timer(chunkCoalesceWindow, _flushStreamSnapshot);
+  }
+
+  void _flushStreamSnapshot({bool cancelTimer = false}) {
+    if (cancelTimer) _streamPublishTimer?.cancel();
+    _streamPublishTimer = null;
+    final snapshot = _pendingStreamSnapshot;
+    _pendingStreamSnapshot = null;
+    if (snapshot == null || isClosed) return;
+    final delta = buildAcpChatTranscriptDelta(
+      previous: _lastStreamedMessages,
+      next: snapshot,
+      fullParts: true,
+    );
+    _lastStreamedMessages = snapshot;
+    if (delta == null) {
+      // Reordering or part removal cannot be expressed as a keyed delta; send
+      // a compact snapshot and let the receiver replace its list.
+      var payload = encodeAcpChatTranscript(snapshot);
+      if (payload.trim().isEmpty) {
+        payload = '{"v":2,"type":"reset"}\n';
+      }
+      SessionContentStreamBus.publish(
+        sessionId: sessionId,
+        memberId: seatMemberId == acpMemberId ? '' : seatMemberId,
+        payload: payload,
+        replace: true,
+      );
+      return;
+    }
+    if (delta.isEmpty) return;
+    final payload = '${delta.map(jsonEncode).join('\n')}\n';
+    SessionContentStreamBus.publish(
+      sessionId: sessionId,
+      memberId: seatMemberId == acpMemberId ? '' : seatMemberId,
+      payload: payload,
+    );
+  }
+
+  void _scheduleContentInvalidation() {
+    _contentInvalidationTimer ??= Timer(const Duration(milliseconds: 200), () {
+      _contentInvalidationTimer = null;
+      if (isClosed) return;
+      SessionContentInvalidationBus.publish(
+        sessionId: sessionId,
+        memberId: seatMemberId,
+      );
+    });
   }
 
   void _endWith(AcpChatErrorKind kind, String message) {

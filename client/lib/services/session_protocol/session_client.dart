@@ -6,11 +6,14 @@ import 'session_envelope.dart';
 import 'session_frame_codec.dart';
 import 'session_models.dart';
 
-typedef SessionSnapshotsHandler =
-    void Function(List<SessionSnapshot> snapshots);
+typedef SessionSnapshotsHandler = void Function(
+  List<SessionSnapshot> snapshots,
+);
 typedef SessionDeltaHandler = void Function(SessionDelta delta);
-typedef SessionContentHandler =
-    void Function(SessionContentInvalidated invalidation);
+typedef SessionContentHandler = void Function(
+  SessionContentInvalidated invalidation,
+);
+typedef SessionContentDeltaHandler = void Function(SessionContentDelta delta);
 typedef SessionAttentionHandler = void Function(SessionAttention attention);
 typedef SessionErrorHandler = void Function(String code, String message);
 typedef SessionVoidHandler = void Function();
@@ -22,6 +25,7 @@ final class SessionClientCallbacks {
     this.onSnapshot,
     this.onDelta,
     this.onContent,
+    this.onContentDelta,
     this.onAttention,
     this.onError,
     this.onReady,
@@ -31,6 +35,7 @@ final class SessionClientCallbacks {
   final SessionSnapshotsHandler? onSnapshot;
   final SessionDeltaHandler? onDelta;
   final SessionContentHandler? onContent;
+  final SessionContentDeltaHandler? onContentDelta;
   final SessionAttentionHandler? onAttention;
   final SessionErrorHandler? onError;
   final SessionVoidHandler? onReady;
@@ -253,6 +258,10 @@ final class SessionClient {
         final invalidation = SessionContentInvalidated.fromJson(envelope.body);
         if (invalidation != null) callbacks.onContent?.call(invalidation);
         break;
+      case SessionMessageType.contentDelta:
+        final delta = SessionContentDelta.fromJson(envelope.body);
+        if (delta != null) callbacks.onContentDelta?.call(delta);
+        break;
       case SessionMessageType.attention:
         final attention = SessionAttention.fromJson(envelope.body);
         if (attention != null) callbacks.onAttention?.call(attention);
@@ -413,6 +422,7 @@ final class SessionClientConnection {
             onSnapshot: callbacks.onSnapshot,
             onDelta: callbacks.onDelta,
             onContent: callbacks.onContent,
+            onContentDelta: callbacks.onContentDelta,
             onAttention: callbacks.onAttention,
             onError: callbacks.onError,
             onReady: () {

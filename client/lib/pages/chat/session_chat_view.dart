@@ -47,7 +47,10 @@ import '../../services/chat/conversation/history/acp_seat_transcript_reader.dart
 import '../../services/chat/conversation/history/ai_history_live_refresh_controller.dart';
 import '../../services/chat/conversation/history/failed_message_store.dart';
 import '../../services/chat/conversation/history/chat_transcript_find_controller.dart';
+import '../../services/acp/acp_chat_transcript_replay.dart';
 import '../../services/chat/conversation/history/history_seat_key.dart';
+import '../../services/session_sync/session_content_invalidation_bus.dart';
+import '../../services/session_sync/session_content_stream_bus.dart';
 import '../../services/chat/session/chat_tab.dart';
 import 'ai_message_strings_from_l10n.dart';
 import '../../services/chat/conversation/history/history_hydration_scope.dart';
@@ -190,6 +193,9 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// runtime (history-only open, reclaimed runtime).
   String? _acpSnapshotSeatKey;
   Timer? _acpSnapshotPoll;
+  StreamSubscription<SessionContentInvalidation>? _contentInvalidationSub;
+  StreamSubscription<SessionContentStreamChunk>? _contentStreamSub;
+  DateTime? _lastContentStreamAt;
 
   /// True from optimistic enqueue through connect/boot/inject settle so idle
   /// grace cannot blank tip chrome while History continue is still in flight.
@@ -300,6 +306,25 @@ class _SessionChatViewState extends State<SessionChatView> {
     unawaited(_loadHistoryThenHydratePersistedPendingUsers());
     _bindAcpRuntime();
     _syncAcpSnapshotPoll();
+    _contentInvalidationSub = SessionContentInvalidationBus.stream.listen((
+      event,
+    ) {
+      if (!mounted || event.sessionId != widget.session.sessionId) return;
+      if (!_usesAcpTranscript || widget.acpRuntime != null) return;
+      unawaited(_loadAcpTranscriptSnapshot(force: true));
+    });
+    _contentStreamSub = SessionContentStreamBus.stream.listen((chunk) {
+      if (!mounted || chunk.sessionId != widget.session.sessionId) return;
+      if (widget.acpRuntime != null) return;
+      final memberId = widget.selectedMemberId.trim();
+      if (chunk.memberId.isNotEmpty && chunk.memberId != memberId) return;
+      _lastContentStreamAt = DateTime.now();
+      if (chunk.replace) {
+        _seat?.adoptExternalMessages(decodeAcpChatTranscript(chunk.payload));
+        return;
+      }
+      _seat?.applyExternalTranscriptDelta(chunk.payload);
+    });
     unawaited(_loadWorkspaceProjectBundle());
   }
 
@@ -453,6 +478,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (seatChanged) {
       _userStoppedTurn.value = false;
       _acpSnapshotSeatKey = null;
+      _lastContentStreamAt = null;
       _locator.cancel();
       _visibleOwnerId.value = null;
       _locateHighlightId = null;
@@ -494,6 +520,14 @@ class _SessionChatViewState extends State<SessionChatView> {
     }
     _acpSnapshotPoll ??= Timer.periodic(const Duration(seconds: 2), (_) {
       if (!mounted) return;
+      // A live content stream is already updating this seat; keep the poll as
+      // a fallback that resumes once deltas stop (unsupported host, dropped
+      // connection, or a turn that ended without a final patch).
+      final lastStream = _lastContentStreamAt;
+      if (lastStream != null &&
+          DateTime.now().difference(lastStream) < const Duration(seconds: 4)) {
+        return;
+      }
       unawaited(_loadAcpTranscriptSnapshot(force: true));
     });
   }
@@ -577,6 +611,10 @@ class _SessionChatViewState extends State<SessionChatView> {
     _awaitingIdleGraceTimer = null;
     _acpSnapshotPoll?.cancel();
     _acpSnapshotPoll = null;
+    unawaited(_contentInvalidationSub?.cancel());
+    _contentInvalidationSub = null;
+    unawaited(_contentStreamSub?.cancel());
+    _contentStreamSub = null;
     unawaited(_operatorMailboxSub.cancel());
     unawaited(_acpRuntimeSub?.cancel());
     _acpRuntimeSub = null;

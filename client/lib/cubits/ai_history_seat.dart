@@ -11,6 +11,7 @@ import '../models/app_session.dart';
 import '../models/failed_message_record.dart';
 import '../models/team_config.dart';
 import '../models/workspace_launch_context.dart';
+import '../services/acp/acp_chat_transcript_replay.dart';
 import '../services/chat/conversation/timeline/conversation_timeline.dart';
 import '../services/chat/conversation/timeline/mailbox_user_source.dart';
 import '../services/chat/conversation/timeline/timeline_models.dart';
@@ -508,9 +509,8 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       // instead of the empty parse — an empty parse is never treated as
       // "CLI cleared". Keep prior [_subagentAttachments] / epoch in both cases.
       if (messages.isEmpty && _cliMessages.isNotEmpty) {
-        final mailboxEvents = partitionMailboxUserRecords(
-          mailboxRecords,
-        ).events;
+        final mailboxEvents = partitionMailboxUserRecords(mailboxRecords)
+            .events;
         final existingIds = {for (final m in _allMessages) m.id};
         final hasNewReadMailboxUsers = mailboxEvents.any(
           (e) => !existingIds.contains(e.id),
@@ -966,16 +966,54 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     if (newLength < oldLength) {
       _visibleCount = math.min(oldVisible, newLength);
     } else if (newLength > oldLength) {
-      _visibleCount = math.min(
-        newLength,
-        oldVisible + (newLength - oldLength),
-      );
+      _visibleCount = math.min(newLength, oldVisible + (newLength - oldLength));
     }
     if (newLength == 0) {
       _emitEmptyOrPendingReady(sessionId, memberId);
       return;
     }
     _emitReadyWindow(sessionId, memberId);
+  }
+
+  /// Merges changed message patches by id without dropping the rest of the
+  /// resident transcript. Used by the live ACP content stream; the final
+  /// commit still reconciles through [adoptExternalMessages].
+  void mergeExternalMessages(
+    List<AiMessage> changed, {
+    Set<String> removedIds = const {},
+  }) {
+    if (isClosed || (changed.isEmpty && removedIds.isEmpty)) return;
+    final byId = {for (final message in _cliMessages) message.id: message};
+    for (final message in changed) {
+      byId[message.id] = message;
+    }
+    final seen = <String>{};
+    final merged = <AiMessage>[];
+    for (final message in _cliMessages) {
+      if (removedIds.contains(message.id)) continue;
+      final next = byId[message.id];
+      if (next != null && seen.add(message.id)) merged.add(next);
+    }
+    for (final message in changed) {
+      if (seen.add(message.id)) merged.add(byId[message.id]!);
+    }
+    adoptExternalMessages(merged);
+  }
+
+  /// Applies a v2 transcript delta to the resident message list. Only messages
+  /// touched by the delta are rebuilt.
+  void applyExternalTranscriptDelta(String payload) {
+    if (isClosed || payload.trim().isEmpty) return;
+    final result = applyAcpChatTranscriptDelta(
+      current: _cliMessages,
+      jsonl: payload,
+    );
+    if (result.replaceAll) {
+      adoptExternalMessages(result.messages);
+      return;
+    }
+    if (result.messages.isEmpty && result.removedIds.isEmpty) return;
+    mergeExternalMessages(result.messages, removedIds: result.removedIds);
   }
 
   void setAwaitingAssistant(bool value) {

@@ -359,8 +359,11 @@ void main() {
     final result = decodeAcpChatTranscriptResult(legacy);
     expect(result.hasLegacyRecords, isTrue);
     expect(result.messages, hasLength(1));
-    expect(decodeAcpChatTranscriptResult(encodeAcpChatTranscript([]))
-        .hasLegacyRecords, isFalse);
+    expect(
+      decodeAcpChatTranscriptResult(encodeAcpChatTranscript([]))
+          .hasLegacyRecords,
+      isFalse,
+    );
   });
 
   test('mixed v1 and v2 records fold in order', () {
@@ -421,64 +424,65 @@ void main() {
     expect(await writer.loadMessages(), hasLength(2));
   });
 
-  test('delta appends only changed parts without rewriting the prefix',
-      () async {
-    final fs = _RecordingFilesystem();
-    const path = '/tp/t.jsonl';
-    final writer = AcpChatTranscriptWriter(fs: fs, path: path);
-    final text = AiTextPart(text: 'hello');
-    final tool = AiToolCallPart(toolCallId: 't1', toolName: 'Read');
-    await writer.saveMessages([
-      AiMessage(id: 'a1', role: AiRole.assistant, parts: [text, tool]),
-    ]);
-    final first = fs.files[path]!;
+  test(
+    'delta appends only changed parts without rewriting the prefix',
+    () async {
+      final fs = _RecordingFilesystem();
+      const path = '/tp/t.jsonl';
+      final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+      final text = AiTextPart(text: 'hello');
+      final tool = AiToolCallPart(toolCallId: 't1', toolName: 'Read');
+      await writer.saveMessages([
+        AiMessage(id: 'a1', role: AiRole.assistant, parts: [text, tool]),
+      ]);
+      final first = fs.files[path]!;
 
-    await writer.saveMessages([
-      AiMessage(
-        id: 'a1',
-        role: AiRole.assistant,
-        parts: [
-          text, // unchanged instance: no record emitted
-          tool.copyWith(status: AiToolCallStatus.complete, result: 'ok'),
-        ],
-      ),
-    ]);
-
-    expect(fs.atomicWrites, 1); // only the initial compact write
-    expect(fs.appends, 1);
-    expect(fs.files[path]!.startsWith(first), isTrue);
-    expect(fs.appendedBytes, lessThan(500));
-    final loaded = await writer.loadMessages();
-    expect(loaded, hasLength(1));
-    expect(loaded.single.parts, hasLength(2));
-    expect((loaded.single.parts.last as AiToolCallPart).result, 'ok');
-  });
-
-  test('streaming text growth appends only suffixes, not cumulative text',
-      () async {
-    final fs = _RecordingFilesystem();
-    const path = '/tp/t.jsonl';
-    final writer = AcpChatTranscriptWriter(fs: fs, path: path);
-    var text = 'x';
-    for (var i = 0; i < 200; i++) {
       await writer.saveMessages([
         AiMessage(
           id: 'a1',
           role: AiRole.assistant,
-          parts: [AiTextPart(text: text)],
+          parts: [
+            text, // unchanged instance: no record emitted
+            tool.copyWith(status: AiToolCallStatus.complete, result: 'ok'),
+          ],
         ),
       ]);
-      text = '${text}y';
-    }
-    expect(fs.atomicWrites, 1);
-    // 200 commits of a 200-char growing part must not write ~200*200 bytes.
-    expect(fs.appendedBytes, lessThan(200 * 120));
-    final loaded = await writer.loadMessages();
-    expect(
-      (loaded.single.parts.single as AiTextPart).text,
-      'x${'y' * 199}',
-    );
-  });
+
+      expect(fs.atomicWrites, 1); // only the initial compact write
+      expect(fs.appends, 1);
+      expect(fs.files[path]!.startsWith(first), isTrue);
+      expect(fs.appendedBytes, lessThan(500));
+      final loaded = await writer.loadMessages();
+      expect(loaded, hasLength(1));
+      expect(loaded.single.parts, hasLength(2));
+      expect((loaded.single.parts.last as AiToolCallPart).result, 'ok');
+    },
+  );
+
+  test(
+    'streaming text growth appends only suffixes, not cumulative text',
+    () async {
+      final fs = _RecordingFilesystem();
+      const path = '/tp/t.jsonl';
+      final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+      var text = 'x';
+      for (var i = 0; i < 200; i++) {
+        await writer.saveMessages([
+          AiMessage(
+            id: 'a1',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: text)],
+          ),
+        ]);
+        text = '${text}y';
+      }
+      expect(fs.atomicWrites, 1);
+      // 200 commits of a 200-char growing part must not write ~200*200 bytes.
+      expect(fs.appendedBytes, lessThan(200 * 120));
+      final loaded = await writer.loadMessages();
+      expect((loaded.single.parts.single as AiTextPart).text, 'x${'y' * 199}');
+    },
+  );
 
   test('dropping a message appends a drop record', () async {
     final fs = _RecordingFilesystem();
@@ -546,5 +550,155 @@ void main() {
     expect(fs.files[path]!.length, lessThan(fs.appendedBytes));
     final loaded = await writer.loadMessages();
     expect((loaded.single.parts.single as AiTextPart).text, text);
+  });
+
+  test('applies a text delta without rebuilding untouched messages', () {
+    final user = const AiMessage(
+      id: 'u1',
+      role: AiRole.user,
+      parts: [AiTextPart(text: 'hi')],
+    );
+    final assistant = const AiMessage(
+      id: 'a1',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'Hel')],
+    );
+    final previous = [user, assistant];
+    final next = [
+      user,
+      const AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'Hello')],
+      ),
+    ];
+    final records = buildAcpChatTranscriptDelta(previous: previous, next: next);
+    expect(records, isNotNull);
+    final result = applyAcpChatTranscriptDelta(
+      current: previous,
+      jsonl: records!.map(_line).join('\n'),
+    );
+    expect(result.replaceAll, isFalse);
+    expect(result.removedIds, isEmpty);
+    expect(result.messages, hasLength(1));
+    expect((result.messages.single.parts.single as AiTextPart).text, 'Hello');
+  });
+
+  test('fullParts makes a text patch idempotent', () {
+    final user = const AiMessage(
+      id: 'u1',
+      role: AiRole.user,
+      parts: [AiTextPart(text: 'hi')],
+    );
+    final assistant = const AiMessage(
+      id: 'a1',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'Hel')],
+    );
+    final next = const AiMessage(
+      id: 'a1',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'Hello')],
+    );
+    final records = buildAcpChatTranscriptDelta(
+      previous: [user, assistant],
+      next: [user, next],
+      fullParts: true,
+    );
+    expect(records, isNotNull);
+    expect(records!.single['type'], 'part');
+    final jsonl = records.map(_line).join('\n');
+
+    final once = applyAcpChatTranscriptDelta(
+      current: [user, assistant],
+      jsonl: jsonl,
+    );
+    expect((once.messages.single.parts.single as AiTextPart).text, 'Hello');
+    final twice = applyAcpChatTranscriptDelta(
+      current: [user, once.messages.single],
+      jsonl: jsonl,
+    );
+    expect((twice.messages.single.parts.single as AiTextPart).text, 'Hello');
+  });
+
+  test('applies a drop and reports the removed id', () {
+    final user = const AiMessage(
+      id: 'u1',
+      role: AiRole.user,
+      parts: [AiTextPart(text: 'hi')],
+    );
+    final assistant = const AiMessage(
+      id: 'a1',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'gone')],
+    );
+    final records = buildAcpChatTranscriptDelta(
+      previous: [user, assistant],
+      next: [user],
+    );
+    final result = applyAcpChatTranscriptDelta(
+      current: [user, assistant],
+      jsonl: records!.map(_line).join('\n'),
+    );
+    expect(result.replaceAll, isFalse);
+    expect(result.removedIds, {'a1'});
+    expect(result.messages, isEmpty);
+  });
+
+  test('reset replaces the whole list', () {
+    final user = const AiMessage(
+      id: 'u1',
+      role: AiRole.user,
+      parts: [AiTextPart(text: 'hi')],
+    );
+    final result = applyAcpChatTranscriptDelta(
+      current: [user],
+      jsonl: '${_line({'v': 2, 'type': 'reset'})}\n',
+    );
+    expect(result.replaceAll, isTrue);
+    expect(result.messages, isEmpty);
+  });
+
+  test('reset snapshot drops parts missing from the new snapshot', () {
+    final current = [
+      const AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [
+          AiTextPart(text: 'one'),
+          AiTextPart(text: 'two'),
+        ],
+      ),
+    ];
+    final next = [
+      const AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'only')],
+      ),
+    ];
+    final result = applyAcpChatTranscriptDelta(
+      current: current,
+      jsonl:
+          '${_line({'v': 2, 'type': 'reset'})}\n'
+          '${encodeAcpChatTranscript(next)}',
+    );
+    expect(result.replaceAll, isTrue);
+    expect(result.messages.single.parts, hasLength(1));
+    expect((result.messages.single.parts.single as AiTextPart).text, 'only');
+  });
+
+  test('reordering is not expressible as a keyed delta', () {
+    final a = const AiMessage(
+      id: 'a',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'a')],
+    );
+    final b = const AiMessage(
+      id: 'b',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'b')],
+    );
+    expect(buildAcpChatTranscriptDelta(previous: [a, b], next: [b, a]), isNull);
   });
 }

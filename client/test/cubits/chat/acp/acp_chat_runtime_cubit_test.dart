@@ -14,6 +14,7 @@ import 'package:teampilot/services/acp/acp_background_liveness.dart';
 import 'package:teampilot/services/acp/acp_background_transcript.dart';
 import 'package:teampilot/services/acp/acp_chat_strings.dart';
 import 'package:teampilot/services/acp/acp_chat_transcript.dart';
+import 'package:teampilot/services/acp/acp_chat_transcript_replay.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
@@ -23,6 +24,8 @@ import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/agent_status/seat_lease_port.dart';
 import 'package:teampilot/services/cli/tasks/cli_task_board.dart';
+import 'package:teampilot/services/session_sync/session_content_stream_bus.dart';
+
 import '../../../support/in_memory_filesystem.dart';
 
 class _InTurnSamplingAttention implements AgentAttentionPort {
@@ -1704,46 +1707,43 @@ void main() {
     },
   );
 
-  test(
-    'ask pending: clientRequests emit → pendingClient ask; answerAsk delegates and clears',
-    () async {
-      final attention = AgentAttentionCubit(pruneInterval: null);
-      final cubit = bootCubit(attention: attention);
-      await cubit.start(
-        executable: 'gemini',
-        sessionToolDir: '/tmp/tool',
-        workingDirectory: '/w',
-      );
-      const ask = AcpPendingAsk(
-        questions: [
-          AiAskUserQuestion(
-            question: 'Mode?',
-            options: [AiAskUserOption(label: 'Agent')],
-          ),
-        ],
-        toolCallId: 'ask-1',
-      );
-      runtime.clientRequestsController.add(ask);
-      await pumpEventQueue();
+  test('ask pending: clientRequests emit → pendingClient ask; answerAsk delegates and clears', () async {
+    final attention = AgentAttentionCubit(pruneInterval: null);
+    final cubit = bootCubit(attention: attention);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    const ask = AcpPendingAsk(
+      questions: [
+        AiAskUserQuestion(
+          question: 'Mode?',
+          options: [AiAskUserOption(label: 'Agent')],
+        ),
+      ],
+      toolCallId: 'ask-1',
+    );
+    runtime.clientRequestsController.add(ask);
+    await pumpEventQueue();
 
-      expect(cubit.state.pendingClient, same(ask));
-      expect(cubit.state.pendingPermission, isNull);
-      expect(
-        attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
-        AgentSeatAttention.waiting,
-      );
+    expect(cubit.state.pendingClient, same(ask));
+    expect(cubit.state.pendingPermission, isNull);
+    expect(
+      attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
+      AgentSeatAttention.waiting,
+    );
 
-      await cubit.answerAsk(const AcpAskHoldReply.skipped());
-      expect(cubit.state.pendingClient, isNull);
-      expect(runtime.lastAskReply?.skipped, isTrue);
-      expect(
-        attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
-        AgentSeatAttention.working,
-      );
-      await cubit.close();
-      await attention.close();
-    },
-  );
+    await cubit.answerAsk(const AcpAskHoldReply.skipped());
+    expect(cubit.state.pendingClient, isNull);
+    expect(runtime.lastAskReply?.skipped, isTrue);
+    expect(
+      attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
+      AgentSeatAttention.working,
+    );
+    await cubit.close();
+    await attention.close();
+  });
 
   test(
     'cancelTurn while ask pending clears pendingClient and cancels runtime',
@@ -1774,6 +1774,38 @@ void main() {
       await cubit.close();
     },
   );
+
+  test('publishes changed messages to the ACP content stream', () async {
+    final fs = InMemoryFilesystem();
+    final transcript = AcpChatTranscriptWriter(fs: fs, path: '/tp/acp.jsonl');
+    final cubit = bootCubit(transcript: transcript);
+    final chunks = <SessionContentStreamChunk>[];
+    final sub = SessionContentStreamBus.stream.listen(chunks.add);
+    addTearDown(sub.cancel);
+
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    expect(cubit.sendPrompt('hello'), isTrue);
+    await pumpEventQueue();
+
+    expect(chunks, isNotEmpty);
+    final result = applyAcpChatTranscriptDelta(
+      current: const [],
+      jsonl: chunks.last.payload,
+    );
+    expect(result.replaceAll, isFalse);
+    expect(
+      result.messages.any((message) => message.role == AiRole.user),
+      isTrue,
+    );
+    // A personal ACP seat publishes the empty member id so the mobile history
+    // seat (also keyed by '') accepts the live patch.
+    expect(chunks.last.memberId, '');
+    await cubit.close();
+  });
 
   test('todo merge vs replace folds TodoWrite parts and persists', () async {
     final fs = InMemoryFilesystem();
@@ -2055,30 +2087,27 @@ void main() {
     },
   );
 
-  test(
-    'session/new RpcError → launchFailed kind + sessionOpenFailed copy with reason',
-    () async {
-      runtime.startError = acpd.RpcError(
-        code: -32603,
-        message: 'Internal error',
-        data: {'message': 'Failed to initialize session services'},
-      );
-      final cubit = bootCubit();
-      await cubit.start(
-        executable: 'cursor-agent',
-        sessionToolDir: '/tmp/tool',
-        workingDirectory: '/w',
-      );
+  test('session/new RpcError → launchFailed kind + sessionOpenFailed copy with reason', () async {
+    runtime.startError = acpd.RpcError(
+      code: -32603,
+      message: 'Internal error',
+      data: {'message': 'Failed to initialize session services'},
+    );
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'cursor-agent',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
 
-      expect(cubit.state.phase, AcpChatPhase.ended);
-      expect(cubit.state.error?.kind, AcpChatErrorKind.launchFailed);
-      expect(
-        (cubit.state.messages.single.parts.single as AiTextPart).text,
-        'Failed to open the session: Failed to initialize session services',
-      );
-      await cubit.close();
-    },
-  );
+    expect(cubit.state.phase, AcpChatPhase.ended);
+    expect(cubit.state.error?.kind, AcpChatErrorKind.launchFailed);
+    expect(
+      (cubit.state.messages.single.parts.single as AiTextPart).text,
+      'Failed to open the session: Failed to initialize session services',
+    );
+    await cubit.close();
+  });
 
   test(
     'session/new RpcError without useful data → sessionOpenFailed copy only',
@@ -3347,9 +3376,10 @@ void main() {
       sessionId: 's1',
       tool: CliTool.claude,
       seatLeases: leases,
-      backgroundTranscriptFactory:
-          ({required String sessionToolDir, required String sessionId}) =>
-              source,
+      backgroundTranscriptFactory: ({
+        required String sessionToolDir,
+        required String sessionId,
+      }) => source,
       backgroundSyncInterval: const Duration(milliseconds: 10),
       backgroundSyncWindow: const Duration(minutes: 1),
     )..ensureStrings(_testStrings);
@@ -3434,9 +3464,10 @@ void main() {
     final leases = _RecordingSeatLeases();
     final cubit = bootCubit(
       seatLeases: leases,
-      backgroundLivenessFactory:
-          ({required String sessionToolDir, required String sessionId}) =>
-              probe,
+      backgroundLivenessFactory: ({
+        required String sessionToolDir,
+        required String sessionId,
+      }) => probe,
       backgroundSyncInterval: const Duration(milliseconds: 10),
     );
     await cubit.start(
@@ -3460,9 +3491,10 @@ void main() {
     () async {
       final source = _FakeBackgroundTranscript()..result = null;
       final cubit = bootCubit(
-        backgroundTranscriptFactory:
-            ({required String sessionToolDir, required String sessionId}) =>
-                source,
+        backgroundTranscriptFactory: ({
+          required String sessionToolDir,
+          required String sessionId,
+        }) => source,
       );
       await cubit.start(
         executable: 'claude-agent-acp',

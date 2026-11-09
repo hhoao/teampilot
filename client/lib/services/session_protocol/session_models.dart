@@ -324,6 +324,72 @@ final class SessionContentInvalidated {
   }
 }
 
+/// A coalesced content patch for one seat stream.
+///
+/// `kind` is semantic (`acp.messages`); `payload` is opaque to the protocol and
+/// decoded by the feature that owns the kind.
+final class SessionContentDelta {
+  const SessionContentDelta({
+    required this.sessionId,
+    required this.memberId,
+    required this.seq,
+    required this.kind,
+    required this.payload,
+    this.epoch = 0,
+    this.baseSeq = 0,
+    this.partial = true,
+  });
+
+  final String sessionId;
+  final String memberId;
+  final int seq;
+  final int baseSeq;
+  final int epoch;
+  final String kind;
+  final String payload;
+
+  /// False when [payload] is a full replacement rather than an incremental
+  /// patch (for example, a message list was reordered).
+  final bool partial;
+
+  Map<String, Object?> toJson() => {
+    'sessionId': sessionId,
+    'memberId': memberId,
+    'seq': seq,
+    'baseSeq': baseSeq,
+    'epoch': epoch,
+    'kind': kind,
+    'payload': payload,
+    'partial': partial,
+  };
+
+  static SessionContentDelta? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final sessionId = json['sessionId'];
+    final kind = json['kind'];
+    final payload = json['payload'];
+    if (sessionId is! String || sessionId.isEmpty || kind is! String) {
+      return null;
+    }
+    if (payload is! String) return null;
+    final memberId = json['memberId'];
+    final seq = json['seq'];
+    final base = json['baseSeq'];
+    final epoch = json['epoch'];
+    final partial = json['partial'];
+    return SessionContentDelta(
+      sessionId: sessionId,
+      memberId: memberId is String ? memberId : '',
+      seq: seq is num ? seq.toInt() : 0,
+      baseSeq: base is num ? base.toInt() : 0,
+      epoch: epoch is num ? epoch.toInt() : 0,
+      kind: kind,
+      payload: payload,
+      partial: partial is bool ? partial : true,
+    );
+  }
+}
+
 /// Durable notification fact; the receiving client decides whether to show it.
 final class SessionAttention {
   const SessionAttention({
