@@ -2927,25 +2927,27 @@ Future<AppShell> buildAppShell({
     chatCubit.acpChatStringsResolver = (tool) {
       final locale = PlatformDispatcher.instance.locale;
       final l10n = lookupAppLocalizations(
-        basicLocaleListResolution([locale], AppLocalizations.supportedLocales),
+        basicLocaleListResolution([locale], appLocalizationsSupportedLocales),
       );
       final adapter = tool == CliTool.codex
-          ? l10n.codexAcpLaunchFailedAdapter
-          : l10n.acpLaunchFailedAdapter;
+          ? l10n.codex.acpLaunchFailedAdapter
+          : l10n.acp.launchFailedAdapter;
       final notLoggedIn = tool == CliTool.codex
-          ? l10n.codexAcpChatNotLoggedIn
-          : l10n.acpChatNotLoggedIn;
+          ? l10n.codex.acpChatNotLoggedIn
+          : l10n.acp.chatNotLoggedIn;
       return AcpChatStrings(
-        launchFailedVersion: l10n.acpLaunchFailedVersion,
+        launchFailedVersion: l10n.acp.launchFailedVersion,
         launchFailedAdapter: adapter,
-        launchFailed: l10n.acpChatLaunchFailed(l10n.appProviderToolLabel(tool)),
-        turnFailed: l10n.acpChatTurnFailed,
-        processExited: l10n.acpChatProcessExited(
-          l10n.appProviderToolLabel(tool),
+        launchFailed: l10n.acp.chatLaunchFailed(
+          cliName: l10n.appProviderToolLabel(tool),
+        ),
+        turnFailed: l10n.acp.chatTurnFailed,
+        processExited: l10n.acp.chatProcessExited(
+          cliName: l10n.appProviderToolLabel(tool),
         ),
         notLoggedIn: notLoggedIn,
-        sessionOpenFailed: l10n.acpChatSessionOpenFailed(
-          l10n.appProviderToolLabel(tool),
+        sessionOpenFailed: l10n.acp.chatSessionOpenFailed(
+          cliName: l10n.appProviderToolLabel(tool),
         ),
       );
     };
@@ -3369,7 +3371,7 @@ Future<AppShell> buildAppShell({
           : attention.sessionId;
       final locale = PlatformDispatcher.instance.locale;
       final l10n = lookupAppLocalizations(
-        basicLocaleListResolution([locale], AppLocalizations.supportedLocales),
+        basicLocaleListResolution([locale], appLocalizationsSupportedLocales),
       );
       final payload = HomeWorkspaceRoute.sessionLocation(
         workspaceId: session?.workspaceId ?? '',
@@ -3377,7 +3379,7 @@ Future<AppShell> buildAppShell({
       );
       notificationCubit.record(
         title: title,
-        message: l10n.sessionIdleNotificationSubtitle,
+        message: l10n.session.idleNotificationSubtitle,
         variant: TpToastVariant.success,
         payload: payload,
       );
@@ -3385,8 +3387,8 @@ Future<AppShell> buildAppShell({
       if (await notifier.isAppFocused()) return;
       await notifier.showNotification(
         title: title,
-        body: l10n.sessionIdleNotificationSubtitle,
-        subtitle: l10n.sessionIdleNotificationTitle,
+        body: l10n.session.idleNotificationSubtitle,
+        subtitle: l10n.session.idleNotificationTitle,
         payload: payload,
       );
     }
@@ -4824,16 +4826,18 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
   Widget build(BuildContext context) {
     if (_error != null) {
       return MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: BootstrapStartupErrorPage(
-          error: _error!,
-          showChooseWorkEnvironment: Platform.isAndroid,
-          showNativeStorageFallback: _canFallbackToNativeStorage,
-          retrying: _retrying,
-          onRetry: _retryBootstrap,
-          onChooseWorkEnvironment: _chooseWorkEnvironmentAndRetry,
-          onNativeStorageFallback: _switchToNativeStorageAndRetry,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
+        home: TranslationProvider(
+          child: BootstrapStartupErrorPage(
+            error: _error!,
+            showChooseWorkEnvironment: Platform.isAndroid,
+            showNativeStorageFallback: _canFallbackToNativeStorage,
+            retrying: _retrying,
+            onRetry: _retryBootstrap,
+            onChooseWorkEnvironment: _chooseWorkEnvironmentAndRetry,
+            onNativeStorageFallback: _switchToNativeStorageAndRetry,
+          ),
         ),
       );
     }
@@ -4841,9 +4845,9 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     if (shell == null) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: const AppBootstrapLoadingPage(),
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
+        home: TranslationProvider(child: const AppBootstrapLoadingPage()),
       );
     }
     return MultiBlocProvider(
