@@ -1514,6 +1514,77 @@ void main() {
       },
     );
 
+    test(
+      'refreshWorkspaceFromHome adds a new workspace without dropping sessions',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp(
+          'chat_cubit_workspace_refresh_',
+        );
+        final repo = SessionRepository(
+          rootDir: tmp.path,
+          storage: testHomeStorage,
+        );
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
+          sessionRepository: repo,
+          postFrameScheduler: postFrame.scheduler,
+        );
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+        final first = await repo.createWorkspace([WorkspaceFolder(path: '/a')]);
+        final firstSession = await repo.createSession(first.workspaceId);
+        await cubit.loadWorkspaceIndex(repo);
+        await cubit.ensureSessionsForWorkspace(first.workspaceId);
+        expect(cubit.state.sessions, hasLength(1));
+
+        final second = await repo.createWorkspace([
+          WorkspaceFolder(path: '/b'),
+        ]);
+        final secondSession = await repo.createSession(second.workspaceId);
+        await cubit.refreshWorkspaceFromHome(second.workspaceId);
+
+        expect(
+          cubit.state.workspaces.map((w) => w.workspaceId),
+          containsAll([first.workspaceId, second.workspaceId]),
+        );
+        final ids = cubit.state.sessions.map((s) => s.sessionId).toSet();
+        expect(ids, contains(firstSession.session.sessionId));
+        expect(ids, contains(secondSession.session.sessionId));
+      },
+    );
+
+    test('createSession notifies the local session-list hook', () async {
+      final tmp = await Directory.systemTemp.createTemp(
+        'chat_cubit_create_hook_',
+      );
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: testHomeStorage,
+      );
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+      );
+      _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+      final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+      await cubit.loadWorkspaceIndex(repo);
+      final changed = <String>[];
+      cubit.onLocalSessionListChanged = changed.add;
+
+      final created = await cubit.createSession(ws.workspaceId, repo);
+
+      expect(created.workspaceId, ws.workspaceId);
+      expect(changed, [ws.workspaceId]);
+    });
+
     test('upsertRemoteSessionHint appends a placeholder once', () async {
       final tmp = await Directory.systemTemp.createTemp(
         'chat_cubit_remote_hint_',

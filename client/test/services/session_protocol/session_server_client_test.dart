@@ -10,6 +10,7 @@ import 'package:teampilot/services/session_protocol/session_server.dart';
 
 final class _Control implements SessionControlPort {
   int cancels = 0;
+  final List<String> refreshes = [];
 
   @override
   Future<void> cancelTurn({
@@ -17,6 +18,11 @@ final class _Control implements SessionControlPort {
     required String memberId,
   }) async {
     cancels++;
+  }
+
+  @override
+  Future<void> refreshWorkspaceSessions(String workspaceId) async {
+    refreshes.add(workspaceId);
   }
 }
 
@@ -124,6 +130,10 @@ void main() {
       final result = await client.cancelTurn(sessionId: 's1', memberId: 'dev');
       expect(result.status, SessionIntentStatus.applied);
       expect(control.cancels, 1);
+
+      final refresh = await client.refreshSessions(workspaceId: 'ws1');
+      expect(refresh.status, SessionIntentStatus.applied);
+      expect(control.refreshes, ['ws1']);
 
       authority.publishContentInvalidated(sessionId: 's1');
       await _waitFor(() => contents.isNotEmpty);

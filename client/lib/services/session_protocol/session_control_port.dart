@@ -7,4 +7,10 @@ abstract interface class SessionControlPort {
     required String sessionId,
     required String memberId,
   });
+
+  /// Re-reads [workspaceId]'s session list from the shared home plane.
+  ///
+  /// Used by a mobile client after it creates a conversation: the desktop
+  /// authority has no file watcher on the home, so it must be told to refresh.
+  Future<void> refreshWorkspaceSessions(String workspaceId);
 }

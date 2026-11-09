@@ -167,6 +167,39 @@ final class SessionAuthority {
         code: 'authority_moved',
       );
     }
+    if (intent.op == 'session.refresh') {
+      final workspaceId = intent.workspaceId.trim();
+      if (workspaceId.isEmpty) {
+        return SessionIntentResult(
+          id: intent.id,
+          status: SessionIntentStatus.rejected,
+          epoch: epoch,
+          code: 'workspace_required',
+        );
+      }
+      try {
+        await _controlPort.refreshWorkspaceSessions(workspaceId);
+        return SessionIntentResult(
+          id: intent.id,
+          status: SessionIntentStatus.applied,
+          epoch: epoch,
+          revision: _revisions[intent.sessionId] ?? 0,
+        );
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '[session-authority] refresh failed workspace=$workspaceId',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return SessionIntentResult(
+          id: intent.id,
+          status: SessionIntentStatus.rejected,
+          epoch: epoch,
+          code: 'control_failed',
+          message: '$error',
+        );
+      }
+    }
     final session = snapshot(intent.sessionId);
     if (session == null) {
       return SessionIntentResult(

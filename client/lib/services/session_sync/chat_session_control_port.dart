@@ -8,6 +8,13 @@ final class ChatSessionControlPort implements SessionControlPort {
   final ChatCubit _chat;
 
   @override
+  Future<void> refreshWorkspaceSessions(String workspaceId) async {
+    final id = workspaceId.trim();
+    if (id.isEmpty) return;
+    await _chat.refreshWorkspaceFromHome(id);
+  }
+
+  @override
   Future<void> cancelTurn({
     required String sessionId,
     required String memberId,

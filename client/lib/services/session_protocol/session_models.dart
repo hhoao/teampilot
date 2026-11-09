@@ -179,13 +179,14 @@ final class SessionDelta {
   }
 }
 
-/// Typed control request. `turn.cancel` is the first supported op.
+/// Typed control request. Supported ops: `turn.cancel`, `session.refresh`.
 final class SessionIntent {
   const SessionIntent({
     required this.id,
     required this.op,
     required this.sessionId,
     this.memberId = '',
+    this.workspaceId = '',
     this.expectedEpoch,
     this.expectedTurnId,
     this.deadline,
@@ -195,6 +196,10 @@ final class SessionIntent {
   final String op;
   final String sessionId;
   final String memberId;
+
+  /// Workspace-scoped ops (for example `session.refresh`) target this id
+  /// instead of a running session.
+  final String workspaceId;
   final int? expectedEpoch;
   final String? expectedTurnId;
   final DateTime? deadline;
@@ -204,6 +209,7 @@ final class SessionIntent {
     'op': op,
     'sessionId': sessionId,
     'memberId': memberId,
+    if (workspaceId.isNotEmpty) 'workspaceId': workspaceId,
     if (expectedEpoch != null) 'expectedEpoch': expectedEpoch,
     if (expectedTurnId != null) 'expectedTurnId': expectedTurnId,
     if (deadline != null) 'deadline': deadline!.toUtc().toIso8601String(),
@@ -216,6 +222,7 @@ final class SessionIntent {
     final sessionId = json['sessionId'];
     if (id is! String || op is! String || sessionId is! String) return null;
     final memberId = json['memberId'];
+    final workspaceId = json['workspaceId'];
     final expectedEpoch = json['expectedEpoch'];
     final expectedTurnId = json['expectedTurnId'];
     final deadline = json['deadline'];
@@ -224,6 +231,7 @@ final class SessionIntent {
       op: op,
       sessionId: sessionId,
       memberId: memberId is String ? memberId : '',
+      workspaceId: workspaceId is String ? workspaceId : '',
       expectedEpoch: expectedEpoch is num ? expectedEpoch.toInt() : null,
       expectedTurnId: expectedTurnId is String ? expectedTurnId : null,
       deadline: deadline is String ? DateTime.tryParse(deadline) : null,

@@ -294,6 +294,7 @@ Envelope {
   - `client/lib/services/session_sync/`：ChatCubit → authority 的 activity source、ChatCubit 控制端口、TCP loopback server/client 控制器。
   - `client/lib/app/session_protocol_home.dart` + `app_shell.dart` 接线：local home 起 server（广告文件 `<home>/session-protocol.json`），SSH home 起 client（`forwardLocal`）。
   - 取消：`turn.cancel` → PTY `interruptSelectedMemberTurn` / ACP `cancelTurn`。
+  - 列表刷新：`session.refresh{workspaceId}` → `ChatCubit.refreshWorkspaceFromHome`；桌面未知该 workspace 时先 `loadWorkspaceIndex`，再 `refreshSessionsForWorkspace`。移动端在 `sessionStarted` 或本地 `createSession`/`deleteSession` 后发送；client 未 ready 时排队，连接建立后补发。
   - 实时内容：`onSessionHistoryStale` 在桌面发布 `content` 失效；手机收到后触发 history soft reload。ACP history-only 座位额外每 2s 重读 app transcript，覆盖没有 commit hook 的情况。
   - 通知：authority 在 working → idle 且 readyToChat 时发布 `attention{kind:idle}`；手机 client 走 `DesktopSystemNotifier` + 通知中心。
   - UI：远程 busy 时 compose 发送按钮切换为 Stop；`SessionChatView` 不再挂浮动 `RemoteSessionControlBanner`。`SessionRemoteActivityCubit` 提供远端 busy/seat 投影。

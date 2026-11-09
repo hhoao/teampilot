@@ -3453,6 +3453,11 @@ Future<AppShell> buildAppShell({
         sessionAuthority.publishContentInvalidated(sessionId: sessionId);
       }
     };
+    chatCubit.onLocalSessionListChanged = (workspaceId) {
+      unawaited(
+        sessionProtocolController.refreshSessions(workspaceId: workspaceId),
+      );
+    };
     chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
     // Landing seed routing: pods own the store; these sinks are the fallback.
     chatCubit.onSeedHistoryPending = (sid, mid, text) => aiHistoryCubit
@@ -4325,6 +4330,13 @@ Future<AppShell> buildAppShell({
         : _SessionLifecycleRefreshHandler(
             chatCubit,
             () => connectionModeService.isSshMode,
+            onSessionStarted: (workspaceId) {
+              unawaited(
+                sessionProtocolController.refreshSessions(
+                  workspaceId: workspaceId,
+                ),
+              );
+            },
           );
     if (eventDispatcher != null && sessionLifecycleHandler != null) {
       eventDispatcher.registerFamily<SessionLifecycleKind>(
@@ -4934,16 +4946,25 @@ Future<void> _teardownConnect(AppShell? shell) async {
 /// this workspace's cached session list explicitly.
 final class _SessionLifecycleRefreshHandler
     implements event_bus.EventHandler<SessionLifecycleEvent> {
-  _SessionLifecycleRefreshHandler(this._chat, this._isSsh);
+  _SessionLifecycleRefreshHandler(
+    this._chat,
+    this._isSsh, {
+    this.onSessionStarted,
+  });
 
   final ChatCubit _chat;
   final bool Function() _isSsh;
+  final void Function(String workspaceId)? onSessionStarted;
 
   @override
   void handle(SessionLifecycleEvent event) {
-    if (!_isSsh() || event.memberId != null) return;
+    if (event.memberId != null) return;
     final workspaceId = event.workspaceId.trim();
     if (workspaceId.isEmpty) return;
+    if (event.eventKind == SessionLifecycleKind.sessionStarted) {
+      onSessionStarted?.call(workspaceId);
+    }
+    if (!_isSsh()) return;
     unawaited(_chat.refreshSessionsForWorkspace(workspaceId));
   }
 }

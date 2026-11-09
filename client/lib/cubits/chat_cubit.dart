@@ -259,6 +259,12 @@ class ChatCubit extends Cubit<ChatState>
   /// Fired when History should drop cache / reload (disconnect or switch back).
   void Function(String sessionId)? onSessionHistoryStale;
 
+  /// Fired after a local create/delete changes the shared home's session list.
+  ///
+  /// The mobile app uses this to send a session-plane `session.refresh` intent
+  /// so the desktop authority re-reads the workspace instead of staying stale.
+  void Function(String workspaceId)? onLocalSessionListChanged;
+
   /// Test stand-in for [SeatRewindStore.commitTurn] so cubit tests do not
   /// shell out to git. Production leaves this null and builds the store.
   @visibleForTesting
@@ -2316,6 +2322,40 @@ class ChatCubit extends Cubit<ChatState>
     }
   }
 
+  /// Refreshes a workspace's sessions from the shared home.
+  ///
+  /// If the workspace itself was created on another device, reload the home
+  /// workspace index first; otherwise this is the same cheap session-list read
+  /// as [refreshSessionsForWorkspace].
+  Future<void> refreshWorkspaceFromHome(String workspaceId) async {
+    final repo = _sessionRepository;
+    final id = workspaceId.trim();
+    if (repo == null || id.isEmpty) return;
+    if (!state.workspaces.any((workspace) => workspace.workspaceId == id)) {
+      try {
+        final workspaces = await repo.loadWorkspacesIndex();
+        if (isClosed) return;
+        // Merge the new workspace into state without resetting the resident
+        // session lists; `loadWorkspaceIndex` clears them and would blank
+        // every other workspace until it is rehydrated.
+        _emitSnapshot(
+          _dataStore.deriveSnapshot(
+            workspaces: workspaces,
+            sessions: state.sessions,
+          ),
+        );
+      } on Object catch (error, stackTrace) {
+        appLogger.e(
+          '[chat] workspace index refresh failed workspace=$id: $error',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return;
+      }
+    }
+    await refreshSessionsForWorkspace(id);
+  }
+
   /// Adds a lightweight placeholder for a remote session before its
   /// `session.json` is hydrated over SFTP.
   ///
@@ -2490,6 +2530,7 @@ class ChatCubit extends Cubit<ChatState>
     );
     _dataStore.markSessionDocument(session.sessionId);
     _emitSnapshot(_dataStore.appendSession(stateSnapshot(), session));
+    onLocalSessionListChanged?.call(session.workspaceId);
     return session;
   }
 
@@ -2525,6 +2566,7 @@ class ChatCubit extends Cubit<ChatState>
       identityRepository: identityRepository,
     );
     _emitSnapshot(result.snapshot);
+    onLocalSessionListChanged?.call(result.workspaceId);
     return result.workspaceId;
   }
 
@@ -3120,6 +3162,7 @@ class ChatCubit extends Cubit<ChatState>
       ),
       base: state.copyWith(sessions: sessions),
     );
+    onLocalSessionListChanged?.call(created.workspaceId);
     return created;
   }
 
@@ -3527,6 +3570,7 @@ class ChatCubit extends Cubit<ChatState>
         sessionId,
       );
       _notifyAutomationsChanged();
+      onLocalSessionListChanged?.call(session.workspaceId);
     }
   }
 
@@ -3544,6 +3588,7 @@ class ChatCubit extends Cubit<ChatState>
       rosterMembers: rosterMembers,
     );
     _emitSnapshot(result.snapshot);
+    onLocalSessionListChanged?.call(result.workspace.workspaceId);
     return result.workspace;
   }
 
