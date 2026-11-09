@@ -67,6 +67,7 @@ import 'acp_permission_card.dart';
 import 'acp_plan_card.dart';
 import 'acp_runtime_scope.dart';
 import 'agent_permission_attention_banner.dart';
+import '../../services/session_sync/session_protocol_controller.dart';
 import 'compose_stop_visibility.dart';
 import 'session_seat_working.dart';
 import 'history_continue_delivery.dart';
@@ -110,6 +111,7 @@ class SessionChatComposeSection extends StatelessWidget {
     this.onUserStoppedTurn,
     this.turnStarting = false,
     this.acpRuntime,
+    this.remoteBusyMemberId,
     super.key,
   });
 
@@ -151,6 +153,10 @@ class SessionChatComposeSection extends StatelessWidget {
   /// even though the seat is not [memberWorking] yet.
   final bool turnStarting;
 
+  /// First busy seat when the desktop authority owns this session. The
+  /// compose Stop then routes `turn.cancel` over the session plane.
+  final String? remoteBusyMemberId;
+
   /// The session's terminal-less ACP runtime, when this is an ACP chat
   /// session. Drives the ACP permission card + the compose lock while the
   /// agent holds a permission request.
@@ -160,6 +166,7 @@ class SessionChatComposeSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final spacing = context.tpSpacing;
+    final remoteBusy = remoteBusyMemberId?.trim().isNotEmpty ?? false;
 
     // -- Read cubits via context.select ----------------------------------
     final skills = seatSelect<SkillCubit, List<Skill>>(
@@ -466,7 +473,7 @@ class SessionChatComposeSection extends StatelessWidget {
                               composeController.text.trim().isEmpty &&
                               !(composeClip?.collapsed ?? false);
                           final effectiveWorking =
-                              (memberWorking || turnStarting) &&
+                              (memberWorking || turnStarting || remoteBusy) &&
                               !userStoppedTurn;
                           final seatLocked =
                               permissionWaiting || acpPermissionWaiting;
@@ -481,8 +488,13 @@ class SessionChatComposeSection extends StatelessWidget {
                               acpRuntime != null &&
                               acpTurnInFlight &&
                               composeTextEmpty;
+                          final showRemoteStop =
+                              remoteBusy &&
+                              composeTextEmpty &&
+                              !userStoppedTurn;
                           final showComposeStop =
                               showAcpStop ||
+                              showRemoteStop ||
                               shouldShowComposeStop(
                                 memberWorking: memberWorking,
                                 supportsTurnInterrupt: supportsTurnInterrupt,
@@ -572,6 +584,44 @@ class SessionChatComposeSection extends StatelessWidget {
                                           shellMemberId,
                                         );
                                         acpRuntime?.cancelTurn();
+                                        return;
+                                      }
+                                      if (showRemoteStop) {
+                                        final protocol = _maybeReadProtocol(
+                                          context,
+                                        );
+                                        final memberId = remoteBusyMemberId
+                                            ?.trim();
+                                        chat.pauseFollowUpQueue(
+                                          session.sessionId,
+                                          shellMemberId,
+                                        );
+                                        if (protocol != null &&
+                                            memberId != null &&
+                                            memberId.isNotEmpty) {
+                                          unawaited(
+                                            protocol
+                                                .cancelTurn(
+                                                  sessionId: session.sessionId,
+                                                  memberId: memberId,
+                                                )
+                                                .then((result) {
+                                                  if (!context.mounted ||
+                                                      result.ok) {
+                                                    return;
+                                                  }
+                                                  ScaffoldMessenger.maybeOf(
+                                                    context,
+                                                  )?.showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        result.code,
+                                                      ),
+                                                    ),
+                                                  );
+                                                }),
+                                          );
+                                        }
                                         return;
                                       }
                                       onUserStoppedTurn?.call();
@@ -1258,6 +1308,14 @@ class SessionChatComposeSection extends StatelessWidget {
     if (ws == null) return;
     if (!context.mounted) return;
     await showLandingTeamSettingsDialog(context, workspace: ws, team: team);
+  }
+
+  static SessionProtocolController? _maybeReadProtocol(BuildContext context) {
+    try {
+      return context.read<SessionProtocolController>();
+    } on Object {
+      return null;
+    }
   }
 
   static Future<void> _handleComposeStop({

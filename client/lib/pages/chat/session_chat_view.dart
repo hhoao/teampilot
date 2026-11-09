@@ -51,6 +51,7 @@ import '../../services/acp/acp_chat_transcript_replay.dart';
 import '../../services/chat/conversation/history/history_seat_key.dart';
 import '../../services/session_sync/session_content_invalidation_bus.dart';
 import '../../services/session_sync/session_content_stream_bus.dart';
+import '../../widgets/remote_activity_builder.dart';
 import '../../services/chat/session/chat_tab.dart';
 import 'ai_message_strings_from_l10n.dart';
 import '../../services/chat/conversation/history/history_hydration_scope.dart';
@@ -74,7 +75,6 @@ import 'chat_reveal_controller.dart';
 import 'session_follow_up_compose_submit.dart';
 import 'history_continue_delivery.dart';
 import 'operator_history_send.dart';
-import 'remote_session_control_banner.dart';
 import 'session_history_review_submit.dart';
 import 'subagent_preview_controller.dart';
 
@@ -1659,14 +1659,6 @@ class _SessionChatViewState extends State<SessionChatView> {
       children: [
         Positioned.fill(child: _buildContent(context)),
         Positioned(top: spacing.sm, right: spacing.sm, child: capsule()),
-        Positioned(
-          top: 48,
-          left: spacing.sm,
-          child: RemoteSessionControlBanner(
-            sessionId: widget.session.sessionId,
-            memberId: _shellMemberId,
-          ),
-        ),
       ],
     );
   }
@@ -1883,49 +1875,64 @@ class _SessionChatViewState extends State<SessionChatView> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.stretch,
                                       children: [
-                                        SessionChatMessageArea(
-                                          session: widget.session,
-                                          workspace: widget.workspace,
-                                          selectedMemberId: selectedMemberId,
-                                          shellMemberId: _shellMemberId,
-                                          isSubmitting: _isSubmitting,
-                                          userStoppedTurn:
-                                              _userStoppedTurn.value,
-                                          state: state,
-                                          historySeat: historySeat,
-                                          top: top,
-                                          previewTitle: previewTitle,
-                                          subagentPreview: _subagentPreview,
-                                          taskBoardController:
-                                              _taskBoardController,
-                                          findVisible: _findVisible,
-                                          highlightMessageId:
-                                              _locateHighlightId,
-                                          visibleOwnerId: _visibleOwnerId,
-                                          onLocateOutline: (e) => unawaited(
-                                            _locator.locate(
-                                              id: e.id,
-                                              index: e.messageIndex,
-                                              highlight: false,
-                                              animate: true,
-                                            ),
-                                          ),
-                                          findController: _findController,
-                                          findQueryController:
-                                              _findQueryController,
-                                          findFocusNode: _findFocusNode,
-                                          revealController: _revealController,
-                                          historyCap: historyCap,
-                                          onRetry: () =>
-                                              _loadHistory(force: true),
-                                          onRetryFailedMessage: (id) =>
-                                              unawaited(
-                                                _retryFailedMessage(id),
+                                        RemoteActivityBuilder(
+                                          builder: (context, remote) {
+                                            final remoteBusy =
+                                                remote.isBusy(
+                                                  widget.session.sessionId,
+                                                ) ||
+                                                remote.isMemberBusy(
+                                                  widget.session.sessionId,
+                                                  _shellMemberId,
+                                                );
+                                            return SessionChatMessageArea(
+                                              session: widget.session,
+                                              workspace: widget.workspace,
+                                              selectedMemberId:
+                                                  selectedMemberId,
+                                              shellMemberId: _shellMemberId,
+                                              isSubmitting: _isSubmitting,
+                                              userStoppedTurn:
+                                                  _userStoppedTurn.value,
+                                              state: state,
+                                              historySeat: historySeat,
+                                              top: top,
+                                              previewTitle: previewTitle,
+                                              subagentPreview: _subagentPreview,
+                                              taskBoardController:
+                                                  _taskBoardController,
+                                              findVisible: _findVisible,
+                                              highlightMessageId:
+                                                  _locateHighlightId,
+                                              visibleOwnerId: _visibleOwnerId,
+                                              remoteBusy: remoteBusy,
+                                              onLocateOutline: (e) => unawaited(
+                                                _locator.locate(
+                                                  id: e.id,
+                                                  index: e.messageIndex,
+                                                  highlight: false,
+                                                  animate: true,
+                                                ),
                                               ),
-                                          onPickEditAttachments:
-                                              _pickEditAttachments,
-                                          onCloseFind: _closeFind,
-                                          onNavigateFind: _navigateFindTo,
+                                              findController: _findController,
+                                              findQueryController:
+                                                  _findQueryController,
+                                              findFocusNode: _findFocusNode,
+                                              revealController:
+                                                  _revealController,
+                                              historyCap: historyCap,
+                                              onRetry: () =>
+                                                  _loadHistory(force: true),
+                                              onRetryFailedMessage: (id) =>
+                                                  unawaited(
+                                                    _retryFailedMessage(id),
+                                                  ),
+                                              onPickEditAttachments:
+                                                  _pickEditAttachments,
+                                              onCloseFind: _closeFind,
+                                              onNavigateFind: _navigateFindTo,
+                                            );
+                                          },
                                         ),
                                         if (top == null)
                                           ListenableBuilder(
@@ -1934,64 +1941,85 @@ class _SessionChatViewState extends State<SessionChatView> {
                                               _userStoppedTurn,
                                             ]),
                                             builder: (context, _) {
-                                              return _provideAcpRuntime(
-                                                SessionChatComposeSection(
-                                                  session: session,
-                                                  workspace: widget.workspace,
-                                                  selectedMemberId:
-                                                      selectedMemberId,
-                                                  shellMemberId: _shellMemberId,
-                                                  composeController:
-                                                      _controller,
-                                                  composeClip: _clip,
-                                                  composeFocusNode: _focusNode,
-                                                  voiceController: _voice,
-                                                  isSubmitting: _isSubmitting,
-                                                  workspaceRoot: _workspaceRoot,
-                                                  workspaceBundle:
-                                                      _workspaceBundle,
-                                                  launchError:
-                                                      widget.launchError,
-                                                  onRemapDeadTarget:
-                                                      widget.onRemapDeadTarget,
-                                                  onRetry: () => unawaited(
-                                                    _retryLaunchOrLatestFailed(),
-                                                  ),
-                                                  sessionConnectInProgress: widget
-                                                      .sessionConnectInProgress,
-                                                  isMailboxUnread:
-                                                      widget.isMailboxUnread,
-                                                  mailboxQueued: _mailboxQueued,
-                                                  mailboxQueuedSeats:
-                                                      _mailboxQueuedSeats,
-                                                  mailboxQueuedClearToken:
-                                                      _mailboxQueuedClearToken,
-                                                  onMailboxConsumed: (mailId) {
-                                                    if (!mounted) return;
-                                                    unawaited(
-                                                      _seat
-                                                          ?.refreshMailboxTimeline(),
-                                                    );
-                                                  },
-                                                  onAttach: () =>
-                                                      unawaited(_attachFiles()),
-                                                  onPasteImage:
-                                                      _pasteComposeImage,
-                                                  routeActive:
-                                                      widget.routeActive,
-                                                  onSubmit:
-                                                      _handleComposeSubmit,
-                                                  userStoppedTurn:
-                                                      _userStoppedTurn.value,
-                                                  onUserStoppedTurn:
-                                                      _onUserStoppedTurn,
-                                                  turnStarting:
-                                                      _composeTurnStarting(
-                                                        context
-                                                            .read<ChatCubit>(),
+                                              return RemoteActivityBuilder(
+                                                builder: (context, remote) {
+                                                  return _provideAcpRuntime(
+                                                    SessionChatComposeSection(
+                                                      session: session,
+                                                      workspace:
+                                                          widget.workspace,
+                                                      selectedMemberId:
+                                                          selectedMemberId,
+                                                      shellMemberId:
+                                                          _shellMemberId,
+                                                      composeController:
+                                                          _controller,
+                                                      composeClip: _clip,
+                                                      composeFocusNode:
+                                                          _focusNode,
+                                                      voiceController: _voice,
+                                                      isSubmitting:
+                                                          _isSubmitting,
+                                                      workspaceRoot:
+                                                          _workspaceRoot,
+                                                      workspaceBundle:
+                                                          _workspaceBundle,
+                                                      launchError:
+                                                          widget.launchError,
+                                                      onRemapDeadTarget: widget
+                                                          .onRemapDeadTarget,
+                                                      onRetry: () => unawaited(
+                                                        _retryLaunchOrLatestFailed(),
                                                       ),
-                                                  acpRuntime: widget.acpRuntime,
-                                                ),
+                                                      sessionConnectInProgress:
+                                                          widget
+                                                              .sessionConnectInProgress,
+                                                      isMailboxUnread: widget
+                                                          .isMailboxUnread,
+                                                      mailboxQueued:
+                                                          _mailboxQueued,
+                                                      mailboxQueuedSeats:
+                                                          _mailboxQueuedSeats,
+                                                      mailboxQueuedClearToken:
+                                                          _mailboxQueuedClearToken,
+                                                      onMailboxConsumed: (mailId) {
+                                                        if (!mounted) return;
+                                                        unawaited(
+                                                          _seat
+                                                              ?.refreshMailboxTimeline(),
+                                                        );
+                                                      },
+                                                      onAttach: () => unawaited(
+                                                        _attachFiles(),
+                                                      ),
+                                                      onPasteImage:
+                                                          _pasteComposeImage,
+                                                      routeActive:
+                                                          widget.routeActive,
+                                                      onSubmit:
+                                                          _handleComposeSubmit,
+                                                      userStoppedTurn:
+                                                          _userStoppedTurn
+                                                              .value,
+                                                      onUserStoppedTurn:
+                                                          _onUserStoppedTurn,
+                                                      turnStarting:
+                                                          _composeTurnStarting(
+                                                            context
+                                                                .read<
+                                                                  ChatCubit
+                                                                >(),
+                                                          ),
+                                                      acpRuntime:
+                                                          widget.acpRuntime,
+                                                      remoteBusyMemberId:
+                                                          remoteBusyMemberId(
+                                                            remote,
+                                                            session.sessionId,
+                                                          ),
+                                                    ),
+                                                  );
+                                                },
                                               );
                                             },
                                           ),

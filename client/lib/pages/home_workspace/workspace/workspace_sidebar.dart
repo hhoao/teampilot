@@ -38,6 +38,7 @@ import '../../../utils/ui/app_keys.dart';
 import '../../../utils/session/app_session_sort.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/session/running_session_ids.dart';
+import '../../../widgets/remote_activity_builder.dart';
 import '../../../utils/session/session_archive_filter.dart';
 import '../../../utils/session/session_list_structure.dart';
 import '../../../utils/session/session_reorder_merge.dart';
@@ -516,6 +517,16 @@ class _RunningSessionsHost extends StatelessWidget {
     final splitGroups = context.select<WorkbenchCubit, SplitSessionGroups>(
       (c) => SplitSessionGroups.fromWorkbench(c, tabScopeId),
     );
+    final remote = maybeRemoteActivity(context);
+    final remoteOpenIds = <String>[];
+    final remoteBusyIds = <String>{};
+    if (remote != null) {
+      for (final entry in remote.sessions.entries) {
+        if (entry.value.workspaceId != workspace.workspaceId) continue;
+        remoteOpenIds.add(entry.key);
+        if (entry.value.isBusy) remoteBusyIds.add(entry.key);
+      }
+    }
     if (splitGroups.groups.isNotEmpty) {
       final occupied = context.select<MemberPresenceCubit, Set<String>>(
         (c) => c.state.occupiedSessionIds,
@@ -526,10 +537,10 @@ class _RunningSessionsHost extends StatelessWidget {
           openTabSessionIdsInOrder: [
             for (final g in splitGroups.groups) ...g.sessionIds,
           ],
-          occupiedSessionIds: occupied,
+          occupiedSessionIds: {...occupied, ...remoteBusyIds},
         ),
       );
-      if (running.isEmpty) {
+      if (running.isEmpty && remoteOpenIds.isEmpty) {
         return SidebarRebuildProbe(
           key: const Key('workspace-sidebar-running-host-probe'),
           child: const SizedBox.shrink(),
@@ -545,6 +556,7 @@ class _RunningSessionsHost extends StatelessWidget {
             child: _RunningSplitGroupsSection(
               groups: splitGroups.groups,
               knownIds: running.ids.toSet(),
+              extraSessionIds: remoteOpenIds,
               workspace: workspace,
               tabScopeId: tabScopeId,
             ),
@@ -572,8 +584,8 @@ class _RunningSessionsHost extends StatelessWidget {
     final running = context.select<ChatCubit, RunningSessionIds>(
       (c) => RunningSessionIds.fromOpenSessionTabs(
         sessions: sessionsForWorkspace(workspace, c.state.sessions),
-        openTabSessionIdsInOrder: openTabIds.ids,
-        occupiedSessionIds: occupied,
+        openTabSessionIdsInOrder: [...openTabIds.ids, ...remoteOpenIds],
+        occupiedSessionIds: {...occupied, ...remoteBusyIds},
       ),
     );
     if (running.isEmpty) {
@@ -1003,6 +1015,7 @@ class _RunningSplitGroupsSection extends StatelessWidget {
   const _RunningSplitGroupsSection({
     required this.groups,
     required this.knownIds,
+    required this.extraSessionIds,
     required this.workspace,
     required this.tabScopeId,
   });
@@ -1012,6 +1025,10 @@ class _RunningSplitGroupsSection extends StatelessWidget {
   /// Session ids whose sessions exist in the workspace (chat cubit filter) —
   /// tiles outside this set are skipped.
   final Set<String> knownIds;
+
+  /// Desktop-owned sessions reported by the session plane. They are not part
+  /// of a local split group, so they render after the group rows.
+  final List<String> extraSessionIds;
   final Workspace workspace;
   final String tabScopeId;
 
@@ -1020,6 +1037,11 @@ class _RunningSplitGroupsSection extends StatelessWidget {
     final l10n = context.l10n;
     final chatState = context.read<ChatCubit>().state;
     final workbench = context.read<WorkbenchCubit>();
+    final groupedIds = {for (final group in groups) ...group.sessionIds};
+    final extras = [
+      for (final id in extraSessionIds)
+        if (!groupedIds.contains(id)) id,
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1047,6 +1069,26 @@ class _RunningSplitGroupsSection extends StatelessWidget {
               ),
             ],
           ),
+        if (extras.isNotEmpty) ...[
+          if (groups.isNotEmpty) const SizedBox(height: 6),
+          for (final sessionId in extras)
+            if (_sessionById(chatState, sessionId) case final session?)
+              SidebarSessionTile(
+                key: ValueKey('workspace-running-session-$sessionId'),
+                session: session,
+                highlightSessionId: scopedActiveSessionId(
+                  workbench,
+                  tabScopeId,
+                ),
+                tapThrottleKeyPrefix: 'workspace_running_session',
+                onTap: () => openWorkspaceSessionTab(
+                  context,
+                  workspace,
+                  session,
+                  tabScopeId: tabScopeId,
+                ),
+              ),
+        ],
       ],
     );
   }

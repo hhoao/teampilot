@@ -3354,9 +3354,13 @@ Future<AppShell> buildAppShell({
         for (final session in chatCubit.state.sessions) session.sessionId,
       };
       for (final snapshot in state.sessions.values) {
-        if (known.contains(snapshot.sessionId)) continue;
         final workspaceId = snapshot.workspaceId;
         if (workspaceId.isEmpty) continue;
+        chatCubit.upsertRemoteSessionHint(
+          sessionId: snapshot.sessionId,
+          workspaceId: workspaceId,
+        );
+        if (known.contains(snapshot.sessionId)) continue;
         unawaited(chatCubit.refreshSessionsForWorkspace(workspaceId));
       }
     });

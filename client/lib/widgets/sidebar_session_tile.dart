@@ -32,6 +32,8 @@ import 'app_toast/app_toast.dart';
 import 'session_working_spinner.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+import 'remote_activity_builder.dart';
+
 /// Session row for sidebars: rename, archive, overflow menu, and context menu.
 class SidebarSessionTile extends StatefulWidget {
   const SidebarSessionTile({
@@ -587,7 +589,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final connecting = context.select<ChatCubit, bool>(
       (cubit) => cubit.ensurePodRuntime(sessionId).state.phase.isLaunching,
     );
-    final working = workingFromState || connecting;
+    final remoteBusy = maybeRemoteActivity(context)?.isBusy(sessionId) ?? false;
+    final working = workingFromState || connecting || remoteBusy;
     final leaseCubit = context.read<ChatCubit>().seatLeaseCubit;
     final Widget indicator = leaseCubit == null
         ? _sessionIndicator(
