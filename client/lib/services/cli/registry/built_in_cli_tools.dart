@@ -41,6 +41,7 @@ import '../antigravity/capabilities/provider.dart';
 import '../claude/claude_tool.dart';
 import '../codebuddy/codebuddy_tool.dart';
 import '../codebuddy/capabilities/provider.dart';
+import '../codebuddy/provider/codebuddy_models_service.dart';
 import '../codex/codex_tool.dart';
 import '../cursor/cursor_tool.dart';
 import '../flashskyai/flashskyai_tool.dart';
@@ -135,7 +136,12 @@ void registerBuiltInCliTools(
     CodebuddyCliTool(
       // Provider catalog access needs home storage at launch time; the
       // pre-configure registry (tests / arg assembly) keeps the const default.
-      provider: CodebuddyProviderCapability(storage: storage),
+      provider: CodebuddyProviderCapability(
+        storage: storage,
+        modelsService: storage == null
+            ? null
+            : CodebuddyModelsService(storage: storage),
+      ),
     ),
   );
 

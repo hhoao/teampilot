@@ -20,31 +20,59 @@ import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/config_profile/config_profile_context.dart';
 import '../provider/codebuddy_auth_store.dart';
 import '../provider/codebuddy_login_dialog.dart';
+import '../provider/codebuddy_models_service.dart';
 import '../provider/codebuddy_provider_settings_resolver.dart';
 import '../provider_presets.dart';
 import 'defaults.dart';
 
-/// Built-in CodeBuddy model ids (the CLI's own account catalog;
-/// picker also accepts a custom entry, so this list is a convenience only).
+/// Built-in CodeBuddy model ids (the CLI's own account catalog snapshot,
+/// refreshed 2026-11-09; `codebuddy --acp` reports the live list per account,
+/// and the picker also accepts a custom entry, so this list is a cold-start
+/// fallback only).
 abstract final class CodebuddyModelCatalog {
   const CodebuddyModelCatalog._();
 
   static const knownModels = <String>[
-    'hy4-preview',
+    'hy4free',
+    'hy4std',
     'hy3',
     'hy3-x',
     'deepseek-v4.1-flash',
-    'deepseek-v4-pro',
     'glm-5.3',
+    'glm-5.3-flash',
     'glm-5.2',
+    'space-bunny',
+    'minimax-m3.1-flash',
+    'minimax-m2.7',
     'kimi-k3.1-pro',
-    'minimax-m3',
+    'kimi-k3-1',
+    'kimi-k2.8-preview',
+    'deepseek-v4-pro',
     'step-5-preview',
+    'mimo-v2.6-pro',
   ];
 
-  /// Models that expose reasoning-effort levels in the CLI's `session/new`
-  /// model metadata.
-  static const reasoningModels = <String>{'hy4-preview', 'hy3', 'hy3-x'};
+  /// Reasoning-effort levels the CLI advertises for each model; models absent
+  /// from this map get no effort picker. The live ACP catalog supersedes it.
+  static const effortByModel = <String, List<String>>{
+    'hy4free': ['high'],
+    'hy4std': ['high'],
+    'hy3': ['low', 'medium', 'high', 'xhigh'],
+    'hy3-x': ['low', 'medium', 'high', 'xhigh'],
+    'deepseek-v4.1-flash': ['low', 'high', 'max'],
+    'glm-5.3': ['low', 'high', 'max'],
+    'glm-5.3-flash': ['low', 'high', 'max'],
+    'glm-5.2': ['low', 'medium', 'high', 'xhigh'],
+    'space-bunny': ['low', 'medium', 'high', 'xhigh', 'max'],
+    'minimax-m3.1-flash': ['low', 'medium', 'high', 'xhigh', 'max'],
+    'minimax-m2.7': ['low', 'medium', 'high', 'xhigh'],
+    'kimi-k3.1-pro': ['low', 'high', 'max'],
+    'kimi-k3-1': ['low', 'medium', 'high', 'xhigh'],
+    'kimi-k2.8-preview': ['low', 'high', 'max'],
+    'deepseek-v4-pro': ['low', 'medium', 'high', 'xhigh'],
+    'step-5-preview': ['low', 'medium', 'high'],
+    'mimo-v2.6-pro': ['low', 'medium', 'high', 'xhigh'],
+  };
 
   static List<String> modelsFor({
     required AppProviderConfig? provider,
@@ -53,16 +81,28 @@ abstract final class CodebuddyModelCatalog {
 }
 
 final class _CodebuddyCatalogSource implements ModelCatalogSource {
-  const _CodebuddyCatalogSource();
+  const _CodebuddyCatalogSource(this._modelsService);
+
+  final CodebuddyModelsService? _modelsService;
 
   @override
   List<String> modelsFor({
     required AppProviderConfig? provider,
     required String providerId,
-  }) => CodebuddyModelCatalog.modelsFor(
-    provider: provider,
-    providerId: providerId,
-  );
+  }) {
+    // Custom OpenAI-compatible endpoints do not use the account catalog.
+    if (provider != null && provider.baseUrl.trim().isNotEmpty) {
+      return const [];
+    }
+    final live =
+        _modelsService?.modelIdsFor(providerId: provider?.id ?? providerId) ??
+        const <String>[];
+    if (live.isNotEmpty) return live;
+    return CodebuddyModelCatalog.modelsFor(
+      provider: provider,
+      providerId: providerId,
+    );
+  }
 }
 
 /// CodeBuddy provider stack: models.json + settings.json in the
@@ -70,12 +110,20 @@ final class _CodebuddyCatalogSource implements ModelCatalogSource {
 /// (`CODEBUDDY_API_KEY`) so it never lands on disk.
 final class CodebuddyProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
-    implements ProviderCapability, InteractiveCliLoginCapability {
-  const CodebuddyProviderCapability({this.storage});
+    implements
+        ProviderCapability,
+        InteractiveCliLoginCapability,
+        RefreshableProviderModelCapability,
+        ModelDescriptionCapability {
+  const CodebuddyProviderCapability({this.storage, this.modelsService});
 
   /// Home control-plane storage injected at registry construction; required to
   /// read the provider catalog while materializing a session home.
   final HomeStorage? storage;
+
+  /// Live account catalog (`codebuddy --acp` probe); absent in the
+  /// pre-configure registry (tests / arg assembly).
+  final CodebuddyModelsService? modelsService;
 
   static const configDirEnvKey = 'CODEBUDDY_CONFIG_DIR';
 
@@ -117,16 +165,27 @@ final class CodebuddyProviderCapability extends CatalogModelCapability
   bool get supportsModelTiers => false;
 
   @override
-  List<ModelCatalogSource> get catalogSources => const [
-    _CodebuddyCatalogSource(),
+  List<ModelCatalogSource> get catalogSources => [
+    _CodebuddyCatalogSource(modelsService),
   ];
 
   @override
   ProviderModelPickerMode pickerMode(AppProviderConfig provider) =>
       ProviderModelPickerMode.catalogWithCustomEntry;
 
+  /// Credit multiplier the account bills for [modelId] (`x0.11 credits`).
   @override
-  Listenable get catalogUpdates => _emptyCatalogUpdates;
+  String? modelDescription({
+    required String providerId,
+    required String modelId,
+  }) => modelsService?.modelDescriptionFor(
+    providerId: providerId,
+    modelId: modelId,
+  );
+
+  @override
+  Listenable get catalogUpdates =>
+      modelsService?.catalogUpdates ?? _emptyCatalogUpdates;
 
   @override
   Future<void> refreshModelCatalog({
@@ -134,7 +193,20 @@ final class CodebuddyProviderCapability extends CatalogModelCapability
     AppProviderConfig? provider,
     String? executable,
     bool forceRefresh = false,
-  }) async {}
+  }) {
+    final service = modelsService;
+    if (service == null) return Future.value();
+    // Custom OpenAI-compatible endpoints have their own model list; the
+    // account catalog only describes the built-in endpoint.
+    if (provider != null && provider.baseUrl.trim().isNotEmpty) {
+      return Future.value();
+    }
+    return service.ensureLoaded(
+      providerId: providerId,
+      executable: executable,
+      forceRefresh: forceRefresh,
+    );
+  }
 
   // ---- ProviderCredentialCapability (isolated login + interactive TUI) ----
   @override
@@ -292,17 +364,28 @@ final class CodebuddyProviderCapability extends CatalogModelCapability
       EffortPickerPlacement.hidden;
 
   @override
-  bool isApplicable({required String model}) =>
-      CodebuddyModelCatalog.reasoningModels.contains(model.trim());
+  bool isApplicable({required String model}) {
+    final service = modelsService;
+    if (service != null && service.hasLoadedCatalog) {
+      return service.liveEffortOptions(model).isNotEmpty;
+    }
+    return CodebuddyModelCatalog.effortByModel.containsKey(model.trim());
+  }
 
   @override
   List<String> effortCandidates({
     required String model,
     AppProviderConfig? provider,
   }) {
-    if (!isApplicable(model: model)) return const [];
-    if (model.trim() == 'hy4-preview') return const ['high'];
-    return const ['low', 'medium', 'high', 'xhigh'];
+    final service = modelsService;
+    if (service != null && service.hasLoadedCatalog) {
+      final scoped = provider == null
+          ? const <String>[]
+          : service.effortOptionsFor(providerId: provider.id, modelId: model);
+      if (scoped.isNotEmpty) return scoped;
+      return service.liveEffortOptions(model);
+    }
+    return CodebuddyModelCatalog.effortByModel[model.trim()] ?? const [];
   }
 
   @override

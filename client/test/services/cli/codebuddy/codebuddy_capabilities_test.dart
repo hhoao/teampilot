@@ -1,16 +1,17 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/credential_action_result.dart';
 import 'package:teampilot/models/hook_event.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/codebuddy/capabilities/defaults.dart';
 import 'package:teampilot/services/cli/codebuddy/capabilities/headless.dart';
 import 'package:teampilot/services/cli/codebuddy/capabilities/hook_writer.dart';
 import 'package:teampilot/services/cli/codebuddy/capabilities/mcp.dart';
 import 'package:teampilot/services/cli/codebuddy/capabilities/provider.dart';
 import 'package:teampilot/services/cli/codebuddy/provider/codebuddy_auth_store.dart';
+import 'package:teampilot/services/cli/codebuddy/provider/codebuddy_models_service.dart';
 import 'package:teampilot/services/cli/codebuddy/provider_presets.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/interactive_login_capability.dart';
@@ -43,19 +44,212 @@ void main() {
       );
       expect(models, contains('hy3'));
       expect(models, contains('custom-model'));
+      expect(models, contains('hy4free'));
     });
 
-    test('effort is offered only for reasoning models', () {
+    test('effort levels follow the built-in catalog', () {
       expect(cap.isApplicable(model: 'hy3'), isTrue);
-      expect(cap.isApplicable(model: 'deepseek-v4.1-flash'), isFalse);
+      expect(cap.isApplicable(model: 'deepseek-v4.1-flash'), isTrue);
+      expect(cap.isApplicable(model: 'unknown-model'), isFalse);
       expect(cap.effortCandidates(model: 'hy3'), [
         'low',
         'medium',
         'high',
         'xhigh',
       ]);
-      expect(cap.effortCandidates(model: 'hy4-preview'), ['high']);
-      expect(cap.effortCandidates(model: 'deepseek-v4.1-flash'), isEmpty);
+      expect(cap.effortCandidates(model: 'glm-5.3'), ['low', 'high', 'max']);
+      expect(cap.effortCandidates(model: 'hy4free'), ['high']);
+      expect(cap.effortCandidates(model: 'unknown-model'), isEmpty);
+    });
+  });
+
+  group('live model catalog', () {
+    late InMemoryFilesystem fs;
+
+    setUp(() async {
+      fs = InMemoryFilesystem();
+      await fs.ensureDir('/app/providers/codebuddy');
+      await fs.atomicWrite(
+        '/app/providers/codebuddy/codebuddy.auth.json',
+        jsonEncode({
+          'accessToken': 'tok-1',
+          'expiresAt': DateTime.now()
+              .add(const Duration(days: 1))
+              .millisecondsSinceEpoch,
+        }),
+      );
+    });
+
+    CodebuddyModelsService serviceWith(CodebuddyModelsSnapshot snapshot) =>
+        CodebuddyModelsService(
+          fs: fs,
+          basePath: '/app',
+          machineHome: '/home/me',
+          opener:
+              ({
+                required executable,
+                required configDir,
+                required accessToken,
+                required timeout,
+              }) async => snapshot,
+        );
+
+    test('the account catalog replaces the static list', () async {
+      final service = serviceWith(
+        const CodebuddyModelsSnapshot(
+          modelIds: ['hy3', 'glm-5.3'],
+          defaultModelId: 'hy3',
+          effortOptions: {
+            'hy3': ['low', 'high'],
+            'glm-5.3': ['low', 'high', 'max'],
+          },
+        ),
+      );
+      await service.ensureLoaded(providerId: 'codebuddy');
+      final cap = CodebuddyProviderCapability(modelsService: service);
+
+      final models = cap.modelCandidates(
+        provider: null,
+        providerId: 'codebuddy',
+        currentModel: '',
+      );
+
+      expect(models, ['glm-5.3', 'hy3']);
+      expect(models, isNot(contains('hy4free')));
+      expect(cap, isA<RefreshableProviderModelCapability>());
+      expect(cap.catalogUpdates, same(service.catalogUpdates));
+    });
+
+    test('effort levels come from the account metadata', () async {
+      final service = serviceWith(
+        const CodebuddyModelsSnapshot(
+          modelIds: ['hy3', 'glm-5.3'],
+          effortOptions: {
+            'hy3': ['low', 'high'],
+            'glm-5.3': ['low', 'high', 'max'],
+          },
+        ),
+      );
+      await service.ensureLoaded(providerId: 'codebuddy');
+      final cap = CodebuddyProviderCapability(modelsService: service);
+
+      expect(cap.isApplicable(model: 'glm-5.3'), isTrue);
+      expect(cap.effortCandidates(model: 'glm-5.3'), ['low', 'high', 'max']);
+      expect(cap.effortCandidates(model: 'hy3'), ['low', 'high']);
+      expect(cap.effortCandidates(model: 'hy4free'), isEmpty);
+    });
+
+    test('model rows show the account credit multiplier', () async {
+      final service = serviceWith(
+        const CodebuddyModelsSnapshot(
+          modelIds: ['hy3', 'glm-5.3'],
+          descriptions: {'hy3': 'x0.00 credits', 'glm-5.3': 'x0.69 credits'},
+        ),
+      );
+      await service.ensureLoaded(providerId: 'codebuddy');
+      final cap = CodebuddyProviderCapability(modelsService: service);
+
+      expect(cap, isA<ModelDescriptionCapability>());
+      expect(
+        cap.modelDescription(providerId: 'codebuddy', modelId: 'glm-5.3'),
+        'x0.69 credits',
+      );
+      expect(
+        cap.modelDescription(providerId: 'codebuddy', modelId: 'unknown'),
+        isNull,
+      );
+    });
+
+    test('refreshing the catalog probes the CLI account', () async {
+      var calls = 0;
+      final service = CodebuddyModelsService(
+        fs: fs,
+        basePath: '/app',
+        machineHome: '/home/me',
+        opener:
+            ({
+              required executable,
+              required configDir,
+              required accessToken,
+              required timeout,
+            }) async {
+              calls++;
+              return const CodebuddyModelsSnapshot(modelIds: ['hy3']);
+            },
+      );
+      final cap = CodebuddyProviderCapability(modelsService: service);
+
+      await cap.refreshModelCatalog(providerId: 'codebuddy');
+
+      expect(calls, 1);
+      expect(service.modelIdsFor(providerId: 'codebuddy'), ['hy3']);
+    });
+
+    test('custom endpoints keep their declared models', () async {
+      final service = serviceWith(
+        const CodebuddyModelsSnapshot(modelIds: ['hy3']),
+      );
+      await service.ensureLoaded(providerId: 'codebuddy');
+      final cap = CodebuddyProviderCapability(modelsService: service);
+      final custom = AppProviderConfig(
+        id: 'openai-compatible',
+        cli: CliTool.codebuddy,
+        name: 'OpenAI-compatible',
+        baseUrl: 'https://api.example.com/v1',
+        defaultModel: 'gpt-5',
+      );
+
+      final models = cap.modelCandidates(
+        provider: custom,
+        providerId: custom.id,
+        currentModel: '',
+      );
+
+      expect(models, ['gpt-5']);
+    });
+
+    test('custom endpoints are never probed', () async {
+      final authDir = p.join(
+        '/home/me',
+        '.local',
+        'share',
+        'CodeBuddyExtension',
+        'Data',
+        'Public',
+        'auth',
+      );
+      await fs.ensureDir(authDir);
+      await fs.writeString(p.join(authDir, 'Tencent-Cloud.info'), '{}');
+
+      var calls = 0;
+      final service = CodebuddyModelsService(
+        fs: fs,
+        basePath: '/app',
+        machineHome: '/home/me',
+        opener:
+            ({
+              required executable,
+              required configDir,
+              required accessToken,
+              required timeout,
+            }) async {
+              calls++;
+              return const CodebuddyModelsSnapshot(modelIds: ['hy3']);
+            },
+      );
+      final cap = CodebuddyProviderCapability(modelsService: service);
+      final custom = AppProviderConfig(
+        id: 'openai-compatible',
+        cli: CliTool.codebuddy,
+        name: 'OpenAI-compatible',
+        baseUrl: 'https://api.example.com/v1',
+        defaultModel: 'gpt-5',
+      );
+
+      await cap.refreshModelCatalog(providerId: custom.id, provider: custom);
+
+      expect(calls, 0);
+      expect(service.modelIdsFor(providerId: custom.id), isEmpty);
     });
   });
 
