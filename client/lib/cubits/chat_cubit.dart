@@ -265,6 +265,11 @@ class ChatCubit extends Cubit<ChatState>
   /// so the desktop authority re-reads the workspace instead of staying stale.
   void Function(String workspaceId)? onLocalSessionListChanged;
 
+  /// Fired on the authority after a session.refresh intent discovers sessions
+  /// that were not in the resident list.
+  void Function(String workspaceId, List<AppSession> newSessions)?
+  onWorkspaceSessionsDiscovered;
+
   /// Test stand-in for [SeatRewindStore.commitTurn] so cubit tests do not
   /// shell out to git. Production leaves this null and builds the store.
   @visibleForTesting
@@ -2331,6 +2336,7 @@ class ChatCubit extends Cubit<ChatState>
     final repo = _sessionRepository;
     final id = workspaceId.trim();
     if (repo == null || id.isEmpty) return;
+    final before = {for (final session in state.sessions) session.sessionId};
     if (!state.workspaces.any((workspace) => workspace.workspaceId == id)) {
       try {
         final workspaces = await repo.loadWorkspacesIndex();
@@ -2354,6 +2360,15 @@ class ChatCubit extends Cubit<ChatState>
       }
     }
     await refreshSessionsForWorkspace(id);
+    if (isClosed) return;
+    final discovered = [
+      for (final session in state.sessions)
+        if (session.workspaceId == id && !before.contains(session.sessionId))
+          session,
+    ];
+    if (discovered.isNotEmpty) {
+      onWorkspaceSessionsDiscovered?.call(id, discovered);
+    }
   }
 
   /// Adds a lightweight placeholder for a remote session before its

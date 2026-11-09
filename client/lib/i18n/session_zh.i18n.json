@@ -42,6 +42,8 @@
   "historyToolTurn": "工具",
   "idleNotificationSubtitle": "可以继续对话了",
   "idleNotificationTitle": "Agent 已就绪",
+  "remoteDiscoveredTitle": "移动端新建了会话",
+  "remoteDiscoveredBody": "点击打开新会话",
   "launchErrorHideDetails": "收起详情",
   "launchErrorReviewDetails": "查看详情",
   "launchMissingTeamMember": "团队成员不可用，请选择团队后重试。",

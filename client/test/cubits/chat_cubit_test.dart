@@ -1544,6 +1544,10 @@ void main() {
           WorkspaceFolder(path: '/b'),
         ]);
         final secondSession = await repo.createSession(second.workspaceId);
+        final discovered = <String, List<AppSession>>{};
+        cubit.onWorkspaceSessionsDiscovered = (workspaceId, sessions) {
+          discovered[workspaceId] = sessions;
+        };
         await cubit.refreshWorkspaceFromHome(second.workspaceId);
 
         expect(
@@ -1553,6 +1557,10 @@ void main() {
         final ids = cubit.state.sessions.map((s) => s.sessionId).toSet();
         expect(ids, contains(firstSession.session.sessionId));
         expect(ids, contains(secondSession.session.sessionId));
+        expect(
+          discovered[second.workspaceId]?.map((s) => s.sessionId),
+          contains(secondSession.session.sessionId),
+        );
       },
     );
 
