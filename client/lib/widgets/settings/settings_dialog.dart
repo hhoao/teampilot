@@ -86,12 +86,19 @@ class _SettingsDialogHostState extends State<_SettingsDialogHost> {
       key: const ValueKey('settings-deferred-mount'),
       delayFrames: 1,
       child: RepaintBoundary(
-        child: SettingsDialogPaneHost(
-          key: _wideBodyKey,
-          paneCount: widget.entries.length,
-          selectedIndex: _selectedIndex,
-          builder: (context, paneIndex) =>
-              widget.entries[paneIndex].bodyBuilder(context),
+        // The wide dialog shell paints its page surface with a ColoredBox,
+        // so panes need their own Material ancestor: ListTiles / InkWells in
+        // a body would otherwise paint ink on that surface and trigger
+        // Flutter's "ink splashes may be invisible" warning.
+        child: Material(
+          color: Theme.of(context).colorScheme.surface,
+          child: SettingsDialogPaneHost(
+            key: _wideBodyKey,
+            paneCount: widget.entries.length,
+            selectedIndex: _selectedIndex,
+            builder: (context, paneIndex) =>
+                widget.entries[paneIndex].bodyBuilder(context),
+          ),
         ),
       ),
     );

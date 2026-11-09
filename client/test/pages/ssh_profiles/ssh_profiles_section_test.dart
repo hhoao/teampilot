@@ -426,7 +426,11 @@ void main() {
     await tester.tap(find.text(l10n.sshProfile.test));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    await tester.pumpAndSettle(const Duration(seconds: 3));
+    // "Test" shows an indeterminate spinner while the async SSH probe runs,
+    // so pumpAndSettle() never settles under fake async. Pump a bounded
+    // amount instead — the assertions only need the UI to have reacted to
+    // the tap, not the probe to finish.
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(connectionCubit.connectCalls, isEmpty);
     expect(

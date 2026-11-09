@@ -176,6 +176,10 @@ void main() {
       ],
     );
 
+    // Restore the framework handler before asserting: an expect() failure
+    // while FlutterError.onError is overridden makes flutter_test throw its
+    // own _pendingExceptionDetails assertion and hang until the test timeout.
+    FlutterError.onError = old;
     expect(
       messages.where((m) => m.contains('ink splashes may be invisible')),
       isEmpty,
