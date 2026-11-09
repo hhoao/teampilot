@@ -24,6 +24,7 @@ class AiMessageView extends StatefulWidget {
     this.actionBarReveal = AiActionBarReveal.always,
     this.actionBarHoverEnabled,
     this.chainOfThoughtAutoExpand = false,
+    this.timestampText,
     this.onRetryDelivery,
     this.onEdit,
     this.editLabel = 'Edit message',
@@ -47,6 +48,10 @@ class AiMessageView extends StatefulWidget {
   });
 
   final AiMessage message;
+
+  /// Pre-formatted timestamp for the action bar; null hides the label.
+  final String? timestampText;
+
   final AiPartRegistry registry;
   final bool showActionBar;
   final AiActionBarReveal actionBarReveal;
@@ -170,6 +175,7 @@ class _AiMessageViewState extends State<AiMessageView> {
       child: RepaintBoundary(
         child: switch (widget.message.role) {
           AiRole.user => _UserBubble(
+            timestampText: widget.timestampText,
             scheme: scheme,
             aiTheme: aiTheme,
             parts: parts,
@@ -198,6 +204,7 @@ class _AiMessageViewState extends State<AiMessageView> {
             nextVersionLabel: widget.nextVersionLabel,
           ),
           AiRole.assistant => _AssistantBlock(
+            timestampText: widget.timestampText,
             scheme: scheme,
             aiTheme: aiTheme,
             parts: parts,
@@ -330,6 +337,7 @@ class _UserBubble extends StatelessWidget {
     this.onNextVersion,
     this.previousVersionLabel = 'Previous version',
     this.nextVersionLabel = 'Next version',
+    this.timestampText,
   });
 
   final ColorScheme scheme;
@@ -358,6 +366,8 @@ class _UserBubble extends StatelessWidget {
   final VoidCallback? onNextVersion;
   final String previousVersionLabel;
   final String nextVersionLabel;
+
+  final String? timestampText;
 
   @override
   Widget build(BuildContext context) {
@@ -435,6 +445,7 @@ class _UserBubble extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 10, bottom: 18),
                   child: _HoverScopedActionBar(
                     message: message,
+                    timestampText: timestampText,
                     reveal: actionBarReveal,
                     hoverListenable: hoverListenable,
                     dense: true,
@@ -528,6 +539,7 @@ class _AssistantBlock extends StatelessWidget {
     this.onNextVersion,
     this.previousVersionLabel = 'Previous version',
     this.nextVersionLabel = 'Next version',
+    this.timestampText,
   });
 
   final ColorScheme scheme;
@@ -546,6 +558,8 @@ class _AssistantBlock extends StatelessWidget {
   final VoidCallback? onNextVersion;
   final String previousVersionLabel;
   final String nextVersionLabel;
+
+  final String? timestampText;
 
   @override
   Widget build(BuildContext context) {
@@ -566,6 +580,7 @@ class _AssistantBlock extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 4),
                 child: _HoverScopedActionBar(
                   message: message,
+                  timestampText: timestampText,
                   reveal: actionBarReveal,
                   hoverListenable: hoverListenable,
                   onFork: onFork,
@@ -605,6 +620,7 @@ class _HoverScopedActionBar extends StatelessWidget {
     this.onNextVersion,
     this.previousVersionLabel = 'Previous version',
     this.nextVersionLabel = 'Next version',
+    this.timestampText,
   });
 
   final AiMessage message;
@@ -624,10 +640,13 @@ class _HoverScopedActionBar extends StatelessWidget {
   final String previousVersionLabel;
   final String nextVersionLabel;
 
+  final String? timestampText;
+
   @override
   Widget build(BuildContext context) {
     return AiMessageActionBar(
       message: message,
+      timestampText: timestampText,
       reveal: reveal,
       forceVisibleListenable: hoverListenable,
       dense: dense,
