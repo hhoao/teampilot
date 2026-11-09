@@ -14,6 +14,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/failed_message_record.dart';
 import '../../models/pending_branch_edit.dart';
 import '../../services/chat/rewind/seat_branches.dart';
+import '../../utils/chat/chat_timestamp_format.dart';
 import '../../widgets/session_working_spinner.dart';
 import 'chat_outline.dart';
 import 'chat_reveal_controller.dart';
@@ -1290,9 +1291,16 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                               version != null && version.count > 1;
                           final previous = version?.previous;
                           final next = version?.next;
+                          final timestampText = formatChatTimestamp(
+                            ai.createdAt,
+                            locale: Localizations.localeOf(
+                              context,
+                            ).languageCode,
+                          );
                           final messageChild = AiMessageView(
                             key: ValueKey(ai.id),
                             message: ai,
+                            timestampText: timestampText,
                             actionBarHoverEnabled: _hoverEffectsEnabled,
                             actionBarReveal:
                                 deliveryFailed ||
