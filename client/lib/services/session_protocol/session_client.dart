@@ -6,13 +6,11 @@ import 'session_envelope.dart';
 import 'session_frame_codec.dart';
 import 'session_models.dart';
 
-typedef SessionSnapshotsHandler = void Function(
-  List<SessionSnapshot> snapshots,
-);
+typedef SessionSnapshotsHandler =
+    void Function(List<SessionSnapshot> snapshots);
 typedef SessionDeltaHandler = void Function(SessionDelta delta);
-typedef SessionContentHandler = void Function(
-  SessionContentInvalidated invalidation,
-);
+typedef SessionContentHandler =
+    void Function(SessionContentInvalidated invalidation);
 typedef SessionContentDeltaHandler = void Function(SessionContentDelta delta);
 typedef SessionAttentionHandler = void Function(SessionAttention attention);
 typedef SessionErrorHandler = void Function(String code, String message);
@@ -153,10 +151,19 @@ final class SessionClient {
     expectedTurnId: expectedTurnId,
   );
 
+  Future<SessionIntentResult> refreshSessions({required String workspaceId}) =>
+      _sendIntent(
+        op: 'session.refresh',
+        sessionId: '',
+        memberId: '',
+        workspaceId: workspaceId,
+      );
+
   Future<SessionIntentResult> _sendIntent({
     required String op,
     required String sessionId,
     required String memberId,
+    String workspaceId = '',
     String? expectedTurnId,
   }) async {
     if (_closed) {
@@ -172,6 +179,7 @@ final class SessionClient {
       op: op,
       sessionId: sessionId,
       memberId: memberId,
+      workspaceId: workspaceId,
       expectedEpoch: _epoch,
       expectedTurnId: expectedTurnId,
       deadline: DateTime.now().toUtc().add(intentTimeout),
@@ -346,6 +354,8 @@ final class SessionClientConnection {
 
   SessionClient? get client => _client;
 
+  bool get isReady => _client?.isReady ?? false;
+
   static Duration _defaultBackoff(int attempt) {
     final seconds = 1 << attempt.clamp(0, 4);
     return Duration(seconds: seconds.clamp(0, 30));
@@ -381,6 +391,20 @@ final class SessionClientConnection {
       timer.cancel();
       if (identical(_backoffGate, gate)) _backoffGate = null;
     }
+  }
+
+  Future<SessionIntentResult> refreshSessions({required String workspaceId}) {
+    final client = _client;
+    if (client == null || !client.isReady) {
+      return Future.value(
+        const SessionIntentResult(
+          id: '',
+          status: SessionIntentStatus.rejected,
+          code: 'not_connected',
+        ),
+      );
+    }
+    return client.refreshSessions(workspaceId: workspaceId);
   }
 
   Future<SessionIntentResult> cancelTurn({

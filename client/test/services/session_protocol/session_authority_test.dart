@@ -5,6 +5,7 @@ import 'package:teampilot/services/session_protocol/session_models.dart';
 
 final class _Control implements SessionControlPort {
   int cancels = 0;
+  final List<String> refreshes = [];
 
   @override
   Future<void> cancelTurn({
@@ -12,6 +13,11 @@ final class _Control implements SessionControlPort {
     required String memberId,
   }) async {
     cancels++;
+  }
+
+  @override
+  Future<void> refreshWorkspaceSessions(String workspaceId) async {
+    refreshes.add(workspaceId);
   }
 }
 
@@ -100,6 +106,34 @@ void main() {
     expect(result.status, SessionIntentStatus.noop);
     expect(result.code, 'turn_already_ended');
     expect(control.cancels, 0);
+  });
+
+  test(
+    'session.refresh refreshes a workspace without a running session',
+    () async {
+      final result = await authority.handleIntent(
+        const SessionIntent(
+          id: 'r1',
+          op: 'session.refresh',
+          sessionId: '',
+          workspaceId: 'ws-1',
+          expectedEpoch: 7,
+        ),
+      );
+
+      expect(result.status, SessionIntentStatus.applied);
+      expect(control.refreshes, ['ws-1']);
+    },
+  );
+
+  test('session.refresh without a workspace is rejected', () async {
+    final result = await authority.handleIntent(
+      const SessionIntent(id: 'r1', op: 'session.refresh', sessionId: ''),
+    );
+
+    expect(result.status, SessionIntentStatus.rejected);
+    expect(result.code, 'workspace_required');
+    expect(control.refreshes, isEmpty);
   });
 
   test('stale epoch is rejected', () async {

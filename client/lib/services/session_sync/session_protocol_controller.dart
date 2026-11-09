@@ -57,12 +57,63 @@ final class SessionProtocolController {
   SessionProtocolServerConfig? _serverConfig;
   final Set<SessionServer> _servers = {};
   SessionClientConnection? _client;
+  final Set<String> _pendingRefreshWorkspaces = {};
   Future<void>? _acceptLoop;
   Timer? _advertisementTimer;
 
   SessionProtocolRole get role => _role;
 
   bool get isClient => _role == SessionProtocolRole.client;
+
+  Future<SessionIntentResult> refreshSessions({
+    required String workspaceId,
+  }) async {
+    final id = workspaceId.trim();
+    if (id.isEmpty) {
+      return const SessionIntentResult(
+        id: '',
+        status: SessionIntentStatus.rejected,
+        code: 'workspace_required',
+      );
+    }
+    if (_role == SessionProtocolRole.server) {
+      return const SessionIntentResult(
+        id: '',
+        status: SessionIntentStatus.rejected,
+        code: 'server_role',
+      );
+    }
+    final client = _client;
+    if (client == null || !client.isReady) {
+      // Created while the mobile client was still connecting: replay once the
+      // session plane is ready so the desktop eventually sees the new session.
+      _pendingRefreshWorkspaces.add(id);
+      return const SessionIntentResult(
+        id: '',
+        status: SessionIntentStatus.rejected,
+        code: 'not_connected',
+      );
+    }
+    final result = await client.refreshSessions(workspaceId: id);
+    if (!result.ok && result.code == 'not_connected') {
+      _pendingRefreshWorkspaces.add(id);
+    }
+    return result;
+  }
+
+  Future<void> _flushPendingRefreshes() async {
+    if (_role != SessionProtocolRole.client) return;
+    final client = _client;
+    if (client == null || !client.isReady) return;
+    final pending = _pendingRefreshWorkspaces.toList();
+    _pendingRefreshWorkspaces.clear();
+    for (final id in pending) {
+      final result = await client.refreshSessions(workspaceId: id);
+      if (!result.ok && result.code == 'not_connected') {
+        _pendingRefreshWorkspaces.add(id);
+      }
+    }
+  }
 
   Future<SessionIntentResult> cancelTurn({
     required String sessionId,
@@ -85,6 +136,7 @@ final class SessionProtocolController {
 
   Future<void> applyServer(SessionProtocolServerConfig config) async {
     await applyNone();
+    _pendingRefreshWorkspaces.clear();
     final server = authority;
     if (server == null) {
       throw StateError('session-protocol server requires an authority');
@@ -168,7 +220,10 @@ final class SessionProtocolController {
           );
           onAttention?.call(attention);
         },
-        onReady: () => appLogger.i('[$_tag] client ready'),
+        onReady: () {
+          appLogger.i('[$_tag] client ready');
+          unawaited(_flushPendingRefreshes());
+        },
         onError: (code, message) {
           appLogger.w('[$_tag] client error code=$code message=$message');
         },
