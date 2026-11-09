@@ -173,7 +173,7 @@ class _RemoteCliMachineReadinessPanelState
           : InstallJobScopeSsh(profileId);
       final isAdapter = requirement.kind == CliBinaryKind.adapter;
       final adapterLabel = isAdapter
-          ? l10n.remoteCliMachineReadinessAdapterLabel(cliLabel)
+          ? l10n.remote.cliMachineReadinessAdapterLabel(cli: cliLabel)
           : cliLabel;
       final installer = cliRegistry
           .capability<AcpSettingsCapability>(requirement.cli)
@@ -254,7 +254,7 @@ class _RemoteCliMachineReadinessPanelState
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                l10n.remoteCliMachineReadinessTitle,
+                l10n.remote.cliMachineReadinessTitle,
                 style: TpTextStyles.of(context).mdMedium,
               ),
               const SizedBox(height: 8),
@@ -272,7 +272,7 @@ class _RemoteCliMachineReadinessPanelState
               })) ...[
                 const SizedBox(height: 8),
                 Text(
-                  l10n.remoteCliMachineReadinessInstallHint,
+                  l10n.remote.cliMachineReadinessInstallHint,
                   style: TpTextStyles.of(
                     context,
                   ).smColored(cs.onSurfaceVariant),
@@ -311,7 +311,7 @@ class _CliReadinessRow extends StatelessWidget {
         : requirement.cli.value;
     final isAdapter = requirement.kind == CliBinaryKind.adapter;
     final displayLabel = isAdapter
-        ? l10n.remoteCliMachineReadinessAdapterLabel(cliLabel)
+        ? l10n.remote.cliMachineReadinessAdapterLabel(cli: cliLabel)
         : cliLabel;
     final supportsInstaller = isAdapter
         ? registry
@@ -327,27 +327,30 @@ class _CliReadinessRow extends StatelessWidget {
       null || RemoteCliProbing() => (
         Icons.hourglass_empty,
         cs.onSurfaceVariant,
-        l10n.remoteCliMachineReadinessProbing,
+        l10n.remote.cliMachineReadinessProbing,
       ),
       RemoteCliReady(:final path) => (
         Icons.check_circle_outline,
         cs.primary,
-        l10n.remoteCliMachineReadinessReady(displayLabel, path),
+        l10n.remote.cliMachineReadinessReady(cli: displayLabel, path: path),
       ),
       RemoteCliMissing() => (
         Icons.error_outline,
         cs.error,
-        l10n.remoteCliMachineReadinessMissing(displayLabel),
+        l10n.remote.cliMachineReadinessMissing(cli: displayLabel),
       ),
       RemoteCliFailed(:final message) => (
         Icons.error_outline,
         cs.error,
-        l10n.remoteCliMachineReadinessFailed(displayLabel, message),
+        l10n.remote.cliMachineReadinessFailed(
+          cli: displayLabel,
+          message: message,
+        ),
       ),
       RemoteCliInstalling() => (
         Icons.download_outlined,
         cs.onSurfaceVariant,
-        l10n.cliInstallInstalling,
+        l10n.cli.installInstalling,
       ),
     };
 
@@ -382,7 +385,7 @@ class _CliReadinessRow extends StatelessWidget {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(l10n.cliInstallButton),
+                  : Text(l10n.cli.installButton),
             ),
           ],
         ],

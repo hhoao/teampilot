@@ -1,0 +1,20 @@
+{
+  "cliMachineReadinessAdapterLabel": "{cli: String} ACP adapter",
+  "@cliMachineReadinessAdapterLabel": "Landing readiness row label for a separate ACP adapter binary.",
+  "cliMachineReadinessFailed": "{cli: String}: {message: String}",
+  "cliMachineReadinessInstallHint": "Use Install for each missing CLI, or set a manual path in target settings.",
+  "cliMachineReadinessMissing": "{cli: String} not found — install or set a manual path",
+  "cliMachineReadinessProbing": "Checking…",
+  "cliMachineReadinessReady": "{cli: String} ready at {path: String}",
+  "cliMachineReadinessTitle": "Required CLIs on this machine",
+  "connectionsSubtitle": "Manage the hosts saved on this device, connect, and switch your work home. Available even while offline.",
+  "connectionsTitle": "Remote connections",
+  "directoryBrowserEmpty": "No subdirectories here",
+  "directoryBrowserError": "Couldn't open the remote directory. You can still type a path below.",
+  "directoryBrowserTitle": "Browse remote directory",
+  "directoryBrowserTypePathHint": "~/work/workspace",
+  "directoryBrowserTypePathLabel": "Or type a path",
+  "directoryBrowserUpOneLevel": "Up one level",
+  "directoryBrowserUseThisDirectory": "Use this directory",
+  "directoryBrowserUseTypedPath": "Use path"
+}

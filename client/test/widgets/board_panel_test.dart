@@ -38,7 +38,7 @@ class _StubBus implements TeamBus {
 
 Widget _host({required Widget child, required BoardCubit boardCubit}) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localizationsDelegates: appLocalizationsDelegates,
     home: Scaffold(
       body: BlocProvider.value(value: boardCubit, child: child),
     ),

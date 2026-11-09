@@ -97,51 +97,57 @@ void main() {
     expect(seat.runtime.messages.last.id, 'm-35');
   });
 
-  test('adopt drops leftover pending so the cubit user is not painted twice', () {
-    seat.enqueuePendingUser('hello from landing');
-    expect(seat.runtime.messages, hasLength(1));
-    expect(seat.runtime.messages.single.id, startsWith('pending:'));
+  test(
+    'adopt drops leftover pending so the cubit user is not painted twice',
+    () {
+      seat.enqueuePendingUser('hello from landing');
+      expect(seat.runtime.messages, hasLength(1));
+      expect(seat.runtime.messages.single.id, startsWith('pending:'));
 
-    seat.adoptExternalMessages([
-      AiMessage(
-        id: 'acp-u-1',
-        role: AiRole.user,
-        parts: const [AiTextPart(text: 'hello from landing')],
-      ),
-    ]);
+      seat.adoptExternalMessages([
+        AiMessage(
+          id: 'acp-u-1',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'hello from landing')],
+        ),
+      ]);
 
-    expect(seat.runtime.messages, hasLength(1));
-    expect(seat.runtime.messages.single.id, 'acp-u-1');
-  });
+      expect(seat.runtime.messages, hasLength(1));
+      expect(seat.runtime.messages.single.id, 'acp-u-1');
+    },
+  );
 
-  test('live adopt with the same length keeps the window and updates the tip', () {
-    seat.markExternalLoading();
-    final first = [
-      AiMessage(
-        id: 'u1',
-        role: AiRole.user,
-        parts: const [AiTextPart(text: 'hi')],
-      ),
-      AiMessage(
-        id: 'a1',
-        role: AiRole.assistant,
-        parts: const [AiTextPart(text: 'Hel')],
-      ),
-    ];
-    seat.adoptExternalMessages(first);
-    seat.setAwaitingAssistant(true);
-    seat.adoptExternalMessages([
-      first[0],
-      AiMessage(
-        id: 'a1',
-        role: AiRole.assistant,
-        parts: const [AiTextPart(text: 'Hello')],
-      ),
-    ]);
-    expect(seat.runtime.messages, hasLength(2));
-    expect(
-      (seat.runtime.messages.last.parts.single as AiTextPart).text,
-      'Hello',
-    );
-  });
+  test(
+    'live adopt with the same length keeps the window and updates the tip',
+    () {
+      seat.markExternalLoading();
+      final first = [
+        AiMessage(
+          id: 'u1',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'hi')],
+        ),
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: const [AiTextPart(text: 'Hel')],
+        ),
+      ];
+      seat.adoptExternalMessages(first);
+      seat.setAwaitingAssistant(true);
+      seat.adoptExternalMessages([
+        first[0],
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: const [AiTextPart(text: 'Hello')],
+        ),
+      ]);
+      expect(seat.runtime.messages, hasLength(2));
+      expect(
+        (seat.runtime.messages.last.parts.single as AiTextPart).text,
+        'Hello',
+      );
+    },
+  );
 }

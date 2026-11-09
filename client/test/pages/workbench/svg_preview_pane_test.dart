@@ -138,8 +138,8 @@ Future<void> pumpPane(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: Scaffold(
         body: BlocProvider<EditorCubit>.value(
           value: editor,
@@ -220,7 +220,9 @@ void main() {
 
     await pumpPane(tester, editor: editor, path: '/repo/missing.svg');
 
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
     expect(
       find.text(l10n.editorPanelErrorMessage(EditorMessage.couldNotRead)),
       findsOneWidget,
@@ -275,8 +277,10 @@ void main() {
     addTearDown(editor.close);
 
     await pumpPane(tester, editor: editor, path: '/repo/a.svg');
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    await tester.tap(find.byTooltip(l10n.shortcutsZoomIn));
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
+    await tester.tap(find.byTooltip(l10n.shortcuts.zoomIn));
     await tester.pump();
     expect(find.text('125%'), findsOneWidget);
 

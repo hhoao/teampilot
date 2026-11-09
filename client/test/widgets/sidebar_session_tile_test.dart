@@ -171,8 +171,8 @@ Widget _host({
   return MaterialApp(
     locale: locale,
     theme: theme,
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: MultiRepositoryProvider(
       providers: [
         RepositoryProvider<SessionRepository>.value(value: sessionRepository),
@@ -293,9 +293,7 @@ void main() {
     await tester.pump();
 
     await _openContextMenu(tester);
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(SidebarSessionTile)),
-    );
+    final l10n = tester.element(find.byType(SidebarSessionTile)).l10n;
     expect(find.text(l10n.closeConversation), findsOneWidget);
     await tester.tap(find.text(l10n.closeConversation));
     await tester.pump();
@@ -475,9 +473,7 @@ void main() {
     expect(chatCubit.closedSessionIds, ['sess-1']);
 
     await _openContextMenu(tester);
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(SidebarSessionTile)),
-    );
+    final l10n = tester.element(find.byType(SidebarSessionTile)).l10n;
     expect(find.text(l10n.closeConversation), findsOneWidget);
     await _dismissContextMenu(tester);
     debugDefaultTargetPlatformOverride = null;
@@ -549,9 +545,7 @@ void main() {
     await tester.pump();
 
     await _openContextMenu(tester);
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(SidebarSessionTile)),
-    );
+    final l10n = tester.element(find.byType(SidebarSessionTile)).l10n;
     expect(find.text(l10n.closeConversation), findsNothing);
     await _dismissContextMenu(tester);
   });
@@ -587,10 +581,8 @@ void main() {
 
     expect(find.byType(SessionBackgroundWorkMarker), findsOneWidget);
     expect(find.byType(SessionWorkingSpinner), findsNothing);
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(SidebarSessionTile)),
-    );
-    expect(find.text(l10n.sessionHistoryBackgroundRunning), findsNothing);
+    final l10n = tester.element(find.byType(SidebarSessionTile)).l10n;
+    expect(find.text(l10n.session.historyBackgroundRunning), findsNothing);
 
     // Releasing the lease drops the marker back to the idle dot. The cubit
     // delivers the state change on a microtask, so give it a frame to land
@@ -603,7 +595,7 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.byType(SessionBackgroundWorkMarker), findsNothing);
-    expect(find.text(l10n.sessionHistoryBackgroundRunning), findsNothing);
+    expect(find.text(l10n.session.historyBackgroundRunning), findsNothing);
   });
 
   testWidgets('background lease does not name the task on the session row', (
@@ -714,11 +706,9 @@ void main() {
     await tester.tap(find.byIcon(Icons.delete_outline));
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(SidebarSessionTile)),
-    );
+    final l10n = tester.element(find.byType(SidebarSessionTile)).l10n;
     expect(
-      find.text(l10n.deleteConversationConfirm('Old chat')),
+      find.text(l10n.delete.conversationConfirm(name: 'Old chat')),
       findsOneWidget,
     );
     await tester.tap(find.text(l10n.cancel));
@@ -727,7 +717,7 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.delete_outline));
     await tester.pumpAndSettle();
-    await tester.tap(find.text(l10n.delete));
+    await tester.tap(find.text(l10n.delete.delete));
     await tester.pumpAndSettle();
     expect(chatCubit.deletedSessionIds, ['sess-1']);
     debugDefaultTargetPlatformOverride = null;
@@ -862,10 +852,8 @@ void main() {
 
     await _openContextMenu(tester);
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(SidebarSessionTile)),
-    );
-    expect(find.text(l10n.automationsSessionContextMenu), findsOneWidget);
+    final l10n = tester.element(find.byType(SidebarSessionTile)).l10n;
+    expect(find.text(l10n.automations.sessionContextMenu), findsOneWidget);
 
     await _dismissContextMenu(tester);
   });
@@ -891,9 +879,7 @@ void main() {
 
     await _openContextMenu(tester);
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(SidebarSessionTile)),
-    );
+    final l10n = tester.element(find.byType(SidebarSessionTile)).l10n;
     expect(find.text(l10n.openSessionDirectory), findsOneWidget);
 
     await _dismissContextMenu(tester);
@@ -922,9 +908,7 @@ void main() {
 
     await _openContextMenu(tester);
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(SidebarSessionTile)),
-    );
+    final l10n = tester.element(find.byType(SidebarSessionTile)).l10n;
     expect(l10n.referenceConversation, '引用会话');
     final contextReference = tester.widget<TpActionMenuPopupItem<String>>(
       find.byWidgetPredicate(
@@ -973,10 +957,8 @@ void main() {
 
     await _openContextMenu(tester);
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(SidebarSessionTile)),
-    );
-    expect(l10n.sessionOpenToSide, '在右侧分栏打开');
+    final l10n = tester.element(find.byType(SidebarSessionTile)).l10n;
+    expect(l10n.session.openToSide, '在右侧分栏打开');
     final contextItem = tester.widget<TpActionMenuPopupItem<String>>(
       find.byWidgetPredicate(
         (widget) =>
@@ -984,7 +966,7 @@ void main() {
             widget.value == 'open_to_side',
       ),
     );
-    expect(contextItem.label, l10n.sessionOpenToSide);
+    expect(contextItem.label, l10n.session.openToSide);
 
     await _dismissContextMenu(tester);
 
@@ -997,7 +979,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.more_horiz));
     await tester.pumpAndSettle();
 
-    expect(find.text(l10n.sessionOpenToSide), findsOneWidget);
+    expect(find.text(l10n.session.openToSide), findsOneWidget);
     debugDefaultTargetPlatformOverride = null;
   });
 
@@ -1064,11 +1046,12 @@ void main() {
 
     await _openContextMenu(tester);
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(SidebarSessionTile)),
+    final l10n = tester.element(find.byType(SidebarSessionTile)).l10n;
+    expect(find.text(l10n.automations.sessionContextMenu), findsOneWidget);
+    expect(
+      find.text(l10n.automations.manageSessionContextMenu),
+      findsOneWidget,
     );
-    expect(find.text(l10n.automationsSessionContextMenu), findsOneWidget);
-    expect(find.text(l10n.automationsManageSessionContextMenu), findsOneWidget);
 
     await _dismissContextMenu(tester);
   });

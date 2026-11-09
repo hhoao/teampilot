@@ -202,14 +202,14 @@ class _WorkspacePageState extends State<WorkspacePage> {
       case ExpertDeepLinkOutcome.ignoredTeamMode:
         AppToast.show(
           context,
-          message: l10n.expertHubIgnoredInTeamMode,
+          message: l10n.expert.hubIgnoredInTeamMode,
           variant: TpToastVariant.warning,
         );
         return;
       case ExpertDeepLinkOutcome.notFound:
         AppToast.show(
           context,
-          message: l10n.expertHubNotFound,
+          message: l10n.expert.hubNotFound,
           variant: TpToastVariant.warning,
         );
         return;
@@ -445,7 +445,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
     if (workspace == null) {
       return WorkspacePageCardShell(
         chrome: WorkspacePageChrome.workspace,
-        child: _MissingWorkspace(label: l10n.homeWorkspaceEmptyWorkspaces),
+        child: _MissingWorkspace(label: l10n.homeWorkspace.emptyWorkspaces),
       );
     }
 

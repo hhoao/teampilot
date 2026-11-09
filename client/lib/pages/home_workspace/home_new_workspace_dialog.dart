@@ -115,7 +115,7 @@ class _HomeNewWorkspaceDialogState extends State<HomeNewWorkspaceDialog> {
             TpDialogHeader(title: l10n.newWorkspace),
             const SizedBox(height: 8),
             Text(
-              l10n.homeWorkspaceNewWorkspaceSubtitle,
+              l10n.homeWorkspace.newWorkspaceSubtitle,
               textAlign: TextAlign.center,
               style: styles.mdColored(cs.onSurfaceVariant),
             ),
@@ -132,14 +132,14 @@ class _HomeNewWorkspaceDialogState extends State<HomeNewWorkspaceDialog> {
               builder: (_) => const SizedBox.shrink(),
               validator: (_) =>
                   _folders.where((f) => f.path.trim().isNotEmpty).isEmpty
-                  ? l10n.workspacePrimaryPathRequired
+                  ? l10n.workspace.primaryPathRequired
                   : null,
             ),
             WorkspaceCreateNameField(
               controller: _nameController,
               hint: hasDirectory
                   ? _basename(firstPath)
-                  : l10n.homeWorkspaceNewWorkspaceNameHint,
+                  : l10n.homeWorkspace.newWorkspaceNameHint,
               onSubmitted: (_) => _submit(),
             ),
             const SizedBox(height: 28),
@@ -153,7 +153,7 @@ class _HomeNewWorkspaceDialogState extends State<HomeNewWorkspaceDialog> {
                 const SizedBox(width: 12),
                 FilledButton(
                   onPressed: _submit,
-                  child: Text(l10n.homeWorkspaceCreateWorkspace),
+                  child: Text(l10n.homeWorkspace.createWorkspace),
                 ),
               ],
             ),

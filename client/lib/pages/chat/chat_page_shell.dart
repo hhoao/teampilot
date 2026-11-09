@@ -228,7 +228,7 @@ Widget _chatLaunchListener(BuildContext context, Widget child) {
       final code = state.snackbarMessage;
       if (code == null) return;
       final message = code == 'claude_credentials_missing'
-          ? listenerContext.l10n.claudeLaunchCredentialsMissingWarning
+          ? listenerContext.l10n.claude.launchCredentialsMissingWarning
           : code;
       AppToast.show(
         listenerContext,

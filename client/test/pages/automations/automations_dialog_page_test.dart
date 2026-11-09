@@ -26,8 +26,8 @@ Widget _wrap({
       BlocProvider<ChatCubit>.value(value: chatCubit),
     ],
     child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       theme: ThemeData(colorScheme: scheme, useMaterial3: true),
       home: TpTheme(
         data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
@@ -142,7 +142,7 @@ void main() {
     final l10n = lookupAppLocalizations(const Locale('en'));
 
     expect(find.byType(TpDialogPageShell), findsOneWidget);
-    expect(find.text(l10n.automationsTitle), findsOneWidget);
+    expect(find.text(l10n.automations.title), findsOneWidget);
     expect(find.byType(Dialog), findsNothing);
 
     final shellRect = tester.getRect(find.byType(TpDialogPageShell));
@@ -206,16 +206,16 @@ void main() {
 
     final l10n = lookupAppLocalizations(const Locale('en'));
 
-    await tester.tap(find.byTooltip(l10n.automationsNew));
+    await tester.tap(find.byTooltip(l10n.automations.kNew));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text(l10n.automationsCompactTitle), findsOneWidget);
-    expect(find.text(l10n.automationsFilterLaunchPrompt), findsOneWidget);
-    expect(find.text(l10n.automationsCommand), findsOneWidget);
+    expect(find.text(l10n.automations.compactTitle), findsOneWidget);
+    expect(find.text(l10n.automations.filterLaunchPrompt), findsOneWidget);
+    expect(find.text(l10n.automations.command), findsOneWidget);
 
-    await tester.tap(find.text(l10n.automationsCommand));
+    await tester.tap(find.text(l10n.automations.command));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -240,7 +240,7 @@ void main() {
     );
 
     final l10n = lookupAppLocalizations(const Locale('en'));
-    expect(find.byTooltip(l10n.automationsNew), findsNothing);
+    expect(find.byTooltip(l10n.automations.kNew), findsNothing);
     expect(find.byIcon(Icons.add_rounded), findsNothing);
   });
 
@@ -253,9 +253,12 @@ void main() {
     final l10n = lookupAppLocalizations(const Locale('en'));
 
     expect(find.text('built ok'), findsOneWidget);
-    expect(find.text(l10n.automationsRunStdout), findsOneWidget);
-    expect(find.text(l10n.automationsExitCode(0)), findsOneWidget);
-    expect(find.text(l10n.automationsRunDurationSeconds(1)), findsOneWidget);
+    expect(find.text(l10n.automations.runStdout), findsOneWidget);
+    expect(find.text(l10n.automations.exitCode(code: 0)), findsOneWidget);
+    expect(
+      find.text(l10n.automations.runDurationSeconds(seconds: 1)),
+      findsOneWidget,
+    );
   });
 
   testWidgets('run history row flags truncated output', (tester) async {
@@ -271,7 +274,7 @@ void main() {
     final l10n = lookupAppLocalizations(const Locale('en'));
 
     expect(find.text('boom'), findsOneWidget);
-    expect(find.text(l10n.automationsRunStderr), findsOneWidget);
-    expect(find.text(l10n.automationsRunOutputTruncated), findsOneWidget);
+    expect(find.text(l10n.automations.runStderr), findsOneWidget);
+    expect(find.text(l10n.automations.runOutputTruncated), findsOneWidget);
   });
 }

@@ -25,7 +25,7 @@ class WorkspaceCardMetaRow extends StatelessWidget {
     final hasPrimary = workspace.firstFolderPath.isNotEmpty;
     final primaryLabel = hasPrimary
         ? workspace.firstFolderPath
-        : l10n.workspacePrimaryPathNotSelected;
+        : l10n.workspace.primaryPathNotSelected;
 
     return Row(
       children: [

@@ -445,7 +445,10 @@ class _FakeReconnectSeats implements SshReconnectSeatPort {
   }
 
   @override
-  Future<void> closeMemberRemotePlane(String sessionId, String memberId) async {}
+  Future<void> closeMemberRemotePlane(
+    String sessionId,
+    String memberId,
+  ) async {}
 }
 
 class _RecordingReconnectCoordinator implements SessionReconnectIntentPort {

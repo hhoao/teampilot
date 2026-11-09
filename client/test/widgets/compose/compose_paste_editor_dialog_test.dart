@@ -9,8 +9,8 @@ void main() {
   Future<void> pumpEditor(WidgetTester tester, ComposeClip clip) async {
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Scaffold(
           body: Builder(
             builder: (context) => Center(

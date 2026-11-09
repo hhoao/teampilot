@@ -20,9 +20,9 @@ String workspaceFoldersEditorHint(
   required bool lockTargets,
 }) {
   if (lockTargets) {
-    return l10n.workspaceFoldersPersonalTargetsLockedHint;
+    return l10n.workspace.foldersPersonalTargetsLockedHint;
   }
-  return l10n.workspaceFoldersEditorHint;
+  return l10n.workspace.foldersEditorHint;
 }
 
 /// Edits a workspace's [WorkspaceFolder] list grouped by machine.
@@ -160,7 +160,7 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
     if (dup) {
       AppToast.show(
         context,
-        message: context.l10n.workspaceDirectoryAlreadyAdded,
+        message: context.l10n.workspace.directoryAlreadyAdded,
         variant: TpToastVariant.warning,
       );
       return;
@@ -214,7 +214,7 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpDialogHeader(title: l10n.workspaceFoldersPickTarget),
+            TpDialogHeader(title: l10n.workspace.foldersPickTarget),
             const SizedBox(height: 16),
             for (final t in targets)
               _WorkspaceFolderTargetTile(
@@ -300,7 +300,7 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    TpDialogHeader(title: l10n.workspaceFoldersPickTarget),
+                    TpDialogHeader(title: l10n.workspace.foldersPickTarget),
                     const SizedBox(height: 16),
                     for (final t in candidates)
                       _WorkspaceFolderTargetTile(
@@ -348,7 +348,7 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
                     Icons.add_circle_outline,
                     size: context.tpIconSizes.md,
                   ),
-                  label: Text(l10n.workspaceFoldersAddOnAnotherMachine),
+                  label: Text(l10n.workspace.foldersAddOnAnotherMachine),
                 ),
               ),
               const SizedBox(height: 12),
@@ -379,7 +379,7 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
                 onPickTargetForRow: _pickTargetForRow,
                 onRemoveRow: _canRemoveFolder ? _removeFolderAt : null,
                 onRemoveTarget: null,
-                emptyHint: l10n.homeWorkspaceNewWorkspaceDirectoryHint,
+                emptyHint: l10n.homeWorkspace.newWorkspaceDirectoryHint,
               )
             else
               for (final group in groups)
@@ -506,7 +506,7 @@ class _MachineFolderCard extends StatelessWidget {
                 if (targetEditable && enabled)
                   TextButton(
                     onPressed: onPickTargetForGroup,
-                    child: Text(l10n.workspaceFoldersChangeTarget),
+                    child: Text(l10n.workspace.foldersChangeTarget),
                   ),
                 if (isDead) ...[
                   Container(
@@ -519,14 +519,14 @@ class _MachineFolderCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      l10n.workspaceDeadTargetBadge,
+                      l10n.workspace.deadTargetBadge,
                       style: styles.xsColored(cs.onErrorContainer),
                     ),
                   ),
                   if (onRemapDeadTarget != null)
                     TextButton(
                       onPressed: () => onRemapDeadTarget!(targetId),
-                      child: Text(l10n.workspaceDeadTargetRemap),
+                      child: Text(l10n.workspace.deadTargetRemap),
                     ),
                 ],
                 if (enabled)

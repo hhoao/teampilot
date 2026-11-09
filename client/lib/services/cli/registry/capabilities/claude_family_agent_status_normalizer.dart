@@ -79,8 +79,7 @@ final class ClaudeFamilyAgentStatusNormalizer {
     // Authoritative in-flight background-work snapshot: claude 2.1.211+
     // reports every still-running background task on Stop / SubagentStop.
     // Null (key absent) on older claude builds and flashskyai.
-    final inFlightTaskIds =
-        (eventName == 'Stop' || eventName == 'SubagentStop')
+    final inFlightTaskIds = (eventName == 'Stop' || eventName == 'SubagentStop')
         ? parseBackgroundTasks(body)?.map((t) => t.id).toList(growable: false)
         : null;
 

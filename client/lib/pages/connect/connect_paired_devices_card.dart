@@ -26,19 +26,19 @@ class ConnectPairedDevicesCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpSectionHeader(title: l10n.connectPairedDevicesTitle),
+          TpSectionHeader(title: l10n.connect.pairedDevicesTitle),
           if (sshBackend == ConnectSshBackendKind.system)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
               child: Text(
-                l10n.connectRevokeSystemHint,
+                l10n.connect.revokeSystemHint,
                 style: TpTextStyles.of(context).mutedSm,
               ),
             ),
           if (devices.isEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-              child: Text(l10n.connectNoPairedDevices),
+              child: Text(l10n.connect.noPairedDevices),
             )
           else
             for (final device in devices)
@@ -63,7 +63,7 @@ class ConnectPairedDevicesCard extends StatelessWidget {
                     TpButton(
                       variant: TpButtonVariant.destructive,
                       onPressed: () => unawaited(onRevoke(device.deviceId)),
-                      child: Text(l10n.connectRevokeDevice),
+                      child: Text(l10n.connect.revokeDevice),
                     ),
                   ],
                 ),

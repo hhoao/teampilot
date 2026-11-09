@@ -46,8 +46,8 @@ void main() {
             BlocProvider<ShortcutCubit>.value(value: shortcuts),
           ],
           child: MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             home: const Scaffold(
               body: WorkspaceShellRightToolsVisibilityToggle(
                 workspaceId: 'landing-workspace',
@@ -65,9 +65,7 @@ void main() {
       final button = tester.widget<TpIconButton>(
         find.byKey(AppKeys.rightToolsVisibilityButton),
       );
-      final l10n = AppLocalizations.of(
-        tester.element(find.byKey(AppKeys.rightToolsVisibilityButton)),
-      );
+      final l10n = tester.element(find.byKey(AppKeys.rightToolsVisibilityButton)).l10n;
       expect(button.tooltip, '${l10n.rightToolsPanelVisible} ($expectedChord)');
 
       await tester.tap(find.byKey(AppKeys.rightToolsVisibilityButton));

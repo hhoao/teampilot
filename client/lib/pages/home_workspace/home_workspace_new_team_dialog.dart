@@ -133,7 +133,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     }
     final draftName = _draft?.teamName?.trim();
     if (draftName != null && draftName.isNotEmpty) return draftName;
-    return context.l10n.homeWorkspaceNewTeam;
+    return context.l10n.homeWorkspace.newTeam;
   }
 
   CliTool? _providerCatalogCli(CliTool cli) {
@@ -250,7 +250,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     )) {
       AppToast.show(
         context,
-        message: l10n.teamGenNoProvider,
+        message: l10n.team.genNoProvider,
         variant: TpToastVariant.error,
       );
       return;
@@ -307,7 +307,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
       });
       AppToast.show(
         context,
-        message: l10n.teamGenFailed,
+        message: l10n.team.genFailed,
         variant: TpToastVariant.error,
       );
     }
@@ -335,12 +335,12 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
             segments: [
               TpSegmentedOption(
                 value: _TeamCreationMethod.custom,
-                label: l10n.homeWorkspaceNewTeamMethodCustom,
+                label: l10n.homeWorkspace.newTeamMethodCustom,
                 icon: Icons.tune_outlined,
               ),
               TpSegmentedOption(
                 value: _TeamCreationMethod.ai,
-                label: l10n.homeWorkspaceNewTeamMethodAi,
+                label: l10n.homeWorkspace.newTeamMethodAi,
                 icon: Icons.auto_awesome_outlined,
               ),
             ],
@@ -358,8 +358,8 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
           const SizedBox(height: 12),
           Text(
             _creationMethod == _TeamCreationMethod.custom
-                ? l10n.homeWorkspaceNewTeamSubtitle
-                : l10n.homeWorkspaceNewTeamSubtitleAi,
+                ? l10n.homeWorkspace.newTeamSubtitle
+                : l10n.homeWorkspace.newTeamSubtitleAi,
             textAlign: TextAlign.center,
             style: styles.mdColored(cs.onSurfaceVariant),
           ),
@@ -373,9 +373,9 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
                 Expanded(
                   child: _ModeCard(
                     icon: Icons.dashboard_customize_outlined,
-                    title: l10n.teamModeNativeTitle,
-                    description: l10n.teamModeNativeDescription,
-                    badge: l10n.homeWorkspaceNewTeamRecommended,
+                    title: l10n.team.modeNativeTitle,
+                    description: l10n.team.modeNativeDescription,
+                    badge: l10n.homeWorkspace.newTeamRecommended,
                     badgeIsPrimary: true,
                     selected: _mode == TeamMode.native,
                     onTap: () {
@@ -392,9 +392,9 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
                 Expanded(
                   child: _ModeCard(
                     icon: Icons.hub_outlined,
-                    title: l10n.teamModeMixedTitle,
-                    description: l10n.teamModeMixedDescription,
-                    badge: l10n.homeWorkspaceNewTeamModeBeta,
+                    title: l10n.team.modeMixedTitle,
+                    description: l10n.team.modeMixedDescription,
+                    badge: l10n.homeWorkspace.newTeamModeBeta,
                     badgeIsPrimary: false,
                     selected: _mode == TeamMode.mixed,
                     onTap: () {
@@ -412,7 +412,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
           TpFormField<bool>(
             id: 'mode',
             builder: (_) => const SizedBox.shrink(),
-            validator: (_) => _mode == null ? l10n.teamModeRequired : null,
+            validator: (_) => _mode == null ? l10n.team.modeRequired : null,
           ),
           if (_creationMethod == _TeamCreationMethod.custom) ...[
             if (_mode == TeamMode.native) ...[
@@ -443,7 +443,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
                   (_creationMethod == _TeamCreationMethod.custom &&
                       _mode != null &&
                       _nameController.text.trim().isEmpty)
-                  ? l10n.teamNameRequired
+                  ? l10n.team.nameRequired
                   : null,
             ),
           ] else ...[
@@ -487,8 +487,8 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
                           )
                         : Text(
                             isAi
-                                ? l10n.teamGenButton
-                                : l10n.homeWorkspaceCreateTeam,
+                                ? l10n.team.genButton
+                                : l10n.homeWorkspace.createTeam,
                           ),
                   );
                 },
@@ -500,7 +500,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     );
 
     return TpDialogPageShell(
-      title: l10n.homeWorkspaceNewTeam,
+      title: l10n.homeWorkspace.newTeam,
       mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
       fillBody: false,
       titleAlignment: Alignment.center,
@@ -669,8 +669,8 @@ class _NativeTeamOptionsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TpPreferenceRow(
-            title: l10n.teamCliLabel,
-            subtitle: l10n.teamCliSubtitle,
+            title: l10n.team.cliLabel,
+            subtitle: l10n.team.cliSubtitle,
             titleLeading: CliBrandIcon(cli: cli, size: 28, borderRadius: 7),
             trailing: TpCompactSelect<CliTool>(
               value: cli,
@@ -691,8 +691,8 @@ class _NativeTeamOptionsCard extends StatelessWidget {
           ),
           if (catalogCli != null)
             TpPreferenceRow(
-              title: l10n.provider,
-              subtitle: l10n.appProviderTeamToolSubtitle,
+              title: l10n.provider.provider,
+              subtitle: l10n.appProvider.teamToolSubtitle,
               titleLeading:
                   providers
                       .where((p) => p.id == effectiveProviderId)
@@ -708,7 +708,7 @@ class _NativeTeamOptionsCard extends StatelessWidget {
                   const SizedBox.shrink(),
               trailing: providerEntries.isEmpty
                   ? Text(
-                      l10n.onboardingDefaultPresetEmpty,
+                      l10n.onboarding.defaultPresetEmpty,
                       style: TpTextStyles.of(context).mutedSm,
                     )
                   : TpCompactSelect<String>(
@@ -785,7 +785,7 @@ class _NameField extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  l10n.teamName,
+                  l10n.team.name,
                   style: styles.xsColored(cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 6),
@@ -795,7 +795,7 @@ class _NameField extends StatelessWidget {
                   onSubmitted: onSubmitted,
                   style: styles.lgColored(cs.onSurface),
                   decoration: InputDecoration(
-                    hintText: l10n.homeWorkspaceNewTeamNameHint,
+                    hintText: l10n.homeWorkspace.newTeamNameHint,
                     isDense: true,
                     errorText: hasError ? '' : null,
                     errorStyle: const TextStyle(height: 0, fontSize: 0),

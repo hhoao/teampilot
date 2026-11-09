@@ -61,15 +61,13 @@ base class NoopCliSessionCapability implements CliSessionCapability {
     required String sessionId,
     String? memberId,
     String? teamId,
-  }) =>
-      null;
+  }) => null;
 
   @override
   Future<String> prepareSessionIsolatedHome({
     required Filesystem fs,
     required String canonicalHome,
-  }) async =>
-      canonicalHome;
+  }) async => canonicalHome;
 
   @override
   SessionHookMaterializationPaths hookMaterializationPaths({

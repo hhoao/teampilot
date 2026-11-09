@@ -57,8 +57,8 @@ void main() {
   }
 
   Widget host({bool isAndroid = false, bool isWindows = false}) => MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: Scaffold(
       body: RepositoryProvider<HomeTargetController>.value(
         value: controller,

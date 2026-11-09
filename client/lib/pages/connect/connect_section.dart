@@ -46,7 +46,7 @@ class _ConnectSectionState extends State<ConnectSection> {
           !previous.rePairNotice && current.rePairNotice,
       listener: (context, state) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.connectSshBackendRePair)),
+          SnackBar(content: Text(context.l10n.connect.sshBackendRePair)),
         );
         context.read<ConnectCubit>().ackRePairNotice();
       },
@@ -99,20 +99,20 @@ class _PairingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpSectionHeader(title: l10n.connectSettingsSubtitle),
+          TpSectionHeader(title: l10n.connect.settingsSubtitle),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  l10n.connectInterfaceLabel,
+                  l10n.connect.interfaceLabel,
                   style: TpTextStyles.of(context).smMedium,
                 ),
                 const SizedBox(height: 6),
                 if (state.networkAddresses.isEmpty)
                   Text(
-                    l10n.connectNoNetworkAddress,
+                    l10n.connect.noNetworkAddress,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -138,7 +138,7 @@ class _PairingCard extends StatelessWidget {
                 const SizedBox(height: 20),
                 if (state.hasError) ...[
                   Text(
-                    l10n.connectError,
+                    l10n.connect.error,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
                     ),
@@ -267,23 +267,23 @@ class _ReachabilityCardState extends State<_ReachabilityCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpSectionHeader(title: l10n.connectAdvancedTitle),
+          TpSectionHeader(title: l10n.connect.advancedTitle),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  l10n.connectAdvancedSubtitle,
+                  l10n.connect.advancedSubtitle,
                   style: TextStyle(color: cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 16),
                 for (var index = 0; index < _rows.length; index++) ...[
                   _EndpointRow(
                     controllers: _rows[index],
-                    hostLabel: l10n.connectExtraHost,
-                    portLabel: l10n.connectExtraPort,
-                    removeTooltip: l10n.connectRemoveEndpoint,
+                    hostLabel: l10n.connect.extraHost,
+                    portLabel: l10n.connect.extraPort,
+                    removeTooltip: l10n.connect.removeEndpoint,
                     onChanged: _changed,
                     onRemove: () {
                       setState(() {
@@ -304,19 +304,19 @@ class _ReachabilityCardState extends State<_ReachabilityCard> {
                         _rows.add(_EndpointControllers.empty());
                       });
                     },
-                    child: Text(l10n.connectAddEndpoint),
+                    child: Text(l10n.connect.addEndpoint),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  l10n.connectRelayUrl,
+                  l10n.connect.relayUrl,
                   style: TpTextStyles.of(context).smMedium,
                 ),
                 const SizedBox(height: 6),
                 TpInput(
                   controller: _relayController,
                   decoration: InputDecoration(
-                    hintText: l10n.connectRelayUrlHint,
+                    hintText: l10n.connect.relayUrlHint,
                   ),
                   keyboardType: TextInputType.url,
                   onChanged: (_) => _changed(),
@@ -324,7 +324,7 @@ class _ReachabilityCardState extends State<_ReachabilityCard> {
                 if (!_valid) ...[
                   const SizedBox(height: 8),
                   Text(
-                    l10n.connectInvalidEndpoint,
+                    l10n.connect.invalidEndpoint,
                     style: TextStyle(color: cs.error),
                   ),
                 ],
@@ -341,7 +341,7 @@ class _ReachabilityCardState extends State<_ReachabilityCard> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Text(l10n.connectSaveSettings),
+                        : Text(l10n.connect.saveSettings),
                   ),
                 ),
               ],

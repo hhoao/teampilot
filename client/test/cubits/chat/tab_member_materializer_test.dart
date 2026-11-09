@@ -396,25 +396,19 @@ void main() {
     await worker.close();
   });
 
-  test(
-    'ACP seat retryDelivery calls sendPrompt and skips PTY retry',
-    () async {
-      final harness = _AcpSeatHarness();
-      final worker = _RecordingPromptCubit(memberId: 'worker');
-      harness.tab.memberAcpRuntimes['worker'] = worker;
-      final before = await appLogger.getPendingLogLines();
+  test('ACP seat retryDelivery calls sendPrompt and skips PTY retry', () async {
+    final harness = _AcpSeatHarness();
+    final worker = _RecordingPromptCubit(memberId: 'worker');
+    harness.tab.memberAcpRuntimes['worker'] = worker;
+    final before = await appLogger.getPendingLogLines();
 
-      harness.materializer.retryDelivery('sess-1', 'worker', 'ping');
+    harness.materializer.retryDelivery('sess-1', 'worker', 'ping');
 
-      final lines = (await appLogger.getPendingLogLines()).skip(before.length);
-      expect(worker.prompts, ['ping']);
-      expect(
-        lines.where((line) => line.contains('retry-delivery')),
-        isEmpty,
-      );
-      await worker.close();
-    },
-  );
+    final lines = (await appLogger.getPendingLogLines()).skip(before.length);
+    expect(worker.prompts, ['ping']);
+    expect(lines.where((line) => line.contains('retry-delivery')), isEmpty);
+    await worker.close();
+  });
 
   test(
     'ACP seat ensureMemberInputReady returns when the cubit phase is ready',

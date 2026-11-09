@@ -1,0 +1,13 @@
+{
+  "workspaceCreateSessionBlocked": "Confirm machine assignment in Team Settings before starting a conversation in this mixed workspace.",
+  "workspaceLeadPlacementInvalid": "Team lead must be assigned to the local machine when this workspace has a local folder.",
+  "workspaceMemberAssignmentConfirm": "Start team",
+  "workspaceMemberAssignmentIncomplete": "Confirm machine assignment once before starting this team in a mixed workspace.",
+  "workspaceMemberAssignmentSubtitle": "Select a machine on the left, then use + / − to place each member's instances on it.",
+  "workspaceMemberAssignmentTitle": "Assign members to machines",
+  "workspaceMemberPlacementOnMachine": "{count: int} on this machine",
+  "workspaceMemberPlacementProgress": "{placed: int} / {total: int} assigned",
+  "workspacePersonalLaunchBlockedHint": "This is a mixed workspace. Switch to a team tab to start conversations and confirm machine assignment.",
+  "workspaceRequiresTeamLaunch": "Mixed workspaces can only be started with a team identity. Switch to a team and confirm machine assignment in Team Settings.",
+  "workspaceSessionLaunchBlocked": "Machine assignment for this conversation is no longer valid. Confirm assignment in Team Settings and start a new conversation."
+}

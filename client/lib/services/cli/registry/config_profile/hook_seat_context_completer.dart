@@ -90,9 +90,7 @@ class HookSeatContextCompleter {
         action: CommandHookAction.script(
           fileName: 'hook.sh',
           scriptContent: BusAwarenessPrompt.sessionStartScript(
-            payload: hook.sessionStartStdoutPayload(
-              additionalContext: context,
-            ),
+            payload: hook.sessionStartStdoutPayload(additionalContext: context),
           ),
         ),
         timeout: const Duration(seconds: 5),

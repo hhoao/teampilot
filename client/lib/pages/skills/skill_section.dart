@@ -17,9 +17,9 @@ enum SkillSection implements WorkspaceSectionDescriptor {
 
   @override
   String title(AppLocalizations l10n) => switch (this) {
-    SkillSection.installed => l10n.skillsNavInstalled,
-    SkillSection.discovery => l10n.skillsNavDiscovery,
-    SkillSection.registries => l10n.skillsNavRegistries,
+    SkillSection.installed => l10n.skills.navInstalled,
+    SkillSection.discovery => l10n.skills.navDiscovery,
+    SkillSection.registries => l10n.skills.navRegistries,
   };
 
   @override

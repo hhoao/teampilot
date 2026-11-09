@@ -198,18 +198,18 @@ class _FilterBar extends StatelessWidget {
         final sources = slice.sources;
         final enabled = sources.where((s) => s.enabled).toList();
         final sourceItems = <String, String>{
-          'all': l10n.skillsFilterRepoAll,
+          'all': l10n.skills.filterRepoAll,
           for (final s in enabled) s.id: s.label,
         };
         String statusLabel(String v) => switch (v) {
-          'installed' => l10n.skillsFilterInstalled,
-          'uninstalled' => l10n.skillsFilterUninstalled,
-          _ => l10n.skillsFilterAll,
+          'installed' => l10n.skills.filterInstalled,
+          'uninstalled' => l10n.skills.filterUninstalled,
+          _ => l10n.skills.filterAll,
         };
         return TpCatalogDiscoveryHeader(
-          title: l10n.skillsNavDiscovery,
+          title: l10n.skills.navDiscovery,
           searchController: searchCtl,
-          searchHint: l10n.skillsSearchPlaceholder,
+          searchHint: l10n.skills.searchPlaceholder,
           onSearchChanged: onSearchChanged,
           failures: [
             for (final failure in slice.failures)
@@ -220,7 +220,7 @@ class _FilterBar extends StatelessWidget {
           ],
           onRefresh: onRefresh,
           refreshing: slice.loading,
-          refreshTooltip: l10n.catalogRefreshAccessibilityLabel,
+          refreshTooltip: l10n.catalog.refreshAccessibilityLabel,
           belowSearch: slice.syncing.isEmpty
               ? null
               : Row(
@@ -233,7 +233,7 @@ class _FilterBar extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        l10n.skillsDiscoverySyncing,
+                        l10n.skills.discoverySyncing,
                         style: TpTextStyles.of(context).sm,
                       ),
                     ),
@@ -270,7 +270,7 @@ class _FilterBar extends StatelessWidget {
                 onChanged: (key) {
                   if (key != null) onDiscoverySort(key);
                 },
-                hintText: l10n.catalogSortAccessibilityLabel,
+                hintText: l10n.catalog.sortAccessibilityLabel,
               ),
             ),
           ],
@@ -339,9 +339,9 @@ class _ResultsBody extends StatelessWidget {
                 child: SingleChildScrollView(
                   child: TpEmptyState(
                     icon: Icons.travel_explore_outlined,
-                    title: l10n.skillsDiscoveryEmpty,
-                    hint: l10n.skillsDiscoveryEmptyHint,
-                    actionLabel: l10n.skillsRegistryGoSetKey,
+                    title: l10n.skills.discoveryEmpty,
+                    hint: l10n.skills.discoveryEmptyHint,
+                    actionLabel: l10n.skills.registryGoSetKey,
                     onAction: onGoRegistries,
                   ),
                 ),
@@ -391,7 +391,7 @@ class _ResultsBody extends StatelessWidget {
                               Icons.expand_more,
                               size: context.tpIconSizes.md,
                             ),
-                      label: Text(l10n.skillsMarketplaceLoadMore),
+                      label: Text(l10n.skills.marketplaceLoadMore),
                     ),
                   ),
               ],
@@ -423,9 +423,9 @@ class _ErrorBody extends StatelessWidget {
         children: [
           TpEmptyState(
             icon: isQuota ? Icons.key_off_outlined : Icons.error_outline,
-            title: l10n.skillsDiscoveryErrorTitle,
-            hint: isQuota ? l10n.skillsMpQuotaHint : error,
-            actionLabel: isQuota ? l10n.skillsRegistryGoSetKey : null,
+            title: l10n.skills.discoveryErrorTitle,
+            hint: isQuota ? l10n.skills.mpQuotaHint : error,
+            actionLabel: isQuota ? l10n.skills.registryGoSetKey : null,
             onAction: isQuota ? onGoRegistries : null,
             centered: true,
           ),
@@ -435,7 +435,7 @@ class _ErrorBody extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh, size: 18),
-              label: Text(l10n.skillsRegistryRetry),
+              label: Text(l10n.skills.registryRetry),
             ),
           ),
         ],

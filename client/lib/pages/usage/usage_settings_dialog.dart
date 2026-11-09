@@ -50,7 +50,7 @@ class _UsageSettingsDialogState extends State<UsageSettingsDialog> {
 
     return AlertDialog(
       key: AppKeys.sessionUsageSettingsDialog,
-      title: Text(l10n.sessionUsageSettings),
+      title: Text(l10n.sessionUsage.settings),
       content: SizedBox(
         width: 420,
         child: SingleChildScrollView(
@@ -58,12 +58,12 @@ class _UsageSettingsDialogState extends State<UsageSettingsDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(l10n.sessionUsageDataSource, style: styles.mdBold),
+              Text(l10n.sessionUsage.dataSource, style: styles.mdBold),
               const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
-                    child: Text(l10n.sessionUsageAutoScan, style: styles.md),
+                    child: Text(l10n.sessionUsage.autoScan, style: styles.md),
                   ),
                   Switch(
                     key: AppKeys.sessionUsageAutoScanSwitch,
@@ -73,14 +73,17 @@ class _UsageSettingsDialogState extends State<UsageSettingsDialog> {
                 ],
               ),
               Text(
-                l10n.sessionUsageAutoScanHint(_minutes),
+                l10n.sessionUsage.autoScanHint(minutes: _minutes),
                 style: styles.xs.copyWith(color: muted),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
-                    child: Text(l10n.sessionUsageScanInterval, style: styles.md),
+                    child: Text(
+                      l10n.sessionUsage.scanInterval,
+                      style: styles.md,
+                    ),
                   ),
                   DropdownButton<int>(
                     key: AppKeys.sessionUsageScanInterval,
@@ -93,7 +96,7 @@ class _UsageSettingsDialogState extends State<UsageSettingsDialog> {
                         DropdownMenuItem(
                           value: minutes,
                           child: Text(
-                            l10n.sessionUsageIntervalMinutes(minutes),
+                            l10n.sessionUsage.intervalMinutes(minutes: minutes),
                             style: styles.md.copyWith(color: muted),
                           ),
                         ),
@@ -104,32 +107,26 @@ class _UsageSettingsDialogState extends State<UsageSettingsDialog> {
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 key: AppKeys.sessionUsageSyncNowButton,
-                onPressed: () => Navigator.of(
-                  context,
-                ).pop(UsageSettingsAction.syncNow),
+                onPressed: () =>
+                    Navigator.of(context).pop(UsageSettingsAction.syncNow),
                 icon: const Icon(Icons.sync, size: 16),
-                label: Text(l10n.sessionUsageSyncNow),
+                label: Text(l10n.sessionUsage.syncNow),
               ),
               const Divider(height: 28),
               InkWell(
                 key: AppKeys.sessionUsageSettingsStorageEntry,
-                onTap: () => Navigator.of(
-                  context,
-                ).pop(UsageSettingsAction.maintenance),
+                onTap: () =>
+                    Navigator.of(context).pop(UsageSettingsAction.maintenance),
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.storage_outlined,
-                        size: 18,
-                        color: muted,
-                      ),
+                      Icon(Icons.storage_outlined, size: 18, color: muted),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          l10n.sessionUsageMaintenanceEntry,
+                          l10n.sessionUsage.maintenanceEntry,
                           style: styles.md,
                         ),
                       ),

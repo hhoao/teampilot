@@ -299,7 +299,7 @@ class WorkspaceComposeCard extends StatelessWidget {
         chrome.showStop &&
         chrome.onStop != null) {
       return _StopButton(
-        tooltip: context.l10n.sessionHistoryComposeStop,
+        tooltip: context.l10n.session.historyComposeStop,
         onStop: chrome.onStop!,
       );
     }

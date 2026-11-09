@@ -56,23 +56,26 @@ void main() {
     expect(ptyCalls, 0);
   });
 
-  test('ACP without a runtime is runtimeUnavailable, not a PTY submit', () async {
-    var ptyCalls = 0;
+  test(
+    'ACP without a runtime is runtimeUnavailable, not a PTY submit',
+    () async {
+      var ptyCalls = 0;
 
-    final result = await deliverSeatPrompt(
-      session: acpSession,
-      memberId: 'sess-acp',
-      message: 'hello',
-      acpSend: null,
-      ptySubmit: (sessionId, memberId, message) async {
-        ptyCalls++;
-        return 'pty-id';
-      },
-    );
+      final result = await deliverSeatPrompt(
+        session: acpSession,
+        memberId: 'sess-acp',
+        message: 'hello',
+        acpSend: null,
+        ptySubmit: (sessionId, memberId, message) async {
+          ptyCalls++;
+          return 'pty-id';
+        },
+      );
 
-    expect(result, SeatPromptDeliveryResult.runtimeUnavailable);
-    expect(ptyCalls, 0);
-  });
+      expect(result, SeatPromptDeliveryResult.runtimeUnavailable);
+      expect(ptyCalls, 0);
+    },
+  );
 
   test('ACP send rejected while a turn is in flight', () async {
     final result = await deliverSeatPrompt(

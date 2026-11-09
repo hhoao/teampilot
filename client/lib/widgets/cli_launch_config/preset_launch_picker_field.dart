@@ -48,12 +48,12 @@ class PresetLaunchPickerField extends StatelessWidget {
     final dropdownDeco = decoration ?? TpSelectDecorations.themed(context);
 
     return TpPreferenceRow(
-      title: l10n.memberPresetLabel,
+      title: l10n.member.presetLabel,
       trailing: cliLaunchConfigDropdown(
         TpSelect<String>(
           items: items,
           initialItem: currentToken,
-          hintText: l10n.memberPresetSelectPreset,
+          hintText: l10n.member.presetSelectPreset,
           decoration: dropdownDeco,
           itemLabel: (value) => presetLaunchPickerLabel(
             value,
@@ -85,7 +85,7 @@ String presetLaunchPickerLabel(
   required List<CliPreset> eligiblePresets,
 }) {
   if (value == kPresetLaunchCustomOption) {
-    return l10n.memberPresetCustom;
+    return l10n.member.presetCustom;
   }
   for (final preset in eligiblePresets) {
     if (preset.id == value) return preset.name;
@@ -102,7 +102,10 @@ Widget presetLaunchPickerListItem(
   required AppProviderState providerState,
 }) {
   if (value == kPresetLaunchCustomOption) {
-    return _PresetDropdownOption(title: l10n.memberPresetCustom, enabled: true);
+    return _PresetDropdownOption(
+      title: l10n.member.presetCustom,
+      enabled: true,
+    );
   }
   for (final preset in eligiblePresets) {
     if (preset.id == value) {

@@ -109,11 +109,8 @@ class GithubCredentialsStore {
     }
     await captureThenPersist(
       capture: capture,
-      captureEntry: () => capture.captureGithub(
-        token: token,
-        login: login,
-        source: source,
-      ),
+      captureEntry: () =>
+          capture.captureGithub(token: token, login: login, source: source),
       persist: (result) async {
         await _kv.write(_vaultEntryKey, result.entryId);
         return result;

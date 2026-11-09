@@ -17,9 +17,9 @@ enum PluginSection implements WorkspaceSectionDescriptor {
 
   @override
   String title(AppLocalizations l10n) => switch (this) {
-    PluginSection.installed => l10n.pluginsNavInstalled,
-    PluginSection.discovery => l10n.pluginsNavDiscovery,
-    PluginSection.marketplaces => l10n.pluginsNavMarketplaces,
+    PluginSection.installed => l10n.plugins.navInstalled,
+    PluginSection.discovery => l10n.plugins.navDiscovery,
+    PluginSection.marketplaces => l10n.plugins.navMarketplaces,
   };
 
   @override

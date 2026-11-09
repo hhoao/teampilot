@@ -178,9 +178,9 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpDialogHeader(title: l10n.workspaceSearchReplaceAllTitle),
+            TpDialogHeader(title: l10n.workspace.searchReplaceAllTitle),
             const SizedBox(height: 16),
-            Text(l10n.workspaceSearchReplaceAllMessage(count)),
+            Text(l10n.workspace.searchReplaceAllMessage(count: count)),
             TpDialogActions(
               children: [
                 TextButton(
@@ -189,7 +189,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                 ),
                 TpButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: Text(l10n.workspaceSearchReplace),
+                  child: Text(l10n.workspace.searchReplace),
                 ),
               ],
             ),
@@ -239,12 +239,12 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                                   child: FindField(
                                     controller: _queryController,
                                     focusNode: _focusNode,
-                                    hint: l10n.workspaceSearchQueryHint,
+                                    hint: l10n.workspace.searchQueryHint,
                                     standalone: true,
                                     toggles: [
                                       FindToggleButton(
                                         iconAsset: FindBarIcons.caseSensitive,
-                                        tooltip: l10n.editorFindMatchCase,
+                                        tooltip: l10n.editor.findMatchCase,
                                         checked: _caseSensitive,
                                         onTap: () => setState(() {
                                           _caseSensitive = !_caseSensitive;
@@ -253,7 +253,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                                       ),
                                       FindToggleButton(
                                         iconAsset: FindBarIcons.regexp,
-                                        tooltip: l10n.editorFindUseRegex,
+                                        tooltip: l10n.editor.findUseRegex,
                                         checked: _isRegex,
                                         onTap: () => setState(() {
                                           _isRegex = !_isRegex;
@@ -267,7 +267,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                                   const SizedBox(width: 4),
                                   FindActionButton(
                                     icon: Icons.close,
-                                    tooltip: l10n.workspaceSearchCancel,
+                                    tooltip: l10n.workspace.searchCancel,
                                     onTap: _cancelSearch,
                                   ),
                                 ],
@@ -281,7 +281,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                                     child: FindField(
                                       controller: _replaceController,
                                       focusNode: _replaceFocusNode,
-                                      hint: l10n.workspaceSearchReplaceHint,
+                                      hint: l10n.workspace.searchReplaceHint,
                                       standalone: true,
                                     ),
                                   ),
@@ -289,7 +289,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                                   FindActionButton(
                                     key: const ValueKey('search-replace-all'),
                                     assetPath: FindBarIcons.replaceAll,
-                                    tooltip: l10n.editorFindReplaceAll,
+                                    tooltip: l10n.editor.findReplaceAll,
                                     enabled:
                                         _replaceController.text.isNotEmpty &&
                                         pendingCount > 0,
@@ -333,7 +333,9 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        l10n.workspaceSearchReplacedCount(state.replacedCount!),
+                        l10n.workspace.searchReplacedCount(
+                          count: state.replacedCount!,
+                        ),
                         style: styles.smColored(cs.primary),
                       ),
                     ),
@@ -348,12 +350,12 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
                     Expanded(
                       child: Text(
                         state.searching
-                            ? l10n.workspaceSearchSearching
+                            ? l10n.workspace.searchSearching
                             : state.files.isEmpty
                             ? ''
-                            : l10n.workspaceSearchResultSummary(
-                                pendingCount,
-                                state.files.length,
+                            : l10n.workspace.searchResultSummary(
+                                matches: pendingCount,
+                                files: state.files.length,
                               ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -369,7 +371,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
               Padding(
                 padding: const EdgeInsets.all(8),
                 child: Text(
-                  l10n.workspaceSearchError,
+                  l10n.workspace.searchError,
                   style: styles.smColored(cs.error),
                 ),
               ),

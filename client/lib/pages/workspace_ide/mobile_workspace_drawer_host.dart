@@ -88,7 +88,7 @@ class _DrawerShell extends StatelessWidget {
             segments: [
               TpSegmentedOption(
                 value: MobileDrawerMode.chat,
-                label: l10n.appRailChat,
+                label: l10n.app.railChat,
                 icon: Icons.chat_bubble_outline_rounded,
               ),
               TpSegmentedOption(
@@ -108,7 +108,7 @@ class _DrawerShell extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
           child: _ManageTile(
-            label: l10n.homeWorkspaceWorkspaceManagement,
+            label: l10n.homeWorkspace.workspaceManagement,
             onTap: onOpenWorkspaceManagement,
           ),
         ),

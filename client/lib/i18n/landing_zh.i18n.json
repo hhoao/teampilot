@@ -1,0 +1,14 @@
+{
+  "launchAcpUnsupported": "{cli: String} 仅支持 ACP 对话，当前目标（{target: String}）无法运行 ACP。请选择本机、SSH 或 Termux 目标，或改用支持终端的 CLI。",
+  "launchLocalAdapterMissingDetail": "未找到 {cli: String} ACP 适配器",
+  "launchLocalCliMissing": "启动前请先在本机安装所需的 AI CLI。",
+  "launchLocalCliMissingDetail": "未找到 {cli: String}",
+  "launchLocalCliMissingHint": "可直接在此安装，或在设置 → CLI 中指定可执行文件路径。",
+  "launchLocalCliMissingTitle": "本机需要的 AI CLI",
+  "launchLocalCliOpenSettings": "打开设置",
+  "launchRemoteCliMissing": "启动前请在远程机器上安装所需的 CLI。",
+  "launchRemoteCliMissingDetail": "{host: String} 上缺少 {cli: String}",
+  "teamSettingsGlobalHint": "更改将应用于该团队的全局配置。",
+  "teamSettingsNavMachines": "机器分配",
+  "teamSettingsNavTeam": "团队默认"
+}

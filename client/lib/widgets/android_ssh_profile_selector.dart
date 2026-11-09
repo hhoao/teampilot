@@ -87,7 +87,7 @@ class AndroidSshProfileSelector extends StatelessWidget {
           TpActionMenuSpec.item(
             value: _manageProfilesValue,
             icon: Icons.settings_outlined,
-            label: l10n.sshProfileSelectorManage,
+            label: l10n.sshProfile.selectorManage,
           ),
         ];
         return buildTpActionMenuChildren(

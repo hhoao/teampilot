@@ -109,30 +109,30 @@ class TeamHubDetailOverlay extends StatelessWidget {
                                 if (pickerMode && alreadyAdded)
                                   TeamStatChip(
                                     icon: Icons.check_rounded,
-                                    label: l10n.teamHubAlreadyAdded,
+                                    label: l10n.teamHub.alreadyAdded,
                                   ),
                                 TeamStatChip(
                                   icon: Icons.people_alt_outlined,
                                   label:
-                                      '${team.roster.length} ${l10n.teamHubMembersLabel}',
+                                      '${team.roster.length} ${l10n.teamHub.membersLabel}',
                                 ),
                                 if (team.skillDeps.isNotEmpty)
                                   TeamStatChip(
                                     icon: Icons.auto_awesome_outlined,
                                     label:
-                                        '${team.skillDeps.length} ${l10n.teamHubSkillsLabel}',
+                                        '${team.skillDeps.length} ${l10n.teamHub.skillsLabel}',
                                   ),
                                 if (team.pluginDeps.isNotEmpty)
                                   TeamStatChip(
                                     icon: Icons.extension_outlined,
                                     label:
-                                        '${team.pluginDeps.length} ${l10n.teamHubPluginsLabel}',
+                                        '${team.pluginDeps.length} ${l10n.teamHub.pluginsLabel}',
                                   ),
                                 if (team.mcpDeps.isNotEmpty)
                                   TeamStatChip(
                                     icon: Icons.cable_outlined,
                                     label:
-                                        '${team.mcpDeps.length} ${l10n.teamHubMcpLabel}',
+                                        '${team.mcpDeps.length} ${l10n.teamHub.mcpLabel}',
                                   ),
                               ],
                             ),
@@ -155,10 +155,10 @@ class TeamHubDetailOverlay extends StatelessWidget {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Text(l10n.teamHubCloning),
+                                    Text(l10n.teamHub.cloning),
                                   ],
                                 )
-                              : Text(l10n.teamHubConfirmSelection),
+                              : Text(l10n.teamHub.confirmSelection),
                         )
                       else
                         _CloneButton(cloning: cloning, onPressed: onClone),
@@ -170,14 +170,14 @@ class TeamHubDetailOverlay extends StatelessWidget {
                   ],
                   const SizedBox(height: 24),
                   _DepSection(
-                    title: l10n.teamHubMembersLabel,
+                    title: l10n.teamHub.membersLabel,
                     rows: [
                       for (final slot in team.roster)
                         _DepRow(label: slot.id, memberKey: slot.expertKey),
                     ],
                   ),
                   _DepSection(
-                    title: l10n.teamHubSkillsLabel,
+                    title: l10n.teamHub.skillsLabel,
                     rows: [
                       for (final s in team.skillDeps)
                         _DepRow(
@@ -189,7 +189,7 @@ class TeamHubDetailOverlay extends StatelessWidget {
                     ],
                   ),
                   _DepSection(
-                    title: l10n.teamHubPluginsLabel,
+                    title: l10n.teamHub.pluginsLabel,
                     rows: [
                       for (final p in team.pluginDeps)
                         _DepRow(
@@ -201,7 +201,7 @@ class TeamHubDetailOverlay extends StatelessWidget {
                     ],
                   ),
                   _DepSection(
-                    title: l10n.teamHubMcpLabel,
+                    title: l10n.teamHub.mcpLabel,
                     rows: [
                       for (final m in team.mcpDeps)
                         _DepRow(
@@ -241,10 +241,10 @@ class _CloneButton extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 const SizedBox(width: 8),
-                Text(l10n.teamHubCloning),
+                Text(l10n.teamHub.cloning),
               ],
             )
-          : Text(l10n.teamHubClone),
+          : Text(l10n.teamHub.clone),
     );
   }
 }
@@ -337,7 +337,7 @@ class _DepRow extends StatelessWidget {
                   HomeWorkspaceRoute.expertHubMemberLocation(memberKey!),
                 );
               },
-              child: Text(l10n.expertHubViewInHub),
+              child: Text(l10n.expert.hubViewInHub),
             )
           else if (installed != null)
             _StatusBadge(installed: installed!),
@@ -380,7 +380,7 @@ class _StatusBadge extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            installed ? l10n.teamHubDepInstalled : l10n.teamHubDepToInstall,
+            installed ? l10n.teamHub.depInstalled : l10n.teamHub.depToInstall,
             style: styles.xsSemiboldColored(fg),
           ),
         ],

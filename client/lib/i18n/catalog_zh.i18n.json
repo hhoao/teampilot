@@ -1,0 +1,20 @@
+{
+  "cardAccessibilityLabel": "{name: String}，来源：{source: String}",
+  "metricMissing": "暂无数据",
+  "metricMissingTooltip": "暂无可用数据",
+  "metricName": "名称",
+  "metricPublished": "发布日期",
+  "metricRating": "评分",
+  "metricUpdated": "最近更新",
+  "missingMetricAccessibilityLabel": "{label: String}：暂无可用数据",
+  "refreshAccessibilityLabel": "刷新目录",
+  "sortAccessibilityLabel": "排列目录条目",
+  "sortAdoption": "采用量最高",
+  "sortName": "名称",
+  "sortPublished": "最近发布",
+  "sortRating": "评分最高",
+  "sortUpdated": "最近更新",
+  "sourceWarningAccessibilityLabel": "有 {count: int} 个目录源加载失败",
+  "sourceWarningEntry": "{source: String}：{error: String}",
+  "sourceWarningLabel": "部分目录源加载失败"
+}

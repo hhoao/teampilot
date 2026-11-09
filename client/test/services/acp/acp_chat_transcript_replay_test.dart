@@ -359,8 +359,12 @@ void main() {
     final result = decodeAcpChatTranscriptResult(legacy);
     expect(result.hasLegacyRecords, isTrue);
     expect(result.messages, hasLength(1));
-    expect(decodeAcpChatTranscriptResult(encodeAcpChatTranscript([]))
-        .hasLegacyRecords, isFalse);
+    expect(
+      decodeAcpChatTranscriptResult(
+        encodeAcpChatTranscript([]),
+      ).hasLegacyRecords,
+      isFalse,
+    );
   });
 
   test('mixed v1 and v2 records fold in order', () {
@@ -421,64 +425,65 @@ void main() {
     expect(await writer.loadMessages(), hasLength(2));
   });
 
-  test('delta appends only changed parts without rewriting the prefix',
-      () async {
-    final fs = _RecordingFilesystem();
-    const path = '/tp/t.jsonl';
-    final writer = AcpChatTranscriptWriter(fs: fs, path: path);
-    final text = AiTextPart(text: 'hello');
-    final tool = AiToolCallPart(toolCallId: 't1', toolName: 'Read');
-    await writer.saveMessages([
-      AiMessage(id: 'a1', role: AiRole.assistant, parts: [text, tool]),
-    ]);
-    final first = fs.files[path]!;
+  test(
+    'delta appends only changed parts without rewriting the prefix',
+    () async {
+      final fs = _RecordingFilesystem();
+      const path = '/tp/t.jsonl';
+      final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+      final text = AiTextPart(text: 'hello');
+      final tool = AiToolCallPart(toolCallId: 't1', toolName: 'Read');
+      await writer.saveMessages([
+        AiMessage(id: 'a1', role: AiRole.assistant, parts: [text, tool]),
+      ]);
+      final first = fs.files[path]!;
 
-    await writer.saveMessages([
-      AiMessage(
-        id: 'a1',
-        role: AiRole.assistant,
-        parts: [
-          text, // unchanged instance: no record emitted
-          tool.copyWith(status: AiToolCallStatus.complete, result: 'ok'),
-        ],
-      ),
-    ]);
-
-    expect(fs.atomicWrites, 1); // only the initial compact write
-    expect(fs.appends, 1);
-    expect(fs.files[path]!.startsWith(first), isTrue);
-    expect(fs.appendedBytes, lessThan(500));
-    final loaded = await writer.loadMessages();
-    expect(loaded, hasLength(1));
-    expect(loaded.single.parts, hasLength(2));
-    expect((loaded.single.parts.last as AiToolCallPart).result, 'ok');
-  });
-
-  test('streaming text growth appends only suffixes, not cumulative text',
-      () async {
-    final fs = _RecordingFilesystem();
-    const path = '/tp/t.jsonl';
-    final writer = AcpChatTranscriptWriter(fs: fs, path: path);
-    var text = 'x';
-    for (var i = 0; i < 200; i++) {
       await writer.saveMessages([
         AiMessage(
           id: 'a1',
           role: AiRole.assistant,
-          parts: [AiTextPart(text: text)],
+          parts: [
+            text, // unchanged instance: no record emitted
+            tool.copyWith(status: AiToolCallStatus.complete, result: 'ok'),
+          ],
         ),
       ]);
-      text = '${text}y';
-    }
-    expect(fs.atomicWrites, 1);
-    // 200 commits of a 200-char growing part must not write ~200*200 bytes.
-    expect(fs.appendedBytes, lessThan(200 * 120));
-    final loaded = await writer.loadMessages();
-    expect(
-      (loaded.single.parts.single as AiTextPart).text,
-      'x${'y' * 199}',
-    );
-  });
+
+      expect(fs.atomicWrites, 1); // only the initial compact write
+      expect(fs.appends, 1);
+      expect(fs.files[path]!.startsWith(first), isTrue);
+      expect(fs.appendedBytes, lessThan(500));
+      final loaded = await writer.loadMessages();
+      expect(loaded, hasLength(1));
+      expect(loaded.single.parts, hasLength(2));
+      expect((loaded.single.parts.last as AiToolCallPart).result, 'ok');
+    },
+  );
+
+  test(
+    'streaming text growth appends only suffixes, not cumulative text',
+    () async {
+      final fs = _RecordingFilesystem();
+      const path = '/tp/t.jsonl';
+      final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+      var text = 'x';
+      for (var i = 0; i < 200; i++) {
+        await writer.saveMessages([
+          AiMessage(
+            id: 'a1',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: text)],
+          ),
+        ]);
+        text = '${text}y';
+      }
+      expect(fs.atomicWrites, 1);
+      // 200 commits of a 200-char growing part must not write ~200*200 bytes.
+      expect(fs.appendedBytes, lessThan(200 * 120));
+      final loaded = await writer.loadMessages();
+      expect((loaded.single.parts.single as AiTextPart).text, 'x${'y' * 199}');
+    },
+  );
 
   test('dropping a message appends a drop record', () async {
     final fs = _RecordingFilesystem();

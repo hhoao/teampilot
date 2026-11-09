@@ -494,7 +494,10 @@ final class CursorProviderCapability extends CatalogModelCapability
       );
       if (agentHome == null) {
         warnings.add('cursor_home_missing');
-        return SessionHomeContribution(environment: const {}, warnings: warnings);
+        return SessionHomeContribution(
+          environment: const {},
+          warnings: warnings,
+        );
       }
 
       final credentials = CursorProviderCredentialsService(

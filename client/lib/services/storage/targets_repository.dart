@@ -229,8 +229,7 @@ class TargetsRepository {
   ) async {
     final file = await load();
     final overrides = {
-      for (final e in file.acpAdapterPathOverrides.entries)
-        e.key: {...e.value},
+      for (final e in file.acpAdapterPathOverrides.entries) e.key: {...e.value},
     };
     final forTarget = overrides.putIfAbsent(targetId, () => {});
     final trimmed = path.trim();

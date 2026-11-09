@@ -12,8 +12,8 @@ import '../../support/git_graph_test_fakes.dart';
 const _chipKey = ValueKey('git-graph-branch-filter-chip');
 
 Widget _host(GitGraphCubit cubit, GitGraphState state) => MaterialApp(
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
-  supportedLocales: AppLocalizations.supportedLocales,
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: appLocalizationsSupportedLocales,
   locale: const Locale('en'),
   home: MultiBlocProvider(
     providers: [
@@ -34,8 +34,8 @@ Widget _host(GitGraphCubit cubit, GitGraphState state) => MaterialApp(
 );
 
 Widget _narrowHost(GitGraphCubit cubit) => MaterialApp(
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
-  supportedLocales: AppLocalizations.supportedLocales,
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: appLocalizationsSupportedLocales,
   locale: const Locale('en'),
   home: MultiBlocProvider(
     providers: [

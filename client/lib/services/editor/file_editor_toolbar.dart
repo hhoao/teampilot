@@ -72,12 +72,12 @@ class FileEditorContextMenuController implements SelectionToolbarController {
       if (!readOnly)
         TpActionMenuSpec.item(
           icon: Icons.content_cut,
-          label: l10n.editorCut,
+          label: l10n.editor.cut,
           onAction: controller.cut,
         ),
       TpActionMenuSpec.item(
         icon: Icons.content_copy,
-        label: l10n.editorCopy,
+        label: l10n.editor.copy,
         onAction: controller.copy,
       ),
       ...selectionAiMenuSpecs(
@@ -124,25 +124,25 @@ class FileEditorContextMenuController implements SelectionToolbarController {
       if (!readOnly)
         TpActionMenuSpec.item(
           icon: Icons.content_paste,
-          label: l10n.editorPaste,
+          label: l10n.editor.paste,
           onAction: controller.paste,
         ),
       const TpActionMenuSpec.divider(),
       TpActionMenuSpec.item(
         icon: Icons.select_all,
-        label: l10n.editorSelectAll,
+        label: l10n.editor.selectAll,
         onAction: controller.selectAll,
       ),
       if (!readOnly && controller.canUndo)
         TpActionMenuSpec.item(
           icon: Icons.undo,
-          label: l10n.editorUndoEdit,
+          label: l10n.editor.undoEdit,
           onAction: controller.undo,
         ),
       if (!readOnly && controller.canRedo)
         TpActionMenuSpec.item(
           icon: Icons.redo,
-          label: l10n.editorRedoEdit,
+          label: l10n.editor.redoEdit,
           onAction: controller.redo,
         ),
     ];

@@ -60,14 +60,14 @@ class _QoderProviderFormSectionState extends State<QoderProviderFormSection> {
         tilePadding: EdgeInsets.zero,
         childrenPadding: EdgeInsets.zero,
         title: Text(
-          l10n.appProviderAdvancedOptions,
+          l10n.appProvider.advancedOptions,
           style: styles.mdSemiboldTightSnug,
         ),
         children: [
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
-            child: Text(l10n.providerEffortLevel, style: styles.mdSnug),
+            child: Text(l10n.provider.effortLevel, style: styles.mdSnug),
           ),
           const SizedBox(height: 6),
           CliEffortPickerField(
@@ -85,16 +85,14 @@ class _QoderProviderFormSectionState extends State<QoderProviderFormSection> {
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
-            child: Text(l10n.qoderContextWindow, style: styles.mdSnug),
+            child: Text(l10n.qoder.contextWindow, style: styles.mdSnug),
           ),
           const SizedBox(height: 6),
           TextField(
             controller: _contextWindow,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(
-              hintText: l10n.qoderContextWindowHint,
-            ),
+            decoration: InputDecoration(hintText: l10n.qoder.contextWindowHint),
             onChanged: widget.onContextWindowChanged,
           ),
         ],

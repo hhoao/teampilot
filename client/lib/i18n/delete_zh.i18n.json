@@ -1,0 +1,15 @@
+{
+  "delete": "删除",
+  "conversation": "删除对话",
+  "conversationConfirm": "删除对话 \"{name: String}\"？此操作不可撤销。",
+  "provider": "删除提供商",
+  "providerConfirm": "删除提供商 {name: String}？",
+  "providerTooltip": "删除提供商",
+  "providerWithCredentialsConfirm": "删除提供商 {name: String}？将同时删除该 Provider 已保存的 Claude 登录凭据。",
+  "team": "删除团队",
+  "teamConfirm": "删除团队 \"{name: String}\"？此操作不可撤销。",
+  "teamSubtitle": "从 UI 和共享的 flashskyai 数据目录中移除该团队。此操作不可撤销。",
+  "workspace": "删除工作区",
+  "workspaceConfirm": "删除工作区 \"{name: String}\" 及其所有会话？此操作不可撤销。",
+  "workspaceSubtitle": "将删除该工作区及其下所有会话，且无法恢复。"
+}

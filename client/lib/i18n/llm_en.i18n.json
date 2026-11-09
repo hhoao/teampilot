@@ -1,0 +1,18 @@
+{
+  "config": "Provider",
+  "configCurrentEffectivePathPrefix": "Active file:",
+  "configEffectivePathUnresolved": "Could not resolve a path yet (set the CLI location or enter a path).",
+  "configOpenSessionSettings": "Session settings…",
+  "configPageSubtitle": "Manage LLM providers and models.",
+  "configPathBadgeCustom": "custom",
+  "configPathBadgeDefault": "default",
+  "configPathBrowse": "Browse...",
+  "configPathHint": "Leave empty to use the default path",
+  "configPathLabel": "LLM config file",
+  "configPathPickerTitle": "Select llm_config.json",
+  "configPathReset": "Use default",
+  "configPathSave": "Apply",
+  "configPathSessionCardDescription": "Absolute path to the LLM config file (llm_config.json). Leave empty to use the default path next to the CLI install.",
+  "configPathSessionCardDescriptionSsh": "Absolute path to llm_config.json on the remote SSH host. Leave empty to use the default path next to the remote CLI install.",
+  "configSubtitle": "providers and models"
+}

@@ -39,17 +39,17 @@ class TeamLandingPickerFilterBar extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         children: [
           _FilterPill(
-            label: l10n.teamHubCategoryAll,
+            label: l10n.teamHub.categoryAll,
             selected: sourceFilter == TeamLandingSourceFilter.all,
             onTap: () => onSourceFilter(TeamLandingSourceFilter.all),
           ),
           _FilterPill(
-            label: l10n.myTeamsTitle,
+            label: l10n.my.teamsTitle,
             selected: sourceFilter == TeamLandingSourceFilter.mine,
             onTap: () => onSourceFilter(TeamLandingSourceFilter.mine),
           ),
           _FilterPill(
-            label: l10n.teamHubDiscovery,
+            label: l10n.teamHub.discovery,
             selected: sourceFilter == TeamLandingSourceFilter.discovery,
             onTap: () => onSourceFilter(TeamLandingSourceFilter.discovery),
           ),
@@ -62,7 +62,7 @@ class TeamLandingPickerFilterBar extends StatelessWidget {
             ),
           ),
           _FilterPill(
-            label: l10n.teamHubFavorites,
+            label: l10n.teamHub.favorites,
             icon: favoritesOnly
                 ? Icons.star_rounded
                 : Icons.star_outline_rounded,
@@ -78,7 +78,7 @@ class TeamLandingPickerFilterBar extends StatelessWidget {
             ),
           ),
           _FilterPill(
-            label: l10n.teamHubCategoryAll,
+            label: l10n.teamHub.categoryAll,
             count: hubState.allTeams.length,
             selected: category == null,
             onTap: () => onCategory(null),

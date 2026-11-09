@@ -1,0 +1,23 @@
+{
+  "managerAppProcess": "应用",
+  "managerColumnCpu": "CPU",
+  "managerColumnMemory": "内存",
+  "managerColumnName": "名称",
+  "managerEmptyTree": "当前没有运行中的会话。",
+  "managerKill": "结束",
+  "managerKillAll": "全部结束",
+  "managerKillAllConfirmBody": "将断开列表中的全部运行中会话与终端。",
+  "managerKillAllConfirmTitle": "结束全部运行中会话？",
+  "managerKillFailed": "无法结束会话。",
+  "managerMetricsError": "无法刷新进程指标。",
+  "managerPanelTitle": "资源管理器 - 会话",
+  "managerRefresh": "刷新",
+  "managerSpace": "空间",
+  "managerSpaceBeta": "Beta",
+  "managerSpaceNotScanned": "不会扫描工作区磁盘占用。",
+  "managerSystemMemoryPercent": "系统内存 {percent: String}%",
+  "managerTerminalsCount": "{count: int} 个运行中会话",
+  "managerTitle": "资源管理器",
+  "managerTooltip": "资源管理器 - {count: int} 个运行中会话",
+  "managerTooltipHint": "跨所有工作区的运行中会话。"
+}

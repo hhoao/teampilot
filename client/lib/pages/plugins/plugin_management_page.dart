@@ -66,8 +66,8 @@ class PluginManagementPage extends StatelessWidget {
 
         return WorkspaceAdaptiveSectionPage(
           pageKey: AppKeys.pluginsWorkspace,
-          title: context.l10n.pluginsTitle,
-          subtitle: context.l10n.pluginsSubtitle,
+          title: context.l10n.plugins.title,
+          subtitle: context.l10n.plugins.subtitle,
           showSubtitle: false,
           embedded: embedded,
           compactSectionTabs: true,

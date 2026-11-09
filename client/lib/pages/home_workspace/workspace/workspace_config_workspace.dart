@@ -59,7 +59,7 @@ class _WorkspaceConfigPanelState extends State<WorkspaceConfigPanel> {
       )..load(),
       child: WorkspaceAdaptiveSectionPage(
         pageKey: AppKeys.workspaceConfigWorkspace,
-        title: l10n.homeWorkspaceWorkspaceManagement,
+        title: l10n.homeWorkspace.workspaceManagement,
         subtitle: widget.workspace.localizedName(l10n),
         showSubtitle: false,
         onBack: _leaveManage,

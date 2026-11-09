@@ -51,9 +51,9 @@ class FatalAppShell extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: theme,
       navigatorKey: navigatorKey,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: home,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
+      home: TranslationProvider(child: home),
     );
   }
 }

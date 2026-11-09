@@ -209,13 +209,13 @@ class _WorkspaceLandingLocationFieldsState
             key: ValueKey('project-$selectedProjectPath'),
             id: 'projectFolderPath',
             initialValue: selectedProjectPath,
-            label: Text(l10n.automationsLaunchProject),
+            label: Text(l10n.automations.launchProject),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: widget.labelWidth,
             builder: (state) {
               return WorkspaceLandingSelectorBar(
                 label: projectResolver.labelFor(selectedProjectPath),
-                hintWhenEmpty: l10n.workspaceChatLandingSelectProject,
+                hintWhenEmpty: l10n.workspace.chatLandingSelectProject,
                 menuSpecs: projectResolver.menuSpecs(selectedProjectPath),
                 onSelected: (value) {
                   if (value is! String) return;
@@ -232,13 +232,13 @@ class _WorkspaceLandingLocationFieldsState
             key: ValueKey('worktree-$selectedWorktreePath'),
             id: 'workingDirectoryPath',
             initialValue: selectedWorktreePath,
-            label: Text(l10n.automationsLaunchWorktree),
+            label: Text(l10n.automations.launchWorktree),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: widget.labelWidth,
             builder: (state) {
               return WorkspaceLandingSelectorBar(
                 label: worktreeResolver.labelFor(selectedWorktreePath),
-                hintWhenEmpty: l10n.workspaceChatLandingSelectWorktree,
+                hintWhenEmpty: l10n.workspace.chatLandingSelectWorktree,
                 menuSpecs: worktreeResolver.menuSpecs(selectedWorktreePath),
                 onSelected: (value) {
                   if (value is! String) return;

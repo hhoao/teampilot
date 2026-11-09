@@ -142,7 +142,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpDialogHeader(title: l10n.automationsDeleteConfirm),
+            TpDialogHeader(title: l10n.automations.deleteConfirm),
             const SizedBox(height: 12),
             Text(automation.name),
             TpDialogActions(
@@ -153,7 +153,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(ctx, true),
-                  child: Text(l10n.delete),
+                  child: Text(l10n.delete.delete),
                 ),
               ],
             ),
@@ -220,7 +220,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
           final empty = Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              l10n.automationsEmpty,
+              l10n.automations.empty,
               style: styles.mdColored(cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
@@ -348,9 +348,7 @@ class _GroupedList extends StatelessWidget {
             );
             return ListView(
               shrinkWrap: shrinkWrap,
-              physics: shrinkWrap
-                  ? const NeverScrollableScrollPhysics()
-                  : null,
+              physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
               padding: const EdgeInsets.only(top: 2, bottom: 8),
               children: [
                 for (final group in groups) ...[
@@ -366,7 +364,8 @@ class _GroupedList extends StatelessWidget {
                         List<AutomationRun>.of(
                           runsByAutomationId[automation.id] ?? const [],
                         )..sort(
-                          (x, y) => y.scheduledForMs.compareTo(x.scheduledForMs),
+                          (x, y) =>
+                              y.scheduledForMs.compareTo(x.scheduledForMs),
                         );
                     return AutomationRow(
                       automation: automation,
@@ -443,9 +442,9 @@ String _automationActionTypeLabel(
   AppLocalizations l10n,
   Automation automation,
 ) {
-  if (automation.isScheduledMessage) return l10n.automationsCompactTitle;
-  if (automation.isRunCommand) return l10n.automationsCommand;
-  return l10n.automationsFilterLaunchPrompt;
+  if (automation.isScheduledMessage) return l10n.automations.compactTitle;
+  if (automation.isRunCommand) return l10n.automations.command;
+  return l10n.automations.filterLaunchPrompt;
 }
 
 class AutomationRow extends StatefulWidget {
@@ -559,7 +558,7 @@ class _AutomationRowState extends State<AutomationRow> {
                   icon: Icons.history_rounded,
                   compact: true,
                   size: TpIconButton.kCompactSize,
-                  tooltip: l10n.automationsRunHistory,
+                  tooltip: l10n.automations.runHistory,
                   onTap: widget.onShowRunHistory,
                 ),
                 Switch(
@@ -573,20 +572,20 @@ class _AutomationRowState extends State<AutomationRow> {
                   buildMenuChildren: (ctx, controller) => [
                     TpActionMenuItem(
                       icon: Icons.edit_outlined,
-                      label: l10n.automationsEdit,
+                      label: l10n.automations.edit,
                       menuController: controller,
                       onTap: widget.onEdit,
                     ),
                     TpActionMenuItem(
                       icon: Icons.play_circle_outline,
-                      label: l10n.automationsRunNow,
+                      label: l10n.automations.runNow,
                       menuController: controller,
                       enabled: !automation.isRunLimitReached,
                       onTap: widget.onRunNow,
                     ),
                     TpActionMenuItem(
                       icon: Icons.delete_outline,
-                      label: l10n.automationsDelete,
+                      label: l10n.automations.delete,
                       destructive: true,
                       menuController: controller,
                       onTap: widget.onDelete,
@@ -622,11 +621,11 @@ Future<void> showAutomationRunHistoryDialog(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.automationsRunHistory),
+          TpDialogHeader(title: l10n.automations.runHistory),
           const SizedBox(height: 8),
           if (runs.isEmpty)
             Text(
-              l10n.automationsRunHistoryEmpty,
+              l10n.automations.runHistoryEmpty,
               style: styles.xsColored(cs.onSurfaceVariant),
             )
           else
@@ -673,7 +672,7 @@ class AutomationRunHistoryRow extends StatelessWidget {
                 if (run.exitCode != null) ...[
                   const SizedBox(width: 12),
                   Text(
-                    l10n.automationsExitCode(run.exitCode!),
+                    l10n.automations.exitCode(code: run.exitCode!),
                     style: styles.smColored(cs.onSurfaceVariant),
                   ),
                 ],
@@ -697,26 +696,28 @@ class AutomationRunHistoryRow extends StatelessWidget {
 
   String _durationLabel(AppLocalizations l10n, int durationMs) {
     if (durationMs < 1000) {
-      return l10n.automationsRunDurationMilliseconds(durationMs);
+      return l10n.automations.runDurationMilliseconds(milliseconds: durationMs);
     }
-    return l10n.automationsRunDurationSeconds((durationMs / 1000).round());
+    return l10n.automations.runDurationSeconds(
+      seconds: (durationMs / 1000).round(),
+    );
   }
 
   String _statusLabel(AppLocalizations l10n, AutomationRunStatus status) {
     return switch (status) {
-      AutomationRunStatus.completed => l10n.automationsRunStatusCompleted,
+      AutomationRunStatus.completed => l10n.automations.runStatusCompleted,
       AutomationRunStatus.skippedUnavailable =>
-        l10n.automationsSkippedUnavailable,
+        l10n.automations.skippedUnavailable,
       AutomationRunStatus.skippedMissed =>
-        l10n.automationsRunStatusSkippedMissed,
-      AutomationRunStatus.dispatchFailed => l10n.automationsDispatchFailed,
-      AutomationRunStatus.failed => l10n.automationsRunStatusFailed,
-      AutomationRunStatus.timedOut => l10n.automationsRunStatusTimedOut,
+        l10n.automations.runStatusSkippedMissed,
+      AutomationRunStatus.dispatchFailed => l10n.automations.dispatchFailed,
+      AutomationRunStatus.failed => l10n.automations.runStatusFailed,
+      AutomationRunStatus.timedOut => l10n.automations.runStatusTimedOut,
       AutomationRunStatus.skippedOverlap =>
-        l10n.automationsRunStatusSkippedOverlap,
-      AutomationRunStatus.dispatching => l10n.automationsRunStatusDispatching,
-      AutomationRunStatus.dispatched => l10n.automationsRunStatusDispatched,
-      AutomationRunStatus.pending => l10n.automationsRunStatusPending,
+        l10n.automations.runStatusSkippedOverlap,
+      AutomationRunStatus.dispatching => l10n.automations.runStatusDispatching,
+      AutomationRunStatus.dispatched => l10n.automations.runStatusDispatched,
+      AutomationRunStatus.pending => l10n.automations.runStatusPending,
     };
   }
 
@@ -775,7 +776,7 @@ class AutomationRunOutputBlock extends StatelessWidget {
         children: [
           if (error.isNotEmpty)
             Text(
-              l10n.automationsRunError(error),
+              l10n.automations.runError(error: error),
               style: styles.xsColored(cs.error),
             ),
           if (hasOutput) ...[
@@ -789,7 +790,7 @@ class AutomationRunOutputBlock extends StatelessWidget {
                   children: [
                     if (stdout.isNotEmpty) ...[
                       Text(
-                        l10n.automationsRunStdout,
+                        l10n.automations.runStdout,
                         style: styles.xsColored(cs.onSurfaceVariant),
                       ),
                       const SizedBox(height: 2),
@@ -801,7 +802,7 @@ class AutomationRunOutputBlock extends StatelessWidget {
                     if (stderr.isNotEmpty) ...[
                       if (stdout.isNotEmpty) const SizedBox(height: 6),
                       Text(
-                        l10n.automationsRunStderr,
+                        l10n.automations.runStderr,
                         style: styles.xsColored(cs.onSurfaceVariant),
                       ),
                       const SizedBox(height: 2),
@@ -815,7 +816,7 @@ class AutomationRunOutputBlock extends StatelessWidget {
           if (run.outputTruncated) ...[
             if (hasOutput || error.isNotEmpty) const SizedBox(height: 6),
             Text(
-              l10n.automationsRunOutputTruncated,
+              l10n.automations.runOutputTruncated,
               style: styles.xsColored(cs.onSurfaceVariant),
             ),
           ],

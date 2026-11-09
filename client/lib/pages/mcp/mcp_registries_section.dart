@@ -64,8 +64,8 @@ class _McpRegistriesSectionState extends State<McpRegistriesSection> {
 
   String _sourceLabel(McpRegistrySourceKind kind, dynamic l10n) =>
       switch (kind) {
-        McpRegistrySourceKind.smithery => l10n.mcpRegistrySmithery,
-        McpRegistrySourceKind.officialRegistry => l10n.mcpRegistryOfficial,
+        McpRegistrySourceKind.smithery => l10n.mcp.registrySmithery,
+        McpRegistrySourceKind.officialRegistry => l10n.mcp.registryOfficial,
       };
 
   String _registryRowSubtitle(McpRegistrySourceConfig source, dynamic l10n) {
@@ -95,9 +95,13 @@ class _McpRegistriesSectionState extends State<McpRegistriesSection> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpDialogHeader(title: l10n.mcpRegistryResetTitle),
+            TpDialogHeader(title: l10n.mcp.registryResetTitle),
             const SizedBox(height: 16),
-            Text(l10n.mcpRegistryResetConfirm(_sourceLabel(source.kind, l10n))),
+            Text(
+              l10n.mcp.registryResetConfirm(
+                name: _sourceLabel(source.kind, l10n),
+              ),
+            ),
             TpDialogActions(
               children: [
                 TextButton(
@@ -173,7 +177,7 @@ class _McpRegistriesSectionState extends State<McpRegistriesSection> {
     if (!mounted) return;
     AppToast.show(
       context,
-      message: l10n.mcpRepoConfigSaved,
+      message: l10n.mcp.repoConfigSaved,
       variant: TpToastVariant.success,
     );
   }
@@ -192,7 +196,7 @@ class _McpRegistriesSectionState extends State<McpRegistriesSection> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpCardHeader(title: l10n.mcpNavRegistries),
+            TpCardHeader(title: l10n.mcp.navRegistries),
             const SizedBox(height: 12),
             for (final source in sources)
               _RegistryRow(
@@ -266,14 +270,14 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: l10n.mcpRepoTestOk,
+        message: l10n.mcp.repoTestOk,
         variant: TpToastVariant.success,
       );
     } catch (e) {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: l10n.mcpRepoTestFailed(e.toString()),
+        message: l10n.mcp.repoTestFailed(error: e.toString()),
         variant: TpToastVariant.error,
       );
     } finally {
@@ -298,12 +302,12 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.mcpRegistryEditTitle),
+          TpDialogHeader(title: l10n.mcp.registryEditTitle),
           const SizedBox(height: 16),
           TextField(
             controller: _urlCtrl,
             decoration: InputDecoration(
-              labelText: l10n.mcpRepoApiUrlLabel,
+              labelText: l10n.mcp.repoApiUrlLabel,
               hintText: McpRegistrySourceConfig.defaultBaseUrl(
                 widget.source.kind,
               ),
@@ -315,8 +319,8 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
             TpPasswordInput(
               controller: _tokenCtrl,
               decoration: InputDecoration(
-                labelText: l10n.mcpSmitheryApiTokenLabel,
-                hintText: l10n.mcpSmitheryApiTokenHint,
+                labelText: l10n.mcp.smitheryApiTokenLabel,
+                hintText: l10n.mcp.smitheryApiTokenHint,
               ),
             ),
           ],
@@ -334,7 +338,7 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text(l10n.mcpRepoTestConnection),
+                    : Text(l10n.mcp.repoTestConnection),
               ),
               FilledButton(onPressed: _save, child: Text(l10n.save)),
             ],
@@ -418,11 +422,11 @@ class _RegistryRow extends StatelessWidget {
               ],
               CatalogRegistryEditButton(
                 onPressed: onEdit,
-                tooltip: l10n.mcpRegistryEditTitle,
+                tooltip: l10n.mcp.registryEditTitle,
               ),
               Switch(value: source.enabled, onChanged: onToggle),
               IconButton(
-                tooltip: l10n.mcpRegistryResetTitle,
+                tooltip: l10n.mcp.registryResetTitle,
                 onPressed: onReset,
                 icon: Icon(
                   Icons.delete_outline,

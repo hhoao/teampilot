@@ -50,7 +50,7 @@ class _ShortcutsConfigWorkspaceState extends State<ShortcutsConfigWorkspace> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (widget.showHeading)
-          WorkspacePaneHeader(title: l10n.shortcutsSettingsTitle),
+          WorkspacePaneHeader(title: l10n.shortcuts.settingsTitle),
         Row(
           children: [
             Expanded(
@@ -59,7 +59,7 @@ class _ShortcutsConfigWorkspaceState extends State<ShortcutsConfigWorkspace> {
                 onChanged: (value) => setState(() => _query = value),
                 decoration: tpSearchPillDecoration(
                   context,
-                  hintText: l10n.shortcutsSearchHint,
+                  hintText: l10n.shortcuts.searchHint,
                 ),
               ),
             ),
@@ -67,7 +67,7 @@ class _ShortcutsConfigWorkspaceState extends State<ShortcutsConfigWorkspace> {
             OutlinedButton.icon(
               onPressed: () => showShortcutCheatsheetDialog(context),
               icon: const Icon(Icons.keyboard_outlined),
-              label: Text(l10n.shortcutsCheatsheetButton),
+              label: Text(l10n.shortcuts.cheatsheetButton),
             ),
           ],
         ),
@@ -158,7 +158,7 @@ class _ShortcutGroupList extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
-          l10n.shortcutsCheatsheetEmpty,
+          l10n.shortcuts.cheatsheetEmpty,
           style: TpTextStyles.of(context).mutedMd,
         ),
       );
@@ -194,7 +194,7 @@ class _ShortcutRow extends StatelessWidget {
       title: titleForCommand(l10n, def.id),
       titleLeading: conflicted
           ? Tooltip(
-              message: l10n.shortcutsConflictBadgeTooltip,
+              message: l10n.shortcuts.conflictBadgeTooltip,
               child: Icon(
                 Icons.warning_amber_rounded,
                 size: 18,
@@ -207,7 +207,7 @@ class _ShortcutRow extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (chords.isEmpty)
-            Text(l10n.shortcutsNotSet, style: TpTextStyles.of(context).mutedSm)
+            Text(l10n.shortcuts.notSet, style: TpTextStyles.of(context).mutedSm)
           else
             Wrap(
               spacing: 6,
@@ -229,17 +229,17 @@ class _ShortcutRow extends StatelessWidget {
               TpActionMenuSpec.item(
                 value: _ShortcutRowAction.change,
                 icon: Icons.edit_outlined,
-                label: l10n.shortcutsChangeAction,
+                label: l10n.shortcuts.changeAction,
               ),
               TpActionMenuSpec.item(
                 value: _ShortcutRowAction.reset,
                 icon: Icons.restart_alt_outlined,
-                label: l10n.shortcutsResetAction,
+                label: l10n.shortcuts.resetAction,
               ),
               TpActionMenuSpec.item(
                 value: _ShortcutRowAction.unbind,
                 icon: Icons.link_off_outlined,
-                label: l10n.shortcutsUnbindAction,
+                label: l10n.shortcuts.unbindAction,
               ),
             ],
             onSelected: (action) {

@@ -188,10 +188,10 @@ class _QoderLoginDialogState extends State<QoderLoginDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.qoderCredentialsLoginTitle),
+          TpDialogHeader(title: l10n.qoder.credentialsLoginTitle),
           const SizedBox(height: 12),
           Text(
-            l10n.qoderCredentialsLoginIntro,
+            l10n.qoder.credentialsLoginIntro,
             style: TpTextStyles.of(context).mutedSm,
           ),
           const SizedBox(height: 12),
@@ -225,7 +225,7 @@ class _QoderLoginDialogState extends State<QoderLoginDialog> {
                 if (_starting)
                   Center(
                     child: Text(
-                      l10n.qoderCredentialsLoginStarting,
+                      l10n.qoder.credentialsLoginStarting,
                       style: const TextStyle(color: Color(0xFFDDDDDD)),
                     ),
                   ),
@@ -235,7 +235,7 @@ class _QoderLoginDialogState extends State<QoderLoginDialog> {
                     right: 12,
                     bottom: 12,
                     child: Text(
-                      l10n.qoderCredentialsLoginFailed(_error!),
+                      l10n.qoder.credentialsLoginFailed(error: _error!),
                       style: const TextStyle(color: Color(0xFFFF7B72)),
                     ),
                   ),
@@ -245,13 +245,13 @@ class _QoderLoginDialogState extends State<QoderLoginDialog> {
           if (_signedIn) ...[
             const SizedBox(height: 8),
             Text(
-              l10n.qoderCredentialsSignedIn,
+              l10n.qoder.credentialsSignedIn,
               style: TpTextStyles.of(context).mutedSm,
             ),
           ] else if (_exited) ...[
             const SizedBox(height: 8),
             Text(
-              l10n.qoderCredentialsLoginExited,
+              l10n.qoder.credentialsLoginExited,
               style: TpTextStyles.of(context).mutedSm,
             ),
           ],
@@ -261,18 +261,18 @@ class _QoderLoginDialogState extends State<QoderLoginDialog> {
               TpButton(
                 variant: TpButtonVariant.outline,
                 onPressed: () => Navigator.of(context).pop(false),
-                child: Text(l10n.qoderCredentialsCancel),
+                child: Text(l10n.qoder.credentialsCancel),
               ),
               TpButton(
                 variant: TpButtonVariant.outline,
                 onPressed: _starting ? null : () => unawaited(_start()),
-                child: Text(l10n.qoderCredentialsRelaunch),
+                child: Text(l10n.qoder.credentialsRelaunch),
               ),
               TpButton(
                 onPressed: _signedIn && !_starting
                     ? () => Navigator.of(context).pop(true)
                     : null,
-                child: Text(l10n.qoderCredentialsDone),
+                child: Text(l10n.qoder.credentialsDone),
               ),
             ],
           ),

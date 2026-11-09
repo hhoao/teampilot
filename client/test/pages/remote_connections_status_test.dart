@@ -70,7 +70,9 @@ void main() {
       profileRepository: profileRepository,
       credentialStore: credentialStore,
     );
-    l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
   });
 
   tearDown(() async {
@@ -104,8 +106,8 @@ void main() {
     final theme = ThemeData(useMaterial3: true);
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         theme: theme,
         // Wrap every route (including pushed ones) so the targets page reached
@@ -144,16 +146,18 @@ void main() {
     await pumpPage(tester, homeCubit: homeCubit);
 
     expect(
-      find.text(l10n.homeConnectionUnreachable('example.com', 2222)),
+      find.text(
+        l10n.home.connectionUnreachable(host: 'example.com', port: 2222),
+      ),
       findsOneWidget,
     );
-    expect(find.text(l10n.homeConnectionErrorTcp), findsOneWidget);
-    expect(find.text(l10n.homeConnectionRetryNow), findsOneWidget);
-    expect(find.text(l10n.homeConnectionSwitch), findsOneWidget);
-    expect(find.text(l10n.homeConnectionCancelRetry), findsNothing);
+    expect(find.text(l10n.home.connectionErrorTcp), findsOneWidget);
+    expect(find.text(l10n.home.connectionRetryNow), findsOneWidget);
+    expect(find.text(l10n.home.connectionSwitch), findsOneWidget);
+    expect(find.text(l10n.home.connectionCancelRetry), findsNothing);
     // The target list now lives on its own page; the status view shows the
     // card alone.
-    expect(find.text(l10n.sshProfilesEmpty), findsNothing);
+    expect(find.text(l10n.sshProfile.sEmpty), findsNothing);
   });
 
   testWidgets('switch connection opens the targets page', (tester) async {
@@ -164,7 +168,7 @@ void main() {
     );
 
     await pumpPage(tester, homeCubit: homeCubit);
-    await tester.tap(find.text(l10n.homeConnectionSwitch));
+    await tester.tap(find.text(l10n.home.connectionSwitch));
     await tester.pumpAndSettle();
 
     expect(find.byType(RemoteTargetsPage), findsOneWidget);
@@ -180,18 +184,18 @@ void main() {
 
     await pumpPage(tester, homeCubit: homeCubit);
 
-    expect(find.text(l10n.homeConnectionRetrying(3)), findsOneWidget);
-    expect(find.text(l10n.homeConnectionCancelRetry), findsOneWidget);
+    expect(find.text(l10n.home.connectionRetrying(count: 3)), findsOneWidget);
+    expect(find.text(l10n.home.connectionCancelRetry), findsOneWidget);
     // While auto-retrying, only the stop action is offered — never both.
-    expect(find.text(l10n.homeConnectionRetryNow), findsNothing);
+    expect(find.text(l10n.home.connectionRetryNow), findsNothing);
 
-    await tester.tap(find.text(l10n.homeConnectionCancelRetry));
+    await tester.tap(find.text(l10n.home.connectionCancelRetry));
     await tester.pump();
 
     expect(cancelCalls, 1);
     expect(homeCubit.state.status, HomeConnectionStatus.unreachable);
-    expect(find.text(l10n.homeConnectionCancelRetry), findsNothing);
-    expect(find.text(l10n.homeConnectionRetryNow), findsOneWidget);
+    expect(find.text(l10n.home.connectionCancelRetry), findsNothing);
+    expect(find.text(l10n.home.connectionRetryNow), findsOneWidget);
   });
 
   testWidgets('host identity change shows the re-pair hint', (tester) async {
@@ -201,10 +205,10 @@ void main() {
 
     await pumpPage(tester, homeCubit: homeCubit);
 
-    expect(find.text(l10n.homeConnectionErrorHostKey), findsOneWidget);
-    expect(find.text(l10n.homeConnectionSwitch), findsOneWidget);
-    expect(find.text(l10n.homeConnectionRetryNow), findsOneWidget);
-    expect(find.text(l10n.homeConnectionCancelRetry), findsNothing);
+    expect(find.text(l10n.home.connectionErrorHostKey), findsOneWidget);
+    expect(find.text(l10n.home.connectionSwitch), findsOneWidget);
+    expect(find.text(l10n.home.connectionRetryNow), findsOneWidget);
+    expect(find.text(l10n.home.connectionCancelRetry), findsNothing);
   });
 
   testWidgets('connected status renders no status card', (tester) async {
@@ -214,9 +218,9 @@ void main() {
 
     await pumpPage(tester, homeCubit: homeCubit);
 
-    expect(find.text(l10n.homeConnectionRetryNow), findsNothing);
-    expect(find.text(l10n.homeConnectionSwitch), findsNothing);
-    expect(find.text(l10n.sshProfilesEmpty), findsOneWidget);
+    expect(find.text(l10n.home.connectionRetryNow), findsNothing);
+    expect(find.text(l10n.home.connectionSwitch), findsNothing);
+    expect(find.text(l10n.sshProfile.sEmpty), findsOneWidget);
   });
 
   testWidgets('missing cubit provider renders the page without a card', (
@@ -224,8 +228,8 @@ void main() {
   ) async {
     await pumpPage(tester);
 
-    expect(find.text(l10n.homeConnectionRetryNow), findsNothing);
-    expect(find.text(l10n.homeConnectionSwitch), findsNothing);
-    expect(find.text(l10n.sshProfilesEmpty), findsOneWidget);
+    expect(find.text(l10n.home.connectionRetryNow), findsNothing);
+    expect(find.text(l10n.home.connectionSwitch), findsNothing);
+    expect(find.text(l10n.sshProfile.sEmpty), findsOneWidget);
   });
 }

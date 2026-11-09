@@ -60,10 +60,10 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
     if (_localized) return;
     _localized = true;
     final l10n = context.l10n;
-    _downloadStatus = l10n.appUpdateReadyToDownload;
+    _downloadStatus = l10n.app.updateReadyToDownload;
     _changelogs = ChangelogData.parseMarkdownContent(
       widget.updateInfo.changelogs?.join('\n') ?? '',
-      defaultSectionTitle: l10n.appUpdateChangelogDefaultSection,
+      defaultSectionTitle: l10n.app.updateChangelogDefaultSection,
     );
   }
 
@@ -96,7 +96,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.appUpdateDialogTitle),
+          TpDialogHeader(title: l10n.app.updateDialogTitle),
           Flexible(
             child: SingleChildScrollView(
               padding: EdgeInsets.zero,
@@ -152,14 +152,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      l10n.appUpdateLatestVersion,
+                      l10n.app.updateLatestVersion,
                       style: TpTextStyles.of(
                         context,
                       ).mdColored(Colors.grey.shade600),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      latestApp?.version ?? l10n.appUpdateUnknownVersion,
+                      latestApp?.version ?? l10n.app.updateUnknownVersion,
                       style: TpTextStyles.of(
                         context,
                       ).mdMediumColored(Colors.blue),
@@ -183,7 +183,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                 backgroundColor: Colors.transparent,
                 collapsedBackgroundColor: Colors.transparent,
                 title: Text(
-                  l10n.appUpdateChangelogTitle,
+                  l10n.app.updateChangelogTitle,
                   style: TpTextStyles.of(
                     context,
                   ).smColored(Colors.grey.shade600),
@@ -283,7 +283,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
               child: _buildBottomButton(
                 _isDownloading ? null : () => Navigator.of(context).pop(),
                 null,
-                l10n.appUpdateLater,
+                l10n.app.updateLater,
               ),
             ),
           if (!_isRedirectDownload)
@@ -299,7 +299,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
               child: _buildBottomButton(
                 () => _handleBrowserDownload(latestApp),
                 Icon(Icons.open_in_browser, size: context.tpIconSizes.md),
-                l10n.appUpdateBrowserDownload,
+                l10n.app.updateBrowserDownload,
               ),
             ),
         ],
@@ -308,10 +308,10 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
   }
 
   String _primaryButtonLabel(AppLocalizations l10n) {
-    if (_installInProgress) return l10n.appUpdateInstalling;
-    if (_downloadCompleted) return l10n.appUpdateInstallNow;
-    if (_isDownloading) return l10n.appUpdateDownloadInBackground;
-    return l10n.appUpdateDownloadNow;
+    if (_installInProgress) return l10n.app.updateInstalling;
+    if (_downloadCompleted) return l10n.app.updateInstallNow;
+    if (_isDownloading) return l10n.app.updateDownloadInBackground;
+    return l10n.app.updateDownloadNow;
   }
 
   void _onPrimaryAction() {
@@ -333,19 +333,19 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
     final l10n = context.l10n;
     if (!_downloadCompleted || !_supportsInAppInstall) return;
     if (_downloadSavePath.isEmpty) {
-      _showSnackBar(l10n.appUpdateInvalidPackagePath, isError: true);
+      _showSnackBar(l10n.app.updateInvalidPackagePath, isError: true);
       return;
     }
 
     if (kDebugMode) {
-      _showSnackBar(l10n.appUpdateReleaseBuildRequired, isError: true);
+      _showSnackBar(l10n.app.updateReleaseBuildRequired, isError: true);
       return;
     }
 
     if (!BackendAppUpdateService.packageMatchesCurrentPlatform(
       _downloadSavePath,
     )) {
-      _showSnackBar(l10n.appUpdatePackagePlatformMismatch, isError: true);
+      _showSnackBar(l10n.app.updatePackagePlatformMismatch, isError: true);
       return;
     }
 
@@ -358,11 +358,17 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
       }
     } on AppUpdateException catch (e) {
       if (mounted) {
-        _showSnackBar(l10n.appUpdateInstallFailed(e.message), isError: true);
+        _showSnackBar(
+          l10n.app.updateInstallFailed(message: e.message),
+          isError: true,
+        );
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar(l10n.appUpdateInstallFailed('$e'), isError: true);
+        _showSnackBar(
+          l10n.app.updateInstallFailed(message: '$e'),
+          isError: true,
+        );
       }
     } finally {
       if (mounted) {
@@ -379,30 +385,33 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
     if (!mounted) return;
 
     if (statusCode == null) {
-      _showSnackBar(l10n.appUpdateInstallNoResult, isError: true);
+      _showSnackBar(l10n.app.updateInstallNoResult, isError: true);
       return;
     }
 
     final status = PackageInstallerStatus.byCode(statusCode);
     if (status == PackageInstallerStatus.success) {
-      _showSnackBar(l10n.appUpdateInstallComplete, isSuccess: true);
+      _showSnackBar(l10n.app.updateInstallComplete, isSuccess: true);
       Navigator.of(context).pop();
     } else {
-      _showSnackBar(l10n.appUpdateInstallFailed(status.name), isError: true);
+      _showSnackBar(
+        l10n.app.updateInstallFailed(message: status.name),
+        isError: true,
+      );
     }
   }
 
   Future<void> _handleDownload(AppApplicationRespVO latestApp) async {
     final l10n = context.l10n;
     if (_downloadType == DownloadTypeEnum.redirect) {
-      _showSnackBar(l10n.appUpdateRedirectBrowserOnly);
+      _showSnackBar(l10n.app.updateRedirectBrowserOnly);
       return;
     }
 
     setState(() {
       _isDownloading = true;
       _downloadProgress = 0;
-      _downloadStatus = l10n.appUpdateDownloadStarting;
+      _downloadStatus = l10n.app.updateDownloadStarting;
       _downloadCompleted = false;
       _downloadSavePath = '';
     });
@@ -434,22 +443,22 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
         _downloadCompleted = true;
         _downloadSavePath = file.path;
         _downloadProgress = 1;
-        _downloadStatus = l10n.appUpdateDownloadComplete;
+        _downloadStatus = l10n.app.updateDownloadComplete;
         _isDownloading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isDownloading = false;
-        _downloadStatus = l10n.appUpdateDownloadFailed;
+        _downloadStatus = l10n.app.updateDownloadFailed;
       });
-      _showSnackBar(l10n.appUpdateDownloadError('$e'), isError: true);
+      _showSnackBar(l10n.app.updateDownloadError(error: '$e'), isError: true);
     }
   }
 
   Future<void> _handleBrowserDownload(AppApplicationRespVO latestApp) async {
     final l10n = context.l10n;
-    _showSnackBar(l10n.appUpdateResolvingDownloadUrl, long: true);
+    _showSnackBar(l10n.app.updateResolvingDownloadUrl, long: true);
 
     try {
       final downloadUrl = _downloadService.resolveDownloadUrl(
@@ -471,14 +480,17 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
       );
       if (!mounted) return;
       if (launched) {
-        _showSnackBar(l10n.appUpdateBrowserOpened, isSuccess: true);
+        _showSnackBar(l10n.app.updateBrowserOpened, isSuccess: true);
       } else {
-        _showSnackBar(l10n.appUpdateCannotOpenDownloadLink, isError: true);
+        _showSnackBar(l10n.app.updateCannotOpenDownloadLink, isError: true);
       }
     } catch (e) {
       if (mounted) {
         AppToast.dismiss();
-        _showSnackBar(l10n.appUpdateBrowserOpenFailed('$e'), isError: true);
+        _showSnackBar(
+          l10n.app.updateBrowserOpenFailed(error: '$e'),
+          isError: true,
+        );
       }
     }
   }

@@ -719,41 +719,45 @@ void main() {
     );
 
     group('post-connect target sync', () {
-      test('connect creates a remote server profile for a target with none',
-          () async {
-        final harness = _Harness();
-        final fs = InMemoryFilesystem();
-        final targets = RemoteTargetRepository(rootDir: '/tp', fs: fs);
-        final servers = SshServerProfileRepository(
-          storage: fakeHomeStorage(filesystem: fs),
-        );
-        final sync = RemoteTargetSync(targets: targets, servers: servers);
+      test(
+        'connect creates a remote server profile for a target with none',
+        () async {
+          final harness = _Harness();
+          final fs = InMemoryFilesystem();
+          final targets = RemoteTargetRepository(rootDir: '/tp', fs: fs);
+          final servers = SshServerProfileRepository(
+            storage: fakeHomeStorage(filesystem: fs),
+          );
+          final sync = RemoteTargetSync(targets: targets, servers: servers);
 
-        // A migrated device-local target (pendingSync=false) has no remote
-        // server profile yet: the first connect must create one.
-        await targets.save(const RemoteTarget(
-          id: 'p1',
-          name: 'dev',
-          host: 'example.com',
-          username: 'alice',
-        ));
+          // A migrated device-local target (pendingSync=false) has no remote
+          // server profile yet: the first connect must create one.
+          await targets.save(
+            const RemoteTarget(
+              id: 'p1',
+              name: 'dev',
+              host: 'example.com',
+              username: 'alice',
+            ),
+          );
 
-        final cubit = harness.createCubit(sync: sync);
-        cubit.syncProfiles(const [_p1]);
-        await cubit.connect(_p1.id);
+          final cubit = harness.createCubit(sync: sync);
+          cubit.syncProfiles(const [_p1]);
+          await cubit.connect(_p1.id);
 
-        final server = await servers.findById('p1');
-        expect(server, isNotNull);
-        expect(server!.name, 'dev');
-        expect(server.host, 'example.com');
-        expect(
-          cubit.state.hostsById['p1']!.status,
-          SshHostUiStatus.connected,
-        );
+          final server = await servers.findById('p1');
+          expect(server, isNotNull);
+          expect(server!.name, 'dev');
+          expect(server.host, 'example.com');
+          expect(
+            cubit.state.hostsById['p1']!.status,
+            SshHostUiStatus.connected,
+          );
 
-        await cubit.close();
-        harness.dispose();
-      });
+          await cubit.close();
+          harness.dispose();
+        },
+      );
 
       test('connect clears pendingSync via pull then push', () async {
         final harness = _Harness();
@@ -764,23 +768,27 @@ void main() {
         );
         final sync = RemoteTargetSync(targets: targets, servers: servers);
 
-        await targets.save(const RemoteTarget(
-          id: 'p1',
-          name: 'dev',
-          host: 'example.com',
-          username: 'alice',
-          pendingSync: true,
-          updatedAt: 10,
-        ));
+        await targets.save(
+          const RemoteTarget(
+            id: 'p1',
+            name: 'dev',
+            host: 'example.com',
+            username: 'alice',
+            pendingSync: true,
+            updatedAt: 10,
+          ),
+        );
         // Older remote profile: pull() returns the target unchanged, and the
         // pendingSync flag then drives a push that clears it.
-        await servers.save(const SshServerProfile(
-          id: 'p1',
-          name: 'stale',
-          host: 'stale.example.com',
-          username: 'alice',
-          updatedAt: 5,
-        ));
+        await servers.save(
+          const SshServerProfile(
+            id: 'p1',
+            name: 'stale',
+            host: 'stale.example.com',
+            username: 'alice',
+            updatedAt: 5,
+          ),
+        );
 
         final cubit = harness.createCubit(sync: sync);
         cubit.syncProfiles(const [_p1]);
@@ -788,10 +796,7 @@ void main() {
 
         expect((await targets.findById('p1'))!.pendingSync, isFalse);
         expect((await servers.findById('p1'))!.name, 'dev');
-        expect(
-          cubit.state.hostsById['p1']!.status,
-          SshHostUiStatus.connected,
-        );
+        expect(cubit.state.hostsById['p1']!.status, SshHostUiStatus.connected);
 
         await cubit.close();
         harness.dispose();
@@ -804,12 +809,14 @@ void main() {
         final servers = SshServerProfileRepository(
           storage: fakeHomeStorage(filesystem: fs),
         );
-        await targets.save(const RemoteTarget(
-          id: 'p1',
-          name: 'dev',
-          host: 'example.com',
-          username: 'alice',
-        ));
+        await targets.save(
+          const RemoteTarget(
+            id: 'p1',
+            name: 'dev',
+            host: 'example.com',
+            username: 'alice',
+          ),
+        );
         // push() throws: the sync block must swallow it, not fall through to
         // connect()'s outer catch (which would record an error detail).
         final sync = _ThrowingSync(targets: targets, servers: servers);
@@ -818,10 +825,7 @@ void main() {
         cubit.syncProfiles(const [_p1]);
         await cubit.connect(_p1.id);
 
-        expect(
-          cubit.state.hostsById['p1']!.status,
-          SshHostUiStatus.connected,
-        );
+        expect(cubit.state.hostsById['p1']!.status, SshHostUiStatus.connected);
         expect(cubit.state.hostsById['p1']!.errorDetail, isNull);
 
         await cubit.close();
@@ -841,18 +845,22 @@ void main() {
 
         // Device-local target catalog: pinned, never rides the home plane.
         final targets = RemoteTargetRepository(rootDir: '/device', fs: fs);
-        await targets.save(const RemoteTarget(
-          id: 'p1',
-          name: 'dev',
-          host: 'example.com',
-          username: 'alice',
-        ));
-        await targets.save(const RemoteTarget(
-          id: 'p2',
-          name: 'staging',
-          host: 'staging.example.com',
-          username: 'bob',
-        ));
+        await targets.save(
+          const RemoteTarget(
+            id: 'p1',
+            name: 'dev',
+            host: 'example.com',
+            username: 'alice',
+          ),
+        );
+        await targets.save(
+          const RemoteTarget(
+            id: 'p2',
+            name: 'staging',
+            host: 'staging.example.com',
+            username: 'bob',
+          ),
+        );
 
         // App-scoped home starts on the LOCAL plane. The sync's servers repo
         // holds THIS HomeStorage, whose _root getter re-reads the live context.
@@ -866,13 +874,13 @@ void main() {
         // Android-style select: rebind home onto each SSH host's own plane,
         // over the SAME filesystem with a different appDataRoot.
         RuntimeContext plane(String root) => RuntimeContext(
-              target: homeStorage.context.target,
-              filesystem: fs,
-              home: root,
-              cwd: root,
-              appDataRoot: root,
-              paths: AppPaths(root),
-            );
+          target: homeStorage.context.target,
+          filesystem: fs,
+          home: root,
+          cwd: root,
+          appDataRoot: root,
+          paths: AppPaths(root),
+        );
         final p1Plane = plane('/remote/p1');
         final p2Plane = plane('/remote/p2');
 

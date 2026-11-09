@@ -324,7 +324,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
               children: [
                 Expanded(
                   child: Text(
-                    _isEditing ? l10n.editProvider : l10n.addProvider,
+                    _isEditing ? l10n.edit.provider : l10n.addProvider,
                     style: TpTextStyles.of(context).lg,
                   ),
                 ),
@@ -360,7 +360,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
               children: [
                 Text(
-                  l10n.appProviderPresetLabel,
+                  l10n.appProvider.presetLabel,
                   style: TpTextStyles.of(context).mdSnug,
                 ),
                 const SizedBox(height: 8),
@@ -369,7 +369,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   items: presetItems,
                   initialItem: _effectiveItem(_presetId, presetItems),
                   itemLabel: (id) {
-                    if (id == 'custom') return l10n.appProviderPresetCustom;
+                    if (id == 'custom') return l10n.appProvider.presetCustom;
                     final preset = formCap.presets
                         .where((p) => p.id == id)
                         .firstOrNull;
@@ -377,7 +377,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   },
                   itemBuilder: (context, id) {
                     if (id == 'custom') {
-                      return Text(l10n.appProviderPresetCustom);
+                      return Text(l10n.appProvider.presetCustom);
                     }
                     final preset = formCap.presets
                         .where((p) => p.id == id)
@@ -428,7 +428,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   color: Colors.transparent,
                   child: SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text(l10n.appProviderAdvancedJson),
+                    title: Text(l10n.appProvider.advancedJson),
                     value: _showAdvancedJson,
                     onChanged: (v) {
                       setState(() {
@@ -467,14 +467,14 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                       _prospectiveId = null;
                     }),
                     decoration: InputDecoration(
-                      labelText: l10n.appProviderDisplayName,
+                      labelText: l10n.appProvider.displayName,
                     ),
                   ),
                   if (!_isEditing) ...[
                     const SizedBox(height: 8),
                     Text(
-                      l10n.appProviderInternalIdPreview(
-                        _prospectiveIdForNewRow(),
+                      l10n.appProvider.internalIdPreview(
+                        id: _prospectiveIdForNewRow(),
                       ),
                       style: TpTextStyles.of(context).mutedSm,
                     ),
@@ -483,7 +483,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   TpInput(
                     controller: _websiteCtl,
                     decoration: InputDecoration(
-                      labelText: l10n.appProviderWebsite,
+                      labelText: l10n.appProvider.website,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -524,7 +524,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                         decoration: InputDecoration(
                           labelText: l10n.apiKey,
                           hintText: _isEditing
-                              ? l10n.appProviderApiKeyEditHint
+                              ? l10n.appProvider.apiKeyEditHint
                               : null,
                         ),
                       ),
@@ -580,7 +580,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   ),
                   if (_showsProviderEffortPicker(context)) ...[
                     const SizedBox(height: 12),
-                    _FieldLabel(l10n.providerEffortLevel),
+                    _FieldLabel(l10n.provider.effortLevel),
                     const SizedBox(height: 6),
                     CliEffortPickerField(
                       cli: widget.cli,
@@ -708,7 +708,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
         _managedCubitOf(context)?.state.providers ?? const <ManagedProvider>[];
     final ownId = widget.existing?.id ?? '';
     final options = <(String, String)>[
-      ('', l10n.appProviderCredentialLinkOwnKey),
+      ('', l10n.appProvider.credentialLinkOwnKey),
     ];
     for (final entry in managed) {
       final ref = entry.credentialRef?.trim() ?? '';
@@ -738,7 +738,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          context.l10n.appProviderCredentialLinkMode,
+          context.l10n.appProvider.credentialLinkMode,
           style: TpTextStyles.of(context).smSemibold,
         ),
         const SizedBox(height: 6),
@@ -751,7 +751,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
               if (option.$1 == value) return option.$2;
             }
             if (vaultEntryIdFromCredentialLink(value) != null) {
-              return context.l10n.vaultStoredInVault;
+              return context.l10n.vault.storedInVault;
             }
             return value;
           },
@@ -774,7 +774,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     if (link.isEmpty) return '';
     final vaultEntryId = vaultEntryIdFromCredentialLink(link);
     if (vaultEntryId != null) {
-      return context.l10n.vaultStoredInVault;
+      return context.l10n.vault.storedInVault;
     }
     final entry = _managedCubitOf(
       context,
@@ -811,8 +811,8 @@ class _LinkedCredentialChip extends StatelessWidget {
           Expanded(
             child: Text(
               entryName.isEmpty
-                  ? l10n.appProviderCredentialLinkEmpty
-                  : l10n.appProviderCredentialLinkedTo(entryName),
+                  ? l10n.appProvider.credentialLinkEmpty
+                  : l10n.appProvider.credentialLinkedTo(entry: entryName),
               style: TpTextStyles.of(context).sm,
             ),
           ),

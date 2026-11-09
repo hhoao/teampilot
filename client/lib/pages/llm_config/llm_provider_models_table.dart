@@ -74,14 +74,14 @@ class LlmProviderModelsTable extends StatelessWidget {
                   icon: Icons.edit_outlined,
                   compact: true,
                   size: TpIconButton.kCompactSize,
-                  tooltip: l10n.edit,
+                  tooltip: l10n.edit.edit,
                   onTap: () => _editModel(context, model),
                 ),
                 TpIconButton(
                   icon: Icons.delete_outline,
                   compact: true,
                   size: TpIconButton.kCompactSize,
-                  tooltip: l10n.delete,
+                  tooltip: l10n.delete.delete,
                   onTap: () => onDelete(model.id),
                 ),
               ],
@@ -98,7 +98,7 @@ class LlmProviderModelsTable extends StatelessWidget {
       builder: (context) => LlmModelEditDialog(
         model: model,
         providers: providers,
-        title: l10n.editModelTitle(model.name),
+        title: l10n.edit.modelTitle(name: model.name),
       ),
     );
     if (result != null) {

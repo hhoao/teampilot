@@ -119,10 +119,10 @@ class CloneCompletedDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.cloneRepositoryCompletedTitle),
+          TpDialogHeader(title: l10n.clone.repositoryCompletedTitle),
           const SizedBox(height: 16),
           Text(
-            l10n.cloneRepositoryCompletedBody(task.destPath),
+            l10n.clone.repositoryCompletedBody(path: task.destPath),
             style: styles.mdColored(cs.onSurfaceVariant),
           ),
           TpDialogActions(
@@ -131,13 +131,13 @@ class CloneCompletedDialog extends StatelessWidget {
                 onPressed: () => Navigator.of(
                   context,
                 ).pop(CloneCompletionAction.addToWorkspace),
-                child: Text(l10n.cloneRepositoryAddToWorkspace),
+                child: Text(l10n.clone.repositoryAddToWorkspace),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(
                   context,
                 ).pop(CloneCompletionAction.newWorkspace),
-                child: Text(l10n.cloneRepositoryCreateWorkspace),
+                child: Text(l10n.clone.repositoryCreateWorkspace),
               ),
             ],
           ),
@@ -187,9 +187,9 @@ class _CloneAddToWorkspaceDialogState extends State<CloneAddToWorkspaceDialog> {
         if (added) {
           AppToast.show(
             context,
-            message: context.l10n.cloneRepositoryAddToExistingSucceeded(
-              widget.task.dirName,
-              workspace.effectiveDisplay,
+            message: context.l10n.clone.repositoryAddToExistingSucceeded(
+              repo: widget.task.dirName,
+              workspace: workspace.effectiveDisplay,
             ),
             variant: TpToastVariant.success,
           );
@@ -212,13 +212,13 @@ class _CloneAddToWorkspaceDialogState extends State<CloneAddToWorkspaceDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.cloneRepositoryChooseWorkspace),
+          TpDialogHeader(title: l10n.clone.repositoryChooseWorkspace),
           const SizedBox(height: 8),
           if (widget.workspaces.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
-                l10n.cloneRepositoryCompletedBody(widget.task.destPath),
+                l10n.clone.repositoryCompletedBody(path: widget.task.destPath),
                 style: styles.mdColored(cs.onSurfaceVariant),
               ),
             )

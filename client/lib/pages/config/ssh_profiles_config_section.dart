@@ -103,7 +103,7 @@ class _SshProfilesConfigWorkspaceState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (widget.showHeading)
-              WorkspacePaneHeader(title: context.l10n.sshProfilesPageTitle),
+              WorkspacePaneHeader(title: context.l10n.sshProfile.sPageTitle),
             const Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.all(16),

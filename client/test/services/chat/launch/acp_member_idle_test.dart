@@ -308,7 +308,8 @@ class _FakeLifecycle implements SessionLifecycleService {
 }
 
 class _Host implements SessionLaunchHost {
-  _Host(this.tabStore) : memberMaterializer = stubTabMemberMaterializer(tabStore);
+  _Host(this.tabStore)
+    : memberMaterializer = stubTabMemberMaterializer(tabStore);
 
   @override
   final ChatTabStore tabStore;

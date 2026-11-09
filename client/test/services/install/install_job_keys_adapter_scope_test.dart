@@ -18,9 +18,7 @@ void main() {
     expect(
       InstallJobKeys.codexAcpAdapter(scope: const InstallJobScopeSsh('p1')),
       isNot(
-        InstallJobKeys.claudeAcpAdapter(
-          scope: const InstallJobScopeSsh('p1'),
-        ),
+        InstallJobKeys.claudeAcpAdapter(scope: const InstallJobScopeSsh('p1')),
       ),
     );
   });

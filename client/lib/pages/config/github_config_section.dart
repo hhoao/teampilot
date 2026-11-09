@@ -15,7 +15,7 @@ class GithubConfigWorkspace extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (showHeading) WorkspacePaneHeader(title: l10n.githubSettingsTitle),
+        if (showHeading) WorkspacePaneHeader(title: l10n.github.settingsTitle),
         const Expanded(
           child: SingleChildScrollView(
             child: GithubDeviceFlowPanel(

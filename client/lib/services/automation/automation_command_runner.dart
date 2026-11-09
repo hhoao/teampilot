@@ -285,9 +285,7 @@ class HostAutomationCommandRunner implements AutomationCommandRunner {
           if (!completer.isCompleted) {
             completer.complete((
               exitCode: null,
-              error: _unreachable(kind)
-                  ? 'target_unreachable'
-                  : 'spawn_failed',
+              error: _unreachable(kind) ? 'target_unreachable' : 'spawn_failed',
             ));
           }
         },

@@ -13,12 +13,12 @@ enum WorkspaceSort {
 extension WorkspaceSortLabels on WorkspaceSort {
   String label(AppLocalizations l10n) => switch (this) {
     WorkspaceSort.recentlyUpdated =>
-      l10n.homeWorkspaceWorkspaceSortRecentlyUpdated,
-    WorkspaceSort.nameAsc => l10n.homeWorkspaceWorkspaceSortNameAsc,
-    WorkspaceSort.nameDesc => l10n.homeWorkspaceWorkspaceSortNameDesc,
-    WorkspaceSort.createdDesc => l10n.homeWorkspaceWorkspaceSortCreatedDesc,
+      l10n.homeWorkspace.workspaceSortRecentlyUpdated,
+    WorkspaceSort.nameAsc => l10n.homeWorkspace.workspaceSortNameAsc,
+    WorkspaceSort.nameDesc => l10n.homeWorkspace.workspaceSortNameDesc,
+    WorkspaceSort.createdDesc => l10n.homeWorkspace.workspaceSortCreatedDesc,
     WorkspaceSort.sessionCountDesc =>
-      l10n.homeWorkspaceWorkspaceSortSessionCountDesc,
+      l10n.homeWorkspace.workspaceSortSessionCountDesc,
   };
 
   static WorkspaceSort parse(String? raw) {

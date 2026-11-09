@@ -45,23 +45,23 @@ class WorkspaceMcpSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TeamConfigCardHeader(
-                  title: l10n.workspaceMcpAssignedCount(
-                    assignedCount,
-                    enabled.length,
+                  title: l10n.workspace.mcpAssignedCount(
+                    assigned: assignedCount,
+                    total: enabled.length,
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
                     icon: Icon(Icons.hub_outlined),
-                    label: Text(l10n.workspaceMcpManage),
+                    label: Text(l10n.workspace.mcpManage),
                   ),
                 ),
                 const SizedBox(height: 14),
                 if (enabled.isEmpty)
                   TpEmptyState(
                     icon: Icons.dns_outlined,
-                    title: l10n.mcpNoInstalled,
-                    hint: l10n.mcpNoInstalledHint,
-                    actionLabel: l10n.workspaceMcpManage,
+                    title: l10n.mcp.noInstalled,
+                    hint: l10n.mcp.noInstalledHint,
+                    actionLabel: l10n.workspace.mcpManage,
                     onAction: onManage,
                   )
                 else

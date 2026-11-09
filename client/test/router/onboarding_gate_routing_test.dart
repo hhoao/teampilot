@@ -95,8 +95,8 @@ void main() {
           ],
           child: MaterialApp.router(
             theme: theme,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             routerConfig: appRouter,
             builder: (context, child) => TpTheme(
               data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1),

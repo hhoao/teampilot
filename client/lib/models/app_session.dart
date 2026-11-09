@@ -184,8 +184,7 @@ class AppSession {
     LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
   }) {
     final trimmedTeam = sessionTeam.trim();
-    final resolvedAcp =
-        acp ?? (trimmedTeam.isEmpty && acpForcedByCli(cli));
+    final resolvedAcp = acp ?? (trimmedTeam.isEmpty && acpForcedByCli(cli));
     return AppSession._(
       sessionId: sessionId,
       workspaceId: workspaceId,

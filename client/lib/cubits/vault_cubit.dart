@@ -251,12 +251,7 @@ class VaultCubit extends Cubit<VaultState> {
     try {
       await _service.delete(id);
       await _refresh();
-      emit(
-        state.copyWith(
-          busy: false,
-          clearSelected: state.selectedId == id,
-        ),
-      );
+      emit(state.copyWith(busy: false, clearSelected: state.selectedId == id));
     } on VaultException catch (error) {
       emit(state.copyWith(busy: false, errorMessage: error.code));
     }

@@ -145,8 +145,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: BlocProvider<ChatCubit>.value(
             value: chat,
             child: Builder(builder: (context) => SizedBox(key: contextKey)),
@@ -185,17 +185,15 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: BlocProvider<ChatCubit>.value(
           value: chat,
           child: Builder(
             builder: (context) {
               reportTeamGenerationStartFailure(
                 chatCubit: context.read<ChatCubit>(),
-                userMessage: AppLocalizations.of(
-                  context,
-                ).teamGenerateErrorStartFailed,
+                userMessage: context.l10n.team.generateErrorStartFailed,
                 error: error,
                 stackTrace: stackTrace,
                 diagnosticLogger: (error, stackTrace) {
@@ -248,11 +246,11 @@ void main() {
 
       expect(
         teamGenerationPreflightIssueMessage(en, 'description_required'),
-        en.teamGenerateErrorDescriptionRequired,
+        en.team.generateErrorDescriptionRequired,
       );
       expect(
         teamGenerationPreflightIssueMessage(en, 'model_pool_empty'),
-        en.teamGenerateErrorPoolEmpty,
+        en.team.generateErrorPoolEmpty,
       );
       expect(
         {
@@ -266,11 +264,11 @@ void main() {
           ])
             teamGenerationPreflightIssueMessage(en, code),
         },
-        {en.teamGenerateErrorGeneratorUnsupported},
+        {en.team.generateErrorGeneratorUnsupported},
       );
       expect(
         teamGenerationPreflightIssueMessage(en, 'generator_not_configured'),
-        en.teamGenerateErrorAiNotConfigured,
+        en.team.generateErrorAiNotConfigured,
       );
       expect(
         {
@@ -280,11 +278,11 @@ void main() {
           ])
             teamGenerationPreflightIssueMessage(zh, code),
         },
-        {zh.teamGenerateErrorNativeUnsupported},
+        {zh.team.generateErrorNativeUnsupported},
       );
       expect(
         teamGenerationPreflightIssueMessage(zh, 'future_unknown_code'),
-        zh.teamGenerateErrorStartFailed,
+        zh.team.generateErrorStartFailed,
       );
       expect(
         teamGenerationPreflightIssueMessage(zh, 'future_unknown_code'),
@@ -304,8 +302,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: BlocProvider<ChatCubit>.value(
           value: chat,
           child: Builder(builder: (context) => SizedBox(key: contextKey)),
@@ -353,8 +351,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp.router(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         routerConfig: GoRouter(
           routes: [
             GoRoute(
@@ -417,8 +415,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: MultiRepositoryProvider(
           providers: [
             RepositoryProvider<SessionRepository>.value(
@@ -483,8 +481,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp.router(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           routerConfig: GoRouter(
             routes: [
               GoRoute(
@@ -565,8 +563,8 @@ void main() {
           child: TpSidebarProvider(
             mobileBreakpoint: 840,
             child: MaterialApp.router(
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: appLocalizationsDelegates,
+              supportedLocales: appLocalizationsSupportedLocales,
               routerConfig: GoRouter(
                 routes: [
                   GoRoute(
@@ -626,9 +624,7 @@ void main() {
           child: TpSidebarProvider(
             mobileBreakpoint: 840,
             child: MaterialApp(
-              home: Builder(
-                builder: (context) => SizedBox(key: contextKey),
-              ),
+              home: Builder(builder: (context) => SizedBox(key: contextKey)),
             ),
           ),
         ),

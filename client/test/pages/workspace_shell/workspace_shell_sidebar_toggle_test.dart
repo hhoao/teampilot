@@ -46,8 +46,8 @@ void main() {
             BlocProvider<ShortcutCubit>.value(value: shortcuts),
           ],
           child: MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             theme: theme,
             home: const Scaffold(body: WorkspaceShellSidebarVisibilityToggle()),
           ),
@@ -60,9 +60,7 @@ void main() {
       KeyChord(key: 'b', mods: [KeyChordMod.mod]),
       isMacOS: defaultIsMacOS(),
     );
-    final l10n = AppLocalizations.of(
-      tester.element(find.byKey(AppKeys.sidebarVisibilityButton)),
-    );
+    final l10n = tester.element(find.byKey(AppKeys.sidebarVisibilityButton)).l10n;
     expect(
       tester
           .widget<TpIconButton>(find.byKey(AppKeys.sidebarVisibilityButton))

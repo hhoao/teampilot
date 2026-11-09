@@ -79,22 +79,22 @@ class _MyExpertsCardState extends State<MyExpertsCard> {
                     TpActionMenuSpec.item(
                       value: MyExpertsCardAction.edit,
                       icon: Icons.edit_outlined,
-                      label: l10n.myExpertsEdit,
+                      label: l10n.my.expertsEdit,
                     ),
                     TpActionMenuSpec.item(
                       value: MyExpertsCardAction.upload,
                       icon: Icons.upload_outlined,
-                      label: l10n.myExpertsUpload,
+                      label: l10n.my.expertsUpload,
                     ),
                     TpActionMenuSpec.item(
                       value: MyExpertsCardAction.addToTeam,
                       icon: Icons.group_add_outlined,
-                      label: l10n.expertHubAddToTeam,
+                      label: l10n.expert.hubAddToTeam,
                     ),
                     TpActionMenuSpec.item(
                       value: MyExpertsCardAction.delete,
                       icon: Icons.delete_outline,
-                      label: l10n.myExpertsDelete,
+                      label: l10n.my.expertsDelete,
                       destructive: true,
                     ),
                   ],
@@ -115,7 +115,7 @@ class _MyExpertsCardState extends State<MyExpertsCard> {
               const SizedBox(height: 8),
               Text(
                 member.category.trim().isEmpty
-                    ? l10n.expertHubSourceLocal
+                    ? l10n.expert.hubSourceLocal
                     : member.category,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

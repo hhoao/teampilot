@@ -48,7 +48,7 @@ class FileDiffSurfaceToggle extends StatelessWidget {
           children: [
             _Segment(
               icon: Icons.description_outlined,
-              tooltip: l10n.fileDiffToggleFile,
+              tooltip: l10n.file.diffToggleFile,
               selected: mode == FileDiffSurfaceMode.file,
               color: color,
               onTap: enabled
@@ -58,7 +58,7 @@ class FileDiffSurfaceToggle extends StatelessWidget {
             Container(width: 1, height: 14, color: cs.outlineVariant),
             _Segment(
               icon: Icons.difference_outlined,
-              tooltip: l10n.fileDiffToggleDiff,
+              tooltip: l10n.file.diffToggleDiff,
               selected: mode == FileDiffSurfaceMode.diff,
               color: color,
               onTap: enabled

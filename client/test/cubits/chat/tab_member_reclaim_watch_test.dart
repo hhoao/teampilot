@@ -575,46 +575,53 @@ void main() {
     expect(discarded, isEmpty, reason: 'the operator is looking at it');
   });
 
-  test('a live seat lease or in-flight delivery protects personal ACP', () async {
-    final store = ChatTabStore(storage: fakeHomeStorage());
-    final tab = _personalAcpTab();
-    store.registerSession(tab);
-    tab.acpRuntime = await _readyCubit();
+  test(
+    'a live seat lease or in-flight delivery protects personal ACP',
+    () async {
+      final store = ChatTabStore(storage: fakeHomeStorage());
+      final tab = _personalAcpTab();
+      store.registerSession(tab);
+      tab.acpRuntime = await _readyCubit();
 
-    final discarded = <String>[];
-    var now = DateTime(2026, 8, 9, 12, 0, 0);
-    var leased = true;
-    var delivering = false;
-    final watch = _watch(
-      store,
-      onDiscard: (_, __) {},
-      now: () => now,
-      activeSessionId: () => 'other',
-      seatHasActiveLeases: (sessionId, memberId) =>
-          sessionId == 'sess' && memberId == 'acp' && leased,
-      sessionBusyFromDeliveryInFlight: (id) => delivering && id == 'sess',
-      onDiscardPersonalAcp: discarded.add,
-    );
-    watch.tick();
-    now = now.add(const Duration(seconds: 3));
-    watch.tick();
-    expect(discarded, isEmpty, reason: 'seat lease holds the runtime');
+      final discarded = <String>[];
+      var now = DateTime(2026, 8, 9, 12, 0, 0);
+      var leased = true;
+      var delivering = false;
+      final watch = _watch(
+        store,
+        onDiscard: (_, __) {},
+        now: () => now,
+        activeSessionId: () => 'other',
+        seatHasActiveLeases: (sessionId, memberId) =>
+            sessionId == 'sess' && memberId == 'acp' && leased,
+        sessionBusyFromDeliveryInFlight: (id) => delivering && id == 'sess',
+        onDiscardPersonalAcp: discarded.add,
+      );
+      watch.tick();
+      now = now.add(const Duration(seconds: 3));
+      watch.tick();
+      expect(discarded, isEmpty, reason: 'seat lease holds the runtime');
 
-    // In-flight delivery also holds it.
-    leased = false;
-    delivering = true;
-    watch.tick();
-    now = now.add(const Duration(seconds: 3));
-    watch.tick();
-    expect(discarded, isEmpty, reason: 'delivery in flight holds the runtime');
+      // In-flight delivery also holds it.
+      leased = false;
+      delivering = true;
+      watch.tick();
+      now = now.add(const Duration(seconds: 3));
+      watch.tick();
+      expect(
+        discarded,
+        isEmpty,
+        reason: 'delivery in flight holds the runtime',
+      );
 
-    // Nothing holds it now.
-    delivering = false;
-    watch.tick();
-    now = now.add(const Duration(seconds: 3));
-    watch.tick();
-    expect(discarded, ['sess']);
-  });
+      // Nothing holds it now.
+      delivering = false;
+      watch.tick();
+      now = now.add(const Duration(seconds: 3));
+      watch.tick();
+      expect(discarded, ['sess']);
+    },
+  );
 
   test('a pinned personal ACP session is never reclaimed', () async {
     final store = ChatTabStore(storage: fakeHomeStorage());

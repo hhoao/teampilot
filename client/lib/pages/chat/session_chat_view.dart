@@ -1835,7 +1835,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                                     final topTitle = top?.title?.trim();
                                     final previewTitle = l10n
                                         .subagentPreviewTitleAgent(
-                                          (topTitle != null &&
+                                          title:
+                                              (topTitle != null &&
                                                   topTitle.isNotEmpty)
                                               ? topTitle
                                               : 'Agent',

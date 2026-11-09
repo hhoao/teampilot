@@ -211,7 +211,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       if (mounted) {
         AppToast.show(
           context,
-          message: context.l10n.workspaceDeadTargetRemapFailed,
+          message: context.l10n.workspace.deadTargetRemapFailed,
           variant: TpToastVariant.error,
         );
       }
@@ -481,7 +481,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
 
     return wrapPodDependentBody(
       podRegistry: chatCubit.podRegistry,
-      resolvePod: () => activeId.isEmpty ? null : chatCubit.podRuntime(activeId),
+      resolvePod: () =>
+          activeId.isEmpty ? null : chatCubit.podRuntime(activeId),
       builder: buildPodDependentBody,
     );
   }
@@ -649,7 +650,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
                   )
                 else if (showSessionStarting)
                   ChatWorkbenchSessionLoadingView(
-                    message: context.l10n.sessionStarting,
+                    message: context.l10n.session.starting,
                   ),
                 if (workbenchView == SessionWorkbenchView.chat && !showChat)
                   // Chat view is not hosting the merged task-board capsule
@@ -757,15 +758,15 @@ class _ChatWorkbenchBody extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 reclaimed
-                    ? context.l10n.memberTerminalReclaimedTitle
-                    : context.l10n.memberTerminalNotStartedTitle,
+                    ? context.l10n.member.terminalReclaimedTitle
+                    : context.l10n.member.terminalNotStartedTitle,
                 style: theme.textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
               if (reclaimed) ...[
                 const SizedBox(height: 4),
                 Text(
-                  context.l10n.memberTerminalReclaimedBody,
+                  context.l10n.member.terminalReclaimedBody,
                   style: theme.textTheme.bodySmall,
                   textAlign: TextAlign.center,
                 ),

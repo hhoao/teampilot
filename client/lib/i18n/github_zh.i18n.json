@@ -1,0 +1,19 @@
+{
+  "advancedPat": "使用个人访问令牌",
+  "advancedPatSubtitle": "无法使用 GitHub 登录时，或你更想用带 repo 权限的令牌时。",
+  "authDenied": "已取消 GitHub 授权",
+  "authExpired": "GitHub 登录已失效",
+  "authExpiredRetry": "授权已过期，请重试。",
+  "browserOpened": "已打开浏览器进行授权",
+  "connectedAs": "已连接为 @{login}",
+  "connectedGeneric": "已连接到 GitHub",
+  "deviceFlowUnavailable": "此构建暂不支持 GitHub 登录。请使用个人访问令牌。",
+  "disconnect": "断开连接",
+  "networkError": "无法连接 GitHub，请重试。",
+  "reopenBrowser": "重新打开浏览器",
+  "settingsSubtitle": "连接 GitHub，以便将专家和团队发布到 Hub",
+  "settingsTitle": "GitHub",
+  "signIn": "使用 GitHub 登录",
+  "switchAccount": "切换账号",
+  "waitingCodeHint": "如有提示，请在 GitHub 上输入此验证码"
+}

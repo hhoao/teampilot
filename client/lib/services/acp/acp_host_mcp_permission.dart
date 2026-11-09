@@ -97,8 +97,7 @@ bool _isAllowAlwaysKind(String kind) =>
 bool _isAllowOnceKind(String kind) =>
     kind.contains('allow_once') || kind == 'allow-once';
 
-bool _isRejectKind(String kind) =>
-    kind.contains('reject');
+bool _isRejectKind(String kind) => kind.contains('reject');
 
 Map<String, Object?>? _asStringKeyedMap(Object? value) {
   if (value is! Map) return null;

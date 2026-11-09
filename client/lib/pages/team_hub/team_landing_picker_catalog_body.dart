@@ -68,7 +68,7 @@ class TeamLandingPickerCatalogBody extends StatelessWidget {
           child: TextField(
             decoration: tpSearchPillDecoration(
               context,
-              hintText: l10n.teamHubSearchHint,
+              hintText: l10n.teamHub.searchHint,
             ),
             onChanged: onSearch,
           ),
@@ -94,12 +94,12 @@ class TeamLandingPickerCatalogBody extends StatelessWidget {
                         ? Icons.cloud_off_outlined
                         : Icons.travel_explore_outlined,
                     title: hubState.status == TeamHubLoadStatus.error
-                        ? l10n.teamHubLoadError
-                        : l10n.teamHubEmptyTitle,
+                        ? l10n.teamHub.loadError
+                        : l10n.teamHub.emptyTitle,
                     hint: hubState.status == TeamHubLoadStatus.error
                         ? null
-                        : l10n.teamHubEmptyHint,
-                    actionLabel: l10n.teamHubRefresh,
+                        : l10n.teamHub.emptyHint,
+                    actionLabel: l10n.teamHub.refresh,
                     onAction: onRefresh,
                   ),
                 )
@@ -107,7 +107,7 @@ class TeamLandingPickerCatalogBody extends StatelessWidget {
                   slivers: [
                     if (sections.mine.isNotEmpty) ...[
                       SliverToBoxAdapter(
-                        child: _SectionHeader(title: l10n.myTeamsTitle),
+                        child: _SectionHeader(title: l10n.my.teamsTitle),
                       ),
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
@@ -132,7 +132,7 @@ class TeamLandingPickerCatalogBody extends StatelessWidget {
                     ],
                     if (sections.discovery.isNotEmpty) ...[
                       SliverToBoxAdapter(
-                        child: _SectionHeader(title: l10n.teamHubDiscovery),
+                        child: _SectionHeader(title: l10n.teamHub.discovery),
                       ),
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),

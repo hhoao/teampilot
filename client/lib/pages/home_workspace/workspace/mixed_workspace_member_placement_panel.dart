@@ -224,7 +224,7 @@ class _MixedWorkspaceMemberPlacementPanelState
       if (mounted) {
         AppToast.show(
           context,
-          message: context.l10n.workspaceDeadTargetRemapFailed,
+          message: context.l10n.workspace.deadTargetRemapFailed,
           variant: TpToastVariant.error,
         );
       }
@@ -300,7 +300,7 @@ class _MixedWorkspaceMemberPlacementPanelState
                               0;
                           return _MemberPlacementRow(
                             memberLabel: member.name.isEmpty
-                                ? l10n.memberName
+                                ? l10n.member.name
                                 : member.name,
                             placedTotal: placedTotal,
                             countOnMachine: countOnMachine,
@@ -449,7 +449,7 @@ class _TargetTile extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      l10n.workspaceDeadTargetBadge,
+                      l10n.workspace.deadTargetBadge,
                       style: styles.xsColored(cs.onErrorContainer),
                     ),
                   ),
@@ -461,7 +461,7 @@ class _TargetTile extends StatelessWidget {
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: Text(l10n.workspaceDeadTargetRemap),
+                      child: Text(l10n.workspace.deadTargetRemap),
                     ),
                 ],
               ),
@@ -504,14 +504,16 @@ class _MemberPlacementRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              l10n.mixedWorkspaceMemberPlacementProgress(
-                placedTotal,
-                placedTotal,
+              l10n.mixed.workspaceMemberPlacementProgress(
+                placed: placedTotal,
+                total: placedTotal,
               ),
               style: TpTextStyles.of(context).sm,
             ),
             Text(
-              l10n.mixedWorkspaceMemberPlacementOnMachine(countOnMachine),
+              l10n.mixed.workspaceMemberPlacementOnMachine(
+                count: countOnMachine,
+              ),
               style: TpTextStyles.of(context).sm,
             ),
           ],

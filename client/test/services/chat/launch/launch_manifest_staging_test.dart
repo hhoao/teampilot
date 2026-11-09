@@ -175,9 +175,8 @@ void main() {
       );
       expect(
         staged.manifest.files.keys.any(
-          (path) => path.replaceAll(r'\', '/').endsWith(
-            '/settings/developer.json',
-          ),
+          (path) =>
+              path.replaceAll(r'\', '/').endsWith('/settings/developer.json'),
         ),
         isTrue,
         reason: 'staging must record the --settings file before SSH flush',

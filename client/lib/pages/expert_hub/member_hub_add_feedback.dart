@@ -10,16 +10,19 @@ String memberHubAddToastMessage(
   final skillCount = result.installedSkillIds.length;
   if (!result.hasFailures) {
     if (skillCount == 0) {
-      return l10n.expertHubAddSuccess(memberName);
+      return l10n.expert.hubAddSuccess(name: memberName);
     }
-    return l10n.expertHubAddSuccessWithSkills(memberName, skillCount);
+    return l10n.expert.hubAddSuccessWithSkills(
+      name: memberName,
+      skillCount: skillCount,
+    );
   }
   final failedNames = result.failedDeps.map((f) => f.name).join(', ');
-  return l10n.expertHubAddPartial(
-    memberName,
-    skillCount,
-    result.failedDeps.length,
-    failedNames,
+  return l10n.expert.hubAddPartial(
+    name: memberName,
+    skillCount: skillCount,
+    failedCount: result.failedDeps.length,
+    failedNames: failedNames,
   );
 }
 

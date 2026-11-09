@@ -1,0 +1,23 @@
+{
+  "managerAppProcess": "App",
+  "managerColumnCpu": "CPU",
+  "managerColumnMemory": "Memory",
+  "managerColumnName": "Name",
+  "managerEmptyTree": "Nothing running right now.",
+  "managerKill": "Kill",
+  "managerKillAll": "Kill all",
+  "managerKillAllConfirmBody": "This disconnects every running session and shell in the list.",
+  "managerKillAllConfirmTitle": "Kill all running sessions?",
+  "managerKillFailed": "Could not kill session.",
+  "managerMetricsError": "Could not refresh process metrics.",
+  "managerPanelTitle": "Resource Manager - Sessions",
+  "managerRefresh": "Refresh",
+  "managerSpace": "Space",
+  "managerSpaceBeta": "Beta",
+  "managerSpaceNotScanned": "Does not scan workspace disk usage.",
+  "managerSystemMemoryPercent": "{percent: String}% system memory",
+  "managerTerminalsCount": "{count: int} running sessions",
+  "managerTitle": "Resource Manager",
+  "managerTooltip": "Resource Manager - {count: int} running sessions",
+  "managerTooltipHint": "Running sessions across all workspaces."
+}

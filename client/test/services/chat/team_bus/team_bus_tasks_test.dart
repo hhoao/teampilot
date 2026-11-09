@@ -394,39 +394,36 @@ void main() {
     },
   );
 
-  test(
-    'reengageIdleWorkers re-rings a stranded unread-mail team-lead',
-    () {
-      fakeAsync((async) {
-        var now = 0;
-        final launcher = FakeMemberLauncher();
-        final bus = TeamBus(launcher: launcher, clock: () => now);
-        // Lead already turned once, then sat at prompt with unread mail whose
-        // first doorbell delivery was deferred (boot/surface) — the watchdog
-        // must keep re-ringing like any other member.
-        final lead = AgentNode.test(
-          memberId: 'lead',
-          lifecycle: MemberLifecycle.running,
-          activity: MemberActivity.turnDoneReady,
-          isTeamLead: true,
-        )..hasCompletedTurn = true;
-        bus.declareMember(lead);
-        lead.inbox.deliver(
-          TeamMessage(id: 'm1', from: 'worker', to: 'lead', content: 'hi'),
-        );
+  test('reengageIdleWorkers re-rings a stranded unread-mail team-lead', () {
+    fakeAsync((async) {
+      var now = 0;
+      final launcher = FakeMemberLauncher();
+      final bus = TeamBus(launcher: launcher, clock: () => now);
+      // Lead already turned once, then sat at prompt with unread mail whose
+      // first doorbell delivery was deferred (boot/surface) — the watchdog
+      // must keep re-ringing like any other member.
+      final lead = AgentNode.test(
+        memberId: 'lead',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneReady,
+        isTeamLead: true,
+      )..hasCompletedTurn = true;
+      bus.declareMember(lead);
+      lead.inbox.deliver(
+        TeamMessage(id: 'm1', from: 'worker', to: 'lead', content: 'hi'),
+      );
 
-        bus.reengageIdleWorkers();
-        expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
+      bus.reengageIdleWorkers();
+      expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
 
-        now += TeamBus.doorbellRetryMs;
-        bus.reengageIdleWorkers();
-        expect(launcher.woken.length, 1);
-        expect(launcher.retried, [
-          (memberId: 'lead', notice: TeamBus.doorbellNotice),
-        ]);
-      });
-    },
-  );
+      now += TeamBus.doorbellRetryMs;
+      bus.reengageIdleWorkers();
+      expect(launcher.woken.length, 1);
+      expect(launcher.retried, [
+        (memberId: 'lead', notice: TeamBus.doorbellNotice),
+      ]);
+    });
+  });
 
   test('reengageIdleWorkers does not wake a virgin un-turned team-lead', () {
     final launcher = FakeMemberLauncher();

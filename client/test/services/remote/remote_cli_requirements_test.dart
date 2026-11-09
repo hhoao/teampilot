@@ -173,10 +173,7 @@ void main() {
       expect(requirements[0].kind, CliBinaryKind.cli);
       expect(requirements[1].kind, CliBinaryKind.adapter);
       expect(requirements[1].cli, CliTool.claude);
-      expect(
-        requirements.map((r) => r.cacheKey).toSet(),
-        hasLength(2),
-      );
+      expect(requirements.map((r) => r.cacheKey).toSet(), hasLength(2));
     });
 
     test('omits the adapter requirement for a CLI without one', () {

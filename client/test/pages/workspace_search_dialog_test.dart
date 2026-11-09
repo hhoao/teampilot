@@ -50,8 +50,8 @@ Widget _host({
 }) {
   final theme = ThemeData(useMaterial3: true);
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     locale: const Locale('en'),
     theme: theme,
     home: TpTheme(

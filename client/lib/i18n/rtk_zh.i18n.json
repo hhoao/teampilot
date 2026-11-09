@@ -1,0 +1,13 @@
+{
+  "bashOnlyHint": "仅作用于 Agent 的 Bash 工具调用；内置 Read、Grep、Glob 不会自动改写。",
+  "settingsDescription": "在命令输出进入模型前压缩 Agent Bash 结果（需本机 PATH 中有 rtk 与 jq）。",
+  "settingsEnableTitle": "启用 RTK",
+  "settingsInstallLink": "安装说明",
+  "settingsStatusTitle": "本机状态",
+  "settingsTitle": "RTK 省 token",
+  "statusInstalled": "rtk {version: String} 已就绪",
+  "statusInstalledGeneric": "rtk 已就绪",
+  "statusJqMissing": "PATH 中未找到 jq",
+  "statusNotFound": "PATH 中未找到 rtk",
+  "statusVersionTooOld": "rtk {version: String} 版本过低（需要 >= 0.23.0）"
+}

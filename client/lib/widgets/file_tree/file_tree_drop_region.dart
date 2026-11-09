@@ -526,13 +526,13 @@ class _FileTreeDropRegionState extends State<FileTreeDropRegion> {
       final summary = await registry.enqueue(
         InstallJobSpec<ImportSummary>(
           key: key,
-          title: l10n.fileTreeImportProgressTitle,
+          title: l10n.fileTree.importProgressTitle,
           workspaceId: widget.workspaceId,
           cancelPolicy: InstallCancelPolicy.forceKill,
-          historyMessageFor: (result) => l10n.fileTreeImportSummary(
-            result.succeeded,
-            result.skipped,
-            result.failed,
+          historyMessageFor: (result) => l10n.fileTree.importSummary(
+            succeeded: result.succeeded,
+            skipped: result.skipped,
+            failed: result.failed,
           ),
           run: (ctx) => runner.execute(
             plan: plan,
@@ -555,7 +555,11 @@ class _FileTreeDropRegionState extends State<FileTreeDropRegion> {
       if (mounted) {
         AppToast.show(
           context,
-          message: context.l10n.fileTreeImportSummary(0, 0, 1),
+          message: context.l10n.fileTree.importSummary(
+            succeeded: 0,
+            skipped: 0,
+            failed: 1,
+          ),
           variant: TpToastVariant.error,
         );
       }
@@ -649,8 +653,8 @@ class FileTreeDropHighlight extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final label = affordance == ImportMode.move
-        ? l10n.fileTreeImportDropMove
-        : l10n.fileTreeImportDropCopy;
+        ? l10n.fileTree.importDropMove
+        : l10n.fileTree.importDropCopy;
 
     return Stack(
       fit: StackFit.passthrough,

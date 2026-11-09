@@ -1,0 +1,10 @@
+{
+  "accountUsageSession": "Cursor 账号",
+  "credentialsActionFailed": "凭据更新失败",
+  "credentialsActionSuccess": "凭据已更新",
+  "credentialsImportFile": "导入目录…",
+  "credentialsImportGlobal": "从 ~/.cursor 导入",
+  "credentialsLogin": "Cursor 登录",
+  "credentialsRevoke": "退出登录",
+  "credentialsRevokeConfirm": "退出登录并删除 {name: String} 的已保存凭据？"
+}

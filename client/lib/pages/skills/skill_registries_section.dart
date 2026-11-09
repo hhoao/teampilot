@@ -34,7 +34,7 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TpCardHeader(title: l10n.skillsNavRegistries),
+                TpCardHeader(title: l10n.skills.navRegistries),
                 const SizedBox(height: 12),
                 for (final source in state.sources)
                   _RegistryRow(
@@ -59,7 +59,7 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
                       () => _addSourceDialog(context),
                     ),
                     icon: Icon(Icons.add, size: context.tpIconSizes.md),
-                    label: Text(l10n.skillsRegistryAddSource),
+                    label: Text(l10n.skills.registryAddSource),
                   ),
                 ),
               ],
@@ -91,8 +91,8 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
           AppToast.show(
             ctx,
             message: err == null
-                ? ctx.l10n.skillsRegistryTestOk
-                : ctx.l10n.skillsRegistryTestFailed(err),
+                ? ctx.l10n.skills.registryTestOk
+                : ctx.l10n.skills.registryTestFailed(error: err),
             variant: err == null
                 ? TpToastVariant.success
                 : TpToastVariant.error,
@@ -113,16 +113,16 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
     final isBuiltIn = source.id == 'skillsSh' || source.id == 'skillsMp';
     final cfg = _configOf(source);
     final title = isBuiltIn
-        ? l10n.skillsRegistryRemoveTitle
-        : l10n.skillsRemove;
+        ? l10n.skills.registryRemoveTitle
+        : l10n.skills.remove;
     final message = isBuiltIn
-        ? l10n.skillsRegistryResetConfirm(cfg.label)
-        : l10n.skillsRepoRemoveConfirm(cfg.label);
+        ? l10n.skills.registryResetConfirm(name: cfg.label)
+        : l10n.skills.repoRemoveConfirm(name: cfg.label);
     final ok = await skillConfirmDialog(
       context,
       title: title,
       message: message,
-      confirmLabel: isBuiltIn ? l10n.confirm : l10n.skillsRemove,
+      confirmLabel: isBuiltIn ? l10n.confirm : l10n.skills.remove,
       destructive: !isBuiltIn,
     );
     if (ok != true || !context.mounted) return;
@@ -150,16 +150,16 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpDialogHeader(title: l10n.skillsRegistryAddSource),
+            TpDialogHeader(title: l10n.skills.registryAddSource),
             const SizedBox(height: 16),
             _DialogListTile(
               icon: Icons.dns_outlined,
-              title: l10n.skillsRegistrySourceKindApi,
+              title: l10n.skills.registrySourceKindApi,
               onTap: () => Navigator.pop(ctx, SkillRegistryKind.api),
             ),
             _DialogListTile(
               icon: Icons.source_outlined,
-              title: l10n.skillsRegistrySourceKindGit,
+              title: l10n.skills.registrySourceKindGit,
               onTap: () => Navigator.pop(ctx, SkillRegistryKind.gitRepo),
             ),
           ],
@@ -186,7 +186,7 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
     if (context.read<SkillCubit>().state.registriesConfig.byId(id) != null) {
       AppToast.show(
         context,
-        message: l10n.skillsRegistrySourceExists,
+        message: l10n.skills.registrySourceExists,
         variant: TpToastVariant.error,
       );
       return;
@@ -212,16 +212,16 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpDialogHeader(title: l10n.skillsRegistryProtocolLabel),
+            TpDialogHeader(title: l10n.skills.registryProtocolLabel),
             const SizedBox(height: 16),
             _DialogListTile(
               icon: Icons.cloud_outlined,
-              title: l10n.skillsRegistryProtocolSkillsSh,
+              title: l10n.skills.registryProtocolSkillsSh,
               onTap: () => Navigator.pop(ctx, SkillRegistryProtocol.skillsSh),
             ),
             _DialogListTile(
               icon: Icons.cloud_outlined,
-              title: l10n.skillsRegistryProtocolSkillsMp,
+              title: l10n.skills.registryProtocolSkillsMp,
               onTap: () => Navigator.pop(ctx, SkillRegistryProtocol.skillsMp),
             ),
           ],
@@ -308,25 +308,25 @@ class _AddGitSourceDialogState extends State<_AddGitSourceDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.skillsRegistrySourceKindGit),
+          TpDialogHeader(title: l10n.skills.registrySourceKindGit),
           const SizedBox(height: 16),
           TextField(
             controller: _ownerCtl,
             decoration: InputDecoration(
-              labelText: l10n.skillsRegistryOwnerLabel,
+              labelText: l10n.skills.registryOwnerLabel,
             ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _nameCtl,
             decoration: InputDecoration(
-              labelText: l10n.skillsRegistryNameOfRepoLabel,
+              labelText: l10n.skills.registryNameOfRepoLabel,
             ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _branchCtl,
-            decoration: InputDecoration(labelText: l10n.skillsRepoBranch),
+            decoration: InputDecoration(labelText: l10n.skills.repoBranch),
           ),
           TpDialogActions(
             children: [
@@ -400,19 +400,19 @@ class _AddApiSourceFormDialogState extends State<_AddApiSourceFormDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.skillsRegistryAddSource),
+          TpDialogHeader(title: l10n.skills.registryAddSource),
           const SizedBox(height: 16),
           TextField(
             controller: _labelCtl,
             decoration: InputDecoration(
-              labelText: l10n.skillsRegistryNameLabel,
+              labelText: l10n.skills.registryNameLabel,
             ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _urlCtl,
             decoration: InputDecoration(
-              labelText: l10n.skillsRegistryBaseUrlLabel,
+              labelText: l10n.skills.registryBaseUrlLabel,
               hintText: SkillRegistrySourceConfig.defaultBaseUrl(protocol),
             ),
           ),
@@ -421,7 +421,7 @@ class _AddApiSourceFormDialogState extends State<_AddApiSourceFormDialog> {
             TextField(
               controller: _browseCtl,
               decoration: InputDecoration(
-                labelText: l10n.skillsRegistryBrowseQueryLabel,
+                labelText: l10n.skills.registryBrowseQueryLabel,
               ),
             ),
           ],
@@ -541,13 +541,13 @@ class _RegistryRow extends StatelessWidget {
               ],
               CatalogRegistryEditButton(
                 onPressed: onEdit,
-                tooltip: l10n.skillsRegistryEditTitle,
+                tooltip: l10n.skills.registryEditTitle,
               ),
               Switch(value: source.enabled, onChanged: onToggle),
               IconButton(
                 tooltip: source.id == 'skillsSh' || source.id == 'skillsMp'
-                    ? l10n.skillsRegistryRemoveTitle
-                    : l10n.skillsRemove,
+                    ? l10n.skills.registryRemoveTitle
+                    : l10n.skills.remove,
                 onPressed: onReset,
                 icon: Icon(
                   Icons.delete_outline,
@@ -664,12 +664,12 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.skillsRegistryEditTitle),
+          TpDialogHeader(title: l10n.skills.registryEditTitle),
           const SizedBox(height: 16),
           TextField(
             controller: _labelCtl,
             decoration: InputDecoration(
-              labelText: l10n.skillsRegistryNameLabel,
+              labelText: l10n.skills.registryNameLabel,
             ),
           ),
           if (_isApi) ...[
@@ -677,7 +677,7 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
             TextField(
               controller: _urlCtl,
               decoration: InputDecoration(
-                labelText: l10n.skillsRegistryBaseUrlLabel,
+                labelText: l10n.skills.registryBaseUrlLabel,
                 hintText: SkillRegistrySourceConfig.defaultBaseUrl(
                   widget.config.protocol ?? SkillRegistryProtocol.skillsSh,
                 ),
@@ -688,7 +688,7 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
               TpPasswordInput(
                 controller: _tokenCtl,
                 decoration: InputDecoration(
-                  labelText: l10n.skillsRegistryTokenLabel,
+                  labelText: l10n.skills.registryTokenLabel,
                 ),
               ),
             ],
@@ -697,7 +697,7 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
               TextField(
                 controller: _browseCtl,
                 decoration: InputDecoration(
-                  labelText: l10n.skillsRegistryBrowseQueryLabel,
+                  labelText: l10n.skills.registryBrowseQueryLabel,
                 ),
               ),
             ],
@@ -706,20 +706,20 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
             TextField(
               controller: _ownerCtl,
               decoration: InputDecoration(
-                labelText: l10n.skillsRegistryOwnerLabel,
+                labelText: l10n.skills.registryOwnerLabel,
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _nameCtl,
               decoration: InputDecoration(
-                labelText: l10n.skillsRegistryNameOfRepoLabel,
+                labelText: l10n.skills.registryNameOfRepoLabel,
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _branchCtl,
-              decoration: InputDecoration(labelText: l10n.skillsRepoBranch),
+              decoration: InputDecoration(labelText: l10n.skills.repoBranch),
             ),
           ],
           TpDialogActions(
@@ -737,7 +737,7 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(l10n.mcpRepoTestConnection),
+                      : Text(l10n.mcp.repoTestConnection),
                 ),
               FilledButton(
                 onPressed: _testing ? null : _save,

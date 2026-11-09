@@ -305,7 +305,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       cwd: launchCwd,
       spec: spec,
       theme: _terminalTheme(context),
-      sshConnectFailedMessage: context.l10n.workspaceTerminalSshConnectFailed,
+      sshConnectFailedMessage: context.l10n.workspace.terminalSshConnectFailed,
       select: select,
       followWorkspace: followWorkspace && !remote,
       onStateChanged: () {
@@ -322,7 +322,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       entry: entry,
       connectCoordinator: _connect,
       theme: _terminalTheme(context),
-      sshConnectFailedMessage: context.l10n.workspaceTerminalSshConnectFailed,
+      sshConnectFailedMessage: context.l10n.workspace.terminalSshConnectFailed,
       onStateChanged: () {
         if (mounted) setState(() {});
       },
@@ -521,7 +521,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       case WorkspaceTerminalBodyKind.noWorkingDirectory:
         terminalBody = Center(
           child: Text(
-            l10n.workspaceTerminalNoWorkingDirectory,
+            l10n.workspace.terminalNoWorkingDirectory,
             style: TpTextStyles.of(
               context,
             ).smColored(terminalForeground.withValues(alpha: 0.65)),

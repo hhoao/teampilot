@@ -126,7 +126,7 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          WorkspacePaneHeader(title: l10n.myTeamsTitle),
+          WorkspacePaneHeader(title: l10n.my.teamsTitle),
           Align(
             alignment: Alignment.centerRight,
             child: FilledButton.icon(
@@ -136,7 +136,7 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
                 expertStore: _expertStore,
               ),
               icon: const Icon(Icons.add),
-              label: Text(l10n.homeWorkspaceNewTeam),
+              label: Text(l10n.homeWorkspace.newTeam),
             ),
           ),
           Expanded(
@@ -152,9 +152,9 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
                   return TpEmptyState(
                     centered: true,
                     icon: Icons.groups_2_outlined,
-                    title: l10n.myTeamsEmptyTitle,
-                    hint: l10n.myTeamsEmptyHint,
-                    actionLabel: l10n.homeWorkspaceNewTeam,
+                    title: l10n.my.teamsEmptyTitle,
+                    hint: l10n.my.teamsEmptyHint,
+                    actionLabel: l10n.homeWorkspace.newTeam,
                     onAction: () => showHomeNewTeamDialog(
                       context,
                       context.read<LaunchProfileCubit>(),

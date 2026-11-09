@@ -6,8 +6,8 @@ import 'package:teampilot/pages/home_workspace/workspace/member_detail_dialog.da
 import 'package:teampilot/services/cli/member_config/member_config_detail.dart';
 
 Widget _host(Widget child) => MaterialApp(
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
-  supportedLocales: AppLocalizations.supportedLocales,
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: appLocalizationsSupportedLocales,
   home: Scaffold(body: child),
 );
 
@@ -32,10 +32,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(MemberDetailDialogBody)),
-    );
-    await tester.tap(find.text(l10n.memberDetailTabSkills));
+    final l10n = tester.element(find.byType(MemberDetailDialogBody)).l10n;
+    await tester.tap(find.text(l10n.member.detailTabSkills));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('alpha'), findsOneWidget);
@@ -54,10 +52,8 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(MemberDetailDialogBody)),
-    );
-    expect(find.text(l10n.memberDetailEmpty), findsOneWidget);
+    final l10n = tester.element(find.byType(MemberDetailDialogBody)).l10n;
+    expect(find.text(l10n.member.detailEmpty), findsOneWidget);
   });
 
   testWidgets('shows a warning banner when a section failed to parse', (
@@ -80,13 +76,11 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(MemberDetailDialogBody)),
-    );
+    final l10n = tester.element(find.byType(MemberDetailDialogBody)).l10n;
     // Switch to the Settings tab (last tab) and confirm the warning shows.
-    await tester.tap(find.text(l10n.memberDetailTabSettings));
+    await tester.tap(find.text(l10n.member.detailTabSettings));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text(l10n.memberDetailLoadError), findsOneWidget);
+    expect(find.text(l10n.member.detailLoadError), findsOneWidget);
   });
 }

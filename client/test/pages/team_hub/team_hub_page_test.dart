@@ -63,8 +63,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp.router(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         routerConfig: GoRouter(
           routes: [
             GoRoute(

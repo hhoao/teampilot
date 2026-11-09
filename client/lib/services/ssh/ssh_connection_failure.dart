@@ -50,18 +50,18 @@ bool isSshAuthFailure(Object error) {
 String sshConnectionFailureUserMessage(Object error, AppLocalizations l10n) {
   final cause = sshConnectionFailureCause(error);
   if (isSshdPenaltyRefusal(error)) {
-    return l10n.sshPenaltyRefused;
+    return l10n.ssh.penaltyRefused;
   }
   if (isSshHostKeyFailure(error)) {
-    return l10n.sshProfileTestFailedHostKey;
+    return l10n.sshProfile.testFailedHostKey;
   }
   if (isSshAuthFailure(error)) {
-    return l10n.sshProfileTestFailedAuth;
+    return l10n.sshProfile.testFailedAuth;
   }
   if (error is SSHAuthAbortError || cause is SSHAuthAbortError) {
-    return l10n.sshProfileTestFailedAborted(cause.toString());
+    return l10n.sshProfile.testFailedAborted(detail: cause.toString());
   }
-  return l10n.sshProfileTestFailedDetail(error.toString());
+  return l10n.sshProfile.testFailedDetail(detail: error.toString());
 }
 
 /// OpenSSH ≥ 9.8 replies with this plain-text line instead of an SSH version
@@ -113,10 +113,10 @@ String sshErrorDetailUserMessage(String? detail, AppLocalizations l10n) {
   final trimmed = detail?.trim();
   if (trimmed == null || trimmed.isEmpty) return '';
   if (trimmed == sshPairingStaleDetail) {
-    return l10n.connectRepairHint;
+    return l10n.connect.repairHint;
   }
   if (trimmed.contains(_sshdPenaltyRefusalText)) {
-    return l10n.sshPenaltyRefused;
+    return l10n.ssh.penaltyRefused;
   }
   return trimmed;
 }

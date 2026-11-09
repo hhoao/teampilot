@@ -251,8 +251,8 @@ void main() {
   Future<void> pumpPage(WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         navigatorObservers: [navigatorObserver],
         home: TpTheme(
           data: TpThemeData.fromColorScheme(

@@ -32,7 +32,10 @@ class ComposeDraftStore {
         }
       });
 
-  Future<ComposeDraft?> loadSession(String workspaceId, String sessionId) async {
+  Future<ComposeDraft?> loadSession(
+    String workspaceId,
+    String sessionId,
+  ) async {
     final document = await _load(workspaceId);
     final sessions = document['sessions'] as Map<String, dynamic>?;
     return ComposeDraft.fromJson(sessions?[sessionId]);

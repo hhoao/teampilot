@@ -143,9 +143,7 @@ class AutomationRepository {
   Future<void> deleteRun(String workspaceId, String runId) async {
     final store = await _readStore(workspaceId);
     if (!store.runs.any((r) => r.id == runId)) return;
-    final runs = store.runs
-        .where((r) => r.id != runId)
-        .toList(growable: false);
+    final runs = store.runs.where((r) => r.id != runId).toList(growable: false);
     await _writeStore(workspaceId, store.copyWith(runs: runs));
   }
 

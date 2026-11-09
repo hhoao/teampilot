@@ -133,8 +133,8 @@ void main() {
             registry: CliToolRegistry.builtIn(),
             child: MaterialApp(
               theme: theme,
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: appLocalizationsDelegates,
+              supportedLocales: appLocalizationsSupportedLocales,
               home: TpTheme(
                 data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1),
                 child: Scaffold(
@@ -181,39 +181,37 @@ void main() {
     expect(submitted.single.acp, isTrue);
   });
 
-  testWidgets(
-    'Cursor ACP default is independent of the Claude preference',
-    (tester) async {
-      final submitted = <LandingLaunchContext>[];
-      await pumpCompose(
-        tester,
-        cli: CliTool.cursor,
-        cursorPersonalAcpDefault: true,
-        claudePersonalAcpDefault: false,
-        submitted: submitted,
-      );
-      await submit(tester);
-      expect(submitted, hasLength(1));
-      expect(submitted.single.acp, isTrue);
-    },
-  );
+  testWidgets('Cursor ACP default is independent of the Claude preference', (
+    tester,
+  ) async {
+    final submitted = <LandingLaunchContext>[];
+    await pumpCompose(
+      tester,
+      cli: CliTool.cursor,
+      cursorPersonalAcpDefault: true,
+      claudePersonalAcpDefault: false,
+      submitted: submitted,
+    );
+    await submit(tester);
+    expect(submitted, hasLength(1));
+    expect(submitted.single.acp, isTrue);
+  });
 
-  testWidgets(
-    'Cursor ACP off stays PTY even when Claude ACP is on',
-    (tester) async {
-      final submitted = <LandingLaunchContext>[];
-      await pumpCompose(
-        tester,
-        cli: CliTool.cursor,
-        cursorPersonalAcpDefault: false,
-        claudePersonalAcpDefault: true,
-        submitted: submitted,
-      );
-      await submit(tester);
-      expect(submitted, hasLength(1));
-      expect(submitted.single.acp, isFalse);
-    },
-  );
+  testWidgets('Cursor ACP off stays PTY even when Claude ACP is on', (
+    tester,
+  ) async {
+    final submitted = <LandingLaunchContext>[];
+    await pumpCompose(
+      tester,
+      cli: CliTool.cursor,
+      cursorPersonalAcpDefault: false,
+      claudePersonalAcpDefault: true,
+      submitted: submitted,
+    );
+    await submit(tester);
+    expect(submitted, hasLength(1));
+    expect(submitted.single.acp, isFalse);
+  });
 
   testWidgets('Cursor preset does not show a compose ACP switch', (
     tester,

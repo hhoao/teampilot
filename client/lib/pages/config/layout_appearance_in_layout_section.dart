@@ -80,18 +80,18 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
               children: [
                 TpSectionHeader(title: l10n.appearance),
                 TpPreferenceRow(
-                  title: l10n.workspaceEntryModeTitle,
-                  subtitle: l10n.workspaceEntryModeDescription,
+                  title: l10n.workspace.entryModeTitle,
+                  subtitle: l10n.workspace.entryModeDescription,
                   trailing: TpSegmentedPicker<WorkspaceEntryMode>(
                     segments: [
                       TpSegmentedOption<WorkspaceEntryMode>(
                         value: WorkspaceEntryMode.home,
-                        label: l10n.workspaceEntryModeHome,
+                        label: l10n.workspace.entryModeHome,
                         icon: Icons.home_outlined,
                       ),
                       TpSegmentedOption<WorkspaceEntryMode>(
                         value: WorkspaceEntryMode.lastWorkspace,
-                        label: l10n.workspaceEntryModeLastWorkspace,
+                        label: l10n.workspace.entryModeLastWorkspace,
                         icon: Icons.history,
                       ),
                     ],
@@ -101,23 +101,23 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.themeModeTitle,
-                  subtitle: l10n.themeModeDescription,
+                  title: l10n.theme.modeTitle,
+                  subtitle: l10n.theme.modeDescription,
                   trailing: TpSegmentedPicker<String>(
                     segments: [
                       TpSegmentedOption<String>(
                         value: 'light',
-                        label: l10n.themeLight,
+                        label: l10n.theme.light,
                         icon: Icons.light_mode_outlined,
                       ),
                       TpSegmentedOption<String>(
                         value: 'dark',
-                        label: l10n.themeDark,
+                        label: l10n.theme.dark,
                         icon: Icons.dark_mode_outlined,
                       ),
                       TpSegmentedOption<String>(
                         value: 'system',
-                        label: l10n.themeSystem,
+                        label: l10n.theme.system,
                         icon: Icons.desktop_windows_outlined,
                       ),
                     ],
@@ -127,8 +127,8 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.themeColorPresetTitle,
-                  subtitle: l10n.themeColorPresetDescription,
+                  title: l10n.theme.colorPresetTitle,
+                  subtitle: l10n.theme.colorPresetDescription,
                   trailing: ThemeColorPresetPicker(
                     selected: colorPreset,
                     onSelect: controller.setThemeColorPreset,
@@ -136,8 +136,8 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.typographyScaleTitle,
-                  subtitle: l10n.typographyScaleDescription,
+                  title: l10n.typography.scaleTitle,
+                  subtitle: l10n.typography.scaleDescription,
                   trailing: TypographyScaleSetting(
                     scaleId: typographyScale,
                     customMultiplier: typographyCustomMultiplier,
@@ -148,8 +148,8 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.fontUiTitle,
-                  subtitle: l10n.fontUiDescription,
+                  title: l10n.font.uiTitle,
+                  subtitle: l10n.font.uiDescription,
                   trailing: FontPreferenceSetting(
                     role: FontRole.ui,
                     value: uiFontId,
@@ -158,8 +158,8 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.fontMonoTitle,
-                  subtitle: l10n.fontMonoDescription,
+                  title: l10n.font.monoTitle,
+                  subtitle: l10n.font.monoDescription,
                   trailing: FontPreferenceSetting(
                     role: FontRole.mono,
                     value: monoFontId,
@@ -200,18 +200,18 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.filePreviewHostTitle,
-                  subtitle: l10n.filePreviewHostDescription,
+                  title: l10n.file.previewHostTitle,
+                  subtitle: l10n.file.previewHostDescription,
                   trailing: TpSegmentedPicker<FilePreviewHost>(
                     segments: [
                       TpSegmentedOption<FilePreviewHost>(
                         value: FilePreviewHost.floating,
-                        label: l10n.filePreviewHostFloating,
+                        label: l10n.file.previewHostFloating,
                         icon: Icons.dashboard_customize_outlined,
                       ),
                       TpSegmentedOption<FilePreviewHost>(
                         value: FilePreviewHost.center,
-                        label: l10n.filePreviewHostCenter,
+                        label: l10n.file.previewHostCenter,
                         icon: Icons.vertical_split_outlined,
                       ),
                     ],
@@ -229,8 +229,8 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.floatingPreviewTabsTitle,
-                  subtitle: l10n.floatingPreviewTabsDescription,
+                  title: l10n.floating.previewTabsTitle,
+                  subtitle: l10n.floating.previewTabsDescription,
                   trailing: Switch(
                     value: context.select<LayoutCubit, bool>(
                       (c) => c.state.preferences.floatingPreviewTabs,
@@ -303,8 +303,8 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                 ],
                 TpSectionHeader(title: l10n.contentDisplayModeSectionTitle),
                 TpPreferenceRow(
-                  title: l10n.chatUserMessageModeTitle,
-                  subtitle: l10n.chatUserMessageModeDescription,
+                  title: l10n.chat.userMessageModeTitle,
+                  subtitle: l10n.chat.userMessageModeDescription,
                   trailing: TpCompactSelect<ContentDisplayMode>(
                     value: context.select<LayoutCubit, ContentDisplayMode>(
                       (c) => c.state.preferences.chatUserMessageMode,
@@ -330,8 +330,8 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.chatCodeBlockModeTitle,
-                  subtitle: l10n.chatCodeBlockModeDescription,
+                  title: l10n.chat.codeBlockModeTitle,
+                  subtitle: l10n.chat.codeBlockModeDescription,
                   trailing: TpCompactSelect<ContentDisplayMode>(
                     value: context.select<LayoutCubit, ContentDisplayMode>(
                       (c) => c.state.preferences.chatCodeBlockMode,
@@ -357,8 +357,8 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.fileCodeBlockModeTitle,
-                  subtitle: l10n.fileCodeBlockModeDescription,
+                  title: l10n.file.codeBlockModeTitle,
+                  subtitle: l10n.file.codeBlockModeDescription,
                   trailing: TpCompactSelect<ContentDisplayMode>(
                     value: context.select<LayoutCubit, ContentDisplayMode>(
                       (c) => c.state.preferences.fileCodeBlockMode,
@@ -384,14 +384,17 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.terminalThemeModeTitle,
-                  subtitle: l10n.terminalThemeModeDescription,
+                  title: l10n.terminal.themeModeTitle,
+                  subtitle: l10n.terminal.themeModeDescription,
                   trailing: TpCompactSelect<String>(
                     value: terminalThemeMode,
                     entries: [
-                      ('adaptive', l10n.workspaceTerminalThemeAdaptive),
-                      ('classicDark', l10n.workspaceTerminalThemeClassicDark),
-                      ('highContrast', l10n.workspaceTerminalThemeHighContrast),
+                      ('adaptive', l10n.workspace.terminalThemeAdaptive),
+                      ('classicDark', l10n.workspace.terminalThemeClassicDark),
+                      (
+                        'highContrast',
+                        l10n.workspace.terminalThemeHighContrast,
+                      ),
                     ],
                     onChanged: (v) {
                       if (v != null) controller.setTerminalThemeMode(v);
@@ -433,16 +436,16 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
 
 String _foldCategoryTitle(AppLocalizations l10n, AiToolCallCategory c) =>
     switch (c) {
-      AiToolCallCategory.read => l10n.toolCategoryRead,
-      AiToolCallCategory.write => l10n.toolCategoryWrite,
-      AiToolCallCategory.edit => l10n.toolCategoryEdit,
-      AiToolCallCategory.command => l10n.toolCategoryCommand,
-      AiToolCallCategory.search => l10n.toolCategorySearch,
-      AiToolCallCategory.browser => l10n.toolCategoryBrowser,
-      AiToolCallCategory.subagent => l10n.toolCategorySubagent,
-      AiToolCallCategory.askUser => l10n.toolCategoryAskUser,
-      AiToolCallCategory.plan => l10n.toolCategoryPlan,
-      AiToolCallCategory.task => l10n.toolCategoryTask,
-      AiToolCallCategory.mcp => l10n.toolCategoryMcp,
-      AiToolCallCategory.other => l10n.toolCategoryOther,
+      AiToolCallCategory.read => l10n.tool.categoryRead,
+      AiToolCallCategory.write => l10n.tool.categoryWrite,
+      AiToolCallCategory.edit => l10n.tool.categoryEdit,
+      AiToolCallCategory.command => l10n.tool.categoryCommand,
+      AiToolCallCategory.search => l10n.tool.categorySearch,
+      AiToolCallCategory.browser => l10n.tool.categoryBrowser,
+      AiToolCallCategory.subagent => l10n.tool.categorySubagent,
+      AiToolCallCategory.askUser => l10n.tool.categoryAskUser,
+      AiToolCallCategory.plan => l10n.tool.categoryPlan,
+      AiToolCallCategory.task => l10n.tool.categoryTask,
+      AiToolCallCategory.mcp => l10n.tool.categoryMcp,
+      AiToolCallCategory.other => l10n.tool.categoryOther,
     };

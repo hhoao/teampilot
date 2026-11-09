@@ -242,8 +242,8 @@ Future<Widget> _gateHost({
       ),
     ],
     child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       locale: const Locale('en'),
       theme: theme,
       home: TpTheme(
@@ -323,7 +323,9 @@ void main() {
       selectHome: (_) async {},
       testConnect: (_) async => (ok: true, message: ''),
     );
-    l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
   });
 
   tearDown(() async {
@@ -365,7 +367,7 @@ void main() {
 
     expect(find.text('新增 SSH Profile'), findsNothing);
     expect(find.text('APP_CHILD'), findsNothing);
-    expect(find.text(l10n.sshProfilesEmpty), findsOneWidget);
+    expect(find.text(l10n.sshProfile.sEmpty), findsOneWidget);
   });
 
   testWidgets('full-page editor push/pop returns to list', (tester) async {
@@ -381,7 +383,7 @@ void main() {
     await tester.pumpAndSettle();
     await editor;
     expect(find.text('新增 SSH Profile'), findsNothing);
-    expect(find.text(l10n.sshProfilesEmpty), findsOneWidget);
+    expect(find.text(l10n.sshProfile.sEmpty), findsOneWidget);
   });
 
   testWidgets('save does not clear gate', (tester) async {
@@ -414,7 +416,7 @@ void main() {
 
     await tester.tap(find.text('Remote · SSH'));
     await tester.pumpAndSettle();
-    expect(find.text(l10n.sshProfilesEmpty), findsOneWidget);
+    expect(find.text(l10n.sshProfile.sEmpty), findsOneWidget);
 
     final ctx = tester.element(find.byType(RemoteConnectionsPage));
     // ignore: unawaited_futures — completes when setup route pops
@@ -520,7 +522,7 @@ void main() {
     expect(find.text('APP_CHILD'), findsNothing);
     expect(find.text('On-device · Termux'), findsOneWidget);
     expect(find.text('Remote · SSH'), findsOneWidget);
-    expect(find.text(l10n.sshProfilesEmpty), findsNothing);
+    expect(find.text(l10n.sshProfile.sEmpty), findsNothing);
   });
 
   testWidgets('Android with termux home shows child without connection', (
@@ -624,10 +626,12 @@ void main() {
     expect(find.text('APP_CHILD'), findsNothing);
     expect(find.byType(RemoteConnectionsPage), findsOneWidget);
     expect(
-      find.text(l10n.homeConnectionUnreachable('example.com', 2222)),
+      find.text(
+        l10n.home.connectionUnreachable(host: 'example.com', port: 2222),
+      ),
       findsOneWidget,
     );
-    expect(find.text(l10n.homeConnectionRetryNow), findsOneWidget);
+    expect(find.text(l10n.home.connectionRetryNow), findsOneWidget);
   });
 
   testWidgets('connecting home with empty catalog shows progress, not list', (
@@ -668,8 +672,8 @@ void main() {
     await tester.pump();
 
     expect(homeCubit.state.status, HomeConnectionStatus.connecting);
-    expect(find.text(l10n.sshProfileStatusConnecting), findsOneWidget);
-    expect(find.text(l10n.sshProfilesEmpty), findsNothing);
+    expect(find.text(l10n.sshProfile.statusConnecting), findsOneWidget);
+    expect(find.text(l10n.sshProfile.sEmpty), findsNothing);
   });
 
   testWidgets('unrebindable home keeps the connection page with an error', (
@@ -717,7 +721,7 @@ void main() {
     // actionable error that names the host-identity problem.
     expect(find.text('APP_CHILD'), findsNothing);
     expect(find.byType(RemoteConnectionsPage), findsOneWidget);
-    expect(find.text(l10n.homeConnectionErrorHostKey), findsOneWidget);
+    expect(find.text(l10n.home.connectionErrorHostKey), findsOneWidget);
   });
 
   testWidgets('connected home gate shows child without status card', (
@@ -760,6 +764,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('APP_CHILD'), findsOneWidget);
-    expect(find.text(l10n.homeConnectionRetryNow), findsNothing);
+    expect(find.text(l10n.home.connectionRetryNow), findsNothing);
   });
 }

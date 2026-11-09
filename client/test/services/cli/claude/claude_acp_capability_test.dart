@@ -22,15 +22,12 @@ void main() {
       MemberRoleProvision.mixedAcpDisallowedToolsEnvKey:
           'SendMessage,ListAgents,Agent',
     });
-    expect(
-      meta['claudeCode'],
-      {
-        'options': {
-          'disallowedTools': ['SendMessage', 'ListAgents', 'Agent'],
-          'allowedTools': MemberRoleProvision.mixedAcpAllowedTools,
-        },
+    expect(meta['claudeCode'], {
+      'options': {
+        'disallowedTools': ['SendMessage', 'ListAgents', 'Agent'],
+        'allowedTools': MemberRoleProvision.mixedAcpAllowedTools,
       },
-    );
+    });
   });
 
   test('mixed ACP session/new meta pre-allows teammate-bus MCP tools', () {

@@ -40,8 +40,8 @@ Future<void> showLogViewerDialog(BuildContext context) {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _LogViewerDialogHeader(
-                  title: l10n.logViewerTitle,
-                  subtitle: l10n.logViewerSubtitle,
+                  title: l10n.log.viewerTitle,
+                  subtitle: l10n.log.viewerSubtitle,
                   onClose: () => Navigator.of(dialogContext).pop(),
                 ),
                 Expanded(
@@ -134,7 +134,7 @@ class LogConfigWorkspace extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (showHeading) WorkspacePaneHeader(title: l10n.logViewerTitle),
+        if (showHeading) WorkspacePaneHeader(title: l10n.log.viewerTitle),
         const Expanded(child: LogViewerPanel()),
       ],
     );
@@ -150,7 +150,7 @@ class LogViewerPage extends StatelessWidget {
     final l10n = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.logViewerTitle)),
+      appBar: AppBar(title: Text(l10n.log.viewerTitle)),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         child: const LogConfigWorkspace(),

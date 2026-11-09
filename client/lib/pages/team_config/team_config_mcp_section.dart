@@ -45,9 +45,9 @@ class TeamMcpSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TeamConfigCardHeader(
-                  title: l10n.teamMcpAssignedCount(
-                    assignedCount,
-                    enabled.length,
+                  title: l10n.team.mcpAssignedCount(
+                    assigned: assignedCount,
+                    total: enabled.length,
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
@@ -55,16 +55,16 @@ class TeamMcpSection extends StatelessWidget {
                       Icons.hub_outlined,
                       size: context.tpIconSizes.md,
                     ),
-                    label: Text(l10n.teamMcpManage),
+                    label: Text(l10n.team.mcpManage),
                   ),
                 ),
                 const SizedBox(height: 14),
                 if (enabled.isEmpty)
                   TpEmptyState(
                     icon: Icons.dns_outlined,
-                    title: l10n.mcpNoInstalled,
-                    hint: l10n.mcpNoInstalledHint,
-                    actionLabel: l10n.teamMcpManage,
+                    title: l10n.mcp.noInstalled,
+                    hint: l10n.mcp.noInstalledHint,
+                    actionLabel: l10n.team.mcpManage,
                     onAction: onManage,
                   )
                 else

@@ -101,11 +101,7 @@ void main() {
     test('a finished terminal is not live work', () {
       for (final status in ['succeeded', 'failed', 'aborted']) {
         expect(
-          cursorTerminalStillRunning(
-            _terminal(status),
-            now: now,
-            mtime: now,
-          ),
+          cursorTerminalStillRunning(_terminal(status), now: now, mtime: now),
           isFalse,
           reason: status,
         );
@@ -136,9 +132,7 @@ void main() {
     });
 
     test('running while a child transcript is still open', () async {
-      final fs = await _filesystem(
-        children: {'a.jsonl': _runningChild()},
-      );
+      final fs = await _filesystem(children: {'a.jsonl': _runningChild()});
       expect(await _probe(fs).probe(), AcpBackgroundLiveness.running);
     });
 
@@ -150,7 +144,9 @@ void main() {
     });
 
     test('running while a background terminal is alive', () async {
-      final fs = await _filesystem(terminals: {'400311.txt': _terminal('running')});
+      final fs = await _filesystem(
+        terminals: {'400311.txt': _terminal('running')},
+      );
       expect(await _probe(fs).probe(), AcpBackgroundLiveness.running);
     });
 
@@ -175,9 +171,7 @@ void main() {
         AcpBackgroundLiveness.idle,
       );
       expect(
-        await probe.probe(
-          since: now.add(const Duration(minutes: 5)),
-        ),
+        await probe.probe(since: now.add(const Duration(minutes: 5))),
         AcpBackgroundLiveness.unknown,
       );
     });

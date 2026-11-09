@@ -191,13 +191,16 @@ void main() {
   group('AppSettingsRepository.usageSync', () {
     setUp(() => SharedPreferences.setMockInitialValues({}));
 
-    test('auto scan defaults to enabled and the interval to 10 minutes', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final repo = SharedPrefsAppSettingsRepository(prefs);
+    test(
+      'auto scan defaults to enabled and the interval to 10 minutes',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final repo = SharedPrefsAppSettingsRepository(prefs);
 
-      expect(await repo.loadUsageAutoSyncEnabled(), isTrue);
-      expect(await repo.loadUsageSyncIntervalMinutes(), 10);
-    });
+        expect(await repo.loadUsageAutoSyncEnabled(), isTrue);
+        expect(await repo.loadUsageSyncIntervalMinutes(), 10);
+      },
+    );
 
     test('round-trips the auto scan flag and interval', () async {
       final prefs = await SharedPreferences.getInstance();

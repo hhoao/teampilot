@@ -322,17 +322,15 @@ void main() {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
     await setup.repo.upsert(_sampleAutomation(id: 'a1'));
-    await setup.repo.upsert(
-      _sampleAutomation(id: 'a2', workspaceId: 'ws2'),
-    );
+    await setup.repo.upsert(_sampleAutomation(id: 'a2', workspaceId: 'ws2'));
 
     await setup.cubit.loadForWorkspace('ws1');
 
     expect(setup.cubit.state.automations.map((a) => a.id), ['a1']);
-    expect(
-      setup.cubit.state.globalAutomations.map((a) => a.id).toSet(),
-      {'a1', 'a2'},
-    );
+    expect(setup.cubit.state.globalAutomations.map((a) => a.id).toSet(), {
+      'a1',
+      'a2',
+    });
   });
 
   test('loadGlobal refreshes globals without touching scoped list', () async {
@@ -341,15 +339,13 @@ void main() {
     await setup.repo.upsert(_sampleAutomation(id: 'a1'));
     await setup.cubit.loadForWorkspace('ws1');
 
-    await setup.repo.upsert(
-      _sampleAutomation(id: 'a2', workspaceId: 'ws2'),
-    );
+    await setup.repo.upsert(_sampleAutomation(id: 'a2', workspaceId: 'ws2'));
     await setup.cubit.loadGlobal();
 
     expect(setup.cubit.state.automations.map((a) => a.id), ['a1']);
-    expect(
-      setup.cubit.state.globalAutomations.map((a) => a.id).toSet(),
-      {'a1', 'a2'},
-    );
+    expect(setup.cubit.state.globalAutomations.map((a) => a.id).toSet(), {
+      'a1',
+      'a2',
+    });
   });
 }

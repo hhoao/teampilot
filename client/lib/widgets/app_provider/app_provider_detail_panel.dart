@@ -81,16 +81,16 @@ class AppProviderDetailPanel extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onShowModels,
                   icon: Icon(Icons.hub_outlined, size: context.tpIconSizes.md),
-                  label: Text(l10n.providerListModelCount(modelCount)),
+                  label: Text(l10n.provider.listModelCount(count: modelCount)),
                 ),
               TpIconButton(
                 icon: Icons.edit_outlined,
-                tooltip: l10n.editProvider,
+                tooltip: l10n.edit.provider,
                 onTap: onEdit,
               ),
               TpIconButton(
                 icon: Icons.delete_outline,
-                tooltip: l10n.deleteProviderTooltip,
+                tooltip: l10n.delete.providerTooltip,
                 onTap: onDelete,
               ),
             ],
@@ -99,7 +99,7 @@ class AppProviderDetailPanel extends StatelessWidget {
           const SizedBox(height: 16),
           if (provider.websiteUrl.isNotEmpty)
             _InfoRow(
-              label: l10n.appProviderWebsite,
+              label: l10n.appProvider.website,
               value: provider.websiteUrl,
             ),
           if (provider.notes.isNotEmpty)
@@ -262,7 +262,7 @@ class _ProviderJsonPreviewCopyButtonState
     if (!context.mounted) return;
     AppToast.show(
       context,
-      message: context.l10n.extensionCommandCopied,
+      message: context.l10n.extension.commandCopied,
       variant: TpToastVariant.success,
     );
   }

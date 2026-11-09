@@ -35,7 +35,7 @@ class FilePathTabMenuSource implements WorkbenchTabMenuSource {
       WorkbenchTabMenuItem(
         id: 'file.copy_path',
         icon: Icons.copy,
-        label: l10n.fileTreeCopyPath,
+        label: l10n.fileTree.copyPath,
         onAction: () {
           unawaited(FilePathActions.copyAbsolutePath(path));
         },
@@ -43,7 +43,7 @@ class FilePathTabMenuSource implements WorkbenchTabMenuSource {
       WorkbenchTabMenuItem(
         id: 'file.copy_relative_path',
         icon: Icons.copy_outlined,
-        label: l10n.fileTreeCopyRelativePath,
+        label: l10n.fileTree.copyRelativePath,
         enabled: relativeEnabled,
         onAction: () {
           unawaited(
@@ -62,7 +62,7 @@ class FilePathTabMenuSource implements WorkbenchTabMenuSource {
         WorkbenchTabMenuItem(
           id: 'file.reveal',
           icon: Icons.folder_open_outlined,
-          label: l10n.fileTreeOpenInFileManager,
+          label: l10n.fileTree.openInFileManager,
           onAction: () {
             unawaited(
               FilePathActions.revealInFileManager(
@@ -82,7 +82,7 @@ class FilePathTabMenuSource implements WorkbenchTabMenuSource {
         WorkbenchTabMenuItem(
           id: 'file.open_terminal',
           icon: Icons.terminal,
-          label: l10n.fileTreeOpenInTerminal,
+          label: l10n.fileTree.openInTerminal,
           onAction: () {
             unawaited(_openInTerminal(ctx, path));
           },
@@ -92,7 +92,7 @@ class FilePathTabMenuSource implements WorkbenchTabMenuSource {
         WorkbenchTabMenuItem(
           id: 'file.open_external',
           icon: Icons.open_in_new,
-          label: l10n.fileTreeOpenWithSystemApp,
+          label: l10n.fileTree.openWithSystemApp,
           onAction: () => FilePathActions.openWithSystemApp(path),
         ),
       );
@@ -118,7 +118,7 @@ class FilePathTabMenuSource implements WorkbenchTabMenuSource {
     if (!ok) {
       AppToast.show(
         buildContext,
-        message: ctx.l10n.fileTreeOpenInTerminalFailed,
+        message: ctx.l10n.fileTree.openInTerminalFailed,
         variant: TpToastVariant.error,
       );
     }

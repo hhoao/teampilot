@@ -1,0 +1,19 @@
+{
+  "advancedPat": "Use a personal access token",
+  "advancedPatSubtitle": "When GitHub sign-in is unavailable, or you prefer a token with repo scope.",
+  "authDenied": "GitHub authorization cancelled",
+  "authExpired": "GitHub sign-in expired",
+  "authExpiredRetry": "Authorization expired. Try again.",
+  "browserOpened": "Browser opened for authorization",
+  "connectedAs": "Connected as @{login}",
+  "connectedGeneric": "Connected to GitHub",
+  "deviceFlowUnavailable": "GitHub sign-in is unavailable in this build. Use a personal access token.",
+  "disconnect": "Disconnect",
+  "networkError": "Could not reach GitHub. Try again.",
+  "reopenBrowser": "Reopen browser",
+  "settingsSubtitle": "Connect GitHub to publish experts and teams to Hub",
+  "settingsTitle": "GitHub",
+  "signIn": "Sign in with GitHub",
+  "switchAccount": "Switch account",
+  "waitingCodeHint": "Enter this code on GitHub if prompted"
+}

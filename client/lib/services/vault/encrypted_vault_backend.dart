@@ -81,9 +81,7 @@ class EncryptedVaultBackend implements CredentialBackend {
     final raw = await _repository.readRaw();
     if (raw == null) throw const VaultStorageException('vaultWriteFailed');
     final verified = await _crypto.decryptWithKey(
-      VaultEnvelope.fromJson(
-        Map<String, Object?>.from(jsonDecode(raw) as Map),
-      ),
+      VaultEnvelope.fromJson(Map<String, Object?>.from(jsonDecode(raw) as Map)),
       key,
     );
     if (verified.entries.length != document.entries.length) {

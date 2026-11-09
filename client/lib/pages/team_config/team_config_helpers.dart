@@ -168,8 +168,8 @@ bool teamLaunchDefaultsConfigured({
 /// Config-type label for team default summary (matches configure-dialog picker).
 String teamLaunchConfigTypeLabel(AppLocalizations l10n, TeamProfile team) {
   return switch (teamLaunchConfigKind(team)) {
-    TeamLaunchConfigKind.preset => l10n.memberLaunchConfigTypePreset,
-    TeamLaunchConfigKind.custom => l10n.memberPresetCustom,
+    TeamLaunchConfigKind.preset => l10n.member.launchConfigTypePreset,
+    TeamLaunchConfigKind.custom => l10n.member.presetCustom,
   };
 }
 
@@ -206,9 +206,13 @@ String teamCustomLaunchConfigLine({
     return '$cliLabel · $providerName · $effortLabel';
   }
   if (effortLabel.isEmpty) {
-    return l10n.aiFeatureConfigSummary(cliLabel, providerName, modelLabel);
+    return l10n.ai.featureConfigSummary(
+      cli: cliLabel,
+      provider: providerName,
+      model: modelLabel,
+    );
   }
-  return '${l10n.aiFeatureConfigSummary(cliLabel, providerName, modelLabel)} · $effortLabel';
+  return '${l10n.ai.featureConfigSummary(cli: cliLabel, provider: providerName, model: modelLabel)} · $effortLabel';
 }
 
 /// Summary line for the team default preset row (CLI · provider · model · effort).
@@ -235,9 +239,13 @@ String teamPresetConfigLine({
     return '$cliLabel · $providerName · $effortLabel';
   }
   if (effortLabel.isEmpty) {
-    return l10n.aiFeatureConfigSummary(cliLabel, providerName, modelLabel);
+    return l10n.ai.featureConfigSummary(
+      cli: cliLabel,
+      provider: providerName,
+      model: modelLabel,
+    );
   }
-  return '${l10n.aiFeatureConfigSummary(cliLabel, providerName, modelLabel)} · $effortLabel';
+  return '${l10n.ai.featureConfigSummary(cli: cliLabel, provider: providerName, model: modelLabel)} · $effortLabel';
 }
 
 String memberAgentDropdownItemLabel(
@@ -247,10 +255,10 @@ String memberAgentDropdownItemLabel(
   List<String> userAgentIds = const [],
 }) {
   if (value == FlashskyaiAgentCatalog.noneDropdownValue) {
-    return l10n.agentBuiltInNone;
+    return l10n.agent.builtInNone;
   }
   if (value == FlashskyaiAgentCatalog.customDropdownValue) {
-    return l10n.agentBuiltInCustom;
+    return l10n.agent.builtInCustom;
   }
   final ent = FlashskyaiAgentCatalog.tryParseBuiltinId(value);
   if (ent != null) {

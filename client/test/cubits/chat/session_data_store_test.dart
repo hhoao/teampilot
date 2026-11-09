@@ -165,14 +165,19 @@ void main() {
     expect(ordered[1], same(workspaces[1]));
   });
 
-  test('orderedWorkspaceSessionIds leaves workspaces alone without sessions', () {
-    final workspaces = [_ws('p', sessionIds: ['b', 'a'])];
-    final ordered = SessionDataStore.orderedWorkspaceSessionIds(
-      workspaces: workspaces,
-      sessions: const [],
-    );
-    expect(ordered, same(workspaces));
-  });
+  test(
+    'orderedWorkspaceSessionIds leaves workspaces alone without sessions',
+    () {
+      final workspaces = [
+        _ws('p', sessionIds: ['b', 'a']),
+      ];
+      final ordered = SessionDataStore.orderedWorkspaceSessionIds(
+        workspaces: workspaces,
+        sessions: const [],
+      );
+      expect(ordered, same(workspaces));
+    },
+  );
 
   test(
     'appendSession inserts sessionId into workspace sessionIds (createdAt order)',

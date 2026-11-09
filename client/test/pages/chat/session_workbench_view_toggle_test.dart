@@ -51,8 +51,8 @@ void main() {
           BlocProvider<WorkbenchCubit>.value(value: workbench),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: Scaffold(
             body: SessionWorkbenchViewToggle(
               workspaceId: 'w1',

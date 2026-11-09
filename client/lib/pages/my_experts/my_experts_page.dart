@@ -186,11 +186,11 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TpDialogHeader(
-                title: l10n.myExpertsDelete,
+                title: l10n.my.expertsDelete,
                 onClose: () => Navigator.of(ctx).pop(),
               ),
               const SizedBox(height: 16),
-              Text(l10n.myExpertsDeleteReferenced(member.name)),
+              Text(l10n.my.expertsDeleteReferenced(name: member.name)),
               TpDialogActions(
                 children: [
                   FilledButton(
@@ -215,11 +215,11 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TpDialogHeader(
-              title: l10n.myExpertsDelete,
+              title: l10n.my.expertsDelete,
               onClose: () => Navigator.of(ctx).pop(false),
             ),
             const SizedBox(height: 16),
-            Text(l10n.myExpertsDeleteConfirm(member.name)),
+            Text(l10n.my.expertsDeleteConfirm(name: member.name)),
             TpDialogActions(
               children: [
                 TextButton(
@@ -231,7 +231,7 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
                     backgroundColor: Theme.of(ctx).colorScheme.error,
                   ),
                   onPressed: () => Navigator.of(ctx).pop(true),
-                  child: Text(l10n.delete),
+                  child: Text(l10n.delete.delete),
                 ),
               ],
             ),
@@ -286,7 +286,7 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: l10n.expertHubAddFailed,
+        message: l10n.expert.hubAddFailed,
         variant: TpToastVariant.error,
       );
     }
@@ -326,14 +326,14 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          WorkspacePaneHeader(title: l10n.myExpertsTitle),
+          WorkspacePaneHeader(title: l10n.my.expertsTitle),
           Align(
             alignment: Alignment.centerRight,
             child: FilledButton.icon(
               key: const Key('my-experts-create'),
               onPressed: _create,
               icon: const Icon(Icons.add),
-              label: Text(l10n.myExpertsCreate),
+              label: Text(l10n.my.expertsCreate),
             ),
           ),
           Expanded(
@@ -343,9 +343,9 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
                 ? TpEmptyState(
                     centered: true,
                     icon: Icons.person_outline,
-                    title: l10n.myExpertsEmptyTitle,
-                    hint: l10n.myExpertsEmptyHint,
-                    actionLabel: l10n.myExpertsCreate,
+                    title: l10n.my.expertsEmptyTitle,
+                    hint: l10n.my.expertsEmptyHint,
+                    actionLabel: l10n.my.expertsCreate,
                     onAction: _create,
                   )
                 : GridView.builder(

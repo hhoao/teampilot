@@ -76,42 +76,38 @@ void main() {
   });
 
   group('CursorSessionLifecycleCapability.ensurePersisted', () {
-    test(
-      'creates manifest and per-member project dirs',
-      () async {
-        await capability.ensurePersisted(persistContext());
+    test('creates manifest and per-member project dirs', () async {
+      await capability.ensurePersisted(persistContext());
 
-        final manifest = await store.read(
-          workspaceId: workspaceId,
-          teamId: 'superpowers',
-          tool: CursorSessionLifecyclePaths.tool,
-        );
-        expect(manifest, isNotNull);
-        expect(manifest!.phase, CliSessionPhase.persisted);
-        expect(manifest.workspaceSlug, slug);
-        expect(manifest.members.keys, containsAll(['team-lead', 'architect']));
+      final manifest = await store.read(
+        workspaceId: workspaceId,
+        teamId: 'superpowers',
+        tool: CursorSessionLifecyclePaths.tool,
+      );
+      expect(manifest, isNotNull);
+      expect(manifest!.phase, CliSessionPhase.persisted);
+      expect(manifest.workspaceSlug, slug);
+      expect(manifest.members.keys, containsAll(['team-lead', 'architect']));
 
+      expect((await fs.stat(lifecyclePaths.sharedRoot())).isDirectory, isTrue);
+
+      for (final memberId in ['team-lead', 'architect']) {
+        final memberHome = lifecyclePaths.memberHomeRoot(memberId);
         expect(
-          (await fs.stat(lifecyclePaths.sharedRoot())).isDirectory,
+          (await fs.stat(
+            lifecyclePaths.memberProjectsDir(memberHome),
+          )).isDirectory,
           isTrue,
         );
 
-        for (final memberId in ['team-lead', 'architect']) {
-          final memberHome = lifecyclePaths.memberHomeRoot(memberId);
-          expect(
-            (await fs.stat(lifecyclePaths.memberProjectsDir(memberHome))).isDirectory,
-            isTrue,
-          );
-
-          final trustPath = CursorWorkspaceTrust.trustMarkerPath(
-            memberHome,
-            workingDirectory,
-            pathContext: fs.pathContext,
-          );
-          expect((await fs.stat(trustPath)).isFile, isTrue);
-        }
-      },
-    );
+        final trustPath = CursorWorkspaceTrust.trustMarkerPath(
+          memberHome,
+          workingDirectory,
+          pathContext: fs.pathContext,
+        );
+        expect((await fs.stat(trustPath)).isFile, isTrue);
+      }
+    });
 
     test('writes trust markers for additional directories', () async {
       await capability.ensurePersisted(

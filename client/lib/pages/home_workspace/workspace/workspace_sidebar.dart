@@ -134,7 +134,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
             _SidebarActionTile(
               key: AppKeys.newChatSidebarTile,
               icon: Icons.edit_outlined,
-              label: l10n.homeWorkspaceNewConversation,
+              label: l10n.homeWorkspace.newConversation,
               enabled: true,
               onTap: throttledAsync(
                 'workspace_sidebar_new_chat',
@@ -152,10 +152,10 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                 return _SidebarActionTile(
                   key: AppKeys.searchSidebarTile,
                   icon: Icons.search_outlined,
-                  label: l10n.workspaceSearchTitle,
+                  label: l10n.workspace.searchTitle,
                   tooltip: commandTooltip(
                     context,
-                    l10n.workspaceSearchTitle,
+                    l10n.workspace.searchTitle,
                     CommandIds.workspaceSearch,
                   ),
                   enabled: true,
@@ -207,7 +207,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    l10n.sessionArchiveTitle,
+                                    l10n.session.archiveTitle,
                                     style: TpTextStyles.of(context).mutedSm,
                                   ),
                                 ),
@@ -243,8 +243,10 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                                                 ? 0
                                                 : 1,
                                             labels: [
-                                              l10n.workspaceSidebarGroupsView,
-                                              l10n.workspaceSidebarProjectTreeView,
+                                              l10n.workspace.sidebarGroupsView,
+                                              l10n
+                                                  .workspace
+                                                  .sidebarProjectTreeView,
                                             ],
                                             icons: const [
                                               Icons.tag_outlined,
@@ -252,8 +254,10 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                                             ],
                                             customWidths: const [88, 104],
                                             tooltips: [
-                                              l10n.workspaceSidebarGroupsView,
-                                              l10n.workspaceSidebarProjectTreeView,
+                                              l10n.workspace.sidebarGroupsView,
+                                              l10n
+                                                  .workspace
+                                                  .sidebarProjectTreeView,
                                             ],
                                             onToggle: (index) {
                                               if (index == null) return;
@@ -282,7 +286,8 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                                         icon: Icons.new_label_outlined,
                                         compact: true,
                                         size: TpIconButton.kCompactSize,
-                                        tooltip: l10n.sessionGroupCreateTooltip,
+                                        tooltip:
+                                            l10n.session.groupCreateTooltip,
                                         onTap: throttledTap(
                                           'workspace_sidebar_new_group',
                                           () => unawaited(
@@ -299,7 +304,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                                         icon: Icons.refresh_rounded,
                                         compact: true,
                                         size: TpIconButton.kCompactSize,
-                                        tooltip: l10n.worktreeRefreshTooltip,
+                                        tooltip: l10n.worktree.refreshTooltip,
                                         onPressed: () {
                                           final cubit = context
                                               .read<WorktreeCubit>();
@@ -323,7 +328,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                                         compact: true,
                                         size: TpIconButton.kCompactSize,
                                         tooltip:
-                                            l10n.worktreeNewWorktreeTooltip,
+                                            l10n.worktree.newWorktreeTooltip,
                                         onTap: throttledTap(
                                           'workspace_sidebar_new_worktree',
                                           () => unawaited(
@@ -337,7 +342,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                                       icon: Icons.archive_outlined,
                                       compact: true,
                                       size: TpIconButton.kCompactSize,
-                                      tooltip: l10n.sessionArchiveEntryTooltip,
+                                      tooltip: l10n.session.archiveEntryTooltip,
                                       onTap: () => setState(
                                         () => _showingArchive = true,
                                       ),
@@ -379,7 +384,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
             _SidebarActionTile(
               key: AppKeys.homeWorkspaceWorkspaceManagementTile,
               icon: Icons.tune_outlined,
-              label: l10n.homeWorkspaceWorkspaceManagement,
+              label: l10n.homeWorkspace.workspaceManagement,
               onTap: throttledTap(
                 'workspace_sidebar_manage',
                 () => _openWorkspaceManagement(context),
@@ -426,8 +431,8 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     final l10n = context.l10n;
     final name = await showTpTextPromptDialog(
       context,
-      title: l10n.sessionGroupCreateTitle,
-      labelText: l10n.sessionGroupNameLabel,
+      title: l10n.session.groupCreateTitle,
+      labelText: l10n.session.groupNameLabel,
       confirmLabel: l10n.save,
       cancelLabel: l10n.cancel,
     );
@@ -840,7 +845,7 @@ class _ConversationListHostState extends State<_ConversationListHost> {
 
     if (structure.rows.isEmpty) {
       return _EmptyConversations(
-        label: context.l10n.homeWorkspaceNoConversations,
+        label: context.l10n.homeWorkspace.noConversations,
       );
     }
     return _buildSessionList(context, structure.sessionIds);
@@ -913,7 +918,7 @@ class _ArchivedConversationList extends StatelessWidget {
       ),
     );
     if (sessions.isEmpty) {
-      return _EmptyConversations(label: context.l10n.sessionArchiveEmpty);
+      return _EmptyConversations(label: context.l10n.session.archiveEmpty);
     }
     return ListView.builder(
       padding: EdgeInsets.zero,
@@ -966,7 +971,7 @@ class _RunningSessionsSection extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
           child: Text(
-            l10n.workspaceRunningSessionsSection,
+            l10n.workspace.runningSessionsSection,
             style: TpTextStyles.of(context).mutedSm,
           ),
         ),
@@ -1026,7 +1031,7 @@ class _RunningSplitGroupsSection extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
           child: Text(
-            l10n.workspaceRunningSessionsSection,
+            l10n.workspace.runningSessionsSection,
             style: TpTextStyles.of(context).mutedSm,
           ),
         ),
@@ -1224,7 +1229,7 @@ class _SessionSortButton extends StatelessWidget {
         icon: Icons.sort_rounded,
         compact: true,
         size: TpIconButton.kCompactSize,
-        tooltip: l10n.sessionSortTooltip,
+        tooltip: l10n.session.sortTooltip,
         onTap: () {
           if (controller.isOpen) {
             controller.close();
@@ -1260,9 +1265,9 @@ class _SessionSortButton extends StatelessWidget {
     AppSessionSort sort,
     AppLocalizations l10n,
   ) => switch (sort) {
-    AppSessionSort.manual => l10n.sessionSortRecentlyUpdated,
-    AppSessionSort.recentlyUpdated => l10n.sessionSortRecentlyUpdated,
-    AppSessionSort.createdDesc => l10n.sessionSortCreatedDesc,
+    AppSessionSort.manual => l10n.session.sortRecentlyUpdated,
+    AppSessionSort.recentlyUpdated => l10n.session.sortRecentlyUpdated,
+    AppSessionSort.createdDesc => l10n.session.sortCreatedDesc,
   };
 
   static IconData _iconForSessionSort(AppSessionSort sort) => switch (sort) {

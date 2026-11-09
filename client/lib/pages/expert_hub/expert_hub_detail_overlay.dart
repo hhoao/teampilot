@@ -73,7 +73,7 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                   onTap: onBack,
                 ),
                 trailing: IconButton(
-                  tooltip: l10n.expertHubFavorites,
+                  tooltip: l10n.expert.hubFavorites,
                   icon: Icon(
                     favorited ? Icons.star_rounded : Icons.star_outline_rounded,
                     color: favorited
@@ -125,25 +125,25 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                                   TeamStatChip(
                                     icon: Icons.psychology_outlined,
                                     label:
-                                        '${teamMember.capabilities.length} ${l10n.expertHubCapabilities}',
+                                        '${teamMember.capabilities.length} ${l10n.expert.hubCapabilities}',
                                   ),
                                 if (member.skillDeps.isNotEmpty)
                                   TeamStatChip(
                                     icon: Icons.auto_awesome_outlined,
                                     label:
-                                        '${member.skillDeps.length} ${l10n.teamHubSkillsLabel}',
+                                        '${member.skillDeps.length} ${l10n.teamHub.skillsLabel}',
                                   ),
                                 if (member.pluginDeps.isNotEmpty)
                                   TeamStatChip(
                                     icon: Icons.extension_outlined,
                                     label:
-                                        '${member.pluginDeps.length} ${l10n.teamHubPluginsLabel}',
+                                        '${member.pluginDeps.length} ${l10n.teamHub.pluginsLabel}',
                                   ),
                                 if (member.mcpDeps.isNotEmpty)
                                   TeamStatChip(
                                     icon: Icons.cable_outlined,
                                     label:
-                                        '${member.mcpDeps.length} ${l10n.teamHubMcpLabel}',
+                                        '${member.mcpDeps.length} ${l10n.teamHub.mcpLabel}',
                                   ),
                               ],
                             ),
@@ -157,7 +157,7 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                           if (pickerMode)
                             FilledButton(
                               onPressed: adding ? null : onConfirm,
-                              child: Text(l10n.expertHubConfirmSelection),
+                              child: Text(l10n.expert.hubConfirmSelection),
                             )
                           else ...[
                             _AddToTeamButton(
@@ -167,7 +167,7 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                             const SizedBox(height: 8),
                             OutlinedButton(
                               onPressed: adding ? null : onLaunchInWorkspace,
-                              child: Text(l10n.expertHubLaunchInWorkspace),
+                              child: Text(l10n.expert.hubLaunchInWorkspace),
                             ),
                           ],
                         ],
@@ -191,34 +191,34 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                             ),
                           );
                         },
-                        child: Text(l10n.expertHubViewOriginTeam),
+                        child: Text(l10n.expert.hubViewOriginTeam),
                       ),
                     ),
                   ],
                   if (teamMember.responsibilities.trim().isNotEmpty) ...[
                     const SizedBox(height: 16),
                     _ExpandableTextSection(
-                      title: l10n.expertHubPrompt,
+                      title: l10n.expert.hubPrompt,
                       body: teamMember.responsibilities,
                     ),
                   ],
                   if (teamMember.playbook.trim().isNotEmpty) ...[
                     const SizedBox(height: 8),
                     _ExpandableTextSection(
-                      title: l10n.expertHubPlaybook,
+                      title: l10n.expert.hubPlaybook,
                       body: teamMember.playbook,
                     ),
                   ],
                   if (teamMember.capabilities.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     _CapabilitiesSection(
-                      title: l10n.expertHubCapabilities,
+                      title: l10n.expert.hubCapabilities,
                       capabilities: teamMember.capabilities,
                     ),
                   ],
                   if (member.skillDeps.isNotEmpty)
                     _DepSection(
-                      title: l10n.teamHubSkillsLabel,
+                      title: l10n.teamHub.skillsLabel,
                       rows: [
                         for (final s in member.skillDeps)
                           _DepRow(
@@ -231,7 +231,7 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                     ),
                   if (member.pluginDeps.isNotEmpty)
                     _DepSection(
-                      title: l10n.teamHubPluginsLabel,
+                      title: l10n.teamHub.pluginsLabel,
                       rows: [
                         for (final p in member.pluginDeps)
                           _DepRow(
@@ -244,7 +244,7 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                     ),
                   if (member.mcpDeps.isNotEmpty)
                     _DepSection(
-                      title: l10n.teamHubMcpLabel,
+                      title: l10n.teamHub.mcpLabel,
                       rows: [
                         for (final m in member.mcpDeps)
                           _DepRow(
@@ -284,10 +284,10 @@ class _AddToTeamButton extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 const SizedBox(width: 8),
-                Text(l10n.expertHubAdding),
+                Text(l10n.expert.hubAdding),
               ],
             )
-          : Text(l10n.expertHubAddToTeam),
+          : Text(l10n.expert.hubAddToTeam),
     );
   }
 }
@@ -460,7 +460,7 @@ class _StatusBadge extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            installed ? l10n.teamHubDepInstalled : l10n.teamHubDepToInstall,
+            installed ? l10n.teamHub.depInstalled : l10n.teamHub.depToInstall,
             style: styles.xsSemiboldColored(fg),
           ),
         ],

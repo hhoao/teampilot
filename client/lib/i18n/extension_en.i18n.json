@@ -1,0 +1,18 @@
+{
+  "commandCopied": "Command copied to clipboard",
+  "copyCommand": "Copy",
+  "dependencyMissingHint": "Needs {deps: String} on your PATH. Install it, then re-check.",
+  "enableLabel": "Enabled",
+  "install": "Install",
+  "installGuide": "Install guide",
+  "kindMcpServer": "Code intelligence (MCP)",
+  "kindSettingsHook": "Token savings (hook)",
+  "recheck": "Re-check",
+  "statusDependencyMissing": "Missing dependency",
+  "statusDependencyMissingNamed": "Missing: {deps: String}",
+  "statusNotInstalled": "Not installed",
+  "statusReady": "Ready",
+  "statusReadyVersion": "Ready ({version: String})",
+  "statusVersionTooOld": "Installed version is too old",
+  "uninstall": "Uninstall"
+}

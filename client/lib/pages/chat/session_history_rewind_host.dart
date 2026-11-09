@@ -239,7 +239,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
       if (mounted) {
         AppToast.show(
           context,
-          message: context.l10n.sessionForkFailed,
+          message: context.l10n.session.forkFailed,
           variant: TpToastVariant.error,
         );
       }
@@ -303,9 +303,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         onSwitchVersion: _allowed ? _onSwitchVersion : null,
         onForkFrom: _allowed ? _onForkFrom : null,
         onEditUserMessage: _allowed ? _onEditUserMessage : null,
-        onPickEditAttachments: _allowed
-            ? widget.onPickEditAttachments
-            : null,
+        onPickEditAttachments: _allowed ? widget.onPickEditAttachments : null,
         // Keep fork/switch/edit disabled until the optimistic prompt lands;
         // clearing _busy at send time opens a race with a second rewind.
         branchEdit: branchEdit,

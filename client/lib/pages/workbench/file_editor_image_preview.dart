@@ -74,7 +74,7 @@ class _FileEditorImagePreviewState extends State<FileEditorImagePreview>
                   ),
                 ),
                 IconButton(
-                  tooltip: context.l10n.shortcutsZoomOut,
+                  tooltip: context.l10n.shortcuts.zoomOut,
                   icon: const Icon(Icons.remove, size: 18),
                   onPressed: canZoom
                       ? () => zoomBy(1 / PhotoZoomControllerMixin.zoomStep)
@@ -82,14 +82,14 @@ class _FileEditorImagePreviewState extends State<FileEditorImagePreview>
                 ),
                 Text('$scalePercent%', style: TpTextStyles.of(context).sm),
                 IconButton(
-                  tooltip: context.l10n.shortcutsZoomIn,
+                  tooltip: context.l10n.shortcuts.zoomIn,
                   icon: const Icon(Icons.add, size: 18),
                   onPressed: canZoom
                       ? () => zoomBy(PhotoZoomControllerMixin.zoomStep)
                       : null,
                 ),
                 IconButton(
-                  tooltip: context.l10n.shortcutsZoomReset,
+                  tooltip: context.l10n.shortcuts.zoomReset,
                   icon: const Icon(Icons.fit_screen_outlined, size: 18),
                   onPressed: canZoom ? resetZoom : null,
                 ),
@@ -130,14 +130,14 @@ class _FileEditorImagePreviewState extends State<FileEditorImagePreview>
       );
     }
     if (!model.hasBytes) {
-      return Center(child: Text(l10n.editorNotReady));
+      return Center(child: Text(l10n.editor.notReady));
     }
     final bytes = context.read<EditorCubit>().bytesFor(
       widget.workspaceId,
       widget.path,
     );
     if (bytes == null) {
-      return Center(child: Text(l10n.editorNotReady));
+      return Center(child: Text(l10n.editor.notReady));
     }
     return ClipRect(
       child: Listener(

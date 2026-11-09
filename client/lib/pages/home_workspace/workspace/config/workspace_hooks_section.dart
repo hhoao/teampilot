@@ -40,14 +40,14 @@ class WorkspaceHooksSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TeamConfigCardHeader(
-                  title: l10n.workspaceHooksAssignedCount(
-                    assignedCount,
-                    definitions.length,
+                  title: l10n.workspace.hooksAssignedCount(
+                    assigned: assignedCount,
+                    total: definitions.length,
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: () => context.go('/hooks'),
                     icon: const Icon(Icons.bolt_outlined),
-                    label: Text(l10n.workspaceHooksManage),
+                    label: Text(l10n.workspace.hooksManage),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -56,7 +56,7 @@ class WorkspaceHooksSection extends StatelessWidget {
                     icon: Icons.bolt_outlined,
                     title: l10n.hooksNoInstalled,
                     hint: l10n.hooksNoInstalledHint,
-                    actionLabel: l10n.workspaceHooksManage,
+                    actionLabel: l10n.workspace.hooksManage,
                     onAction: () => context.go('/hooks'),
                   )
                 else

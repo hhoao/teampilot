@@ -103,8 +103,8 @@ void main() {
       RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: BlocProvider<LaunchProfileCubit>.value(
             value: cubit,
             child: const Scaffold(body: MyTeamsPage()),
@@ -140,8 +140,8 @@ void main() {
       RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: BlocProvider<LaunchProfileCubit>.value(
             value: cubit,
             child: Scaffold(body: MyTeamsPage(onOpenTeam: openedIds.add)),
@@ -172,8 +172,8 @@ void main() {
       RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: BlocProvider<LaunchProfileCubit>.value(
             value: cubit,
             child: Scaffold(
@@ -204,8 +204,8 @@ void main() {
       RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp.router(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           routerConfig: GoRouter(
             initialLocation: '/home-v2?global=myTeams&team=team-beta',
             routes: [
@@ -260,8 +260,8 @@ void main() {
       RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: BlocProvider<LaunchProfileCubit>.value(
             value: cubit,
             child: Scaffold(body: MyTeamsPage(records: records)),

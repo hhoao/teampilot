@@ -329,8 +329,7 @@ void main() {
     () async {
       final sourceFs = InMemoryFilesystem();
       final workFs = InMemoryFilesystem();
-      const configDir =
-          '/w/workspace/workspaces/ws/sessions/s/runtime/qoder';
+      const configDir = '/w/workspace/workspaces/ws/sessions/s/runtime/qoder';
       const sourceDir = '/h/providers/qoder/work';
       await sourceFs.writeBytes('$sourceDir/user', [85, 83, 69, 82]);
       await sourceFs.writeBytes('$sourceDir/machine_id', [77, 73, 68]);

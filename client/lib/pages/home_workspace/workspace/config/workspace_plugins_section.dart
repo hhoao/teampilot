@@ -42,23 +42,23 @@ class WorkspacePluginsSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TeamConfigCardHeader(
-                  title: l10n.workspacePluginsAssignedCount(
-                    assignedCount,
-                    installed.length,
+                  title: l10n.workspace.pluginsAssignedCount(
+                    assigned: assignedCount,
+                    total: installed.length,
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
                     icon: Icon(Icons.widgets_outlined),
-                    label: Text(l10n.workspacePluginsManage),
+                    label: Text(l10n.workspace.pluginsManage),
                   ),
                 ),
                 const SizedBox(height: 14),
                 if (installed.isEmpty)
                   TpEmptyState(
                     icon: Icons.inventory_2_outlined,
-                    title: l10n.workspacePluginsEmpty,
-                    hint: l10n.workspacePluginsEmptyHint,
-                    actionLabel: l10n.workspacePluginsManage,
+                    title: l10n.workspace.pluginsEmpty,
+                    hint: l10n.workspace.pluginsEmptyHint,
+                    actionLabel: l10n.workspace.pluginsManage,
                     onAction: onManage,
                   )
                 else

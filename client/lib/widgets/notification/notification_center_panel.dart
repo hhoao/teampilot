@@ -46,12 +46,12 @@ class NotificationCenterPanel extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  l10n.notificationCenterTitle,
+                  l10n.notification.centerTitle,
                   style: styles.mdSemiboldTightSnug,
                 ),
               ),
               IconButton(
-                tooltip: l10n.notificationMarkAllRead,
+                tooltip: l10n.notification.markAllRead,
                 onPressed: hasHistory
                     ? () => unawaited(notificationCubit.markAllRead())
                     : null,
@@ -65,7 +65,7 @@ class NotificationCenterPanel extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
-                l10n.notificationEmpty,
+                l10n.notification.empty,
                 textAlign: TextAlign.center,
                 style: styles.mutedMd,
               ),
@@ -81,7 +81,7 @@ class NotificationCenterPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (hasOngoing) ...[
-                      _SectionHeader(label: l10n.notificationOngoingSection),
+                      _SectionHeader(label: l10n.notification.ongoingSection),
                       for (var i = 0; i < ongoing.length; i++) ...[
                         if (i > 0)
                           Divider(
@@ -111,7 +111,7 @@ class NotificationCenterPanel extends StatelessWidget {
                         color: cs.outlineVariant.withValues(alpha: 0.35),
                       ),
                     if (hasHistory) ...[
-                      _SectionHeader(label: l10n.notificationHistorySection),
+                      _SectionHeader(label: l10n.notification.historySection),
                       for (var i = 0; i < historyItems.length; i++) ...[
                         if (i > 0)
                           Divider(
@@ -151,7 +151,7 @@ class NotificationCenterPanel extends StatelessWidget {
               onPressed: hasHistory
                   ? () => unawaited(notificationCubit.clearAll())
                   : null,
-              child: Text(l10n.notificationClearAll),
+              child: Text(l10n.notification.clearAll),
             ),
           ),
         ],

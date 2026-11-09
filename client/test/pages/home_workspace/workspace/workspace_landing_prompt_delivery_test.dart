@@ -168,25 +168,28 @@ void main() {
     expect(runtime.prompts, isEmpty);
   });
 
-  test('mixed ACP landing queues sendPrompt and never issues a PTY submit', () async {
-    final session = _mixedAcpSession();
-    var ptyCalls = 0;
+  test(
+    'mixed ACP landing queues sendPrompt and never issues a PTY submit',
+    () async {
+      final session = _mixedAcpSession();
+      var ptyCalls = 0;
 
-    final sent = await deliverWorkspaceLandingPrompt(
-      session: session,
-      acpRuntime: cubit,
-      memberId: 'team-lead',
-      message: 'hello from mixed landing',
-      ptySubmit: (sessionId, memberId, message) async {
-        ptyCalls++;
-        return 'pty-delivery';
-      },
-    );
+      final sent = await deliverWorkspaceLandingPrompt(
+        session: session,
+        acpRuntime: cubit,
+        memberId: 'team-lead',
+        message: 'hello from mixed landing',
+        ptySubmit: (sessionId, memberId, message) async {
+          ptyCalls++;
+          return 'pty-delivery';
+        },
+      );
 
-    expect(sent, isTrue);
-    expect(ptyCalls, 0);
-    expect(cubit.state.messages.single.role, AiRole.user);
-  });
+      expect(sent, isTrue);
+      expect(ptyCalls, 0);
+      expect(cubit.state.messages.single.role, AiRole.user);
+    },
+  );
 
   test('mixed ACP landing without a runtime is not a PTY submit', () async {
     final session = _mixedAcpSession();

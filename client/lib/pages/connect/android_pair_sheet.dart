@@ -162,8 +162,8 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
         error.code == 'expired' ||
                 error.code == 'used' ||
                 error.code == 'invalid'
-            ? l10n.connectPairExpired
-            : l10n.connectPairFailed,
+            ? l10n.connect.pairExpired
+            : l10n.connect.pairFailed,
       );
     } on SshPairingOfferFormatException catch (error, stackTrace) {
       AppLogger.instance.w(
@@ -172,8 +172,8 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
       );
       _showError(
         error.message == 'unsupported offer version'
-            ? l10n.connectPairUpdateApp
-            : l10n.connectPairInvalid,
+            ? l10n.connect.pairUpdateApp
+            : l10n.connect.pairInvalid,
       );
     } on Object catch (error, stackTrace) {
       AppLogger.instance.w(
@@ -183,8 +183,8 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
       _showError(
         error is ConnectPairClientException &&
                 (error.code == 'unreachable' || error.code == 'timeout')
-            ? l10n.connectNeedLanOrRelay
-            : l10n.connectPairFailed,
+            ? l10n.connect.needLanOrRelay
+            : l10n.connect.pairFailed,
       );
     } finally {
       if (mounted && _pairing) setState(() => _pairing = false);
@@ -325,12 +325,12 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                l10n.connectPairSheetTitle,
+                l10n.connect.pairSheetTitle,
                 style: TpTextStyles.of(context).lgBoldSnug,
               ),
               const SizedBox(height: 6),
               Text(
-                l10n.connectPairSheetSubtitle,
+                l10n.connect.pairSheetSubtitle,
                 style: TpTextStyles.of(context).mutedSm,
               ),
               const SizedBox(height: 20),
@@ -342,7 +342,7 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
                   children: [
                     const Icon(Icons.qr_code_scanner, size: 18),
                     const SizedBox(width: 8),
-                    Text(_pairing ? l10n.connectPairing : l10n.connectScanQr),
+                    Text(_pairing ? l10n.connect.pairing : l10n.connect.scanQr),
                   ],
                 ),
               ),
@@ -353,7 +353,7 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
                 onPressed: _pairing
                     ? null
                     : () => setState(() => _showPaste = !_showPaste),
-                child: Text(l10n.connectPasteCode),
+                child: Text(l10n.connect.pasteCode),
               ),
               if (_showPaste) ...[
                 const SizedBox(height: 12),
@@ -364,7 +364,7 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
                   keyboardType: TextInputType.url,
                   textInputAction: TextInputAction.done,
                   decoration: InputDecoration(
-                    hintText: l10n.connectPairCodeHint,
+                    hintText: l10n.connect.pairCodeHint,
                   ),
                   onSubmitted: _pairing ? null : _pair,
                 ),
@@ -375,7 +375,7 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
                     onPressed: _pairing
                         ? null
                         : () => _pair(_codeController.text),
-                    child: Text(l10n.connectPairNow),
+                    child: Text(l10n.connect.pairNow),
                   ),
                 ),
               ],
@@ -491,7 +491,7 @@ class _AndroidQrScannerPageState extends State<_AndroidQrScannerPage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.connectScanQr)),
+      appBar: AppBar(title: Text(l10n.connect.scanQr)),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final layout = constraints.biggest;
@@ -549,7 +549,7 @@ class _AndroidQrScannerPageState extends State<_AndroidQrScannerPage> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 32),
                           child: Text(
-                            l10n.connectScannerHint,
+                            l10n.connect.scannerHint,
                             textAlign: TextAlign.center,
                             style: const TextStyle(color: Colors.white),
                           ),
@@ -584,15 +584,15 @@ class _ScannerErrorView extends StatelessWidget {
           children: [
             Text(
               denied
-                  ? l10n.connectScannerPermissionDenied
-                  : l10n.connectScannerUnavailable,
+                  ? l10n.connect.scannerPermissionDenied
+                  : l10n.connect.scannerUnavailable,
               textAlign: TextAlign.center,
             ),
             if (denied) ...[
               const SizedBox(height: 16),
               TpButton(
                 onPressed: openAppSettings,
-                child: Text(l10n.connectOpenSettings),
+                child: Text(l10n.connect.openSettings),
               ),
             ],
           ],

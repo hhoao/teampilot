@@ -174,14 +174,14 @@ class LlmProviderModelsView extends StatelessWidget {
                               icon: Icons.edit_outlined,
                               compact: true,
                               size: 36,
-                              tooltip: l10n.edit,
+                              tooltip: l10n.edit.edit,
                               onTap: () => _editModel(context, model),
                             ),
                             TpIconButton(
                               icon: Icons.delete_outline,
                               compact: true,
                               size: 36,
-                              tooltip: l10n.delete,
+                              tooltip: l10n.delete.delete,
                               onTap: () async {
                                 final next = Map<String, LlmModelConfig>.from(
                                   config.models,
@@ -225,7 +225,7 @@ class LlmProviderModelsView extends StatelessWidget {
       builder: (context) => LlmModelEditDialog(
         model: model,
         providers: config.providers,
-        title: l10n.editModelTitle(model.name),
+        title: l10n.edit.modelTitle(name: model.name),
       ),
     );
     if (result != null) {

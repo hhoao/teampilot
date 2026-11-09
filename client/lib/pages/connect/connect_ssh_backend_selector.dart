@@ -27,7 +27,7 @@ class ConnectSshBackendSelector extends StatelessWidget {
       children: [
         const SizedBox(height: 20),
         Text(
-          l10n.connectSshBackendLabel,
+          l10n.connect.sshBackendLabel,
           style: TpTextStyles.of(context).smMedium,
         ),
         const SizedBox(height: 6),
@@ -36,8 +36,8 @@ class ConnectSshBackendSelector extends StatelessWidget {
           items: ConnectSshBackendKind.values,
           initialItem: state.sshBackend,
           itemLabel: (kind) => switch (kind) {
-            ConnectSshBackendKind.embedded => l10n.connectSshBackendEmbedded,
-            ConnectSshBackendKind.system => l10n.connectSshBackendSystem,
+            ConnectSshBackendKind.embedded => l10n.connect.sshBackendEmbedded,
+            ConnectSshBackendKind.system => l10n.connect.sshBackendSystem,
           },
           decoration: TpSelectDecorations.themed(context),
           searchable: false,
@@ -47,7 +47,7 @@ class ConnectSshBackendSelector extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          l10n.connectSshBackendHelp,
+          l10n.connect.sshBackendHelp,
           style: TpTextStyles.of(context).mutedSm,
         ),
       ],

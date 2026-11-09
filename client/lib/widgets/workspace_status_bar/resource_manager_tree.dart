@@ -41,7 +41,7 @@ class ResourceManagerTree extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         child: Text(
-          l10n.resourceManagerEmptyTree,
+          l10n.resource.managerEmptyTree,
           style: styles.xs.copyWith(color: cs.onSurfaceVariant),
         ),
       );
@@ -74,7 +74,7 @@ class ResourceManagerColumnHeader extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              l10n.resourceManagerColumnName,
+              l10n.resource.managerColumnName,
               style: styles.xs.copyWith(
                 color: cs.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
@@ -84,7 +84,7 @@ class ResourceManagerColumnHeader extends StatelessWidget {
           SizedBox(
             width: kResourceManagerCpuColumnWidth,
             child: Text(
-              l10n.resourceManagerColumnCpu,
+              l10n.resource.managerColumnCpu,
               textAlign: TextAlign.right,
               softWrap: false,
               maxLines: 1,
@@ -97,7 +97,7 @@ class ResourceManagerColumnHeader extends StatelessWidget {
           SizedBox(
             width: kResourceManagerMemoryColumnWidth,
             child: Text(
-              l10n.resourceManagerColumnMemory,
+              l10n.resource.managerColumnMemory,
               textAlign: TextAlign.right,
               softWrap: false,
               maxLines: 1,
@@ -228,7 +228,7 @@ class _LeafRow extends StatelessWidget {
               width: kResourceManagerTrailingGutterWidth,
               child: TpIconButton(
                 icon: Icons.close,
-                tooltip: l10n.resourceManagerKill,
+                tooltip: l10n.resource.managerKill,
                 size: 22,
                 iconSize: 12,
                 compact: true,

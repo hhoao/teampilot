@@ -135,11 +135,7 @@ class VaultCrypto {
     final nonce = _randomBytes(_nonceLength);
     final plaintext = jsonEncode(document.toJson());
     final payload = await Isolate.run(
-      () => _encryptWithKeySync(
-        plaintext: plaintext,
-        key: key,
-        nonce: nonce,
-      ),
+      () => _encryptWithKeySync(plaintext: plaintext, key: key, nonce: nonce),
     );
     return VaultEnvelope(
       version: 1,
@@ -243,10 +239,7 @@ Uint8List _encryptWithKeySync({
   required Uint8List nonce,
 }) {
   final cipher = GCMBlockCipher(AESEngine())
-    ..init(
-      true,
-      AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)),
-    );
+    ..init(true, AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)));
   return cipher.process(Uint8List.fromList(utf8.encode(plaintext)));
 }
 
@@ -256,10 +249,7 @@ String _decryptWithKeySync({
   required Uint8List nonce,
 }) {
   final cipher = GCMBlockCipher(AESEngine())
-    ..init(
-      false,
-      AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)),
-    );
+    ..init(false, AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)));
   try {
     return utf8.decode(cipher.process(payload));
   } on Object {
@@ -284,10 +274,7 @@ Uint8List _encryptSync({
     parallelism: parallelism,
   );
   final cipher = GCMBlockCipher(AESEngine())
-    ..init(
-      true,
-      AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)),
-    );
+    ..init(true, AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)));
   return cipher.process(Uint8List.fromList(utf8.encode(plaintext)));
 }
 
@@ -308,10 +295,7 @@ String _decryptSync({
     parallelism: parallelism,
   );
   final cipher = GCMBlockCipher(AESEngine())
-    ..init(
-      false,
-      AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)),
-    );
+    ..init(false, AEADParameters(KeyParameter(key), 128, nonce, Uint8List(0)));
   try {
     return utf8.decode(cipher.process(payload));
   } on Object {

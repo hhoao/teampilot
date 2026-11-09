@@ -34,20 +34,23 @@ void main() {
     expect((await testHomeStorage.fs.stat(path)).isFile, isTrue);
   });
 
-  test('lists servers configured on the home plane with no projection', () async {
-    // The machine behind the home plane configured these itself; the sync
-    // projection has never been written. The page must still show them.
-    await _writePlaneTargets([
-      _target(id: 't1', name: 'dev', host: 'h1', updatedAt: 10),
-      _target(id: 't2', name: 'prod', host: 'h2', updatedAt: 20),
-    ]);
+  test(
+    'lists servers configured on the home plane with no projection',
+    () async {
+      // The machine behind the home plane configured these itself; the sync
+      // projection has never been written. The page must still show them.
+      await _writePlaneTargets([
+        _target(id: 't1', name: 'dev', host: 'h1', updatedAt: 10),
+        _target(id: 't2', name: 'prod', host: 'h2', updatedAt: 20),
+      ]);
 
-    final repo = SshServerProfileRepository(storage: testHomeStorage);
-    final all = await repo.loadAll();
+      final repo = SshServerProfileRepository(storage: testHomeStorage);
+      final all = await repo.loadAll();
 
-    expect(all.map((p) => p.id), ['t1', 't2']);
-    expect(all.map((p) => p.host), ['h1', 'h2']);
-  });
+      expect(all.map((p) => p.id), ['t1', 't2']);
+      expect(all.map((p) => p.host), ['h1', 'h2']);
+    },
+  );
 
   test('a newer projection entry wins over the plane catalog', () async {
     await _writePlaneTargets([

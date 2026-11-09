@@ -7,8 +7,8 @@ import 'package:teampilot/services/chat/runtime/pty/pending_user_message.dart';
 import 'package:teampilot/widgets/terminal/parked_send_overlay.dart';
 
 Widget _host(Widget child) => MaterialApp(
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
-  supportedLocales: AppLocalizations.supportedLocales,
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: appLocalizationsSupportedLocales,
   home: Scaffold(body: Stack(children: [child])),
 );
 

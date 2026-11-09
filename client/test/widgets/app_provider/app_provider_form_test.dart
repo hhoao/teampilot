@@ -48,12 +48,12 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: const [
-          AppLocalizations.delegate,
+          const AppLocalizationsCompatDelegate(),
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        supportedLocales: AppLocalizations.supportedLocales,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: CliToolRegistryScope(
           registry: CliToolRegistry.builtIn(),
           child: BlocProvider(
@@ -145,12 +145,12 @@ void main() {
 Widget _wrapForm(Widget form) {
   return MaterialApp(
     localizationsDelegates: const [
-      AppLocalizations.delegate,
+      const AppLocalizationsCompatDelegate(),
       GlobalMaterialLocalizations.delegate,
       GlobalWidgetsLocalizations.delegate,
       GlobalCupertinoLocalizations.delegate,
     ],
-    supportedLocales: AppLocalizations.supportedLocales,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: CliToolRegistryScope(
       registry: CliToolRegistry.builtIn(),
       child: BlocProvider(

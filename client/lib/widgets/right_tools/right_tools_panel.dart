@@ -227,20 +227,20 @@ class _RightToolsResolveError extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            l10n.workspaceToolsResolveFailed,
+            l10n.workspace.toolsResolveFailed,
             textAlign: TextAlign.center,
             style: styles.smSemibold,
           ),
           const SizedBox(height: 6),
           Text(
-            l10n.workspaceToolsResolveFailedHint,
+            l10n.workspace.toolsResolveFailedHint,
             textAlign: TextAlign.center,
             style: styles.smColored(theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           FilledButton.tonal(
             onPressed: () => context.read<WorkspaceToolsScopeCubit>().retry(),
-            child: Text(l10n.sessionRetryButton),
+            child: Text(l10n.session.retryButton),
           ),
         ],
       ),

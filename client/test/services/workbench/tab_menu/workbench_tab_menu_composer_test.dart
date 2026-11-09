@@ -10,7 +10,9 @@ void main() {
   late AppLocalizations l10n;
 
   setUpAll(() async {
-    l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
   });
 
   test('single non-empty group has no divider', () {

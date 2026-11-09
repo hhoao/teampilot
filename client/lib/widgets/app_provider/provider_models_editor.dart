@@ -149,7 +149,7 @@ class ProviderModelsEditor extends StatelessWidget {
       builder: (_) => _ProviderModelEntryDialog(
         title: existing == null
             ? l10n.addModel
-            : l10n.editModelTitle(existing.name),
+            : l10n.edit.modelTitle(name: existing.name),
         existing: existing,
         suggestions: _suggestions(context),
       ),
@@ -291,7 +291,7 @@ class _ModelRow extends StatelessWidget {
           if (showTierToggle)
             IconButton(
               visualDensity: VisualDensity.compact,
-              tooltip: l10n.providerModelBackgroundTier,
+              tooltip: l10n.provider.modelBackgroundTier,
               isSelected: isBackground,
               onPressed: onToggleBackground,
               icon: Icon(
@@ -328,14 +328,14 @@ class _ModelRow extends StatelessWidget {
             icon: Icons.edit_outlined,
             compact: true,
             size: TpIconButton.kCompactSize,
-            tooltip: l10n.edit,
+            tooltip: l10n.edit.edit,
             onTap: onEdit,
           ),
           TpIconButton(
             icon: Icons.delete_outline,
             compact: true,
             size: TpIconButton.kCompactSize,
-            tooltip: l10n.delete,
+            tooltip: l10n.delete.delete,
             onTap: onDelete,
           ),
         ],

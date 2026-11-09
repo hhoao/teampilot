@@ -116,22 +116,28 @@ class _FileTreeImportConflictDialogState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.fileTreeImportConflictTitle),
+          TpDialogHeader(title: l10n.fileTree.importConflictTitle),
           const SizedBox(height: 16),
-          Text(l10n.fileTreeImportConflictBody(basename)),
+          Text(l10n.fileTree.importConflictBody(name: basename)),
           const SizedBox(height: 8),
-          Text(l10n.fileTreeImportConflictRemaining(widget.remainingConflicts)),
+          Text(
+            widget.remainingConflicts == 0
+                ? l10n.fileTree.importConflictRemainingZero
+                : l10n.fileTree.importConflictRemaining(
+                    count: widget.remainingConflicts,
+                  ),
+          ),
           if (widget.typeMismatch) ...[
             const SizedBox(height: 8),
             Text(
-              l10n.fileTreeImportConflictTypeMismatch,
+              l10n.fileTree.importConflictTypeMismatch,
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ],
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
-            title: Text(l10n.fileTreeImportApplyRemaining),
+            title: Text(l10n.fileTree.importApplyRemaining),
             value: _applyToRemaining,
             onChanged: (value) {
               setState(() => _applyToRemaining = value ?? false);
@@ -141,17 +147,17 @@ class _FileTreeImportConflictDialogState
             children: [
               TextButton(
                 onPressed: () => _pop(ConflictChoice.cancelAll),
-                child: Text(l10n.fileTreeImportCancelAll),
+                child: Text(l10n.fileTree.importCancelAll),
               ),
               TextButton(
                 onPressed: () => _pop(ConflictChoice.skip),
-                child: Text(l10n.fileTreeImportSkip),
+                child: Text(l10n.fileTree.importSkip),
               ),
               FilledButton(
                 onPressed: widget.typeMismatch
                     ? null
                     : () => _pop(ConflictChoice.overwrite),
-                child: Text(l10n.fileTreeImportOverwrite),
+                child: Text(l10n.fileTree.importOverwrite),
               ),
             ],
           ),
@@ -171,13 +177,13 @@ void showFileTreeImportSummaryIfNeeded(
   }
 
   final l10n = context.l10n;
-  var message = l10n.fileTreeImportSummary(
-    summary.succeeded,
-    summary.skipped,
-    summary.failed,
+  var message = l10n.fileTree.importSummary(
+    succeeded: summary.succeeded,
+    skipped: summary.skipped,
+    failed: summary.failed,
   );
   if (summary.cancelled) {
-    message = '$message${l10n.fileTreeImportSummaryCancelledSuffix}';
+    message = '$message${l10n.fileTree.importSummaryCancelledSuffix}';
   }
   AppToast.show(
     context,
@@ -190,7 +196,7 @@ void showFileTreeImportSummaryIfNeeded(
 void showFileTreeImportRejectSelfToast(BuildContext context) {
   AppToast.show(
     context,
-    message: context.l10n.fileTreeImportRejectSelf,
+    message: context.l10n.fileTree.importRejectSelf,
     variant: TpToastVariant.warning,
   );
 }

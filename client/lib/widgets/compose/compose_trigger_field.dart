@@ -327,9 +327,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
         ? selection.extentOffset.clamp(0, length)
         : length;
     final Rect caret =
-        (editable as dynamic).getLocalRectForCaret(
-              TextPosition(offset: offset),
-            )
+        (editable as dynamic).getLocalRectForCaret(TextPosition(offset: offset))
             as Rect;
     return editable.localToGlobal(caret.bottomLeft);
   }
@@ -338,7 +336,8 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     ExtendedEditableTextState? found;
     void visit(Element element) {
       if (found != null) return;
-      if (element is StatefulElement && element.state is ExtendedEditableTextState) {
+      if (element is StatefulElement &&
+          element.state is ExtendedEditableTextState) {
         found = element.state as ExtendedEditableTextState;
         return;
       }
@@ -477,10 +476,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     _scheduleMenuAnchorUpdate();
   }
 
-  Future<void> _runSearch(
-    ComposeTriggerQuery trigger,
-    int generation,
-  ) async {
+  Future<void> _runSearch(ComposeTriggerQuery trigger, int generation) async {
     List<ComposeTriggerSuggestion> suggestions;
     try {
       final files = await _searchComposeFiles(trigger.query);
@@ -812,7 +808,8 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
                 anchor: TpGlobalAnchor(_menuAnchor),
                 portalBuilder: (context) {
                   final box =
-                      _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+                      _fieldKey.currentContext?.findRenderObject()
+                          as RenderBox?;
                   final width = (box != null && box.hasSize)
                       ? box.size.width
                       : 320.0;
@@ -838,7 +835,10 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
 }
 
 class _ComposeTokenSpanBuilder extends SpecialTextSpanBuilder {
-  _ComposeTokenSpanBuilder({required this.controller, required this.chipBuilder});
+  _ComposeTokenSpanBuilder({
+    required this.controller,
+    required this.chipBuilder,
+  });
 
   final ComposeTextController controller;
   final Widget Function(ComposeToken token, TextStyle? style) chipBuilder;
@@ -1033,7 +1033,7 @@ class _ComposeTriggerSuggestionPanel extends StatelessWidget {
                               ),
                             if (experimental)
                               TpStatusBadge(
-                                label: context.l10n.composeCommandExperimental,
+                                label: context.l10n.compose.commandExperimental,
                                 tone: TpStatusBadgeTone.warning,
                               ),
                           ],
@@ -1058,8 +1058,8 @@ class _ComposeTriggerSuggestionPanel extends StatelessWidget {
     final l10n = context.l10n;
     final details = <String>[
       switch (candidate.source) {
-        ComposeSlashCandidateSource.native => l10n.composeCommandNative,
-        ComposeSlashCandidateSource.plugin => l10n.composeCommandPlugin,
+        ComposeSlashCandidateSource.native => l10n.compose.commandNative,
+        ComposeSlashCandidateSource.plugin => l10n.compose.commandPlugin,
         null => '',
       },
       if (candidate.subtitle?.trim().isNotEmpty == true)
@@ -1073,11 +1073,11 @@ class _ComposeTriggerSuggestionPanel extends StatelessWidget {
 
 extension _NativeCommandDescriptionL10n on NativeCommandDescription {
   String localized(BuildContext context) => switch (this) {
-    NativeCommandDescription.goal => context.l10n.composeNativeCommandGoal,
+    NativeCommandDescription.goal => context.l10n.compose.nativeCommandGoal,
     NativeCommandDescription.compact =>
-      context.l10n.composeNativeCommandCompact,
-    NativeCommandDescription.plan => context.l10n.composeNativeCommandPlan,
-    NativeCommandDescription.help => context.l10n.composeNativeCommandHelp,
+      context.l10n.compose.nativeCommandCompact,
+    NativeCommandDescription.plan => context.l10n.compose.nativeCommandPlan,
+    NativeCommandDescription.help => context.l10n.compose.nativeCommandHelp,
   };
 }
 

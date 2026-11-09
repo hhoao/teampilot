@@ -60,12 +60,17 @@ void main() {
     expect((await backend.load())?.entries.single.id, '2');
   });
 
-  test('clear archives the file so the backend becomes uninitialized', () async {
-    final fs = InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix));
-    final backend = buildBackend(fs);
-    await backend.initialize(_document, 'pass');
-    await backend.clear();
-    expect(await backend.isInitialized, isFalse);
-    expect(backend.needsUnlock, isFalse);
-  });
+  test(
+    'clear archives the file so the backend becomes uninitialized',
+    () async {
+      final fs = InMemoryFilesystem(
+        pathContext: p.Context(style: p.Style.posix),
+      );
+      final backend = buildBackend(fs);
+      await backend.initialize(_document, 'pass');
+      await backend.clear();
+      expect(await backend.isInitialized, isFalse);
+      expect(backend.needsUnlock, isFalse);
+    },
+  );
 }

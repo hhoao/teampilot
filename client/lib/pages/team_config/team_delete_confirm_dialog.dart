@@ -15,11 +15,11 @@ Future<bool> confirmDeleteTeam(BuildContext context, String teamName) async {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TpDialogHeader(
-            title: l10n.deleteTeam,
+            title: l10n.delete.team,
             onClose: () => Navigator.of(ctx).pop(false),
           ),
           const SizedBox(height: 16),
-          Text(l10n.deleteTeamConfirm(teamName)),
+          Text(l10n.delete.teamConfirm(name: teamName)),
           TpDialogActions(
             children: [
               TextButton(
@@ -31,7 +31,7 @@ Future<bool> confirmDeleteTeam(BuildContext context, String teamName) async {
                   backgroundColor: Theme.of(ctx).colorScheme.error,
                 ),
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: Text(l10n.delete),
+                child: Text(l10n.delete.delete),
               ),
             ],
           ),

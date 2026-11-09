@@ -14,7 +14,7 @@ String titleForCommand(AppLocalizations l10n, String commandId) {
       if (def.titleL10nKey == 'shortcutsStripFocusTab') {
         final ordinal = _ordinalSuffix(commandId, 'workbench.strip.focusTab');
         if (ordinal != null) {
-          return l10n.shortcutsStripFocusTab(ordinal);
+          return l10n.shortcuts.stripFocusTab(n: ordinal);
         }
       }
       if (def.titleL10nKey == 'shortcutsWorkspaceFocusTab') {
@@ -23,7 +23,7 @@ String titleForCommand(AppLocalizations l10n, String commandId) {
           'workbench.workspace.focusTab',
         );
         if (ordinal != null) {
-          return l10n.shortcutsWorkspaceFocusTab(ordinal);
+          return l10n.shortcuts.workspaceFocusTab(n: ordinal);
         }
       }
       return _titleForKey(l10n, def.titleL10nKey) ?? commandId;
@@ -42,52 +42,53 @@ int? _ordinalSuffix(String commandId, String prefix) {
 /// Display name for a [CommandCategory] settings group.
 String titleForCategory(AppLocalizations l10n, CommandCategory category) {
   return switch (category) {
-    CommandCategory.navigation => l10n.shortcutsCategoryNavigation,
-    CommandCategory.tabs => l10n.shortcutsCategoryTabs,
-    CommandCategory.view => l10n.shortcutsCategoryView,
-    CommandCategory.zoom => l10n.shortcutsCategoryZoom,
-    CommandCategory.compose => l10n.shortcutsCategoryCompose,
-    CommandCategory.run => l10n.shortcutsCategoryRun,
-    CommandCategory.meta => l10n.shortcutsCategoryMeta,
+    CommandCategory.navigation => l10n.shortcuts.categoryNavigation,
+    CommandCategory.tabs => l10n.shortcuts.categoryTabs,
+    CommandCategory.view => l10n.shortcuts.categoryView,
+    CommandCategory.zoom => l10n.shortcuts.categoryZoom,
+    CommandCategory.compose => l10n.shortcuts.categoryCompose,
+    CommandCategory.run => l10n.shortcuts.categoryRun,
+    CommandCategory.meta => l10n.shortcuts.categoryMeta,
   };
 }
 
 String? _titleForKey(AppLocalizations l10n, String titleL10nKey) {
   return switch (titleL10nKey) {
-    'shortcutsWorkspaceNextTab' => l10n.shortcutsWorkspaceNextTab,
-    'shortcutsWorkspacePrevTab' => l10n.shortcutsWorkspacePrevTab,
-    'shortcutsWorkspaceCloseTab' => l10n.shortcutsWorkspaceCloseTab,
-    'shortcutsWorkspaceReopenClosed' => l10n.shortcutsWorkspaceReopenClosed,
-    'shortcutsWorkspaceSearch' => l10n.shortcutsWorkspaceSearch,
-    'shortcutsWorkspaceContentSearch' => l10n.shortcutsWorkspaceContentSearch,
-    'shortcutsStripNextTab' => l10n.shortcutsStripNextTab,
-    'shortcutsStripPrevTab' => l10n.shortcutsStripPrevTab,
-    'shortcutsSessionNewTab' => l10n.shortcutsSessionNewTab,
-    'shortcutsSessionNewChat' => l10n.shortcutsSessionNewChat,
-    'shortcutsSessionCloseTab' => l10n.shortcutsSessionCloseTab,
-    'shortcutsWorkbenchSplitRight' => l10n.shortcutsWorkbenchSplitRight,
-    'shortcutsWorkbenchSplitDown' => l10n.shortcutsWorkbenchSplitDown,
-    'shortcutsWorkbenchSplitReset' => l10n.shortcutsWorkbenchSplitReset,
-    'shortcutsWorkbenchFocusNextGroup' => l10n.shortcutsWorkbenchFocusNextGroup,
+    'shortcutsWorkspaceNextTab' => l10n.shortcuts.workspaceNextTab,
+    'shortcutsWorkspacePrevTab' => l10n.shortcuts.workspacePrevTab,
+    'shortcutsWorkspaceCloseTab' => l10n.shortcuts.workspaceCloseTab,
+    'shortcutsWorkspaceReopenClosed' => l10n.shortcuts.workspaceReopenClosed,
+    'shortcutsWorkspaceSearch' => l10n.shortcuts.workspaceSearch,
+    'shortcutsWorkspaceContentSearch' => l10n.shortcuts.workspaceContentSearch,
+    'shortcutsStripNextTab' => l10n.shortcuts.stripNextTab,
+    'shortcutsStripPrevTab' => l10n.shortcuts.stripPrevTab,
+    'shortcutsSessionNewTab' => l10n.shortcuts.sessionNewTab,
+    'shortcutsSessionNewChat' => l10n.shortcuts.sessionNewChat,
+    'shortcutsSessionCloseTab' => l10n.shortcuts.sessionCloseTab,
+    'shortcutsWorkbenchSplitRight' => l10n.shortcuts.workbenchSplitRight,
+    'shortcutsWorkbenchSplitDown' => l10n.shortcuts.workbenchSplitDown,
+    'shortcutsWorkbenchSplitReset' => l10n.shortcuts.workbenchSplitReset,
+    'shortcutsWorkbenchFocusNextGroup' =>
+      l10n.shortcuts.workbenchFocusNextGroup,
     'shortcutsWorkbenchMoveTabToNextGroup' =>
-      l10n.shortcutsWorkbenchMoveTabToNextGroup,
-    'shortcutsToggleSidebar' => l10n.shortcutsToggleSidebar,
-    'shortcutsTogglePanel' => l10n.shortcutsTogglePanel,
-    'shortcutsToggleSecondarySidebar' => l10n.shortcutsToggleSecondarySidebar,
-    'shortcutsFloatingToggle' => l10n.shortcutsFloatingToggle,
-    'shortcutsFloatingMaximize' => l10n.shortcutsFloatingMaximize,
-    'shortcutsFloatingMinimize' => l10n.shortcutsFloatingMinimize,
-    'shortcutsFloatingNewTerminal' => l10n.shortcutsFloatingNewTerminal,
-    'shortcutsFloatingOpenFile' => l10n.shortcutsFloatingOpenFile,
-    'shortcutsZoomIn' => l10n.shortcutsZoomIn,
-    'shortcutsZoomOut' => l10n.shortcutsZoomOut,
-    'shortcutsZoomReset' => l10n.shortcutsZoomReset,
-    'shortcutsComposeSubmit' => l10n.shortcutsComposeSubmit,
-    'shortcutsComposeNewline' => l10n.shortcutsComposeNewline,
-    'shortcutsShowCheatsheet' => l10n.shortcutsShowCheatsheet,
-    'shortcutsRunSelected' => l10n.shortcutsRunSelected,
-    'shortcutsRunStop' => l10n.shortcutsRunStop,
-    'shortcutsRunRestart' => l10n.shortcutsRunRestart,
+      l10n.shortcuts.workbenchMoveTabToNextGroup,
+    'shortcutsToggleSidebar' => l10n.shortcuts.toggleSidebar,
+    'shortcutsTogglePanel' => l10n.shortcuts.togglePanel,
+    'shortcutsToggleSecondarySidebar' => l10n.shortcuts.toggleSecondarySidebar,
+    'shortcutsFloatingToggle' => l10n.shortcuts.floatingToggle,
+    'shortcutsFloatingMaximize' => l10n.shortcuts.floatingMaximize,
+    'shortcutsFloatingMinimize' => l10n.shortcuts.floatingMinimize,
+    'shortcutsFloatingNewTerminal' => l10n.shortcuts.floatingNewTerminal,
+    'shortcutsFloatingOpenFile' => l10n.shortcuts.floatingOpenFile,
+    'shortcutsZoomIn' => l10n.shortcuts.zoomIn,
+    'shortcutsZoomOut' => l10n.shortcuts.zoomOut,
+    'shortcutsZoomReset' => l10n.shortcuts.zoomReset,
+    'shortcutsComposeSubmit' => l10n.shortcuts.composeSubmit,
+    'shortcutsComposeNewline' => l10n.shortcuts.composeNewline,
+    'shortcutsShowCheatsheet' => l10n.shortcuts.showCheatsheet,
+    'shortcutsRunSelected' => l10n.shortcuts.runSelected,
+    'shortcutsRunStop' => l10n.shortcuts.runStop,
+    'shortcutsRunRestart' => l10n.shortcuts.runRestart,
     _ => null,
   };
 }

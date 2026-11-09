@@ -1,0 +1,15 @@
+{
+  "delete": "Delete",
+  "conversation": "Delete conversation",
+  "conversationConfirm": "Delete conversation \"{name: String}\"? This cannot be undone.",
+  "provider": "Delete Provider",
+  "providerConfirm": "Delete provider {name: String}?",
+  "providerTooltip": "Delete provider",
+  "providerWithCredentialsConfirm": "Delete provider {name: String}? Saved Claude login credentials for this provider will also be removed.",
+  "team": "Delete team",
+  "teamConfirm": "Delete team \"{name: String}\"? This cannot be undone.",
+  "teamSubtitle": "Removes this team from the UI and the shared flashskyai data directory. This cannot be undone.",
+  "workspace": "Delete Workspace",
+  "workspaceConfirm": "Delete workspace \"{name: String}\" and all its sessions? This cannot be undone.",
+  "workspaceSubtitle": "Deletes this workspace and all conversations in it. This cannot be undone."
+}

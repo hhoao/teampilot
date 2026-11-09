@@ -12,7 +12,11 @@ UsageHeatmapDay _day(
   double? hitRate,
 }) {
   return UsageHeatmapDay(
-    dayStartMs: DateTime(date.year, date.month, date.day).millisecondsSinceEpoch,
+    dayStartMs: DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).millisecondsSinceEpoch,
     tokens: tokens,
     requests: requests,
     costMicroUsd: costMicroUsd,
@@ -113,12 +117,12 @@ void main() {
       days: [_day(DateTime(2025, 10, 20))],
       nowMs: DateTime(2025, 11, 5, 12).millisecondsSinceEpoch,
     );
-    final cell = spans.single.weekDayStarts.expand((week) => week).firstWhere(
-      (dayStart) {
-        final date = DateTime.fromMillisecondsSinceEpoch(dayStart);
-        return date.year == 2025 && date.month == 10 && date.day == 26;
-      },
-    );
+    final cell = spans.single.weekDayStarts.expand((week) => week).firstWhere((
+      dayStart,
+    ) {
+      final date = DateTime.fromMillisecondsSinceEpoch(dayStart);
+      return date.year == 2025 && date.month == 10 && date.day == 26;
+    });
     final date = DateTime.fromMillisecondsSinceEpoch(cell);
     expect(date.hour, 0);
     expect(date.minute, 0);

@@ -46,9 +46,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(useMaterial3: true),
-        home: const Scaffold(
-          body: TpInput(borderRadius: tpSearchPillRadius),
-        ),
+        home: const Scaffold(body: TpInput(borderRadius: tpSearchPillRadius)),
       ),
     );
 

@@ -369,7 +369,7 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
                         scrollOffset: offset,
                         lineHeight: lineHeight,
                         topPadding: _kEditorTopPadding,
-                        tooltip: context.l10n.diffApplyHunkTooltip,
+                        tooltip: context.l10n.diff.applyHunkTooltip,
                         onApply: (block) {
                           unawaited(widget.onApplyHunk!(_result, block));
                         },

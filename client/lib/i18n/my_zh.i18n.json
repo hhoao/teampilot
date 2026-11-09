@@ -1,0 +1,23 @@
+{
+  "expertsCreate": "新建专家",
+  "expertsDelete": "删除",
+  "expertsDeleteConfirm": "删除专家「{name}」？此操作无法撤销。",
+  "expertsDeleteReferenced": "无法删除「{name}」——仍有团队花名册引用该专家。请先改派相关成员。",
+  "expertsEdit": "编辑",
+  "expertsEmptyHint": "创建本地专家人设，以便在多个团队中复用。",
+  "expertsEmptyTitle": "还没有专家",
+  "expertsNav": "我的专家",
+  "expertsSubtitle": "管理本地专家人设",
+  "expertsTitle": "我的专家",
+  "expertsUpload": "上传",
+  "teamsCreatedAt": "创建于 {date}",
+  "teamsEmptyHint": "创建团队以管理成员、技能与插件。",
+  "teamsEmptyTitle": "还没有团队",
+  "teamsMemberCount(param=count)": {
+    "other": "{count: int} 名成员"
+  },
+  "teamsNav": "我的团队",
+  "teamsSubtitle": "管理本地团队配置",
+  "teamsTitle": "我的团队",
+  "teamsUpload": "上传"
+}

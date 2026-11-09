@@ -60,8 +60,8 @@ void main() {
       RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: TpTheme(
             data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
             child: BlocProvider<McpCubit>.value(

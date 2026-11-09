@@ -1,0 +1,11 @@
+{
+  "edit": "Edit",
+  "cancel": "Cancel",
+  "memberSubtitle": "Edit provider, model, optional agent preset, and command arguments.",
+  "modelTitle": "Edit {name: String}",
+  "provider": "Edit provider",
+  "send": "Send",
+  "teamSubtitle": "Edit team identity, working directory, and launch order.",
+  "userMessage": "Edit message",
+  "workspacePrimaryPath": "Edit primary directory"
+}

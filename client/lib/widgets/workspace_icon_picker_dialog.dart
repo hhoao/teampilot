@@ -19,9 +19,9 @@ Future<WorkspaceIconPickerResult> showWorkspaceIconPickerDialog(
     context: context,
     builder: (ctx) => _WorkspaceIconPickerDialog(
       workspace: workspace,
-      title: l10n.workspaceIconPickerTitle,
-      useDefaultLabel: l10n.workspaceIconUseDefault,
-      uploadLabel: l10n.workspaceIconUpload,
+      title: l10n.workspace.iconPickerTitle,
+      useDefaultLabel: l10n.workspace.iconUseDefault,
+      uploadLabel: l10n.workspace.iconUpload,
       cancelLabel: l10n.cancel,
       saveLabel: l10n.save,
     ),

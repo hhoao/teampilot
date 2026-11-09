@@ -8,8 +8,8 @@ import 'package:teampilot/pages/workspace_shell/workspace_shell_tabs.dart';
 
 Widget _wrap(Widget child) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: TpTheme(
       data: TpThemeData.fromColorScheme(
         ColorScheme.fromSeed(seedColor: Colors.blue),

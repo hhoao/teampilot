@@ -15,14 +15,16 @@ void main() {
     );
     final sync = RemoteTargetSync(targets: targets, servers: servers);
 
-    await targets.save(const RemoteTarget(
-      id: 't1',
-      name: 'dev',
-      host: 'h',
-      username: 'u',
-      pendingSync: true,
-      updatedAt: 10,
-    ));
+    await targets.save(
+      const RemoteTarget(
+        id: 't1',
+        name: 'dev',
+        host: 'h',
+        username: 'u',
+        pendingSync: true,
+        updatedAt: 10,
+      ),
+    );
 
     final merged = await sync.pull((await targets.findById('t1'))!);
     await sync.push(merged);

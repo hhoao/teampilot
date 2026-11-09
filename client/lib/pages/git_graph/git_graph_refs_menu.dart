@@ -51,7 +51,8 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
   int get _totalRefCount =>
       widget.state.branches.length + widget.state.tags.length;
 
-  bool get _showsSearchField => gitGraphActionMenuShowsSearchField(_totalRefCount);
+  bool get _showsSearchField =>
+      gitGraphActionMenuShowsSearchField(_totalRefCount);
 
   @override
   void initState() {
@@ -91,28 +92,28 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
         TpActionMenuSpec.item(
           value: 'checkout',
           icon: Icons.check_circle_outline,
-          label: l10n.gitGraphCheckoutBranch(entry.name),
+          label: l10n.gitGraph.checkoutBranch(branch: entry.name),
           enabled: !entry.isCurrent,
         ),
         TpActionMenuSpec.item(
           value: 'history',
           icon: Icons.history,
-          label: l10n.gitGraphViewBranchHistory,
+          label: l10n.gitGraph.viewBranchHistory,
         ),
         TpActionMenuSpec.item(
           value: 'compare',
           icon: Icons.difference_outlined,
-          label: l10n.gitGraphCompareWith,
+          label: l10n.gitGraph.compareWith,
         ),
         TpActionMenuSpec.item(
           value: 'rename',
           icon: Icons.drive_file_rename_outline,
-          label: l10n.gitGraphRenameBranch,
+          label: l10n.gitGraph.renameBranch,
         ),
         TpActionMenuSpec.item(
           value: 'delete',
           icon: Icons.delete_outline,
-          label: l10n.gitGraphDeleteBranch(entry.name),
+          label: l10n.gitGraph.deleteBranch(name: entry.name),
           destructive: true,
         ),
       ],
@@ -121,22 +122,22 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
         TpActionMenuSpec.item(
           value: 'checkout',
           icon: Icons.check_circle_outline,
-          label: l10n.gitGraphCheckoutBranch(entry.name),
+          label: l10n.gitGraph.checkoutBranch(branch: entry.name),
         ),
         TpActionMenuSpec.item(
           value: 'history',
           icon: Icons.history,
-          label: l10n.gitGraphViewBranchHistory,
+          label: l10n.gitGraph.viewBranchHistory,
         ),
         TpActionMenuSpec.item(
           value: 'compare',
           icon: Icons.difference_outlined,
-          label: l10n.gitGraphCompareWith,
+          label: l10n.gitGraph.compareWith,
         ),
         TpActionMenuSpec.item(
           value: 'delete',
           icon: Icons.delete_outline,
-          label: l10n.gitGraphDeleteBranch(entry.name),
+          label: l10n.gitGraph.deleteBranch(name: entry.name),
           destructive: true,
         ),
       ],
@@ -144,28 +145,28 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
         TpActionMenuSpec.item(
           value: 'checkout',
           icon: Icons.check_circle_outline,
-          label: l10n.gitGraphCheckoutBranch(entry.name),
+          label: l10n.gitGraph.checkoutBranch(branch: entry.name),
         ),
         TpActionMenuSpec.item(
           value: 'history',
           icon: Icons.history,
-          label: l10n.gitGraphViewTagHistory,
+          label: l10n.gitGraph.viewTagHistory,
         ),
         TpActionMenuSpec.item(
           value: 'push',
           icon: Icons.cloud_upload_outlined,
-          label: l10n.gitGraphPushTag(entry.name),
+          label: l10n.gitGraph.pushTag(name: entry.name),
         ),
         TpActionMenuSpec.item(
           value: 'delete',
           icon: Icons.delete_outline,
-          label: l10n.gitGraphDeleteTag(entry.name),
+          label: l10n.gitGraph.deleteTag(name: entry.name),
           destructive: true,
         ),
         TpActionMenuSpec.item(
           value: 'compare',
           icon: Icons.difference_outlined,
-          label: l10n.gitGraphCompareWith,
+          label: l10n.gitGraph.compareWith,
         ),
       ],
     };
@@ -216,16 +217,16 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
     final l10n = context.l10n;
     final (title, body) = switch (entry.section) {
       _RefSection.tag => (
-        l10n.gitGraphDeleteTagTitle,
-        l10n.gitGraphDeleteTagConfirmBody(entry.name),
+        l10n.gitGraph.deleteTagTitle,
+        l10n.gitGraph.deleteTagConfirmBody(name: entry.name),
       ),
       _RefSection.remote => (
-        l10n.gitGraphDeleteRemoteBranchTitle,
-        l10n.gitGraphDeleteRemoteBranchConfirmBody(entry.name),
+        l10n.gitGraph.deleteRemoteBranchTitle,
+        l10n.gitGraph.deleteRemoteBranchConfirmBody(name: entry.name),
       ),
       _RefSection.local => (
-        l10n.gitGraphDeleteBranchTitle,
-        l10n.gitGraphDeleteBranchConfirmBody(entry.name),
+        l10n.gitGraph.deleteBranchTitle,
+        l10n.gitGraph.deleteBranchConfirmBody(name: entry.name),
       ),
     };
     final confirmed = await confirmDangerAction(
@@ -261,31 +262,30 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
   }
 
   List<TpActionMenuSpec> _buildSpecs(AppLocalizations l10n) {
-    final locals = widget.state.branches
-        .where((b) => !b.isRemote && _matchesFilter(b.name));
-    final remotes = widget.state.branches
-        .where((b) => b.isRemote && _matchesFilter(b.name));
+    final locals = widget.state.branches.where(
+      (b) => !b.isRemote && _matchesFilter(b.name),
+    );
+    final remotes = widget.state.branches.where(
+      (b) => b.isRemote && _matchesFilter(b.name),
+    );
     final tags = widget.state.tags.where((t) => _matchesFilter(t.name));
     final hasActiveFilter = _filterQuery.trim().isNotEmpty;
     return [
-      if (locals.isEmpty &&
-          remotes.isEmpty &&
-          tags.isEmpty &&
-          !hasActiveFilter)
+      if (locals.isEmpty && remotes.isEmpty && tags.isEmpty && !hasActiveFilter)
         TpActionMenuSpec.item(
           icon: Icons.account_tree_outlined,
-          label: l10n.gitGraphBranchesTags,
+          label: l10n.gitGraph.branchesTags,
           enabled: false,
         )
       else if (locals.isEmpty && remotes.isEmpty && tags.isEmpty)
         TpActionMenuSpec.item(
           icon: Icons.search_off_outlined,
-          label: l10n.gitGraphRefsFilterEmpty,
+          label: l10n.gitGraph.refsFilterEmpty,
           enabled: false,
         )
       else ...[
         if (locals.isNotEmpty) ...[
-          _sectionHeader(Icons.call_split, l10n.gitGraphLocalBranches),
+          _sectionHeader(Icons.call_split, l10n.gitGraph.localBranches),
           TpActionMenuSpec.scroll(
             children: [
               for (final branch in locals)
@@ -303,7 +303,7 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
           ),
         ],
         if (remotes.isNotEmpty) ...[
-          _sectionHeader(Icons.cloud_outlined, l10n.gitGraphRemoteBranches),
+          _sectionHeader(Icons.cloud_outlined, l10n.gitGraph.remoteBranches),
           TpActionMenuSpec.scroll(
             children: [
               for (final branch in remotes)
@@ -316,7 +316,7 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
           ),
         ],
         if (tags.isNotEmpty) ...[
-          _sectionHeader(Icons.sell_outlined, l10n.gitGraphTags),
+          _sectionHeader(Icons.sell_outlined, l10n.gitGraph.tags),
           TpActionMenuSpec.scroll(
             children: [
               for (final tag in tags)
@@ -341,7 +341,7 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
     final cs = Theme.of(context).colorScheme;
     final menuController = _menuController;
     return Tooltip(
-      message: l10n.gitGraphBranchesTags,
+      message: l10n.gitGraph.branchesTags,
       child: TpPopover(
         controller: _popoverController,
         anchor: const TpAnchor(
@@ -355,7 +355,7 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
           minWidth: 200,
           showsSearchField: _showsSearchField,
           searchFocus: _searchFocus,
-          filterHint: l10n.gitGraphRefsFilterHint,
+          filterHint: l10n.gitGraph.refsFilterHint,
           onFilterChanged: (query) => setState(() => _filterQuery = query),
           menuChildren: buildTpActionMenuChildren(
             context: ctx,

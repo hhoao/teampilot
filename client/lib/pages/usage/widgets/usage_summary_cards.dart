@@ -35,25 +35,25 @@ class _UsageSummaryCardsState extends State<UsageSummaryCards> {
     final summary = widget.dashboard.summary;
     final cards = <Widget>[
       _MetricCard(
-        title: l10n.sessionUsageTotalTokens,
+        title: l10n.sessionUsage.totalTokens,
         value: formatUsageTokens(summary.totalTokens),
         icon: Icons.data_usage_outlined,
         accent: const Color(0xFFD97757),
       ),
       _MetricCard(
-        title: l10n.sessionUsageInputTokens,
+        title: l10n.sessionUsage.inputTokens,
         value: formatUsageTokens(summary.freshInputTokens),
         icon: Icons.south_east_outlined,
         accent: const Color(0xFF6366F1),
       ),
       _MetricCard(
-        title: l10n.sessionUsageOutputTokens,
+        title: l10n.sessionUsage.outputTokens,
         value: formatUsageTokens(summary.outputTokens),
         icon: Icons.north_east_outlined,
         accent: const Color(0xFF10A37F),
       ),
       _MetricCard(
-        title: l10n.sessionUsageCacheRead,
+        title: l10n.sessionUsage.cacheRead,
         value: formatUsageTokens(summary.cacheReadTokens),
         icon: Icons.bolt_outlined,
         accent: const Color(0xFFF59E0B),
@@ -62,19 +62,19 @@ class _UsageSummaryCardsState extends State<UsageSummaryCards> {
 
     final details = <Widget>[
       _DetailTile(
-        label: l10n.sessionUsagePricingCacheWrite,
+        label: l10n.sessionUsage.pricingCacheWrite,
         value: formatUsageTokens(summary.cacheCreationTokens),
       ),
       _DetailTile(
-        label: l10n.sessionUsageHeatmapMetricHitRate,
+        label: l10n.sessionUsage.heatmapMetricHitRate,
         value: formatUsagePercent(summary.cacheHitRate),
       ),
       _DetailTile(
-        label: l10n.sessionUsageRequests,
+        label: l10n.sessionUsage.requests,
         value: '${summary.requests}',
       ),
       _DetailTile(
-        label: l10n.sessionUsageSessions,
+        label: l10n.sessionUsage.sessions,
         value: '${summary.sessions}',
       ),
     ];

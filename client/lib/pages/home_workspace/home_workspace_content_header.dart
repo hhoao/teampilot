@@ -24,8 +24,8 @@ class HomeTeamHeader extends StatelessWidget {
     final titleStyle = styles.xl;
     final isMixed = snapshot.teamMode == TeamMode.mixed;
     final modeLabel = isMixed
-        ? l10n.teamModeMixedTitle
-        : l10n.teamModeNativeTitle;
+        ? l10n.team.modeMixedTitle
+        : l10n.team.modeNativeTitle;
     final badgeColor = isMixed ? cs.tertiary : cs.primary;
     final title = builtInTeamDisplayName(l10n, snapshot.id) ?? snapshot.display;
     return Row(

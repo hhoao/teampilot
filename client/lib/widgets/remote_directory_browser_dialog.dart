@@ -81,7 +81,7 @@ class _RemoteDirectoryBrowserDialogState
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = context.l10n.remoteDirectoryBrowserError;
+        _error = context.l10n.remote.directoryBrowserError;
       });
     }
   }
@@ -104,7 +104,7 @@ class _RemoteDirectoryBrowserDialogState
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = context.l10n.remoteDirectoryBrowserError;
+        _error = context.l10n.remote.directoryBrowserError;
       });
     }
   }
@@ -135,13 +135,13 @@ class _RemoteDirectoryBrowserDialogState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TpDialogHeader(
-            title: widget.title ?? l10n.remoteDirectoryBrowserTitle,
+            title: widget.title ?? l10n.remote.directoryBrowserTitle,
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               IconButton(
-                tooltip: l10n.remoteDirectoryBrowserUpOneLevel,
+                tooltip: l10n.remote.directoryBrowserUpOneLevel,
                 icon: Icon(
                   Icons.arrow_upward_rounded,
                   size: context.tpIconSizes.md,
@@ -169,7 +169,7 @@ class _RemoteDirectoryBrowserDialogState
           if (!widget.browseOnly) ...[
             const SizedBox(height: 16),
             Text(
-              l10n.remoteDirectoryBrowserTypePathLabel,
+              l10n.remote.directoryBrowserTypePathLabel,
               style: styles.mdSnug,
             ),
             const SizedBox(height: 6),
@@ -179,7 +179,7 @@ class _RemoteDirectoryBrowserDialogState
                   child: TextField(
                     controller: _handFillController,
                     decoration: InputDecoration(
-                      hintText: l10n.remoteDirectoryBrowserTypePathHint,
+                      hintText: l10n.remote.directoryBrowserTypePathHint,
                     ),
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _submitHandFill(),
@@ -188,7 +188,7 @@ class _RemoteDirectoryBrowserDialogState
                 const SizedBox(width: 8),
                 TextButton(
                   onPressed: _submitHandFill,
-                  child: Text(l10n.remoteDirectoryBrowserUseTypedPath),
+                  child: Text(l10n.remote.directoryBrowserUseTypedPath),
                 ),
               ],
             ),
@@ -210,7 +210,7 @@ class _RemoteDirectoryBrowserDialogState
                       onPressed: listing != null && !_loading
                           ? _useCurrent
                           : null,
-                      child: Text(l10n.remoteDirectoryBrowserUseThisDirectory),
+                      child: Text(l10n.remote.directoryBrowserUseThisDirectory),
                     ),
                   ],
           ),
@@ -230,12 +230,12 @@ class _RemoteDirectoryBrowserDialogState
     final listing = _listing;
     if (listing == null) {
       return Center(
-        child: Text(l10n.remoteDirectoryBrowserError, style: styles.mutedSm),
+        child: Text(l10n.remote.directoryBrowserError, style: styles.mutedSm),
       );
     }
     if (listing.directories.isEmpty) {
       return Center(
-        child: Text(l10n.remoteDirectoryBrowserEmpty, style: styles.mutedSm),
+        child: Text(l10n.remote.directoryBrowserEmpty, style: styles.mutedSm),
       );
     }
     return DecoratedBox(

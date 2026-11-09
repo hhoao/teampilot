@@ -116,7 +116,7 @@ class _ShortcutRebindDialogState extends State<ShortcutRebindDialog> {
     } on ArgumentError {
       setState(() {
         _unsupportedKeyMessage =
-            context.l10n.shortcutsPressShortcutUnsupportedKey;
+            context.l10n.shortcuts.pressShortcutUnsupportedKey;
       });
       return KeyEventResult.handled;
     }
@@ -199,7 +199,7 @@ class _ShortcutRebindDialogState extends State<ShortcutRebindDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TpDialogHeader(
-              title: l10n.shortcutsPressShortcutTitle,
+              title: l10n.shortcuts.pressShortcutTitle,
               onClose: _cancel,
             ),
             const SizedBox(height: 4),
@@ -222,7 +222,7 @@ class _ShortcutRebindDialogState extends State<ShortcutRebindDialog> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(l10n.shortcutsPressShortcutHint, style: styles.mutedSm),
+                  Text(l10n.shortcuts.pressShortcutHint, style: styles.mutedSm),
                   if (_unsupportedKeyMessage != null) ...[
                     const SizedBox(height: 8),
                     Text(
@@ -261,7 +261,7 @@ class _ConflictConfirm extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(l10n.shortcutsConflictMessage(conflictTitles.join(', '))),
+        Text(l10n.shortcuts.conflictMessage(title: conflictTitles.join(', '))),
         const SizedBox(height: 4),
         Text(chordLabel, style: styles.lgBoldSnug),
         TpDialogActions(
@@ -270,7 +270,7 @@ class _ConflictConfirm extends StatelessWidget {
             TextButton(onPressed: onCancel, child: Text(l10n.cancel)),
             FilledButton(
               onPressed: onConfirm,
-              child: Text(l10n.shortcutsReplaceAction),
+              child: Text(l10n.shortcuts.replaceAction),
             ),
           ],
         ),

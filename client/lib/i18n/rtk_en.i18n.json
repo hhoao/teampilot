@@ -1,0 +1,13 @@
+{
+  "bashOnlyHint": "Only applies to Agent Bash tool calls. Built-in Read, Grep, and Glob are not rewritten.",
+  "settingsDescription": "Compress Agent Bash command output before it reaches the model (requires rtk and jq on PATH).",
+  "settingsEnableTitle": "Enable RTK",
+  "settingsInstallLink": "Install guide",
+  "settingsStatusTitle": "Host status",
+  "settingsTitle": "RTK token savings",
+  "statusInstalled": "rtk {version: String} ready",
+  "statusInstalledGeneric": "rtk ready",
+  "statusJqMissing": "jq not found on PATH",
+  "statusNotFound": "rtk not found on PATH",
+  "statusVersionTooOld": "rtk {version: String} is too old (need >= 0.23.0)"
+}

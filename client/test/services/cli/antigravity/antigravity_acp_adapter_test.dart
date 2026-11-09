@@ -128,10 +128,16 @@ void main() {
       sshResponses: (command) {
         final line = command.commandLine;
         if (line.contains('uname -s')) {
-          return const CliInstallerCommandResult(exitCode: 0, stdout: 'Linux\n');
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: 'Linux\n',
+          );
         }
         if (line.contains('uname -m')) {
-          return const CliInstallerCommandResult(exitCode: 0, stdout: 'x86_64\n');
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: 'x86_64\n',
+          );
         }
         return const CliInstallerCommandResult(
           exitCode: 0,

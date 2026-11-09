@@ -84,7 +84,7 @@ class McpInstalledServerRow extends StatelessWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              l10n.mcpOAuthStatusNeedsAuth,
+                              l10n.mcp.oAuthStatusNeedsAuth,
                               style: TpTextStyles.of(
                                 context,
                               ).xsBoldColored(const Color(0xFFB45309)),
@@ -103,7 +103,7 @@ class McpInstalledServerRow extends StatelessWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              l10n.mcpOAuthStatusConnected,
+                              l10n.mcp.oAuthStatusConnected,
                               style: TpTextStyles.of(
                                 context,
                               ).xsBoldColored(cs.primary),
@@ -154,12 +154,12 @@ class McpInstalledServerRow extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 4),
                 child: OutlinedButton(
                   onPressed: busy ? null : onOAuthConnect,
-                  child: Text(l10n.mcpOAuthConnectAction),
+                  child: Text(l10n.mcp.oAuthConnectAction),
                 ),
               ),
             if (server.homepage.trim().isNotEmpty)
               IconButton(
-                tooltip: l10n.mcpOpenHomepage,
+                tooltip: l10n.mcp.openHomepage,
                 visualDensity: VisualDensity.compact,
                 iconSize: context.tpIconSizes.md,
                 onPressed: busy
@@ -170,12 +170,12 @@ class McpInstalledServerRow extends StatelessWidget {
             const SizedBox(width: 4),
 
             IconButton(
-              tooltip: l10n.mcpEdit,
+              tooltip: l10n.mcp.edit,
               onPressed: busy ? null : onEdit,
               icon: Icon(Icons.edit_outlined, size: context.tpIconSizes.md),
             ),
             IconButton(
-              tooltip: l10n.delete,
+              tooltip: l10n.delete.delete,
               onPressed: busy ? null : onDelete,
               icon: Icon(
                 Icons.delete_outline,
@@ -210,16 +210,16 @@ class McpProbeStatusLine extends StatelessWidget {
     switch (status) {
       case McpProbeStatus.checking:
         dot = Colors.grey;
-        label = l10n.mcpProbeChecking;
+        label = l10n.mcp.probeChecking;
       case McpProbeStatus.online:
         dot = const Color(0xFF22C55E);
-        label = l10n.mcpProbeToolCount(probe?.tools.length ?? 0);
+        label = l10n.mcp.probeToolCount(count: probe?.tools.length ?? 0);
       case McpProbeStatus.offline:
         dot = cs.error;
-        label = l10n.mcpProbeOffline;
+        label = l10n.mcp.probeOffline;
       case McpProbeStatus.needsAuth:
         dot = Colors.grey;
-        label = l10n.mcpProbeNeedsAuth;
+        label = l10n.mcp.probeNeedsAuth;
     }
 
     return Row(
@@ -270,7 +270,7 @@ class McpCatalogListingTile extends StatelessWidget {
     final metrics = listing.metrics;
     final adoption = metrics.adoptionCount ?? listing.useCount;
     final tagLabels = <String>[
-      if (listing.verified) l10n.mcpCatalogVerified,
+      if (listing.verified) l10n.mcp.catalogVerified,
       if (listing.remote) 'remote',
       ...listing.tags.take(3),
     ];
@@ -283,26 +283,26 @@ class McpCatalogListingTile extends StatelessWidget {
       title: listing.title,
       source: _mcpCatalogSourceLabel(listing.source),
       description: listing.description,
-      emptyDescription: l10n.mcpCatalogCardNoDescription,
+      emptyDescription: l10n.mcp.catalogCardNoDescription,
       tags: [for (final label in tagLabels) TpCatalogTagChip(label: label)],
       adoption: TpCatalogMetricView(
         icon: Icons.trending_up_outlined,
-        label: l10n.mcpCatalogAdoption,
+        label: l10n.mcp.catalogAdoption,
         value: adoption?.toString(),
-        missingValueTooltip: l10n.catalogMetricMissingTooltip,
+        missingValueTooltip: l10n.catalog.metricMissingTooltip,
       ),
       rating: TpCatalogMetricView(
         icon: Icons.star_outline,
-        label: l10n.catalogMetricRating,
+        label: l10n.catalog.metricRating,
         value: metrics.rating?.toStringAsFixed(1),
-        missingValueTooltip: l10n.catalogMetricMissingTooltip,
+        missingValueTooltip: l10n.catalog.metricMissingTooltip,
       ),
       actions: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (onOpenHomepage != null)
             IconButton(
-              tooltip: l10n.mcpOpenHomepage,
+              tooltip: l10n.mcp.openHomepage,
               visualDensity: VisualDensity.compact,
               iconSize: context.tpIconSizes.md,
               onPressed: onOpenHomepage,
@@ -321,14 +321,14 @@ class McpCatalogListingTile extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
-                l10n.mcpCatalogInstalled,
+                l10n.mcp.catalogInstalled,
                 style: styles.smSemiboldColored(cs.primary),
               ),
             )
           else
             FilledButton.tonal(
               onPressed: listing.canInstall ? onAdd : null,
-              child: Text(l10n.mcpCatalogAdd),
+              child: Text(l10n.mcp.catalogAdd),
             ),
         ],
       ),

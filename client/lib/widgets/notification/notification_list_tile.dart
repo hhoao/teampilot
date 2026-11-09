@@ -14,12 +14,12 @@ String formatNotificationTime(BuildContext context, DateTime time) {
   final l10n = context.l10n;
   final now = DateTime.now();
   final diff = now.difference(time);
-  if (diff.inMinutes < 1) return l10n.notificationTimeJustNow;
+  if (diff.inMinutes < 1) return l10n.notification.timeJustNow;
   if (diff.inHours < 1) {
-    return l10n.notificationTimeMinutesAgo(diff.inMinutes);
+    return l10n.notification.timeMinutesAgo(minutes: diff.inMinutes);
   }
   if (diff.inHours < 24) {
-    return l10n.notificationTimeHoursAgo(diff.inHours);
+    return l10n.notification.timeHoursAgo(hours: diff.inHours);
   }
   return DateFormat.yMMMd(context.l10n.localeName).format(time);
 }
@@ -68,7 +68,7 @@ class _NotificationListTileState extends State<NotificationListTile> {
     if (!mounted) return;
     AppToast.show(
       context,
-      message: context.l10n.initErrorCopied,
+      message: context.l10n.init.errorCopied,
       variant: TpToastVariant.info,
     );
   }
@@ -186,14 +186,14 @@ class _NotificationListTileState extends State<NotificationListTile> {
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           ),
           IconButton(
-            tooltip: l10n.notificationMarkRead,
+            tooltip: l10n.notification.markRead,
             onPressed: widget.notification.isRead ? null : widget.onMarkRead,
             icon: const Icon(Icons.check_circle_outline, size: 18),
             visualDensity: VisualDensity.compact,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           ),
           IconButton(
-            tooltip: l10n.notificationDelete,
+            tooltip: l10n.notification.delete,
             onPressed: widget.onDelete,
             icon: Icon(Icons.close, size: 18, color: cs.error),
             visualDensity: VisualDensity.compact,

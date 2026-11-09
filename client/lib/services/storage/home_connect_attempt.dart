@@ -97,8 +97,8 @@ class HomeConnectAttempt {
         isSshHostKeyFailure(error)
             ? HomeErrorKind.hostIdentityChanged
             : isSshAuthFailure(error)
-                ? HomeErrorKind.authFailed
-                : HomeErrorKind.transportError,
+            ? HomeErrorKind.authFailed
+            : HomeErrorKind.transportError,
         context: await _cachedContext(),
       );
     }

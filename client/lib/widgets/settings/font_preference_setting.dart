@@ -66,7 +66,7 @@ class _FontPreferenceSettingState extends State<FontPreferenceSetting> {
     widget.onChanged(id);
     AppToast.show(
       context,
-      message: context.l10n.fontChangeAppliesOnRestart,
+      message: context.l10n.font.changeAppliesOnRestart,
       variant: TpToastVariant.info,
     );
   }
@@ -107,7 +107,7 @@ class _FontPreferenceSettingState extends State<FontPreferenceSetting> {
     return TpCompactSelect<String>(
       value: widget.value,
       entries: _buildEntries(l10n),
-      searchHintText: l10n.fontSearchHint,
+      searchHintText: l10n.font.searchHint,
       onChanged: (v) {
         if (v != null) _onSelect(v);
       },
@@ -120,11 +120,11 @@ String _labelForFontId(AppLocalizations l10n, String id) {
   if (installed != null) return installed;
   switch (id) {
     case FontCatalog.systemId:
-      return l10n.fontOptionSystem;
+      return l10n.font.optionSystem;
     case 'notoSansSc':
-      return l10n.fontOptionNotoSansSc;
+      return l10n.font.optionNotoSansSc;
     case 'jetbrainsMono':
-      return l10n.fontOptionJetbrainsMono;
+      return l10n.font.optionJetbrainsMono;
     default:
       return id;
   }

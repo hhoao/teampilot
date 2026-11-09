@@ -48,7 +48,7 @@ Map<String, String> skillDiscoveryRepoFilterChoices(
   List<DiscoverableSkill> discoverable,
   AppLocalizations l10n,
 ) {
-  final choices = <String, String>{'all': l10n.skillsFilterRepoAll};
+  final choices = <String, String>{'all': l10n.skills.filterRepoAll};
   for (final r in repos.where((r) => r.enabled)) {
     choices[r.githubUrl] = r.fullName;
   }
@@ -115,11 +115,11 @@ typedef SkillUnifiedGridSlice = ({
 
 String skillCatalogSortLabel(AppLocalizations l10n, CatalogSortKey key) {
   return switch (key) {
-    CatalogSortKey.adoption => l10n.catalogSortAdoption,
-    CatalogSortKey.rating => l10n.catalogSortRating,
-    CatalogSortKey.updated => l10n.catalogSortUpdated,
-    CatalogSortKey.published => l10n.catalogSortPublished,
-    CatalogSortKey.name => l10n.catalogSortName,
+    CatalogSortKey.adoption => l10n.catalog.sortAdoption,
+    CatalogSortKey.rating => l10n.catalog.sortRating,
+    CatalogSortKey.updated => l10n.catalog.sortUpdated,
+    CatalogSortKey.published => l10n.catalog.sortPublished,
+    CatalogSortKey.name => l10n.catalog.sortName,
   };
 }
 

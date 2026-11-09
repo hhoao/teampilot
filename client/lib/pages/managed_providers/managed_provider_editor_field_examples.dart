@@ -51,7 +51,7 @@ abstract final class ManagedProviderEditorFieldExamples {
 }
 
 String managedProviderHttpJsonReferenceTip(AppLocalizations l10n) {
-  return l10n.managedProvidersReferenceSyntaxHelper;
+  return l10n.managedProviders.referenceSyntaxHelper;
 }
 
 String managedProviderFieldTip(
@@ -63,7 +63,7 @@ String managedProviderFieldTip(
   final parts = <String>[explanation.trim()];
   final trimmedExample = example.trim();
   if (trimmedExample.isNotEmpty) {
-    parts.add('${l10n.managedProvidersFieldExampleLabel}：\n$trimmedExample');
+    parts.add('${l10n.managedProviders.fieldExampleLabel}：\n$trimmedExample');
   }
   if (seeAlso != null && seeAlso.trim().isNotEmpty) {
     parts.add(seeAlso.trim());

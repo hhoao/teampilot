@@ -27,10 +27,7 @@ void main() {
     try {
       await service.ensureLoaded(providerId: '');
       final models = service.modelIdsFor(providerId: '');
-      final autoName = service.modelNameFor(
-        providerId: '',
-        modelId: 'auto',
-      );
+      final autoName = service.modelNameFor(providerId: '', modelId: 'auto');
       // ignore: avoid_print
       print('[qoder-models] ${models.join(', ')} (auto=$autoName)');
       expect(models, isNotEmpty);

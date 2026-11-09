@@ -160,14 +160,14 @@ class _FollowUpQueueStripState extends State<FollowUpQueueStrip>
                   SizedBox(width: spacing.xs),
                   Expanded(
                     child: Text(
-                      l10n.sessionFollowUpQueued(items.length),
+                      l10n.session.followUpQueued(count: items.length),
                       style: styles.smColored(cs.onSurfaceVariant),
                     ),
                   ),
                   if (_showResume)
                     IconButton(
                       icon: const Icon(Icons.play_arrow, size: 18),
-                      tooltip: l10n.sessionFollowUpResume,
+                      tooltip: l10n.session.followUpResume,
                       color: cs.primary,
                       visualDensity: VisualDensity.compact,
                       constraints: const BoxConstraints(
@@ -318,7 +318,7 @@ class _QueueRow extends StatelessWidget {
                               focusedErrorBorder: InputBorder.none,
                               contentPadding: EdgeInsets.zero,
                               isCollapsed: true,
-                              hintText: l10n.sessionFollowUpAddPlaceholder,
+                              hintText: l10n.session.followUpAddPlaceholder,
                               hintStyle: styles
                                   .mdColored(muted.withValues(alpha: 0.7))
                                   .copyWith(height: 1.2),
@@ -338,7 +338,7 @@ class _QueueRow extends StatelessWidget {
             if (isEditing) ...[
               IconButton(
                 icon: const Icon(Icons.check, size: 16),
-                tooltip: l10n.sessionFollowUpEdit,
+                tooltip: l10n.session.followUpEdit,
                 color: muted,
                 visualDensity: VisualDensity.compact,
                 constraints: _actionConstraints,
@@ -357,7 +357,7 @@ class _QueueRow extends StatelessWidget {
             ] else ...[
               IconButton(
                 icon: const Icon(Icons.edit_outlined, size: 15),
-                tooltip: l10n.sessionFollowUpEdit,
+                tooltip: l10n.session.followUpEdit,
                 color: muted,
                 visualDensity: VisualDensity.compact,
                 constraints: _actionConstraints,
@@ -366,7 +366,7 @@ class _QueueRow extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.arrow_upward, size: 15),
-                tooltip: l10n.sessionFollowUpMoveUp,
+                tooltip: l10n.session.followUpMoveUp,
                 color: muted,
                 visualDensity: VisualDensity.compact,
                 constraints: _actionConstraints,
@@ -375,7 +375,7 @@ class _QueueRow extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.delete_outline, size: 15),
-                tooltip: l10n.sessionFollowUpDelete,
+                tooltip: l10n.session.followUpDelete,
                 color: muted,
                 visualDensity: VisualDensity.compact,
                 constraints: _actionConstraints,

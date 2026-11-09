@@ -29,11 +29,12 @@ class QoderModelsSnapshot {
 }
 
 /// Runs one short-lived ACP handshake and returns the account's models.
-typedef QoderAcpModelsOpener = Future<QoderModelsSnapshot?> Function({
-  required String executable,
-  required String configDir,
-  required Duration timeout,
-});
+typedef QoderAcpModelsOpener =
+    Future<QoderModelsSnapshot?> Function({
+      required String executable,
+      required String configDir,
+      required Duration timeout,
+    });
 
 /// Parses `session/new` `models.availableModels` into ACP model ids.
 ///
@@ -174,8 +175,8 @@ class QoderModelsService {
     required String providerId,
     required String modelId,
   }) {
-    final text =
-        _memory[_cacheKey(providerId)]?.descriptions[modelId.trim()]?.trim();
+    final text = _memory[_cacheKey(providerId)]?.descriptions[modelId.trim()]
+        ?.trim();
     return text == null || text.isEmpty ? null : text;
   }
 
@@ -188,14 +189,15 @@ class QoderModelsService {
     if (!forceRefresh && _isFresh(_memory[key])) return Future.value();
     final existing = _inFlight[key];
     if (existing != null) return existing;
-    final task = _load(
-      key,
-      providerId: providerId,
-      executable: executable,
-      forceRefresh: forceRefresh,
-    ).whenComplete(() {
-      _inFlight.remove(key);
-    });
+    final task =
+        _load(
+          key,
+          providerId: providerId,
+          executable: executable,
+          forceRefresh: forceRefresh,
+        ).whenComplete(() {
+          _inFlight.remove(key);
+        });
     _inFlight[key] = task;
     return task;
   }
@@ -257,7 +259,9 @@ class QoderModelsService {
 
     final resolved = executable?.trim().isNotEmpty == true
         ? executable!.trim()
-        : (this.executable.trim().isEmpty ? 'qodercli' : this.executable.trim());
+        : (this.executable.trim().isEmpty
+              ? 'qodercli'
+              : this.executable.trim());
     final snapshot = await _opener(
       executable: resolved,
       configDir: configDir,
@@ -306,7 +310,8 @@ class QoderModelsService {
     return trimmed.isEmpty ? _globalCacheKey : trimmed;
   }
 
-  String _cacheFilePath(_ResolvedStorage roots, String key) => roots.fs
+  String _cacheFilePath(_ResolvedStorage roots, String key) => roots
+      .fs
       .pathContext
       .join(roots.basePath, 'cache', 'qoder_models', '$key.json');
 
@@ -321,9 +326,7 @@ class QoderModelsService {
     try {
       final decoded = jsonDecode(text);
       if (decoded is! Map) return null;
-      return QoderModelsCacheEntry.fromJson(
-        Map<String, Object?>.from(decoded),
-      );
+      return QoderModelsCacheEntry.fromJson(Map<String, Object?>.from(decoded));
     } on Object {
       return null;
     }
@@ -350,10 +353,7 @@ class QoderModelsService {
       process = await Process.start(
         executable,
         const ['--acp'],
-        environment: {
-          ...Platform.environment,
-          'QODER_CONFIG_DIR': configDir,
-        },
+        environment: {...Platform.environment, 'QODER_CONFIG_DIR': configDir},
         workingDirectory: configDir,
       );
       process.stderr.drain<void>();
@@ -399,10 +399,7 @@ class QoderModelsService {
         'jsonrpc': '2.0',
         'id': 2,
         'method': 'session/new',
-        'params': {
-          'cwd': configDir,
-          'mcpServers': const <Object?>[],
-        },
+        'params': {'cwd': configDir, 'mcpServers': const <Object?>[]},
       });
       return parseQoderModelsResponse(opened['result']);
     } on Object {

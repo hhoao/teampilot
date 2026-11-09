@@ -163,7 +163,7 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final id = widget.definition?.id ?? _slugify(_name.text);
     if (id.isEmpty) {
-      _formKey.currentState?.setFieldError('name', l10n.hookNameRequired);
+      _formKey.currentState?.setFieldError('name', l10n.hook.nameRequired);
       return;
     }
     final env = <String, String>{};
@@ -203,7 +203,7 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
     } else {
       AppToast.show(
         context,
-        message: l10n.hookSaveFailed,
+        message: l10n.hook.saveFailed,
         variant: TpToastVariant.error,
       );
     }
@@ -225,7 +225,7 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
       maxHeight: 680,
       child: TpDialogPinnedLayout(
         header: TpDialogHeader(
-          title: widget.definition == null ? l10n.hookNew : l10n.hookEdit,
+          title: widget.definition == null ? l10n.hook.kNew : l10n.hook.edit,
         ),
         body: TpForm(
           key: _formKey,
@@ -236,21 +236,21 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
                 fieldKey: const Key('hook-name'),
                 id: 'name',
                 controller: _name,
-                label: Text(l10n.hookName),
+                label: Text(l10n.hook.name),
                 validator: (value) => (value == null || value.trim().isEmpty)
-                    ? l10n.hookNameRequired
+                    ? l10n.hook.nameRequired
                     : null,
               ),
               const SizedBox(height: 12),
               _textField(
                 fieldKey: const Key('hook-description'),
                 controller: _description,
-                label: Text(l10n.hookDescription),
+                label: Text(l10n.hook.description),
               ),
               const SizedBox(height: 12),
               TpFormField<HookEvent>(
                 initialValue: _event,
-                label: Text(l10n.hookEvent),
+                label: Text(l10n.hook.event),
                 builder: (state) => TpSelect<HookEvent>(
                   key: const Key('hook-event'),
                   items: HookEvent.values,
@@ -270,26 +270,26 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
                   key: const Key('hook-support-matrix'),
                   onPressed: () => showHookSupportMatrixDialog(context),
                   icon: Icon(Icons.info_outline, size: context.tpIconSizes.sm),
-                  label: Text(l10n.hookSupportMatrix),
+                  label: Text(l10n.hook.supportMatrix),
                 ),
               ),
               const SizedBox(height: 12),
               _textField(
                 fieldKey: const Key('hook-matcher'),
                 controller: _matcher,
-                label: Text(l10n.hookMatcher),
+                label: Text(l10n.hook.matcher),
               ),
               const SizedBox(height: 12),
               _textField(
                 fieldKey: const Key('hook-command'),
                 controller: _command,
                 enabled: !_useScript,
-                label: Text(l10n.hookActionCommand),
+                label: Text(l10n.hook.actionCommand),
               ),
               SwitchListTile(
                 key: const Key('hook-use-script'),
                 contentPadding: EdgeInsets.zero,
-                title: Text(l10n.hookActionScript),
+                title: Text(l10n.hook.actionScript),
                 value: _useScript,
                 onChanged: (value) => setState(() => _useScript = value),
               ),
@@ -304,7 +304,7 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
                 const SizedBox(height: 12),
                 TpFormField<HookPolicy>(
                   initialValue: _policy,
-                  label: Text(l10n.hookPolicy),
+                  label: Text(l10n.hook.policy),
                   builder: (state) => TpSelect<HookPolicy>(
                     key: const Key('hook-policy'),
                     items: HookPolicy.values,
@@ -323,13 +323,13 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
               _textField(
                 fieldKey: const Key('hook-timeout'),
                 controller: _timeout,
-                label: Text(l10n.hookTimeoutSec),
+                label: Text(l10n.hook.timeoutSec),
               ),
               const SizedBox(height: 12),
               _textField(
                 fieldKey: const Key('hook-env'),
                 controller: _env,
-                label: Text(l10n.hookEnv),
+                label: Text(l10n.hook.env),
                 maxLines: 4,
               ),
             ],
@@ -347,7 +347,7 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
             FilledButton(
               key: const Key('hook-save'),
               onPressed: _saving ? null : _save,
-              child: Text(l10n.hookSave),
+              child: Text(l10n.hook.save),
             ),
           ],
         ),
@@ -375,7 +375,7 @@ class HookSupportMatrixDialog extends StatelessWidget {
       maxWidth: 640,
       maxHeight: 560,
       child: TpDialogPinnedLayout(
-        header: TpDialogHeader(title: l10n.hookCapabilityMatrix),
+        header: TpDialogHeader(title: l10n.hook.capabilityMatrix),
         body: Table(
           defaultColumnWidth: const IntrinsicColumnWidth(),
           border: TableBorder(

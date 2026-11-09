@@ -49,9 +49,9 @@ class TeamSkillsSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TeamConfigCardHeader(
-                  title: l10n.teamSkillsAssignedCount(
-                    assignedCount,
-                    enabled.length,
+                  title: l10n.team.skillsAssignedCount(
+                    assigned: assignedCount,
+                    total: enabled.length,
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
@@ -59,16 +59,16 @@ class TeamSkillsSection extends StatelessWidget {
                       Icons.extension_outlined,
                       size: context.tpIconSizes.md,
                     ),
-                    label: Text(l10n.teamSkillsManage),
+                    label: Text(l10n.team.skillsManage),
                   ),
                 ),
                 const SizedBox(height: 14),
                 if (enabled.isEmpty)
                   TpEmptyState(
                     icon: Icons.inventory_2_outlined,
-                    title: l10n.skillsNoInstalled,
-                    hint: l10n.skillsNoInstalledHint,
-                    actionLabel: l10n.teamSkillsManage,
+                    title: l10n.skills.noInstalled,
+                    hint: l10n.skills.noInstalledHint,
+                    actionLabel: l10n.team.skillsManage,
                     onAction: onManage,
                   )
                 else
@@ -119,7 +119,7 @@ class TeamSkillRow extends StatelessWidget {
     final textBase = cs.onSurface;
     final sourceLabel = skill.repoOwner != null && skill.repoName != null
         ? '${skill.repoOwner}/${skill.repoName}'
-        : l10n.skillsLocal;
+        : l10n.skills.local;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -169,7 +169,7 @@ class TeamSkillRow extends StatelessWidget {
             ),
             GithubDetailsButton(
               url: skill.githubBrowseUrl,
-              label: l10n.skillsCardDetails,
+              label: l10n.skills.cardDetails,
             ),
             const SizedBox(width: 8),
             Switch(value: assigned, onChanged: onAssignedChanged),

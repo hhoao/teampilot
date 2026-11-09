@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/git_graph_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
-import 'package:teampilot/l10n/app_localizations_en.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/git_compare.dart';
 import 'package:teampilot/models/git_graph.dart';
 import 'package:teampilot/pages/git_graph/git_graph_compare_targets.dart';
@@ -166,7 +166,9 @@ void main() {
     expect(labels, ['Working Tree (main)', 'No matches']);
   });
 
-  testWidgets('compare overlay search field has Material ancestor', (tester) async {
+  testWidgets('compare overlay search field has Material ancestor', (
+    tester,
+  ) async {
     final branches = [
       for (var i = 0; i < 11; i++)
         GitBranchInfo('branch-$i', 'h$i', isRemote: false, isCurrent: i == 0),
@@ -178,8 +180,8 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         home: Builder(
           builder: (context) => Scaffold(

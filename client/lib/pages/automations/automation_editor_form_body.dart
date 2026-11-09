@@ -126,11 +126,11 @@ class AutomationEditorFormBody extends StatelessWidget {
         TpFormField<String>(
           id: 'name',
           initialValue: nameController.text,
-          label: Text(l10n.automationsName),
+          label: Text(l10n.automations.name),
           layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kAutomationEditorFormLabelWidth,
           validator: (v) => (v == null || v.trim().isEmpty)
-              ? l10n.automationsValidationRequired
+              ? l10n.automations.validationRequired
               : null,
           builder: (state) {
             return TextField(
@@ -149,13 +149,13 @@ class AutomationEditorFormBody extends StatelessWidget {
           TpTextareaFormField(
             id: 'message',
             controller: messageController,
-            label: Text(l10n.automationsMessage),
+            label: Text(l10n.automations.message),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: kAutomationEditorFormLabelWidth,
             minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
             maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 5),
             validator: (v) => (v == null || v.trim().isEmpty)
-                ? l10n.automationsValidationRequired
+                ? l10n.automations.validationRequired
                 : null,
           ),
         ],
@@ -164,8 +164,8 @@ class AutomationEditorFormBody extends StatelessWidget {
           TpFormField<String>(
             id: 'sessionTitle',
             initialValue: sessionTitleController?.text ?? '',
-            label: Text(l10n.automationsSessionTitle),
-            description: Text(l10n.automationsSessionTitleHint),
+            label: Text(l10n.automations.sessionTitle),
+            description: Text(l10n.automations.sessionTitleHint),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: kAutomationEditorFormLabelWidth,
             builder: (state) {
@@ -188,8 +188,8 @@ class AutomationEditorFormBody extends StatelessWidget {
             style: monospaceStyle,
             onChanged: onCommandChanged,
             decoration: InputDecoration(
-              labelText: l10n.automationsCommand,
-              helperText: l10n.automationsCommandHelp,
+              labelText: l10n.automations.command,
+              helperText: l10n.automations.commandHelp,
               errorText: commandError,
             ),
           ),
@@ -212,7 +212,7 @@ class AutomationEditorFormBody extends StatelessWidget {
                   controller: timeoutController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    labelText: l10n.automationsCommandTimeout,
+                    labelText: l10n.automations.commandTimeout,
                   ),
                 ),
               ),
@@ -222,7 +222,7 @@ class AutomationEditorFormBody extends StatelessWidget {
                 child: SwitchListTile(
                   value: catchUpOnce,
                   onChanged: onCatchUpChanged,
-                  title: Text(l10n.automationsCatchUpOnce),
+                  title: Text(l10n.automations.catchUpOnce),
                 ),
               ),
             ],
@@ -253,7 +253,7 @@ class AutomationEditorFormBody extends StatelessWidget {
           TpFormField<bool>(
             id: 'reuseSession',
             initialValue: reuseSession,
-            label: Text(l10n.automationsReuseSession),
+            label: Text(l10n.automations.reuseSession),
             description: Text(reuseSessionSubtitle),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: kAutomationEditorFormLabelWidth,
@@ -296,8 +296,8 @@ class AutomationEditorFormBody extends StatelessWidget {
           TpFormField<String>(
             id: 'maxRunCount',
             initialValue: maxRunCountController.text,
-            label: Text(l10n.automationsMaxRunCount),
-            description: Text(l10n.automationsMaxRunCountHint),
+            label: Text(l10n.automations.maxRunCount),
+            description: Text(l10n.automations.maxRunCountHint),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: kAutomationEditorFormLabelWidth,
             validator: (v) {
@@ -305,7 +305,7 @@ class AutomationEditorFormBody extends StatelessWidget {
               if (raw.isEmpty) return null;
               final parsed = int.tryParse(raw);
               if (parsed == null || parsed < 1) {
-                return l10n.automationsInvalidMaxRunCount;
+                return l10n.automations.invalidMaxRunCount;
               }
               return null;
             },
@@ -332,7 +332,7 @@ class AutomationEditorFormBody extends StatelessWidget {
           key: ValueKey('enabled-$enabled-$runLimitReached'),
           id: 'enabled',
           initialValue: runLimitReached ? false : enabled,
-          label: Text(l10n.automationsEnabled),
+          label: Text(l10n.automations.enabled),
           layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kAutomationEditorFormLabelWidth,
           builder: (state) {
@@ -384,7 +384,7 @@ class _AutomationBoundSessionRow extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Text(
-              l10n.automationsBoundSession,
+              l10n.automations.boundSession,
               style: TpTextStyles.of(context).md,
             ),
           ),
@@ -398,7 +398,7 @@ class _AutomationBoundSessionRow extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
                   child: Text(
-                    l10n.automationsBoundSessionPending,
+                    l10n.automations.boundSessionPending,
                     style: TpTextStyles.of(context).sm,
                   ),
                 )
@@ -410,7 +410,7 @@ class _AutomationBoundSessionRow extends StatelessWidget {
                     if (session == null)
                       Flexible(
                         child: Text(
-                          l10n.automationsBoundSessionUnavailable,
+                          l10n.automations.boundSessionUnavailable,
                           style: TpTextStyles.of(context).sm,
                         ),
                       )
@@ -430,7 +430,10 @@ class _AutomationBoundSessionRow extends StatelessWidget {
                               style: TpTextStyles.of(context).md,
                             ),
                             if (cli != null)
-                              Text(cli!.value, style: TpTextStyles.of(context).sm),
+                              Text(
+                                cli!.value,
+                                style: TpTextStyles.of(context).sm,
+                              ),
                           ],
                         ),
                       ),
@@ -443,12 +446,12 @@ class _AutomationBoundSessionRow extends StatelessWidget {
                     OutlinedButton(
                       key: const Key('automationSwitchSession'),
                       onPressed: onSwitch,
-                      child: Text(l10n.automationsSwitchSession),
+                      child: Text(l10n.automations.switchSession),
                     ),
                     OutlinedButton(
                       key: const Key('automationUnbindSession'),
                       onPressed: onUnbind,
-                      child: Text(l10n.automationsUnbindSession),
+                      child: Text(l10n.automations.unbindSession),
                     ),
                   ],
                 ),

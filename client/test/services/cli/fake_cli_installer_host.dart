@@ -5,9 +5,8 @@ import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/host_script_runner.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
-typedef FakeSshResponse = CliInstallerCommandResult Function(
-  CliInstallerCommand command,
-);
+typedef FakeSshResponse =
+    CliInstallerCommandResult Function(CliInstallerCommand command);
 
 final class FakeCliInstallerHost implements CliInstallerHost {
   FakeCliInstallerHost({required this.sshResponses});

@@ -57,7 +57,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
             showFolderLabels: showFolderLabels,
           )
         : selected == null
-        ? l10n.runSelectConfiguration
+        ? l10n.run.selectConfiguration
         : _entryLabel(
             context,
             selected,
@@ -70,7 +70,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
 
     final cs = Theme.of(context).colorScheme;
     return Tooltip(
-      message: l10n.runConfigurationTooltip,
+      message: l10n.run.configurationTooltip,
       child: TpActionMenuIconAnchor(
         key: const Key('run-config-dropdown'),
         minWidth: 280,
@@ -128,7 +128,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
             TpActionMenuItem(
               key: const Key('run-config-add-configuration'),
               icon: Icons.add_rounded,
-              label: l10n.runAddConfiguration,
+              label: l10n.run.addConfiguration,
               menuController: controller,
               onTap: () {
                 unawaited(
@@ -139,7 +139,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
             TpActionMenuItem(
               key: const Key('run-config-add'),
               icon: Icons.settings_outlined,
-              label: l10n.runConfigureLaunchItems,
+              label: l10n.run.configureLaunchItems,
               menuController: controller,
               onTap: () {
                 unawaited(
@@ -276,7 +276,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
           TpIconButton(
             key: Key('run-config-edit-${editable.selectionKey}'),
             icon: Icons.edit_outlined,
-            tooltip: l10n.edit,
+            tooltip: l10n.edit.edit,
             size: TpIconButton.kCompactSize,
             compact: true,
             onTap: () {
@@ -294,7 +294,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
             TpIconButton(
               key: Key('run-config-delete-${editable.selectionKey}'),
               icon: Icons.delete_outline,
-              tooltip: l10n.runDeleteConfiguration,
+              tooltip: l10n.run.deleteConfiguration,
               size: TpIconButton.kCompactSize,
               compact: true,
               onTap: () {
@@ -324,13 +324,13 @@ class RunToolbarConfigDropdown extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TpDialogHeader(
-                title: l10n.runDeleteConfiguration,
+                title: l10n.run.deleteConfiguration,
                 onClose: () => Navigator.of(ctx).pop(false),
               ),
               const SizedBox(height: 12),
               Text(
-                l10n.runDeleteConfigurationConfirm(
-                  owned.configuration.name.isEmpty
+                l10n.run.deleteConfigurationConfirm(
+                  name: owned.configuration.name.isEmpty
                       ? owned.configId
                       : owned.configuration.name,
                 ),
@@ -345,8 +345,8 @@ class RunToolbarConfigDropdown extends StatelessWidget {
                     onPressed: () => Navigator.of(ctx).pop(true),
                     child: Text(
                       running
-                          ? l10n.runStopAndDelete
-                          : l10n.runDeleteConfiguration,
+                          ? l10n.run.stopAndDelete
+                          : l10n.run.deleteConfiguration,
                     ),
                   ),
                 ],
@@ -414,7 +414,9 @@ String _compoundLabel(
   OwnedLaunchCompound owned, {
   required bool showFolderLabels,
 }) {
-  final base = context.l10n.runCompoundConfiguration(owned.compound.name);
+  final base = context.l10n.run.compoundConfiguration(
+    name: owned.compound.name,
+  );
   if (!showFolderLabels) return base;
   final folder = Workspace.directoryName(owned.owner.path);
   return '$base ($folder)';
@@ -428,7 +430,7 @@ String _entryLabel(
 }) {
   final base = _configLabel(owned, showFolderLabels: showFolderLabels);
   if (!isSuggested) return base;
-  return context.l10n.runSuggestedConfiguration(base);
+  return context.l10n.run.suggestedConfiguration(name: base);
 }
 
 String _configLabel(

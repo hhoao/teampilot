@@ -397,7 +397,7 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
         ? const SizedBox.shrink()
         : WorkspaceSearchField(
             controller: _controller,
-            hint: l10n.workspaceSearchHint,
+            hint: l10n.workspace.searchHint,
             onChanged: _onQueryChanged,
             onClear: () {
               _controller.clear();
@@ -425,7 +425,7 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TpDialogMobileNavBar(
-            title: l10n.workspaceSearchTitle,
+            title: l10n.workspace.searchTitle,
             onLeading: () => Navigator.of(context).maybePop(),
           ),
           Expanded(child: SafeArea(top: false, child: body)),
@@ -473,8 +473,10 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
       return ListView(
         shrinkWrap: shrinkWrap,
         children: [
-          WorkspaceSearchSectionHeader(label: l10n.workspaceSearchFilesSection),
-          WorkspaceSearchStatusRow(label: l10n.workspaceSearchFilesEmptyHint),
+          WorkspaceSearchSectionHeader(
+            label: l10n.workspace.searchFilesSection,
+          ),
+          WorkspaceSearchStatusRow(label: l10n.workspace.searchFilesEmptyHint),
         ],
       );
     }
@@ -485,7 +487,9 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     return ListView(
       shrinkWrap: shrinkWrap,
       children: [
-        WorkspaceSearchSectionHeader(label: l10n.workspaceSearchRecentSessions),
+        WorkspaceSearchSectionHeader(
+          label: l10n.workspace.searchRecentSessions,
+        ),
         for (final session in shown)
           SidebarSessionTile(
             session: session,
@@ -498,7 +502,7 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
           ),
         if (!_conversationsExpanded && all.length > _maxRecentSessions)
           WorkspaceSearchShowMore(
-            label: l10n.workspaceSearchShowMore,
+            label: l10n.workspace.searchShowMore,
             onTap: () => setState(() => _conversationsExpanded = true),
           ),
       ],
@@ -525,7 +529,7 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     }
 
     if (children.isEmpty) {
-      return _EmptyResults(label: l10n.workspaceSearchNoResults);
+      return _EmptyResults(label: l10n.workspace.searchNoResults);
     }
     return ListView(shrinkWrap: shrinkWrap, children: children);
   }
@@ -537,16 +541,16 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     if (hits.isEmpty && _contentIndexing) {
       out.add(
         WorkspaceSearchSectionHeader(
-          label: l10n.homeWorkspaceConversationsSection,
+          label: l10n.homeWorkspace.conversationsSection,
         ),
       );
-      out.add(WorkspaceSearchStatusRow(label: l10n.workspaceSearchIndexing));
+      out.add(WorkspaceSearchStatusRow(label: l10n.workspace.searchIndexing));
       return out;
     }
     if (hits.isEmpty) return out;
     out.add(
       WorkspaceSearchSectionHeader(
-        label: l10n.homeWorkspaceConversationsSection,
+        label: l10n.homeWorkspace.conversationsSection,
       ),
     );
     final shown = _conversationsExpanded
@@ -567,7 +571,7 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     if (!_conversationsExpanded && hits.length > _maxConversationResults) {
       out.add(
         WorkspaceSearchShowMore(
-          label: l10n.workspaceSearchShowMore,
+          label: l10n.workspace.searchShowMore,
           onTap: () => setState(() => _conversationsExpanded = true),
         ),
       );
@@ -583,15 +587,15 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     final out = <Widget>[];
     if (_searchingFiles) {
       out.add(
-        WorkspaceSearchSectionHeader(label: l10n.workspaceSearchFilesSection),
+        WorkspaceSearchSectionHeader(label: l10n.workspace.searchFilesSection),
       );
-      out.add(WorkspaceSearchStatusRow(label: l10n.workspaceSearchSearching));
+      out.add(WorkspaceSearchStatusRow(label: l10n.workspace.searchSearching));
       return out;
     }
     final total = _fileGroups.fold<int>(0, (n, g) => n + g.matches.length);
     if (total == 0) return out;
     out.add(
-      WorkspaceSearchSectionHeader(label: l10n.workspaceSearchFilesSection),
+      WorkspaceSearchSectionHeader(label: l10n.workspace.searchFilesSection),
     );
     final showHeaders = _fileGroups.length > 1;
     var remaining = _filesExpanded ? total : _maxFileResults;
@@ -616,7 +620,7 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     if (!_filesExpanded && total > _maxFileResults) {
       out.add(
         WorkspaceSearchShowMore(
-          label: l10n.workspaceSearchShowMore,
+          label: l10n.workspace.searchShowMore,
           onTap: () => setState(() => _filesExpanded = true),
         ),
       );
@@ -661,28 +665,28 @@ class _FilterChips extends StatelessWidget {
     return Row(
       children: [
         WorkspaceSearchFilterChip(
-          label: l10n.workspaceSearchFilterAll,
+          label: l10n.workspace.searchFilterAll,
           icon: Icons.format_list_bulleted_rounded,
           active: active == _SearchFilter.all,
           onTap: () => onChanged(_SearchFilter.all),
         ),
         const SizedBox(width: 6),
         WorkspaceSearchFilterChip(
-          label: l10n.workspaceSearchFilterConversations,
+          label: l10n.workspace.searchFilterConversations,
           icon: Icons.chat_bubble_outline_rounded,
           active: active == _SearchFilter.conversations,
           onTap: () => onChanged(_SearchFilter.conversations),
         ),
         const SizedBox(width: 6),
         WorkspaceSearchFilterChip(
-          label: l10n.workspaceSearchFilterFiles,
+          label: l10n.workspace.searchFilterFiles,
           icon: Icons.description_outlined,
           active: active == _SearchFilter.files,
           onTap: () => onChanged(_SearchFilter.files),
         ),
         const SizedBox(width: 6),
         WorkspaceSearchFilterChip(
-          label: l10n.workspaceSearchContent,
+          label: l10n.workspace.searchContent,
           icon: Icons.find_in_page_outlined,
           active: active == _SearchFilter.content,
           onTap: () => onChanged(_SearchFilter.content),

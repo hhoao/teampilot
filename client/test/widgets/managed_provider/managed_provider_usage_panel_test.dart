@@ -123,8 +123,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: MultiBlocProvider(
           providers: [
             BlocProvider.value(value: providerCubit),
@@ -203,8 +203,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: MultiBlocProvider(
           providers: [
             BlocProvider.value(value: providerCubit),
@@ -303,8 +303,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: MultiBlocProvider(
           providers: [
             BlocProvider.value(value: providerCubit),
@@ -372,8 +372,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: MultiBlocProvider(
           providers: [
             BlocProvider.value(value: providerCubit),
@@ -437,8 +437,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: MultiBlocProvider(
           providers: [
             BlocProvider.value(value: providerCubit),
@@ -503,8 +503,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: MultiBlocProvider(
             providers: [
               BlocProvider.value(value: providerCubit),
@@ -591,8 +591,8 @@ void main() {
       var manageCalls = 0;
       await tester.pumpWidget(
         MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: MultiBlocProvider(
             providers: [
               BlocProvider.value(value: providerCubit),
@@ -704,8 +704,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: MultiBlocProvider(
           providers: [
             BlocProvider.value(value: providerCubit),

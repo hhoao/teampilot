@@ -172,7 +172,8 @@ void main() {
       expect(
         spec.plan.memberConfigDir,
         '/runtime/s1/team-lead/codebuddy',
-        reason: 'ACP attach spawns the CLI with this dir; empty falls back to '
+        reason:
+            'ACP attach spawns the CLI with this dir; empty falls back to '
             'the session-level home and loses prompt/MCP/settings',
       );
     },

@@ -117,10 +117,7 @@ Future<SessionPreferencesCubit> _makeCubit({
   return cubit;
 }
 
-Widget _wrap(
-  SessionPreferencesCubit cubit, {
-  List<String>? adapterInstalls,
-}) {
+Widget _wrap(SessionPreferencesCubit cubit, {List<String>? adapterInstalls}) {
   final progressCubit = ProgressActivityCubit(historyRecorder: _FakeRecorder());
   final registry = InstallJobRegistry(
     progressCubit: progressCubit,
@@ -148,8 +145,8 @@ Widget _wrap(
     child: BlocProvider.value(
       value: cubit,
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Scaffold(
           body: CliConfigWorkspace(
             showHeading: false,
@@ -191,8 +188,8 @@ Widget _wrapCard(
     child: BlocProvider.value(
       value: cubit,
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Scaffold(
           body: CliReadinessCard(
             cli: cli,
@@ -247,8 +244,8 @@ Widget _wrapCardRemote(
       child: BlocProvider.value(
         value: cubit,
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: Scaffold(
             body: CliReadinessCard(
               cli: CliTool.claude,
@@ -405,10 +402,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(readiness.probedKinds, contains(CliBinaryKind.adapter));
-      expect(
-        find.text('/home/u/.local/bin/claude-agent-acp'),
-        findsOneWidget,
-      );
+      expect(find.text('/home/u/.local/bin/claude-agent-acp'), findsOneWidget);
     },
   );
 
@@ -553,9 +547,7 @@ void main() {
     await tester.pump();
 
     expect(cubit.acpDefaultFor(CliTool.claude), isFalse);
-    final terminal = tester.widget<Icon>(
-      find.byIcon(Icons.terminal_rounded),
-    );
+    final terminal = tester.widget<Icon>(find.byIcon(Icons.terminal_rounded));
     final chat = tester.widget<Icon>(
       find.byIcon(Icons.chat_bubble_outline_rounded),
     );
@@ -628,9 +620,7 @@ void main() {
     expect(find.byKey(AppKeys.cursorCliInstallButton), findsNothing);
   });
 
-  testWidgets('ACP pill and adapter actions render for Claude', (
-    tester,
-  ) async {
+  testWidgets('ACP pill and adapter actions render for Claude', (tester) async {
     final cubit = await _makeCubit(
       locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
     );
@@ -662,7 +652,7 @@ void main() {
     final button = find.byKey(AppKeys.codexAcpAdapterInstallButton);
     expect(button, findsOneWidget);
     expect(
-      find.descendant(of: button, matching: find.text(l10n.cliInstallButton)),
+      find.descendant(of: button, matching: find.text(l10n.cli.installButton)),
       findsOneWidget,
     );
   });

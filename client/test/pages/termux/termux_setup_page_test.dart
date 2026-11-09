@@ -151,8 +151,8 @@ Future<void> _pumpSetupPage(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: Builder(
         builder: (context) {
           final scheme = Theme.of(context).colorScheme;
@@ -275,16 +275,14 @@ void main() {
         apkAcquisition: acquisition,
       );
 
-      final l10n = AppLocalizations.of(
-        tester.element(find.byType(TermuxSetupPage)),
-      );
+      final l10n = tester.element(find.byType(TermuxSetupPage)).l10n;
 
       expect(
         find.byKey(const Key('termux_download_install_button')),
         findsOneWidget,
       );
-      expect(find.text(l10n.termuxSetupDownloadInstall), findsOneWidget);
-      expect(find.text(l10n.termuxSetupTermuxInstalled), findsNothing);
+      expect(find.text(l10n.termux.setupDownloadInstall), findsOneWidget);
+      expect(find.text(l10n.termux.setupTermuxInstalled), findsNothing);
 
       await tester.runAsync(() async {
         await tester.tap(
@@ -317,11 +315,9 @@ void main() {
       packageProbe: _installedProbe(),
     );
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(TermuxSetupPage)),
-    );
-    expect(find.text(l10n.termuxSetupStepInstallTermux), findsOneWidget);
-    expect(find.text(l10n.termuxSetupStepRunScript), findsOneWidget);
+    final l10n = tester.element(find.byType(TermuxSetupPage)).l10n;
+    expect(find.text(l10n.termux.setupStepInstallTermux), findsOneWidget);
+    expect(find.text(l10n.termux.setupStepRunScript), findsOneWidget);
     expect(find.byKey(const Key('termux_username_field')), findsOneWidget);
     // Script body appears after async key prep; content covered by unit test.
     expect(
@@ -363,9 +359,7 @@ void main() {
       credentials: InMemorySshCredentialStore(),
     );
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(TermuxSetupPage)),
-    );
+    final l10n = tester.element(find.byType(TermuxSetupPage)).l10n;
 
     await tester.scrollUntilVisible(
       find.byKey(const Key('termux_username_field')),
@@ -378,10 +372,10 @@ void main() {
     );
     await tester.pump();
     await _scrollToBottom(tester);
-    await tester.tap(find.text(l10n.termuxSetupConnect));
+    await tester.tap(find.text(l10n.termux.setupConnect));
     await tester.pump();
 
-    expect(find.text(l10n.termuxSetupUsernameError), findsOneWidget);
+    expect(find.text(l10n.termux.setupUsernameError), findsOneWidget);
     expect(cubit.connectCalls, 0);
   });
 
@@ -437,16 +431,14 @@ void main() {
       credentials: InMemorySshCredentialStore(),
     );
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(TermuxSetupPage)),
-    );
+    final l10n = tester.element(find.byType(TermuxSetupPage)).l10n;
 
     await _scrollToBottom(tester);
     await tester.tap(find.byKey(const Key('termux_clear_setup_button')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text(l10n.termuxSetupClearConfirmTitle), findsOneWidget);
+    expect(find.text(l10n.termux.setupClearConfirmTitle), findsOneWidget);
     await tester.tap(find.byKey(const Key('termux_clear_confirm_button')));
     await tester.pump();
     await tester.runAsync(() async {
@@ -491,8 +483,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Builder(
           builder: (context) {
             final scheme = Theme.of(context).colorScheme;

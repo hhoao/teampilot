@@ -54,8 +54,8 @@ class _HostState extends State<_Host> {
 Widget _wrap(Widget child) {
   final scheme = ColorScheme.fromSeed(seedColor: Colors.indigo);
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     theme: ThemeData(colorScheme: scheme, useMaterial3: true),
     home: TpTheme(
       data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
@@ -103,7 +103,7 @@ void main() {
       );
       expect(modeSelect.items, AutomationScheduleMode.values);
       expect(modeSelect.initialItem, AutomationScheduleMode.once);
-      expect(find.text(_l10n.automationsScheduleModeOnce), findsOneWidget);
+      expect(find.text(_l10n.automations.scheduleModeOnce), findsOneWidget);
 
       expect(find.byType(TpDatePicker), findsOneWidget);
       // Trigger renders the selected day as yyyy-MM-dd.
@@ -183,7 +183,7 @@ void main() {
     // Open the preset select and pick Custom so the cron TextField mounts.
     await tester.tap(find.byType(TpSelect<AutomationSchedulePreset>));
     await tester.pumpAndSettle();
-    await tester.tap(find.text(_l10n.automationsScheduleCustom).last);
+    await tester.tap(find.text(_l10n.automations.scheduleCustom).last);
     await tester.pumpAndSettle();
 
     final field = find.byWidgetPredicate(
@@ -212,7 +212,9 @@ void main() {
     await _selectScheduleMode(tester, _l10n, AutomationScheduleMode.countdown);
     await tester.tap(find.byType(TpSelectWithCustomInput));
     await tester.pumpAndSettle();
-    await tester.tap(find.text(_l10n.automationsCountdownMinutes(15)).last);
+    await tester.tap(
+      find.text(_l10n.automations.countdownMinutes(minutes: 15)).last,
+    );
     await tester.pumpAndSettle();
 
     final emitted = host.emissions.last;
@@ -295,14 +297,14 @@ void main() {
       expect(
         parseCountdownMinutesSelectValue(
           _l10n,
-          _l10n.automationsCountdownMinutes(30),
+          _l10n.automations.countdownMinutes(minutes: 30),
         ),
         30,
       );
       expect(
         parseCountdownMinutesSelectValue(
           _l10n,
-          _l10n.automationsCountdownHours(2),
+          _l10n.automations.countdownHours(hours: 2),
         ),
         120,
       );

@@ -83,30 +83,27 @@ Future<RemoteTargetMigrationResult> migrateSshProfiles({
       );
     }
   }
-  return RemoteTargetMigrationResult(
-    migrated: migrated.length,
-    skipped: false,
-  );
+  return RemoteTargetMigrationResult(migrated: migrated.length, skipped: false);
 }
 
 RemoteTarget _toTarget(SshProfile profile) => RemoteTarget(
-      id: profile.id,
-      name: profile.name,
-      host: profile.host,
-      port: profile.port,
-      username: profile.username,
-      authType: profile.authType,
-      vaultEntryId: profile.vaultEntryId,
-      endpoints: profile.endpoints,
-      hostKeyFingerprints: profile.hostKeyFingerprints,
-      lastGoodKind: profile.lastGoodKind,
-      lastHome: profile.lastHome,
-      lastAppDataRoot: profile.lastAppDataRoot,
-      embeddedTarget: profile.embeddedTarget,
-      relayUrl: profile.relayUrl,
-      pairedDesktopId: profile.pairedDesktopId,
-      updatedAt: profile.updatedAt,
-    );
+  id: profile.id,
+  name: profile.name,
+  host: profile.host,
+  port: profile.port,
+  username: profile.username,
+  authType: profile.authType,
+  vaultEntryId: profile.vaultEntryId,
+  endpoints: profile.endpoints,
+  hostKeyFingerprints: profile.hostKeyFingerprints,
+  lastGoodKind: profile.lastGoodKind,
+  lastHome: profile.lastHome,
+  lastAppDataRoot: profile.lastAppDataRoot,
+  embeddedTarget: profile.embeddedTarget,
+  relayUrl: profile.relayUrl,
+  pairedDesktopId: profile.pairedDesktopId,
+  updatedAt: profile.updatedAt,
+);
 
 RemoteTargetMigrationResult _unreadableLegacy(String legacyFile) {
   // Content-free diagnostic: FormatException.message embeds a source excerpt

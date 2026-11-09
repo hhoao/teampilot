@@ -1,0 +1,10 @@
+{
+  "scaleComfortable": "宽松",
+  "scaleCompact": "紧凑",
+  "scaleCustom": "自定义",
+  "scaleCustomHint": "50–200",
+  "scaleCustomLabel": "缩放比例",
+  "scaleDescription": "界面文字大小。「标准」跟随系统；不改变图标与间距。",
+  "scaleStandard": "标准",
+  "scaleTitle": "文字大小"
+}

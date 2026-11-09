@@ -43,23 +43,23 @@ class WorkspaceSkillsSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TeamConfigCardHeader(
-                  title: l10n.workspaceSkillsAssignedCount(
-                    assignedCount,
-                    enabled.length,
+                  title: l10n.workspace.skillsAssignedCount(
+                    assigned: assignedCount,
+                    total: enabled.length,
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
                     icon: Icon(Icons.extension_outlined),
-                    label: Text(l10n.workspaceSkillsManage),
+                    label: Text(l10n.workspace.skillsManage),
                   ),
                 ),
                 const SizedBox(height: 14),
                 if (enabled.isEmpty)
                   TpEmptyState(
                     icon: Icons.inventory_2_outlined,
-                    title: l10n.skillsNoInstalled,
-                    hint: l10n.skillsNoInstalledHint,
-                    actionLabel: l10n.workspaceSkillsManage,
+                    title: l10n.skills.noInstalled,
+                    hint: l10n.skills.noInstalledHint,
+                    actionLabel: l10n.workspace.skillsManage,
                     onAction: onManage,
                   )
                 else

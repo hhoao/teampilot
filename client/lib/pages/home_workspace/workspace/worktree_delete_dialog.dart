@@ -68,29 +68,31 @@ class _WorktreeDeleteDialogState extends State<_WorktreeDeleteDialog> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return AlertDialog(
-      title: Text(l10n.worktreeDeleteTitle),
+      title: Text(l10n.worktree.deleteTitle),
       content: SizedBox(
         width: 420,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(l10n.worktreeDeleteBody(widget.branchLabel)),
+            Text(l10n.worktree.deleteBody(branch: widget.branchLabel)),
             const SizedBox(height: 8),
             _check(
               value: _force,
-              label: l10n.worktreeDeleteForce,
+              label: l10n.worktree.deleteForce,
               onChanged: (v) => setState(() => _force = v),
             ),
             _check(
               value: _deleteBranch,
-              label: l10n.worktreeDeleteBranchToo,
+              label: l10n.worktree.deleteBranchToo,
               onChanged: (v) => setState(() => _deleteBranch = v),
             ),
             if (widget.sessionCount > 0)
               _check(
                 value: _deleteSessions,
-                label: l10n.worktreeDeleteSessionsToo(widget.sessionCount),
+                label: l10n.worktree.deleteSessionsToo(
+                  count: widget.sessionCount,
+                ),
                 onChanged: (v) => setState(() => _deleteSessions = v),
               ),
           ],
@@ -114,7 +116,7 @@ class _WorktreeDeleteDialogState extends State<_WorktreeDeleteDialog> {
                   ),
                 )
               : null,
-          child: Text(l10n.worktreeDeleteAction),
+          child: Text(l10n.worktree.deleteAction),
         ),
       ],
     );

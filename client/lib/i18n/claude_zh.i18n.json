@@ -1,0 +1,16 @@
+{
+  "cliExecutablePathDescription": "Claude Code 可执行文件的绝对路径。留空则使用 PATH 中查找到的版本。",
+  "cliExecutablePathDescriptionSsh": "远程 SSH 主机上 Claude Code 的绝对路径。留空则从远端 PATH 解析 claude。",
+  "cliExecutablePathLabel": "Claude Code CLI 路径",
+  "launchCredentialsMissingWarning": "该 Team 绑定的 Claude Official Provider 缺少凭据，请在 Providers 设置中登录。",
+  "officialCredentialsActionFailed": "凭据更新失败",
+  "officialCredentialsActionSuccess": "凭据已更新",
+  "officialCredentialsImportFile": "导入文件…",
+  "officialCredentialsImportGlobal": "从 ~/.claude 导入",
+  "officialCredentialsLogin": "Claude 登录",
+  "officialCredentialsMissing": "该 Provider 尚未保存凭据",
+  "officialCredentialsReady": "凭据已就绪",
+  "officialCredentialsRevoke": "退出登录",
+  "officialCredentialsRevokeConfirm": "退出登录并删除 {name: String} 的已保存凭据？",
+  "officialCredentialsTitle": "Claude Official 登录"
+}

@@ -139,7 +139,7 @@ class _HistoryMailboxQueuedStripState extends State<HistoryMailboxQueuedStrip> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            l10n.sessionHistoryMailboxQueued(_pending.length),
+            l10n.session.historyMailboxQueued(count: _pending.length),
             style: styles.smColored(cs.onSurfaceVariant),
           ),
           SizedBox(height: spacing.xs),
@@ -169,7 +169,7 @@ class _HistoryMailboxQueuedStripState extends State<HistoryMailboxQueuedStrip> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.close, size: 16),
-                        tooltip: l10n.sessionHistoryMailboxQueuedDismiss,
+                        tooltip: l10n.session.historyMailboxQueuedDismiss,
                         color: cs.onSecondaryContainer,
                         onPressed: () => _dismiss(msg),
                       ),

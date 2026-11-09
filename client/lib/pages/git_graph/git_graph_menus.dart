@@ -49,8 +49,8 @@ Future<void> showCommitContextMenu(
     case 'delete-branch':
       final confirmed = await confirmDangerAction(
         context,
-        title: l10n.gitGraphDeleteBranchTitle,
-        body: l10n.gitGraphDeleteBranchConfirmBody(localBranch!),
+        title: l10n.gitGraph.deleteBranchTitle,
+        body: l10n.gitGraph.deleteBranchConfirmBody(name: localBranch!),
       );
       if (confirmed && context.mounted) await actions.deleteBranch(localBranch);
     case 'merge-branch':
@@ -58,8 +58,8 @@ Future<void> showCommitContextMenu(
     case 'checkout-commit':
       final confirmed = await confirmDangerAction(
         context,
-        title: l10n.gitGraphCheckoutCommit,
-        body: l10n.gitGraphCheckoutCommitConfirmBody(row.hash),
+        title: l10n.gitGraph.checkoutCommit,
+        body: l10n.gitGraph.checkoutCommitConfirmBody(hash: row.hash),
       );
       if (confirmed && context.mounted) await actions.checkoutCommit(row.hash);
     case 'create-branch':
@@ -77,8 +77,8 @@ Future<void> showCommitContextMenu(
     case 'delete-tag':
       final confirmed = await confirmDangerAction(
         context,
-        title: l10n.gitGraphDeleteTagTitle,
-        body: l10n.gitGraphDeleteTagConfirmBody(tagName!),
+        title: l10n.gitGraph.deleteTagTitle,
+        body: l10n.gitGraph.deleteTagConfirmBody(name: tagName!),
       );
       if (confirmed && context.mounted) await actions.deleteTag(tagName);
     case 'push-tag':
@@ -88,16 +88,16 @@ Future<void> showCommitContextMenu(
     case 'revert':
       final confirmed = await confirmDangerAction(
         context,
-        title: l10n.gitGraphRevert,
-        body: l10n.gitGraphRevertConfirmBody(row.hash),
+        title: l10n.gitGraph.revert,
+        body: l10n.gitGraph.revertConfirmBody(hash: row.hash),
       );
       if (confirmed && context.mounted) await actions.revert(row.hash);
     case 'reset-hard':
       final branch = state.currentBranch;
       final confirmed = await confirmDangerAction(
         context,
-        title: l10n.gitGraphResetHard,
-        body: l10n.gitGraphResetHardConfirmBody(branch),
+        title: l10n.gitGraph.resetHard,
+        body: l10n.gitGraph.resetHardConfirmBody(branch: branch),
         typeToConfirm: branch,
       );
       if (confirmed && context.mounted) {
@@ -119,13 +119,13 @@ Future<void> showCommitContextMenu(
       await _copyAndNotify(
         context,
         text: row.hash,
-        message: l10n.gitGraphHashCopied,
+        message: l10n.gitGraph.hashCopied,
       );
     case 'copy-subject':
       await _copyAndNotify(
         context,
         text: row.subject,
-        message: l10n.gitGraphSubjectCopied,
+        message: l10n.gitGraph.subjectCopied,
       );
   }
 }
@@ -140,99 +140,99 @@ List<TpActionMenuSpec> _menuSpecs(
     TpActionMenuSpec.item(
       value: 'checkout',
       icon: Icons.check_circle_outline,
-      label: l10n.gitGraphCheckoutBranch(localBranch),
+      label: l10n.gitGraph.checkoutBranch(branch: localBranch),
     ),
     TpActionMenuSpec.item(
       value: 'rename-branch',
       icon: Icons.drive_file_rename_outline,
-      label: l10n.gitGraphRenameBranch,
+      label: l10n.gitGraph.renameBranch,
     ),
     TpActionMenuSpec.item(
       value: 'delete-branch',
       icon: Icons.delete_outline,
-      label: l10n.gitGraphDeleteBranch(localBranch),
+      label: l10n.gitGraph.deleteBranch(name: localBranch),
       destructive: true,
     ),
     TpActionMenuSpec.item(
       value: 'merge-branch',
       icon: Icons.merge_type,
-      label: l10n.gitGraphMergeIntoCurrent(localBranch),
+      label: l10n.gitGraph.mergeIntoCurrent(branch: localBranch),
     ),
   ],
   TpActionMenuSpec.item(
     value: 'create-branch',
     icon: Icons.fork_right,
-    label: l10n.gitGraphCreateBranchHere,
+    label: l10n.gitGraph.createBranchHere,
   ),
   TpActionMenuSpec.item(
     value: 'create-tag',
     icon: Icons.sell_outlined,
-    label: l10n.gitGraphCreateTagHere,
+    label: l10n.gitGraph.createTagHere,
   ),
   TpActionMenuSpec.item(
     value: 'checkout-commit',
     icon: Icons.commit,
-    label: l10n.gitGraphCheckoutCommit,
+    label: l10n.gitGraph.checkoutCommit,
   ),
   if (tagName != null) ...[
     TpActionMenuSpec.item(
       value: 'push-tag',
       icon: Icons.cloud_upload_outlined,
-      label: l10n.gitGraphPushTag(tagName),
+      label: l10n.gitGraph.pushTag(name: tagName),
     ),
     TpActionMenuSpec.item(
       value: 'delete-tag',
       icon: Icons.delete_outline,
-      label: l10n.gitGraphDeleteTag(tagName),
+      label: l10n.gitGraph.deleteTag(name: tagName),
       destructive: true,
     ),
   ],
   TpActionMenuSpec.item(
     value: 'cherry-pick',
     icon: Icons.playlist_add,
-    label: l10n.gitGraphCherryPick,
+    label: l10n.gitGraph.cherryPick,
   ),
   TpActionMenuSpec.item(
     value: 'revert',
     icon: Icons.undo,
-    label: l10n.gitGraphRevert,
+    label: l10n.gitGraph.revert,
   ),
   TpActionMenuSpec.item(
     icon: Icons.restart_alt,
-    label: l10n.gitGraphReset,
+    label: l10n.gitGraph.reset,
     enabled: false,
   ),
   TpActionMenuSpec.item(
     value: 'reset-soft',
     icon: Icons.restart_alt,
-    label: l10n.gitGraphResetSoft,
+    label: l10n.gitGraph.resetSoft,
   ),
   TpActionMenuSpec.item(
     value: 'reset-mixed',
     icon: Icons.restart_alt,
-    label: l10n.gitGraphResetMixed,
+    label: l10n.gitGraph.resetMixed,
   ),
   TpActionMenuSpec.item(
     value: 'reset-hard',
     icon: Icons.restart_alt,
-    label: l10n.gitGraphResetHard,
+    label: l10n.gitGraph.resetHard,
     destructive: true,
   ),
   const TpActionMenuSpec.divider(),
   TpActionMenuSpec.item(
     value: 'compare',
     icon: Icons.difference_outlined,
-    label: l10n.gitGraphCompareWith,
+    label: l10n.gitGraph.compareWith,
   ),
   TpActionMenuSpec.item(
     value: 'copy-hash',
     icon: Icons.copy,
-    label: l10n.gitGraphCopyHash,
+    label: l10n.gitGraph.copyHash,
   ),
   TpActionMenuSpec.item(
     value: 'copy-subject',
     icon: Icons.subject,
-    label: l10n.gitGraphCopySubject,
+    label: l10n.gitGraph.copySubject,
   ),
 ];
 
@@ -240,9 +240,9 @@ Future<String?> _promptBranchName(BuildContext context) {
   final l10n = context.l10n;
   return showTpTextPromptDialog(
     context,
-    title: l10n.gitGraphCreateBranchTitle,
-    labelText: l10n.gitGraphBranchNameLabel,
-    confirmLabel: l10n.gitGraphCreate,
+    title: l10n.gitGraph.createBranchTitle,
+    labelText: l10n.gitGraph.branchNameLabel,
+    confirmLabel: l10n.gitGraph.create,
   ).then((value) => value?.trim());
 }
 
@@ -251,9 +251,9 @@ Future<String?> showRenameBranchDialog(BuildContext context, String oldName) {
   final l10n = context.l10n;
   return showTpTextPromptDialog(
     context,
-    title: l10n.gitGraphRenameBranchTitle,
+    title: l10n.gitGraph.renameBranchTitle,
     initialText: oldName,
-    labelText: l10n.gitGraphBranchNameLabel,
+    labelText: l10n.gitGraph.branchNameLabel,
     confirmLabel: l10n.confirm,
   ).then((value) => value?.trim());
 }
@@ -264,10 +264,10 @@ Future<(String, String)?> _promptTagName(BuildContext context) {
   return showDialog<(String, String)>(
     context: context,
     builder: (ctx) => _TagPromptDialog(
-      title: l10n.gitGraphCreateTagTitle,
-      nameLabel: l10n.gitGraphTagNameLabel,
-      messageLabel: l10n.gitGraphTagMessageLabel,
-      confirmLabel: l10n.gitGraphCreate,
+      title: l10n.gitGraph.createTagTitle,
+      nameLabel: l10n.gitGraph.tagNameLabel,
+      messageLabel: l10n.gitGraph.tagMessageLabel,
+      confirmLabel: l10n.gitGraph.create,
     ),
   );
 }

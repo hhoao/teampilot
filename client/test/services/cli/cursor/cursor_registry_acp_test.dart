@@ -12,7 +12,10 @@ void main() {
     registerBuiltInCliTools(registry);
     final cap = registry.capability<AcpCapability>(CliTool.cursor);
     expect(cap, isA<CursorAcpCapability>());
-    expect(cap!.agentExecutable('/usr/bin/cursor-agent'), '/usr/bin/cursor-agent');
+    expect(
+      cap!.agentExecutable('/usr/bin/cursor-agent'),
+      '/usr/bin/cursor-agent',
+    );
     expect(cap.launchArgCandidates('/usr/bin/cursor-agent'), [
       ['/usr/bin/cursor-agent', 'acp'],
     ]);

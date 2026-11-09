@@ -12,8 +12,8 @@ void main() {
     var choseEnv = false;
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         home: BootstrapStartupErrorPage(
           error: StateError('ssh down'),
@@ -39,8 +39,8 @@ void main() {
     var usedNative = false;
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         home: BootstrapStartupErrorPage(
           error: StateError('wsl unavailable'),
@@ -62,8 +62,8 @@ void main() {
   testWidgets('disables action buttons while retrying', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         home: BootstrapStartupErrorPage(
           error: StateError('ssh down'),

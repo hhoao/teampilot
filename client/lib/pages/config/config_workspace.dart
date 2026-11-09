@@ -90,67 +90,67 @@ Future<void> showWorkspaceSettingsDialog(
       ),
       SettingsDialogEntry(
         icon: Icons.terminal_outlined,
-        navLabel: (l10n) => l10n.session,
-        title: (l10n) => l10n.session,
-        subtitle: (l10n) => l10n.sessionPageSubtitle,
+        navLabel: (l10n) => l10n.session.session,
+        title: (l10n) => l10n.session.session,
+        subtitle: (l10n) => l10n.session.pageSubtitle,
         bodyBuilder: (_) => const SessionConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.code_outlined,
-        navLabel: (l10n) => l10n.cliConfig,
-        title: (l10n) => l10n.cliConfig,
-        subtitle: (l10n) => l10n.cliConfigPageSubtitle,
+        navLabel: (l10n) => l10n.cli.config,
+        title: (l10n) => l10n.cli.config,
+        subtitle: (l10n) => l10n.cli.configPageSubtitle,
         bodyBuilder: (_) => const CliConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.auto_awesome_outlined,
-        navLabel: (l10n) => l10n.aiFeatures,
-        title: (l10n) => l10n.aiFeatures,
-        subtitle: (l10n) => l10n.aiFeaturesPageSubtitle,
+        navLabel: (l10n) => l10n.ai.features,
+        title: (l10n) => l10n.ai.features,
+        subtitle: (l10n) => l10n.ai.featuresPageSubtitle,
         bodyBuilder: (_) => const AiFeaturesConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.link_outlined,
-        navLabel: (l10n) => l10n.remoteConnectionsTitle,
-        title: (l10n) => l10n.remoteConnectionsTitle,
-        subtitle: (l10n) => l10n.remoteConnectionsSubtitle,
+        navLabel: (l10n) => l10n.remote.connectionsTitle,
+        title: (l10n) => l10n.remote.connectionsTitle,
+        subtitle: (l10n) => l10n.remote.connectionsSubtitle,
         bodyBuilder: (_) =>
             const RemoteConnectionsConfigSection(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.dns_outlined,
-        navLabel: (l10n) => l10n.sshProfilesSettingsTitle,
-        title: (l10n) => l10n.sshProfilesPageTitle,
-        subtitle: (l10n) => l10n.sshProfilesPageSubtitle,
+        navLabel: (l10n) => l10n.sshProfile.sSettingsTitle,
+        title: (l10n) => l10n.sshProfile.sPageTitle,
+        subtitle: (l10n) => l10n.sshProfile.sPageSubtitle,
         bodyBuilder: (_) =>
             const SshProfilesConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.lock_outline,
-        navLabel: (l10n) => l10n.vaultPageTitle,
-        title: (l10n) => l10n.vaultPageTitle,
-        subtitle: (l10n) => l10n.vaultPageSubtitle,
+        navLabel: (l10n) => l10n.vault.pageTitle,
+        title: (l10n) => l10n.vault.pageTitle,
+        subtitle: (l10n) => l10n.vault.pageSubtitle,
         bodyBuilder: (_) => const VaultConfigSection(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.phone_android_outlined,
-        navLabel: (l10n) => l10n.connectSettingsTitle,
-        title: (l10n) => l10n.connectSettingsTitle,
-        subtitle: (l10n) => l10n.connectSettingsSubtitle,
+        navLabel: (l10n) => l10n.connect.settingsTitle,
+        title: (l10n) => l10n.connect.settingsTitle,
+        subtitle: (l10n) => l10n.connect.settingsSubtitle,
         bodyBuilder: (_) => const ConnectConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.hub_outlined,
-        navLabel: (l10n) => l10n.githubSettingsTitle,
-        title: (l10n) => l10n.githubSettingsTitle,
-        subtitle: (l10n) => l10n.githubSettingsSubtitle,
+        navLabel: (l10n) => l10n.github.settingsTitle,
+        title: (l10n) => l10n.github.settingsTitle,
+        subtitle: (l10n) => l10n.github.settingsSubtitle,
         bodyBuilder: (_) => const GithubConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.cloud_download_outlined,
-        navLabel: (l10n) => l10n.downloadSourcesSettingsTitle,
-        title: (l10n) => l10n.downloadSourcesSettingsTitle,
-        subtitle: (l10n) => l10n.downloadSourcesSettingsSubtitle,
+        navLabel: (l10n) => l10n.download.sourcesSettingsTitle,
+        title: (l10n) => l10n.download.sourcesSettingsTitle,
+        subtitle: (l10n) => l10n.download.sourcesSettingsSubtitle,
         bodyBuilder: (_) =>
             const DownloadSourcesConfigWorkspace(showHeading: false),
       ),
@@ -163,9 +163,9 @@ Future<void> showWorkspaceSettingsDialog(
       ),
       SettingsDialogEntry(
         icon: Icons.keyboard_outlined,
-        navLabel: (l10n) => l10n.shortcutsSettingsTitle,
-        title: (l10n) => l10n.shortcutsSettingsTitle,
-        subtitle: (l10n) => l10n.shortcutsPageSubtitle,
+        navLabel: (l10n) => l10n.shortcuts.settingsTitle,
+        title: (l10n) => l10n.shortcuts.settingsTitle,
+        subtitle: (l10n) => l10n.shortcuts.pageSubtitle,
         bodyBuilder: (_) => const ShortcutsConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
@@ -209,7 +209,7 @@ class ConfigSettingsHubPage extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configSessionSectionButton,
-          title: l10n.session,
+          title: l10n.session.session,
           icon: Icons.terminal_outlined,
           onTap: throttledTap('config_hub_session', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.session);
@@ -218,7 +218,7 @@ class ConfigSettingsHubPage extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configCliSectionButton,
-          title: l10n.cliConfig,
+          title: l10n.cli.config,
           icon: Icons.code_outlined,
           onTap: throttledTap('config_hub_cli', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.cli);
@@ -227,7 +227,7 @@ class ConfigSettingsHubPage extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configAiFeaturesSectionButton,
-          title: l10n.aiFeatures,
+          title: l10n.ai.features,
           icon: Icons.auto_awesome_outlined,
           onTap: throttledTap('config_hub_ai_features', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.aiFeatures);
@@ -236,7 +236,7 @@ class ConfigSettingsHubPage extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configRemoteConnectionsSectionButton,
-          title: l10n.remoteConnectionsTitle,
+          title: l10n.remote.connectionsTitle,
           icon: Icons.link_outlined,
           onTap: throttledTap('config_hub_remote_connections', () {
             context.read<ConfigCubit>().selectSection(
@@ -249,7 +249,7 @@ class ConfigSettingsHubPage extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configSshProfilesSectionButton,
-          title: l10n.sshProfilesSettingsTitle,
+          title: l10n.sshProfile.sSettingsTitle,
           icon: Icons.dns_outlined,
           onTap: throttledTap('config_hub_ssh_profiles', () {
             context.read<ConfigCubit>().selectSection(
@@ -260,7 +260,7 @@ class ConfigSettingsHubPage extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configVaultSectionButton,
-          title: l10n.vaultPageTitle,
+          title: l10n.vault.pageTitle,
           icon: Icons.lock_outline,
           onTap: throttledTap('config_hub_vault', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.vault);
@@ -268,7 +268,7 @@ class ConfigSettingsHubPage extends StatelessWidget {
           }),
         ),
         WorkspaceHubEntry(
-          title: l10n.connectSettingsTitle,
+          title: l10n.connect.settingsTitle,
           icon: Icons.phone_android_outlined,
           onTap: throttledTap('config_hub_connect', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.connect);
@@ -277,7 +277,7 @@ class ConfigSettingsHubPage extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configGithubSectionButton,
-          title: l10n.githubSettingsTitle,
+          title: l10n.github.settingsTitle,
           icon: Icons.hub_outlined,
           onTap: throttledTap('config_hub_github', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.github);
@@ -285,7 +285,7 @@ class ConfigSettingsHubPage extends StatelessWidget {
           }),
         ),
         WorkspaceHubEntry(
-          title: l10n.downloadSourcesSettingsTitle,
+          title: l10n.download.sourcesSettingsTitle,
           icon: Icons.cloud_download_outlined,
           onTap: throttledTap('config_hub_download_sources', () {
             context.read<ConfigCubit>().selectSection(
@@ -307,7 +307,7 @@ class ConfigSettingsHubPage extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configShortcutsSectionButton,
-          title: l10n.shortcutsSettingsTitle,
+          title: l10n.shortcuts.settingsTitle,
           icon: Icons.keyboard_outlined,
           onTap: throttledTap('config_hub_shortcuts', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.shortcuts);
@@ -430,7 +430,7 @@ class ConfigNavPanel extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configSessionSectionButton,
-          title: l10n.session,
+          title: l10n.session.session,
           icon: Icons.terminal_outlined,
           selected: section == ConfigSection.session,
           onTap: throttledTap(
@@ -440,7 +440,7 @@ class ConfigNavPanel extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configCliSectionButton,
-          title: l10n.cliConfig,
+          title: l10n.cli.config,
           icon: Icons.code_outlined,
           selected: section == ConfigSection.cli,
           onTap: throttledTap(
@@ -450,7 +450,7 @@ class ConfigNavPanel extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configAiFeaturesSectionButton,
-          title: l10n.aiFeatures,
+          title: l10n.ai.features,
           icon: Icons.auto_awesome_outlined,
           selected: section == ConfigSection.aiFeatures,
           onTap: throttledTap(
@@ -460,7 +460,7 @@ class ConfigNavPanel extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configRemoteConnectionsSectionButton,
-          title: l10n.remoteConnectionsTitle,
+          title: l10n.remote.connectionsTitle,
           icon: Icons.link_outlined,
           selected: section == ConfigSection.remoteConnections,
           onTap: throttledTap(
@@ -470,7 +470,7 @@ class ConfigNavPanel extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configSshProfilesSectionButton,
-          title: l10n.sshProfilesSettingsTitle,
+          title: l10n.sshProfile.sSettingsTitle,
           icon: Icons.dns_outlined,
           selected: section == ConfigSection.sshProfiles,
           onTap: throttledTap(
@@ -480,7 +480,7 @@ class ConfigNavPanel extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configVaultSectionButton,
-          title: l10n.vaultPageTitle,
+          title: l10n.vault.pageTitle,
           icon: Icons.lock_outline,
           selected: section == ConfigSection.vault,
           onTap: throttledTap(
@@ -489,7 +489,7 @@ class ConfigNavPanel extends StatelessWidget {
           ),
         ),
         WorkspaceHubEntry(
-          title: l10n.connectSettingsTitle,
+          title: l10n.connect.settingsTitle,
           icon: Icons.phone_android_outlined,
           selected: section == ConfigSection.connect,
           onTap: throttledTap(
@@ -499,7 +499,7 @@ class ConfigNavPanel extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configGithubSectionButton,
-          title: l10n.githubSettingsTitle,
+          title: l10n.github.settingsTitle,
           icon: Icons.hub_outlined,
           selected: section == ConfigSection.github,
           onTap: throttledTap(
@@ -508,7 +508,7 @@ class ConfigNavPanel extends StatelessWidget {
           ),
         ),
         WorkspaceHubEntry(
-          title: l10n.downloadSourcesSettingsTitle,
+          title: l10n.download.sourcesSettingsTitle,
           icon: Icons.cloud_download_outlined,
           selected: section == ConfigSection.downloadSources,
           onTap: throttledTap(
@@ -528,7 +528,7 @@ class ConfigNavPanel extends StatelessWidget {
         ),
         WorkspaceHubEntry(
           key: AppKeys.configShortcutsSectionButton,
-          title: l10n.shortcutsSettingsTitle,
+          title: l10n.shortcuts.settingsTitle,
           icon: Icons.keyboard_outlined,
           selected: section == ConfigSection.shortcuts,
           onTap: throttledTap(

@@ -53,8 +53,8 @@ class _OnboardingWorkHomeStepState extends State<OnboardingWorkHomeStep> {
 
     final l10n = context.l10n;
     return OnboardingStepScaffold(
-      title: l10n.onboardingWorkHomeTitle,
-      subtitle: l10n.onboardingWorkHomeSubtitle,
+      title: l10n.onboarding.workHomeTitle,
+      subtitle: l10n.onboarding.workHomeSubtitle,
       scrollBody: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -46,8 +46,8 @@ void main() {
     required FloatingMaximizeInsets insets,
   }) {
     return MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       locale: const Locale('en'),
       home: RepositoryProvider<CommandBus>.value(
         value: CommandBus(),

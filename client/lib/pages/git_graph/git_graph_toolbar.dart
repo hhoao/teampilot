@@ -67,15 +67,15 @@ class GitGraphToolbar extends StatelessWidget {
                       icon: Icons.cloud_download_outlined,
                       busy: state.operation == GitOperation.fetch,
                       tooltip: state.operation == GitOperation.fetch
-                          ? l10n.gitFetching
-                          : l10n.gitGraphFetch,
+                          ? l10n.git.fetching
+                          : l10n.gitGraph.fetch,
                       compact: true,
                       enabled: !state.busy,
                       onPressed: () => _runAction(
                         context,
                         (actions) => actions.fetchAll(),
-                        title: l10n.gitFetching,
-                        doneMessage: l10n.gitFetchDone,
+                        title: l10n.git.fetching,
+                        doneMessage: l10n.git.fetchDone,
                       ),
                     ),
                     TpAnimatedIconButton(
@@ -83,15 +83,15 @@ class GitGraphToolbar extends StatelessWidget {
                       icon: Icons.arrow_downward_rounded,
                       busy: state.operation == GitOperation.pull,
                       tooltip: state.operation == GitOperation.pull
-                          ? l10n.gitPulling
-                          : l10n.gitGraphPull,
+                          ? l10n.git.pulling
+                          : l10n.gitGraph.pull,
                       compact: true,
                       enabled: !state.busy,
                       onPressed: () => _runAction(
                         context,
                         (actions) => actions.pull(),
-                        title: l10n.gitPulling,
-                        doneMessage: l10n.gitPullDone,
+                        title: l10n.git.pulling,
+                        doneMessage: l10n.git.pullDone,
                       ),
                     ),
                     TpAnimatedIconButton(
@@ -99,15 +99,15 @@ class GitGraphToolbar extends StatelessWidget {
                       icon: Icons.arrow_upward_rounded,
                       busy: state.operation == GitOperation.push,
                       tooltip: state.operation == GitOperation.push
-                          ? l10n.gitPushing
-                          : l10n.gitGraphPush,
+                          ? l10n.git.pushing
+                          : l10n.gitGraph.push,
                       compact: true,
                       enabled: !state.busy,
                       onPressed: () => _runAction(
                         context,
                         (actions) => actions.push(),
-                        title: l10n.gitPushing,
-                        doneMessage: l10n.gitPushDone,
+                        title: l10n.git.pushing,
+                        doneMessage: l10n.git.pushDone,
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -132,8 +132,8 @@ class GitGraphToolbar extends StatelessWidget {
             icon: Icons.refresh_rounded,
             busy: state.isRefreshing,
             tooltip: state.isRefreshing
-                ? l10n.gitRefreshing
-                : l10n.gitGraphRefresh,
+                ? l10n.git.refreshing
+                : l10n.gitGraph.refresh,
             compact: true,
             enabled: !state.isRefreshing && !state.busy,
             onPressed: () => unawaited(
@@ -141,8 +141,8 @@ class GitGraphToolbar extends StatelessWidget {
                 context,
                 workspaceId: workspaceId,
                 repoRoot: state.repoRoot,
-                title: l10n.gitRefreshing,
-                doneMessage: l10n.gitRefreshing,
+                title: l10n.git.refreshing,
+                doneMessage: l10n.git.refreshing,
                 showSuccessToast: false,
                 body: () async {
                   await context.read<GitGraphCubit>().refresh(manual: true);
@@ -162,7 +162,7 @@ class GitGraphToolbar extends StatelessWidget {
     return TpSegmentedControl(
       totalSwitches: 2,
       initialLabelIndex: state.currentOnly ? 1 : 0,
-      labels: [l10n.gitGraphAllBranches, l10n.gitGraphCurrentBranch],
+      labels: [l10n.gitGraph.allBranches, l10n.gitGraph.currentBranch],
       variant: TpSegmentedControlVariant.outlined,
       minHeight: 28,
       minWidth: 64,
@@ -178,7 +178,7 @@ class GitGraphToolbar extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     return Tooltip(
-      message: l10n.gitGraphViewBranchHistory,
+      message: l10n.gitGraph.viewBranchHistory,
       child: Container(
         key: const ValueKey('git-graph-branch-filter-chip'),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
@@ -227,7 +227,7 @@ class GitGraphToolbar extends StatelessWidget {
       style: TpTextStyles.of(context).md,
       borderRadius: tpSearchPillRadius,
       decoration: InputDecoration(
-        hintText: l10n.gitGraphSearchHint,
+        hintText: l10n.gitGraph.searchHint,
         prefixIcon: Icon(
           Icons.search_rounded,
           size: 16,
@@ -287,9 +287,9 @@ class GitGraphToolbar extends StatelessWidget {
 
   String _modeLabel(AppLocalizations l10n, GitSearchMode mode) =>
       switch (mode) {
-        GitSearchMode.message => l10n.gitGraphSearchModeMessage,
-        GitSearchMode.author => l10n.gitGraphSearchModeAuthor,
-        GitSearchMode.hash => l10n.gitGraphSearchModeHash,
+        GitSearchMode.message => l10n.gitGraph.searchModeMessage,
+        GitSearchMode.author => l10n.gitGraph.searchModeAuthor,
+        GitSearchMode.hash => l10n.gitGraph.searchModeHash,
       };
 
   Future<void> _runAction(
@@ -334,17 +334,17 @@ class _StashMenuState extends State<_StashMenu> {
         TpActionMenuSpec.item(
           value: 'pop',
           icon: Icons.unarchive,
-          label: l10n.gitGraphStashPop,
+          label: l10n.gitGraph.stashPop,
         ),
         TpActionMenuSpec.item(
           value: 'apply',
           icon: Icons.move_to_inbox,
-          label: l10n.gitGraphStashApply,
+          label: l10n.gitGraph.stashApply,
         ),
         TpActionMenuSpec.item(
           value: 'drop',
           icon: Icons.delete_outline,
-          label: l10n.gitGraphStashDrop,
+          label: l10n.gitGraph.stashDrop,
           destructive: true,
         ),
       ],
@@ -361,8 +361,8 @@ class _StashMenuState extends State<_StashMenu> {
       case 'drop':
         final confirmed = await confirmDangerAction(
           context,
-          title: l10n.gitGraphStashDrop,
-          body: l10n.gitGraphStashDropConfirmBody(entry.selector),
+          title: l10n.gitGraph.stashDrop,
+          body: l10n.gitGraph.stashDropConfirmBody(selector: entry.selector),
         );
         if (!confirmed || !mounted) return;
         await controller.stashDrop(ref: entry.selector);
@@ -384,7 +384,7 @@ class _StashMenuState extends State<_StashMenu> {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     return Tooltip(
-      message: l10n.gitGraphStash,
+      message: l10n.gitGraph.stash,
       child: TpActionMenuIconAnchor(
         minWidth: 220,
         triggerBuilder: (context, controller) {
@@ -403,7 +403,7 @@ class _StashMenuState extends State<_StashMenu> {
                   color: cs.onSurfaceVariant,
                 ),
                 const SizedBox(width: 4),
-                Text(l10n.gitGraphStash, style: TpTextStyles.of(context).md),
+                Text(l10n.gitGraph.stash, style: TpTextStyles.of(context).md),
                 Icon(
                   Icons.arrow_drop_down_rounded,
                   size: 16,
@@ -420,7 +420,7 @@ class _StashMenuState extends State<_StashMenu> {
               specs: [
                 TpActionMenuSpec.item(
                   icon: Icons.inventory_2_outlined,
-                  label: l10n.gitGraphStash,
+                  label: l10n.gitGraph.stash,
                   enabled: false,
                 ),
               ],
@@ -466,13 +466,13 @@ class _ColumnsMenu extends StatelessWidget {
     final layout = context.read<LayoutCubit>();
     return TpActionMenuButton(
       icon: Icon(Icons.view_column_outlined, size: context.tpIconSizes.md),
-      tooltip: l10n.gitGraphColumns,
+      tooltip: l10n.gitGraph.columns,
       size: 28,
       specs: [
         TpActionMenuSpec.item(
           value: 'header',
           icon: Icons.view_column_outlined,
-          label: l10n.gitGraphColumnHeaderLabel,
+          label: l10n.gitGraph.columnHeaderLabel,
           selected: headerVisible,
         ),
         const TpActionMenuSpec.divider(),
@@ -513,8 +513,8 @@ class _ColumnsMenu extends StatelessWidget {
 
   static String _columnLabel(AppLocalizations l10n, GitGraphColumnId id) =>
       switch (id) {
-        GitGraphColumnId.date => l10n.gitGraphColumnDate,
-        GitGraphColumnId.author => l10n.gitGraphColumnAuthor,
-        GitGraphColumnId.commit => l10n.gitGraphColumnCommit,
+        GitGraphColumnId.date => l10n.gitGraph.columnDate,
+        GitGraphColumnId.author => l10n.gitGraph.columnAuthor,
+        GitGraphColumnId.commit => l10n.gitGraph.columnCommit,
       };
 }

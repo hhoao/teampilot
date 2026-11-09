@@ -1,0 +1,23 @@
+{
+  "cascadeCustomModelId": "自定义模型 ID…",
+  "cascadeCustomModelIdTitle": "自定义模型 ID",
+  "cascadeDefaultEffort": "默认",
+  "cascadeNoModels": "暂无模型目录",
+  "cascadeNoProviders": "尚未配置任何服务商",
+  "cascadePresets": "预设",
+  "cascadeSavePreset": "保存当前为预设…",
+  "commandExperimental": "实验性",
+  "commandNative": "原生命令",
+  "commandPlugin": "插件",
+  "nativeCommandCompact": "压缩当前对话上下文。",
+  "nativeCommandGoal": "为长时间运行的工作保留持久目标。",
+  "nativeCommandHelp": "显示此 CLI 会话中可用的命令。",
+  "nativeCommandPlan": "将会话切换到规划工作流。",
+  "pasteClipEdit": "编辑已粘贴文本",
+  "pasteClipLabel": "粘贴文本",
+  "pasteClipLines": "{lines: int} 行",
+  "pasteClipRemove": "移除已粘贴文本",
+  "pasteEditorDone": "完成",
+  "pasteEditorRemove": "移除",
+  "pasteEditorTitle": "编辑已粘贴文本 · {lines: int} 行"
+}

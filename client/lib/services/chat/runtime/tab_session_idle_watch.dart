@@ -100,7 +100,8 @@ final class TabSessionIdleWatch {
           inTurn: inTurn,
           shell: shell,
           wasInTurn: _wasInTurn,
-          onTurnStarted: () => _onAfterTurnStarted?.call(tab.sessionId, memberId),
+          onTurnStarted: () =>
+              _onAfterTurnStarted?.call(tab.sessionId, memberId),
           endTurn: () {
             final cli = _memberCli?.call(tab, memberId);
             if (cli == null || !ptyQuietEndsTurn(cli)) return;

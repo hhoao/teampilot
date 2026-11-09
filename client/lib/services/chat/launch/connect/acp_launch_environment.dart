@@ -177,11 +177,12 @@ typedef AcpPreparedSimpleConnect = ({
 });
 
 /// Test seam: skips the production remote staging (`prepareSimpleConnect`).
-typedef AcpRemoteStagingBuilder = Future<AcpPreparedSimpleConnect> Function({
-  required AppSession session,
-  required Workspace workspace,
-  required RuntimeTarget launchTarget,
-});
+typedef AcpRemoteStagingBuilder =
+    Future<AcpPreparedSimpleConnect> Function({
+      required AppSession session,
+      required Workspace workspace,
+      required RuntimeTarget launchTarget,
+    });
 
 /// Values the personal ACP cubit starts with.
 typedef AcpPersonalLaunch = ({

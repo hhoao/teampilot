@@ -264,7 +264,7 @@ class _NotARepositoryHint extends StatelessWidget {
           Icon(Icons.folder_off_outlined, size: 28, color: cs.onSurfaceVariant),
           const SizedBox(height: 8),
           Text(
-            state.repoRoot.isEmpty ? '' : context.l10n.gitGraphNotARepository,
+            state.repoRoot.isEmpty ? '' : context.l10n.gitGraph.notARepository,
             style: TpTextStyles.of(context).smColored(cs.onSurfaceVariant),
           ),
         ],
@@ -336,7 +336,7 @@ class _GraphListState extends State<_GraphList> {
         state.rows.isNotEmpty) {
       return Center(
         child: Text(
-          context.l10n.gitGraphHashSearchEmptyHint,
+          context.l10n.gitGraph.hashSearchEmptyHint,
           textAlign: TextAlign.center,
           style: TpTextStyles.of(
             context,
@@ -359,7 +359,7 @@ class _GraphListState extends State<_GraphList> {
       }
       return Center(
         child: Text(
-          context.l10n.gitGraphNoCommits,
+          context.l10n.gitGraph.noCommits,
           style: TpTextStyles.of(
             context,
           ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
@@ -445,7 +445,7 @@ class _GraphListState extends State<_GraphList> {
   Future<void> _copyHash(BuildContext context, String hash) async {
     await Clipboard.setData(ClipboardData(text: hash));
     if (!context.mounted) return;
-    context.showAppToast(context.l10n.gitGraphHashCopied);
+    context.showAppToast(context.l10n.gitGraph.hashCopied);
   }
 }
 
@@ -474,7 +474,7 @@ class _UncommittedTileState extends State<_UncommittedTile> {
     await context.read<WorkbenchEditorOpener>().openChangesDiff(
       workspaceId: widget.workspaceId,
       absolutePath: cubit.state.repoRoot,
-      title: context.l10n.gitGraphUncommittedChanges,
+      title: context.l10n.gitGraph.uncommittedChanges,
       loadDiff: ({ignoreWhitespace = false, fullContext = false}) =>
           cubit.workingTreeDiff(
             ignoreWhitespace: ignoreWhitespace,
@@ -517,7 +517,7 @@ class _UncommittedTileState extends State<_UncommittedTile> {
                   description: Row(
                     children: [
                       Text(
-                        context.l10n.gitGraphUncommittedChanges,
+                        context.l10n.gitGraph.uncommittedChanges,
                         style: TpTextStyles.of(
                           context,
                         ).mdColored(cs.onSurfaceVariant),
@@ -576,7 +576,7 @@ class _LoadMoreTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  l10n.gitGraphLoadingMore,
+                  l10n.gitGraph.loadingMore,
                   style: TpTextStyles.of(context).xs,
                 ),
               ],
@@ -586,7 +586,7 @@ class _LoadMoreTile extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               borderRadius: BorderRadius.circular(6),
               child: Text(
-                l10n.gitGraphLoadMore,
+                l10n.gitGraph.loadMore,
                 style: TpTextStyles.of(context).xs,
               ),
             ),
@@ -626,7 +626,7 @@ class _StatusBar extends StatelessWidget {
                   // 冲突类错误追加处理指引（仅呈现，不改状态）。
                   if (_isConflictError(error))
                     Text(
-                      context.l10n.gitGraphConflictHint,
+                      context.l10n.gitGraph.conflictHint,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TpTextStyles.of(context).xsColored(cs.error),

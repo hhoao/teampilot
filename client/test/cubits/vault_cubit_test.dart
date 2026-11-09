@@ -142,12 +142,15 @@ void main() {
     expect(cubit.state.busy, isFalse);
   });
 
-  test('disabling encryption when not encrypted surfaces error and clears busy', () async {
-    await cubit.load(); // keychain mode: disable is invalid
-    await cubit.disableEncryption();
-    expect(cubit.state.errorMessage, isNotNull);
-    expect(cubit.state.busy, isFalse);
-  });
+  test(
+    'disabling encryption when not encrypted surfaces error and clears busy',
+    () async {
+      await cubit.load(); // keychain mode: disable is invalid
+      await cubit.disableEncryption();
+      expect(cubit.state.errorMessage, isNotNull);
+      expect(cubit.state.busy, isFalse);
+    },
+  );
 
   test('onUnlocked fires after a successful unlock', () async {
     final service = buildService();

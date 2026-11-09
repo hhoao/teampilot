@@ -215,7 +215,7 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                             if (!_isWorkHomeStep)
                               TextButton(
                                 onPressed: navigationLocked ? null : _skip,
-                                child: Text(l10n.onboardingSkip),
+                                child: Text(l10n.onboarding.skip),
                               ),
                             const Spacer(),
                             if (!_isFirstStep) ...[
@@ -223,7 +223,7 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                                 onPressed: navigationLocked
                                     ? null
                                     : () => unawaited(_goPrevious()),
-                                child: Text(l10n.onboardingPrevious),
+                                child: Text(l10n.onboarding.previous),
                               ),
                               const SizedBox(width: 12),
                             ],
@@ -233,8 +233,8 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                                   : () => unawaited(_goNext()),
                               child: Text(
                                 _isLastStep
-                                    ? l10n.onboardingGetStarted
-                                    : l10n.onboardingNext,
+                                    ? l10n.onboarding.getStarted
+                                    : l10n.onboarding.next,
                               ),
                             ),
                           ],

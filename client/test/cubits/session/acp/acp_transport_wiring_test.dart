@@ -41,10 +41,7 @@ void main() {
       profile: _profile,
       argv: const ['opencode', 'acp'],
       workingDirectory: '/work/proj',
-      env: const {
-        'HOME': '/home/u',
-        'ANTHROPIC_API_KEY': '',
-      },
+      env: const {'HOME': '/home/u', 'ANTHROPIC_API_KEY': ''},
     );
     expect(command, contains('opencode'));
     expect(command, contains('/work/proj'));
@@ -57,10 +54,7 @@ void main() {
       profile: _profile,
       argv: const ['opencode', 'acp'],
       workingDirectory: '/work/proj',
-      env: const {
-        'HOME': '/home/u',
-        'ANTHROPIC_API_KEY': '',
-      },
+      env: const {'HOME': '/home/u', 'ANTHROPIC_API_KEY': ''},
     );
     expect(
       command,
@@ -74,49 +68,49 @@ void main() {
     expect(command, isNot(contains('bash -lc')));
   });
 
-  test('sshAcpTransportStarter opens a channel for the built command', () async {
-    String? seenCommand;
-    final channel = _FakeChannel();
-    final starter = sshAcpTransportStarter(
-      profile: _profile,
-      openChannel: (command) async {
-        seenCommand = command;
-        return channel;
-      },
-    );
+  test(
+    'sshAcpTransportStarter opens a channel for the built command',
+    () async {
+      String? seenCommand;
+      final channel = _FakeChannel();
+      final starter = sshAcpTransportStarter(
+        profile: _profile,
+        openChannel: (command) async {
+          seenCommand = command;
+          return channel;
+        },
+      );
 
-    final started = await starter(
-      argv: const ['opencode', 'acp'],
-      env: const {},
-      workingDirectory: '/work/proj',
-      onStderr: null,
-    );
+      final started = await starter(
+        argv: const ['opencode', 'acp'],
+        env: const {},
+        workingDirectory: '/work/proj',
+        onStderr: null,
+      );
 
-    expect(seenCommand, isNotNull);
-    expect(seenCommand, contains('opencode'));
-    expect(started.transport, isA<AcpSshTransport>());
-    // Remote ACP has no local OS process to measure.
-    expect(started.pid, isNull);
-    // The exit future is wired to the channel, not completed yet.
-    // (`AcpStartedTransport.processExitCode` is nullable, hence the `!`.)
-    expect(started.processExitCode, isNotNull);
-    expect(
-      await started.processExitCode!.timeout(
-        const Duration(milliseconds: 100),
-        onTimeout: () => -1,
-      ),
-      -1,
-    );
-    channel.exit.complete(0);
-    expect(await started.processExitCode, 0);
-  });
+      expect(seenCommand, isNotNull);
+      expect(seenCommand, contains('opencode'));
+      expect(started.transport, isA<AcpSshTransport>());
+      // Remote ACP has no local OS process to measure.
+      expect(started.pid, isNull);
+      // The exit future is wired to the channel, not completed yet.
+      // (`AcpStartedTransport.processExitCode` is nullable, hence the `!`.)
+      expect(started.processExitCode, isNotNull);
+      expect(
+        await started.processExitCode!.timeout(
+          const Duration(milliseconds: 100),
+          onTimeout: () => -1,
+        ),
+        -1,
+      );
+      channel.exit.complete(0);
+      expect(await started.processExitCode, 0);
+    },
+  );
 
   test('acpStarterForTarget is null for a local target', () {
     expect(
-      acpStarterForTarget(
-        launchTarget: RuntimeTarget.local(),
-        sshLaunch: null,
-      ),
+      acpStarterForTarget(launchTarget: RuntimeTarget.local(), sshLaunch: null),
       isNull,
     );
   });
@@ -168,10 +162,7 @@ void main() {
 
     await starter!(
       argv: const ['opencode', 'acp'],
-      env: const {
-        'HOME': '/home/u',
-        'ANTHROPIC_API_KEY': '',
-      },
+      env: const {'HOME': '/home/u', 'ANTHROPIC_API_KEY': ''},
       workingDirectory: '/work/proj',
       onStderr: null,
     );

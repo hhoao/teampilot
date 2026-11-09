@@ -105,7 +105,7 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
         message: message,
         variant: TpToastVariant.warning,
         action: TpToastAction(
-          label: l10n.sessionHistoryRetry,
+          label: l10n.session.historyRetry,
           onPressed: () => unawaited(
             editor.retryDiffReload(widget.workspaceId, widget.diffKey),
           ),
@@ -139,7 +139,7 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
       return ColoredBox(
         // Same plane as file preview / floating chrome ([ColorScheme.surface]).
         color: cs.workspaceCardChrome(WorkspacePageChrome.workspace),
-        child: Center(child: Text(context.l10n.diffNoChanges)),
+        child: Center(child: Text(context.l10n.diff.noChanges)),
       );
     }
 
@@ -217,9 +217,9 @@ Future<bool> _confirmDiscardDiffEdits(BuildContext context) async {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.diffDiscardEditsApplyTitle),
+          TpDialogHeader(title: l10n.diff.discardEditsApplyTitle),
           const SizedBox(height: 12),
-          Text(l10n.diffDiscardEditsApplyBody),
+          Text(l10n.diff.discardEditsApplyBody),
           TpDialogActions(
             children: [
               TextButton(
@@ -228,7 +228,7 @@ Future<bool> _confirmDiscardDiffEdits(BuildContext context) async {
               ),
               FilledButton(
                 onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: Text(l10n.editorDiscard),
+                child: Text(l10n.editor.discard),
               ),
             ],
           ),

@@ -14,7 +14,7 @@ final class AntigravityExecutableCapability implements CliExecutableCapability {
   String get preferencesPathKey => 'cli.antigravity.path';
 
   @override
-  String label(AppLocalizations l10n) => l10n.appProviderToolAntigravity;
+  String label(AppLocalizations l10n) => l10n.appProvider.toolAntigravity;
 
   @override
   bool get supportsInstaller => true;

@@ -43,7 +43,7 @@ List<TpTableColumn<UsageGroup>> buildUsageTableColumns({
     if (groupBy != UsageGroupBy.cli)
       TpTableColumn<UsageGroup>(
         id: usageCliColumnId,
-        label: l10n.sessionUsageGroupCli,
+        label: l10n.sessionUsage.groupCli,
         width: 120,
         minWidth: 72,
         maxWidth: 160,
@@ -54,7 +54,7 @@ List<TpTableColumn<UsageGroup>> buildUsageTableColumns({
     if (groupBy == UsageGroupBy.session || groupBy == UsageGroupBy.member)
       TpTableColumn<UsageGroup>(
         id: usageTeamColumnId,
-        label: l10n.workspaceChatLandingModeTeam,
+        label: l10n.workspace.chatLandingModeTeam,
         width: 150,
         minWidth: 90,
         maxWidth: 260,
@@ -64,57 +64,57 @@ List<TpTableColumn<UsageGroup>> buildUsageTableColumns({
       ),
     _numberColumn(
       id: usageTotalColumnId,
-      label: l10n.sessionUsageTotalShort,
+      label: l10n.sessionUsage.totalShort,
       width: 100,
       value: (row) => row.totalTokens,
     ),
     _numberColumn(
       id: 'input',
-      label: l10n.sessionUsageInputShort,
+      label: l10n.sessionUsage.inputShort,
       width: 90,
       value: (row) => row.freshInputTokens,
     ),
     _numberColumn(
       id: 'output',
-      label: l10n.sessionUsageOutputShort,
+      label: l10n.sessionUsage.outputShort,
       width: 90,
       value: (row) => row.outputTokens,
     ),
     _numberColumn(
       id: 'cache',
-      label: l10n.sessionUsageCacheShort,
+      label: l10n.sessionUsage.cacheShort,
       width: 100,
       value: (row) => row.cacheReadTokens,
     ),
     TpTableColumn<UsageGroup>(
       id: 'cost',
-      label: l10n.sessionUsageCostShort,
+      label: l10n.sessionUsage.costShort,
       width: 110,
       minWidth: 80,
       maxWidth: 200,
       groupStart: true,
       sortValue: (row) => row.costMicroUsd,
       tooltip: (row) => row.pricedEvents == 0
-          ? l10n.sessionUsageCostUnpriced
+          ? l10n.sessionUsage.costUnpriced
           : '${formatUsageCost(row.costMicroUsd)}'
                 '${row.unpricedEvents > 0 ? '*' : ''}',
       cellBuilder: (context, row) => _CostCell(row: row),
     ),
     _numberColumn(
       id: 'requests',
-      label: l10n.sessionUsageRequestsShort,
+      label: l10n.sessionUsage.requestsShort,
       width: 80,
       value: (row) => row.requests,
     ),
     _numberColumn(
       id: 'sessions',
-      label: l10n.sessionUsageSessionsShort,
+      label: l10n.sessionUsage.sessionsShort,
       width: 90,
       value: (row) => row.sessions,
     ),
     TpTableColumn<UsageGroup>(
       id: 'share',
-      label: l10n.sessionUsageShareShort,
+      label: l10n.sessionUsage.shareShort,
       width: 120,
       minWidth: 110,
       maxWidth: 240,
@@ -278,7 +278,7 @@ class _CostCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final text = row.pricedEvents == 0
-        ? l10n.sessionUsageCostUnpriced
+        ? l10n.sessionUsage.costUnpriced
         : '${formatUsageCost(row.costMicroUsd)}'
               '${row.unpricedEvents > 0 ? '*' : ''}';
     final style = TpTextStyles.of(

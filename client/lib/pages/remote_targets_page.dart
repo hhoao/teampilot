@@ -29,7 +29,7 @@ class _RemoteTargetsPageState extends State<RemoteTargetsPage> {
   @override
   Widget build(BuildContext context) {
     final content = Scaffold(
-      appBar: AppBar(title: Text(context.l10n.homeConnectionSwitch)),
+      appBar: AppBar(title: Text(context.l10n.home.connectionSwitch)),
       body: const SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.all(16),

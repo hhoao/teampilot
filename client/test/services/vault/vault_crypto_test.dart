@@ -30,8 +30,10 @@ void main() {
 
   test('ciphertext does not contain plaintext', () async {
     final envelope = await crypto.encrypt(_document, 'pass');
-    expect(utf8.decode(envelope.payload, allowMalformed: true),
-        isNot(contains('sk-secret')));
+    expect(
+      utf8.decode(envelope.payload, allowMalformed: true),
+      isNot(contains('sk-secret')),
+    );
   });
 
   test('wrong passphrase fails without leaking secrets', () async {

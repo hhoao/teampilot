@@ -78,7 +78,6 @@ class GitRepoStore {
   final DateTime Function() _now;
   final HomeStorage? _storage;
 
-
   final _headChanged = StreamController<String>.broadcast(sync: true);
 
   /// HEAD-branch mutation notifications (repoRoot), e.g. git panel / graph

@@ -94,7 +94,7 @@ class WorkspaceFolderDirectoryRow extends StatelessWidget {
     final hasPath = path.isNotEmpty;
     final name = hasPath
         ? workspacePathBasename(path)
-        : l10n.workspacePrimaryPathNotSelected;
+        : l10n.workspace.primaryPathNotSelected;
     final parent = hasPath ? workspacePathParent(path) : '';
     final targetLabel = workspaceFolderTargetLabel(targets, folder.targetId);
 

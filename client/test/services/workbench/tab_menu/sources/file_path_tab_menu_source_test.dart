@@ -9,7 +9,9 @@ void main() {
   late AppLocalizations l10n;
 
   setUpAll(() async {
-    l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
   });
 
   final source = FilePathTabMenuSource();
@@ -55,23 +57,23 @@ void main() {
     ]);
     expect(
       items.singleWhere((item) => item.id == 'file.copy_path').label,
-      l10n.fileTreeCopyPath,
+      l10n.fileTree.copyPath,
     );
     expect(
       items.singleWhere((item) => item.id == 'file.copy_relative_path').label,
-      l10n.fileTreeCopyRelativePath,
+      l10n.fileTree.copyRelativePath,
     );
     expect(
       items.singleWhere((item) => item.id == 'file.reveal').label,
-      l10n.fileTreeOpenInFileManager,
+      l10n.fileTree.openInFileManager,
     );
     expect(
       items.singleWhere((item) => item.id == 'file.open_terminal').label,
-      l10n.fileTreeOpenInTerminal,
+      l10n.fileTree.openInTerminal,
     );
     expect(
       items.singleWhere((item) => item.id == 'file.open_external').label,
-      l10n.fileTreeOpenWithSystemApp,
+      l10n.fileTree.openWithSystemApp,
     );
   });
 

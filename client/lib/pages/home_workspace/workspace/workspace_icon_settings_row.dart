@@ -37,7 +37,7 @@ class WorkspaceIconSettingsRow extends StatelessWidget {
               SizedBox(
                 width: 168,
                 child: Text(
-                  l10n.workspaceIcon,
+                  l10n.workspace.icon,
                   style: TpTextStyles.of(
                     context,
                   ).mdMediumColored(cs.onSurfaceVariant),
@@ -52,7 +52,7 @@ class WorkspaceIconSettingsRow extends StatelessWidget {
               const Spacer(),
               TextButton(
                 onPressed: () => unawaited(_editIcon(context)),
-                child: Text(l10n.edit),
+                child: Text(l10n.edit.edit),
               ),
             ],
           ),

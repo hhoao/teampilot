@@ -31,12 +31,12 @@ enum TeamConfigSection implements WorkspaceSectionDescriptor {
 
   @override
   String title(AppLocalizations l10n) => switch (this) {
-    TeamConfigSection.team => l10n.teamSettings,
-    TeamConfigSection.skills => l10n.teamSkillsNav,
-    TeamConfigSection.plugins => l10n.teamPluginsNav,
-    TeamConfigSection.mcp => l10n.teamMcpNav,
-    TeamConfigSection.extensions => l10n.teamExtensionsNav,
-    TeamConfigSection.hooks => l10n.teamHooksNav,
+    TeamConfigSection.team => l10n.team.settings,
+    TeamConfigSection.skills => l10n.team.skillsNav,
+    TeamConfigSection.plugins => l10n.team.pluginsNav,
+    TeamConfigSection.mcp => l10n.team.mcpNav,
+    TeamConfigSection.extensions => l10n.team.extensionsNav,
+    TeamConfigSection.hooks => l10n.team.hooksNav,
     TeamConfigSection.members => l10n.members,
   };
 

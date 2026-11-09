@@ -477,16 +477,16 @@ class _HomeShellState extends State<HomeShell> {
   Future<bool?> _confirmCloseWithSessions(int running) {
     final l10n = context.l10n;
     return _confirmCloseEndSessions(
-      title: l10n.homeWorkspaceCloseWorkspaceTitle,
-      message: l10n.homeWorkspaceCloseWorkspaceMessage(running),
+      title: l10n.homeWorkspace.closeWorkspaceTitle,
+      message: l10n.homeWorkspace.closeWorkspaceMessage(count: running),
     );
   }
 
   Future<bool?> _confirmCloseAllWithSessions(int running) {
     final l10n = context.l10n;
     return _confirmCloseEndSessions(
-      title: l10n.homeWorkspaceCloseAllTabsTitle,
-      message: l10n.homeWorkspaceCloseAllTabsMessage(running),
+      title: l10n.homeWorkspace.closeAllTabsTitle,
+      message: l10n.homeWorkspace.closeAllTabsMessage(count: running),
     );
   }
 
@@ -517,7 +517,7 @@ class _HomeShellState extends State<HomeShell> {
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: Text(l10n.homeWorkspaceCloseWorkspaceConfirm),
+                  child: Text(l10n.homeWorkspace.closeWorkspaceConfirm),
                 ),
               ],
             ),

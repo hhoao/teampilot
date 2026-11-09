@@ -72,7 +72,7 @@ List<TpActionMenuSpec> _launchMenuSpecs(
         specs.add(
           TpActionMenuSpec.item(
             value: item,
-            label: l10n.workspaceTerminalNewSshSession,
+            label: l10n.workspace.terminalNewSshSession,
             icon: Icons.add_link,
           ),
         );
@@ -80,7 +80,7 @@ List<TpActionMenuSpec> _launchMenuSpecs(
         specs.add(
           TpActionMenuSpec.item(
             value: item,
-            label: l10n.workspaceTerminalSettings,
+            label: l10n.workspace.terminalSettings,
             icon: Icons.settings_outlined,
           ),
         );
@@ -124,18 +124,18 @@ Future<void> showWorkspaceTerminalSettingsSheet(BuildContext context) async {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    context.l10n.workspaceTerminalSettings,
+                    context.l10n.workspace.terminalSettings,
                     style: TpTextStyles.of(context).mdSemiboldTightSnug,
                   ),
                   const SizedBox(height: 12),
                   TpCompactSelect<String>(
                     value: mode,
                     entries: [
-                      ('adaptive', l10n.workspaceTerminalThemeAdaptive),
-                      ('classicDark', l10n.workspaceTerminalThemeClassicDark),
+                      ('adaptive', l10n.workspace.terminalThemeAdaptive),
+                      ('classicDark', l10n.workspace.terminalThemeClassicDark),
                       (
                         'highContrast',
-                        l10n.workspaceTerminalThemeHighContrast,
+                        l10n.workspace.terminalThemeHighContrast,
                       ),
                     ],
                     onChanged: (value) {

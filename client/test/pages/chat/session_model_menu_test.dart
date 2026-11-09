@@ -54,11 +54,7 @@ void main() {
   group('acpModelIdForLaunch', () {
     test('uses the bare id when the agent advertises it', () {
       expect(
-        acpModelIdForLaunch(
-          state: modelState,
-          namespace: '',
-          model: 'sonnet',
-        ),
+        acpModelIdForLaunch(state: modelState, namespace: '', model: 'sonnet'),
         'sonnet',
       );
     });
@@ -72,10 +68,7 @@ void main() {
             id: 'opencode-go/deepseek-v4.1-flash',
             name: 'Go Flash',
           ),
-          AcpModelOption(
-            id: 'opencode/deepseek-v4.1-flash',
-            name: 'Zen Flash',
-          ),
+          AcpModelOption(id: 'opencode/deepseek-v4.1-flash', name: 'Zen Flash'),
         ],
       );
 
@@ -107,11 +100,7 @@ void main() {
         isNull,
       );
       expect(
-        acpModelIdForLaunch(
-          state: modelState,
-          namespace: '',
-          model: '',
-        ),
+        acpModelIdForLaunch(state: modelState, namespace: '', model: ''),
         isNull,
       );
     });

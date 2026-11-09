@@ -58,8 +58,8 @@ final class ChatTabStoreSshReconnectSeats implements SshReconnectSeatPort {
 
   @override
   Future<void> closeMemberRemotePlane(String sessionId, String memberId) async {
-    await _tabs.getOpenTabBySessionId(sessionId)?.closeMemberRemotePlane(
-      memberId,
-    );
+    await _tabs
+        .getOpenTabBySessionId(sessionId)
+        ?.closeMemberRemotePlane(memberId);
   }
 }

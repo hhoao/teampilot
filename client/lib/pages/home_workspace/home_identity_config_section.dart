@@ -11,12 +11,12 @@ enum HomeIdentityConfigSection {
   extensions;
 
   String title(AppLocalizations l10n) => switch (this) {
-    HomeIdentityConfigSection.agent => l10n.homeWorkspaceWorkspaceAgent,
-    HomeIdentityConfigSection.skills => l10n.homeWorkspaceWorkspaceSkills,
-    HomeIdentityConfigSection.plugins => l10n.homeWorkspaceWorkspacePlugins,
-    HomeIdentityConfigSection.mcp => l10n.homeWorkspaceWorkspaceMcp,
+    HomeIdentityConfigSection.agent => l10n.homeWorkspace.workspaceAgent,
+    HomeIdentityConfigSection.skills => l10n.homeWorkspace.workspaceSkills,
+    HomeIdentityConfigSection.plugins => l10n.homeWorkspace.workspacePlugins,
+    HomeIdentityConfigSection.mcp => l10n.homeWorkspace.workspaceMcp,
     HomeIdentityConfigSection.extensions =>
-      l10n.homeWorkspaceWorkspaceExtensions,
+      l10n.homeWorkspace.workspaceExtensions,
   };
 
   IconData get icon => switch (this) {

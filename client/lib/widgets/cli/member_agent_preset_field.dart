@@ -44,7 +44,7 @@ class MemberAgentPresetField extends StatelessWidget {
         onAgentChanged: onAgentChanged,
         fieldKeyPrefix: fieldKeyPrefix,
         hintText: l10n.selectAgent,
-        customIdHint: l10n.agentCustomIdHint,
+        customIdHint: l10n.agent.customIdHint,
       ),
       MemberAgentPresetStyle.claudeAgentType =>
         customAgentController == null
@@ -52,7 +52,7 @@ class MemberAgentPresetField extends StatelessWidget {
             : TextField(
                 controller: customAgentController!,
                 decoration: InputDecoration(
-                  hintText: l10n.agentClaudeTypeHint,
+                  hintText: l10n.agent.claudeTypeHint,
                   floatingLabelBehavior: FloatingLabelBehavior.never,
                 ),
                 onChanged: onAgentChanged,
@@ -163,7 +163,7 @@ String memberAgentPresetSubtitle(
 ) {
   return switch (style) {
     MemberAgentPresetStyle.flashskyaiCatalog =>
-      l10n.agentFlashskyaiPresetSubtitle,
-    MemberAgentPresetStyle.claudeAgentType => l10n.agentClaudeTypeSubtitle,
+      l10n.agent.flashskyaiPresetSubtitle,
+    MemberAgentPresetStyle.claudeAgentType => l10n.agent.claudeTypeSubtitle,
   };
 }

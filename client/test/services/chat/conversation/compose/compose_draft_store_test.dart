@@ -91,8 +91,10 @@ void main() {
       ),
     );
 
-    final loaded = await ComposeDraftStore(fs: fs, rootPath: root)
-        .loadLanding('w1');
+    final loaded = await ComposeDraftStore(
+      fs: fs,
+      rootPath: root,
+    ).loadLanding('w1');
     expect(loaded?.text, text);
     expect(loaded?.tokens.map((token) => token.payload), [
       '@src/main.dart',
@@ -106,8 +108,10 @@ void main() {
     await fs.ensureDir('/tp');
     await fs.atomicWrite(file, '{"landing":"legacy text","sessions":{}}');
 
-    final loaded = await ComposeDraftStore(fs: fs, rootPath: root)
-        .loadLanding('w1');
+    final loaded = await ComposeDraftStore(
+      fs: fs,
+      rootPath: root,
+    ).loadLanding('w1');
     expect(loaded?.text, 'legacy text');
     expect(loaded?.tokens, isEmpty);
   });

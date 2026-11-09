@@ -15,8 +15,5 @@ abstract interface class TeammateBusMcpGatewayPort {
 
   bool isSessionRegistered(String sessionId);
 
-  String registerAgentStatusSession({
-    required String sessionId,
-    String? token,
-  });
+  String registerAgentStatusSession({required String sessionId, String? token});
 }

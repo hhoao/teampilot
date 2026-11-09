@@ -13,8 +13,8 @@ Widget _wrap(Widget child, {required WorkspaceToolsCubit toolsCubit}) {
     data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
     child: MaterialApp(
       theme: ThemeData(colorScheme: scheme, useMaterial3: true),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       locale: const Locale('en'),
       home: Scaffold(
         body: BlocProvider.value(value: toolsCubit, child: child),

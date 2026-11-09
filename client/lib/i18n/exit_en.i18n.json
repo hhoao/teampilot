@@ -1,0 +1,11 @@
+{
+  "planModeApprove": "Approve",
+  "planModeApproveFailed": "Couldn't approve the plan",
+  "planModeCopyPlan": "Copy plan",
+  "planModeOpenPlanFile": "Open plan file",
+  "planModePreviewTitle": "Plan preview",
+  "planModeReject": "Reject",
+  "planModeRejectFailed": "Couldn't reject the plan",
+  "planModeTitle": "Plan ready for approval",
+  "planModeViewPlan": "View plan"
+}

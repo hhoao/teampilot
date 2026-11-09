@@ -47,10 +47,10 @@ class WorkspaceExtensionsSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TeamConfigCardHeader(title: l10n.workspaceExtensionsTitle),
+                TeamConfigCardHeader(title: l10n.workspace.extensionsTitle),
                 const SizedBox(height: 6),
                 Text(
-                  l10n.workspaceExtensionsSubtitle,
+                  l10n.workspace.extensionsSubtitle,
                   style: TpTextStyles.of(context).smColored(
                     Theme.of(
                       context,
@@ -71,8 +71,8 @@ class WorkspaceExtensionsSection extends StatelessWidget {
                       };
                       projectCubit.setExtensionOverride(row.id, value);
                     },
-                    effectiveOnLabel: l10n.workspaceExtensionEffectiveOn,
-                    effectiveOffLabel: l10n.workspaceExtensionEffectiveOff,
+                    effectiveOnLabel: l10n.workspace.extensionEffectiveOn,
+                    effectiveOffLabel: l10n.workspace.extensionEffectiveOff,
                   ),
               ],
             ),

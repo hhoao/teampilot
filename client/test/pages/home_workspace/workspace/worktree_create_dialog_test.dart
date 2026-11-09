@@ -15,8 +15,8 @@ Future<List<WorktreeBranchOption>> _loader(String repoPath) async =>
 
 Widget _host({required Widget home}) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: home,
   );
 }
@@ -267,9 +267,7 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(Scaffold).first),
-    );
+    final l10n = tester.element(find.byType(Scaffold).first).l10n;
     await tester.enterText(find.byType(TextField), '');
     await tester.pump();
 

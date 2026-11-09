@@ -219,8 +219,8 @@ class _NarrowHarness {
     return CliToolRegistryScope(
       registry: CliToolRegistry.builtIn(),
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: MultiRepositoryProvider(
           providers: [
             RepositoryProvider<HomeStorage>.value(value: testHomeStorage),

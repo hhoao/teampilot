@@ -24,8 +24,7 @@ class VaultDocument {
                   VaultEntry.fromJson(Map<String, Object?>.from(raw)),
             ]
           : const [],
-      legacyImportVersion:
-          (json['legacyImportVersion'] as num?)?.toInt() ?? 0,
+      legacyImportVersion: (json['legacyImportVersion'] as num?)?.toInt() ?? 0,
     );
   }
 

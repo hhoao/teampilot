@@ -17,23 +17,20 @@ void main() {
     }
   });
 
-  test(
-    'cursor uses "skills-cursor"; others use "skills"',
-    () {
-      final registry = buildRegistry();
+  test('cursor uses "skills-cursor"; others use "skills"', () {
+    final registry = buildRegistry();
+    expect(
+      registry.capability<SkillCapability>(CliTool.cursor)!.skillsSubdir,
+      'skills-cursor',
+    );
+    for (final cli in CliTool.values.where((c) => c != CliTool.cursor)) {
       expect(
-        registry.capability<SkillCapability>(CliTool.cursor)!.skillsSubdir,
-        'skills-cursor',
+        registry.capability<SkillCapability>(cli)!.skillsSubdir,
+        'skills',
+        reason: '$cli should use the default skills subdir',
       );
-      for (final cli in CliTool.values.where((c) => c != CliTool.cursor)) {
-        expect(
-          registry.capability<SkillCapability>(cli)!.skillsSubdir,
-          'skills',
-          reason: '$cli should use the default skills subdir',
-        );
-      }
-    },
-  );
+    }
+  });
 
   test('every launchable CLI links skills as directories', () {
     final registry = buildRegistry();

@@ -96,8 +96,8 @@ Widget _wrap(
 }) {
   return MaterialApp(
     locale: const Locale('en'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: TpTheme(
       data: TpThemeData.fromColorScheme(
         ColorScheme.fromSeed(seedColor: Colors.indigo, brightness: brightness),
@@ -579,9 +579,7 @@ void main() {
     final settings = InMemoryAppSettingsRepository();
     await settings.saveUsageAutoSyncEnabled(false);
 
-    await tester.pumpWidget(
-      _wrap(cubit, autoSync: true, settings: settings),
-    );
+    await tester.pumpWidget(_wrap(cubit, autoSync: true, settings: settings));
     await tester.pumpAndSettle();
 
     expect(syncCount, 0);

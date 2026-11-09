@@ -33,25 +33,26 @@ void main() {
       fs: fs,
       basePath: '/app',
       machineHome: '/home/me',
-      opener: ({required executable, required configDir, required timeout}) async {
-        calls++;
-        // ignore: avoid_print
-        expect(executable, 'qodercli');
-        expect(
-          await fs.readString(p.join(configDir, '.auth', 'user')),
-          'USER',
-          reason: 'probe config dir is seeded from the provider auth',
-        );
-        // ignore: avoid_print
-        return const QoderModelsSnapshot(
-          modelIds: ['auto', 'qwen3.8-max'],
-          defaultModelId: 'auto',
-          names: {'auto': 'Auto (default)', 'qwen3.8-max': 'Qwen3.8-Max'},
-          descriptions: {
-            'qwen3.8-max': 'Reasoning · Vision · 0.50x Credit',
+      opener:
+          ({required executable, required configDir, required timeout}) async {
+            calls++;
+            // ignore: avoid_print
+            expect(executable, 'qodercli');
+            expect(
+              await fs.readString(p.join(configDir, '.auth', 'user')),
+              'USER',
+              reason: 'probe config dir is seeded from the provider auth',
+            );
+            // ignore: avoid_print
+            return const QoderModelsSnapshot(
+              modelIds: ['auto', 'qwen3.8-max'],
+              defaultModelId: 'auto',
+              names: {'auto': 'Auto (default)', 'qwen3.8-max': 'Qwen3.8-Max'},
+              descriptions: {
+                'qwen3.8-max': 'Reasoning · Vision · 0.50x Credit',
+              },
+            );
           },
-        );
-      },
     );
     service.catalogUpdates.addListener(() => notified++);
 
@@ -64,10 +65,7 @@ void main() {
       'Qwen3.8-Max',
     );
     expect(
-      service.modelDescriptionFor(
-        providerId: 'work',
-        modelId: 'qwen3.8-max',
-      ),
+      service.modelDescriptionFor(providerId: 'work', modelId: 'qwen3.8-max'),
       'Reasoning · Vision · 0.50x Credit',
     );
     expect(calls, 1);
@@ -80,43 +78,56 @@ void main() {
     expect(calls, 2);
   });
 
-  test('persists the catalog to disk and reuses it in a new instance', () async {
-    var firstCalls = 0;
-    final first = QoderModelsService(
-      fs: fs,
-      basePath: '/app',
-      machineHome: '/home/me',
-      opener: ({required executable, required configDir, required timeout}) async {
-        firstCalls++;
-        return const QoderModelsSnapshot(
-          modelIds: ['auto', 'glm-5.3'],
-          defaultModelId: 'auto',
-          names: {'auto': 'Auto (default)', 'glm-5.3': 'GLM-5.3'},
-        );
-      },
-    );
-    await first.ensureLoaded(providerId: 'work');
-    expect(firstCalls, 1);
+  test(
+    'persists the catalog to disk and reuses it in a new instance',
+    () async {
+      var firstCalls = 0;
+      final first = QoderModelsService(
+        fs: fs,
+        basePath: '/app',
+        machineHome: '/home/me',
+        opener:
+            ({
+              required executable,
+              required configDir,
+              required timeout,
+            }) async {
+              firstCalls++;
+              return const QoderModelsSnapshot(
+                modelIds: ['auto', 'glm-5.3'],
+                defaultModelId: 'auto',
+                names: {'auto': 'Auto (default)', 'glm-5.3': 'GLM-5.3'},
+              );
+            },
+      );
+      await first.ensureLoaded(providerId: 'work');
+      expect(firstCalls, 1);
 
-    var secondCalls = 0;
-    final second = QoderModelsService(
-      fs: fs,
-      basePath: '/app',
-      machineHome: '/home/me',
-      opener: ({required executable, required configDir, required timeout}) async {
-        secondCalls++;
-        return const QoderModelsSnapshot(modelIds: ['other']);
-      },
-    );
-    await second.ensureLoaded(providerId: 'work');
+      var secondCalls = 0;
+      final second = QoderModelsService(
+        fs: fs,
+        basePath: '/app',
+        machineHome: '/home/me',
+        opener:
+            ({
+              required executable,
+              required configDir,
+              required timeout,
+            }) async {
+              secondCalls++;
+              return const QoderModelsSnapshot(modelIds: ['other']);
+            },
+      );
+      await second.ensureLoaded(providerId: 'work');
 
-    expect(secondCalls, 0, reason: 'fresh disk cache skips the probe');
-    expect(second.modelIdsFor(providerId: 'work'), ['auto', 'glm-5.3']);
-    expect(
-      second.modelNameFor(providerId: 'work', modelId: 'glm-5.3'),
-      'GLM-5.3',
-    );
-  });
+      expect(secondCalls, 0, reason: 'fresh disk cache skips the probe');
+      expect(second.modelIdsFor(providerId: 'work'), ['auto', 'glm-5.3']);
+      expect(
+        second.modelNameFor(providerId: 'work', modelId: 'glm-5.3'),
+        'GLM-5.3',
+      );
+    },
+  );
 
   test('does not probe without a provider or machine auth', () async {
     var calls = 0;
@@ -124,10 +135,11 @@ void main() {
       fs: fs,
       basePath: '/app',
       machineHome: '/home/me',
-      opener: ({required executable, required configDir, required timeout}) async {
-        calls++;
-        return const QoderModelsSnapshot(modelIds: ['auto']);
-      },
+      opener:
+          ({required executable, required configDir, required timeout}) async {
+            calls++;
+            return const QoderModelsSnapshot(modelIds: ['auto']);
+          },
     );
 
     await service.ensureLoaded(providerId: 'missing');
@@ -136,28 +148,36 @@ void main() {
     expect(service.modelIdsFor(providerId: 'missing'), isEmpty);
   });
 
-  test('falls back to the machine login when no provider auth exists', () async {
-    await fs.ensureDir('/home/me/.qoder/.auth');
-    await fs.writeString('/home/me/.qoder/.auth/user', 'MACHINE_USER');
-    await fs.writeString('/home/me/.qoder/.auth/machine_id', 'MACHINE_ID');
-    var calls = 0;
-    final service = QoderModelsService(
-      fs: fs,
-      basePath: '/app',
-      machineHome: '/home/me',
-      opener: ({required executable, required configDir, required timeout}) async {
-        calls++;
-        expect(
-          await fs.readString(p.join(configDir, '.auth', 'user')),
-          'MACHINE_USER',
-        );
-        return const QoderModelsSnapshot(modelIds: ['auto', 'smodel']);
-      },
-    );
+  test(
+    'falls back to the machine login when no provider auth exists',
+    () async {
+      await fs.ensureDir('/home/me/.qoder/.auth');
+      await fs.writeString('/home/me/.qoder/.auth/user', 'MACHINE_USER');
+      await fs.writeString('/home/me/.qoder/.auth/machine_id', 'MACHINE_ID');
+      var calls = 0;
+      final service = QoderModelsService(
+        fs: fs,
+        basePath: '/app',
+        machineHome: '/home/me',
+        opener:
+            ({
+              required executable,
+              required configDir,
+              required timeout,
+            }) async {
+              calls++;
+              expect(
+                await fs.readString(p.join(configDir, '.auth', 'user')),
+                'MACHINE_USER',
+              );
+              return const QoderModelsSnapshot(modelIds: ['auto', 'smodel']);
+            },
+      );
 
-    await service.ensureLoaded(providerId: 'machine');
+      await service.ensureLoaded(providerId: 'machine');
 
-    expect(calls, 1);
-    expect(service.modelIdsFor(providerId: 'machine'), ['auto', 'smodel']);
-  });
+      expect(calls, 1);
+      expect(service.modelIdsFor(providerId: 'machine'), ['auto', 'smodel']);
+    },
+  );
 }

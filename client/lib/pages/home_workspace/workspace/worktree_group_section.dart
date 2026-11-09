@@ -99,7 +99,7 @@ class WorktreeGroupSection extends StatelessWidget {
         : isProject && projectPath.isNotEmpty
         ? Workspace.directoryName(projectPath)
         : wt == null
-        ? l10n.worktreeOrphanGroup
+        ? l10n.worktree.orphanGroup
         : wt.shortBranch;
     final launchPath = isProject && projectPath.isNotEmpty
         ? projectPath
@@ -413,7 +413,7 @@ class _GroupSessionListState extends State<_GroupSessionList> {
         ),
         if (overflow > 0)
           _GroupShowMoreRow(
-            label: _showAll ? l10n.worktreeShowLess : l10n.worktreeMore,
+            label: _showAll ? l10n.worktree.showLess : l10n.worktree.more,
             onTap: () => setState(() => _showAll = !_showAll),
           ),
       ],

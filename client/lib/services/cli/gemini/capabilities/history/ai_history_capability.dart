@@ -31,8 +31,7 @@ final class GeminiAiHistoryCapability implements AiHistoryCapability {
       Future.value();
 
   @override
-  Future<String?> liveCacheToken(SessionHistoryContext ctx) =>
-      Future.value();
+  Future<String?> liveCacheToken(SessionHistoryContext ctx) => Future.value();
 
   @override
   AiTranscriptIncrementalRefresher? get incrementalRefresher => null;

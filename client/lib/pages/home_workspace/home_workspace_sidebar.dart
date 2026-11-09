@@ -59,21 +59,21 @@ class HomeSidebar extends StatelessWidget {
         children: [
           _ShortcutRow(
             icon: Icons.schedule_rounded,
-            label: l10n.automationsTitle,
+            label: l10n.automations.title,
             active: activeGlobalView == HomeGlobalView.automations,
             onTap: () => onGlobal?.call(HomeGlobalView.automations),
           ),
           const SizedBox(height: 4),
           _ShortcutRow(
             icon: Icons.star_outline_rounded,
-            label: l10n.homeWorkspaceMyFavorites,
+            label: l10n.homeWorkspace.myFavorites,
             active: activeLibraryView == HomeLibraryView.favorites,
             onTap: () => onLibrary?.call(HomeLibraryView.favorites),
           ),
           const SizedBox(height: 4),
           _ShortcutRow(
             icon: Icons.history_rounded,
-            label: l10n.homeWorkspaceRecentVisits,
+            label: l10n.homeWorkspace.recentVisits,
             active: activeLibraryView == HomeLibraryView.recent,
             onTap: () => onLibrary?.call(HomeLibraryView.recent),
           ),
@@ -82,7 +82,7 @@ class HomeSidebar extends StatelessWidget {
           const SizedBox(height: 8),
           _ShortcutRow(
             icon: Icons.folder_copy_outlined,
-            label: l10n.homeWorkspaceAllWorkspaces,
+            label: l10n.homeWorkspace.allWorkspaces,
             active: allWorkspacesActive,
             onTap: () => onAllWorkspaces?.call(),
           ),
@@ -100,7 +100,7 @@ class HomeSidebar extends StatelessWidget {
           // Bell + settings live in HomeTitleBar on mobile; footer is providers only.
           _ProvidersButton(
             key: AppKeys.homeWorkspaceProvidersButton,
-            label: l10n.homeWorkspaceProviders,
+            label: l10n.homeWorkspace.providers,
             active: activeGlobalView == HomeGlobalView.providers,
             onTap: () => onGlobal?.call(HomeGlobalView.providers),
           ),
@@ -134,14 +134,14 @@ class _HomeSidebarNavScroll extends StatelessWidget {
       children: [
         _ShortcutRow(
           icon: Icons.groups_2_outlined,
-          label: l10n.myTeamsNav,
+          label: l10n.my.teamsNav,
           active: activeGlobalView == HomeGlobalView.myTeams,
           onTap: () => onGlobal?.call(HomeGlobalView.myTeams),
         ),
         const SizedBox(height: 4),
         _ShortcutRow(
           icon: Icons.badge_outlined,
-          label: l10n.myExpertsNav,
+          label: l10n.my.expertsNav,
           active: activeGlobalView == HomeGlobalView.myExperts,
           onTap: () => onGlobal?.call(HomeGlobalView.myExperts),
         ),
@@ -150,14 +150,14 @@ class _HomeSidebarNavScroll extends StatelessWidget {
         const SizedBox(height: 8),
         _ShortcutRow(
           icon: Icons.travel_explore_outlined,
-          label: l10n.teamHubNav,
+          label: l10n.teamHub.nav,
           active: activeGlobalView == HomeGlobalView.teamHub,
           onTap: () => onGlobal?.call(HomeGlobalView.teamHub),
         ),
         const SizedBox(height: 4),
         _ShortcutRow(
           icon: Icons.psychology_outlined,
-          label: l10n.expertHubNav,
+          label: l10n.expert.hubNav,
           active: activeGlobalView == HomeGlobalView.expertHub,
           onTap: () => onGlobal?.call(HomeGlobalView.expertHub),
         ),
@@ -166,42 +166,42 @@ class _HomeSidebarNavScroll extends StatelessWidget {
         const SizedBox(height: 8),
         _ShortcutRow(
           icon: Icons.extension_outlined,
-          label: l10n.teamSkillsNav,
+          label: l10n.team.skillsNav,
           active: activeGlobalView == HomeGlobalView.skills,
           onTap: () => onGlobal?.call(HomeGlobalView.skills),
         ),
         const SizedBox(height: 4),
         _ShortcutRow(
           icon: Icons.widgets_outlined,
-          label: l10n.teamPluginsNav,
+          label: l10n.team.pluginsNav,
           active: activeGlobalView == HomeGlobalView.plugins,
           onTap: () => onGlobal?.call(HomeGlobalView.plugins),
         ),
         const SizedBox(height: 4),
         _ShortcutRow(
           icon: Icons.hub_outlined,
-          label: l10n.teamMcpNav,
+          label: l10n.team.mcpNav,
           active: activeGlobalView == HomeGlobalView.mcp,
           onTap: () => onGlobal?.call(HomeGlobalView.mcp),
         ),
         const SizedBox(height: 4),
         _ShortcutRow(
           icon: Icons.power_outlined,
-          label: l10n.teamExtensionsNav,
+          label: l10n.team.extensionsNav,
           active: activeGlobalView == HomeGlobalView.extensions,
           onTap: () => onGlobal?.call(HomeGlobalView.extensions),
         ),
         const SizedBox(height: 4),
         _ShortcutRow(
           icon: Icons.bolt_outlined,
-          label: l10n.teamHooksNav,
+          label: l10n.team.hooksNav,
           active: activeGlobalView == HomeGlobalView.hooks,
           onTap: () => onGlobal?.call(HomeGlobalView.hooks),
         ),
         const SizedBox(height: 4),
         _ShortcutRow(
           icon: Icons.account_balance_wallet_outlined,
-          label: l10n.managedProvidersUsageNav,
+          label: l10n.managedProviders.usageNav,
           active: activeGlobalView == HomeGlobalView.managedProviders,
           onTap:
               onShowManagedProviderUsage ??
@@ -210,7 +210,7 @@ class _HomeSidebarNavScroll extends StatelessWidget {
         const SizedBox(height: 4),
         _ShortcutRow(
           icon: Icons.insights_outlined,
-          label: l10n.sessionUsageNav,
+          label: l10n.sessionUsage.nav,
           active: activeGlobalView == HomeGlobalView.usage,
           onTap: () => onGlobal?.call(HomeGlobalView.usage),
         ),

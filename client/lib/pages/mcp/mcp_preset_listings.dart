@@ -4,11 +4,11 @@ import '../../models/mcp_catalog_listing.dart';
 import '../../services/mcp/mcp_catalog_mapper.dart';
 
 String mcpPresetDescription(AppLocalizations l10n, String id) => switch (id) {
-  'fetch' => l10n.mcpPresetDescFetch,
-  'time' => l10n.mcpPresetDescTime,
-  'memory' => l10n.mcpPresetDescMemory,
-  'sequential-thinking' => l10n.mcpPresetDescSequentialThinking,
-  'context7' => l10n.mcpPresetDescContext7,
+  'fetch' => l10n.mcp.presetDescFetch,
+  'time' => l10n.mcp.presetDescTime,
+  'memory' => l10n.mcp.presetDescMemory,
+  'sequential-thinking' => l10n.mcp.presetDescSequentialThinking,
+  'context7' => l10n.mcp.presetDescContext7,
   _ => '',
 };
 

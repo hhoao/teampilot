@@ -294,7 +294,7 @@ final class DefaultCliConfigLayout implements CliSessionCapability {
     required String sessionId,
     String? memberId,
     String? teamId,
-  }  ) => layout.sessionRuntimeToolDir(
+  }) => layout.sessionRuntimeToolDir(
     workspaceId,
     sessionId,
     tool.value,
@@ -309,15 +309,13 @@ final class DefaultCliConfigLayout implements CliSessionCapability {
     required String sessionId,
     String? memberId,
     String? teamId,
-  }) =>
-      null;
+  }) => null;
 
   @override
   Future<String> prepareSessionIsolatedHome({
     required Filesystem fs,
     required String canonicalHome,
-  }) async =>
-      canonicalHome;
+  }) async => canonicalHome;
 
   @override
   SessionHookMaterializationPaths hookMaterializationPaths({
@@ -325,19 +323,15 @@ final class DefaultCliConfigLayout implements CliSessionCapability {
     required String memberToolDir,
     String? memberHome,
     TeamMemberConfig? member,
-  }) => (
-    hooksDir: pathContext.join(memberToolDir, 'hooks'),
-    configPath: null,
-  );
+  }) => (hooksDir: pathContext.join(memberToolDir, 'hooks'), configPath: null);
 }
 
 CliSessionCapability _sessionCapabilityFor(
   CliTool tool, {
   CliToolRegistry? registry,
 }) {
-  return (registry ?? CliToolRegistry.builtIn()).capability<CliSessionCapability>(
-        tool,
-      ) ??
+  return (registry ?? CliToolRegistry.builtIn())
+          .capability<CliSessionCapability>(tool) ??
       const DefaultCliConfigLayout();
 }
 

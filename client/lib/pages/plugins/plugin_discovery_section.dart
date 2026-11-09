@@ -110,9 +110,9 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
         child: PluginManagementCard(
           child: TpEmptyState(
             icon: Icons.store_outlined,
-            title: l10n.pluginsMarketplacesEmpty,
-            hint: l10n.pluginsNoInstalledHint,
-            actionLabel: l10n.pluginsGoDiscovery,
+            title: l10n.plugins.marketplacesEmpty,
+            hint: l10n.plugins.noInstalledHint,
+            actionLabel: l10n.plugins.goDiscovery,
             onAction: widget.onGoMarketplaces,
           ),
         ),
@@ -124,9 +124,9 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TpCatalogDiscoveryHeader(
-            title: l10n.pluginsNavDiscovery,
+            title: l10n.plugins.navDiscovery,
             searchController: _searchCtrl,
-            searchHint: l10n.pluginsSearchPlaceholder,
+            searchHint: l10n.plugins.searchPlaceholder,
             onSearchChanged: (_) => setState(() {}),
             failures: [
               for (final failure in widget.state.discoveryFailures)
@@ -139,7 +139,7 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
             refreshing:
                 widget.state.discoveryLoading ||
                 widget.state.marketplaceSyncingKeys.isNotEmpty,
-            refreshTooltip: l10n.pluginsCheckUpdates,
+            refreshTooltip: l10n.plugins.checkUpdates,
             belowSearch: widget.state.marketplaceSyncingKeys.isEmpty
                 ? null
                 : Row(
@@ -152,7 +152,7 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          l10n.pluginsDiscoverySyncing,
+                          l10n.plugins.discoverySyncing,
                           style: TpTextStyles.of(context).sm,
                         ),
                       ),
@@ -168,7 +168,7 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
                   onChanged: (sort) {
                     if (sort != null) cubit.setDiscoverySort(sort);
                   },
-                  hintText: l10n.catalogSortAccessibilityLabel,
+                  hintText: l10n.catalog.sortAccessibilityLabel,
                 ),
               ),
               SizedBox(
@@ -219,8 +219,8 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
         child: SingleChildScrollView(
           child: TpEmptyState(
             icon: Icons.travel_explore_outlined,
-            title: l10n.pluginsDiscoveryEmpty,
-            actionLabel: l10n.pluginsGoDiscovery,
+            title: l10n.plugins.discoveryEmpty,
+            actionLabel: l10n.plugins.goDiscovery,
             onAction: widget.onGoMarketplaces,
           ),
         ),
@@ -259,7 +259,7 @@ class PluginMarketplaceDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final allLabel = l10n.pluginsFilterMarketplaceAll;
+    final allLabel = l10n.plugins.filterMarketplaceAll;
     final labels = <String, String>{
       '': allLabel,
       for (final m in marketplaces.where((m) => m.enabled))
@@ -290,9 +290,9 @@ class PluginStatusDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final labels = <String, String>{
-      'all': l10n.pluginsFilterAll,
-      'installed': l10n.pluginsFilterInstalled,
-      'uninstalled': l10n.pluginsFilterUninstalled,
+      'all': l10n.plugins.filterAll,
+      'installed': l10n.plugins.filterInstalled,
+      'uninstalled': l10n.plugins.filterUninstalled,
     };
     final keys = labels.keys.toList();
     return TpSelect<String>(
@@ -342,27 +342,27 @@ class PluginDiscoverableCard extends StatelessWidget {
       title: plugin.name,
       source: plugin.marketplaceFullName,
       description: plugin.description,
-      emptyDescription: l10n.pluginsCatalogCardNoDescription,
+      emptyDescription: l10n.plugins.catalogCardNoDescription,
       adoption: TpCatalogMetricView(
         icon: Icons.download_outlined,
-        label: l10n.pluginsCatalogAdoption,
+        label: l10n.plugins.catalogAdoption,
         value: metrics.adoptionCount == null
             ? null
             : _formatCount(metrics.adoptionCount!),
-        missingValueTooltip: l10n.catalogMetricMissingTooltip,
+        missingValueTooltip: l10n.catalog.metricMissingTooltip,
       ),
       rating: TpCatalogMetricView(
         icon: Icons.star_outline,
-        label: l10n.catalogMetricRating,
+        label: l10n.catalog.metricRating,
         value: metrics.rating?.toStringAsFixed(1),
-        missingValueTooltip: l10n.catalogMetricMissingTooltip,
+        missingValueTooltip: l10n.catalog.metricMissingTooltip,
       ),
       actions: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           GithubDetailsButton(
             url: plugin.githubBrowseUrl,
-            label: l10n.pluginsCardDetails,
+            label: l10n.plugins.cardDetails,
           ),
           if (busy)
             const Padding(
@@ -377,7 +377,7 @@ class PluginDiscoverableCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
-                l10n.pluginsCardInstalled,
+                l10n.plugins.cardInstalled,
                 style: styles.smSemiboldColored(cs.primary),
               ),
             )
@@ -386,7 +386,7 @@ class PluginDiscoverableCard extends StatelessWidget {
               onPressed: plugin.canInstall
                   ? () => cubit.installFromDiscovery(plugin)
                   : null,
-              child: Text(l10n.pluginsCardInstall),
+              child: Text(l10n.plugins.cardInstall),
             ),
         ],
       ),
@@ -396,11 +396,11 @@ class PluginDiscoverableCard extends StatelessWidget {
 
 String _sortLabel(AppLocalizations l10n, CatalogSortKey sort) {
   return switch (sort) {
-    CatalogSortKey.adoption => l10n.catalogSortAdoption,
-    CatalogSortKey.rating => l10n.catalogSortRating,
-    CatalogSortKey.updated => l10n.catalogSortUpdated,
-    CatalogSortKey.published => l10n.catalogSortPublished,
-    CatalogSortKey.name => l10n.catalogSortName,
+    CatalogSortKey.adoption => l10n.catalog.sortAdoption,
+    CatalogSortKey.rating => l10n.catalog.sortRating,
+    CatalogSortKey.updated => l10n.catalog.sortUpdated,
+    CatalogSortKey.published => l10n.catalog.sortPublished,
+    CatalogSortKey.name => l10n.catalog.sortName,
   };
 }
 

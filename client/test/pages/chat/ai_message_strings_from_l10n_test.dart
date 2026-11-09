@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/l10n/app_localizations_en.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/chat/ai_message_strings_from_l10n.dart';
 
 void main() {
@@ -17,9 +17,6 @@ void main() {
     );
     final hook = strings.formatThinkingProcessStats;
     expect(hook, isNotNull);
-    expect(
-      hook!(1, 2),
-      'Thinking process · 1 steps · 2 tool calls',
-    );
+    expect(hook!(1, 2), 'Thinking process · 1 steps · 2 tool calls');
   });
 }

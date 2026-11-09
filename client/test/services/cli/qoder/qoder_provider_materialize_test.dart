@@ -284,10 +284,7 @@ void main() {
             'cli': 'qoder',
             'name': 'Work',
             'defaultModel': 'glm-5.3',
-            'config': {
-              'reasoningEffort': 'high',
-              'contextWindow': 300000,
-            },
+            'config': {'reasoningEffort': 'high', 'contextWindow': 300000},
           },
         },
       }),

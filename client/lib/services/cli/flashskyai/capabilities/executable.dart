@@ -9,7 +9,7 @@ final class FlashskyaiExecutableCapability implements CliExecutableCapability {
   const FlashskyaiExecutableCapability();
 
   @override
-  String label(AppLocalizations l10n) => l10n.appProviderToolFlashskyai;
+  String label(AppLocalizations l10n) => l10n.appProvider.toolFlashskyai;
 
   @override
   String get defaultExecutableName => 'flashskyai';

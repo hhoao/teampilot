@@ -37,9 +37,7 @@ abstract interface class AcpSshChannel {
 /// [AcpSshChannel] over either a raw dartssh2 session (tests/embedded
 /// diagnostics) or the profile worker's primitive exec proxy.
 final class DartSsh2AcpChannel implements AcpSshChannel {
-  DartSsh2AcpChannel(SSHSession session)
-    : _session = session,
-      _worker = null;
+  DartSsh2AcpChannel(SSHSession session) : _session = session, _worker = null;
 
   DartSsh2AcpChannel.worker(SshWorkerExecChannel channel)
     : _worker = channel,

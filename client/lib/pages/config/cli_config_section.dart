@@ -33,14 +33,12 @@ class CliConfigWorkspace extends StatelessWidget {
       children: [
         if (showHeading) ...[
           _CliHeading(
-            title: l10n.cliConfig,
-            subtitle: l10n.cliConfigPageSubtitle,
+            title: l10n.cli.config,
+            subtitle: l10n.cli.configPageSubtitle,
           ),
           const SizedBox(height: 16),
         ],
-        Expanded(
-          child: _CliControls(versionProbe: versionProbe),
-        ),
+        Expanded(child: _CliControls(versionProbe: versionProbe)),
       ],
     );
   }
@@ -84,7 +82,7 @@ class _CliControls extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpSectionHeader(title: l10n.cliConfigAiCliGroup),
+          TpSectionHeader(title: l10n.cli.configAiCliGroup),
           const SizedBox(height: 8),
           for (final def in registry.launchable)
             if (registry.capability<CliExecutableCapability>(def.id) != null)
@@ -99,7 +97,7 @@ class _CliControls extends StatelessWidget {
                 ),
               ),
           const SizedBox(height: 24),
-          TpSectionHeader(title: l10n.cliConfigToolchainGroup),
+          TpSectionHeader(title: l10n.cli.configToolchainGroup),
           const SizedBox(height: 8),
           TpCard.outlined(
             child: Column(
@@ -110,8 +108,10 @@ class _CliControls extends StatelessWidget {
                   toolId: SessionPreferences.toolchainGit,
                   title: l10n.toolchainGitLabel,
                   subtitle: isSshMode
-                      ? l10n.toolchainPathDescriptionSsh(l10n.toolchainGit)
-                      : l10n.toolchainPathDescription(l10n.toolchainGit),
+                      ? l10n.toolchainPathDescriptionSsh(
+                          tool: l10n.toolchainGit,
+                        )
+                      : l10n.toolchainPathDescription(tool: l10n.toolchainGit),
                   fallbackExecutable: 'git',
                   fieldKey: AppKeys.gitToolchainPathField,
                   browseKey: AppKeys.gitToolchainPathBrowseButton,
@@ -126,8 +126,10 @@ class _CliControls extends StatelessWidget {
                   toolId: SessionPreferences.toolchainNode,
                   title: l10n.toolchainNodeLabel,
                   subtitle: isSshMode
-                      ? l10n.toolchainPathDescriptionSsh(l10n.toolchainNode)
-                      : l10n.toolchainPathDescription(l10n.toolchainNode),
+                      ? l10n.toolchainPathDescriptionSsh(
+                          tool: l10n.toolchainNode,
+                        )
+                      : l10n.toolchainPathDescription(tool: l10n.toolchainNode),
                   fallbackExecutable: 'node',
                   fieldKey: AppKeys.nodeToolchainPathField,
                   browseKey: AppKeys.nodeToolchainPathBrowseButton,

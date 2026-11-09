@@ -280,7 +280,7 @@ class _ProviderListControls extends StatelessWidget {
                   if (showTitle)
                     Expanded(
                       child: Text(
-                        l10n.providerList,
+                        l10n.provider.list,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: styles.mdSemiboldTightSnug,
@@ -301,7 +301,7 @@ class _ProviderListControls extends StatelessWidget {
                       TpActionMenuSpec.item(
                         value: 'import',
                         icon: Icons.upload_file_outlined,
-                        label: l10n.appProviderImport,
+                        label: l10n.appProvider.import,
                         enabled: !isLoading,
                       ),
                     ],
@@ -381,7 +381,7 @@ class _ProviderListTile extends StatelessWidget {
             ?.showModelCount ==
         true;
     final subtitle = hasModelCount
-        ? l10n.providerListModelCount(providerModelCount(provider))
+        ? l10n.provider.listModelCount(count: providerModelCount(provider))
         : l10n.appProviderToolLabel(provider.cli);
     final titleColor = selected ? cs.onPrimaryContainer : cs.onSurface;
     final subtitleColor = selected
@@ -430,12 +430,12 @@ class _ProviderListTile extends StatelessWidget {
                   TpActionMenuSpec.item(
                     value: 'edit',
                     icon: Icons.edit_outlined,
-                    label: l10n.edit,
+                    label: l10n.edit.edit,
                   ),
                   TpActionMenuSpec.item(
                     value: 'delete',
                     icon: Icons.delete_outline,
-                    label: l10n.delete,
+                    label: l10n.delete.delete,
                     destructive: true,
                   ),
                 ],

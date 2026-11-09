@@ -67,13 +67,11 @@ class ManagedProviderUsagePanel extends StatelessWidget {
                         ),
                       if (showGlobalError)
                         Padding(
-                          key: const Key(
-                            'managed-provider-usage-global-error',
-                          ),
+                          key: const Key('managed-provider-usage-global-error'),
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
                             usageState.errorMessage ??
-                                l10n.managedProvidersQueryFailed,
+                                l10n.managedProviders.queryFailed,
                             style: TpTextStyles.of(context).xs.copyWith(
                               color: Theme.of(context).colorScheme.error,
                             ),
@@ -158,7 +156,7 @@ class _PanelHeader extends StatelessWidget {
               size: 15,
               color: cs.onSurfaceVariant,
             ),
-            label: l10n.managedProvidersTitle,
+            label: l10n.managedProviders.title,
             iconSize: 15,
             textStyle: styles.xsSemibold,
             spacing: 6,
@@ -168,7 +166,7 @@ class _PanelHeader extends StatelessWidget {
         TpAnimatedIconButton(
           key: const Key('managed-provider-usage-refresh'),
           icon: Icons.refresh,
-          tooltip: l10n.managedProvidersRetry,
+          tooltip: l10n.managedProviders.retry,
           size: 28,
           iconSize: 15,
           compact: true,
@@ -180,7 +178,7 @@ class _PanelHeader extends StatelessWidget {
         TpIconButton(
           key: const Key('managed-provider-usage-manage'),
           icon: Icons.settings_outlined,
-          tooltip: l10n.managedProvidersNav,
+          tooltip: l10n.managedProviders.nav,
           size: 28,
           iconSize: 15,
           compact: true,
@@ -211,15 +209,15 @@ class _EmptyState extends StatelessWidget {
         children: [
           Text(
             noneEnabled
-                ? l10n.managedProvidersNoneEnabledTitle
-                : l10n.managedProvidersEmptyTitle,
+                ? l10n.managedProviders.noneEnabledTitle
+                : l10n.managedProviders.emptyTitle,
             style: styles.smSemibold,
           ),
           const SizedBox(height: 4),
           Text(
             noneEnabled
-                ? l10n.managedProvidersNoneEnabledHint
-                : l10n.managedProvidersEmptyHint,
+                ? l10n.managedProviders.noneEnabledHint
+                : l10n.managedProviders.emptyHint,
             style: styles.xs.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -235,8 +233,8 @@ class _EmptyState extends StatelessWidget {
                   onPressed: onManage,
                   child: Text(
                     noneEnabled
-                        ? l10n.managedProvidersNav
-                        : l10n.managedProvidersAdd,
+                        ? l10n.managedProviders.nav
+                        : l10n.managedProviders.add,
                   ),
                 ),
               ),
@@ -393,7 +391,7 @@ class _ProviderUsageRow extends StatelessWidget {
           child: TpIconButton(
             key: Key('managed-provider-usage-enabled-${provider.id}'),
             icon: Icons.pause_circle_outline,
-            tooltip: l10n.managedProvidersDisable,
+            tooltip: l10n.managedProviders.disable,
             size: 28,
             iconSize: 15,
             compact: true,
@@ -429,12 +427,12 @@ class _ProviderUsageRow extends StatelessWidget {
   static String _statusText(BuildContext context, ProviderUsageStatus? status) {
     final l10n = context.l10n;
     return switch (status) {
-      ProviderUsageStatus.ready => l10n.managedProvidersCachedUsage,
-      ProviderUsageStatus.stale => l10n.managedProvidersCachedUsage,
-      ProviderUsageStatus.error => l10n.managedProvidersLastQueryFailed,
-      ProviderUsageStatus.loading => l10n.managedProvidersLoadingUsage,
-      ProviderUsageStatus.unsupported => l10n.managedProvidersQueryUnsupported,
-      ProviderUsageStatus.unknown || null => l10n.managedProvidersNoUsage,
+      ProviderUsageStatus.ready => l10n.managedProviders.cachedUsage,
+      ProviderUsageStatus.stale => l10n.managedProviders.cachedUsage,
+      ProviderUsageStatus.error => l10n.managedProviders.lastQueryFailed,
+      ProviderUsageStatus.loading => l10n.managedProviders.loadingUsage,
+      ProviderUsageStatus.unsupported => l10n.managedProviders.queryUnsupported,
+      ProviderUsageStatus.unknown || null => l10n.managedProviders.noUsage,
     };
   }
 

@@ -45,7 +45,7 @@ Future<void> showRenameWorkspaceDialog(
   final l10n = context.l10n;
   final display = await showTpTextPromptDialog(
     context,
-    title: title ?? l10n.homeWorkspaceRenameWorkspace,
+    title: title ?? l10n.homeWorkspace.renameWorkspace,
     initialText: workspace.display,
     hintText: workspace.localizedName(l10n),
     confirmLabel: l10n.save,
@@ -64,7 +64,7 @@ Future<void> cloneWorkspace(BuildContext context, Workspace workspace) async {
   final repo = context.read<SessionRepository>();
   final team = context.read<LaunchProfileCubit>().state.selectedTeam;
   final baseName = workspace.localizedName(l10n);
-  final display = l10n.homeWorkspaceCloneWorkspaceDisplayName(baseName);
+  final display = l10n.homeWorkspace.cloneWorkspaceDisplayName(name: baseName);
 
   try {
     final cloned = await context.read<ChatCubit>().cloneWorkspace(
@@ -76,7 +76,7 @@ Future<void> cloneWorkspace(BuildContext context, Workspace workspace) async {
     if (!context.mounted) return;
     AppToast.show(
       context,
-      message: l10n.homeWorkspaceCloneWorkspaceSuccess(baseName),
+      message: l10n.homeWorkspace.cloneWorkspaceSuccess(name: baseName),
       variant: TpToastVariant.success,
     );
     context.go('/home-v2/workspace/${cloned.workspaceId}');
@@ -84,7 +84,7 @@ Future<void> cloneWorkspace(BuildContext context, Workspace workspace) async {
     if (!context.mounted) return;
     AppToast.show(
       context,
-      message: '${l10n.homeWorkspaceCloneWorkspaceFailed}: $error',
+      message: '${l10n.homeWorkspace.cloneWorkspaceFailed}: $error',
       variant: TpToastVariant.error,
     );
   }
@@ -109,9 +109,9 @@ Future<void> confirmDeleteWorkspace(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.deleteWorkspace),
+          TpDialogHeader(title: l10n.delete.workspace),
           const SizedBox(height: 16),
-          Text(l10n.deleteWorkspaceConfirm(name)),
+          Text(l10n.delete.workspaceConfirm(name: name)),
           TpDialogActions(
             children: [
               TextButton(
@@ -139,7 +139,7 @@ Future<void> confirmDeleteWorkspace(
                     );
                   },
                 ),
-                child: Text(l10n.delete),
+                child: Text(l10n.delete.delete),
               ),
             ],
           ),

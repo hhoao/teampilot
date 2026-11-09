@@ -23,26 +23,35 @@ void main() {
     );
   }
 
-  test('runLocalCliDiscovery merges CLI, adapter, toolchain, then versions', () async {
-    final cubit = await makeCubit();
-    await cubit.load();
-    await runLocalCliDiscovery(
-      cubit: cubit,
-      locateCli: () async => {CliTool.claude: '/bin/claude'},
-      locateAdapters: () async => {CliTool.claude: '/bin/claude-agent-acp'},
-      locateToolchains: () async => {'git': '/usr/bin/git'},
-      probeInstalled: (path) async => switch (path) {
-        '/bin/claude' => '2.1.4',
-        '/bin/claude-agent-acp' => '0.12.1',
-        _ => null,
-      },
-    );
-    expect(cubit.discoveredExecutablePath(CliTool.claude), '/bin/claude');
-    expect(cubit.discoveredAcpAdapterPath(CliTool.claude), '/bin/claude-agent-acp');
-    expect(cubit.installedVersion(CliTool.claude, CliBinaryKind.cli), '2.1.4');
-    expect(
-      cubit.installedVersion(CliTool.claude, CliBinaryKind.adapter),
-      '0.12.1',
-    );
-  });
+  test(
+    'runLocalCliDiscovery merges CLI, adapter, toolchain, then versions',
+    () async {
+      final cubit = await makeCubit();
+      await cubit.load();
+      await runLocalCliDiscovery(
+        cubit: cubit,
+        locateCli: () async => {CliTool.claude: '/bin/claude'},
+        locateAdapters: () async => {CliTool.claude: '/bin/claude-agent-acp'},
+        locateToolchains: () async => {'git': '/usr/bin/git'},
+        probeInstalled: (path) async => switch (path) {
+          '/bin/claude' => '2.1.4',
+          '/bin/claude-agent-acp' => '0.12.1',
+          _ => null,
+        },
+      );
+      expect(cubit.discoveredExecutablePath(CliTool.claude), '/bin/claude');
+      expect(
+        cubit.discoveredAcpAdapterPath(CliTool.claude),
+        '/bin/claude-agent-acp',
+      );
+      expect(
+        cubit.installedVersion(CliTool.claude, CliBinaryKind.cli),
+        '2.1.4',
+      );
+      expect(
+        cubit.installedVersion(CliTool.claude, CliBinaryKind.adapter),
+        '0.12.1',
+      );
+    },
+  );
 }

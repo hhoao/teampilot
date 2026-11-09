@@ -330,10 +330,7 @@ void main() {
     );
 
     expect(await store.readStored(), isNull);
-    expect(
-      kv.values['teampilot.hub_publish.v1.github_token'],
-      'ghp_hub',
-    );
+    expect(kv.values['teampilot.hub_publish.v1.github_token'], 'ghp_hub');
   });
 
   test('a refused unlock aborts the save', () async {

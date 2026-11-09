@@ -338,43 +338,44 @@ void main() {
     );
   });
 
-  test('saving a key captures it in the vault and clears the plaintext', () async {
-    final vault = await _vaultService();
-    final capture = VaultCredentialCapture(vault: vault);
-    final autoCubit = AppProviderCubit(
-      repository: repository,
-      basePath: temp.path,
-      storage: fakeHomeStorage(),
-      vaultCapture: capture,
-      ensureVaultUnlocked: () async => true,
-    );
-    addTearDown(autoCubit.close);
-    await autoCubit.load();
+  test(
+    'saving a key captures it in the vault and clears the plaintext',
+    () async {
+      final vault = await _vaultService();
+      final capture = VaultCredentialCapture(vault: vault);
+      final autoCubit = AppProviderCubit(
+        repository: repository,
+        basePath: temp.path,
+        storage: fakeHomeStorage(),
+        vaultCapture: capture,
+        ensureVaultUnlocked: () async => true,
+      );
+      addTearDown(autoCubit.close);
+      await autoCubit.load();
 
-    const draft = AppProviderConfig(
-      id: 'captured',
-      cli: CliTool.claude,
-      name: 'Captured',
-      apiKey: 'sk-secret',
-    );
-    expect(
-      await autoCubit.upsertProvider(
-        draft,
-        captureVaultCredentials: true,
-      ),
-      isTrue,
-    );
+      const draft = AppProviderConfig(
+        id: 'captured',
+        cli: CliTool.claude,
+        name: 'Captured',
+        apiKey: 'sk-secret',
+      );
+      expect(
+        await autoCubit.upsertProvider(draft, captureVaultCredentials: true),
+        isTrue,
+      );
 
-    final saved = autoCubit.state.providersFor(CliTool.claude)
-        .firstWhere((p) => p.id == 'captured');
-    expect(saved.apiKey, isEmpty);
-    expect(saved.credentialLink, startsWith('vault:'));
-    final entryId = saved.credentialLink.substring('vault:'.length);
-    expect(await vault.readField(entryId, 'apiKey'), 'sk-secret');
+      final saved = autoCubit.state
+          .providersFor(CliTool.claude)
+          .firstWhere((p) => p.id == 'captured');
+      expect(saved.apiKey, isEmpty);
+      expect(saved.credentialLink, startsWith('vault:'));
+      final entryId = saved.credentialLink.substring('vault:'.length);
+      expect(await vault.readField(entryId, 'apiKey'), 'sk-secret');
 
-    await autoCubit.deleteProvider('captured');
-    expect(await vault.get(entryId), isNull);
-  });
+      await autoCubit.deleteProvider('captured');
+      expect(await vault.get(entryId), isNull);
+    },
+  );
 
   test('background upserts never capture or prompt', () async {
     final vault = await _vaultService();
@@ -400,7 +401,8 @@ void main() {
       credentialLink: 'm1',
     );
     expect(await autoCubit.upsertProvider(linked), isTrue);
-    final saved = autoCubit.state.providersFor(CliTool.claude)
+    final saved = autoCubit.state
+        .providersFor(CliTool.claude)
         .firstWhere((p) => p.id == 'linked');
     expect(saved.credentialLink, 'm1');
     expect(saved.apiKey, 'resolved-in-memory');
@@ -414,7 +416,8 @@ void main() {
       apiKey: 'plain',
     );
     expect(await autoCubit.upsertProvider(unlinked), isTrue);
-    final persisted = autoCubit.state.providersFor(CliTool.claude)
+    final persisted = autoCubit.state
+        .providersFor(CliTool.claude)
         .firstWhere((p) => p.id == 'unlinked');
     expect(persisted.apiKey, 'plain');
     expect(await vault.list(), isEmpty);
@@ -442,7 +445,8 @@ void main() {
     await autoCubit.upsertProvider(linked);
     final resolved = linked.copyWith(apiKey: 'resolved', credentialLink: '');
     await autoCubit.upsertProvider(resolved);
-    final saved = autoCubit.state.providersFor(CliTool.claude)
+    final saved = autoCubit.state
+        .providersFor(CliTool.claude)
         .firstWhere((p) => p.id == 'linked');
     expect(saved.apiKey, isEmpty);
   });
@@ -471,17 +475,14 @@ void main() {
       name: 'Shared',
       apiKey: 'codex-key',
     );
-    await autoCubit.upsertProvider(
-      claudeRow,
-      captureVaultCredentials: true,
-    );
+    await autoCubit.upsertProvider(claudeRow, captureVaultCredentials: true);
     await autoCubit.upsertProvider(codexRow, captureVaultCredentials: true);
     final entries = await vault.list();
     expect(entries, hasLength(2));
-    expect(
-      entries.map((entry) => entry.fields['apiKey']).toSet(),
-      {'claude-key', 'codex-key'},
-    );
+    expect(entries.map((entry) => entry.fields['apiKey']).toSet(), {
+      'claude-key',
+      'codex-key',
+    });
 
     await autoCubit.setSelectedCli(CliTool.claude);
     await autoCubit.deleteProvider('shared');
@@ -573,10 +574,7 @@ void main() {
       apiKey: 'sk-row',
     );
     expect(
-      await autoCubit.upsertProvider(
-        draft,
-        captureVaultCredentials: true,
-      ),
+      await autoCubit.upsertProvider(draft, captureVaultCredentials: true),
       isTrue,
     );
     final saved = autoCubit.state.providersFor(CliTool.claude).single;
@@ -608,10 +606,7 @@ void main() {
       apiKey: 'sk-secret',
     );
     expect(
-      await autoCubit.upsertProvider(
-        draft,
-        captureVaultCredentials: true,
-      ),
+      await autoCubit.upsertProvider(draft, captureVaultCredentials: true),
       isFalse,
     );
     expect(autoCubit.state.providersFor(CliTool.claude), isEmpty);

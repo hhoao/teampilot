@@ -184,9 +184,9 @@ class MembersPanel extends StatelessWidget {
         TpActionMenuSpec.item(
           value: _MemberMenuAction.viewDetail,
           icon: Icons.info_outline,
-          label: l10n.memberDetailViewAction,
+          label: l10n.member.detailViewAction,
           enabled: canViewDetail,
-          tooltip: canViewDetail ? null : l10n.memberDetailNeedsSession,
+          tooltip: canViewDetail ? null : l10n.member.detailNeedsSession,
         ),
         TpActionMenuSpec.item(
           value: _MemberMenuAction.switchTo,
@@ -201,7 +201,7 @@ class MembersPanel extends StatelessWidget {
         TpActionMenuSpec.item(
           value: _MemberMenuAction.openConfigDir,
           icon: Icons.folder_open,
-          label: l10n.memberDetailOpenConfigDir,
+          label: l10n.member.detailOpenConfigDir,
         ),
         const TpActionMenuSpec.divider(),
         TpActionMenuSpec.item(
@@ -319,7 +319,7 @@ class _MembersPanelTile extends StatelessWidget {
                 : CliBrandIcon(cli: memberCli, size: 28, borderRadius: 7),
             title: MemberTitleRow(
               member: member,
-              fallbackName: l10n.memberName,
+              fallbackName: l10n.member.name,
               style: styles.md,
               textColor: titleColor,
               compactBadge: true,

@@ -61,29 +61,33 @@ void main() {
     expect(acpSendCalls, 1);
   });
 
-  test('reports acp_runtime_unavailable when activation never attaches', () async {
-    final outcome = await deliverAutomationPrompt(
-      session: acpSession,
-      memberId: 'sess-acp',
-      message: 'run',
-      acpSend: () => null,
-      acpReadiness: () => AutomationAcpReadiness.missing,
-      activateAcp: () async {},
-      ptySubmit: (sessionId, memberId, message) async => 'pty-id',
-      pollInterval: const Duration(milliseconds: 1),
-      activationTimeout: const Duration(milliseconds: 5),
-    );
+  test(
+    'reports acp_runtime_unavailable when activation never attaches',
+    () async {
+      final outcome = await deliverAutomationPrompt(
+        session: acpSession,
+        memberId: 'sess-acp',
+        message: 'run',
+        acpSend: () => null,
+        acpReadiness: () => AutomationAcpReadiness.missing,
+        activateAcp: () async {},
+        ptySubmit: (sessionId, memberId, message) async => 'pty-id',
+        pollInterval: const Duration(milliseconds: 1),
+        activationTimeout: const Duration(milliseconds: 5),
+      );
 
-    expect(outcome.delivered, isFalse);
-    expect(outcome.reason, 'acp_runtime_unavailable');
-  });
+      expect(outcome.delivered, isFalse);
+      expect(outcome.reason, 'acp_runtime_unavailable');
+    },
+  );
 
   test('reports acp_prompt_rejected when the runtime refuses', () async {
     final outcome = await deliverAutomationPrompt(
       session: acpSession,
       memberId: 'sess-acp',
       message: 'run',
-      acpSend: () => (text) => false,
+      acpSend: () =>
+          (text) => false,
       acpReadiness: () => AutomationAcpReadiness.ready,
       activateAcp: () async {},
       ptySubmit: (sessionId, memberId, message) async => 'pty-id',
@@ -93,33 +97,36 @@ void main() {
     expect(outcome.reason, 'acp_prompt_rejected');
   });
 
-  test('waits for a launching runtime to become ready, then delivers', () async {
-    var readiness = AutomationAcpReadiness.launching;
-    final sent = <String>[];
-    unawaited(
-      Future<void>.delayed(const Duration(milliseconds: 5), () {
-        readiness = AutomationAcpReadiness.ready;
-      }),
-    );
+  test(
+    'waits for a launching runtime to become ready, then delivers',
+    () async {
+      var readiness = AutomationAcpReadiness.launching;
+      final sent = <String>[];
+      unawaited(
+        Future<void>.delayed(const Duration(milliseconds: 5), () {
+          readiness = AutomationAcpReadiness.ready;
+        }),
+      );
 
-    final outcome = await deliverAutomationPrompt(
-      session: acpSession,
-      memberId: 'sess-acp',
-      message: 'run',
-      acpSend: () => (text) {
-        sent.add(text);
-        return true;
-      },
-      acpReadiness: () => readiness,
-      activateAcp: () async => fail('runtime is already attached'),
-      ptySubmit: (sessionId, memberId, message) async => 'pty-id',
-      pollInterval: const Duration(milliseconds: 1),
-      activationTimeout: const Duration(milliseconds: 500),
-    );
+      final outcome = await deliverAutomationPrompt(
+        session: acpSession,
+        memberId: 'sess-acp',
+        message: 'run',
+        acpSend: () => (text) {
+          sent.add(text);
+          return true;
+        },
+        acpReadiness: () => readiness,
+        activateAcp: () async => fail('runtime is already attached'),
+        ptySubmit: (sessionId, memberId, message) async => 'pty-id',
+        pollInterval: const Duration(milliseconds: 1),
+        activationTimeout: const Duration(milliseconds: 500),
+      );
 
-    expect(outcome.delivered, isTrue);
-    expect(sent, ['run']);
-  });
+      expect(outcome.delivered, isTrue);
+      expect(sent, ['run']);
+    },
+  );
 
   test('a runtime that ends during launch fails without sending', () async {
     var readiness = AutomationAcpReadiness.launching;
@@ -133,7 +140,8 @@ void main() {
       session: acpSession,
       memberId: 'sess-acp',
       message: 'run',
-      acpSend: () => (text) => fail('an ended runtime must not be sent to'),
+      acpSend: () =>
+          (text) => fail('an ended runtime must not be sent to'),
       acpReadiness: () => readiness,
       activateAcp: () async => fail('runtime is already attached'),
       ptySubmit: (sessionId, memberId, message) async => 'pty-id',
@@ -145,22 +153,25 @@ void main() {
     expect(outcome.reason, 'acp_prompt_rejected');
   });
 
-  test('a hung activation is bounded and fails with acp_activation_failed', () async {
-    final outcome = await deliverAutomationPrompt(
-      session: acpSession,
-      memberId: 'sess-acp',
-      message: 'run',
-      acpSend: () => null,
-      acpReadiness: () => AutomationAcpReadiness.missing,
-      activateAcp: () => Completer<void>().future,
-      ptySubmit: (sessionId, memberId, message) async => 'pty-id',
-      pollInterval: const Duration(milliseconds: 1),
-      activationTimeout: const Duration(milliseconds: 10),
-    );
+  test(
+    'a hung activation is bounded and fails with acp_activation_failed',
+    () async {
+      final outcome = await deliverAutomationPrompt(
+        session: acpSession,
+        memberId: 'sess-acp',
+        message: 'run',
+        acpSend: () => null,
+        acpReadiness: () => AutomationAcpReadiness.missing,
+        activateAcp: () => Completer<void>().future,
+        ptySubmit: (sessionId, memberId, message) async => 'pty-id',
+        pollInterval: const Duration(milliseconds: 1),
+        activationTimeout: const Duration(milliseconds: 10),
+      );
 
-    expect(outcome.delivered, isFalse);
-    expect(outcome.reason, 'acp_activation_failed');
-  });
+      expect(outcome.delivered, isFalse);
+      expect(outcome.reason, 'acp_activation_failed');
+    },
+  );
 
   test('a throwing activation maps to acp_activation_failed', () async {
     final outcome = await deliverAutomationPrompt(

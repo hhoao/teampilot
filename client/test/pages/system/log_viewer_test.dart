@@ -7,8 +7,8 @@ import 'package:teampilot/pages/system/log_viewer_toolbar.dart';
 
 Widget _host(Widget child) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     locale: const Locale('en'),
     home: Scaffold(body: child),
   );
@@ -144,9 +144,7 @@ void main() {
 
   testWidgets('search field uses the pill decoration', (tester) async {
     await tester.pumpWidget(
-      _host(
-        _toolbar(onCopyAll: () async {}, onCopyPath: () async {}),
-      ),
+      _host(_toolbar(onCopyAll: () async {}, onCopyPath: () async {})),
     );
     await tester.pumpAndSettle();
 

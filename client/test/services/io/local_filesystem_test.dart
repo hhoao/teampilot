@@ -166,10 +166,9 @@ void main() {
 
       expect(await File(dest).readAsString(), '{"name":"My Skills"}');
       expect(
-        Directory(root.path)
-            .listSync()
-            .where((entity) => entity.path.contains('.tmp.'))
-            .toList(),
+        Directory(
+          root.path,
+        ).listSync().where((entity) => entity.path.contains('.tmp.')).toList(),
         isEmpty,
       );
     },

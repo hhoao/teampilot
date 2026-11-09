@@ -25,8 +25,8 @@ List<AiMessage> _threadMessages(int count) {
 /// survives, only the scroll position needs restoring.
 Widget _host({required ChatCubit chat, required AiThreadRuntime runtime}) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     locale: const Locale('en'),
     theme: ThemeData(extensions: [AiMessageTheme.test()]),
     home: Scaffold(

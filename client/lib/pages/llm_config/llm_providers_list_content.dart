@@ -52,11 +52,11 @@ class LlmProvidersListContent extends StatelessWidget {
         final l10n = context.l10n;
         final changed = result.added + result.updated;
         final message = changed == 0 && result.mirroredToFlashskyai == 0
-            ? l10n.appProviderImportNothing
-            : l10n.appProviderImportSuccess(
-                changed,
-                result.mirroredToFlashskyai,
-                result.mirrorSkipped,
+            ? l10n.appProvider.importNothing
+            : l10n.appProvider.importSuccess(
+                count: changed,
+                mirrored: result.mirroredToFlashskyai,
+                skipped: result.mirrorSkipped,
               );
         AppToast.show(
           context,

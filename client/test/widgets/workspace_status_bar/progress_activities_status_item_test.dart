@@ -55,8 +55,8 @@ Widget _host({
     child: Scaffold(body: child),
   );
   final app = MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     locale: const Locale('en'),
     theme: ThemeData(colorScheme: scheme),
     home: TpTheme(
@@ -157,9 +157,11 @@ void main() {
       ),
     );
 
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
     expect(find.byKey(const Key('progress-activities-pill')), findsOneWidget);
-    expect(find.text(l10n.progressActivitiesMany(2)), findsOneWidget);
+    expect(find.text(l10n.progressActivitiesMany(count: 2)), findsOneWidget);
     expect(find.text('Import A'), findsNothing);
   });
 

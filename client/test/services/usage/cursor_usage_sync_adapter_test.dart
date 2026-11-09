@@ -58,17 +58,15 @@ void main() {
     });
 
     test('fourteenDays starts at the 14th day back, day-aligned', () {
-      final custom = adapter().rangeFor(UsageRange.fourteenDays)
-          as CursorUsageCustomRange;
+      final custom =
+          adapter().rangeFor(UsageRange.fourteenDays) as CursorUsageCustomRange;
       expect(custom.startMs, day(15));
     });
 
     test('custom keeps the supplied bounds', () {
-      final custom = adapter().rangeFor(
-        UsageRange.custom,
-        startMs: day(3),
-        endMs: day(5),
-      ) as CursorUsageCustomRange;
+      final custom =
+          adapter().rangeFor(UsageRange.custom, startMs: day(3), endMs: day(5))
+              as CursorUsageCustomRange;
       expect(custom.startMs, day(3));
       expect(custom.endMs, day(5));
     });
@@ -77,14 +75,15 @@ void main() {
   group('syncFor', () {
     test('fetches every enabled account with the mapped range', () async {
       final calls = <(String, CursorUsageRange, CursorUsageSyncMode)>[];
-      await adapter(onLoad: (a, r, m) => calls.add((a, r, m))).syncFor(
-        UsageRange.sevenDays,
-        null,
-        null,
-      );
+      await adapter(
+        onLoad: (a, r, m) => calls.add((a, r, m)),
+      ).syncFor(UsageRange.sevenDays, null, null);
 
       expect(calls.map((c) => c.$1), ['a', 'b']);
-      expect(calls.first.$2, const CursorUsagePresetRange(CursorUsagePreset.sevenDays));
+      expect(
+        calls.first.$2,
+        const CursorUsagePresetRange(CursorUsagePreset.sevenDays),
+      );
       expect(calls.first.$3, CursorUsageSyncMode.auto);
     });
 

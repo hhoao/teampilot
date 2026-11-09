@@ -38,7 +38,7 @@ Future<bool> submitWorkspaceLandingGeneration(
     );
     context.read<ChatCubit>().failSessionConnect(
       'pending',
-      AppLocalizations.of(context).teamGenerateErrorUnavailable,
+      context.l10n.team.generateErrorUnavailable,
     );
     return false;
   }
@@ -110,7 +110,7 @@ Future<bool> submitWorkspaceLandingGeneration(
     String? userMessage;
     if (context.mounted) {
       chatCubit = context.read<ChatCubit>();
-      userMessage = AppLocalizations.of(context).teamGenerateErrorStartFailed;
+      userMessage = context.l10n.team.generateErrorStartFailed;
     }
     reportTeamGenerationStartFailure(
       chatCubit: chatCubit,
@@ -159,10 +159,8 @@ void showWorkspaceLandingGenerationPreflight(
       content: Text(
         issues
             .map(
-              (issue) => teamGenerationPreflightIssueMessage(
-                AppLocalizations.of(context),
-                issue.code,
-              ),
+              (issue) =>
+                  teamGenerationPreflightIssueMessage(context.l10n, issue.code),
             )
             .join('\n'),
       ),
@@ -174,16 +172,16 @@ String teamGenerationPreflightIssueMessage(
   AppLocalizations l10n,
   String code,
 ) => switch (code) {
-  'description_required' => l10n.teamGenerateErrorDescriptionRequired,
-  'generator_not_configured' => l10n.teamGenerateErrorAiNotConfigured,
-  'model_pool_empty' => l10n.teamGenerateErrorPoolEmpty,
+  'description_required' => l10n.team.generateErrorDescriptionRequired,
+  'generator_not_configured' => l10n.team.generateErrorAiNotConfigured,
+  'model_pool_empty' => l10n.team.generateErrorPoolEmpty,
   'generator_launch_unsupported' ||
   'generator_session_unsupported' ||
   'generator_skill_unsupported' ||
   'generator_mcp_unsupported' ||
   'pool_launch_unsupported' ||
-  'pool_session_unsupported' => l10n.teamGenerateErrorGeneratorUnsupported,
+  'pool_session_unsupported' => l10n.team.generateErrorGeneratorUnsupported,
   'native_pool_cli_mismatch' ||
-  'native_team_unsupported' => l10n.teamGenerateErrorNativeUnsupported,
-  _ => l10n.teamGenerateErrorStartFailed,
+  'native_team_unsupported' => l10n.team.generateErrorNativeUnsupported,
+  _ => l10n.team.generateErrorStartFailed,
 };

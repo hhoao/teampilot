@@ -9,8 +9,8 @@ import 'package:teampilot/widgets/follow_up/follow_up_queue_strip.dart';
 Widget _host(Widget child, {Locale locale = const Locale('en')}) {
   final theme = ThemeData(useMaterial3: true);
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     locale: locale,
     theme: theme,
     home: TpTheme(

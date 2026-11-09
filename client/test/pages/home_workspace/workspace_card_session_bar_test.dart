@@ -9,8 +9,8 @@ import 'package:teampilot/widgets/workspace_topology_icon.dart';
 void main() {
   Widget wrap(Widget child) {
     return MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: Scaffold(body: child),
     );
   }

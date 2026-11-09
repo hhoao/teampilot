@@ -28,12 +28,12 @@ class TeamLaunchConfigTypeField extends StatelessWidget {
     final dropdownDeco = decoration ?? TpSelectDecorations.themed(context);
 
     return TpPreferenceRow(
-      title: l10n.memberLaunchConfigTypeLabel,
+      title: l10n.member.launchConfigTypeLabel,
       trailing: cliLaunchConfigDropdown(
         TpSelect<TeamLaunchConfigKind>(
           items: _items,
           initialItem: currentKind,
-          hintText: l10n.memberLaunchConfigTypeLabel,
+          hintText: l10n.member.launchConfigTypeLabel,
           decoration: dropdownDeco,
           itemLabel: (kind) => _kindLabel(l10n, kind),
           onChanged: (value) {
@@ -48,8 +48,8 @@ class TeamLaunchConfigTypeField extends StatelessWidget {
 
   static String _kindLabel(AppLocalizations l10n, TeamLaunchConfigKind kind) {
     return switch (kind) {
-      TeamLaunchConfigKind.preset => l10n.memberLaunchConfigTypePreset,
-      TeamLaunchConfigKind.custom => l10n.memberPresetCustom,
+      TeamLaunchConfigKind.preset => l10n.member.launchConfigTypePreset,
+      TeamLaunchConfigKind.custom => l10n.member.presetCustom,
     };
   }
 }

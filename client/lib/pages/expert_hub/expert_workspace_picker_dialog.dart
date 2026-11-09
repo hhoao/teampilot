@@ -35,7 +35,7 @@ class ExpertWorkspacePickerDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.expertHubLaunchInWorkspace),
+          TpDialogHeader(title: l10n.expert.hubLaunchInWorkspace),
           const SizedBox(height: 8),
           for (final workspace in workspaces)
             ListTile(

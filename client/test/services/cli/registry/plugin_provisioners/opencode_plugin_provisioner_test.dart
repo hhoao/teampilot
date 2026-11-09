@@ -257,7 +257,9 @@ void main() {
       );
       final opencodeJson =
           jsonDecode((await fs.readString('$configDir/opencode.json'))!) as Map;
-      expect(opencodeJson['plugins'], ['./plugins/superpowers/plugin/entry.js']);
+      expect(opencodeJson['plugins'], [
+        './plugins/superpowers/plugin/entry.js',
+      ]);
     });
 
     test('mergeOpencodePluginEntries appends and preserves option objects', () {

@@ -40,7 +40,7 @@ class TeamConfigHubPage extends StatelessWidget {
 
     final entries = <WorkspaceHubEntry>[
       WorkspaceHubEntry(
-        title: l10n.teamSettings,
+        title: l10n.team.settings,
         icon: Icons.groups_outlined,
         onTap: throttledTap(
           'team_config_hub_team',
@@ -48,7 +48,7 @@ class TeamConfigHubPage extends StatelessWidget {
         ),
       ),
       WorkspaceHubEntry(
-        title: l10n.teamSkillsNav,
+        title: l10n.team.skillsNav,
         icon: Icons.extension_outlined,
         onTap: throttledTap(
           'team_config_hub_skills',
@@ -56,7 +56,7 @@ class TeamConfigHubPage extends StatelessWidget {
         ),
       ),
       WorkspaceHubEntry(
-        title: l10n.teamPluginsNav,
+        title: l10n.team.pluginsNav,
         icon: Icons.widgets_outlined,
         onTap: throttledTap(
           'team_config_hub_plugins',
@@ -64,7 +64,7 @@ class TeamConfigHubPage extends StatelessWidget {
         ),
       ),
       WorkspaceHubEntry(
-        title: l10n.teamMcpNav,
+        title: l10n.team.mcpNav,
         icon: Icons.hub_outlined,
         onTap: throttledTap(
           'team_config_hub_mcp',
@@ -72,7 +72,7 @@ class TeamConfigHubPage extends StatelessWidget {
         ),
       ),
       WorkspaceHubEntry(
-        title: l10n.teamExtensionsNav,
+        title: l10n.team.extensionsNav,
         icon: Icons.power_outlined,
         onTap: throttledTap(
           'team_config_hub_extensions',
@@ -80,7 +80,7 @@ class TeamConfigHubPage extends StatelessWidget {
         ),
       ),
       WorkspaceHubEntry(
-        title: l10n.teamHooksNav,
+        title: l10n.team.hooksNav,
         icon: Icons.bolt_outlined,
         onTap: throttledTap(
           'team_config_hub_hooks',
@@ -89,7 +89,7 @@ class TeamConfigHubPage extends StatelessWidget {
       ),
       for (final member in team.members)
         WorkspaceHubEntry(
-          title: member.name.trim().isEmpty ? l10n.memberName : member.name,
+          title: member.name.trim().isEmpty ? l10n.member.name : member.name,
           showLeaderBadge: TeamMemberNaming.isTeamLead(member),
           icon: Icons.person_outline,
           onTap: throttledTap(
@@ -98,7 +98,7 @@ class TeamConfigHubPage extends StatelessWidget {
           ),
         ),
       WorkspaceHubEntry(
-        title: '${l10n.add} ${l10n.memberName}',
+        title: '${l10n.add} ${l10n.member.name}',
         icon: Icons.person_add_outlined,
         onTap: throttledAsync('team_config_hub_add_member', () async {
           final addedId = await pickAndAddTeamMemberFromExpertHub(
@@ -113,8 +113,8 @@ class TeamConfigHubPage extends StatelessWidget {
 
     return WorkspaceHubPage(
       pageKey: AppKeys.teamConfigHub,
-      title: l10n.teamConfig,
-      subtitle: l10n.teamSettingsSubtitle,
+      title: l10n.team.config,
+      subtitle: l10n.team.settingsSubtitle,
       entries: entries,
     );
   }
@@ -174,8 +174,8 @@ class TeamConfigPage extends StatelessWidget {
 
     return WorkspaceAdaptiveSectionPage(
       pageKey: AppKeys.teamConfigWorkspace,
-      title: l10n.teamConfig,
-      subtitle: l10n.teamSettingsSubtitle,
+      title: l10n.team.config,
+      subtitle: l10n.team.settingsSubtitle,
       showSubtitle: false,
       nav: TeamConfigNavPanel(
         team: team,

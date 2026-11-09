@@ -44,7 +44,7 @@ class _VaultPageBodyState extends State<VaultPageBody> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     return BlocBuilder<VaultCubit, VaultState>(
       builder: (context, state) {
         if (state.status == VaultStatus.loading) {
@@ -62,7 +62,7 @@ class _VaultPageBodyState extends State<VaultPageBody> {
                   const VaultStatusSection(),
                   const SizedBox(height: 16),
                   if (locked)
-                    Text(l10n.vaultStatusEncrypted)
+                    Text(l10n.vault.statusEncrypted)
                   else
                     Row(
                       children: [
@@ -70,7 +70,7 @@ class _VaultPageBodyState extends State<VaultPageBody> {
                           child: TextField(
                             decoration: tpSearchPillDecoration(
                               context,
-                              hintText: l10n.vaultSearchHint,
+                              hintText: l10n.vault.searchHint,
                             ),
                             onChanged: _onQueryChanged,
                           ),
@@ -80,7 +80,7 @@ class _VaultPageBodyState extends State<VaultPageBody> {
                   if (state.errorMessage != null) ...[
                     const SizedBox(height: 12),
                     Text(
-                      l10n.vaultUnlockFailed,
+                      l10n.vault.unlockFailed,
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.error,
                       ),

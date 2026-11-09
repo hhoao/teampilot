@@ -96,8 +96,8 @@ void main() {
             BlocProvider.value(value: cubit),
           ],
           child: MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             home: const Scaffold(body: CliPresetsManageDialog()),
           ),
         ),
@@ -128,9 +128,7 @@ void main() {
     await tester.enterText(find.byType(TextField), 'New Name');
     await tester.pump();
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(Scaffold).first),
-    );
+    final l10n = tester.element(find.byType(Scaffold).first).l10n;
     await tester.tap(find.widgetWithText(FilledButton, l10n.save));
     await tester.pumpAndSettle();
 
@@ -176,9 +174,7 @@ void main() {
     await tester.tap(find.text(target).last);
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(Scaffold).first),
-    );
+    final l10n = tester.element(find.byType(Scaffold).first).l10n;
     await tester.tap(find.widgetWithText(FilledButton, l10n.save));
     await tester.pumpAndSettle();
 
@@ -214,9 +210,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(Scaffold).first),
-    );
+    final l10n = tester.element(find.byType(Scaffold).first).l10n;
     final saveButton = find.widgetWithText(FilledButton, l10n.save);
     expect(saveButton, findsOneWidget);
 
@@ -244,9 +238,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(Scaffold).first),
-    );
+    final l10n = tester.element(find.byType(Scaffold).first).l10n;
     await tester.enterText(find.byType(TextField), '');
     await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, l10n.save));
@@ -281,9 +273,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(Scaffold).first),
-    );
+    final l10n = tester.element(find.byType(Scaffold).first).l10n;
     await tester.enterText(find.byType(TextField), 'Named Preset');
     await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, l10n.save));
@@ -332,8 +322,8 @@ void main() {
             BlocProvider.value(value: cubit),
           ],
           child: MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             home: const Scaffold(body: CliPresetsManageDialog()),
           ),
         ),
@@ -386,8 +376,8 @@ void main() {
             BlocProvider.value(value: cubit),
           ],
           child: MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             home: const Scaffold(body: CliPresetsManageDialog()),
           ),
         ),
@@ -425,14 +415,12 @@ void main() {
     expect(editCli.enabled, isFalse);
     expect(editCli.initialItem, CliTool.claude.value);
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(Scaffold).first),
-    );
+    final l10n = tester.element(find.byType(Scaffold).first).l10n;
     await tester.tap(find.widgetWithText(TextButton, l10n.cancel).last);
     await tester.pumpAndSettle();
 
     await tester.tap(
-      find.widgetWithText(OutlinedButton, l10n.workspaceCliAddPresetTitle),
+      find.widgetWithText(OutlinedButton, l10n.workspace.cliAddPresetTitle),
     );
     await tester.pumpAndSettle();
 

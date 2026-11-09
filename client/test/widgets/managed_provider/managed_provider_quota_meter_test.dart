@@ -14,8 +14,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: Scaffold(
             body: ManagedProviderQuotaMeter(
               measure: ProviderUsageMeasure(
@@ -54,8 +54,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Scaffold(
           body: ManagedProviderQuotaMeter(
             measure: ProviderUsageMeasure(
@@ -82,8 +82,8 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Builder(
           builder: (context) {
             return Scaffold(
@@ -125,8 +125,8 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Builder(
           builder: (context) {
             return Scaffold(

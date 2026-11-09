@@ -228,8 +228,8 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         if (!mounted) return;
         final l10n = context.l10n;
         final message = speechRecognitionErrorIsPermissionDenied(error)
-            ? l10n.workspaceChatLandingVoicePermissionDenied
-            : l10n.workspaceChatLandingVoiceUnavailable;
+            ? l10n.workspace.chatLandingVoicePermissionDenied
+            : l10n.workspace.chatLandingVoiceUnavailable;
         AppToast.show(
           context,
           message: message,
@@ -1239,7 +1239,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }) async {
     final modelId = await showComposeCustomModelIdDialog(
       context,
-      title: context.l10n.composeCascadeCustomModelIdTitle,
+      title: context.l10n.compose.cascadeCustomModelIdTitle,
       confirmLabel: context.l10n.confirm,
       initial: _selectedModel ?? '',
     );
@@ -1386,7 +1386,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       if (result.preflight?.notFound == true) {
         AppToast.show(
           context,
-          message: context.l10n.expertHubNotFound,
+          message: context.l10n.expert.hubNotFound,
           variant: TpToastVariant.warning,
         );
       }
@@ -1449,7 +1449,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   String _expertChipLabel(AppLocalizations l10n, ExpertHubState? hubState) {
     return ExpertMemberResolver.labelForKey(
       key: _selectedExpertKey,
-      fallbackLabel: l10n.expertHubNoneSelected,
+      fallbackLabel: l10n.expert.hubNoneSelected,
       hubState: hubState,
     );
   }
@@ -1467,8 +1467,8 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       if (recent.length >= kExpertLandingChipRecentLimit) break;
     }
     return buildExpertLandingChipMenuSpecs(
-      noneSelectedLabel: l10n.expertHubNoneSelected,
-      browseAllLabel: l10n.expertHubBrowseAll,
+      noneSelectedLabel: l10n.expert.hubNoneSelected,
+      browseAllLabel: l10n.expert.hubBrowseAll,
       selectedExpertKey: _selectedExpertKey,
       recentExperts: recent,
     );
@@ -1476,8 +1476,8 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
 
   String _conversationModeLabel(AppLocalizations l10n) {
     return switch (_conversationMode) {
-      _LandingConversationMode.team => l10n.workspaceChatLandingModeTeam,
-      _LandingConversationMode.simple => l10n.workspaceChatLandingModeSimple,
+      _LandingConversationMode.team => l10n.workspace.chatLandingModeTeam,
+      _LandingConversationMode.simple => l10n.workspace.chatLandingModeSimple,
     };
   }
 
@@ -1502,12 +1502,12 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           providerId: _selectedProvider ?? '',
           modelId: _selectedModel ?? '',
         ),
-        emptyLabel: l10n.workspaceChatLandingUsePreset,
+        emptyLabel: l10n.workspace.chatLandingUsePreset,
       );
     }
 
     if (_generateLaunch) {
-      return l10n.teamGenerateLaunch;
+      return l10n.team.generateLaunch;
     }
 
     final team = teams.where((t) => t.id == _selectedTeamId).firstOrNull;
@@ -1543,13 +1543,13 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       TpActionMenuSpec.item(
         value: _LandingConversationMode.team,
         icon: Icons.groups_outlined,
-        label: l10n.workspaceChatLandingModeTeam,
+        label: l10n.workspace.chatLandingModeTeam,
         selected: _conversationMode == _LandingConversationMode.team,
       ),
       TpActionMenuSpec.item(
         value: _LandingConversationMode.simple,
         icon: Icons.chat_bubble_outline,
-        label: l10n.workspaceChatLandingModeSimple,
+        label: l10n.workspace.chatLandingModeSimple,
         selected: _conversationMode == _LandingConversationMode.simple,
       ),
     ];
@@ -1578,14 +1578,14 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       return buildComposeModelCascadeMenuSpecs(
         presets: presetsByRecentUse(presets),
         selectedPresetId: _selectedPresetId,
-        emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
-        emptyProvidersLabel: l10n.composeCascadeNoProviders,
-        presetsLabel: l10n.composeCascadePresets,
-        defaultEffortLabel: l10n.composeCascadeDefaultEffort,
-        customModelIdLabel: l10n.composeCascadeCustomModelId,
-        noModelsLabel: l10n.composeCascadeNoModels,
-        savePresetLabel: l10n.composeCascadeSavePreset,
-        managePresetsLabel: l10n.workspaceCliAddPresetTitle,
+        emptyHintLabel: l10n.workspace.cliPresetsEmptyHint,
+        emptyProvidersLabel: l10n.compose.cascadeNoProviders,
+        presetsLabel: l10n.compose.cascadePresets,
+        defaultEffortLabel: l10n.compose.cascadeDefaultEffort,
+        customModelIdLabel: l10n.compose.cascadeCustomModelId,
+        noModelsLabel: l10n.compose.cascadeNoModels,
+        savePresetLabel: l10n.compose.cascadeSavePreset,
+        managePresetsLabel: l10n.workspace.cliAddPresetTitle,
         cliGroups: groups,
         groupByCli: true,
         modelLabel: (cli, providerId, modelId) => providerModelLabel(
@@ -1618,8 +1618,8 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       if (recent.length >= kTeamLandingChipRecentLimit) break;
     }
     return buildTeamLandingChipMenuSpecs(
-      browseAllLabel: l10n.teamHubBrowseAll,
-      generateLaunchLabel: l10n.teamGenerateLaunch,
+      browseAllLabel: l10n.teamHub.browseAll,
+      generateLaunchLabel: l10n.team.generateLaunch,
       selectedTeamId: _generateLaunch ? null : _selectedTeamId,
       generateLaunchSelected: _generateLaunch,
       recentTeams: recent,
@@ -1642,12 +1642,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     // local launch gate reflects settings/installs without a restart.
     context.select<
       SessionPreferencesCubit,
-      (
-        int,
-        Map<String, String>,
-        Map<String, String>,
-        Map<String, bool>,
-      )
+      (int, Map<String, String>, Map<String, String>, Map<String, bool>)
     >(
       (c) => (
         c.state.locatedExecutablesRevision,
@@ -1701,131 +1696,129 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         ? launchWarningBlock.missing
         : null;
 
-    WorkspaceComposeCard buildCard(BuildContext context) =>
-        WorkspaceComposeCard(
-          controller: _controller,
-          clip: _clip,
-          focusNode: _focusNode,
-          hint: l10n.workspaceChatLandingInputHint,
-          isSubmitting: widget.isSubmitting,
-          canSubmit: _canSubmit && localCliBlock == null,
-          onSubmit: _submit,
-          onChanged: (_) {},
-          chrome: UnboundComposeChrome(
-            conversationModeLabel: _conversationModeLabel(l10n),
-            permissionControl: landingAcpPermissionControl(
-              context: context,
-              isPersonal: isSimple,
-              launchCli: cli,
-              l10n: l10n,
-              selectedTeam: selectedTeam,
+    WorkspaceComposeCard buildCard(
+      BuildContext context,
+    ) => WorkspaceComposeCard(
+      controller: _controller,
+      clip: _clip,
+      focusNode: _focusNode,
+      hint: l10n.workspace.chatLandingInputHint,
+      isSubmitting: widget.isSubmitting,
+      canSubmit: _canSubmit && localCliBlock == null,
+      onSubmit: _submit,
+      onChanged: (_) {},
+      chrome: UnboundComposeChrome(
+        conversationModeLabel: _conversationModeLabel(l10n),
+        permissionControl: landingAcpPermissionControl(
+          context: context,
+          isPersonal: isSimple,
+          launchCli: cli,
+          l10n: l10n,
+          selectedTeam: selectedTeam,
+          workspace: launchWorkspace,
+          targetId: _homeTargetForLaunch().id,
+          presets: presets,
+        ),
+        autoChipLabel: _autoChipLabel(
+          context,
+          l10n,
+          presets: presets,
+          teams: teams,
+        ),
+        autoChipLeading: _autoChipLeading(context, presets: presets),
+        conversationModeSpecs: _conversationModeSpecs(l10n),
+        autoChipSpecs: _autoChipSpecs(l10n, presets: presets, teams: teams),
+        onConversationModeSelected: (value) {
+          if (value is _LandingConversationMode) {
+            _setConversationMode(value);
+          }
+        },
+        onAutoChipSelected: (value) async {
+          if (value == ComposeModelPresetChipAction.manage) {
+            _openPresetsManageDialog();
+            return;
+          }
+          final tuple = decodeComposeCascadeValue(value);
+          if (tuple != null) {
+            await _applyCascadeLaunch(tuple);
+            return;
+          }
+          if (value is CascadeCustomModelRequest) {
+            await _applyCustomModelId(request: value);
+            return;
+          }
+          if (value == ComposeModelPresetChipAction.savePreset) {
+            _openSaveAsPresetDialog();
+            return;
+          }
+          if (_conversationMode == _LandingConversationMode.team) {
+            _onTeamChipSelected(value);
+            return;
+          }
+          if (value is! String || value.isEmpty) return;
+          _selectPreset(value);
+        },
+        expertChipLabel: isSimple ? _expertChipLabel(l10n, hubState) : null,
+        expertChipSpecs: isSimple ? _expertChipSpecs(l10n, hubState) : const [],
+        onExpertChipSelected: isSimple ? _onExpertChipSelected : null,
+        teamSettingsTooltip: _generateLaunch
+            ? l10n.team.generateOpenSettings
+            : (selectedTeam != null ? l10n.team.settings : null),
+        onTeamSettings: _generateLaunch
+            ? () => unawaited(_openGenerateSettings())
+            : (selectedTeam != null
+                  ? () => unawaited(_openTeamSettings(teams))
+                  : null),
+        showTeamSettingsAttention:
+            !_generateLaunch &&
+            selectedTeam != null &&
+            landingTeamSettingsNeedsAttention(
               workspace: launchWorkspace,
-              targetId: _homeTargetForLaunch().id,
-              presets: presets,
+              team: selectedTeam,
             ),
-            autoChipLabel: _autoChipLabel(
-              context,
-              l10n,
-              presets: presets,
-              teams: teams,
+      ),
+      dropTarget: _composeDropIngestor(),
+      attachTooltip: l10n.workspace.chatLandingAttach,
+      voiceTooltip: l10n.workspace.chatLandingVoice,
+      voiceCancelTooltip: l10n.workspace.chatLandingVoiceCancel,
+      voiceStopTooltip: l10n.workspace.chatLandingVoiceStop,
+      isVoiceListening: _voiceListening,
+      voiceElapsed: _voiceElapsed,
+      voiceSoundLevel: _voiceSoundLevel,
+      onAttach: () => unawaited(_attachFiles()),
+      onVoice: () => unawaited(_toggleVoice()),
+      onVoiceCancel: () => unawaited(_cancelVoice()),
+      onVoiceStop: () => unawaited(_stopVoice()),
+      onPasteImage: _pasteComposeImage,
+      workspaceRoot: _activeLaunchDirectory(),
+      skills: skills,
+      plugins: plugins,
+      slashBundle: slashBundle,
+      skillSyntax: skillSyntax,
+      nativeCommands: nativeCommands,
+      onOpenAtFile: (path) {
+        unawaited(
+          context.read<WorkbenchEditorOpener>().openFile(
+            widget.workspace.workspaceId,
+            path,
+            preview: true,
+            fs: filesystemForComposeAtFileOpen(
+              path,
+              workspaceFilesystem: _homeStorage.fs,
             ),
-            autoChipLeading: _autoChipLeading(context, presets: presets),
-            conversationModeSpecs: _conversationModeSpecs(l10n),
-            autoChipSpecs: _autoChipSpecs(l10n, presets: presets, teams: teams),
-            onConversationModeSelected: (value) {
-              if (value is _LandingConversationMode) {
-                _setConversationMode(value);
-              }
-            },
-            onAutoChipSelected: (value) async {
-              if (value == ComposeModelPresetChipAction.manage) {
-                _openPresetsManageDialog();
-                return;
-              }
-              final tuple = decodeComposeCascadeValue(value);
-              if (tuple != null) {
-                await _applyCascadeLaunch(tuple);
-                return;
-              }
-              if (value is CascadeCustomModelRequest) {
-                await _applyCustomModelId(request: value);
-                return;
-              }
-              if (value == ComposeModelPresetChipAction.savePreset) {
-                _openSaveAsPresetDialog();
-                return;
-              }
-              if (_conversationMode == _LandingConversationMode.team) {
-                _onTeamChipSelected(value);
-                return;
-              }
-              if (value is! String || value.isEmpty) return;
-              _selectPreset(value);
-            },
-            expertChipLabel: isSimple ? _expertChipLabel(l10n, hubState) : null,
-            expertChipSpecs: isSimple
-                ? _expertChipSpecs(l10n, hubState)
-                : const [],
-            onExpertChipSelected: isSimple ? _onExpertChipSelected : null,
-            teamSettingsTooltip: _generateLaunch
-                ? l10n.teamGenerateOpenSettings
-                : (selectedTeam != null ? l10n.teamSettings : null),
-            onTeamSettings: _generateLaunch
-                ? () => unawaited(_openGenerateSettings())
-                : (selectedTeam != null
-                      ? () => unawaited(_openTeamSettings(teams))
-                      : null),
-            showTeamSettingsAttention:
-                !_generateLaunch &&
-                selectedTeam != null &&
-                landingTeamSettingsNeedsAttention(
-                  workspace: launchWorkspace,
-                  team: selectedTeam,
-                ),
           ),
-          dropTarget: _composeDropIngestor(),
-          attachTooltip: l10n.workspaceChatLandingAttach,
-          voiceTooltip: l10n.workspaceChatLandingVoice,
-          voiceCancelTooltip: l10n.workspaceChatLandingVoiceCancel,
-          voiceStopTooltip: l10n.workspaceChatLandingVoiceStop,
-          isVoiceListening: _voiceListening,
-          voiceElapsed: _voiceElapsed,
-          voiceSoundLevel: _voiceSoundLevel,
-          onAttach: () => unawaited(_attachFiles()),
-          onVoice: () => unawaited(_toggleVoice()),
-          onVoiceCancel: () => unawaited(_cancelVoice()),
-          onVoiceStop: () => unawaited(_stopVoice()),
-          onPasteImage: _pasteComposeImage,
-          workspaceRoot: _activeLaunchDirectory(),
-          skills: skills,
-          plugins: plugins,
-          slashBundle: slashBundle,
-          skillSyntax: skillSyntax,
-          nativeCommands: nativeCommands,
-          onOpenAtFile: (path) {
-            unawaited(
-              context.read<WorkbenchEditorOpener>().openFile(
-                widget.workspace.workspaceId,
-                path,
-                preview: true,
-                fs: filesystemForComposeAtFileOpen(
-                  path,
-                  workspaceFilesystem: _homeStorage.fs,
-                ),
-              ),
-            );
-          },
-          deferFieldMount: widget.deferFieldMount,
-          submitBlockedTooltip:
-              effectiveWarningBlock != null &&
-                  _controller.text.trim().isNotEmpty
-              ? landingLaunchBlockMessage(
-                  l10n,
-                  effectiveWarningBlock,
-                  registry: registry,
-                )
-              : null,
         );
+      },
+      deferFieldMount: widget.deferFieldMount,
+      submitBlockedTooltip:
+          effectiveWarningBlock != null && _controller.text.trim().isNotEmpty
+          ? landingLaunchBlockMessage(
+              l10n,
+              effectiveWarningBlock,
+              registry: registry,
+            )
+          : null,
+    );
 
     final cascadeCatalog = _cascadeCatalog;
     final composeCard =
@@ -1868,14 +1861,14 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
             children: [
               WorkspaceLandingHeaderRow(
                 projectLabel: projectLabel,
-                projectHintWhenEmpty: l10n.workspaceChatLandingSelectProject,
+                projectHintWhenEmpty: l10n.workspace.chatLandingSelectProject,
                 projectMenuSpecs: projectResolver.menuSpecs(
                   selectedProjectPath,
                 ),
                 onProjectSelected: (value) => unawaited(_selectProject(value)),
                 showWorktreeSelector: worktreeResolver.showsWorktreeSelector,
                 worktreeLabel: worktreeLabel,
-                worktreeHintWhenEmpty: l10n.workspaceChatLandingSelectWorktree,
+                worktreeHintWhenEmpty: l10n.workspace.chatLandingSelectWorktree,
                 worktreeMenuSpecs: worktreeResolver.menuSpecs(
                   selectedWorktreePath,
                 ),

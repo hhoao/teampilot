@@ -90,8 +90,8 @@ class WorkspaceTerminalFindHostState extends State<WorkspaceTerminalFindHost> {
               child: TerminalFindBar(
                 engine: widget.engine,
                 controller: widget.controller,
-                searchLabel: context.l10n.terminalFind,
-                noResultsLabel: context.l10n.terminalFindNoResults,
+                searchLabel: context.l10n.terminal.find,
+                noResultsLabel: context.l10n.terminal.findNoResults,
                 onClose: () => _closeFind(controller: widget.controller),
               ),
             ),

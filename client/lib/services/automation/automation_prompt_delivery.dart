@@ -5,9 +5,7 @@ import '../chat/launch/session/seat_prompt_delivery.dart';
 
 /// Result of one automation prompt delivery.
 class AutomationDeliveryOutcome {
-  const AutomationDeliveryOutcome.delivered()
-    : delivered = true,
-      reason = null;
+  const AutomationDeliveryOutcome.delivered() : delivered = true, reason = null;
 
   const AutomationDeliveryOutcome.failed(this.reason) : delivered = false;
 

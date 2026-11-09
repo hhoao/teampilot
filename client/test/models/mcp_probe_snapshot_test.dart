@@ -13,7 +13,10 @@ void main() {
     );
     expect(snap.tools.length, 2);
     expect(snap.tools.first.description, 'Ping');
-    expect(snap, isNot(const McpProbeSnapshot(status: McpProbeStatus.checking)));
+    expect(
+      snap,
+      isNot(const McpProbeSnapshot(status: McpProbeStatus.checking)),
+    );
   });
 
   test('handshake fail carries needsAuth without tools', () {

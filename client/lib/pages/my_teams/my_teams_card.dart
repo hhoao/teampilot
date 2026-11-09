@@ -55,8 +55,8 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
     final def = registry.tryGet(team.cli);
     final cliLabel = def == null ? team.cli.value : cliDisplayName(def, l10n);
     final modeLabel = switch (team.teamMode) {
-      TeamMode.native => l10n.teamModeNative,
-      TeamMode.mixed => l10n.teamModeMixed,
+      TeamMode.native => l10n.team.modeNative,
+      TeamMode.mixed => l10n.team.modeMixed,
     };
     final borderColor = widget.selected
         ? cs.primary
@@ -94,7 +94,7 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
                     if (widget.onUpload != null)
                       IconButton(
                         key: Key('my-teams-upload-${team.id}'),
-                        tooltip: l10n.myTeamsUpload,
+                        tooltip: l10n.my.teamsUpload,
                         onPressed: widget.onUpload,
                         visualDensity: VisualDensity.compact,
                         style: IconButton.styleFrom(
@@ -109,7 +109,7 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
                       ),
                     IconButton(
                       key: Key('my-teams-delete-${team.id}'),
-                      tooltip: l10n.deleteTeam,
+                      tooltip: l10n.delete.team,
                       onPressed: widget.onDelete,
                       visualDensity: VisualDensity.compact,
                       style: IconButton.styleFrom(
@@ -128,7 +128,7 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
               ),
               const SizedBox(height: 8),
               Text(
-                l10n.myTeamsMemberCount(team.roster.length),
+                l10n.my.teamsMemberCount(count: team.roster.length),
                 style: styles.smColored(cs.onSurfaceVariant),
               ),
               const SizedBox(height: 4),
@@ -150,7 +150,9 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
               ],
               const Spacer(),
               Text(
-                l10n.myTeamsCreatedAt(formatMyTeamsTimestamp(team.createdAt)),
+                l10n.my.teamsCreatedAt(
+                  date: formatMyTeamsTimestamp(team.createdAt),
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: styles.xsColored(cs.onSurfaceVariant),

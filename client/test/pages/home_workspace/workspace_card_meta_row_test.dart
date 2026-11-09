@@ -8,8 +8,8 @@ import 'package:teampilot/pages/home_workspace/workspace_card_meta_row.dart';
 void main() {
   Widget wrap(Widget child) {
     return MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: Scaffold(body: child),
     );
   }

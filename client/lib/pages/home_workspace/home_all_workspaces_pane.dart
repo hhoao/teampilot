@@ -103,7 +103,7 @@ class _HomeAllWorkspacesPaneState extends State<HomeAllWorkspacesPane> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          WorkspacePaneHeader(title: l10n.homeWorkspaceAllWorkspaces),
+          WorkspacePaneHeader(title: l10n.homeWorkspace.allWorkspaces),
           Expanded(
             child:
                 WorkspacesTab(

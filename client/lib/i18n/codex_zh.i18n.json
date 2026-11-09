@@ -1,0 +1,11 @@
+{
+  "acpChatNotLoggedIn": "Codex 尚未登录。请到设置 → 服务商完成 ChatGPT 登录，或改用 API Key。",
+  "acpLaunchFailedAdapter": "无法启动 Codex ACP 适配器（codex-acp）。请安装后重试。",
+  "credentialsActionFailed": "凭据更新失败",
+  "credentialsActionSuccess": "凭据已更新",
+  "credentialsImportFile": "导入 auth.json…",
+  "credentialsImportGlobal": "从 ~/.codex 导入",
+  "credentialsLogin": "OpenAI 登录",
+  "credentialsRevoke": "退出登录",
+  "credentialsRevokeConfirm": "退出登录并删除 {name: String} 的已保存凭据？"
+}

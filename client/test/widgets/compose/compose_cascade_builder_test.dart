@@ -114,7 +114,8 @@ void main() {
       expect(p.groups.map((g) => g.namespace), ['opencode-go']);
     });
 
-    test('sorts providers by category then lowercase name', () {      final zebra = AppProviderConfig(
+    test('sorts providers by category then lowercase name', () {
+      final zebra = AppProviderConfig(
         id: 'z',
         cli: CliTool.claude,
         name: 'Zebra',

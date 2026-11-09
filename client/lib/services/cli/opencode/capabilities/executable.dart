@@ -42,7 +42,7 @@ final class OpencodeExecutableCapability
   );
 
   @override
-  String label(AppLocalizations l10n) => l10n.appProviderToolOpencode;
+  String label(AppLocalizations l10n) => l10n.appProvider.toolOpencode;
 
   @override
   String get defaultExecutableName => executableName;

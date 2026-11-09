@@ -135,7 +135,7 @@ class _WorkspaceCreateDirectoryPickerState
                   ),
                   const SizedBox(width: 14),
                   Text(
-                    l10n.homeWorkspaceNewWorkspaceDirectoryLabel,
+                    l10n.homeWorkspace.newWorkspaceDirectoryLabel,
                     style: styles.mdSemiboldColored(cs.onSurface),
                     maxLines: 1,
                     softWrap: false,
@@ -167,7 +167,7 @@ class _WorkspaceCreateDirectoryPickerState
                       Icons.drive_folder_upload_outlined,
                       size: context.tpIconSizes.md,
                     ),
-                    label: Text(l10n.homeWorkspaceNewWorkspaceChooseDirectory),
+                    label: Text(l10n.homeWorkspace.newWorkspaceChooseDirectory),
                   ),
                 ],
               ),
@@ -177,7 +177,7 @@ class _WorkspaceCreateDirectoryPickerState
                 Padding(
                   padding: const EdgeInsets.only(left: 58),
                   child: Text(
-                    l10n.homeWorkspaceNewWorkspaceDirectoryHint,
+                    l10n.homeWorkspace.newWorkspaceDirectoryHint,
                     style: styles.mdColored(
                       cs.onSurfaceVariant.withValues(alpha: 0.7),
                     ),
@@ -229,7 +229,7 @@ class WorkspaceCreateNameField extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            l10n.workspaceDisplayName,
+            l10n.workspace.displayName,
             style: styles.xsColored(cs.onSurfaceVariant),
           ),
           const SizedBox(height: 6),

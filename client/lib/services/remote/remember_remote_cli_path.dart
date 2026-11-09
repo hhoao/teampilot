@@ -31,8 +31,8 @@ Future<void> rememberRemoteAcpAdapterPathIfNeeded({
 }) async {
   final trimmed = resolvedPath.trim();
   if (trimmed.isEmpty) return;
-  final stored =
-      (await readAcpAdapterPathOverride(targetId, cli.value) ?? '').trim();
+  final stored = (await readAcpAdapterPathOverride(targetId, cli.value) ?? '')
+      .trim();
   if (trimmed == stored) return;
   await writeAcpAdapterPathOverride(targetId, cli.value, trimmed);
 }

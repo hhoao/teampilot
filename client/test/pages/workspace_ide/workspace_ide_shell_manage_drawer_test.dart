@@ -53,8 +53,8 @@ void main() {
           ],
           child: MaterialApp(
             locale: const Locale('en'),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             home: TpSidebarProvider(
               mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
               child: Scaffold(

@@ -230,7 +230,9 @@ class OpencodeModelsService {
   /// Served-model ids behind `GET /models`, which answers either
   /// `{"data": [{"id": …}]}` or a bare list of ids.
   static List<String> _extractServedIds(Object? decoded) {
-    final data = decoded is Map ? decoded['data'] ?? decoded['models'] : decoded;
+    final data = decoded is Map
+        ? decoded['data'] ?? decoded['models']
+        : decoded;
     if (data is! List) return const [];
     final ids = <String>[];
     for (final item in data) {

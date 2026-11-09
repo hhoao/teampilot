@@ -69,7 +69,7 @@ Future<bool> showCredentialPushConfirm(
         children: [
           TpDialogHeader(title: l10n.credentialPushConfirmTitle),
           const SizedBox(height: 12),
-          Text(l10n.credentialPushConfirmBody(host)),
+          Text(l10n.credentialPushConfirmBody(host: host)),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,

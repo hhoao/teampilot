@@ -75,7 +75,9 @@ String? taskNotificationTaskId(String? prompt) {
   if (prompt == null) return null;
   final trimmed = prompt.trim();
   if (!trimmed.startsWith('<task-notification>')) return null;
-  final match = RegExp(r'<task-id>\s*([^<]+?)\s*</task-id>').firstMatch(trimmed);
+  final match = RegExp(
+    r'<task-id>\s*([^<]+?)\s*</task-id>',
+  ).firstMatch(trimmed);
   return match?.group(1);
 }
 

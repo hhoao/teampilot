@@ -1,0 +1,11 @@
+{
+  "edit": "编辑",
+  "cancel": "取消",
+  "memberSubtitle": "编辑提供商、模型、可选 Agent 预设与命令参数。",
+  "modelTitle": "编辑 {name: String}",
+  "provider": "编辑服务商",
+  "send": "发送",
+  "teamSubtitle": "编辑团队标识、工作目录和启动顺序。",
+  "userMessage": "编辑消息",
+  "workspacePrimaryPath": "编辑主目录"
+}

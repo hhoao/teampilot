@@ -103,7 +103,7 @@ class _TeamHubPageState extends State<TeamHubPage> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: l10n.teamHubCloneFailed,
+        message: l10n.teamHub.cloneFailed,
         variant: TpToastVariant.error,
       );
     }
@@ -124,7 +124,7 @@ class _TeamHubPageState extends State<TeamHubPage> {
         if (!mounted) return;
         AppToast.show(
           context,
-          message: context.l10n.teamHubLoadError,
+          message: context.l10n.teamHub.loadError,
           variant: TpToastVariant.error,
         );
         context.read<TeamHubCubit>().clearError();
@@ -170,7 +170,7 @@ class _TeamHubPageState extends State<TeamHubPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (detail == null)
-                WorkspacePaneHeader(title: context.l10n.teamHubTitle),
+                WorkspacePaneHeader(title: context.l10n.teamHub.title),
               Expanded(child: pane),
             ],
           ),

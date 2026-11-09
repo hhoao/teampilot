@@ -29,7 +29,7 @@ final class CursorExecutableCapability implements CliExecutableCapability {
       'then use Detect — or skip Cursor on this device.';
 
   @override
-  String label(AppLocalizations l10n) => l10n.appProviderToolCursor;
+  String label(AppLocalizations l10n) => l10n.appProvider.toolCursor;
 
   @override
   String get defaultExecutableName => 'cursor-agent';

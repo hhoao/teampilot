@@ -49,31 +49,34 @@ void main() {
     );
   }
 
-  test('probe(adapter) reports ready when the adapter is on the host', () async {
-    service = build(
-      run: (command) async {
-        if (command.contains('claude-agent-acp')) {
-          return const SshCommandResult(
-            exitCode: 0,
-            stdout: '/home/u/.local/bin/claude-agent-acp\n',
-          );
-        }
-        return const SshCommandResult(exitCode: 1, stdout: '');
-      },
-    );
+  test(
+    'probe(adapter) reports ready when the adapter is on the host',
+    () async {
+      service = build(
+        run: (command) async {
+          if (command.contains('claude-agent-acp')) {
+            return const SshCommandResult(
+              exitCode: 0,
+              stdout: '/home/u/.local/bin/claude-agent-acp\n',
+            );
+          }
+          return const SshCommandResult(exitCode: 1, stdout: '');
+        },
+      );
 
-    final result = await service.probe(
-      target: target,
-      cli: CliTool.claude,
-      kind: CliBinaryKind.adapter,
-    );
+      final result = await service.probe(
+        target: target,
+        cli: CliTool.claude,
+        kind: CliBinaryKind.adapter,
+      );
 
-    expect(result, isA<RemoteCliReady>());
-    expect(
-      (result as RemoteCliReady).path,
-      '/home/u/.local/bin/claude-agent-acp',
-    );
-  });
+      expect(result, isA<RemoteCliReady>());
+      expect(
+        (result as RemoteCliReady).path,
+        '/home/u/.local/bin/claude-agent-acp',
+      );
+    },
+  );
 
   test('probe(adapter) reports missing when nothing resolves', () async {
     service = build(

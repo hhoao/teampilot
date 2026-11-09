@@ -22,31 +22,33 @@ RuntimeContext _context(
 );
 
 void main() {
-  test('same root string on another plane does not leak the workspace index',
-      () async {
-    final fsA = InMemoryFilesystem();
-    final fsB = InMemoryFilesystem();
-    // Two remote hosts with the same user name resolve the same root string.
-    const root = '/home/ubuntu/.teampilot';
+  test(
+    'same root string on another plane does not leak the workspace index',
+    () async {
+      final fsA = InMemoryFilesystem();
+      final fsB = InMemoryFilesystem();
+      // Two remote hosts with the same user name resolve the same root string.
+      const root = '/home/ubuntu/.teampilot';
 
-    final repoA = SessionRepository(
-      rootDir: root,
-      storage: fakeHomeStorage(filesystem: fsA, appDataRoot: root),
-    );
-    final repoB = SessionRepository(
-      rootDir: root,
-      storage: fakeHomeStorage(filesystem: fsB, appDataRoot: root),
-    );
+      final repoA = SessionRepository(
+        rootDir: root,
+        storage: fakeHomeStorage(filesystem: fsA, appDataRoot: root),
+      );
+      final repoB = SessionRepository(
+        rootDir: root,
+        storage: fakeHomeStorage(filesystem: fsB, appDataRoot: root),
+      );
 
-    final workspace = await repoA.createWorkspace([
-      const WorkspaceFolder(path: '/srv/app-a'),
-    ]);
-    final indexA = await repoA.loadWorkspacesIndex();
-    expect(indexA.map((w) => w.workspaceId), [workspace.workspaceId]);
+      final workspace = await repoA.createWorkspace([
+        const WorkspaceFolder(path: '/srv/app-a'),
+      ]);
+      final indexA = await repoA.loadWorkspacesIndex();
+      expect(indexA.map((w) => w.workspaceId), [workspace.workspaceId]);
 
-    final indexB = await repoB.loadWorkspacesIndex();
-    expect(indexB, isEmpty);
-  });
+      final indexB = await repoB.loadWorkspacesIndex();
+      expect(indexB, isEmpty);
+    },
+  );
 
   group('home swap', () {
     test('the previous plane index is not served after a swap', () async {
@@ -94,30 +96,32 @@ void main() {
       expect(indexA.map((w) => w.workspaceId), [workspaceA.workspaceId]);
     });
 
-    test('the same app-data root on another target is a different plane',
-        () async {
-      final fsA = InMemoryFilesystem();
-      final fsB = InMemoryFilesystem();
-      // Two hosts whose user resolves the identical root string.
-      const root = '/home/ubuntu/.teampilot';
-      final storage = HomeStorage(_context(fsA, appDataRoot: root));
-      final repo = SessionRepository(storage: storage);
+    test(
+      'the same app-data root on another target is a different plane',
+      () async {
+        final fsA = InMemoryFilesystem();
+        final fsB = InMemoryFilesystem();
+        // Two hosts whose user resolves the identical root string.
+        const root = '/home/ubuntu/.teampilot';
+        final storage = HomeStorage(_context(fsA, appDataRoot: root));
+        final repo = SessionRepository(storage: storage);
 
-      final workspaceA = await repo.createWorkspace([
-        const WorkspaceFolder(path: '/srv/app-a'),
-      ]);
-      final indexA = await repo.loadWorkspacesIndex();
-      expect(indexA.map((w) => w.workspaceId), [workspaceA.workspaceId]);
+        final workspaceA = await repo.createWorkspace([
+          const WorkspaceFolder(path: '/srv/app-a'),
+        ]);
+        final indexA = await repo.loadWorkspacesIndex();
+        expect(indexA.map((w) => w.workspaceId), [workspaceA.workspaceId]);
 
-      await storage.swap(
-        _context(
-          fsB,
-          appDataRoot: root,
-          target: RuntimeTarget.ssh('studio', label: 'Studio'),
-        ),
-      );
+        await storage.swap(
+          _context(
+            fsB,
+            appDataRoot: root,
+            target: RuntimeTarget.ssh('studio', label: 'Studio'),
+          ),
+        );
 
-      expect(await repo.loadWorkspacesIndex(), isEmpty);
-    });
+        expect(await repo.loadWorkspacesIndex(), isEmpty);
+      },
+    );
   });
 }

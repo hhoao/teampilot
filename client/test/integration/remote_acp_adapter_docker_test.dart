@@ -43,10 +43,7 @@ void main() {
     server = await DockerSshServer.start(clientRoot: Directory.current.path);
 
     final credentials = InMemorySshCredentialStore();
-    await credentials.savePassword(
-      _profileId,
-      DockerSshServer.defaultPassword,
-    );
+    await credentials.savePassword(_profileId, DockerSshServer.defaultPassword);
 
     sshFactory = SshClientFactory(
       credentialStore: credentials,
@@ -60,137 +57,135 @@ void main() {
     await server?.stop();
   });
 
-  test(
-    'locate → install → locate the Claude ACP adapter over real SSH',
-    () async {
-      if (server == null || sshFactory == null) {
-        markTestSkipped('Docker is not available');
-      }
-      final docker = server!;
-      final factory = sshFactory!;
+  test('locate → install → locate the Claude ACP adapter over real SSH', () async {
+    if (server == null || sshFactory == null) {
+      markTestSkipped('Docker is not available');
+    }
+    final docker = server!;
+    final factory = sshFactory!;
 
-      final profile = _profile.copyWith(port: docker.port);
-      final target = RuntimeTarget(
-        id: 'ssh:${profile.id}',
-        label: profile.name,
-        kind: RuntimeKind.ssh,
-        sshProfileId: profile.id,
-      );
+    final profile = _profile.copyWith(port: docker.port);
+    final target = RuntimeTarget(
+      id: 'ssh:${profile.id}',
+      label: profile.name,
+      kind: RuntimeKind.ssh,
+      sshProfileId: profile.id,
+    );
 
-      final service = RemoteCliReadinessService(
-        registry: CliToolRegistry.builtIn(),
-        sshClientFactory: factory,
-        profileById: (id) => id == profile.id ? profile : null,
-        cliPathOverride: (t, c) async => cliOverrides['$t|$c'],
-        setCliPathOverride: (t, c, p) async => cliOverrides['$t|$c'] = p,
-        acpAdapterPathOverride: (t, c) async => adapterOverrides['$t|$c'],
-        setAcpAdapterPathOverride: (t, c, p) async =>
-            adapterOverrides['$t|$c'] = p,
-      );
+    final service = RemoteCliReadinessService(
+      registry: CliToolRegistry.builtIn(),
+      sshClientFactory: factory,
+      profileById: (id) => id == profile.id ? profile : null,
+      cliPathOverride: (t, c) async => cliOverrides['$t|$c'],
+      setCliPathOverride: (t, c, p) async => cliOverrides['$t|$c'] = p,
+      acpAdapterPathOverride: (t, c) async => adapterOverrides['$t|$c'],
+      setAcpAdapterPathOverride: (t, c, p) async =>
+          adapterOverrides['$t|$c'] = p,
+    );
 
-      // 1. Bare image: the adapter must probe as missing (this is what makes the
-      //    landing/panel "Required CLIs on this machine" row appear).
-      final missing = await service.probe(
-        target: target,
-        cli: CliTool.claude,
-        kind: CliBinaryKind.adapter,
-      );
-      expect(
-        missing,
-        isA<RemoteCliMissing>(),
-        reason: 'bare Debian image must not already have claude-agent-acp',
-      );
+    // 1. Bare image: the adapter must probe as missing (this is what makes the
+    //    landing/panel "Required CLIs on this machine" row appear).
+    final missing = await service.probe(
+      target: target,
+      cli: CliTool.claude,
+      kind: CliBinaryKind.adapter,
+    );
+    expect(
+      missing,
+      isA<RemoteCliMissing>(),
+      reason: 'bare Debian image must not already have claude-agent-acp',
+    );
 
-      // 2. User-driven install bootstraps Node + npm-installs the adapter.
-      final installed = await service.install(
-        target: target,
-        cli: CliTool.claude,
-        kind: CliBinaryKind.adapter,
-      );
-      expect(
-        installed,
-        isA<RemoteCliReady>(),
-        reason: installed is RemoteCliFailed
-            ? 'install failed: ${installed.message}'
-            : null,
-      );
-      final path = (installed as RemoteCliReady).path;
-      expect(path, contains('claude-agent-acp'));
-      expect(
-        adapterOverrides['${target.id}|claude'],
-        path,
-        reason: 'resolved adapter path must be remembered in targets.json',
-      );
+    // 2. User-driven install bootstraps Node + npm-installs the adapter.
+    final installed = await service.install(
+      target: target,
+      cli: CliTool.claude,
+      kind: CliBinaryKind.adapter,
+    );
+    expect(
+      installed,
+      isA<RemoteCliReady>(),
+      reason: installed is RemoteCliFailed
+          ? 'install failed: ${installed.message}'
+          : null,
+    );
+    final path = (installed as RemoteCliReady).path;
+    expect(path, contains('claude-agent-acp'));
+    expect(
+      adapterOverrides['${target.id}|claude'],
+      path,
+      reason: 'resolved adapter path must be remembered in targets.json',
+    );
 
-      // 3. Re-probe must reuse the stored override without re-locating.
-      final ready = await service.probe(
-        target: target,
-        cli: CliTool.claude,
-        kind: CliBinaryKind.adapter,
-      );
-      expect(ready, isA<RemoteCliReady>());
-      expect((ready as RemoteCliReady).path, path);
+    // 3. Re-probe must reuse the stored override without re-locating.
+    final ready = await service.probe(
+      target: target,
+      cli: CliTool.claude,
+      kind: CliBinaryKind.adapter,
+    );
+    expect(ready, isA<RemoteCliReady>());
+    expect((ready as RemoteCliReady).path, path);
 
-      // 4. The whole point: the adapter must actually execute on the remote host
-      //    under the *production* remote command encoding, which prepends the
-      //    TeamPilot toolchain Node bin to PATH (npm shims are `#!/usr/bin/env
-      //    node`). A raw `$path --version` fails with exit 127 because the
-      //    non-interactive ssh PATH has no node.
-      final run = RemoteCliLocator.runnerForStorage(
-        factory,
-        profile,
-        includeStderr: true,
-        timeout: const Duration(seconds: 20),
-      );
+    // 4. The whole point: the adapter must actually execute on the remote host
+    //    under the *production* remote command encoding, which prepends the
+    //    TeamPilot toolchain Node bin to PATH (npm shims are `#!/usr/bin/env
+    //    node`). A raw `$path --version` fails with exit 127 because the
+    //    non-interactive ssh PATH has no node.
+    final run = RemoteCliLocator.runnerForStorage(
+      factory,
+      profile,
+      includeStderr: true,
+      timeout: const Duration(seconds: 20),
+    );
 
-      final nodeProbe = await run(
+    final nodeProbe = await run(
+      buildAcpRemoteCommand(
+        profile: profile,
+        argv: const ['node', '--version'],
+        workingDirectory: '/home/${profile.username}',
+        env: const {},
+      ),
+    );
+    expect(
+      nodeProbe.exitCode,
+      0,
+      reason:
+          'production remote command must expose the toolchain Node on PATH.\n'
+          'stdout: ${nodeProbe.stdout}\nstderr: ${nodeProbe.stderr}',
+    );
+
+    String? execFailure;
+    var started = false;
+    try {
+      final version = await run(
         buildAcpRemoteCommand(
           profile: profile,
-          argv: const ['node', '--version'],
+          argv: [path, '--version'],
           workingDirectory: '/home/${profile.username}',
           env: const {},
         ),
       );
-      expect(
-        nodeProbe.exitCode,
-        0,
-        reason:
-            'production remote command must expose the toolchain Node on PATH.\n'
-            'stdout: ${nodeProbe.stdout}\nstderr: ${nodeProbe.stderr}',
-      );
-
-      String? execFailure;
-      var started = false;
-      try {
-        final version = await run(
-          buildAcpRemoteCommand(
-            profile: profile,
-            argv: [path, '--version'],
-            workingDirectory: '/home/${profile.username}',
-            env: const {},
-          ),
-        );
-        started = version.exitCode != 127 &&
-            !version.stderr.contains('No such file or directory');
-        execFailure =
-            'exit ${version.exitCode}\n'
-            'stdout: ${version.stdout}\nstderr: ${version.stderr}';
-      } on Object catch (error) {
-        // A long-lived ACP server that ignores --version simply never returns;
-        // reaching this point still means the shebang resolved and the process
-        // started.
-        started = true;
-        execFailure = 'did not exit (expected for a stdio server): $error';
-      }
-      expect(
-        started,
-        isTrue,
-        reason: 'adapter at $path failed to start over remote ssh exec: '
-            '$execFailure',
-      );
-    },
-    timeout: const Timeout(Duration(minutes: 12)),
-  );
+      started =
+          version.exitCode != 127 &&
+          !version.stderr.contains('No such file or directory');
+      execFailure =
+          'exit ${version.exitCode}\n'
+          'stdout: ${version.stdout}\nstderr: ${version.stderr}';
+    } on Object catch (error) {
+      // A long-lived ACP server that ignores --version simply never returns;
+      // reaching this point still means the shebang resolved and the process
+      // started.
+      started = true;
+      execFailure = 'did not exit (expected for a stdio server): $error';
+    }
+    expect(
+      started,
+      isTrue,
+      reason:
+          'adapter at $path failed to start over remote ssh exec: '
+          '$execFailure',
+    );
+  }, timeout: const Timeout(Duration(minutes: 12)));
 }
 
 const _profileId = 'docker-acp-it';

@@ -101,8 +101,8 @@ Widget _host({
         storage: testHomeStorage,
       );
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: MultiBlocProvider(
       providers: [
         BlocProvider<LaunchProfileCubit>.value(value: launch),

@@ -257,7 +257,8 @@ void main() {
     );
     expect(contribution.environment['CLAUDE_CODE_NO_FLICKER'], '1');
     expect(
-      contribution.environment[MemberRoleProvision.mixedAcpDisallowedToolsEnvKey],
+      contribution.environment[MemberRoleProvision
+          .mixedAcpDisallowedToolsEnvKey],
       contains('ListAgents'),
     );
 

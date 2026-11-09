@@ -131,7 +131,7 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
     widget.onOAuthConnected();
     AppToast.show(
       context,
-      message: context.l10n.mcpOAuthConnectSuccess,
+      message: context.l10n.mcp.oAuthConnectSuccess,
       variant: TpToastVariant.success,
     );
     unawaited(context.read<McpCubit>().probeOne(server.id));
@@ -151,12 +151,12 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
       child: Column(
         children: [
           TpCardHeader(
-            title: l10n.mcpInstalledCount(servers.length),
+            title: l10n.mcp.installedCount(count: servers.length),
             trailing: TpActionRow(
               children: [
                 TpAnimatedIconButton(
                   key: const Key('mcp-probe-refresh-all'),
-                  tooltip: l10n.mcpProbeRefreshAll,
+                  tooltip: l10n.mcp.probeRefreshAll,
                   icon: Icons.refresh_outlined,
                   busy: toolbarBusy,
                   enabled: !toolbarBusy,
@@ -168,12 +168,12 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
                     Icons.download_outlined,
                     size: context.tpIconSizes.md,
                   ),
-                  label: Text(l10n.mcpImportExisting),
+                  label: Text(l10n.mcp.importExisting),
                 ),
                 OutlinedButton.icon(
                   onPressed: toolbarBusy ? null : widget.onAdd,
                   icon: Icon(Icons.add, size: context.tpIconSizes.md),
-                  label: Text(l10n.mcpAddButton),
+                  label: Text(l10n.mcp.addButton),
                 ),
               ],
             ),
@@ -197,9 +197,9 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
           else if (servers.isEmpty)
             TpEmptyState(
               icon: Icons.dns_outlined,
-              title: l10n.mcpNoInstalled,
-              hint: l10n.mcpNoInstalledHint,
-              actionLabel: l10n.mcpEmptyGoDiscovery,
+              title: l10n.mcp.noInstalled,
+              hint: l10n.mcp.noInstalledHint,
+              actionLabel: l10n.mcp.emptyGoDiscovery,
               onAction: widget.onGoDiscovery,
             )
           else

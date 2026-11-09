@@ -1,0 +1,15 @@
+{
+  "theme": "主题",
+  "colorPresetDescription": "用于按钮、开关与高亮的主色与强调色。",
+  "colorPresetTitle": "主题色",
+  "dark": "深色",
+  "light": "浅色",
+  "modeDescription": "浅色、深色，或与系统外观一致。",
+  "modeTitle": "主题模式",
+  "presetAmber": "琥珀",
+  "presetForest": "森林",
+  "presetGraphite": "石墨",
+  "presetOcean": "海洋",
+  "presetViolet": "紫罗兰",
+  "system": "跟随系统"
+}

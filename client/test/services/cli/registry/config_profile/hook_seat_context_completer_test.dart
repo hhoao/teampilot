@@ -62,10 +62,9 @@ void main() {
     expect(
       action.scriptContent,
       BusAwarenessPrompt.sessionStartScript(
-        payload:
-            CliToolRegistry.builtIn()
-                .capability<HookCapability>(CliTool.claude)!
-                .sessionStartStdoutPayload(additionalContext: context),
+        payload: CliToolRegistry.builtIn()
+            .capability<HookCapability>(CliTool.claude)!
+            .sessionStartStdoutPayload(additionalContext: context),
       ),
     );
   });

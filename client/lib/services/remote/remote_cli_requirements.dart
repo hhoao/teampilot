@@ -34,8 +34,9 @@ class RemoteCliRequirement {
 
 /// True when [cli]'s ACP mode needs a separate adapter binary.
 bool cliUsesSeparateAcpAdapter(CliTool cli) {
-  final settings = CliToolRegistry.builtIn()
-      .capability<AcpSettingsCapability>(cli);
+  final settings = CliToolRegistry.builtIn().capability<AcpSettingsCapability>(
+    cli,
+  );
   return settings?.usesSeparateAdapter == true;
 }
 

@@ -28,8 +28,8 @@ void main() {
       RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: Scaffold(
             body: WorkspaceComposeCard(
               controller: textController,
@@ -123,8 +123,8 @@ void main() {
       RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: Scaffold(
             body: WorkspaceComposeCard(
               controller: textController,

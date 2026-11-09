@@ -48,12 +48,9 @@ void main() {
         'outcome': {'outcome': 'selected', 'optionId': 'always-1'},
       },
     );
-    expect(
-      translator.encodePermissionResponse(const PermissionCancelled()),
-      {
-        'outcome': {'outcome': 'cancelled'},
-      },
-    );
+    expect(translator.encodePermissionResponse(const PermissionCancelled()), {
+      'outcome': {'outcome': 'cancelled'},
+    });
   });
 
   test('Cursor shares the nested outcome envelope', () {
@@ -66,12 +63,9 @@ void main() {
         'outcome': {'outcome': 'selected', 'optionId': 'allow-once'},
       },
     );
-    expect(
-      cursor.encodePermissionResponse(const PermissionCancelled()),
-      {
-        'outcome': {'outcome': 'cancelled'},
-      },
-    );
+    expect(cursor.encodePermissionResponse(const PermissionCancelled()), {
+      'outcome': {'outcome': 'cancelled'},
+    });
   });
 }
 

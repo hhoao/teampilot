@@ -88,13 +88,10 @@ class SessionRepository {
     List<Workspace> workspaces, {
     HomeRuntimeIdentity? forPlane,
   }) {
-    return _workspaceIndexCache.write(
-      [
-        for (final workspace in workspaces)
-          _withInferredMemberPlacementInit(workspace),
-      ],
-      forPlane: forPlane,
-    );
+    return _workspaceIndexCache.write([
+      for (final workspace in workspaces)
+        _withInferredMemberPlacementInit(workspace),
+    ], forPlane: forPlane);
   }
 
   /// Incremental mirror of [Workspace] into the in-memory index cache and the
@@ -291,9 +288,7 @@ class SessionRepository {
         '[boot] loadWorkspacesIndex from snapshot count=${snapshot.length} '
         'read=${readMs}ms (validate deferred)',
       );
-      unawaited(
-        _revalidateWorkspacesIndexSnapshot(fs, store, snapshot, plane),
-      );
+      unawaited(_revalidateWorkspacesIndexSnapshot(fs, store, snapshot, plane));
       return _rememberWorkspacesIndex(snapshot, forPlane: plane);
     } else {
       appLogger.i(
@@ -947,11 +942,7 @@ class SessionRepository {
         : sessionFolders.first.targetId;
     final resolvedAcp =
         trimmedTeam.isEmpty &&
-        resolveAcpOnTarget(
-          cli: cli,
-          targetId: primaryTargetId,
-          requested: acp,
-        );
+        resolveAcpOnTarget(cli: cli, targetId: primaryTargetId, requested: acp);
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: workspaceId,
@@ -1444,8 +1435,7 @@ class SessionRepository {
         // above already lists the surviving session directories, so use it as
         // the base instead of skipping the mirror.
         Workspace? cached;
-        for (final w
-            in _workspaceIndexCache.snapshot ?? const <Workspace>[]) {
+        for (final w in _workspaceIndexCache.snapshot ?? const <Workspace>[]) {
           if (w.workspaceId == workspaceId) {
             cached = w;
             break;

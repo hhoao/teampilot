@@ -47,7 +47,7 @@ class SkillManagementPage extends StatelessWidget {
           context,
           message:
               state.noticeMessage == SkillCubit.marketplaceRepoAddedNoticeKey
-              ? context.l10n.skillsMarketplaceRepoAdded
+              ? context.l10n.skills.marketplaceRepoAdded
               : state.noticeMessage!,
           variant: TpToastVariant.success,
           duration: const Duration(seconds: 4),
@@ -69,8 +69,8 @@ class SkillManagementPage extends StatelessWidget {
         },
         child: WorkspaceAdaptiveSectionPage(
           pageKey: AppKeys.skillsWorkspace,
-          title: context.l10n.skillsTitle,
-          subtitle: context.l10n.skillsSubtitle,
+          title: context.l10n.skills.title,
+          subtitle: context.l10n.skills.subtitle,
           showSubtitle: false,
           embedded: embedded,
           compactSectionTabs: true,

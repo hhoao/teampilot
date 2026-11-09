@@ -252,9 +252,9 @@ Future<bool?> confirmEditorUnsavedDiscard(BuildContext context) {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.editorUnsavedChangesTitle),
+          TpDialogHeader(title: l10n.editor.unsavedChangesTitle),
           const SizedBox(height: 16),
-          Text(l10n.editorUnsavedChangesDiscardMultiple(1)),
+          Text(l10n.editor.unsavedChangesDiscardMultiple(count: 1)),
           TpDialogActions(
             children: [
               TextButton(
@@ -263,7 +263,7 @@ Future<bool?> confirmEditorUnsavedDiscard(BuildContext context) {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: Text(l10n.editorDiscard),
+                child: Text(l10n.editor.discard),
               ),
             ],
           ),

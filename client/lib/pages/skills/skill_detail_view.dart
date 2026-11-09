@@ -122,13 +122,13 @@ class _SkillDetailViewState extends State<SkillDetailView> {
       case _SkillMdStatus.missing:
         return TpEmptyState(
           icon: Icons.description_outlined,
-          title: l10n.skillsDetailMissing,
+          title: l10n.skills.detailMissing,
           centered: true,
         );
       case _SkillMdStatus.error:
         return TpEmptyState(
           icon: Icons.error_outline,
-          title: l10n.skillsDetailReadError,
+          title: l10n.skills.detailReadError,
           centered: true,
         );
       case _SkillMdStatus.ready:

@@ -1,0 +1,12 @@
+{
+  "errorCopied": "Copied",
+  "errorCopy": "Copy",
+  "errorCopyReport": "Copy report",
+  "errorDetails": "Error details",
+  "errorPendingLogs": "Pending logs",
+  "errorStackEmpty": "Stack trace is empty.",
+  "errorStackTrace": "Stack trace",
+  "errorTitle": "Startup failed",
+  "errorVersion": "Version {version: String} ({build: String})",
+  "errorViewLogs": "View logs"
+}

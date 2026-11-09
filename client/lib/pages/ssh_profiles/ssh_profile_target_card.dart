@@ -69,13 +69,13 @@ class SshProfileTargetCard extends StatelessWidget {
     final l10n = context.l10n;
     return switch (status) {
       SshProfileConnectionStatus.disconnected =>
-        l10n.sshProfileStatusDisconnected,
-      SshProfileConnectionStatus.connecting => l10n.sshProfileStatusConnecting,
+        l10n.sshProfile.statusDisconnected,
+      SshProfileConnectionStatus.connecting => l10n.sshProfile.statusConnecting,
       SshProfileConnectionStatus.reconnecting =>
-        l10n.sshProfileStatusReconnecting,
-      SshProfileConnectionStatus.connected => l10n.sshProfileStatusConnected,
-      SshProfileConnectionStatus.authFailed => l10n.sshProfileStatusAuthFailed,
-      SshProfileConnectionStatus.error => l10n.sshProfileStatusError,
+        l10n.sshProfile.statusReconnecting,
+      SshProfileConnectionStatus.connected => l10n.sshProfile.statusConnected,
+      SshProfileConnectionStatus.authFailed => l10n.sshProfile.statusAuthFailed,
+      SshProfileConnectionStatus.error => l10n.sshProfile.statusError,
     };
   }
 
@@ -132,13 +132,13 @@ class SshProfileTargetCard extends StatelessWidget {
       TpActionMenuSpec.item(
         value: _SshProfileTargetAction.refresh,
         icon: Icons.refresh,
-        label: l10n.sshProfileRefresh,
+        label: l10n.sshProfile.refresh,
         enabled: !busy,
       ),
       TpActionMenuSpec.item(
         value: _SshProfileTargetAction.edit,
         icon: Icons.edit_outlined,
-        label: l10n.sshProfileEdit,
+        label: l10n.sshProfile.edit,
         enabled: !busy,
       ),
       if (onConfigure != null)
@@ -152,7 +152,7 @@ class SshProfileTargetCard extends StatelessWidget {
         TpActionMenuSpec.item(
           value: _SshProfileTargetAction.disconnect,
           icon: Icons.link_off,
-          label: l10n.sshProfileDisconnect,
+          label: l10n.sshProfile.disconnect,
           enabled: !busy,
         )
       else if (_connecting)
@@ -160,28 +160,28 @@ class SshProfileTargetCard extends StatelessWidget {
           value: _SshProfileTargetAction.connect,
           icon: Icons.sync,
           label: status == SshProfileConnectionStatus.reconnecting
-              ? l10n.sshProfileStatusReconnecting
-              : l10n.sshProfileStatusConnecting,
+              ? l10n.sshProfile.statusReconnecting
+              : l10n.sshProfile.statusConnecting,
           enabled: false,
         )
       else ...[
         TpActionMenuSpec.item(
           value: _SshProfileTargetAction.test,
           icon: Icons.phonelink_outlined,
-          label: l10n.sshProfileTest,
+          label: l10n.sshProfile.test,
           enabled: !busy && !testing,
         ),
         TpActionMenuSpec.item(
           value: _SshProfileTargetAction.connect,
           icon: Icons.terminal,
-          label: l10n.sshProfileConnect,
+          label: l10n.sshProfile.connect,
           enabled: !busy,
         ),
       ],
       TpActionMenuSpec.item(
         value: _SshProfileTargetAction.delete,
         icon: Icons.delete_outline,
-        label: l10n.sshProfileDelete,
+        label: l10n.sshProfile.delete,
         enabled: !busy,
         destructive: true,
       ),
@@ -190,7 +190,7 @@ class SshProfileTargetCard extends StatelessWidget {
 
   Widget _buildOverflowMenu(BuildContext context) {
     return TpActionMenuButton(
-      tooltip: context.l10n.logViewerActionsMenu,
+      tooltip: context.l10n.log.viewerActionsMenu,
       icon: Icon(Icons.more_vert, size: context.tpIconSizes.sm),
       size: TpIconButton.kCompactSize,
       specs: _overflowMenuSpecs(context),
@@ -210,7 +210,7 @@ class SshProfileTargetCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         TpAnimatedIconButton(
-          tooltip: l10n.sshProfileRefresh,
+          tooltip: l10n.sshProfile.refresh,
           icon: Icons.refresh,
           iconSize: 20,
           compact: true,
@@ -220,7 +220,7 @@ class SshProfileTargetCard extends StatelessWidget {
           onPressed: onRefresh,
         ),
         _IconAction(
-          tooltip: l10n.sshProfileEdit,
+          tooltip: l10n.sshProfile.edit,
           icon: Icons.edit_outlined,
           onPressed: busy ? null : onEdit,
         ),
@@ -231,7 +231,7 @@ class SshProfileTargetCard extends StatelessWidget {
             onPressed: busy ? null : onConfigure,
           ),
         _IconAction(
-          tooltip: l10n.sshProfileDelete,
+          tooltip: l10n.sshProfile.delete,
           icon: Icons.delete_outline,
           onPressed: busy ? null : onDelete,
           destructive: true,
@@ -241,7 +241,7 @@ class SshProfileTargetCard extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: busy ? null : onDisconnect,
             icon: const Icon(Icons.link_off, size: 16),
-            label: Text(l10n.sshProfileDisconnect),
+            label: Text(l10n.sshProfile.disconnect),
           ),
         ] else if (_connecting) ...[
           const SizedBox(width: 4),
@@ -257,8 +257,8 @@ class SshProfileTargetCard extends StatelessWidget {
             ),
             label: Text(
               status == SshProfileConnectionStatus.reconnecting
-                  ? l10n.sshProfileStatusReconnecting
-                  : l10n.sshProfileStatusConnecting,
+                  ? l10n.sshProfile.statusReconnecting
+                  : l10n.sshProfile.statusConnecting,
             ),
           ),
         ] else ...[
@@ -275,13 +275,13 @@ class SshProfileTargetCard extends StatelessWidget {
                     ),
                   )
                 : const Icon(Icons.phonelink_outlined, size: 16),
-            label: Text(l10n.sshProfileTest),
+            label: Text(l10n.sshProfile.test),
           ),
           const SizedBox(width: 6),
           FilledButton.tonalIcon(
             onPressed: busy ? null : onConnect,
             icon: const Icon(Icons.terminal, size: 16),
-            label: Text(l10n.sshProfileConnect),
+            label: Text(l10n.sshProfile.connect),
           ),
         ],
       ],
@@ -326,7 +326,7 @@ class SshProfileTargetCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 2),
                           Text(
-                            context.l10n.sshVaultBadge,
+                            context.l10n.ssh.vaultBadge,
                             style: TpTextStyles.of(context).mutedXs,
                           ),
                         ],

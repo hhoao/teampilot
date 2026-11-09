@@ -21,8 +21,8 @@ class SshServerConfigState extends Equatable {
 
 class SshServerConfigCubit extends Cubit<SshServerConfigState> {
   SshServerConfigCubit({required SshServerProfileRepository repository})
-      : _repository = repository,
-        super(const SshServerConfigState());
+    : _repository = repository,
+      super(const SshServerConfigState());
 
   final SshServerProfileRepository _repository;
 

@@ -64,11 +64,11 @@ class _SessionUsageProgressBridgeState
       final l10n = context.l10n;
       final progress = state.syncProgress;
       final subtitle = progress == null
-          ? l10n.sessionUsageSyncPreparing
-          : l10n.sessionUsageSyncProgress(
-              progress.targetsDone,
-              progress.targetsTotal,
-              progress.inserted,
+          ? l10n.sessionUsage.syncPreparing
+          : l10n.sessionUsage.syncProgress(
+              done: progress.targetsDone,
+              total: progress.targetsTotal,
+              inserted: progress.inserted,
             );
       final fraction = _fraction(progress);
       if (!_active) {
@@ -78,7 +78,7 @@ class _SessionUsageProgressBridgeState
           ProgressActivity(
             id: SessionUsageProgressBridge.activityId,
             kind: ProgressActivityKind.sessionUsage,
-            title: l10n.sessionUsageProgressTitle,
+            title: l10n.sessionUsage.progressTitle,
             subtitle: subtitle,
             phase: ProgressActivityPhase.running,
             fraction: fraction,
@@ -111,7 +111,7 @@ class _SessionUsageProgressBridgeState
       SessionUsageProgressBridge.activityId,
       outcome: phase,
       errorMessage: phase == ProgressActivityPhase.failed
-          ? l10n.sessionUsageSyncFatal
+          ? l10n.sessionUsage.syncFatal
           : null,
       recordHistory: false,
     );

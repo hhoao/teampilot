@@ -63,7 +63,8 @@ final class LocalCliMissingLaunchBlock extends WorkspaceLandingLaunchBlock {
 }
 
 /// ACP-only CLI cannot run on this target and has no PTY fallback.
-final class AcpUnsupportedTargetLaunchBlock extends WorkspaceLandingLaunchBlock {
+final class AcpUnsupportedTargetLaunchBlock
+    extends WorkspaceLandingLaunchBlock {
   const AcpUnsupportedTargetLaunchBlock({
     required this.cli,
     required this.targetId,

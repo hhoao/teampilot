@@ -14,7 +14,7 @@ Future<void> confirmDeleteTeamMember(
   TeamMemberConfig member,
   AppLocalizations l10n,
 ) async {
-  final name = member.name.trim().isEmpty ? l10n.memberName : member.name;
+  final name = member.name.trim().isEmpty ? l10n.member.name : member.name;
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (ctx) => TpDialog(
@@ -24,7 +24,7 @@ Future<void> confirmDeleteTeamMember(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TpDialogHeader(
-            title: l10n.delete,
+            title: l10n.delete.delete,
             onClose: () => Navigator.of(ctx).pop(false),
           ),
           const SizedBox(height: 16),
@@ -40,7 +40,7 @@ Future<void> confirmDeleteTeamMember(
                   backgroundColor: Theme.of(ctx).colorScheme.error,
                 ),
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: Text(l10n.delete),
+                child: Text(l10n.delete.delete),
               ),
             ],
           ),

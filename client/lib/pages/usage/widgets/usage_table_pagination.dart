@@ -48,7 +48,11 @@ class UsageTablePagination extends StatelessWidget {
         runSpacing: 4,
         children: [
           Text(
-            l10n.sessionUsagePageRange(start + 1, end, total),
+            l10n.sessionUsage.pageRange(
+              start: start + 1,
+              end: end,
+              total: total,
+            ),
             key: AppKeys.sessionUsagePageRange,
             style: muted,
           ),
@@ -56,7 +60,7 @@ class UsageTablePagination extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             spacing: 2,
             children: [
-              Text(l10n.sessionUsageRowsPerPage, style: muted),
+              Text(l10n.sessionUsage.rowsPerPage, style: muted),
               TpActionMenuButton(
                 minWidth: 88,
                 specs: [
@@ -101,16 +105,19 @@ class UsageTablePagination extends StatelessWidget {
               ),
               IconButton(
                 key: AppKeys.sessionUsagePrevPage,
-                tooltip: l10n.sessionUsagePrevPage,
+                tooltip: l10n.sessionUsage.prevPage,
                 onPressed: onPrev,
                 visualDensity: VisualDensity.compact,
                 iconSize: 20,
                 icon: const Icon(Icons.chevron_left),
               ),
-              Text(l10n.sessionUsagePageOf(page + 1, pageCount), style: muted),
+              Text(
+                l10n.sessionUsage.pageOf(page: page + 1, pages: pageCount),
+                style: muted,
+              ),
               IconButton(
                 key: AppKeys.sessionUsageNextPage,
-                tooltip: l10n.sessionUsageNextPage,
+                tooltip: l10n.sessionUsage.nextPage,
                 onPressed: onNext,
                 visualDensity: VisualDensity.compact,
                 iconSize: 20,

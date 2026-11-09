@@ -99,11 +99,7 @@ final class UsageDashboardEngine {
         filter: filter,
         nowMs: nowMs,
         pricing: pricing,
-        heatmap: heatmapFor(
-          events: events,
-          pricing: pricing,
-          cli: filter.cli,
-        ),
+        heatmap: heatmapFor(events: events, pricing: pricing, cli: filter.cli),
       ),
     );
     _store(key, dashboard);

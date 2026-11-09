@@ -51,23 +51,26 @@ class GitGraphColumnHeader extends StatelessWidget {
               child: GitGraphColumnsRow(
                 layout: layout,
                 gapBuilder: (id) => _handleFor(layout, id),
-                graph: _HeaderLabel(l10n.gitGraphColumnGraph, style: textStyle),
+                graph: _HeaderLabel(
+                  l10n.gitGraph.columnGraph,
+                  style: textStyle,
+                ),
                 description: _HeaderLabel(
-                  l10n.gitGraphColumnDescription,
+                  l10n.gitGraph.columnDescription,
                   style: textStyle,
                 ),
                 date: _HideableHeaderCell(
-                  label: l10n.gitGraphColumnDate,
+                  label: l10n.gitGraph.columnDate,
                   style: textStyle,
                   columnId: GitGraphColumnId.date,
                 ),
                 author: _HideableHeaderCell(
-                  label: l10n.gitGraphColumnAuthor,
+                  label: l10n.gitGraph.columnAuthor,
                   style: textStyle,
                   columnId: GitGraphColumnId.author,
                 ),
                 commit: _HideableHeaderCell(
-                  label: l10n.gitGraphColumnCommit,
+                  label: l10n.gitGraph.columnCommit,
                   style: textStyle,
                   columnId: GitGraphColumnId.commit,
                 ),
@@ -113,9 +116,9 @@ class GitGraphColumnHeader extends StatelessWidget {
 }
 
 String _columnLabel(AppLocalizations l10n, GitGraphColumnId id) => switch (id) {
-  GitGraphColumnId.date => l10n.gitGraphColumnDate,
-  GitGraphColumnId.author => l10n.gitGraphColumnAuthor,
-  GitGraphColumnId.commit => l10n.gitGraphColumnCommit,
+  GitGraphColumnId.date => l10n.gitGraph.columnDate,
+  GitGraphColumnId.author => l10n.gitGraph.columnAuthor,
+  GitGraphColumnId.commit => l10n.gitGraph.columnCommit,
 };
 
 /// 可隐藏列的列头单元：右键弹「隐藏 <列>」+「隐藏列头」。
@@ -164,13 +167,13 @@ Future<void> _showMenu(
         TpActionMenuSpec.item(
           value: 'hide-column',
           icon: Icons.visibility_off_outlined,
-          label: l10n.gitGraphHideColumn(_columnLabel(l10n, columnId)),
+          label: l10n.gitGraph.hideColumn(column: _columnLabel(l10n, columnId)),
         ),
       if (columnId != null) const TpActionMenuSpec.divider(),
       TpActionMenuSpec.item(
         value: 'hide-header',
         icon: Icons.visibility_off_outlined,
-        label: l10n.gitGraphHideColumnHeader,
+        label: l10n.gitGraph.hideColumnHeader,
       ),
     ],
   );

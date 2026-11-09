@@ -38,8 +38,8 @@ Widget _host({required AppProviderCubit providers, required Widget home}) {
     child: BlocProvider<AppProviderCubit>.value(
       value: providers,
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: home,
       ),
     ),

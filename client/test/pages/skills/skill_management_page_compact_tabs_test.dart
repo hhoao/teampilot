@@ -45,8 +45,8 @@ void main() {
         data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
         child: MaterialApp(
           locale: const Locale('en'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           theme: theme,
           home: Scaffold(
             body: BlocProvider<SkillCubit>.value(

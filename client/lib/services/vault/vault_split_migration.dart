@@ -16,9 +16,7 @@ Future<int> migrateBusinessVaultEntries({
   try {
     await home.initialize();
     if (home.isLocked) return 0;
-    final existing = <String>{
-      for (final entry in await home.list()) entry.id,
-    };
+    final existing = <String>{for (final entry in await home.list()) entry.id};
     var copied = 0;
     for (final entry in await device.list()) {
       if (_isSshCredential(entry)) continue;

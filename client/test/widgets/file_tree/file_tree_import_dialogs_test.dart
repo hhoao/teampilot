@@ -8,8 +8,8 @@ import 'package:teampilot/widgets/file_tree/file_tree_import_dialogs.dart';
 
 Widget _host({required Widget home}) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: home,
   );
 }
@@ -19,8 +19,8 @@ Widget _toastHost({required Widget home}) {
   return TpToastWrapper(
     config: buildTeamPilotToastConfig(),
     child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       theme: ThemeData(colorScheme: scheme),
       home: TpTheme(
         data: TpThemeData.fromColorScheme(scheme, scale: 1),

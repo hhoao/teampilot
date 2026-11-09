@@ -82,7 +82,8 @@ void main() {
       expect(
         File(p.join(tmp.path, rel)).readAsStringSync(),
         '{"hooks":[]}',
-        reason: 'SSH overlay extract must land Claude --settings at the full path',
+        reason:
+            'SSH overlay extract must land Claude --settings at the full path',
       );
     },
     skip: Platform.isWindows

@@ -122,7 +122,7 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
     if (roots.isEmpty) {
       return _GitCenteredHint(
         icon: Icons.source_outlined,
-        text: context.l10n.gitNotARepository,
+        text: context.l10n.git.notARepository,
       );
     }
     if (roots.length == 1) {
@@ -383,11 +383,11 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TpDialogHeader(
-              title: l10n.gitDiscardConfirmTitle,
+              title: l10n.git.discardConfirmTitle,
               onClose: () => Navigator.of(ctx).pop(false),
             ),
             const SizedBox(height: 16),
-            Text(l10n.gitDiscardConfirmBody(change.path)),
+            Text(l10n.git.discardConfirmBody(path: change.path)),
             TpDialogActions(
               children: [
                 TextButton(
@@ -396,7 +396,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(ctx).pop(true),
-                  child: Text(l10n.gitDiscard),
+                  child: Text(l10n.git.discard),
                 ),
               ],
             ),
@@ -420,11 +420,11 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TpDialogHeader(
-              title: l10n.gitDiscardAllConfirmTitle,
+              title: l10n.git.discardAllConfirmTitle,
               onClose: () => Navigator.of(ctx).pop(false),
             ),
             const SizedBox(height: 16),
-            Text(l10n.gitDiscardAllConfirmBody),
+            Text(l10n.git.discardAllConfirmBody),
             TpDialogActions(
               children: [
                 TextButton(
@@ -433,7 +433,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(ctx).pop(true),
-                  child: Text(l10n.gitDiscard),
+                  child: Text(l10n.git.discard),
                 ),
               ],
             ),
@@ -457,11 +457,11 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TpDialogHeader(
-              title: l10n.gitAmendConfirmTitle,
+              title: l10n.git.amendConfirmTitle,
               onClose: () => Navigator.of(ctx).pop(false),
             ),
             const SizedBox(height: 16),
-            Text(l10n.gitAmendConfirmMessage),
+            Text(l10n.git.amendConfirmMessage),
             TpDialogActions(
               children: [
                 TextButton(
@@ -540,7 +540,9 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
           if (state.errorMessage != null) {
             AppToast.show(
               context,
-              message: context.l10n.gitError(state.errorMessage ?? ''),
+              message: context.l10n.git.error(
+                message: state.errorMessage ?? '',
+              ),
               variant: TpToastVariant.error,
             );
           }
@@ -565,7 +567,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
     if (!state.gitAvailable) {
       return _GitCenteredHint(
         icon: Icons.error_outline,
-        text: l10n.gitNotInstalled,
+        text: l10n.git.notInstalled,
       );
     }
     if (!state.isRepository) {
@@ -574,7 +576,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
       }
       return _GitCenteredHint(
         icon: Icons.source_outlined,
-        text: l10n.gitNotARepository,
+        text: l10n.git.notARepository,
         action: TextButton.icon(
           onPressed: state.busy
               ? null
@@ -586,7 +588,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.create_new_folder_outlined),
-          label: Text(l10n.gitInitializeRepository),
+          label: Text(l10n.git.initializeRepository),
         ),
       );
     }
@@ -666,7 +668,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                   )) {
                     AppToast.show(
                       context,
-                      message: l10n.gitGenerateCommitMessageNoProvider,
+                      message: l10n.git.generateCommitMessageNoProvider,
                       variant: TpToastVariant.error,
                     );
                     return;
@@ -681,8 +683,8 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                     context,
                     workspaceId: widget.workspaceId,
                     repoRoot: _cubit.state.repoRoot,
-                    title: l10n.gitGeneratingCommitMessage,
-                    doneMessage: l10n.gitGeneratingCommitMessage,
+                    title: l10n.git.generatingCommitMessage,
+                    doneMessage: l10n.git.generatingCommitMessage,
                     showSuccessToast: false,
                     body: () async {
                       await _cubit.generateCommitMessage(setting);
@@ -695,8 +697,8 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                     context,
                     workspaceId: widget.workspaceId,
                     repoRoot: _cubit.state.repoRoot,
-                    title: l10n.gitRefreshing,
-                    doneMessage: l10n.gitRefreshing,
+                    title: l10n.git.refreshing,
+                    doneMessage: l10n.git.refreshing,
                     showSuccessToast: false,
                     body: () async {
                       await _cubit.refresh(manual: true);
@@ -709,8 +711,8 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                     context,
                     workspaceId: widget.workspaceId,
                     repoRoot: _cubit.state.repoRoot,
-                    title: l10n.gitFetching,
-                    doneMessage: l10n.gitFetchDone,
+                    title: l10n.git.fetching,
+                    doneMessage: l10n.git.fetchDone,
                     body: _cubit.fetchAll,
                   ),
                 ),
@@ -719,8 +721,8 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                     context,
                     workspaceId: widget.workspaceId,
                     repoRoot: _cubit.state.repoRoot,
-                    title: l10n.gitPushing,
-                    doneMessage: l10n.gitPushDone,
+                    title: l10n.git.pushing,
+                    doneMessage: l10n.git.pushDone,
                     body: _cubit.push,
                   ),
                 ),
@@ -729,8 +731,8 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                     context,
                     workspaceId: widget.workspaceId,
                     repoRoot: _cubit.state.repoRoot,
-                    title: l10n.gitPulling,
-                    doneMessage: l10n.gitPullDone,
+                    title: l10n.git.pulling,
+                    doneMessage: l10n.git.pullDone,
                     body: _cubit.pull,
                   ),
                 ),
@@ -773,14 +775,14 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
               final busy = operation != null;
               return _CommitBox(
                 controller: _commitController,
-                hint: l10n.gitCommitMessageHint(branch),
+                hint: l10n.git.commitMessageHint(branch: branch),
                 canCommit:
                     (amend ? (hasCommits && !busy) : (hasSelection && !busy)) &&
                     !generating,
                 amend: amend,
                 committing: operation == GitOperation.commit,
                 generating: generating,
-                generatingHint: l10n.gitGeneratingCommitMessage,
+                generatingHint: l10n.git.generatingCommitMessage,
                 onChanged: _cubit.setCommitMessage,
                 onCommit: () async {
                   if (_cubit.state.amend) {
@@ -791,8 +793,8 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                     context,
                     workspaceId: widget.workspaceId,
                     repoRoot: _cubit.state.repoRoot,
-                    title: l10n.gitCommitting,
-                    doneMessage: l10n.gitCommitting,
+                    title: l10n.git.committing,
+                    doneMessage: l10n.git.committing,
                     showSuccessToast: false,
                     body: _cubit.commit,
                   );
@@ -821,7 +823,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                       final cs = Theme.of(context).colorScheme;
                       return Center(
                         child: Text(
-                          l10n.gitNoChanges,
+                          l10n.git.noChanges,
                           style: TpTextStyles.of(
                             context,
                           ).smColored(cs.onSurfaceVariant),
@@ -977,7 +979,7 @@ class _HeaderState extends State<_Header> {
         Flexible(
           flex: 1,
           child: Tooltip(
-            message: l10n.gitGraphTitle,
+            message: l10n.gitGraph.title,
             child: TpHover(
               onTap: widget.onOpenGraph,
               borderRadius: BorderRadius.circular(6),
@@ -1015,7 +1017,10 @@ class _HeaderState extends State<_Header> {
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
-                              l10n.gitAheadBehind(widget.ahead, widget.behind),
+                              l10n.git.aheadBehind(
+                                ahead: widget.ahead,
+                                behind: widget.behind,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.clip,
                               style: TpTextStyles.of(
@@ -1046,7 +1051,7 @@ class _HeaderState extends State<_Header> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Tooltip(
-                          message: l10n.gitGraphTitle,
+                          message: l10n.gitGraph.title,
                           child: TpHover(
                             onTap: widget.onOpenGraph,
                             borderRadius: BorderRadius.circular(6),
@@ -1088,7 +1093,7 @@ class _HeaderState extends State<_Header> {
                             ),
                             const SizedBox(width: 2),
                             Text(
-                              l10n.gitAmend,
+                              l10n.git.amend,
                               style: TpTextStyles.of(context).sm,
                             ),
                           ],
@@ -1105,7 +1110,7 @@ class _HeaderState extends State<_Header> {
                           onTap: widget.onToggleExpandAll,
                         ),
                         TpActionMenuButton(
-                          tooltip: l10n.gitDiscard,
+                          tooltip: l10n.git.discard,
                           icon:
                               _spinnerFor(operation, GitOperation.discard) ??
                               const Icon(Icons.undo, size: 18),
@@ -1113,14 +1118,14 @@ class _HeaderState extends State<_Header> {
                           specs: [
                             TpActionMenuSpec.item(
                               value: 'selected',
-                              label: l10n.gitDiscardSelected,
+                              label: l10n.git.discardSelected,
                               icon: Icons.delete_outline,
                               enabled:
                                   !busy && widget.onDiscardSelected != null,
                             ),
                             TpActionMenuSpec.item(
                               value: 'all',
-                              label: l10n.gitDiscardAllUnstaged,
+                              label: l10n.git.discardAllUnstaged,
                               icon: Icons.undo,
                               destructive: true,
                               enabled: !busy,
@@ -1147,7 +1152,7 @@ class _HeaderState extends State<_Header> {
                               : null,
                           compact: true,
                           size: TpIconButton.kCompactSize,
-                          tooltip: l10n.gitGenerateCommitMessage,
+                          tooltip: l10n.git.generateCommitMessage,
                           enabled: widget.canGenerate,
                           onTap: widget.onGenerate,
                         ),
@@ -1158,8 +1163,8 @@ class _HeaderState extends State<_Header> {
                           compact: true,
                           size: TpIconButton.kCompactSize,
                           tooltip: operation == GitOperation.fetch
-                              ? l10n.gitFetching
-                              : l10n.gitFetch,
+                              ? l10n.git.fetching
+                              : l10n.git.fetch,
                           enabled: !busy,
                           onPressed: widget.onFetch,
                         ),
@@ -1170,8 +1175,8 @@ class _HeaderState extends State<_Header> {
                           compact: true,
                           size: TpIconButton.kCompactSize,
                           tooltip: operation == GitOperation.pull
-                              ? l10n.gitPulling
-                              : l10n.gitPull,
+                              ? l10n.git.pulling
+                              : l10n.git.pull,
                           enabled: !busy,
                           onPressed: widget.onPull,
                         ),
@@ -1182,8 +1187,8 @@ class _HeaderState extends State<_Header> {
                           compact: true,
                           size: TpIconButton.kCompactSize,
                           tooltip: operation == GitOperation.push
-                              ? l10n.gitPushing
-                              : l10n.gitPush,
+                              ? l10n.git.pushing
+                              : l10n.git.push,
                           enabled: !busy,
                           onPressed: widget.onPush,
                         ),
@@ -1194,8 +1199,8 @@ class _HeaderState extends State<_Header> {
                           compact: true,
                           size: TpIconButton.kCompactSize,
                           tooltip: operation == GitOperation.refresh
-                              ? l10n.gitRefreshing
-                              : l10n.gitRefresh,
+                              ? l10n.git.refreshing
+                              : l10n.git.refresh,
                           enabled: !busy,
                           onPressed: widget.onRefresh,
                         ),
@@ -1286,10 +1291,10 @@ class _CommitBox extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 committing
-                    ? l10n.gitCommitting
+                    ? l10n.git.committing
                     : amend
-                    ? l10n.gitAmendCommit
-                    : l10n.gitCommit,
+                    ? l10n.git.amendCommit
+                    : l10n.git.commit,
               ),
             ],
           ),

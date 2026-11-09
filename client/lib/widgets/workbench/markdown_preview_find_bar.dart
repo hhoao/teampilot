@@ -66,9 +66,9 @@ class _MarkdownPreviewFindBarState extends State<MarkdownPreviewFindBar> {
         final l10n = context.l10n;
         final noHits = c.hits.isEmpty;
         final counterLabel = c.hasError
-            ? l10n.editorFindInvalidRegex
+            ? l10n.editor.findInvalidRegex
             : noHits
-            ? l10n.editorFindNoResults
+            ? l10n.editor.findNoResults
             : c.counterLabel();
         return FindBarPanel(
           focusNode: _focus,
@@ -80,20 +80,20 @@ class _MarkdownPreviewFindBarState extends State<MarkdownPreviewFindBar> {
                 FindField(
                   controller: _field,
                   focusNode: _focus,
-                  hint: l10n.editorFindHint,
+                  hint: l10n.editor.findHint,
                   autofocus: true,
                   width: 240,
                   onChanged: c.search,
                   toggles: [
                     FindToggleButton(
                       iconAsset: FindBarIcons.caseSensitive,
-                      tooltip: l10n.editorFindMatchCase,
+                      tooltip: l10n.editor.findMatchCase,
                       checked: c.caseSensitive,
                       onTap: c.toggleCaseSensitive,
                     ),
                     FindToggleButton(
                       iconAsset: FindBarIcons.regexp,
-                      tooltip: l10n.editorFindUseRegex,
+                      tooltip: l10n.editor.findUseRegex,
                       checked: c.regex,
                       onTap: c.toggleRegex,
                     ),
@@ -103,19 +103,19 @@ class _MarkdownPreviewFindBarState extends State<MarkdownPreviewFindBar> {
                 FindCounterText(label: counterLabel, empty: noHits),
                 const FindBarDivider(),
                 FindActionButton(
-                  tooltip: l10n.editorFindPrevious,
+                  tooltip: l10n.editor.findPrevious,
                   icon: Icons.keyboard_arrow_up_rounded,
                   enabled: !noHits,
                   onTap: c.previous,
                 ),
                 FindActionButton(
-                  tooltip: l10n.editorFindNext,
+                  tooltip: l10n.editor.findNext,
                   icon: Icons.keyboard_arrow_down_rounded,
                   enabled: !noHits,
                   onTap: c.next,
                 ),
                 FindActionButton(
-                  tooltip: l10n.editorFindClose,
+                  tooltip: l10n.editor.findClose,
                   icon: Icons.close_rounded,
                   onTap: c.close,
                 ),

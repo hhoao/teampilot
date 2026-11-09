@@ -182,7 +182,7 @@ class _ProviderCredentialActionBarState
         if (saved == null) {
           AppToast.show(
             context,
-            message: l10n.providerName,
+            message: l10n.provider.name,
             variant: TpToastVariant.error,
           );
           return;
@@ -389,7 +389,7 @@ class _ProviderCredentialActionBarState
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(dialogContext, true),
-                  child: Text(l10n.delete),
+                  child: Text(l10n.delete.delete),
                 ),
               ],
             ),
@@ -457,15 +457,15 @@ class ProviderCredentialStatusBadge extends StatelessWidget {
 
 String _sectionTitle(AppLocalizations l10n, CliTool cli) {
   return switch (cli) {
-    CliTool.claude => l10n.claudeOfficialCredentialsTitle,
-    CliTool.cursor => l10n.appProviderToolCursor,
-    CliTool.codex => l10n.appProviderToolCodex,
-    CliTool.opencode => l10n.appProviderToolOpencode,
-    CliTool.flashskyai => l10n.appProviderToolFlashskyai,
-    CliTool.gemini => l10n.appProviderToolGemini,
-    CliTool.codebuddy => l10n.appProviderToolCodebuddy,
-    CliTool.antigravity => l10n.appProviderToolAntigravity,
-    CliTool.qoder => l10n.appProviderToolQoder,
+    CliTool.claude => l10n.claude.officialCredentialsTitle,
+    CliTool.cursor => l10n.appProvider.toolCursor,
+    CliTool.codex => l10n.appProvider.toolCodex,
+    CliTool.opencode => l10n.appProvider.toolOpencode,
+    CliTool.flashskyai => l10n.appProvider.toolFlashskyai,
+    CliTool.gemini => l10n.appProvider.toolGemini,
+    CliTool.codebuddy => l10n.appProvider.toolCodebuddy,
+    CliTool.antigravity => l10n.appProvider.toolAntigravity,
+    CliTool.qoder => l10n.appProvider.toolQoder,
   };
 }
 
@@ -476,60 +476,60 @@ String _actionLabel(
 ) {
   return switch (kind) {
     ProviderCredentialActionKind.login => switch (cli) {
-      CliTool.claude => l10n.claudeOfficialCredentialsLogin,
-      CliTool.cursor => l10n.cursorCredentialsLogin,
-      CliTool.codex => l10n.codexCredentialsLogin,
-      CliTool.opencode => l10n.opencodeCredentialsLogin,
-      CliTool.flashskyai => l10n.appProviderToolFlashskyai,
-      CliTool.gemini => l10n.appProviderToolGemini,
-      CliTool.codebuddy => l10n.codebuddyCredentialsLogin,
-      CliTool.antigravity => l10n.antigravityCredentialsLogin,
-      CliTool.qoder => l10n.qoderCredentialsLogin,
+      CliTool.claude => l10n.claude.officialCredentialsLogin,
+      CliTool.cursor => l10n.cursor.credentialsLogin,
+      CliTool.codex => l10n.codex.credentialsLogin,
+      CliTool.opencode => l10n.opencode.credentialsLogin,
+      CliTool.flashskyai => l10n.appProvider.toolFlashskyai,
+      CliTool.gemini => l10n.appProvider.toolGemini,
+      CliTool.codebuddy => l10n.codebuddy.credentialsLogin,
+      CliTool.antigravity => l10n.antigravity.credentialsLogin,
+      CliTool.qoder => l10n.qoder.credentialsLogin,
     },
     ProviderCredentialActionKind.importGlobal => switch (cli) {
-      CliTool.claude => l10n.claudeOfficialCredentialsImportGlobal,
-      CliTool.cursor => l10n.cursorCredentialsImportGlobal,
-      CliTool.codex => l10n.codexCredentialsImportGlobal,
-      CliTool.opencode => l10n.opencodeCredentialsImportGlobal,
-      CliTool.flashskyai => l10n.appProviderToolFlashskyai,
-      CliTool.gemini => l10n.appProviderToolGemini,
-      CliTool.codebuddy => l10n.appProviderToolCodebuddy,
-      CliTool.antigravity => l10n.appProviderToolAntigravity,
-      CliTool.qoder => l10n.appProviderToolQoder,
+      CliTool.claude => l10n.claude.officialCredentialsImportGlobal,
+      CliTool.cursor => l10n.cursor.credentialsImportGlobal,
+      CliTool.codex => l10n.codex.credentialsImportGlobal,
+      CliTool.opencode => l10n.opencode.credentialsImportGlobal,
+      CliTool.flashskyai => l10n.appProvider.toolFlashskyai,
+      CliTool.gemini => l10n.appProvider.toolGemini,
+      CliTool.codebuddy => l10n.appProvider.toolCodebuddy,
+      CliTool.antigravity => l10n.appProvider.toolAntigravity,
+      CliTool.qoder => l10n.appProvider.toolQoder,
     },
     ProviderCredentialActionKind.importFile => switch (cli) {
-      CliTool.claude => l10n.claudeOfficialCredentialsImportFile,
-      CliTool.cursor => l10n.cursorCredentialsImportFile,
-      CliTool.codex => l10n.codexCredentialsImportFile,
-      CliTool.opencode => l10n.opencodeCredentialsImportFile,
-      CliTool.flashskyai => l10n.appProviderToolFlashskyai,
-      CliTool.gemini => l10n.appProviderToolGemini,
-      CliTool.codebuddy => l10n.appProviderToolCodebuddy,
-      CliTool.antigravity => l10n.appProviderToolAntigravity,
-      CliTool.qoder => l10n.appProviderToolQoder,
+      CliTool.claude => l10n.claude.officialCredentialsImportFile,
+      CliTool.cursor => l10n.cursor.credentialsImportFile,
+      CliTool.codex => l10n.codex.credentialsImportFile,
+      CliTool.opencode => l10n.opencode.credentialsImportFile,
+      CliTool.flashskyai => l10n.appProvider.toolFlashskyai,
+      CliTool.gemini => l10n.appProvider.toolGemini,
+      CliTool.codebuddy => l10n.appProvider.toolCodebuddy,
+      CliTool.antigravity => l10n.appProvider.toolAntigravity,
+      CliTool.qoder => l10n.appProvider.toolQoder,
     },
     ProviderCredentialActionKind.importDirectory =>
-      l10n.cursorCredentialsImportFile,
+      l10n.cursor.credentialsImportFile,
     ProviderCredentialActionKind.revoke => switch (cli) {
-      CliTool.claude => l10n.claudeOfficialCredentialsRevoke,
-      CliTool.cursor => l10n.cursorCredentialsRevoke,
-      CliTool.codex => l10n.codexCredentialsRevoke,
-      CliTool.opencode => l10n.opencodeCredentialsRevoke,
-      CliTool.flashskyai => l10n.appProviderToolFlashskyai,
-      CliTool.gemini => l10n.appProviderToolGemini,
-      CliTool.codebuddy => l10n.appProviderToolCodebuddy,
-      CliTool.antigravity => l10n.appProviderToolAntigravity,
-      CliTool.qoder => l10n.appProviderToolQoder,
+      CliTool.claude => l10n.claude.officialCredentialsRevoke,
+      CliTool.cursor => l10n.cursor.credentialsRevoke,
+      CliTool.codex => l10n.codex.credentialsRevoke,
+      CliTool.opencode => l10n.opencode.credentialsRevoke,
+      CliTool.flashskyai => l10n.appProvider.toolFlashskyai,
+      CliTool.gemini => l10n.appProvider.toolGemini,
+      CliTool.codebuddy => l10n.appProvider.toolCodebuddy,
+      CliTool.antigravity => l10n.appProvider.toolAntigravity,
+      CliTool.qoder => l10n.appProvider.toolQoder,
     },
   };
 }
 
 String _authenticatedLabel(AppLocalizations l10n) {
-  return l10n.providerCredentialsAuthenticated;
+  return l10n.provider.credentialsAuthenticated;
 }
 
 String _unauthenticatedLabel(AppLocalizations l10n) {
-  return l10n.providerCredentialsUnauthenticated;
+  return l10n.provider.credentialsUnauthenticated;
 }
 
 String _revokeConfirmMessage(
@@ -537,17 +537,19 @@ String _revokeConfirmMessage(
   AppProviderConfig provider,
 ) {
   return switch (provider.cli) {
-    CliTool.claude => l10n.claudeOfficialCredentialsRevokeConfirm(
-      provider.name,
+    CliTool.claude => l10n.claude.officialCredentialsRevokeConfirm(
+      name: provider.name,
     ),
-    CliTool.cursor => l10n.cursorCredentialsRevokeConfirm(provider.name),
-    CliTool.codex => l10n.codexCredentialsRevokeConfirm(provider.name),
-    CliTool.opencode => l10n.opencodeCredentialsRevokeConfirm(provider.name),
-    CliTool.flashskyai => l10n.appProviderToolFlashskyai,
-    CliTool.gemini => l10n.appProviderToolGemini,
-    CliTool.codebuddy => l10n.appProviderToolCodebuddy,
-    CliTool.antigravity => l10n.appProviderToolAntigravity,
-    CliTool.qoder => l10n.appProviderToolQoder,
+    CliTool.cursor => l10n.cursor.credentialsRevokeConfirm(name: provider.name),
+    CliTool.codex => l10n.codex.credentialsRevokeConfirm(name: provider.name),
+    CliTool.opencode => l10n.opencode.credentialsRevokeConfirm(
+      name: provider.name,
+    ),
+    CliTool.flashskyai => l10n.appProvider.toolFlashskyai,
+    CliTool.gemini => l10n.appProvider.toolGemini,
+    CliTool.codebuddy => l10n.appProvider.toolCodebuddy,
+    CliTool.antigravity => l10n.appProvider.toolAntigravity,
+    CliTool.qoder => l10n.appProvider.toolQoder,
   };
 }
 

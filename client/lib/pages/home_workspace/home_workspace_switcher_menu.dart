@@ -189,7 +189,7 @@ class _HomeWorkspaceSwitcherMenuState extends State<HomeWorkspaceSwitcherMenu> {
             ),
             TpActionMenuItem(
               icon: Icons.download_outlined,
-              label: l10n.cloneRepositoryMenu,
+              label: l10n.clone.repositoryMenu,
               menuController: _menuController,
               onTap: _onCloneTap,
             ),
@@ -204,7 +204,7 @@ class _HomeWorkspaceSwitcherMenuState extends State<HomeWorkspaceSwitcherMenu> {
                   children: [
                     if (showOpen) ...[
                       const SizedBox(height: TpActionMenuMetrics.itemGap),
-                      _sectionHeader(l10n.homeWorkspaceOpenTabs, cs, styles),
+                      _sectionHeader(l10n.homeWorkspace.openTabs, cs, styles),
                       for (var i = 0; i < widget.openTabs.length; i++) ...[
                         if (i > 0)
                           const SizedBox(height: TpActionMenuMetrics.itemGap),
@@ -218,14 +218,14 @@ class _HomeWorkspaceSwitcherMenuState extends State<HomeWorkspaceSwitcherMenu> {
                     ],
                     const SizedBox(height: TpActionMenuMetrics.itemGap),
                     _sectionHeader(
-                      l10n.homeWorkspaceRecentlyClosed,
+                      l10n.homeWorkspace.recentlyClosed,
                       cs,
                       styles,
                     ),
                     if (closedEntries.isEmpty)
                       TpActionMenuItem(
                         icon: Icons.inbox_outlined,
-                        label: l10n.homeWorkspaceRecentlyClosedEmpty,
+                        label: l10n.homeWorkspace.recentlyClosedEmpty,
                         enabled: false,
                         menuController: _menuController,
                       )
@@ -262,7 +262,7 @@ class _HomeWorkspaceSwitcherMenuState extends State<HomeWorkspaceSwitcherMenu> {
         child: TpIconButton(
           icon: Icons.more_horiz,
           size: homeTitleBarControlSize(context),
-          tooltip: l10n.homeWorkspaceRecentlyClosed,
+          tooltip: l10n.homeWorkspace.recentlyClosed,
           color: cs.onSurfaceVariant,
           backgroundColor: Colors.transparent,
           onTap: _toggleMenu,

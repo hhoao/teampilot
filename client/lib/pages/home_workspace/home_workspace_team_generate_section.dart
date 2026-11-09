@@ -44,7 +44,7 @@ class _HomeTeamGenerateSectionState extends State<HomeTeamGenerateSection> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          l10n.teamGenTitle,
+          l10n.team.genTitle,
           style: TpTextStyles.of(context).mdSemiboldTightSnug,
         ),
         const SizedBox(height: 8),
@@ -59,7 +59,7 @@ class _HomeTeamGenerateSectionState extends State<HomeTeamGenerateSection> {
               enabled: widget.enabled && !generating,
               onChanged: widget.onDescriptionChanged,
               decoration: InputDecoration(
-                hintText: l10n.teamGenDescriptionHint,
+                hintText: l10n.team.genDescriptionHint,
                 isDense: true,
               ),
             );

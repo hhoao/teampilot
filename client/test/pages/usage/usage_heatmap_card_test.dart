@@ -16,7 +16,11 @@ UsageHeatmapDay _day(
   double? hitRate,
 }) {
   return UsageHeatmapDay(
-    dayStartMs: DateTime(date.year, date.month, date.day).millisecondsSinceEpoch,
+    dayStartMs: DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).millisecondsSinceEpoch,
     tokens: tokens,
     requests: requests,
     costMicroUsd: costMicroUsd,
@@ -27,8 +31,8 @@ UsageHeatmapDay _day(
 Widget _wrap(Widget child, {double width = 1000, double textScale = 1.0}) {
   return MaterialApp(
     locale: const Locale('en'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     builder: (context, appChild) => MediaQuery(
       data: MediaQuery.of(
         context,
@@ -200,9 +204,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(
-      _wrap(const UsageHeatmapCard(days: [], nowMs: 0)),
-    );
+    await tester.pumpWidget(_wrap(const UsageHeatmapCard(days: [], nowMs: 0)));
     await tester.pumpAndSettle();
 
     expect(_cells(), findsNothing);
@@ -218,10 +220,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      _wrap(
-        UsageHeatmapCard(days: [_day(_today)], nowMs: _now),
-        width: 400,
-      ),
+      _wrap(UsageHeatmapCard(days: [_day(_today)], nowMs: _now), width: 400),
     );
     await tester.pumpAndSettle();
 

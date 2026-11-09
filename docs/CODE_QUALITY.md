@@ -92,7 +92,7 @@ pages/
 
 **Do not** add large UI or business blocks to pages already **~800+ lines** without splitting and adding tests.
 
-**Generated:** `l10n/app_localizations*.dart` is excluded from these limits; never hand-edit.
+**Generated:** `l10n/translations*.g.dart` (slang output, regenerate with `dart run slang`) is excluded from these limits; never hand-edit.
 
 ## UI and state
 

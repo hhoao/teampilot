@@ -265,12 +265,12 @@ class _FloatingWorkspaceAddButtonState
       specs: [
         TpActionMenuSpec.item(
           value: 'terminal',
-          label: l10n.workspaceTerminalNewSession,
+          label: l10n.workspace.terminalNewSession,
           icon: Icons.terminal_rounded,
         ),
         TpActionMenuSpec.item(
           value: 'file',
-          label: l10n.floatingWorkspaceOpenFile,
+          label: l10n.floating.workspaceOpenFile,
           icon: Icons.description_outlined,
         ),
       ],
@@ -294,7 +294,7 @@ class _FloatingWorkspaceAddButtonState
       child: TpIconButton(
         key: const Key('floating_workspace_add_button'),
         icon: Icons.add_rounded,
-        tooltip: context.l10n.floatingWorkspaceAddTooltip,
+        tooltip: context.l10n.floating.workspaceAddTooltip,
         compact: true,
         onTap: () => unawaited(_showMenu()),
       ),

@@ -20,9 +20,9 @@ String workspaceTopologyLabel(
   WorkspaceTopology topology,
 ) {
   return switch (topology) {
-    WorkspaceTopology.local => l10n.workspaceTopologyLocal,
-    WorkspaceTopology.remote => l10n.workspaceTopologyRemote,
-    WorkspaceTopology.mixed => l10n.workspaceTopologyMixed,
+    WorkspaceTopology.local => l10n.workspace.topologyLocal,
+    WorkspaceTopology.remote => l10n.workspace.topologyRemote,
+    WorkspaceTopology.mixed => l10n.workspace.topologyMixed,
   };
 }
 

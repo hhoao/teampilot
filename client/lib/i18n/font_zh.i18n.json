@@ -1,0 +1,13 @@
+{
+  "changeAppliesOnRestart": "字体已保存，重启 TeamPilot 后生效。",
+  "installedSection": "已安装",
+  "monoDescription": "终端、编辑器与 diff。重启后生效。",
+  "monoTitle": "等宽字体",
+  "optionJetbrainsMono": "JetBrains Mono",
+  "optionNotoSansSc": "Noto Sans SC",
+  "optionSystem": "系统",
+  "optionUbuntuSansMono": "Ubuntu Sans Mono",
+  "searchHint": "搜索字体",
+  "uiDescription": "界面文字。系统跟随操作系统默认字体。重启后生效。",
+  "uiTitle": "界面字体"
+}

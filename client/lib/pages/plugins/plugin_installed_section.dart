@@ -40,7 +40,9 @@ class PluginInstalledSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 PluginCardHeader(
-                  title: l10n.pluginsInstalledCount(state.installed.length),
+                  title: l10n.plugins.installedCount(
+                    count: state.installed.length,
+                  ),
                   trailing: TpActionRow(
                     children: [
                       if (state.updates.isNotEmpty)
@@ -56,7 +58,7 @@ class PluginInstalledSection extends StatelessWidget {
                             size: context.tpIconSizes.md,
                           ),
                           label: Text(
-                            l10n.pluginsUpdateAll(state.updates.length),
+                            l10n.plugins.updateAll(count: state.updates.length),
                           ),
                         ),
                       OutlinedButton.icon(
@@ -70,7 +72,7 @@ class PluginInstalledSection extends StatelessWidget {
                           Icons.folder_open_outlined,
                           size: context.tpIconSizes.md,
                         ),
-                        label: Text(l10n.pluginsImportFromDisk),
+                        label: Text(l10n.plugins.importFromDisk),
                       ),
                       OutlinedButton.icon(
                         onPressed: state.toolbarBusy
@@ -83,7 +85,7 @@ class PluginInstalledSection extends StatelessWidget {
                           Icons.archive_outlined,
                           size: context.tpIconSizes.md,
                         ),
-                        label: Text(l10n.pluginsInstallFromZip),
+                        label: Text(l10n.plugins.installFromZip),
                       ),
                       OutlinedButton.icon(
                         onPressed: state.toolbarBusy || state.updatesLoading
@@ -99,8 +101,8 @@ class PluginInstalledSection extends StatelessWidget {
                         ),
                         label: Text(
                           state.updatesLoading
-                              ? l10n.pluginsCheckingUpdates
-                              : l10n.pluginsCheckUpdates,
+                              ? l10n.plugins.checkingUpdates
+                              : l10n.plugins.checkUpdates,
                         ),
                       ),
                     ],
@@ -110,9 +112,9 @@ class PluginInstalledSection extends StatelessWidget {
                 if (state.installed.isEmpty)
                   TpEmptyState(
                     icon: Icons.extension_outlined,
-                    title: l10n.pluginsNoInstalled,
-                    hint: l10n.pluginsNoInstalledHint,
-                    actionLabel: l10n.pluginsGoDiscovery,
+                    title: l10n.plugins.noInstalled,
+                    hint: l10n.plugins.noInstalledHint,
+                    actionLabel: l10n.plugins.goDiscovery,
                     onAction: onGoDiscovery,
                   )
                 else
@@ -153,7 +155,7 @@ class PluginInstalledSection extends StatelessWidget {
     final scanned = await cubit.scanUnmanaged();
     if (!context.mounted) return;
     if (scanned.isEmpty) {
-      showPluginSnack(context, l10n.pluginsImportNothing);
+      showPluginSnack(context, l10n.plugins.importNothing);
       return;
     }
     final selected = await showDialog<List<UnmanagedPlugin>>(
@@ -195,7 +197,7 @@ class PluginImportUnmanagedDialogState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.pluginsImportTitle),
+          TpDialogHeader(title: l10n.plugins.importTitle),
           const SizedBox(height: 12),
           Flexible(
             child: ListView.builder(
@@ -239,7 +241,7 @@ class PluginImportUnmanagedDialogState
                       .toList(growable: false);
                   Navigator.of(context).pop(selected);
                 },
-                child: Text(l10n.pluginsImportFromDisk),
+                child: Text(l10n.plugins.importFromDisk),
               ),
             ],
           ),
@@ -271,7 +273,7 @@ class PluginInstalledRow extends StatelessWidget {
     final sourceLabel =
         plugin.marketplaceOwner != null && plugin.marketplaceName != null
         ? '${plugin.marketplaceOwner}/${plugin.marketplaceName}'
-        : l10n.pluginsLocal;
+        : l10n.plugins.local;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -325,7 +327,7 @@ class PluginInstalledRow extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          l10n.pluginsUpdateAvailable,
+                          l10n.plugins.updateAvailable,
                           style: TpTextStyles.of(
                             context,
                           ).xsBoldColored(const Color(0xFFB45309)),
@@ -362,12 +364,12 @@ class PluginInstalledRow extends StatelessWidget {
               children: [
                 GithubDetailsButton(
                   url: plugin.githubBrowseUrl,
-                  label: l10n.pluginsCardDetails,
+                  label: l10n.plugins.cardDetails,
                 ),
                 const SizedBox(width: 8),
                 if (hasUpdate)
                   IconButton(
-                    tooltip: l10n.pluginsCardUpdate,
+                    tooltip: l10n.plugins.cardUpdate,
                     onPressed: busy ? null : () => cubit.updatePlugin(plugin),
                     icon: busy
                         ? const SizedBox(
@@ -378,7 +380,7 @@ class PluginInstalledRow extends StatelessWidget {
                         : Icon(Icons.upgrade, size: context.tpIconSizes.md),
                   ),
                 IconButton(
-                  tooltip: l10n.pluginsCardUninstall,
+                  tooltip: l10n.plugins.cardUninstall,
                   onPressed: busy
                       ? null
                       : () => _uninstall(context, plugin, l10n, cubit),
@@ -432,12 +434,15 @@ class PluginInstalledRow extends StatelessWidget {
     final ok = await pluginConfirmDialog(
       context,
       title: plugin.name,
-      message: l10n.pluginsUninstallConfirm(plugin.name, impacted.length),
+      message: l10n.plugins.uninstallConfirm(
+        name: plugin.name,
+        n: impacted.length,
+      ),
       detailHeading: impacted.isNotEmpty
-          ? l10n.pluginsUninstallImpactList
+          ? l10n.plugins.uninstallImpactList
           : null,
       detailLines: impacted.map((t) => t.name).toList(growable: false),
-      confirmLabel: l10n.pluginsCardUninstall,
+      confirmLabel: l10n.plugins.cardUninstall,
       destructive: true,
     );
     if (!ok || !context.mounted) return;

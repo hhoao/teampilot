@@ -69,9 +69,7 @@ class SshServerProfileRepository {
       }
     }
     final merged = byId.values.toList()
-      ..sort(
-        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-      );
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     return List.unmodifiable(merged);
   }
 

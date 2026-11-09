@@ -17,9 +17,11 @@ String? localizeLaunchTypeUnavailable(
 }) {
   if (code == null || code.isEmpty) return null;
   return switch (code) {
-    LaunchTypeUnavailableCodes.unknown => l10n.runTypeUnknown(type),
-    LaunchTypeUnavailableCodes.remote => l10n.runTypeUnavailableRemote(type),
-    LaunchTypeUnavailableCodes.local => l10n.runTypeUnavailable(type),
+    LaunchTypeUnavailableCodes.unknown => l10n.run.typeUnknown(type: type),
+    LaunchTypeUnavailableCodes.remote => l10n.run.typeUnavailableRemote(
+      type: type,
+    ),
+    LaunchTypeUnavailableCodes.local => l10n.run.typeUnavailable(type: type),
     _ => code,
   };
 }

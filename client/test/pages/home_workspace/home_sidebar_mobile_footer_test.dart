@@ -28,8 +28,8 @@ void main() {
           openMobile: true,
           child: MaterialApp(
             locale: const Locale('en'),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             theme: theme,
             home: Scaffold(
               body: TpSidebar(
@@ -72,8 +72,8 @@ void main() {
           openMobile: true,
           child: MaterialApp(
             locale: const Locale('en'),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             theme: theme,
             builder: (context, child) {
               final mq = MediaQuery.of(context);

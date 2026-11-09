@@ -71,19 +71,19 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
           children.addAll([
             const SizedBox(height: 8),
             TpDisclosure(
-              title: l10n.githubAdvancedPat,
-              subtitle: l10n.githubAdvancedPatSubtitle,
+              title: l10n.github.advancedPat,
+              subtitle: l10n.github.advancedPatSubtitle,
               tilePadding: const EdgeInsets.symmetric(vertical: 12),
               children: [
                 TpPreferenceStack(
-                  title: l10n.hubPublishTokenLabel,
+                  title: l10n.hub.publishTokenLabel,
                   padding: EdgeInsets.zero,
                   showDividerBelow: false,
                   body: TpPasswordInput(
                     key: const Key('github-pat-field'),
                     controller: _patController,
                     decoration: InputDecoration(
-                      hintText: l10n.hubPublishTokenHint,
+                      hintText: l10n.hub.publishTokenHint,
                     ),
                     textInputAction: TextInputAction.done,
                     onSubmitted: (value) => _savePat(context, value),
@@ -119,13 +119,13 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
 
     return [
       Text(
-        widget.purposeText ?? l10n.githubSettingsSubtitle,
+        widget.purposeText ?? l10n.github.settingsSubtitle,
         style: TpTextStyles.of(context).mutedSm,
       ),
       if (!canSignIn) ...[
         const SizedBox(height: 8),
         Text(
-          l10n.githubDeviceFlowUnavailable,
+          l10n.github.deviceFlowUnavailable,
           style: TpTextStyles.of(context).mutedSm,
         ),
       ],
@@ -138,7 +138,7 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
           onPressed: canSignIn
               ? () => context.read<GithubAccountCubit>().connect()
               : null,
-          child: Text(l10n.githubSignIn),
+          child: Text(l10n.github.signIn),
         ),
       ),
     ];
@@ -157,7 +157,7 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
     final cubit = context.read<GithubAccountCubit>();
 
     return [
-      Text(l10n.githubBrowserOpened, style: TpTextStyles.of(context).mutedSm),
+      Text(l10n.github.browserOpened, style: TpTextStyles.of(context).mutedSm),
       const SizedBox(height: 8),
       SelectableText(
         state.userCode ?? '',
@@ -165,7 +165,10 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
         style: TpTextStyles.of(context).mdBoldTightSnug,
       ),
       const SizedBox(height: 4),
-      Text(l10n.githubWaitingCodeHint, style: TpTextStyles.of(context).mutedSm),
+      Text(
+        l10n.github.waitingCodeHint,
+        style: TpTextStyles.of(context).mutedSm,
+      ),
       const SizedBox(height: 12),
       SelectableText(
         state.verificationUri ?? '',
@@ -180,7 +183,7 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
           TpButton(
             variant: TpButtonVariant.outline,
             onPressed: cubit.reopenBrowser,
-            child: Text(l10n.githubReopenBrowser),
+            child: Text(l10n.github.reopenBrowser),
           ),
           TpButton(
             variant: TpButtonVariant.ghost,
@@ -196,8 +199,8 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
     final l10n = context.l10n;
     final login = state.login?.trim();
     final connectedText = (login != null && login.isNotEmpty)
-        ? l10n.githubConnectedAs(login)
-        : l10n.githubConnectedGeneric;
+        ? l10n.github.connectedAs(login: login)
+        : l10n.github.connectedGeneric;
 
     return [
       Text(connectedText, style: TpTextStyles.of(context).mdBoldTightSnug),
@@ -216,7 +219,7 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
             key: const Key('github-disconnect'),
             variant: TpButtonVariant.outline,
             onPressed: () => context.read<GithubAccountCubit>().disconnect(),
-            child: Text(l10n.githubDisconnect),
+            child: Text(l10n.github.disconnect),
           ),
         ),
       ],
@@ -225,8 +228,8 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
 
   String _sourceLabel(AppLocalizations l10n, GithubCredentialSource source) {
     return switch (source) {
-      GithubCredentialSource.oauth => l10n.githubSignIn,
-      GithubCredentialSource.pat => l10n.githubAdvancedPat,
+      GithubCredentialSource.oauth => l10n.github.signIn,
+      GithubCredentialSource.pat => l10n.github.advancedPat,
     };
   }
 

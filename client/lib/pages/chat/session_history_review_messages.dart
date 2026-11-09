@@ -193,7 +193,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
             ),
             SizedBox(height: context.tpSpacing.md),
             Text(
-              context.l10n.sessionHistoryLoading,
+              context.l10n.session.historyLoading,
               style: TpTextStyles.of(
                 context,
               ).mdColored(Theme.of(context).colorScheme.onSurfaceVariant),
@@ -205,7 +205,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
       AiHistoryViewStatus.empty => _HistoryStatusPane(
         icon: Icons.chat_bubble_outline_rounded,
         child: Text(
-          context.l10n.sessionHistoryEmpty,
+          context.l10n.session.historyEmpty,
           style: TpTextStyles.of(
             context,
           ).mdColored(Theme.of(context).colorScheme.onSurfaceVariant),
@@ -218,7 +218,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              context.l10n.sessionHistoryError,
+              context.l10n.session.historyError,
               style: TpTextStyles.of(
                 context,
               ).mdColored(Theme.of(context).colorScheme.error),
@@ -237,7 +237,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
             SizedBox(height: context.tpSpacing.md),
             TextButton(
               onPressed: onRetry,
-              child: Text(context.l10n.sessionHistoryRetry),
+              child: Text(context.l10n.session.historyRetry),
             ),
           ],
         ),
@@ -272,7 +272,7 @@ class _RefreshingStrip extends StatelessWidget {
           ),
           SizedBox(width: context.tpSpacing.sm),
           Text(
-            context.l10n.sessionHistoryRefreshing,
+            context.l10n.session.historyRefreshing,
             style: TpTextStyles.of(context).smColored(cs.onSurfaceVariant),
           ),
         ],
@@ -296,7 +296,7 @@ class _SoftReloadErrorStrip extends StatelessWidget {
           vertical: context.tpSpacing.sm,
         ),
         child: Text(
-          context.l10n.sessionHistorySoftReloadError,
+          context.l10n.session.historySoftReloadError,
           textAlign: TextAlign.center,
           style: TpTextStyles.of(context).smColored(cs.onErrorContainer),
         ),

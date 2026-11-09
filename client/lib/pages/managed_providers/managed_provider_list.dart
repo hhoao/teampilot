@@ -36,8 +36,8 @@ class ManagedProviderList extends StatelessWidget {
       return TpEmptyState(
         centered: true,
         icon: Icons.account_balance_wallet_outlined,
-        title: l10n.managedProvidersEmptyTitle,
-        hint: l10n.managedProvidersEmptyHint,
+        title: l10n.managedProviders.emptyTitle,
+        hint: l10n.managedProviders.emptyHint,
       );
     }
 
@@ -128,8 +128,8 @@ class _ManagedProviderCard extends StatelessWidget {
         status == ProviderUsageStatus.error ||
         status == ProviderUsageStatus.unsupported;
     final statusLabel = provider.enabled
-        ? l10n.managedProvidersEnabled
-        : l10n.managedProvidersDisabled;
+        ? l10n.managedProviders.enabled
+        : l10n.managedProviders.disabled;
 
     return Container(
       decoration: workspaceCardDecoration(cs, radius: 12, borderAlpha: 0.5),
@@ -315,7 +315,7 @@ class _Actions extends StatelessWidget {
       children: [
         TpAnimatedIconButton(
           key: const Key('managed-provider-test-query'),
-          tooltip: l10n.managedProvidersTestQuery,
+          tooltip: l10n.managedProviders.testQuery,
           icon: Icons.refresh_outlined,
           iconSize: 20,
           compact: true,
@@ -326,8 +326,8 @@ class _Actions extends StatelessWidget {
         ),
         IconButton(
           tooltip: provider.enabled
-              ? l10n.managedProvidersDisable
-              : l10n.managedProvidersEnable,
+              ? l10n.managedProviders.disable
+              : l10n.managedProviders.enable,
           onPressed: () => onToggle(provider),
           icon: Icon(
             provider.enabled
@@ -339,13 +339,13 @@ class _Actions extends StatelessWidget {
           visualDensity: VisualDensity.compact,
         ),
         IconButton(
-          tooltip: l10n.managedProvidersEdit,
+          tooltip: l10n.managedProviders.edit,
           onPressed: () => onEdit(provider),
           icon: Icon(Icons.edit_outlined, size: 20, color: cs.onSurfaceVariant),
           visualDensity: VisualDensity.compact,
         ),
         IconButton(
-          tooltip: l10n.managedProvidersDelete,
+          tooltip: l10n.managedProviders.delete,
           onPressed: () => onDelete(provider),
           icon: Icon(Icons.delete_outline, size: 20, color: cs.error),
           visualDensity: VisualDensity.compact,
@@ -377,14 +377,14 @@ class _OverflowMenu extends StatelessWidget {
     final l10n = context.l10n;
     return TpActionMenuButton(
       key: Key('managed-provider-actions-${provider.id}'),
-      tooltip: l10n.logViewerActionsMenu,
+      tooltip: l10n.log.viewerActionsMenu,
       icon: Icon(Icons.more_vert, size: context.tpIconSizes.sm),
       size: TpIconButton.kCompactSize,
       specs: [
         TpActionMenuSpec.item(
           value: _ProviderCardAction.refresh,
           icon: Icons.refresh_outlined,
-          label: l10n.managedProvidersTestQuery,
+          label: l10n.managedProviders.testQuery,
           enabled: !refreshing,
         ),
         TpActionMenuSpec.item(
@@ -393,18 +393,18 @@ class _OverflowMenu extends StatelessWidget {
               ? Icons.pause_circle_outline
               : Icons.play_circle_outline,
           label: provider.enabled
-              ? l10n.managedProvidersDisable
-              : l10n.managedProvidersEnable,
+              ? l10n.managedProviders.disable
+              : l10n.managedProviders.enable,
         ),
         TpActionMenuSpec.item(
           value: _ProviderCardAction.edit,
           icon: Icons.edit_outlined,
-          label: l10n.managedProvidersEdit,
+          label: l10n.managedProviders.edit,
         ),
         TpActionMenuSpec.item(
           value: _ProviderCardAction.delete,
           icon: Icons.delete_outline,
-          label: l10n.managedProvidersDelete,
+          label: l10n.managedProviders.delete,
           destructive: true,
         ),
       ],

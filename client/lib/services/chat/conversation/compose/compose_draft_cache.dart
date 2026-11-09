@@ -65,10 +65,9 @@ class ComposeDraftCache {
   Future<void> clearLandingPersistent(
     String workspaceId, {
     required HomeStorage storage,
-  }) => _persistentStore(storage).saveLanding(
-    workspaceId,
-    const ComposeDraft(text: ''),
-  );
+  }) => _persistentStore(
+    storage,
+  ).saveLanding(workspaceId, const ComposeDraft(text: ''));
 
   // ── Session compose (session workbench) ─────────────────────────────────
 

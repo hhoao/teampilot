@@ -344,7 +344,7 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                 const SizedBox(width: 24),
               ],
               _HomePill(
-                label: compactChrome ? '' : l10n.homeWorkspaceMainWindow,
+                label: compactChrome ? '' : l10n.homeWorkspace.mainWindow,
                 active: widget.activeTabKey == null,
                 onTap: widget.onHomeTap,
               ),

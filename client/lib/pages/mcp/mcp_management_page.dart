@@ -40,9 +40,9 @@ enum McpSection implements WorkspaceSectionDescriptor {
 
   @override
   String title(AppLocalizations l10n) => switch (this) {
-    McpSection.installed => l10n.mcpNavInstalled,
-    McpSection.discovery => l10n.mcpNavDiscovery,
-    McpSection.registries => l10n.mcpNavRegistries,
+    McpSection.installed => l10n.mcp.navInstalled,
+    McpSection.discovery => l10n.mcp.navDiscovery,
+    McpSection.registries => l10n.mcp.navRegistries,
   };
 
   @override
@@ -146,7 +146,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
     if (ok) {
       AppToast.show(
         context,
-        message: context.l10n.mcpCatalogAdded,
+        message: context.l10n.mcp.catalogAdded,
         variant: TpToastVariant.success,
       );
       return;
@@ -166,7 +166,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
     if (preview.isEmpty) {
       AppToast.show(
         context,
-        message: l10n.mcpImportEmpty,
+        message: l10n.mcp.importEmpty,
         variant: TpToastVariant.warning,
       );
       return;
@@ -180,12 +180,12 @@ class _McpManagementPageState extends State<McpManagementPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpDialogHeader(title: l10n.mcpImportExisting),
+            TpDialogHeader(title: l10n.mcp.importExisting),
             const SizedBox(height: 16),
             Text(
-              l10n.mcpImportSummary(
-                preview.newServers.length,
-                preview.conflicts.length,
+              l10n.mcp.importSummary(
+                added: preview.newServers.length,
+                conflicts: preview.conflicts.length,
               ),
             ),
             TpDialogActions(
@@ -197,7 +197,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
                 if (preview.conflicts.isNotEmpty)
                   TextButton(
                     onPressed: () => Navigator.pop(ctx, true),
-                    child: Text(l10n.mcpImportOverwrite),
+                    child: Text(l10n.mcp.importOverwrite),
                   ),
                 FilledButton(
                   onPressed: () => Navigator.pop(ctx, false),
@@ -217,7 +217,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
     if (!mounted || !ok) return;
     AppToast.show(
       context,
-      message: l10n.mcpImportDone,
+      message: l10n.mcp.importDone,
       variant: TpToastVariant.success,
     );
   }
@@ -232,7 +232,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpDialogHeader(title: l10n.mcpDeleteConfirm),
+            TpDialogHeader(title: l10n.mcp.deleteConfirm),
             const SizedBox(height: 16),
             Text(server.name),
             TpDialogActions(
@@ -243,7 +243,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(ctx, true),
-                  child: Text(l10n.delete),
+                  child: Text(l10n.delete.delete),
                 ),
               ],
             ),
@@ -296,8 +296,8 @@ class _McpManagementPageState extends State<McpManagementPage> {
 
         return WorkspaceAdaptiveSectionPage(
           pageKey: AppKeys.mcpWorkspace,
-          title: context.l10n.mcpNavTitle,
-          subtitle: context.l10n.mcpSubtitle,
+          title: context.l10n.mcp.navTitle,
+          subtitle: context.l10n.mcp.subtitle,
           showSubtitle: false,
           embedded: widget.embedded,
           compactSectionTabs: true,

@@ -68,8 +68,8 @@ class _SshHostsStatusSegmentState extends State<_SshHostsStatusSegment> {
         final connecting =
             state.overallStatus == SshHostsOverallStatus.connecting;
         final label = connecting
-            ? l10n.sshHostsPillConnecting
-            : l10n.sshHostsPillCount(state.connectedCount);
+            ? l10n.ssh.hostsPillConnecting
+            : l10n.ssh.hostsPillCount(count: state.connectedCount);
 
         return TpActionMenuAnchor(
           controller: _popover,
@@ -95,7 +95,7 @@ class _SshHostsStatusSegmentState extends State<_SshHostsStatusSegment> {
                   },
           ),
           child: Tooltip(
-            message: l10n.sshHostsPanelTitle,
+            message: l10n.ssh.hostsPanelTitle,
             child: _PillButton(
               key: const Key('ssh-hosts-pill'),
               compact: widget.compact,

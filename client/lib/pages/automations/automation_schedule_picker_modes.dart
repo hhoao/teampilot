@@ -33,7 +33,7 @@ class AutomationScheduleOnceRows extends StatelessWidget {
           ),
           id: 'scheduleOnceDate',
           initialValue: draft.onceDate ?? now,
-          label: Text(l10n.automationsScheduleDate),
+          label: Text(l10n.automations.scheduleDate),
           layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: labelWidth,
           builder: (state) {
@@ -59,7 +59,7 @@ class AutomationScheduleOnceRows extends StatelessWidget {
         TpFormField<TimeOfDay>(
           id: 'scheduleOnceTime',
           initialValue: draft.onceTime ?? TimeOfDay(hour: 9, minute: 0),
-          label: Text(l10n.automationsTime),
+          label: Text(l10n.automations.time),
           layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: labelWidth,
           builder: (state) {
@@ -109,17 +109,17 @@ class AutomationScheduleCountdownRows extends StatelessWidget {
         TpFormField<String>(
           id: 'scheduleCountdownMinutes',
           initialValue: selectValue,
-          label: Text(l10n.automationsTime),
+          label: Text(l10n.automations.time),
           layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: labelWidth,
           builder: (state) {
             return TpSelectWithCustomInput(
               value: selectValue,
               items: presetItems,
-              hintText: l10n.automationsTime,
+              hintText: l10n.automations.time,
               decoration: TpSelectDecorations.themed(context),
               searchable: false,
-              customInputTooltip: l10n.automationsCountdownCustom,
+              customInputTooltip: l10n.automations.countdownCustom,
               cancelLabel: l10n.cancel,
               confirmLabel: l10n.confirm,
               onChanged: (value) {
@@ -133,8 +133,8 @@ class AutomationScheduleCountdownRows extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          l10n.automationsCountdownPreview(
-            formatAutomationScheduleDateTime(runAt),
+          l10n.automations.countdownPreview(
+            dateTime: formatAutomationScheduleDateTime(runAt),
           ),
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -208,7 +208,7 @@ class _AutomationScheduleRecurringRowsState
           key: ValueKey('schedule-preset-${draft.preset.name}'),
           id: 'schedulePreset',
           initialValue: draft.preset,
-          label: Text(l10n.automationsSchedule),
+          label: Text(l10n.automations.schedule),
           layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: widget.labelWidth,
           builder: (state) {
@@ -236,7 +236,7 @@ class _AutomationScheduleRecurringRowsState
           AutomationSchedulePreset.hourly => TpFormField<int>(
             id: 'scheduleMinute',
             initialValue: draft.minute,
-            label: Text(l10n.automationsTime),
+            label: Text(l10n.automations.time),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: widget.labelWidth,
             builder: (state) {
@@ -244,7 +244,8 @@ class _AutomationScheduleRecurringRowsState
                 items: List<int>.generate(60, (i) => i),
                 initialItem: (state.value ?? draft.minute).clamp(0, 59),
                 decoration: TpSelectDecorations.themed(context),
-                itemLabel: (m) => l10n.automationsScheduleSummaryHourly(m),
+                itemLabel: (m) =>
+                    l10n.automations.scheduleSummaryHourly(minute: m),
                 onChanged: (value) {
                   if (value == null) return;
                   state.didChange(value);
@@ -256,13 +257,13 @@ class _AutomationScheduleRecurringRowsState
           AutomationSchedulePreset.custom => TpFormField<String>(
             id: 'scheduleCustomCron',
             initialValue: draft.customCron ?? '',
-            label: Text(l10n.automationsCustomCron),
+            label: Text(l10n.automations.customCron),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: widget.labelWidth,
             validator: (value) {
               final cron = value?.trim() ?? '';
               if (!widget.calculator.isValidCron(cron)) {
-                return l10n.automationsInvalidCron;
+                return l10n.automations.invalidCron;
               }
               return null;
             },
@@ -288,7 +289,7 @@ class _AutomationScheduleRecurringRowsState
               TpFormField<String>(
                 id: 'scheduleHourMinute',
                 initialValue: draft.hourMinute,
-                label: Text(l10n.automationsTime),
+                label: Text(l10n.automations.time),
                 layoutStyle: TpFormFieldLayoutStyle.inline,
                 labelWidth: widget.labelWidth,
                 validator: (value) {
@@ -296,7 +297,7 @@ class _AutomationScheduleRecurringRowsState
                     parseHourMinute(value ?? '');
                     return null;
                   } on Object {
-                    return l10n.automationsInvalidTime;
+                    return l10n.automations.invalidTime;
                   }
                 },
                 builder: (state) {
@@ -318,7 +319,7 @@ class _AutomationScheduleRecurringRowsState
                 TpFormField<int>(
                   id: 'scheduleDayOfWeek',
                   initialValue: draft.dayOfWeek ?? DateTime.monday,
-                  label: Text(l10n.automationsScheduleWeekly),
+                  label: Text(l10n.automations.scheduleWeekly),
                   layoutStyle: TpFormFieldLayoutStyle.inline,
                   labelWidth: widget.labelWidth,
                   builder: (state) {

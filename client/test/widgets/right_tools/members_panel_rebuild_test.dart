@@ -39,8 +39,8 @@ Widget _host({
   required CliPresetsCubit cliPresetsCubit,
 }) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: MultiBlocProvider(
       providers: [
         BlocProvider.value(value: providerCubit),
@@ -110,13 +110,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final l10n = AppLocalizations.of(
-        tester.element(find.byType(MembersPanel)),
-      );
+      final l10n = tester.element(find.byType(MembersPanel)).l10n;
       expect(
         find.descendant(
           of: find.byKey(AppKeys.memberRow(_backend.id)),
-          matching: find.textContaining(l10n.memberPresenceOffline),
+          matching: find.textContaining(l10n.member.presenceOffline),
         ),
         findsOneWidget,
       );
@@ -139,7 +137,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(AppKeys.memberRow(_backend.id)),
-          matching: find.textContaining(l10n.memberPresenceWorking),
+          matching: find.textContaining(l10n.member.presenceWorking),
         ),
         findsOneWidget,
       );
@@ -163,7 +161,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(tester.element(find.byType(MembersPanel)));
+    final l10n = tester.element(find.byType(MembersPanel)).l10n;
     var panelRebuilds = 0;
     debugOnRebuildDirtyWidget = (element, _) {
       if (element.widget is MembersPanel) panelRebuilds++;
@@ -182,7 +180,7 @@ void main() {
     expect(
       find.descendant(
         of: find.byKey(AppKeys.memberRow(_backend.id)),
-        matching: find.textContaining(l10n.memberPresenceOffline),
+        matching: find.textContaining(l10n.member.presenceOffline),
       ),
       findsOneWidget,
     );

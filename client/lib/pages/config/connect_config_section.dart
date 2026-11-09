@@ -25,13 +25,13 @@ class ConnectConfigWorkspace extends StatelessWidget {
       children: [
         if (showHeading)
           WorkspacePaneHeader(
-            title: l10n.connectSettingsTitle,
-            subtitle: l10n.connectSettingsSubtitle,
+            title: l10n.connect.settingsTitle,
+            subtitle: l10n.connect.settingsSubtitle,
             showSubtitle: true,
           ),
         Expanded(
           child: isAndroid
-              ? Center(child: Text(l10n.connectAndroidScanHint))
+              ? Center(child: Text(l10n.connect.androidScanHint))
               : const ConnectSection(),
         ),
       ],

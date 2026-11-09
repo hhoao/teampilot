@@ -344,8 +344,8 @@ class _DeferredFakePlatform implements RunPlatformApi, RunPlatformDeferred {
 
 Widget _host({required RunCubit cubit}) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     locale: const Locale('en'),
     home: Scaffold(
       body: BlocProvider<RunCubit>.value(value: cubit, child: const RunPanel()),

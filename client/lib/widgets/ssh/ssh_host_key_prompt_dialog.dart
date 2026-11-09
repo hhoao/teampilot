@@ -79,11 +79,11 @@ class _SshHostKeyPromptDialog extends StatelessWidget {
     final l10n = context.l10n;
     final host = info.profile.hostIdentifier;
     final title = info.isMismatch
-        ? l10n.sshHostKeyMismatchTitle
-        : l10n.sshHostKeyUnknownTitle;
+        ? l10n.ssh.hostKeyMismatchTitle
+        : l10n.ssh.hostKeyUnknownTitle;
     final body = info.isMismatch
-        ? l10n.sshHostKeyMismatchBody(host)
-        : l10n.sshHostKeyUnknownBody(host);
+        ? l10n.ssh.hostKeyMismatchBody(host: host)
+        : l10n.ssh.hostKeyUnknownBody(host: host);
 
     return TpDialog(
       maxWidth: 480,
@@ -99,7 +99,7 @@ class _SshHostKeyPromptDialog extends StatelessWidget {
           Text(body),
           const SizedBox(height: 16),
           _FingerprintRow(
-            label: l10n.sshHostKeyFingerprintLabel,
+            label: l10n.ssh.hostKeyFingerprintLabel,
             value: info.fingerprintHex,
           ),
           if (info.isMismatch &&
@@ -107,13 +107,13 @@ class _SshHostKeyPromptDialog extends StatelessWidget {
               info.previousFingerprintHex!.isNotEmpty) ...[
             const SizedBox(height: 12),
             _FingerprintRow(
-              label: l10n.sshHostKeyPreviousFingerprintLabel,
+              label: l10n.ssh.hostKeyPreviousFingerprintLabel,
               value: info.previousFingerprintHex!,
             ),
           ],
           const SizedBox(height: 8),
           Text(
-            l10n.sshHostKeyKeyTypeLabel(info.keyType),
+            l10n.ssh.hostKeyKeyTypeLabel(keyType: info.keyType),
             style: TpTextStyles.of(context).sm,
           ),
           TpDialogActions(
@@ -126,8 +126,8 @@ class _SshHostKeyPromptDialog extends StatelessWidget {
                 onPressed: () => Navigator.of(context).pop(true),
                 child: Text(
                   info.isMismatch
-                      ? l10n.sshHostKeyReplaceTrust
-                      : l10n.sshHostKeyTrust,
+                      ? l10n.ssh.hostKeyReplaceTrust
+                      : l10n.ssh.hostKeyTrust,
                 ),
               ),
             ],

@@ -30,8 +30,8 @@ class _SeededResourceManagerCubit extends ResourceManagerCubit {
 
 Widget _host({required ResourceManagerCubit cubit, required Widget child}) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: BlocProvider<ResourceManagerCubit>.value(
       value: cubit,
       child: Scaffold(body: child),

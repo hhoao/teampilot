@@ -16,7 +16,7 @@ import 'vault_status_section.dart';
 Future<bool> authorizeVaultReveal(BuildContext context) async {
   final vault = context.read<VaultService>();
   if (!vault.isEncrypted) return true;
-  final l10n = AppLocalizations.of(context);
+  final l10n = context.l10n;
   final messenger = ScaffoldMessenger.maybeOf(context);
   final passphrase = await showVaultPassphrasePrompt(context);
   if (passphrase == null) return false;
@@ -25,12 +25,12 @@ Future<bool> authorizeVaultReveal(BuildContext context) async {
       await vault.unlock(passphrase, remember: false);
       return true;
     } on Object {
-      messenger?.showSnackBar(SnackBar(content: Text(l10n.vaultUnlockFailed)));
+      messenger?.showSnackBar(SnackBar(content: Text(l10n.vault.unlockFailed)));
       return false;
     }
   }
   if (await vault.verifyMasterPassphrase(passphrase)) return true;
-  messenger?.showSnackBar(SnackBar(content: Text(l10n.vaultUnlockFailed)));
+  messenger?.showSnackBar(SnackBar(content: Text(l10n.vault.unlockFailed)));
   return false;
 }
 

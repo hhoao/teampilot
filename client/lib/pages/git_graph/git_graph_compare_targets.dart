@@ -23,10 +23,8 @@ List<TpActionMenuSpec> gitCompareTargetSpecs({
   bool matches(String text) =>
       needle.isEmpty || text.toLowerCase().contains(needle);
 
-  final locals = state.branches
-      .where((b) => !b.isRemote && matches(b.name));
-  final remotes = state.branches
-      .where((b) => b.isRemote && matches(b.name));
+  final locals = state.branches.where((b) => !b.isRemote && matches(b.name));
+  final remotes = state.branches.where((b) => b.isRemote && matches(b.name));
   final tags = state.tags.where((t) => matches(t.name));
   final commits = state.rows.whereType<GitCommitRow>().where((row) {
     final label = '${GitCompareRef(row.hash).titleLabel()} ${row.subject}';
@@ -40,20 +38,20 @@ List<TpActionMenuSpec> gitCompareTargetSpecs({
     TpActionMenuSpec.item(
       value: const GitCompareWorkingTree(),
       icon: Icons.difference_outlined,
-      label: l10n.gitGraphCompareWorkingTree(
-        state.currentBranch.isEmpty ? 'HEAD' : state.currentBranch,
+      label: l10n.gitGraph.compareWorkingTree(
+        branch: state.currentBranch.isEmpty ? 'HEAD' : state.currentBranch,
       ),
     ),
     const TpActionMenuSpec.divider(),
     if (refSectionsEmpty && hasActiveFilter)
       TpActionMenuSpec.item(
         icon: Icons.search_off_outlined,
-        label: l10n.gitGraphRefsFilterEmpty,
+        label: l10n.gitGraph.refsFilterEmpty,
         enabled: false,
       )
     else ...[
       if (locals.isNotEmpty) ...[
-        _sectionHeader(Icons.call_split, l10n.gitGraphLocalBranches),
+        _sectionHeader(Icons.call_split, l10n.gitGraph.localBranches),
         TpActionMenuSpec.scroll(
           children: [
             for (final branch in locals)
@@ -67,7 +65,7 @@ List<TpActionMenuSpec> gitCompareTargetSpecs({
         ),
       ],
       if (remotes.isNotEmpty) ...[
-        _sectionHeader(Icons.cloud_outlined, l10n.gitGraphRemoteBranches),
+        _sectionHeader(Icons.cloud_outlined, l10n.gitGraph.remoteBranches),
         TpActionMenuSpec.scroll(
           children: [
             for (final branch in remotes)
@@ -81,7 +79,7 @@ List<TpActionMenuSpec> gitCompareTargetSpecs({
         ),
       ],
       if (tags.isNotEmpty) ...[
-        _sectionHeader(Icons.sell_outlined, l10n.gitGraphTags),
+        _sectionHeader(Icons.sell_outlined, l10n.gitGraph.tags),
         TpActionMenuSpec.scroll(
           children: [
             for (final tag in tags)
@@ -95,7 +93,7 @@ List<TpActionMenuSpec> gitCompareTargetSpecs({
         ),
       ],
       if (commits.isNotEmpty) ...[
-        _sectionHeader(Icons.commit, l10n.gitGraphCommits),
+        _sectionHeader(Icons.commit, l10n.gitGraph.commits),
         TpActionMenuSpec.scroll(
           children: [
             for (final row in commits)
@@ -213,7 +211,7 @@ class _GitCompareTargetMenuOverlayState
           minWidth: minWidth,
           showsSearchField: _showsSearchField,
           searchFocus: _searchFocus,
-          filterHint: widget.l10n.gitGraphCompareFilterHint,
+          filterHint: widget.l10n.gitGraph.compareFilterHint,
           onFilterChanged: (query) => setState(() => _filterQuery = query),
           menuChildren: menuChildren,
         ),

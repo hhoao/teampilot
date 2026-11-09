@@ -196,10 +196,10 @@ class _CodebuddyLoginDialogState extends State<CodebuddyLoginDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.codebuddyCredentialsLoginTitle),
+          TpDialogHeader(title: l10n.codebuddy.credentialsLoginTitle),
           const SizedBox(height: 12),
           Text(
-            l10n.codebuddyCredentialsLoginIntro,
+            l10n.codebuddy.credentialsLoginIntro,
             style: TpTextStyles.of(context).mutedSm,
           ),
           const SizedBox(height: 12),
@@ -233,7 +233,7 @@ class _CodebuddyLoginDialogState extends State<CodebuddyLoginDialog> {
                 if (_starting)
                   Center(
                     child: Text(
-                      l10n.codebuddyCredentialsLoginStarting,
+                      l10n.codebuddy.credentialsLoginStarting,
                       style: const TextStyle(color: Color(0xFFDDDDDD)),
                     ),
                   ),
@@ -243,7 +243,7 @@ class _CodebuddyLoginDialogState extends State<CodebuddyLoginDialog> {
                     right: 12,
                     bottom: 12,
                     child: Text(
-                      l10n.codebuddyCredentialsLoginFailed(_error!),
+                      l10n.codebuddy.credentialsLoginFailed(error: _error!),
                       style: const TextStyle(color: Color(0xFFFF7B72)),
                     ),
                   ),
@@ -253,7 +253,7 @@ class _CodebuddyLoginDialogState extends State<CodebuddyLoginDialog> {
           if (_exited) ...[
             const SizedBox(height: 8),
             Text(
-              l10n.codebuddyCredentialsLoginExited,
+              l10n.codebuddy.credentialsLoginExited,
               style: TpTextStyles.of(context).mutedSm,
             ),
           ],
@@ -263,18 +263,18 @@ class _CodebuddyLoginDialogState extends State<CodebuddyLoginDialog> {
               TpButton(
                 variant: TpButtonVariant.outline,
                 onPressed: () => Navigator.of(context).pop(false),
-                child: Text(l10n.codebuddyCredentialsCancel),
+                child: Text(l10n.codebuddy.credentialsCancel),
               ),
               TpButton(
                 variant: TpButtonVariant.outline,
                 onPressed: _exited ? null : () => _sendLogin(force: true),
-                child: Text(l10n.codebuddyCredentialsSendLogin),
+                child: Text(l10n.codebuddy.credentialsSendLogin),
               ),
               TpButton(
                 onPressed: _exited
                     ? null
                     : () => Navigator.of(context).pop(true),
-                child: Text(l10n.codebuddyCredentialsDone),
+                child: Text(l10n.codebuddy.credentialsDone),
               ),
               if (_error != null)
                 TpButton(
@@ -286,7 +286,7 @@ class _CodebuddyLoginDialogState extends State<CodebuddyLoginDialog> {
                     });
                     unawaited(_start());
                   },
-                  child: Text(l10n.codebuddyCredentialsRetry),
+                  child: Text(l10n.codebuddy.credentialsRetry),
                 ),
             ],
           ),

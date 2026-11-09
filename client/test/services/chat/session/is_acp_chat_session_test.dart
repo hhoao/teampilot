@@ -5,11 +5,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/chat/session/chat_tab.dart';
 
 void main() {
-  AppSession session({
-    CliTool? cli,
-    String team = '',
-    bool? acp,
-  }) => AppSession(
+  AppSession session({CliTool? cli, String team = '', bool? acp}) => AppSession(
     sessionId: 's1',
     workspaceId: 'w1',
     createdAt: 1,
@@ -27,17 +23,12 @@ void main() {
   });
 
   test('claude simple with acp is ACP', () {
-    expect(
-      isAcpChatSession(session(cli: CliTool.claude, acp: true)),
-      isTrue,
-    );
+    expect(isAcpChatSession(session(cli: CliTool.claude, acp: true)), isTrue);
   });
 
   test('teamed claude with acp true is not ACP', () {
     expect(
-      isAcpChatSession(
-        session(cli: CliTool.claude, team: 't1', acp: true),
-      ),
+      isAcpChatSession(session(cli: CliTool.claude, team: 't1', acp: true)),
       isFalse,
     );
   });
@@ -49,11 +40,7 @@ void main() {
       createdAt: 1,
       sessionTeam: 't1',
       members: const [
-        SessionMemberBinding(
-          rosterMemberId: 'lead',
-          taskId: 't',
-          acp: true,
-        ),
+        SessionMemberBinding(rosterMemberId: 'lead', taskId: 't', acp: true),
       ],
     );
     expect(isAcpChatSeat(mixed, 'lead'), isTrue);

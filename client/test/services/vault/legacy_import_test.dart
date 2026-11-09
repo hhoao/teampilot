@@ -272,7 +272,8 @@ void main() {
     );
   });
 
-  test('a failed owner keeps its legacy data and blocks the marker', () async {    final h = await _harness();
+  test('a failed owner keeps its legacy data and blocks the marker', () async {
+    final h = await _harness();
     final sshProfiles = SshProfileRepository(storage: h.storage);
     final sshCredentials = InMemorySshCredentialStore();
     await sshProfiles.save(
@@ -717,41 +718,44 @@ void main() {
     expect(h.vault.legacyImportVersion, 1);
   });
 
-  test('a second service over the same store sees the marker and no-ops', () async {
-    final h = await _harness();
-    // A retried bootstrap builds a fresh service over the same keychain store;
-    // its in-memory document predates the first shell's import pass.
-    final secondService = await _secondService(h);
-    final capture = _CountingCapture(h.vault);
-    final sshProfiles = SshProfileRepository(storage: h.storage);
-    final sshCredentials = InMemorySshCredentialStore();
-    await sshProfiles.save(
-      const SshProfile(id: 'p1', name: 'Server', host: 'h', username: 'u'),
-    );
-    await sshCredentials.savePassword('p1', 'pw');
+  test(
+    'a second service over the same store sees the marker and no-ops',
+    () async {
+      final h = await _harness();
+      // A retried bootstrap builds a fresh service over the same keychain store;
+      // its in-memory document predates the first shell's import pass.
+      final secondService = await _secondService(h);
+      final capture = _CountingCapture(h.vault);
+      final sshProfiles = SshProfileRepository(storage: h.storage);
+      final sshCredentials = InMemorySshCredentialStore();
+      await sshProfiles.save(
+        const SshProfile(id: 'p1', name: 'Server', host: 'h', username: 'u'),
+      );
+      await sshCredentials.savePassword('p1', 'pw');
 
-    await _importer(
-      h,
-      capture: capture,
-      sshProfiles: sshProfiles,
-      sshCredentials: sshCredentials,
-    ).runOnce();
-    expect(h.vault.legacyImportVersion, 1);
-    expect(secondService.legacyImportVersion, 0);
+      await _importer(
+        h,
+        capture: capture,
+        sshProfiles: sshProfiles,
+        sshCredentials: sshCredentials,
+      ).runOnce();
+      expect(h.vault.legacyImportVersion, 1);
+      expect(secondService.legacyImportVersion, 0);
 
-    await _importer(
-      h,
-      vault: secondService,
-      capture: capture,
-      sshProfiles: sshProfiles,
-      sshCredentials: sshCredentials,
-    ).runOnce();
+      await _importer(
+        h,
+        vault: secondService,
+        capture: capture,
+        sshProfiles: sshProfiles,
+        sshCredentials: sshCredentials,
+      ).runOnce();
 
-    // Only the refreshed marker prevents a second capture pass.
-    expect(capture.sshCaptures, 1);
-    expect(secondService.markerWrites, 0);
-    expect(secondService.legacyImportVersion, 1);
-  });
+      // Only the refreshed marker prevents a second capture pass.
+      expect(capture.sshCaptures, 1);
+      expect(secondService.markerWrites, 0);
+      expect(secondService.legacyImportVersion, 1);
+    },
+  );
 }
 
 class _CountingCapture extends VaultCredentialCapture {

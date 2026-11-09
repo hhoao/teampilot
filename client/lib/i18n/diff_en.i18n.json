@@ -1,0 +1,21 @@
+{
+  "applyDisabledNoPath": "Cannot apply: file path unavailable",
+  "applyFailed": "Could not apply change: {error: String}",
+  "applyHunkTooltip": "Apply change to working tree",
+  "changeCounter": "{current: int} / {total: int}",
+  "discardDiffBeforeFileSaveBody": "Saving the file will discard unsaved edits in the diff view.",
+  "discardDiffBeforeFileSaveTitle": "Discard diff edits?",
+  "discardEditsApplyBody": "Applying this change discards unsaved edits in the diff.",
+  "discardEditsApplyTitle": "Discard edits?",
+  "fileReloadedAfterDiffWrite": "File tab reloaded from disk.",
+  "ignoreWhitespace": "Ignore whitespace",
+  "nextChange": "Next change",
+  "noChanges": "No changes",
+  "openSourceFile": "Open source file",
+  "previousChange": "Previous change",
+  "reloadAfterSaveFailed": "Saved, but refreshing the diff failed.",
+  "saveFailed": "Could not save: {error: String}",
+  "showAllLines": "Show all lines",
+  "viewSideBySide": "Side by side",
+  "viewUnified": "Unified"
+}

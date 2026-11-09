@@ -117,8 +117,7 @@ final class AntigravitySessionUsageCapability
     final requestKey = sequence > 0 ? '$sequence' : 'idx-$fallbackOrdinal';
     final model = record['model']?.toString().trim() ?? '';
     return SessionUsageEvent(
-      requestId:
-          '${sessionId.isEmpty ? ctx.sessionId : sessionId}:$requestKey',
+      requestId: '${sessionId.isEmpty ? ctx.sessionId : sessionId}:$requestKey',
       cli: CliTool.antigravity,
       model: model,
       inputTokens: used,
@@ -135,7 +134,6 @@ final class AntigravitySessionUsageCapability
 }
 
 /// `sequence` is a microsecond stamp written by the ACP chat cubit.
-int timestampFromSequence(int sequence) =>
-    sequence > 0 ? sequence ~/ 1000 : 0;
+int timestampFromSequence(int sequence) => sequence > 0 ? sequence ~/ 1000 : 0;
 
 int _int(Object? raw) => raw is num ? raw.toInt() : 0;

@@ -212,10 +212,10 @@ class _AntigravityRemoteLoginDialogState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.antigravityCredentialsLoginTitle),
+          TpDialogHeader(title: l10n.antigravity.credentialsLoginTitle),
           const SizedBox(height: 12),
           Text(
-            l10n.antigravityCredentialsLoginIntro,
+            l10n.antigravity.credentialsLoginIntro,
             style: TpTextStyles.of(context).mutedSm,
           ),
           const SizedBox(height: 12),
@@ -230,7 +230,8 @@ class _AntigravityRemoteLoginDialogState
             child: Stack(
               children: [
                 Positioned.fill(
-                  child: widget.terminalBuilder?.call(_engine) ??
+                  child:
+                      widget.terminalBuilder?.call(_engine) ??
                       TerminalView(
                         _engine,
                         theme: TerminalTheme.defaults,
@@ -250,7 +251,7 @@ class _AntigravityRemoteLoginDialogState
                 if (_starting)
                   Center(
                     child: Text(
-                      l10n.antigravityCredentialsLoginStarting,
+                      l10n.antigravity.credentialsLoginStarting,
                       style: const TextStyle(color: Color(0xFFDDDDDD)),
                     ),
                   ),
@@ -260,7 +261,7 @@ class _AntigravityRemoteLoginDialogState
                     right: 12,
                     bottom: 12,
                     child: Text(
-                      l10n.antigravityCredentialsLoginFailed(_error!),
+                      l10n.antigravity.credentialsLoginFailed(error: _error!),
                       style: const TextStyle(color: Color(0xFFFF7B72)),
                     ),
                   ),
@@ -270,14 +271,14 @@ class _AntigravityRemoteLoginDialogState
           if (_exited) ...[
             const SizedBox(height: 8),
             Text(
-              l10n.antigravityCredentialsLoginExited,
+              l10n.antigravity.credentialsLoginExited,
               style: TpTextStyles.of(context).mutedSm,
             ),
           ],
           if (_verifyFailed) ...[
             const SizedBox(height: 8),
             Text(
-              l10n.antigravityCredentialsLoginVerifyFailed,
+              l10n.antigravity.credentialsLoginVerifyFailed,
               style: const TextStyle(color: Color(0xFFFF7B72)),
             ),
           ],
@@ -287,12 +288,12 @@ class _AntigravityRemoteLoginDialogState
               TpButton(
                 variant: TpButtonVariant.outline,
                 onPressed: () => Navigator.of(context).pop(false),
-                child: Text(l10n.antigravityCredentialsCancel),
+                child: Text(l10n.antigravity.credentialsCancel),
               ),
               TpButton(
                 key: const Key('antigravityRemoteLoginDone'),
                 onPressed: canDone ? () => unawaited(_done()) : null,
-                child: Text(l10n.antigravityCredentialsDone),
+                child: Text(l10n.antigravity.credentialsDone),
               ),
               if (_error != null)
                 TpButton(
@@ -304,7 +305,7 @@ class _AntigravityRemoteLoginDialogState
                     });
                     unawaited(_start());
                   },
-                  child: Text(l10n.antigravityCredentialsRetry),
+                  child: Text(l10n.antigravity.credentialsRetry),
                 ),
             ],
           ),
@@ -319,5 +320,4 @@ String _safeSegment(String value) {
   return sanitized.isEmpty ? 'default' : sanitized;
 }
 
-String _shellQuote(String value) =>
-    "'${value.replaceAll("'", "'\"'\"'")}'";
+String _shellQuote(String value) => "'${value.replaceAll("'", "'\"'\"'")}'";

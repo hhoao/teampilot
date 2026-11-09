@@ -122,7 +122,11 @@ final class _WorkPathProjector {
             target: target,
             entryIndex: entryIndex,
           );
-        case ManifestCopyFile(:final source, :final destination, :final private):
+        case ManifestCopyFile(
+          :final source,
+          :final destination,
+          :final private,
+        ):
           await _addCopyFile(
             source: source,
             destination: destination,

@@ -65,9 +65,9 @@ class SessionGroupSection extends StatelessWidget {
     final current = _groupIn(cubit.state);
     final name = await showTpTextPromptDialog(
       context,
-      title: l10n.sessionGroupRenameTitle,
+      title: l10n.session.groupRenameTitle,
       initialText: current.name,
-      labelText: l10n.sessionGroupNameLabel,
+      labelText: l10n.session.groupNameLabel,
       confirmLabel: l10n.save,
       cancelLabel: l10n.cancel,
     );
@@ -84,7 +84,7 @@ class SessionGroupSection extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.sessionGroupMenuRemove),
+        title: Text(l10n.session.groupMenuRemove),
         content: Text(current.name),
         actions: [
           TextButton(
@@ -96,7 +96,7 @@ class SessionGroupSection extends StatelessWidget {
               backgroundColor: Theme.of(dialogContext).colorScheme.error,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.delete),
+            child: Text(l10n.delete.delete),
           ),
         ],
       ),
@@ -126,7 +126,7 @@ class SessionGroupSection extends StatelessWidget {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setState) => AlertDialog(
-          title: Text(l10n.sessionGroupAddSessionsTitle),
+          title: Text(l10n.session.groupAddSessionsTitle),
           content: SizedBox(
             width: 360,
             child: ListView.builder(
@@ -248,17 +248,17 @@ class _SessionGroupHeaderState extends State<_SessionGroupHeader> {
         TpActionMenuSpec.item(
           value: 'add_sessions',
           icon: Icons.playlist_add_rounded,
-          label: l10n.sessionGroupAddSessionsTitle,
+          label: l10n.session.groupAddSessionsTitle,
         ),
         TpActionMenuSpec.item(
           value: 'rename',
           icon: Icons.drive_file_rename_outline,
-          label: l10n.sessionGroupRenameTitle,
+          label: l10n.session.groupRenameTitle,
         ),
         TpActionMenuSpec.item(
           value: 'delete',
           icon: Icons.delete_outline_rounded,
-          label: l10n.sessionGroupMenuRemove,
+          label: l10n.session.groupMenuRemove,
           destructive: true,
         ),
       ],
@@ -295,7 +295,7 @@ class _SessionGroupHeaderState extends State<_SessionGroupHeader> {
           icon: Icons.add_rounded,
           compact: true,
           size: TpIconButton.kCompactSize,
-          tooltip: context.l10n.sessionGroupAddSessionsTooltip,
+          tooltip: context.l10n.session.groupAddSessionsTooltip,
           onTap: widget.onAddSessions,
         ),
         child: Row(
@@ -411,7 +411,7 @@ class _SessionGroupMemberListState extends State<_SessionGroupMemberList> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              l10n.sessionGroupEmpty,
+              l10n.session.groupEmpty,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TpTextStyles.of(context).mdColored(
@@ -470,7 +470,7 @@ class _SessionGroupMemberListState extends State<_SessionGroupMemberList> {
         ),
         if (overflow > 0)
           _SessionGroupShowMoreRow(
-            label: _showAll ? l10n.worktreeShowLess : l10n.worktreeMore,
+            label: _showAll ? l10n.worktree.showLess : l10n.worktree.more,
             onTap: () => setState(() => _showAll = !_showAll),
           ),
       ],

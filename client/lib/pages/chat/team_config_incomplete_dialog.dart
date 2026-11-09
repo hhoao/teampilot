@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -80,12 +80,12 @@ class _TeamConfigIncompleteDialog extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           TpDialogHeader(
-            title: l10n.teamConfigIncompleteTitle,
+            title: l10n.team.configIncompleteTitle,
             onClose: () => Navigator.of(context).pop(false),
           ),
           const SizedBox(height: 16),
           Text(
-            l10n.teamConfigIncompleteBody(teamName),
+            l10n.team.configIncompleteBody(team: teamName),
             textAlign: TextAlign.center,
             style: TpTextStyles(theme).mutedMd,
           ),
@@ -113,12 +113,12 @@ class _TeamConfigIncompleteDialog extends StatelessWidget {
             children: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: Text(l10n.teamConfigIncompleteDismiss),
+                child: Text(l10n.team.configIncompleteDismiss),
               ),
               FilledButton.icon(
                 onPressed: () => Navigator.of(context).pop(true),
                 icon: Icon(Icons.arrow_forward_rounded, size: 18),
-                label: Text(l10n.teamConfigIncompleteGoConfigure),
+                label: Text(l10n.team.configIncompleteGoConfigure),
               ),
             ],
           ),
@@ -138,10 +138,13 @@ class _IssueRow extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final aspects = group.aspects.join(l10n.teamConfigAspectSeparator);
+    final aspects = group.aspects.join(l10n.team.configAspectSeparator);
 
     return Semantics(
-      label: l10n.teamConfigIssueSemanticLabel(group.title, aspects),
+      label: l10n.team.configIssueSemanticLabel(
+        subject: group.title,
+        aspects: aspects,
+      ),
       excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -197,26 +200,26 @@ List<_IssueGroup> _groupIssues(
         groupFor(
           teamKey,
           Icons.groups_2_outlined,
-          l10n.teamConfigGroupTeamDefault,
-        ).aspects.add(l10n.teamConfigAspectDefaultProvider);
+          l10n.team.configGroupTeamDefault,
+        ).aspects.add(l10n.team.configAspectDefaultProvider);
       case TeamConfigIssueKind.memberProviderMissing:
         groupFor(
           issue.memberId ?? '',
           Icons.person_outline,
           issue.memberName ?? issue.memberId ?? '',
-        ).aspects.add(l10n.teamConfigAspectProvider);
+        ).aspects.add(l10n.team.configAspectProvider);
       case TeamConfigIssueKind.memberModelMissing:
         groupFor(
           issue.memberId ?? '',
           Icons.person_outline,
           issue.memberName ?? issue.memberId ?? '',
-        ).aspects.add(l10n.teamConfigAspectModel);
+        ).aspects.add(l10n.team.configAspectModel);
       case TeamConfigIssueKind.memberCliMissing:
         groupFor(
           issue.memberId ?? '',
           Icons.person_outline,
           issue.memberName ?? issue.memberId ?? '',
-        ).aspects.add(l10n.teamConfigAspectCli);
+        ).aspects.add(l10n.team.configAspectCli);
     }
   }
 

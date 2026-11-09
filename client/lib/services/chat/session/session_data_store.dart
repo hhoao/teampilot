@@ -285,13 +285,14 @@ class SessionDataStore {
     List<String> ids,
     Map<String, int> createdAtById,
   ) {
-    final indexed = [
-      for (var i = 0; i < ids.length; i++)
-        (id: ids[i], createdAt: createdAtById[ids[i]] ?? -1, index: i),
-    ]..sort((a, b) {
-        final byCreated = b.createdAt.compareTo(a.createdAt);
-        return byCreated != 0 ? byCreated : a.index.compareTo(b.index);
-      });
+    final indexed =
+        [
+          for (var i = 0; i < ids.length; i++)
+            (id: ids[i], createdAt: createdAtById[ids[i]] ?? -1, index: i),
+        ]..sort((a, b) {
+          final byCreated = b.createdAt.compareTo(a.createdAt);
+          return byCreated != 0 ? byCreated : a.index.compareTo(b.index);
+        });
     return [for (final e in indexed) e.id];
   }
 

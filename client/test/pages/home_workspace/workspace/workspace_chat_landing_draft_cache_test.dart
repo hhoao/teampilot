@@ -58,7 +58,10 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   testWidgets('restores the cached landing draft on mount', (tester) async {
-    composeDraftCache.setLandingDraft('workspace-1', ComposeDraft(text: 'my draft'));
+    composeDraftCache.setLandingDraft(
+      'workspace-1',
+      ComposeDraft(text: 'my draft'),
+    );
     await tester.pumpWidget(_landing(initialText: null));
     await tester.pumpAndSettle();
 
@@ -96,24 +99,25 @@ void main() {
   testWidgets('restores token chips with a persisted draft', (tester) async {
     const text = '@src/main.dart hi';
     await tester.runAsync(
-      () => ComposeDraftStore(
-        fs: testHomeStorage.fs,
-        rootPath: testHomeStorage.appDataRoot,
-      ).saveLanding(
-        'workspace-1',
-        const ComposeDraft(
-          text: text,
-          tokens: [
-            ComposeToken(
-              id: 't',
-              kind: ComposeTokenKind.fileReference,
-              start: 0,
-              end: 14,
-              payload: '@src/main.dart',
+      () =>
+          ComposeDraftStore(
+            fs: testHomeStorage.fs,
+            rootPath: testHomeStorage.appDataRoot,
+          ).saveLanding(
+            'workspace-1',
+            const ComposeDraft(
+              text: text,
+              tokens: [
+                ComposeToken(
+                  id: 't',
+                  kind: ComposeTokenKind.fileReference,
+                  start: 0,
+                  end: 14,
+                  payload: '@src/main.dart',
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
     composeDraftCache.clear();
 
@@ -127,7 +131,10 @@ void main() {
   testWidgets('does not restore the cache when initialText is provided', (
     tester,
   ) async {
-    composeDraftCache.setLandingDraft('workspace-1', ComposeDraft(text: 'cached'));
+    composeDraftCache.setLandingDraft(
+      'workspace-1',
+      ComposeDraft(text: 'cached'),
+    );
     await tester.pumpWidget(_landing(initialText: 'prefill'));
     await tester.pumpAndSettle();
 
@@ -144,7 +151,10 @@ void main() {
     await enterComposeText(tester, 'typed message');
     await tester.pump();
 
-    expect(composeDraftCache.landingDraft('workspace-1')?.text, 'typed message');
+    expect(
+      composeDraftCache.landingDraft('workspace-1')?.text,
+      'typed message',
+    );
   });
 
   testWidgets('clearing the field removes the cached draft', (tester) async {
@@ -177,7 +187,8 @@ void main() {
   });
 }
 
-ExtendedTextField _composeField(WidgetTester tester) => composeFieldWidget(tester);
+ExtendedTextField _composeField(WidgetTester tester) =>
+    composeFieldWidget(tester);
 
 Future<void> _flushRealIo(WidgetTester tester, {int rounds = 6}) async {
   for (var i = 0; i < rounds; i++) {
@@ -233,8 +244,8 @@ Widget _landing({required String? initialText}) {
         registry: CliToolRegistry.builtIn(),
         child: MaterialApp(
           theme: theme,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: TpTheme(
             data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1),
             child: Scaffold(

@@ -88,14 +88,17 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(l10n.provider, style: TpTextStyles.of(context).mdSemibold),
+                Text(
+                  l10n.provider.provider,
+                  style: TpTextStyles.of(context).mdSemibold,
+                ),
                 const SizedBox(height: 8),
                 TpSelectFormField<String>(
                   key: AppKeys.modelProviderField,
                   id: 'provider',
                   items: providerNames,
                   initialValue: initialProvider,
-                  hintText: l10n.provider,
+                  hintText: l10n.provider.provider,
                   decoration: deco,
                   validator: (value) => (value == null || value.isEmpty)
                       ? l10n.formFieldRequired

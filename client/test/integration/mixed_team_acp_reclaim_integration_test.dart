@@ -44,73 +44,70 @@ import '../support/stub_tab_member_materializer.dart';
 /// adapter (the real-process path is covered by the Claude ACP integration
 /// tests once a mixed-ACP harness lands).
 void main() {
-  test(
-    'idle hidden ACP seat is reclaimed and restored on demand',
-    () async {
-      final harness = _Harness();
-      final session = _mixedSession();
-      final team = _mixedTeam();
-      final member = _worker();
-      final resolved = (team: team, member: member, cli: CliTool.claude);
-      final job = _restoreJob(session, team, member);
-      harness.tab.persistedSession = session;
+  test('idle hidden ACP seat is reclaimed and restored on demand', () async {
+    final harness = _Harness();
+    final session = _mixedSession();
+    final team = _mixedTeam();
+    final member = _worker();
+    final resolved = (team: team, member: member, cli: CliTool.claude);
+    final job = _restoreJob(session, team, member);
+    harness.tab.persistedSession = session;
 
-      // Boot the mixed worker ACP seat.
-      final handled = await harness.service.attachMemberAcpRuntime(
-        job,
-        session,
-        resolved,
-      );
-      expect(handled, isTrue);
-      final firstCubit = harness.tab.memberAcpRuntimes['worker-1'];
-      expect(firstCubit, isNotNull);
+    // Boot the mixed worker ACP seat.
+    final handled = await harness.service.attachMemberAcpRuntime(
+      job,
+      session,
+      resolved,
+    );
+    expect(handled, isTrue);
+    final firstCubit = harness.tab.memberAcpRuntimes['worker-1'];
+    expect(firstCubit, isNotNull);
 
-      // Run a turn to completion so the seat idles at the prompt.
-      harness.runtime.add(const AcpStop(kind: AcpStopKind.endTurn));
-      await pumpEventQueue();
-      expect(firstCubit!.state.phase, AcpChatPhase.idle);
+    // Run a turn to completion so the seat idles at the prompt.
+    harness.runtime.add(const AcpStop(kind: AcpStopKind.endTurn));
+    await pumpEventQueue();
+    expect(firstCubit!.state.phase, AcpChatPhase.idle);
 
-      // The reclaim watch (deterministic clock) discards the hidden idle seat.
-      var now = DateTime(2026, 8, 9, 12, 0, 0);
-      final watch = _watch(harness, () => now);
-      watch.tick();
-      now = now.add(const Duration(seconds: 5));
-      watch.tick();
+    // The reclaim watch (deterministic clock) discards the hidden idle seat.
+    var now = DateTime(2026, 8, 9, 12, 0, 0);
+    final watch = _watch(harness, () => now);
+    watch.tick();
+    now = now.add(const Duration(seconds: 5));
+    watch.tick();
 
-      expect(
-        harness.tab.memberAcpRuntimes.containsKey('worker-1'),
-        isFalse,
-        reason: 'the idle hidden ACP seat must be discarded',
-      );
-      expect(harness.tab.reclaimedMemberIds, contains('worker-1'));
-      await pumpEventQueue();
-      expect(firstCubit.isClosed, isTrue);
+    expect(
+      harness.tab.memberAcpRuntimes.containsKey('worker-1'),
+      isFalse,
+      reason: 'the idle hidden ACP seat must be discarded',
+    );
+    expect(harness.tab.reclaimedMemberIds, contains('worker-1'));
+    await pumpEventQueue();
+    expect(firstCubit.isClosed, isTrue);
 
-      // Restore: the connect funnel re-attaches a fresh cubit and reports
-      // `attached`, which clears the reclaimed flag.
-      final reattached = await harness.service.attachMemberAcpRuntime(
-        job,
-        session,
-        resolved,
-      );
-      final secondCubit = harness.tab.memberAcpRuntimes['worker-1'];
-      expect(reattached, isTrue);
-      expect(secondCubit, isNotNull);
-      expect(identical(secondCubit, firstCubit), isFalse);
-      expect(secondCubit!.isClosed, isFalse);
+    // Restore: the connect funnel re-attaches a fresh cubit and reports
+    // `attached`, which clears the reclaimed flag.
+    final reattached = await harness.service.attachMemberAcpRuntime(
+      job,
+      session,
+      resolved,
+    );
+    final secondCubit = harness.tab.memberAcpRuntimes['worker-1'];
+    expect(reattached, isTrue);
+    expect(secondCubit, isNotNull);
+    expect(identical(secondCubit, firstCubit), isFalse);
+    expect(secondCubit!.isClosed, isFalse);
 
-      await harness.service.onConnectResult(
-        job,
-        session,
-        resolved,
-        ConnectShellResult.attached,
-      );
-      expect(harness.tab.reclaimedMemberIds, isNot(contains('worker-1')));
+    await harness.service.onConnectResult(
+      job,
+      session,
+      resolved,
+      ConnectShellResult.attached,
+    );
+    expect(harness.tab.reclaimedMemberIds, isNot(contains('worker-1')));
 
-      await secondCubit.close();
-      watch.dispose();
-    },
-  );
+    await secondCubit.close();
+    watch.dispose();
+  });
 }
 
 TabMemberReclaimWatch _watch(_Harness harness, DateTime Function() now) {
@@ -192,11 +189,8 @@ TeamProfile _mixedTeam() => const TeamProfile(
   ],
 );
 
-TeamMemberConfig _worker() => const TeamMemberConfig(
-  id: 'worker-1',
-  name: 'Worker',
-  cli: CliTool.claude,
-);
+TeamMemberConfig _worker() =>
+    const TeamMemberConfig(id: 'worker-1', name: 'Worker', cli: CliTool.claude);
 
 AppSession _mixedSession() => AppSession(
   sessionId: 's1',
@@ -237,7 +231,8 @@ SessionConnectJob _restoreJob(
 }
 
 class _Host implements SessionLaunchHost {
-  _Host(this.tabStore) : memberMaterializer = stubTabMemberMaterializer(tabStore);
+  _Host(this.tabStore)
+    : memberMaterializer = stubTabMemberMaterializer(tabStore);
 
   @override
   final ChatTabStore tabStore;

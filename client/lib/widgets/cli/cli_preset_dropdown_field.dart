@@ -48,7 +48,7 @@ class CliPresetDropdownField extends StatelessWidget {
       return Text(
         cliFilter != null && emptyHint != null
             ? emptyHint!
-            : l10n.workspaceCliPresetsEmptyHint,
+            : l10n.workspace.cliPresetsEmptyHint,
         style: TpTextStyles.of(context).sm,
       );
     }

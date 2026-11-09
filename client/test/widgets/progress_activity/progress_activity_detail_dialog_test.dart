@@ -54,8 +54,8 @@ Widget _host({
 }) {
   final scheme = ColorScheme.fromSeed(seedColor: Colors.indigo);
   final app = MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     theme: ThemeData(colorScheme: scheme),
     home: TpTheme(
       data: TpThemeData.fromColorScheme(scheme, scale: 1),

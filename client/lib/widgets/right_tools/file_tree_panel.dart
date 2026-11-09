@@ -98,7 +98,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
     if (!ok) {
       AppToast.show(
         context,
-        message: context.l10n.fileTreeRevealFailed,
+        message: context.l10n.fileTree.revealFailed,
         variant: TpToastVariant.error,
       );
       return;
@@ -230,7 +230,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                       children: [
                         Expanded(
                           child: Text(
-                            l10n.fileTree,
+                            l10n.fileTree.fileTree,
                             style: TpTextStyles.of(
                               context,
                             ).xsBoldWideColored(cs.onSurfaceVariant),
@@ -394,22 +394,22 @@ class _FileTreePanelState extends State<FileTreePanel> {
         compact: true,
         size: TpIconButton.kCompactSize,
         tooltip: filterVisible
-            ? l10n.fileTreeHideFilter
-            : l10n.fileTreeShowFilter,
+            ? l10n.fileTree.hideFilter
+            : l10n.fileTree.showFilter,
         onTap: _toggleFilterVisible,
       ),
       TpAnimatedIconButton(
         icon: Icons.refresh,
         compact: true,
         size: TpIconButton.kCompactSize,
-        tooltip: l10n.fileTreeRefresh,
+        tooltip: l10n.fileTree.refresh,
         onPressed: _cubit.refresh,
       ),
       TpIconButton(
         icon: Icons.my_location_outlined,
         compact: true,
         size: TpIconButton.kCompactSize,
-        tooltip: l10n.fileTreeRevealActiveFile,
+        tooltip: l10n.fileTree.revealActiveFile,
         onTap: () => unawaited(_revealActiveEditorFile()),
       ),
     ];

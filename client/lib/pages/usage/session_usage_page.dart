@@ -166,7 +166,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
           if (state.syncCancelled) {
             AppToast.show(
               context,
-              message: context.l10n.sessionUsageSyncCancelled,
+              message: context.l10n.sessionUsage.syncCancelled,
               variant: TpToastVariant.info,
             );
             return;
@@ -177,7 +177,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
               state.lastSyncResult != null) {
             AppToast.show(
               context,
-              message: context.l10n.sessionUsageSyncedToast,
+              message: context.l10n.sessionUsage.syncedToast,
               variant: TpToastVariant.success,
             );
           }
@@ -252,8 +252,8 @@ class _SessionUsagePageState extends State<SessionUsagePage>
   Future<void> _openMaintenance(SessionUsageCubit cubit) async {
     await cubit.loadMaintenanceStats();
     if (!mounted) return;
-    final compactedMessage = context.l10n.sessionUsageMaintenanceCompacted;
-    final fullDoneMessage = context.l10n.sessionUsageMaintenanceFullDone;
+    final compactedMessage = context.l10n.sessionUsage.maintenanceCompacted;
+    final fullDoneMessage = context.l10n.sessionUsage.maintenanceFullDone;
     await showDialog<void>(
       context: context,
       builder: (context) => UsageMaintenanceDialog(
@@ -298,7 +298,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
           if (ok && context.mounted) {
             AppToast.show(
               context,
-              message: context.l10n.sessionUsagePricingSaved,
+              message: context.l10n.sessionUsage.pricingSaved,
               variant: TpToastVariant.success,
             );
           }
@@ -310,7 +310,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
           if (ok && context.mounted) {
             AppToast.show(
               context,
-              message: context.l10n.sessionUsagePricingSaved,
+              message: context.l10n.sessionUsage.pricingSaved,
               variant: TpToastVariant.success,
             );
           }
@@ -396,21 +396,21 @@ class _SessionUsagePageState extends State<SessionUsagePage>
     final l10n = context.l10n;
     if (state.syncFailed) {
       return UsageSyncErrorBanner(
-        message: l10n.sessionUsageSyncFatal,
+        message: l10n.sessionUsage.syncFatal,
         onRetry: cubit.sync,
         onDismiss: cubit.clearSyncErrors,
       );
     }
     if (state.syncErrors.isNotEmpty) {
       return UsageSyncErrorBanner(
-        message: l10n.sessionUsageSyncPartial(state.syncErrors.length),
+        message: l10n.sessionUsage.syncPartial(count: state.syncErrors.length),
         onRetry: cubit.sync,
         onDismiss: cubit.clearSyncErrors,
       );
     }
     if (state.errorMessage != null && state.hasData) {
       return UsageSyncErrorBanner(
-        message: l10n.sessionUsageLoadFailed,
+        message: l10n.sessionUsage.loadFailed,
         onRetry: cubit.reload,
         onDismiss: cubit.clearLoadError,
       );

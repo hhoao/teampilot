@@ -26,7 +26,7 @@ class BootstrapStartupErrorPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     return Scaffold(
       body: Center(
         child: Padding(
@@ -34,7 +34,7 @@ class BootstrapStartupErrorPage extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(l10n.bootstrapStartupFailed(error.toString())),
+              Text(l10n.bootstrapStartupFailed(error: error.toString())),
               const SizedBox(height: 16),
               FilledButton(
                 key: AppKeys.bootstrapRetryButton,

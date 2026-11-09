@@ -47,30 +47,29 @@ class _VaultEntryDetailDialogState extends State<VaultEntryDetailDialog> {
   }
 
   Future<void> _delete(VaultEntry entry) async {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.vaultDeleteTitle),
+        title: Text(l10n.vault.deleteTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (_references.isNotEmpty) ...[
-              Text(l10n.vaultDeleteReferenced),
-              for (final reference in _references)
-                Text('• ${reference.label}'),
+              Text(l10n.vault.deleteReferenced),
+              for (final reference in _references) Text('• ${reference.label}'),
             ],
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.vaultCancel),
+            child: Text(l10n.vault.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.vaultDeleteConfirm),
+            child: Text(l10n.vault.deleteConfirm),
           ),
         ],
       ),
@@ -82,7 +81,7 @@ class _VaultEntryDetailDialogState extends State<VaultEntryDetailDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     final entry = context.select<VaultCubit, VaultEntry?>(
       (cubit) => cubit.state.entries
           .where((candidate) => candidate.id == widget.entryId)
@@ -90,11 +89,11 @@ class _VaultEntryDetailDialogState extends State<VaultEntryDetailDialog> {
     );
     if (entry == null) {
       return AlertDialog(
-        content: Text(l10n.vaultEmptyTitle),
+        content: Text(l10n.vault.emptyTitle),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(l10n.vaultCancel),
+            child: Text(l10n.vault.cancel),
           ),
         ],
       );
@@ -126,16 +125,16 @@ class _VaultEntryDetailDialogState extends State<VaultEntryDetailDialog> {
               ],
               if (entry.notes.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text(l10n.vaultEntryNotes),
+                Text(l10n.vault.entryNotes),
                 Text(entry.notes),
               ],
               const SizedBox(height: 16),
               Text(
-                l10n.vaultReferences,
+                l10n.vault.references,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               if (_references.isEmpty)
-                Text(l10n.vaultNoReferences)
+                Text(l10n.vault.noReferences)
               else
                 for (final reference in _references)
                   Text('• ${reference.label}'),
@@ -146,15 +145,15 @@ class _VaultEntryDetailDialogState extends State<VaultEntryDetailDialog> {
       actions: [
         TextButton(
           onPressed: () => showVaultEntryEditor(context, existing: entry),
-          child: Text(l10n.vaultSave),
+          child: Text(l10n.vault.save),
         ),
         TextButton(
           onPressed: () => _delete(entry),
-          child: Text(l10n.vaultDeleteConfirm),
+          child: Text(l10n.vault.deleteConfirm),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.vaultCancel),
+          child: Text(l10n.vault.cancel),
         ),
       ],
     );
@@ -212,7 +211,7 @@ class _VaultSecretFieldState extends State<VaultSecretField> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     final visible = !widget.secret || _revealed;
     return Row(
       children: [
@@ -224,7 +223,7 @@ class _VaultSecretFieldState extends State<VaultSecretField> {
         ),
         if (widget.secret && widget.revealable)
           IconButton(
-            tooltip: _revealed ? l10n.vaultHide : l10n.vaultReveal,
+            tooltip: _revealed ? l10n.vault.hide : l10n.vault.reveal,
             icon: Icon(
               _revealed
                   ? Icons.visibility_off_outlined
@@ -234,7 +233,7 @@ class _VaultSecretFieldState extends State<VaultSecretField> {
           ),
         if (widget.secret)
           IconButton(
-            tooltip: l10n.vaultCopy,
+            tooltip: l10n.vault.copy,
             icon: const Icon(Icons.copy_outlined),
             onPressed: () => copySecret(context, widget.value),
           ),
@@ -249,13 +248,13 @@ Future<void> copySecret(
   Duration clearAfter = const Duration(seconds: 60),
 }) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
-  final l10n = AppLocalizations.of(context);
+  final l10n = context.l10n;
   final vault = context.read<VaultService>();
   if (vault.isEncrypted && !await authorizeVaultReveal(context)) return;
   await Clipboard.setData(ClipboardData(text: value));
   messenger?.showSnackBar(
     SnackBar(
-      content: Text(l10n.vaultCopied),
+      content: Text(l10n.vault.copied),
       duration: const Duration(seconds: 2),
     ),
   );

@@ -61,16 +61,15 @@ class PluginCliSupportDisclosure extends StatelessWidget {
             ?.label(l10n) ??
         status.tool.name;
     return switch (status.level) {
-      PluginCliSupportLevel.fullySupported => l10n.pluginCliSupportFully(
-        cliLabel,
+      PluginCliSupportLevel.fullySupported => l10n.plugin.cliSupportFully(
+        cli: cliLabel,
       ),
-      PluginCliSupportLevel.partiallySupported => l10n.pluginCliSupportPartial(
-        cliLabel,
-        _droppedLabels(l10n, status.dropped),
+      PluginCliSupportLevel.partiallySupported => l10n.plugin.cliSupportPartial(
+        cli: cliLabel,
+        dropped: _droppedLabels(l10n, status.dropped),
       ),
-      PluginCliSupportLevel.notApplicable => l10n.pluginCliSupportNotApplicable(
-        cliLabel,
-      ),
+      PluginCliSupportLevel.notApplicable =>
+        l10n.plugin.cliSupportNotApplicable(cli: cliLabel),
     };
   }
 
@@ -85,13 +84,13 @@ class PluginCliSupportDisclosure extends StatelessWidget {
 
   String _componentLabel(AppLocalizations l10n, PluginComponentKind kind) =>
       switch (kind) {
-        PluginComponentKind.skills => l10n.pluginComponentSkills,
-        PluginComponentKind.agents => l10n.pluginComponentAgents,
-        PluginComponentKind.commands => l10n.pluginComponentCommands,
-        PluginComponentKind.hooks => l10n.pluginComponentHooks,
-        PluginComponentKind.mcp => l10n.pluginComponentMcp,
-        PluginComponentKind.rules => l10n.pluginComponentRules,
-        PluginComponentKind.apps => l10n.pluginComponentApps,
+        PluginComponentKind.skills => l10n.plugin.componentSkills,
+        PluginComponentKind.agents => l10n.plugin.componentAgents,
+        PluginComponentKind.commands => l10n.plugin.componentCommands,
+        PluginComponentKind.hooks => l10n.plugin.componentHooks,
+        PluginComponentKind.mcp => l10n.plugin.componentMcp,
+        PluginComponentKind.rules => l10n.plugin.componentRules,
+        PluginComponentKind.apps => l10n.plugin.componentApps,
       };
 }
 

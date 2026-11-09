@@ -1,0 +1,14 @@
+{
+  "credentialsActionFailed": "Antigravity sign-in failed.",
+  "credentialsCancel": "Cancel",
+  "credentialsDone": "Done",
+  "credentialsLogin": "Sign in",
+  "credentialsLoginExited": "Antigravity exited. Close this dialog and start the sign-in again.",
+  "credentialsLoginFailed": "Could not start the login terminal: {error: String}",
+  "credentialsLoginIntro": "Complete the Google sign-in in the terminal below, then press Done. Antigravity keeps the account in the OS keyring, so the account is shared by all Antigravity sessions and every official Antigravity provider row.",
+  "credentialsLoginStarting": "Starting Antigravity…",
+  "credentialsLoginTitle": "Sign in to Antigravity",
+  "credentialsLoginVerifyFailed": "Antigravity did not confirm the sign-in (agy models failed). Finish the sign-in, then press Done again.",
+  "credentialsRetry": "Retry",
+  "credentialsSignedIn": "Signed in to Antigravity."
+}

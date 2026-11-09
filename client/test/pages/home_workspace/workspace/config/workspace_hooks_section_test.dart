@@ -51,7 +51,7 @@ void main() {
           BlocProvider<WorkspaceProjectConfigCubit>.value(value: projectCubit),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           home: Scaffold(body: WorkspaceHooksSection(workspaceId: 'ws1')),
         ),
       ),

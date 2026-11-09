@@ -259,11 +259,7 @@ Map<String, Object?> _messageRecord(AiMessage message) {
   };
 }
 
-Map<String, Object?> _partRecord(
-  String mid,
-  int index,
-  AiMessagePart part,
-) => {
+Map<String, Object?> _partRecord(String mid, int index, AiMessagePart part) => {
   'v': acpChatTranscriptVersion,
   'type': 'part',
   'mid': mid,
@@ -371,7 +367,10 @@ class _MessageBuilder {
   AiMessage build() => AiMessage(
     id: id,
     role: role,
-    parts: [for (final part in parts) if (part != null) part],
+    parts: [
+      for (final part in parts)
+        if (part != null) part,
+    ],
     createdAt: createdAt,
     status: status,
     deliveryChannel: deliveryChannel,

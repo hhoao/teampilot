@@ -58,8 +58,8 @@ class SearchPanelResults extends StatelessWidget {
       return Center(
         child: Text(
           query.trim().isEmpty
-              ? l10n.workspaceSearchEmptyHint
-              : l10n.workspaceSearchNoResults,
+              ? l10n.workspace.searchEmptyHint
+              : l10n.workspace.searchNoResults,
           style: styles.mutedSm,
         ),
       );
@@ -88,7 +88,7 @@ class SearchPanelResults extends StatelessWidget {
         if (index == items.length) {
           return Padding(
             padding: const EdgeInsets.all(8),
-            child: Text(l10n.workspaceSearchTruncated, style: styles.mutedSm),
+            child: Text(l10n.workspace.searchTruncated, style: styles.mutedSm),
           );
         }
         final item = items[index];
@@ -103,7 +103,7 @@ class SearchPanelResults extends StatelessWidget {
           _ResultError(:final label) => Padding(
             padding: const EdgeInsets.all(8),
             child: Text(
-              l10n.workspaceSearchSliceError(label),
+              l10n.workspace.searchSliceError(directory: label),
               style: styles.smColored(cs.error),
             ),
           ),
@@ -159,9 +159,9 @@ class _FileGroupTile extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpDialogHeader(title: l10n.workspaceSearchReplaceAllTitle),
+            TpDialogHeader(title: l10n.workspace.searchReplaceAllTitle),
             const SizedBox(height: 16),
-            Text(l10n.workspaceSearchReplaceAllMessage(count)),
+            Text(l10n.workspace.searchReplaceAllMessage(count: count)),
             TpDialogActions(
               children: [
                 TextButton(
@@ -170,7 +170,7 @@ class _FileGroupTile extends StatelessWidget {
                 ),
                 TpButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: Text(l10n.workspaceSearchReplace),
+                  child: Text(l10n.workspace.searchReplace),
                 ),
               ],
             ),
@@ -279,7 +279,7 @@ class _GroupHeaderState extends State<_GroupHeader> {
                   child: FindActionButton(
                     key: const ValueKey('search-file-replace-all'),
                     assetPath: FindBarIcons.replaceAll,
-                    tooltip: context.l10n.workspaceSearchReplaceAll,
+                    tooltip: context.l10n.workspace.searchReplaceAll,
                     enabled: _hovering && widget.replaceEnabled,
                     width: 22,
                     height: 22,

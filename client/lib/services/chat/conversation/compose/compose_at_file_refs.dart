@@ -75,7 +75,6 @@ Filesystem filesystemForComposeAtFileOpen(
   return workspaceFilesystem;
 }
 
-
 /// File references carried by explicit compose tokens. Pasted or typed
 /// `@path` text is plain text and intentionally produces no chips.
 List<ComposeAtFileRef> composeAtFileRefsFromTokens({

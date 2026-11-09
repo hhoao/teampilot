@@ -67,7 +67,9 @@ class _SkillInstalledSectionState extends State<SkillInstalledSection> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TpCardHeader(
-                  title: l10n.skillsInstalledCount(state.installed.length),
+                  title: l10n.skills.installedCount(
+                    count: state.installed.length,
+                  ),
                   trailing: TpActionRow(
                     children: [
                       if (state.updates.isNotEmpty)
@@ -83,7 +85,7 @@ class _SkillInstalledSectionState extends State<SkillInstalledSection> {
                             size: context.tpIconSizes.md,
                           ),
                           label: Text(
-                            l10n.skillsUpdateAll(state.updates.length),
+                            l10n.skills.updateAll(count: state.updates.length),
                           ),
                         ),
                       OutlinedButton.icon(
@@ -97,7 +99,7 @@ class _SkillInstalledSectionState extends State<SkillInstalledSection> {
                           Icons.folder_open_outlined,
                           size: context.tpIconSizes.md,
                         ),
-                        label: Text(l10n.skillsImportFromDisk),
+                        label: Text(l10n.skills.importFromDisk),
                       ),
                       OutlinedButton.icon(
                         onPressed: state.toolbarBusy
@@ -110,7 +112,7 @@ class _SkillInstalledSectionState extends State<SkillInstalledSection> {
                           Icons.archive_outlined,
                           size: context.tpIconSizes.md,
                         ),
-                        label: Text(l10n.skillsInstallFromZip),
+                        label: Text(l10n.skills.installFromZip),
                       ),
                       OutlinedButton.icon(
                         onPressed: state.toolbarBusy || state.updatesLoading
@@ -126,8 +128,8 @@ class _SkillInstalledSectionState extends State<SkillInstalledSection> {
                         ),
                         label: Text(
                           state.updatesLoading
-                              ? l10n.skillsCheckingUpdates
-                              : l10n.skillsCheckUpdates,
+                              ? l10n.skills.checkingUpdates
+                              : l10n.skills.checkUpdates,
                         ),
                       ),
                     ],
@@ -137,9 +139,9 @@ class _SkillInstalledSectionState extends State<SkillInstalledSection> {
                 if (state.installed.isEmpty)
                   TpEmptyState(
                     icon: Icons.inventory_2_outlined,
-                    title: l10n.skillsNoInstalled,
-                    hint: l10n.skillsNoInstalledHint,
-                    actionLabel: l10n.skillsGoDiscovery,
+                    title: l10n.skills.noInstalled,
+                    hint: l10n.skills.noInstalledHint,
+                    actionLabel: l10n.skills.goDiscovery,
                     onAction: widget.onGoDiscovery,
                   )
                 else
@@ -181,7 +183,7 @@ class _SkillInstalledSectionState extends State<SkillInstalledSection> {
     final scanned = await cubit.scanUnmanaged();
     if (!context.mounted) return;
     if (scanned.isEmpty) {
-      showSkillSnack(context, l10n.skillsImportNothing);
+      showSkillSnack(context, l10n.skills.importNothing);
       return;
     }
     final selected = await showDialog<List<UnmanagedSkill>>(
@@ -216,7 +218,7 @@ class SkillInstalledRow extends StatelessWidget {
     final hasUpdate = updateInfo != null;
     final sourceLabel = skill.repoOwner != null && skill.repoName != null
         ? '${skill.repoOwner}/${skill.repoName}'
-        : l10n.skillsLocal;
+        : l10n.skills.local;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -254,7 +256,7 @@ class SkillInstalledRow extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          l10n.skillsUpdateAvailable,
+                          l10n.skills.updateAvailable,
                           style: TpTextStyles.of(
                             context,
                           ).xsBoldColored(const Color(0xFFB45309)),
@@ -289,7 +291,7 @@ class SkillInstalledRow extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  tooltip: l10n.skillsCardView,
+                  tooltip: l10n.skills.cardView,
                   onPressed: onView,
                   icon: Icon(
                     Icons.visibility_outlined,
@@ -299,7 +301,7 @@ class SkillInstalledRow extends StatelessWidget {
                 const SizedBox(width: 8),
                 GithubDetailsButton(
                   url: skill.githubBrowseUrl,
-                  label: l10n.skillsCardDetails,
+                  label: l10n.skills.cardDetails,
                 ),
                 const SizedBox(width: 8),
                 Switch(
@@ -308,7 +310,7 @@ class SkillInstalledRow extends StatelessWidget {
                 ),
                 if (hasUpdate)
                   IconButton(
-                    tooltip: l10n.skillsCardUpdate,
+                    tooltip: l10n.skills.cardUpdate,
                     onPressed: busy ? null : () => cubit.updateSkill(skill),
                     icon: busy
                         ? const SizedBox(
@@ -319,7 +321,7 @@ class SkillInstalledRow extends StatelessWidget {
                         : Icon(Icons.upgrade, size: context.tpIconSizes.md),
                   ),
                 IconButton(
-                  tooltip: l10n.skillsCardUninstall,
+                  tooltip: l10n.skills.cardUninstall,
                   onPressed: busy ? null : () => _onUninstall(context, skill),
                   icon: Icon(
                     Icons.delete_outline,
@@ -362,15 +364,15 @@ class SkillInstalledRow extends StatelessWidget {
     final l10n = context.l10n;
     final ok = await skillConfirmDialog(
       context,
-      title: l10n.skillsCardUninstall,
-      message: l10n.skillsUninstallConfirm(s.name),
-      confirmLabel: l10n.skillsCardUninstall,
+      title: l10n.skills.cardUninstall,
+      message: l10n.skills.uninstallConfirm(name: s.name),
+      confirmLabel: l10n.skills.cardUninstall,
       destructive: true,
     );
     if (!ok || !context.mounted) return;
     await context.read<SkillCubit>().uninstall(s);
     if (!context.mounted) return;
-    showSkillSnack(context, l10n.skillsUninstallSuccess(s.name));
+    showSkillSnack(context, l10n.skills.uninstallSuccess(name: s.name));
   }
 }
 
@@ -403,7 +405,7 @@ class SkillImportUnmanagedDialogState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.skillsImportTitle),
+          TpDialogHeader(title: l10n.skills.importTitle),
           const SizedBox(height: 12),
           Flexible(
             child: ListView.builder(
@@ -449,7 +451,9 @@ class SkillImportUnmanagedDialogState
                             .toList();
                         Navigator.of(context).pop(selected);
                       },
-                child: Text(l10n.skillsImportSelected(_selected.length)),
+                child: Text(
+                  l10n.skills.importSelected(count: _selected.length),
+                ),
               ),
             ],
           ),

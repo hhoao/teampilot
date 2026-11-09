@@ -103,9 +103,7 @@ final class AntigravityAcpAdapterInstaller implements AcpAdapterInstaller {
     }
     final os = osResult.stdout.trim();
     final archRaw = archResult.stdout.trim();
-    final arch = (archRaw == 'arm64' || archRaw == 'aarch64')
-        ? 'arm64'
-        : 'x64';
+    final arch = (archRaw == 'arm64' || archRaw == 'aarch64') ? 'arm64' : 'x64';
     final assetKey = switch (os) {
       'Linux' => antigravityAcpAssetKey(os: 'linux', arch: arch),
       'Darwin' => antigravityAcpAssetKey(os: 'darwin', arch: arch),

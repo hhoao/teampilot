@@ -67,7 +67,6 @@ void main() {
         timeout: const Duration(seconds: 30),
       );
 
-
       final install = buildRemotePreflightCliInstall(
         registry: CliToolRegistry.builtIn(),
         profile: profile,

@@ -1,0 +1,18 @@
+{
+  "clear": "Clear terminal",
+  "copySelectHint": "Shift+drag to copy",
+  "dropCrossMachineRejected": "Can't drop a local file onto a remote terminal",
+  "@dropCrossMachineRejected": "Shown when a dragged file lives on a different machine than the terminal it was dropped on.",
+  "exportScrollback": "Export scrollback…",
+  "find": "Find in terminal",
+  "findNoResults": "No results",
+  "linkClickOpensInAppDescription": "Left-click links and file paths to open them in TeamPilot instead of the running program. Ctrl/Cmd-click always opens in app.",
+  "linkClickOpensInAppTitle": "Open terminal links in app",
+  "openLink": "Open link",
+  "parkedSendDismiss": "Dismiss",
+  "parkedSendPending": "Sent, awaiting receipt: {content: String}",
+  "scrollbackLinesDescription": "Maximum lines kept in each session terminal buffer",
+  "scrollbackLinesTitle": "Terminal scrollback lines",
+  "themeModeDescription": "Match app colors or use a fixed style",
+  "themeModeTitle": "Terminal theme"
+}

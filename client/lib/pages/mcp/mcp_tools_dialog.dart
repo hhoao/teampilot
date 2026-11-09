@@ -76,17 +76,17 @@ class _McpToolsDialogBody extends StatelessWidget {
             tools.isEmpty
                 ? _McpToolsMessage(
                     icon: Icons.handyman_outlined,
-                    title: l10n.mcpToolsEmpty,
+                    title: l10n.mcp.toolsEmpty,
                   )
                 : _McpToolsList(tools: tools),
           McpProbeStatus.offline => _McpToolsMessage(
             icon: Icons.cloud_off_outlined,
-            title: l10n.mcpProbeOffline,
-            hint: l10n.mcpProbeOfflineHint,
+            title: l10n.mcp.probeOffline,
+            hint: l10n.mcp.probeOfflineHint,
           ),
           McpProbeStatus.needsAuth => _McpToolsMessage(
             icon: Icons.lock_outline,
-            title: l10n.mcpProbeNeedsAuth,
+            title: l10n.mcp.probeNeedsAuth,
           ),
         },
       ],
@@ -135,7 +135,7 @@ class _McpToolsList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TpSectionHeader(
-          title: l10n.mcpToolsSection,
+          title: l10n.mcp.toolsSection,
           padding: EdgeInsets.only(bottom: context.tpSpacing.sm),
         ),
         Container(
@@ -242,12 +242,12 @@ class _McpToolsDialogFooter extends StatelessWidget {
                   size: iconSize,
                   loading: checking,
                 ),
-                label: Text(l10n.mcpToolsReload),
+                label: Text(l10n.mcp.toolsReload),
               ),
               const Spacer(),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.mcpToolsDone),
+                child: Text(l10n.mcp.toolsDone),
               ),
             ],
           ),

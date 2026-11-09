@@ -49,8 +49,8 @@ void main() {
 Widget _wrap(Widget child) {
   final theme = buildDarkTheme();
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     theme: theme,
     home: TpTheme(
       data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1),

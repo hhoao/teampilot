@@ -39,9 +39,7 @@ AcpAvailability acpAvailabilityFor({
   }
   if (registry.launchesAcpOnly(cli)) return AcpAvailability.forced;
   final canChoose =
-      registry
-          .capability<CliTransportCapability>(cli)
-          ?.canChooseTransport ??
+      registry.capability<CliTransportCapability>(cli)?.canChooseTransport ??
       false;
   return canChoose ? AcpAvailability.optional : AcpAvailability.unsupported;
 }
@@ -60,10 +58,6 @@ bool resolveAcpOnTarget({
 }
 
 /// True when the user can choose PTY vs ACP for this CLI on this target.
-bool canChooseAcpTransport({
-  required CliTool? cli,
-  required String targetId,
-}) =>
+bool canChooseAcpTransport({required CliTool? cli, required String targetId}) =>
     acpAvailabilityFor(cli: cli, targetId: targetId) ==
     AcpAvailability.optional;
-

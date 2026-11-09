@@ -1,4 +1,3 @@
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cursor_usage/cursor_account_id.dart';
 import 'package:teampilot/services/cursor_usage/cursor_account_registry.dart';
@@ -6,8 +5,6 @@ import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_usage_auth_resolver.dart';
 
 import '../../support/in_memory_filesystem.dart';
-
-
 
 void main() {
   late Filesystem fs;
@@ -25,7 +22,6 @@ void main() {
         providerId: 'cursor',
       );
 
-
   setUp(() async {
     fs = InMemoryFilesystem();
     discovered = [auth('auth0|a', modifiedAtMs: 1)];
@@ -35,8 +31,6 @@ void main() {
       resolveAuths: () async => discovered,
     );
   });
-
-
 
   test('the label falls back to the provider name', () async {
     final named = CursorAccountRegistry(
@@ -57,9 +51,6 @@ void main() {
     final accounts = await registry.list();
     expect(accounts.single.label, 'Team account');
   });
-
-
-
 
   test('corrupted accounts.json degrades to discovered only', () async {
     await fs.ensureDir('/root/cursor_usage');

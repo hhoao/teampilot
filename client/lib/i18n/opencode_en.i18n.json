@@ -1,0 +1,15 @@
+{
+  "credentialsActionFailed": "Could not update credentials",
+  "credentialsActionSuccess": "Credentials updated",
+  "credentialsImportFile": "Import auth.json…",
+  "credentialsImportGlobal": "Import from opencode auth",
+  "credentialsLogin": "Sign in with provider",
+  "credentialsRevoke": "Sign out",
+  "credentialsRevokeConfirm": "Sign out and remove saved credentials for {name: String}?",
+  "permissionAllowAlways": "Always allow",
+  "permissionAllowOnce": "Allow once",
+  "permissionAnswerFailed": "Couldn't submit your decision. Try again or answer in the Terminal.",
+  "permissionAnswerInTerminal": "Answer in terminal",
+  "permissionReject": "Reject",
+  "permissionTitle": "OpenCode needs your permission"
+}

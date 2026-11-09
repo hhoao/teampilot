@@ -68,14 +68,13 @@ void main() {
   });
 
   test('remote runtime is denied', () {
-    final result = policy(
-      target: RuntimeTarget.ssh('profile', label: 'SSH'),
-    ).evaluate(
-      session: session(),
-      memberId: null,
-      cli: CliTool.claude,
-      acp: false,
-    );
+    final result = policy(target: RuntimeTarget.ssh('profile', label: 'SSH'))
+        .evaluate(
+          session: session(),
+          memberId: null,
+          cli: CliTool.claude,
+          acp: false,
+        );
 
     expect(result.allowed, isFalse);
     expect(result.denial, RewindDenial.remoteRuntime);

@@ -54,10 +54,9 @@ void main() {
         member: worker,
         pushDelivery: false,
       );
-      final payload =
-          CliToolRegistry.builtIn()
-              .capability<HookCapability>(CliTool.claude)!
-              .sessionStartStdoutPayload(additionalContext: context);
+      final payload = CliToolRegistry.builtIn()
+          .capability<HookCapability>(CliTool.claude)!
+          .sessionStartStdoutPayload(additionalContext: context);
       expect(payload['additional_context'], isNull);
       final hook = payload['hookSpecificOutput'] as Map;
       expect(hook['hookEventName'], 'SessionStart');
@@ -70,10 +69,9 @@ void main() {
       member: worker,
       pushDelivery: true,
     );
-    final payload =
-        CliToolRegistry.builtIn()
-            .capability<HookCapability>(CliTool.cursor)!
-            .sessionStartStdoutPayload(additionalContext: context);
+    final payload = CliToolRegistry.builtIn()
+        .capability<HookCapability>(CliTool.cursor)!
+        .sessionStartStdoutPayload(additionalContext: context);
     expect(payload['additional_context'], context);
     expect(payload.containsKey('hookSpecificOutput'), isFalse);
   });

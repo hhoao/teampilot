@@ -40,7 +40,7 @@ final class ClaudeExecutableCapability extends NpmInstallerCapability
   String get displayName => 'Claude Code';
 
   @override
-  String label(AppLocalizations l10n) => l10n.appProviderToolClaude;
+  String label(AppLocalizations l10n) => l10n.appProvider.toolClaude;
 
   @override
   String get defaultExecutableName => 'claude';

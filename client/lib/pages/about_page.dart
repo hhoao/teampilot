@@ -51,7 +51,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
               if (state.status == AppUpdateStatus.upToDate) {
                 AppToast.show(
                   context,
-                  message: l10n.appUpdateUpToDate,
+                  message: l10n.app.updateUpToDate,
                   variant: TpToastVariant.success,
                 );
               }
@@ -71,8 +71,8 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                         showDividerBelow: true,
                       ),
                       TpPreferenceRow(
-                        title: l10n.appUpdateAutoCheck,
-                        subtitle: l10n.appUpdateAutoCheckHint,
+                        title: l10n.app.updateAutoCheck,
+                        subtitle: l10n.app.updateAutoCheckHint,
                         trailing: Switch(
                           key: AppKeys.aboutAutoCheckUpdatesSwitch,
                           value: state.autoCheckEnabled,
@@ -84,8 +84,8 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                       ),
                       if (state.availableRelease != null) ...[
                         TpPreferenceStack(
-                          title: l10n.appUpdateNewVersion(
-                            state.availableRelease!.version.toString(),
+                          title: l10n.app.updateNewVersion(
+                            version: state.availableRelease!.version.toString(),
                           ),
                           subtitle: state.availableRelease!.assetName,
                           body: _ReleaseNotesPreview(
@@ -118,18 +118,20 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                                           .read<AppUpdateCubit>()
                                           .downloadAndInstall(
                                             copy: AppUpdateDownloadCopy(
-                                              title: l10n.appUpdateNewVersion(
-                                                state.availableRelease!.version
+                                              title: l10n.app.updateNewVersion(
+                                                version: state
+                                                    .availableRelease!
+                                                    .version
                                                     .toString(),
                                               ),
                                               downloadingSubtitle:
-                                                  l10n.appUpdateDownloading,
+                                                  l10n.app.updateDownloading,
                                               installingSubtitle:
-                                                  l10n.appUpdateInstalling,
+                                                  l10n.app.updateInstalling,
                                             ),
                                           ),
                                 icon: Icon(Icons.download_outlined),
-                                label: Text(l10n.appUpdateDownloadInstall),
+                                label: Text(l10n.app.updateDownloadInstall),
                               ),
                             if (state.availableRelease?.htmlUrl.isNotEmpty ==
                                 true)
@@ -137,11 +139,11 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                                 onPressed: () => _openReleasePage(
                                   state.availableRelease!.htmlUrl,
                                 ),
-                                child: Text(l10n.appUpdateViewRelease),
+                                child: Text(l10n.app.updateViewRelease),
                               ),
                             TextButton(
                               onPressed: () => resetOnboardingWizard(context),
-                              child: Text(l10n.onboardingRerunSetup),
+                              child: Text(l10n.onboarding.rerunSetup),
                             ),
                             OutlinedButton.icon(
                               key: AppKeys.configLogsSectionButton,
@@ -154,7 +156,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                                 showLogViewerDialog(context);
                               },
                               icon: Icon(Icons.article_outlined),
-                              label: Text(l10n.logViewerTitle),
+                              label: Text(l10n.log.viewerTitle),
                             ),
                           ],
                         ),
@@ -200,7 +202,7 @@ class _VersionUpdateActions extends StatelessWidget {
         TextButton(
           key: AppKeys.aboutViewReleasesButton,
           onPressed: () => _openUrl(appUpdateGitHubReleasesPageUrl()),
-          child: Text(l10n.appUpdateViewReleases),
+          child: Text(l10n.app.updateViewReleases),
         ),
         FilledButton(
           key: AppKeys.aboutCheckUpdatesButton,
@@ -213,7 +215,7 @@ class _VersionUpdateActions extends StatelessWidget {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(l10n.appUpdateCheck),
+              : Text(l10n.app.updateCheck),
         ),
       ],
     );

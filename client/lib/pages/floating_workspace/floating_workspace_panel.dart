@@ -851,7 +851,7 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
       FloatingWorkspaceEmptyRow(
         id: CommandIds.floatingMinimize,
         icon: Icons.horizontal_rule,
-        label: l10n.floatingWorkspaceMinimize,
+        label: l10n.floating.workspaceMinimize,
         shortcutLabels: _shortcutLabels(context, CommandIds.floatingMinimize),
       ),
     ];
@@ -859,9 +859,9 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
 
   String _labelFor(AppLocalizations l10n, String labelKey) {
     return switch (labelKey) {
-      'newTerminal' => l10n.floatingWorkspaceNewTerminal,
-      'openFile' => l10n.floatingWorkspaceOpenFile,
-      'minimize' => l10n.floatingWorkspaceMinimize,
+      'newTerminal' => l10n.floating.workspaceNewTerminal,
+      'openFile' => l10n.floating.workspaceOpenFile,
+      'minimize' => l10n.floating.workspaceMinimize,
       _ => labelKey,
     };
   }

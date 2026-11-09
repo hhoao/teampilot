@@ -103,7 +103,7 @@ class LogViewerToolbar extends StatelessWidget {
                 style: TpTextStyles.of(context).md,
                 decoration: _fieldDecoration(
                   context,
-                  hintText: l10n.logViewerSearchHint,
+                  hintText: l10n.log.viewerSearchHint,
                   prefixIcon: Icon(
                     Icons.search,
                     size: context.tpIconSizes.md,
@@ -134,7 +134,7 @@ class LogViewerToolbar extends StatelessWidget {
                     const SizedBox(width: 4),
                     _iconToggle(
                       context: context,
-                      tooltip: l10n.logViewerCompactView,
+                      tooltip: l10n.log.viewerCompactView,
                       onIcon: Icons.filter_alt,
                       offIcon: Icons.filter_alt_outlined,
                       value: compactView,
@@ -142,7 +142,7 @@ class LogViewerToolbar extends StatelessWidget {
                     ),
                     _iconToggle(
                       context: context,
-                      tooltip: l10n.logViewerWrapLines,
+                      tooltip: l10n.log.viewerWrapLines,
                       onIcon: Icons.wrap_text,
                       offIcon: Icons.wrap_text_outlined,
                       value: wrapLines,
@@ -150,40 +150,40 @@ class LogViewerToolbar extends StatelessWidget {
                     ),
                     _iconToggle(
                       context: context,
-                      tooltip: l10n.logViewerAcpFrames,
+                      tooltip: l10n.log.viewerAcpFrames,
                       onIcon: Icons.forum,
                       offIcon: Icons.forum_outlined,
                       value: acpFramesEnabled,
                       onPressed: () => onAcpFramesChanged(!acpFramesEnabled),
                     ),
                     TpActionMenuButton(
-                      tooltip: l10n.logViewerActionsMenu,
+                      tooltip: l10n.log.viewerActionsMenu,
                       icon: Icon(Icons.more_horiz, color: cs.onSurfaceVariant),
                       specs: [
                         TpActionMenuSpec.item(
                           value: 'refresh',
                           icon: Icons.refresh,
-                          label: l10n.logViewerRefresh,
+                          label: l10n.log.viewerRefresh,
                         ),
                         TpActionMenuSpec.item(
                           value: 'copy',
                           icon: Icons.copy_outlined,
-                          label: l10n.logViewerCopyPath,
+                          label: l10n.log.viewerCopyPath,
                         ),
                         TpActionMenuSpec.item(
                           value: 'copyAll',
                           icon: Icons.copy_all_outlined,
-                          label: l10n.logViewerCopyAll,
+                          label: l10n.log.viewerCopyAll,
                         ),
                         TpActionMenuSpec.item(
                           value: 'clear',
                           icon: Icons.cleaning_services_outlined,
-                          label: l10n.logViewerClearOld,
+                          label: l10n.log.viewerClearOld,
                         ),
                         TpActionMenuSpec.item(
                           value: 'reverse',
                           icon: Icons.swap_vert,
-                          label: l10n.logViewerReverseOrder,
+                          label: l10n.log.viewerReverseOrder,
                           selected: reverseOrder,
                         ),
                       ],
@@ -213,7 +213,7 @@ class LogViewerToolbar extends StatelessWidget {
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        l10n.logViewerLineCount(lineCount),
+                        l10n.log.viewerLineCount(count: lineCount),
                         style: TpTextStyles.of(
                           context,
                         ).xsSemiboldColored(cs.onPrimaryContainer),

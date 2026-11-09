@@ -15,9 +15,6 @@ void main() {
     indexes.clear();
 
     expect(identical(indexes.fileIndexFor('/srv/app'), fileIndex), isFalse);
-    expect(
-      identical(indexes.contentIndexFor('ws-1'), contentIndex),
-      isFalse,
-    );
+    expect(identical(indexes.contentIndexFor('ws-1'), contentIndex), isFalse);
   });
 }

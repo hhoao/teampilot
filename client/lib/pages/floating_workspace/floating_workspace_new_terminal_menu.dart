@@ -33,7 +33,7 @@ Future<void> showFloatingNewTerminalMenu({
       const [];
   final connector = context.read<WorkspaceShellConnector>();
   final launcher = context.read<WorkbenchShellLauncher>();
-  final sshFailed = context.l10n.workspaceTerminalSshConnectFailed;
+  final sshFailed = context.l10n.workspace.terminalSshConnectFailed;
 
   await showWorkspaceTerminalLaunchMenu(
     context: context,

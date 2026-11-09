@@ -37,30 +37,30 @@ class OnboardingAppearanceStep extends StatelessWidget {
       builder: (context, appearance) {
         final (themeMode, colorPreset, langValue) = appearance;
         return OnboardingStepScaffold(
-          title: l10n.onboardingAppearanceTitle,
-          subtitle: l10n.onboardingAppearanceSubtitle,
+          title: l10n.onboarding.appearanceTitle,
+          subtitle: l10n.onboarding.appearanceSubtitle,
           body: TpCard.outlined(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TpPreferenceRow(
-                  title: l10n.themeModeTitle,
-                  subtitle: l10n.themeModeDescription,
+                  title: l10n.theme.modeTitle,
+                  subtitle: l10n.theme.modeDescription,
                   trailing: TpSegmentedPicker<String>(
                     segments: [
                       TpSegmentedOption<String>(
                         value: 'light',
-                        label: l10n.themeLight,
+                        label: l10n.theme.light,
                         icon: Icons.light_mode_outlined,
                       ),
                       TpSegmentedOption<String>(
                         value: 'dark',
-                        label: l10n.themeDark,
+                        label: l10n.theme.dark,
                         icon: Icons.dark_mode_outlined,
                       ),
                       TpSegmentedOption<String>(
                         value: 'system',
-                        label: l10n.themeSystem,
+                        label: l10n.theme.system,
                         icon: Icons.desktop_windows_outlined,
                       ),
                     ],
@@ -70,8 +70,8 @@ class OnboardingAppearanceStep extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.themeColorPresetTitle,
-                  subtitle: l10n.themeColorPresetDescription,
+                  title: l10n.theme.colorPresetTitle,
+                  subtitle: l10n.theme.colorPresetDescription,
                   trailing: ThemeColorPresetPicker(
                     selected: colorPreset,
                     onSelect: controller.setThemeColorPreset,

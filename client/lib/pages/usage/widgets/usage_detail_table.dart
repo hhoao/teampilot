@@ -141,11 +141,11 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
     final showPager = total > _pageSizeOptions.first;
 
     final labels = TpDataTableLabels(
-      columns: l10n.sessionUsageColumnSettings,
-      reset: l10n.sessionUsageColumnReset,
-      empty: l10n.sessionUsageTableEmpty,
-      sortAscending: l10n.sessionUsageSortAscending,
-      sortDescending: l10n.sessionUsageSortDescending,
+      columns: l10n.sessionUsage.columnSettings,
+      reset: l10n.sessionUsage.columnReset,
+      empty: l10n.sessionUsage.tableEmpty,
+      sortAscending: l10n.sessionUsage.sortAscending,
+      sortDescending: l10n.sessionUsage.sortDescending,
     );
 
     return Container(
@@ -214,12 +214,12 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    l10n.sessionUsageTableEmpty,
+                    l10n.sessionUsage.tableEmpty,
                     style: TpTextStyles.of(context).smMedium,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    l10n.sessionUsageTableEmptyHint,
+                    l10n.sessionUsage.tableEmptyHint,
                     style: TpTextStyles.of(
                       context,
                     ).xs.copyWith(color: cs.onSurface.withValues(alpha: 0.56)),
@@ -227,7 +227,7 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
                   const SizedBox(height: 12),
                   OutlinedButton(
                     onPressed: widget.onResetFilters,
-                    child: Text(l10n.sessionUsageResetFilters),
+                    child: Text(l10n.sessionUsage.resetFilters),
                   ),
                 ],
               ),

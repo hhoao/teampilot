@@ -95,8 +95,8 @@ void main() {
             BlocProvider.value(value: launch),
           ],
           child: MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             home: home,
           ),
         ),

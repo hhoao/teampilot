@@ -4,8 +4,8 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/widgets/workbench/editor_view_mode_toggle.dart';
 
 Widget host({required bool editSelected}) => MaterialApp(
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
-  supportedLocales: AppLocalizations.supportedLocales,
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: appLocalizationsSupportedLocales,
   home: Scaffold(
     body: Center(
       child: EditorViewModeToggle(
@@ -20,20 +20,24 @@ Widget host({required bool editSelected}) => MaterialApp(
 
 void main() {
   testWidgets('shows both segments with tooltips', (tester) async {
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
     await tester.pumpWidget(host(editSelected: false));
     expect(find.byTooltip(l10n.htmlViewToggleEdit), findsOneWidget);
     expect(find.byTooltip(l10n.htmlViewTogglePreview), findsOneWidget);
   });
 
   testWidgets('taps fire the matching callback', (tester) async {
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
     var editTaps = 0;
     var previewTaps = 0;
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Scaffold(
           body: Center(
             child: EditorViewModeToggle(

@@ -82,7 +82,7 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
     final hostPad = _pageHostPadding(context);
 
     return TpDialogPageShell(
-      title: l10n.automationsTitle,
+      title: l10n.automations.title,
       mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
       fillBody: true,
       trailing: Row(
@@ -98,11 +98,11 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
               initialItem: _enabledFilter,
               decoration: TpSelectDecorations.themed(context),
               itemLabel: (f) => switch (f) {
-                AutomationEnabledFilter.all => l10n.automationsFilterAll,
+                AutomationEnabledFilter.all => l10n.automations.filterAll,
                 AutomationEnabledFilter.enabledOnly =>
-                  l10n.automationsFilterEnabled,
+                  l10n.automations.filterEnabled,
                 AutomationEnabledFilter.disabledOnly =>
-                  l10n.automationsFilterDisabled,
+                  l10n.automations.filterDisabled,
               },
               onChanged: (value) {
                 if (value == null) return;
@@ -115,27 +115,27 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
             TpActionMenuIconAnchor(
               triggerBuilder: (context, controller) => TpIconButton(
                 icon: Icons.add_rounded,
-                tooltip: l10n.automationsNew,
+                tooltip: l10n.automations.kNew,
                 onTap: controller.isOpen ? controller.close : controller.open,
               ),
               buildMenuChildren: (ctx, controller) => [
                 TpActionMenuItem(
                   icon: Icons.send_rounded,
-                  label: l10n.automationsCompactTitle,
+                  label: l10n.automations.compactTitle,
                   menuController: controller,
                   onTap: () =>
                       unawaited(_create(AutomationEditorKind.scheduledMessage)),
                 ),
                 TpActionMenuItem(
                   icon: Icons.play_arrow_rounded,
-                  label: l10n.automationsFilterLaunchPrompt,
+                  label: l10n.automations.filterLaunchPrompt,
                   menuController: controller,
                   onTap: () =>
                       unawaited(_create(AutomationEditorKind.launchPrompt)),
                 ),
                 TpActionMenuItem(
                   icon: Icons.terminal_rounded,
-                  label: l10n.automationsCommand,
+                  label: l10n.automations.command,
                   menuController: controller,
                   onTap: () =>
                       unawaited(_create(AutomationEditorKind.runCommand)),

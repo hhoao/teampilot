@@ -1,0 +1,14 @@
+{
+  "credentialsActionFailed": "Antigravity 登录失败。",
+  "credentialsCancel": "取消",
+  "credentialsDone": "完成",
+  "credentialsLogin": "登录",
+  "credentialsLoginExited": "Antigravity 已退出。请关闭此对话框后重新登录。",
+  "credentialsLoginFailed": "无法启动登录终端：{error: String}",
+  "credentialsLoginIntro": "在下方终端完成 Google 登录，然后点击“完成”。Antigravity 将账号保存在系统钥匙串中，所有 Antigravity 会话以及所有官方 Antigravity 供应商行都会共享该账号。",
+  "credentialsLoginStarting": "正在启动 Antigravity…",
+  "credentialsLoginTitle": "登录 Antigravity",
+  "credentialsLoginVerifyFailed": "Antigravity 未确认登录成功（agy models 执行失败）。请完成登录后再次点击“完成”。",
+  "credentialsRetry": "重试",
+  "credentialsSignedIn": "已登录 Antigravity。"
+}

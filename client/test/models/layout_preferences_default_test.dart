@@ -226,10 +226,7 @@ void main() {
       LayoutPreferences.fromJson(const {}).cotExpandReasoningOnOpen,
       isFalse,
     );
-    expect(
-      LayoutPreferences.fromJson(const {}).cotExpandLatestOnOpen,
-      isTrue,
-    );
+    expect(LayoutPreferences.fromJson(const {}).cotExpandLatestOnOpen, isTrue);
 
     final parsed = LayoutPreferences.fromJson(const {
       'cotExpandReasoningOnOpen': true,

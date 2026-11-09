@@ -69,7 +69,7 @@ class _InitErrorAppState extends State<_InitErrorApp> {
     if (text.isNotEmpty) return text;
 
     final l10n = context.l10n;
-    final buffer = StringBuffer('${l10n.initErrorStackEmpty}\n\n');
+    final buffer = StringBuffer('${l10n.init.errorStackEmpty}\n\n');
     buffer.writeln('${widget.error}');
     buffer.writeln(widget.error.runtimeType);
     if (widget.error is PlatformException) {
@@ -85,12 +85,12 @@ class _InitErrorAppState extends State<_InitErrorApp> {
     final l10n = context.l10n;
     return '''
 TeamPilot
-${l10n.initErrorVersion(_version ?? '?', _buildNumber ?? '?')}
+${l10n.init.errorVersion(version: _version ?? '?', build: _buildNumber ?? '?')}
 ${widget.error}
 ${widget.error.runtimeType}
 ${_formatStackTrace(context, widget.stackTrace)}
 
-${l10n.initErrorPendingLogs}:
+${l10n.init.errorPendingLogs}:
 ${AppLogger.instance.getFormattedPendingLogs()}
 ''';
   }
@@ -134,8 +134,8 @@ ${AppLogger.instance.getFormattedPendingLogs()}
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final versionLabel = _version != null
-        ? l10n.initErrorVersion(_version!, _buildNumber!)
-        : l10n.logViewerSubtitle;
+        ? l10n.init.errorVersion(version: _version!, build: _buildNumber!)
+        : l10n.log.viewerSubtitle;
 
     return Scaffold(
       backgroundColor: cs.workspacePage,
@@ -145,7 +145,7 @@ ${AppLogger.instance.getFormattedPendingLogs()}
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              WorkspacePaneHeader(title: l10n.initErrorTitle),
+              WorkspacePaneHeader(title: l10n.init.errorTitle),
               Text(
                 versionLabel,
                 style: TpTextStyles.of(
@@ -161,14 +161,14 @@ ${AppLogger.instance.getFormattedPendingLogs()}
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _ErrorBlock(
-                          title: l10n.initErrorDetails,
+                          title: l10n.init.errorDetails,
                           child: SelectableText(
                             widget.error.toString(),
                             style: logMonospaceStyle(context, color: cs.error),
                           ),
                         ),
                         _ErrorBlock(
-                          title: l10n.initErrorStackTrace,
+                          title: l10n.init.errorStackTrace,
                           trailing: TextButton.icon(
                             onPressed: () => _copyStack(context),
                             icon: Icon(
@@ -177,8 +177,8 @@ ${AppLogger.instance.getFormattedPendingLogs()}
                             ),
                             label: Text(
                               _copiedStack
-                                  ? l10n.initErrorCopied
-                                  : l10n.initErrorCopy,
+                                  ? l10n.init.errorCopied
+                                  : l10n.init.errorCopy,
                             ),
                           ),
                           child: SelectableText(
@@ -187,7 +187,7 @@ ${AppLogger.instance.getFormattedPendingLogs()}
                           ),
                         ),
                         _ErrorBlock(
-                          title: l10n.initErrorPendingLogs,
+                          title: l10n.init.errorPendingLogs,
                           showDividerBelow: false,
                           child: SelectableText(
                             AppLogger.instance.getFormattedPendingLogs(),
@@ -206,7 +206,7 @@ ${AppLogger.instance.getFormattedPendingLogs()}
                     child: OutlinedButton.icon(
                       onPressed: _openLogViewer,
                       icon: Icon(Icons.article_outlined),
-                      label: Text(l10n.initErrorViewLogs),
+                      label: Text(l10n.init.errorViewLogs),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -216,8 +216,8 @@ ${AppLogger.instance.getFormattedPendingLogs()}
                       icon: Icon(_copiedReport ? Icons.check : Icons.copy),
                       label: Text(
                         _copiedReport
-                            ? l10n.initErrorCopied
-                            : l10n.initErrorCopyReport,
+                            ? l10n.init.errorCopied
+                            : l10n.init.errorCopyReport,
                       ),
                     ),
                   ),

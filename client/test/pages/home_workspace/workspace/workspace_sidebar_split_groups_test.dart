@@ -86,8 +86,8 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Scaffold(
           body: MultiRepositoryProvider(
             providers: [
@@ -557,9 +557,7 @@ void main() {
     workbenchCubit.toggleGroupLock('ws-1', first);
     expect(workbenchCubit.centerLayout('ws-1').lockedGroupIds, {first});
     await pumpSidebar(tester);
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(SidebarSessionTile).first),
-    );
+    final l10n = tester.element(find.byType(SidebarSessionTile).first).l10n;
 
     await tester.tap(
       find.byType(SidebarSessionTile).first,
@@ -600,9 +598,7 @@ void main() {
     workbenchCubit.toggleGroupLock('ws-1', first);
     await pumpSidebar(tester);
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byKey(const ValueKey('workspace-running-session-b'))),
-    );
+    final l10n = tester.element(find.byKey(const ValueKey('workspace-running-session-b'))).l10n;
     await tester.tap(
       find.byKey(const ValueKey('workspace-running-session-b')),
       buttons: kSecondaryMouseButton,
@@ -629,9 +625,7 @@ void main() {
     await pumpSidebar(tester, ids: const ['a']);
 
     final groupId = workbenchCubit.centerLayout('ws-1').focusedGroupId;
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(SidebarSessionTile).first),
-    );
+    final l10n = tester.element(find.byType(SidebarSessionTile).first).l10n;
     await tester.tap(
       find.byKey(const ValueKey('workspace-running-session-a')),
       buttons: kSecondaryMouseButton,

@@ -111,7 +111,7 @@ class WorkspaceChatLanding extends StatelessWidget {
                 key: AppKeys.workspaceChatLandingBackButton,
                 icon: Icons.arrow_back,
                 size: TpIconButton.chromeAlignedSize(context),
-                tooltip: l10n.workspaceChatLandingBackToWorkbench,
+                tooltip: l10n.workspace.chatLandingBackToWorkbench,
                 backgroundColor: Colors.transparent,
                 onTap: onBack,
               ),

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/l10n/app_localizations_en.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/services/termux/termux_work_ops_message.dart';
 
 void main() {
@@ -9,7 +9,7 @@ void main() {
     TermuxWorkOpsMessage.bind(AppLocalizationsEn());
     expect(
       TermuxWorkOpsMessage.disconnectedBlocked(),
-      AppLocalizationsEn().termuxDisconnectedWorkOpsBlocked,
+      AppLocalizationsEn().termux.disconnectedWorkOpsBlocked,
     );
   });
 

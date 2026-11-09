@@ -17,11 +17,7 @@ void main() {
         CliTool.opencode,
       ]) {
         expect(
-          resolveAcpOnTarget(
-            cli: cli,
-            requested: true,
-            targetId: 'local',
-          ),
+          resolveAcpOnTarget(cli: cli, requested: true, targetId: 'local'),
           isTrue,
           reason: '$cli should honour the ACP preference on desktop',
         );
@@ -115,15 +111,18 @@ void main() {
       expect(request.acp, isFalse);
     });
 
-    test('request carries the user preference for the repository to resolve', () {
-      final request = buildWorkspaceConversationCreateRequest(
-        workspace: workspace,
-        isPersonal: true,
-        cli: CliTool.claude,
-        acp: true,
-      );
-      expect(request.acp, isTrue);
-    });
+    test(
+      'request carries the user preference for the repository to resolve',
+      () {
+        final request = buildWorkspaceConversationCreateRequest(
+          workspace: workspace,
+          isPersonal: true,
+          cli: CliTool.claude,
+          acp: true,
+        );
+        expect(request.acp, isTrue);
+      },
+    );
 
     test('team create copies CLI seeds and leaves request.acp false', () {
       final request = buildWorkspaceConversationCreateRequest(

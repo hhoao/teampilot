@@ -453,8 +453,8 @@ void main() {
             registry: CliToolRegistry.builtIn(),
             child: MaterialApp(
               theme: theme,
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: appLocalizationsDelegates,
+              supportedLocales: appLocalizationsSupportedLocales,
               home: TpTheme(
                 data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1),
                 child: Scaffold(
@@ -766,9 +766,7 @@ void main() {
       // The seat already shows a transcript (e.g. loaded before the SSH home
       // dropped). A failed poll read must never be published as an empty
       // snapshot, or the chat history would be wiped on connection failure.
-      when(
-        () => seat.loadedMessages,
-      ).thenReturn([
+      when(() => seat.loadedMessages).thenReturn([
         const AiMessage(
           id: 'u1',
           role: AiRole.user,
@@ -792,9 +790,7 @@ void main() {
   testWidgets(
     'ACP snapshot poll keeps the loaded thread on a transient empty read',
     (tester) async {
-      when(
-        () => seat.loadedMessages,
-      ).thenReturn([
+      when(() => seat.loadedMessages).thenReturn([
         const AiMessage(
           id: 'u1',
           role: AiRole.user,

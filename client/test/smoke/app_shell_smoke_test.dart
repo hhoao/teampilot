@@ -96,8 +96,8 @@ void main() {
     expect(selectedTeam, isNotNull);
     expect(chatCubit.tabStore.openTabs.length, 0);
     final workbenchCtx = tester.element(find.byKey(AppKeys.chatWorkspace));
-    final l10n = AppLocalizations.of(workbenchCtx);
-    expect(find.text(l10n.workspaceChatLandingInputHint), findsOneWidget);
+    final l10n = workbenchCtx.l10n;
+    expect(find.text(l10n.workspace.chatLandingInputHint), findsOneWidget);
     // Compose landing default-hides right tools (prefs default hidden).
     expect(layoutCubit.state.preferences.rightToolsVisible, isFalse);
     expect(
@@ -252,6 +252,9 @@ void main() {
     expect(find.text('Claude Code'), findsOneWidget);
     expect(find.byKey(AppKeys.claudeCliExecutablePathField), findsOneWidget);
     expect(find.byKey(AppKeys.claudeCliInstallButton), findsOneWidget);
-    expect(find.byKey(AppKeys.claudeCliExecutablePathResetButton), findsOneWidget);
+    expect(
+      find.byKey(AppKeys.claudeCliExecutablePathResetButton),
+      findsOneWidget,
+    );
   });
 }

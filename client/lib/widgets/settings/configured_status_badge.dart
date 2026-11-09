@@ -8,8 +8,8 @@ Widget configuredStatusBadge(BuildContext context, {required bool configured}) {
   final l10n = context.l10n;
   return TpStatusBadge(
     label: configured
-        ? l10n.workspaceCliConfigured
-        : l10n.workspaceCliNotConfigured,
+        ? l10n.workspace.cliConfigured
+        : l10n.workspace.cliNotConfigured,
     tone: configured ? TpStatusBadgeTone.success : TpStatusBadgeTone.neutral,
     icon: configured
         ? Icons.check_circle_outline

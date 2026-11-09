@@ -10,10 +10,7 @@ final class UsageSyncState extends Equatable {
 
   bool get hasBaseline => lastFullScanAtMs != null;
 
-  UsageSyncState copyWith({
-    int? lastFullScanAtMs,
-    int? lastSyncAtMs,
-  }) {
+  UsageSyncState copyWith({int? lastFullScanAtMs, int? lastSyncAtMs}) {
     return UsageSyncState(
       lastFullScanAtMs: lastFullScanAtMs ?? this.lastFullScanAtMs,
       lastSyncAtMs: lastSyncAtMs ?? this.lastSyncAtMs,

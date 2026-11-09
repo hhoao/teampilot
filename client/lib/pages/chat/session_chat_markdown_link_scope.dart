@@ -76,7 +76,7 @@ class _SessionChatMarkdownLinkScopeState
         case WorkspaceHrefOpenOutcome.notOpenable:
           AppToast.show(
             context,
-            message: context.l10n.aiToolFileNotFound(href),
+            message: context.l10n.ai.toolFileNotFound(path: href),
             variant: TpToastVariant.warning,
           );
           break;

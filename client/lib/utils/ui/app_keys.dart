@@ -181,9 +181,7 @@ class AppKeys {
   static const configSshProfilesSectionButton = Key(
     'config-ssh-profiles-section-button',
   );
-  static const configVaultSectionButton = Key(
-    'config-vault-section-button',
-  );
+  static const configVaultSectionButton = Key('config-vault-section-button');
   static const connectQrCode = Key('connect-qr-code');
   static const connectScanQr = Key('connect-scan-qr');
   static const connectPasteCode = Key('connect-paste-code');
@@ -364,7 +362,9 @@ class AppKeys {
   );
   static const sessionUsageMaintenanceButton = Key('session-usage-maintenance');
   static const sessionUsageSettingsButton = Key('session-usage-settings');
-  static const sessionUsageSettingsDialog = Key('session-usage-settings-dialog');
+  static const sessionUsageSettingsDialog = Key(
+    'session-usage-settings-dialog',
+  );
   static const sessionUsageAutoScanSwitch = Key(
     'session-usage-auto-scan-switch',
   );

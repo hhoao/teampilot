@@ -15,8 +15,8 @@ void main() {
   Future<void> pump(WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Scaffold(
           body: SizedBox(
             width: 800,
@@ -54,16 +54,20 @@ void main() {
 
   testWidgets('toggling ignore whitespace does not throw', (tester) async {
     await pump(tester);
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    await tester.tap(find.byTooltip(l10n.diffIgnoreWhitespace));
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
+    await tester.tap(find.byTooltip(l10n.diff.ignoreWhitespace));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('next-change navigation does not throw', (tester) async {
     await pump(tester);
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    await tester.tap(find.byTooltip(l10n.diffNextChange));
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
+    await tester.tap(find.byTooltip(l10n.diff.nextChange));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
@@ -82,8 +86,8 @@ void main() {
 ''';
       await tester.pumpWidget(
         MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: Scaffold(
             body: SizedBox(
               width: 800,
@@ -98,10 +102,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      final l10n = await const AppLocalizationsCompatDelegate().load(
+        const Locale('en'),
+      );
       expect(find.byType(UnifiedDiffView), findsOneWidget);
       // No reloader => ignore-whitespace toggle is hidden.
-      expect(find.byTooltip(l10n.diffIgnoreWhitespace), findsNothing);
+      expect(find.byTooltip(l10n.diff.ignoreWhitespace), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
@@ -126,8 +132,8 @@ void main() {
       Future<void> pumpDiff(String diff, String path) async {
         await tester.pumpWidget(
           MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             home: Scaffold(
               body: SizedBox(
                 width: 800,
@@ -190,8 +196,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: Scaffold(
             body: SizedBox(
               width: 800,
@@ -210,12 +216,14 @@ void main() {
 
       expect(reloadCalls, 0);
 
-      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-      await tester.tap(find.byTooltip(l10n.diffShowAllLines));
+      final l10n = await const AppLocalizationsCompatDelegate().load(
+        const Locale('en'),
+      );
+      await tester.tap(find.byTooltip(l10n.diff.showAllLines));
       await tester.pumpAndSettle();
       expect(reloadCalls, 1);
 
-      await tester.tap(find.byTooltip(l10n.diffShowAllLines));
+      await tester.tap(find.byTooltip(l10n.diff.showAllLines));
       await tester.pumpAndSettle();
       expect(reloadCalls, 2);
       expect(tester.takeException(), isNull);

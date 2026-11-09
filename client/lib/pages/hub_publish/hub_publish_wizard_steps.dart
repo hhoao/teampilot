@@ -16,7 +16,7 @@ class HubPublishAuthStep extends StatelessWidget {
     return Column(
       key: const Key('hub-publish-auth'),
       children: [
-        Text(l10n.hubPublishAuthHint),
+        Text(l10n.hub.publishAuthHint),
         const SizedBox(height: 12),
         const GithubDeviceFlowPanel(
           showAdvancedPat: true,
@@ -61,8 +61,8 @@ class HubPublishMetadataStep extends StatelessWidget {
           key: const Key('hub-publish-slug'),
           controller: slugController,
           decoration: InputDecoration(
-            labelText: l10n.hubPublishSlugLabel,
-            hintText: l10n.hubPublishSlugHint,
+            labelText: l10n.hub.publishSlugLabel,
+            hintText: l10n.hub.publishSlugHint,
           ),
           textInputAction: TextInputAction.next,
         ),
@@ -81,7 +81,7 @@ class HubPublishMetadataStep extends StatelessWidget {
               key: const Key('hub-publish-description'),
               controller: descriptionController,
               decoration: InputDecoration(
-                labelText: l10n.expertEditorDescription,
+                labelText: l10n.expert.editorDescription,
               ),
               minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
               maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 4),
@@ -92,14 +92,14 @@ class HubPublishMetadataStep extends StatelessWidget {
         TextField(
           key: const Key('hub-publish-category'),
           controller: categoryController,
-          decoration: InputDecoration(labelText: l10n.expertEditorCategory),
+          decoration: InputDecoration(labelText: l10n.expert.editorCategory),
           textInputAction: TextInputAction.next,
         ),
         const SizedBox(height: 12),
         TextField(
           key: const Key('hub-publish-author'),
           controller: authorController,
-          decoration: InputDecoration(labelText: l10n.hubPublishAuthorLabel),
+          decoration: InputDecoration(labelText: l10n.hub.publishAuthorLabel),
           textInputAction: TextInputAction.next,
         ),
         if (isExpert) ...[
@@ -108,8 +108,8 @@ class HubPublishMetadataStep extends StatelessWidget {
             key: const Key('hub-publish-tags'),
             controller: tagsController,
             decoration: InputDecoration(
-              labelText: l10n.expertEditorTags,
-              hintText: l10n.expertEditorTagsHint,
+              labelText: l10n.expert.editorTags,
+              hintText: l10n.expert.editorTagsHint,
             ),
           ),
         ],
@@ -146,7 +146,7 @@ class HubPublishGatesStep extends StatelessWidget {
         if (localExpertKeys.isNotEmpty) ...[
           Text(
             key: const Key('hub-publish-local-expert-blocked'),
-            l10n.hubPublishLocalExpertHint,
+            l10n.hub.publishLocalExpertHint,
           ),
           const SizedBox(height: 12),
           for (final localKey in localExpertKeys) ...[
@@ -159,7 +159,7 @@ class HubPublishGatesStep extends StatelessWidget {
         if (nonPortableIds.isNotEmpty) ...[
           Text(
             key: const Key('hub-publish-non-portable'),
-            l10n.hubPublishNonPortableHint,
+            l10n.hub.publishNonPortableHint,
             style: TpTextStyles.of(context).mdColored(cs.error),
           ),
           const SizedBox(height: 8),
@@ -170,7 +170,7 @@ class HubPublishGatesStep extends StatelessWidget {
             ),
         ],
         if (localExpertKeys.isEmpty && nonPortableIds.isEmpty)
-          Text(l10n.hubPublishGatesClear),
+          Text(l10n.hub.publishGatesClear),
       ],
     );
   }
@@ -186,7 +186,7 @@ class HubPublishGatesStep extends StatelessWidget {
       items: labels.keys.toList(),
       initialItem: remap[localKey],
       searchable: false,
-      hintText: l10n.hubPublishRemapLabel,
+      hintText: l10n.hub.publishRemapLabel,
       itemLabel: (k) => labels[k] ?? k,
       decoration: TpSelectDecorations.themed(context),
       onChanged: (value) {
@@ -226,20 +226,20 @@ class HubPublishConfirmStep extends StatelessWidget {
       key: const Key('hub-publish-confirm'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(l10n.hubPublishConfirmHint),
+        Text(l10n.hub.publishConfirmHint),
         const SizedBox(height: 12),
-        _row(context, l10n.hubPublishSlugLabel, slug),
+        _row(context, l10n.hub.publishSlugLabel, slug),
         _row(context, l10n.name, name),
         if (category.isNotEmpty)
-          _row(context, l10n.expertEditorCategory, category),
+          _row(context, l10n.expert.editorCategory, category),
         if (author.isNotEmpty)
-          _row(context, l10n.hubPublishAuthorLabel, author),
+          _row(context, l10n.hub.publishAuthorLabel, author),
         _row(
           context,
-          l10n.hubPublishKindLabel,
+          l10n.hub.publishKindLabel,
           kind == HubPublishKind.expert
-              ? l10n.hubPublishKindExpert
-              : l10n.hubPublishKindTeam,
+              ? l10n.hub.publishKindExpert
+              : l10n.hub.publishKindTeam,
         ),
         if (busy) ...[
           const SizedBox(height: 16),
@@ -294,7 +294,7 @@ class HubPublishSuccessStep extends StatelessWidget {
       key: const Key('hub-publish-success'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(l10n.hubPublishSuccessHint),
+        Text(l10n.hub.publishSuccessHint),
         const SizedBox(height: 12),
         SelectableText(prUrl, key: const Key('hub-publish-pr-url')),
         const SizedBox(height: 12),
@@ -303,13 +303,13 @@ class HubPublishSuccessStep extends StatelessWidget {
             TextButton.icon(
               onPressed: onCopy,
               icon: const Icon(Icons.copy, size: 18),
-              label: Text(l10n.hubPublishCopyLink),
+              label: Text(l10n.hub.publishCopyLink),
             ),
             const SizedBox(width: 8),
             TextButton.icon(
               onPressed: onOpen,
               icon: const Icon(Icons.open_in_new, size: 18),
-              label: Text(l10n.hubPublishOpenPr),
+              label: Text(l10n.hub.publishOpenPr),
             ),
           ],
         ),

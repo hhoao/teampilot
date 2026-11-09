@@ -205,9 +205,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       text: initial?.name ?? widget.defaultName ?? '',
     );
     _messageCtl = TextEditingController(text: initial?.message ?? '');
-    _sessionTitleCtl = TextEditingController(
-      text: initial?.sessionTitle ?? '',
-    );
+    _sessionTitleCtl = TextEditingController(text: initial?.sessionTitle ?? '');
     _maxRunCountCtl = TextEditingController(
       text: initial?.maxRunCount?.toString() ?? '',
     );
@@ -428,7 +426,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           // The once time field only exists in these modes, but guard the
           // lookup anyway so a torn-down picker can never throw here.
           form.fields['scheduleOnceTime']?.setError(
-            l10n.automationsSchedulePastTime,
+            l10n.automations.schedulePastTime,
           );
           return (
             preset: AutomationSchedulePreset.once,
@@ -532,7 +530,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           .where((p) => p.id == selectedPresetId)
           .firstOrNull;
       if (boundCli != null && selected != null && selected.cli != boundCli) {
-        form.fields['presetId']?.setError(l10n.automationsPresetCliMismatch);
+        form.fields['presetId']?.setError(l10n.automations.presetCliMismatch);
         return;
       }
     }
@@ -573,11 +571,13 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     if (_isRunCommand) {
       final command = _commandCtl.text.trim();
       if (command.isEmpty) {
-        setState(() => _commandError = context.l10n.automationsCommandRequired);
+        setState(
+          () => _commandError = context.l10n.automations.commandRequired,
+        );
         return;
       }
       if (command.length > 2000) {
-        setState(() => _commandError = l10n.automationsCommandTooLong);
+        setState(() => _commandError = l10n.automations.commandTooLong);
         return;
       }
       if (_commandError != null) {
@@ -585,15 +585,11 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       }
       final timeout = int.tryParse(_timeoutCtl.text.trim());
       if (timeout == null) {
-        setState(
-          () => _commandError = l10n.automationsCommandTimeoutInvalid,
-        );
+        setState(() => _commandError = l10n.automations.commandTimeoutInvalid);
         return;
       }
       if (timeout < 30 || timeout > 1800) {
-        setState(
-          () => _commandError = l10n.automationsCommandTimeoutRange,
-        );
+        setState(() => _commandError = l10n.automations.commandTimeoutRange);
         return;
       }
       var automation = Automation(
@@ -715,10 +711,10 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   }
 
   String _reuseSessionBoundSubtitle(AppLocalizations l10n) {
-    if (!_reuseSession) return l10n.automationsReuseSessionSubtitleOff;
+    if (!_reuseSession) return l10n.automations.reuseSessionSubtitleOff;
     final bound = _boundSessionId?.trim() ?? '';
-    if (bound.isEmpty) return l10n.automationsReuseSessionSubtitlePending;
-    return l10n.automationsReuseSessionSubtitleBound(bound);
+    if (bound.isEmpty) return l10n.automations.reuseSessionSubtitlePending;
+    return l10n.automations.reuseSessionSubtitleBound(sessionId: bound);
   }
 
   @override
@@ -726,11 +722,11 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final l10n = context.l10n;
     final title = _isEditing
         ? (_isScheduledMessage
-              ? l10n.automationsCompactTitle
-              : l10n.automationsEditTitle)
+              ? l10n.automations.compactTitle
+              : l10n.automations.editTitle)
         : (_isScheduledMessage
-              ? l10n.automationsCompactTitle
-              : l10n.automationsCreateTitle);
+              ? l10n.automations.compactTitle
+              : l10n.automations.createTitle);
 
     return TpDialog(
       maxWidth: _isScheduledMessage ? 480 : 560,

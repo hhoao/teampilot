@@ -70,7 +70,6 @@ void main() {
       expect(bus['type'], 'http');
       expect(bus['url'], 'http://127.0.0.1:1/mcp');
     });
-
   });
 
   group('CodexTomlMerge', () {
@@ -422,7 +421,8 @@ url = "https://example.com/mcp"
         final raw = await fs.readString('$sessionDir/opencode.json');
         final decoded = jsonDecode(raw!) as Map;
         final headers =
-            (((decoded['mcp'] as Map)['servers'] as Map)['remote'] as Map)['headers']
+            (((decoded['mcp'] as Map)['servers'] as Map)['remote']
+                    as Map)['headers']
                 as Map;
         expect(headers['Authorization'], 'Bearer oauth-tok');
       },

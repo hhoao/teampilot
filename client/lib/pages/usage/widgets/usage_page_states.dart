@@ -34,15 +34,15 @@ class UsageEmptyState extends StatelessWidget {
             children: [
               TpEmptyState(
                 icon: Icons.insights_outlined,
-                title: l10n.sessionUsageEmptyTitle,
-                hint: l10n.sessionUsageEmptyBody,
-                actionLabel: l10n.sessionUsageSync,
+                title: l10n.sessionUsage.emptyTitle,
+                hint: l10n.sessionUsage.emptyBody,
+                actionLabel: l10n.sessionUsage.sync,
                 onAction: onSync,
                 centered: true,
               ),
               TextButton(
                 onPressed: onReset,
-                child: Text(l10n.sessionUsageResetFilters),
+                child: Text(l10n.sessionUsage.resetFilters),
               ),
             ],
           ),
@@ -71,8 +71,8 @@ class UsageLoadError extends StatelessWidget {
         ).copyWith(color: cs.workspaceCard),
         child: TpEmptyState(
           icon: Icons.cloud_off_outlined,
-          title: l10n.sessionUsageLoadFailed,
-          actionLabel: l10n.sessionUsageRetry,
+          title: l10n.sessionUsage.loadFailed,
+          actionLabel: l10n.sessionUsage.retry,
           onAction: onRetry,
           centered: true,
         ),
@@ -120,9 +120,9 @@ class UsageSyncErrorBanner extends StatelessWidget {
               style: styles.sm.copyWith(color: cs.onErrorContainer),
             ),
           ),
-          TextButton(onPressed: onRetry, child: Text(l10n.sessionUsageRetry)),
+          TextButton(onPressed: onRetry, child: Text(l10n.sessionUsage.retry)),
           IconButton(
-            tooltip: l10n.sessionUsageDismiss,
+            tooltip: l10n.sessionUsage.dismiss,
             visualDensity: VisualDensity.compact,
             onPressed: onDismiss,
             icon: Icon(Icons.close, size: 18, color: cs.onErrorContainer),

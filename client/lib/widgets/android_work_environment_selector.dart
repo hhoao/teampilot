@@ -89,7 +89,7 @@ class AndroidWorkEnvironmentSelector extends StatelessWidget {
               icon: Icons.phone_android_outlined,
               label: l10n.androidWorkEnvironmentSelectorTermux,
               subtitle: Text(
-                termuxState.config?.username ?? l10n.termuxSetupUsernameHint,
+                termuxState.config?.username ?? l10n.termux.setupUsernameHint,
                 style: TpTextStyles.of(context).sm,
               ),
               selected: selectedId == termuxValue,
@@ -115,7 +115,7 @@ class AndroidWorkEnvironmentSelector extends StatelessWidget {
           TpActionMenuSpec.item(
             value: _manageSshProfilesValue,
             icon: Icons.settings_outlined,
-            label: l10n.sshProfileSelectorManage,
+            label: l10n.sshProfile.selectorManage,
           ),
         ];
         return buildTpActionMenuChildren(
@@ -139,7 +139,9 @@ class AndroidWorkEnvironmentSelector extends StatelessWidget {
     if (selectedId == termuxValue) {
       final user = termuxUsername?.trim() ?? '';
       if (user.isNotEmpty) {
-        return l10n.androidWorkEnvironmentSelectorTermuxWithUser(user);
+        return l10n.androidWorkEnvironmentSelectorTermuxWithUser(
+          username: user,
+        );
       }
       return l10n.androidWorkEnvironmentSelectorTermux;
     }

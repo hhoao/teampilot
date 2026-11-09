@@ -51,18 +51,18 @@ CliPresetsCubit _cubit() {
 }
 
 Widget _host(CliPresetsCubit cubit, Widget child) => MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
-        body: BlocProvider<CliPresetsCubit>.value(
-          value: cubit,
-          child: CliToolRegistryScope(
-            registry: CliToolRegistry.builtIn(),
-            child: child,
-          ),
-        ),
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: appLocalizationsSupportedLocales,
+  home: Scaffold(
+    body: BlocProvider<CliPresetsCubit>.value(
+      value: cubit,
+      child: CliToolRegistryScope(
+        registry: CliToolRegistry.builtIn(),
+        child: child,
       ),
-    );
+    ),
+  ),
+);
 
 void main() {
   testWidgets('without filter all presets are offered', (tester) async {
@@ -105,7 +105,9 @@ void main() {
     // The selected id is filtered out, so initialItem re-resolves to the
     // first (and only) filtered preset instead of keeping 'p-claude'.
     expect(
-      tester.widget<TpSelect<String>>(find.byType(TpSelect<String>)).initialItem,
+      tester
+          .widget<TpSelect<String>>(find.byType(TpSelect<String>))
+          .initialItem,
       'p-codex',
     );
   });

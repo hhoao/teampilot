@@ -10,25 +10,25 @@ String teamHubCloneToastMessage(
   final installed = result.installed;
   if (!result.hasFailures) {
     if (installed.isEmpty) {
-      return l10n.teamHubCloneSuccess(teamName);
+      return l10n.teamHub.cloneSuccess(name: teamName);
     }
-    return l10n.teamHubCloneSuccessWithDeps(
-      teamName,
-      installed.skillCount,
-      installed.pluginCount,
-      installed.mcpCount,
-      installed.expertCount,
+    return l10n.teamHub.cloneSuccessWithDeps(
+      name: teamName,
+      skillCount: installed.skillCount,
+      pluginCount: installed.pluginCount,
+      mcpCount: installed.mcpCount,
+      expertCount: installed.expertCount,
     );
   }
   final failedNames = result.failedDeps.map((f) => f.name).join(', ');
-  return l10n.teamHubClonePartial(
-    teamName,
-    installed.skillCount,
-    installed.pluginCount,
-    installed.mcpCount,
-    installed.expertCount,
-    result.failedDeps.length,
-    failedNames,
+  return l10n.teamHub.clonePartial(
+    name: teamName,
+    skillCount: installed.skillCount,
+    pluginCount: installed.pluginCount,
+    mcpCount: installed.mcpCount,
+    expertCount: installed.expertCount,
+    failedCount: result.failedDeps.length,
+    failedNames: failedNames,
   );
 }
 

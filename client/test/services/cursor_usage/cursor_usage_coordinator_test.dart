@@ -38,8 +38,7 @@ class _FakeApi implements CursorUsageApi {
   final calls = <(int, int, int)>[];
 
   /// Overrides the canned [pages] with range-dependent responses.
-  CursorUsagePage Function(int startMs, int endMs, int page)?
-  fetchPageOverride;
+  CursorUsagePage Function(int startMs, int endMs, int page)? fetchPageOverride;
   Object? throwOnFetch;
 
   /// Thrown once, then cleared, so a retry can succeed.
@@ -103,7 +102,6 @@ class _FakeRegistry implements CursorAccountDirectory {
 
   @override
   Future<List<CursorUsageAccount>> list() async => accounts;
-
 
   @override
   Future<void> remove(String accountId) async {}
@@ -469,40 +467,43 @@ void main() {
     );
   });
 
-  test('the first fetch pulls history chunks, the report stays in range', () async {
-    var nowMs = ms(28) + 3600000;
-    // History chunks before day 28 come back empty; the chunk holding day 28
-    // returns the one real event.
-    final api = _FakeApi();
-    api.fetchPageOverride = (startMs, endMs, page) {
-      if (endMs >= ms(28)) {
-        return page == 1
-            ? CursorUsagePage(events: [event('e1', 28)], totalCount: 1)
-            : const CursorUsagePage(events: [], totalCount: 0);
-      }
-      return const CursorUsagePage(events: [], totalCount: 0);
-    };
-    final coord = coordinator(
-      api: api,
-      registry: _FakeRegistry(_credentials),
-      now: () => DateTime.fromMillisecondsSinceEpoch(nowMs),
-      fetchHistoryOnFirstLoad: true,
-    );
+  test(
+    'the first fetch pulls history chunks, the report stays in range',
+    () async {
+      var nowMs = ms(28) + 3600000;
+      // History chunks before day 28 come back empty; the chunk holding day 28
+      // returns the one real event.
+      final api = _FakeApi();
+      api.fetchPageOverride = (startMs, endMs, page) {
+        if (endMs >= ms(28)) {
+          return page == 1
+              ? CursorUsagePage(events: [event('e1', 28)], totalCount: 1)
+              : const CursorUsagePage(events: [], totalCount: 0);
+        }
+        return const CursorUsagePage(events: [], totalCount: 0);
+      };
+      final coord = coordinator(
+        api: api,
+        registry: _FakeRegistry(_credentials),
+        now: () => DateTime.fromMillisecondsSinceEpoch(nowMs),
+        fetchHistoryOnFirstLoad: true,
+      );
 
-    final report = await coord.load(
-      accountId: 'acct',
-      range: CursorUsageCustomRange(startMs: ms(28), endMs: ms(28)),
-    );
+      final report = await coord.load(
+        accountId: 'acct',
+        range: CursorUsageCustomRange(startMs: ms(28), endMs: ms(28)),
+      );
 
-    // Multiple history chunks were requested, starting at the 3-year anchor.
-    expect(api.calls.length, greaterThan(2));
-    final firstStart = api.calls.map((c) => c.$1).reduce(
-      (a, b) => a < b ? a : b,
-    );
-    expect(firstStart, lessThan(ms(28) - 365 * 2 * 86400000));
-    // The displayed numbers are still scoped to the requested day.
-    expect(report.eventCount, 1);
-  });
+      // Multiple history chunks were requested, starting at the 3-year anchor.
+      expect(api.calls.length, greaterThan(2));
+      final firstStart = api.calls
+          .map((c) => c.$1)
+          .reduce((a, b) => a < b ? a : b);
+      expect(firstStart, lessThan(ms(28) - 365 * 2 * 86400000));
+      // The displayed numbers are still scoped to the requested day.
+      expect(report.eventCount, 1);
+    },
+  );
 
   test('a later load does not re-pull history', () async {
     var nowMs = ms(28) + 3600000;
@@ -533,7 +534,9 @@ void main() {
 
   test('peek serves the cache without touching the network', () async {
     final api = _FakeApi(
-      pages: [CursorUsagePage(events: [event('e1', 28)], totalCount: 1)],
+      pages: [
+        CursorUsagePage(events: [event('e1', 28)], totalCount: 1),
+      ],
     );
     final coord = coordinator(api: api, registry: _FakeRegistry(_credentials));
     final range = CursorUsageCustomRange(startMs: ms(28), endMs: ms(28));

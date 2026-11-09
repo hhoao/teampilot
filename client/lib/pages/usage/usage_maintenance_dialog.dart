@@ -42,7 +42,7 @@ class _UsageMaintenanceDialogState extends State<UsageMaintenanceDialog> {
     } else {
       setState(() {
         _busy = false;
-        _error = context.l10n.sessionUsageMaintenanceFailed;
+        _error = context.l10n.sessionUsage.maintenanceFailed;
       });
     }
   }
@@ -54,7 +54,7 @@ class _UsageMaintenanceDialogState extends State<UsageMaintenanceDialog> {
     final error = _error ?? widget.error;
     return AlertDialog(
       key: AppKeys.sessionUsageMaintenanceDialog,
-      title: Text(l10n.sessionUsageMaintenanceTitle),
+      title: Text(l10n.sessionUsage.maintenanceTitle),
       content: SizedBox(
         width: 420,
         child: SingleChildScrollView(
@@ -66,25 +66,25 @@ class _UsageMaintenanceDialogState extends State<UsageMaintenanceDialog> {
                 const LinearProgressIndicator()
               else ...[
                 Text(
-                  l10n.sessionUsageMaintenanceLines(
-                    stats.lineCount,
-                    stats.eventCount,
+                  l10n.sessionUsage.maintenanceLines(
+                    lines: stats.lineCount,
+                    events: stats.eventCount,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  l10n.sessionUsageMaintenanceSize(
-                    (stats.sizeBytes / 1024).toStringAsFixed(1),
+                  l10n.sessionUsage.maintenanceSize(
+                    size: (stats.sizeBytes / 1024).toStringAsFixed(1),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  l10n.sessionUsageMaintenanceCompactHint,
+                  l10n.sessionUsage.maintenanceCompactHint,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  l10n.sessionUsageMaintenanceFullHint,
+                  l10n.sessionUsage.maintenanceFullHint,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -107,12 +107,12 @@ class _UsageMaintenanceDialogState extends State<UsageMaintenanceDialog> {
         OutlinedButton(
           key: AppKeys.sessionUsageFullSyncButton,
           onPressed: _busy ? null : _fullSync,
-          child: Text(l10n.sessionUsageMaintenanceFull),
+          child: Text(l10n.sessionUsage.maintenanceFull),
         ),
         FilledButton(
           key: AppKeys.sessionUsageCompactButton,
           onPressed: _busy || stats == null ? null : _compact,
-          child: Text(l10n.sessionUsageMaintenanceCompact),
+          child: Text(l10n.sessionUsage.maintenanceCompact),
         ),
       ],
     );

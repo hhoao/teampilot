@@ -38,7 +38,7 @@ class ShortcutCheatsheetDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TpDialogHeader(title: l10n.shortcutsCheatsheetTitle),
+              TpDialogHeader(title: l10n.shortcuts.cheatsheetTitle),
               Expanded(
                 child: ListView(
                   children: [
@@ -118,7 +118,7 @@ class _CheatsheetRow extends StatelessWidget {
           Expanded(child: Text(title)),
           const SizedBox(width: 12),
           if (chords.isEmpty)
-            Text(l10n.shortcutsNotSet, style: TpTextStyles.of(context).mutedSm)
+            Text(l10n.shortcuts.notSet, style: TpTextStyles.of(context).mutedSm)
           else
             Wrap(
               spacing: 6,

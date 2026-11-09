@@ -39,8 +39,8 @@ void main() {
     final cubit = PluginCubit.test(state);
     return MaterialApp(
       locale: const Locale('en'),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: TpTheme(
         data: TpThemeData.fromColorScheme(
           ThemeData.light().colorScheme,

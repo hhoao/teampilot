@@ -178,11 +178,11 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TpDialogHeader(
-                title: l10n.runDiscardChangesTitle,
+                title: l10n.run.discardChangesTitle,
                 onClose: () => Navigator.of(ctx).pop(_DirtyChoice.cancel),
               ),
               const SizedBox(height: 12),
-              Text(l10n.runDiscardChangesMessage),
+              Text(l10n.run.discardChangesMessage),
               TpDialogActions(
                 children: [
                   TextButton(
@@ -192,11 +192,11 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
                   TextButton(
                     onPressed: () =>
                         Navigator.of(ctx).pop(_DirtyChoice.discard),
-                    child: Text(l10n.runDiscard),
+                    child: Text(l10n.run.discard),
                   ),
                   FilledButton(
                     onPressed: () => Navigator.of(ctx).pop(_DirtyChoice.apply),
-                    child: Text(l10n.runApply),
+                    child: Text(l10n.run.apply),
                   ),
                 ],
               ),
@@ -298,8 +298,8 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final title = _isCreating
-        ? l10n.runAddConfiguration
-        : l10n.runEditConfigurations;
+        ? l10n.run.addConfiguration
+        : l10n.run.editConfigurations;
 
     return PopScope(
       canPop: false,
@@ -335,7 +335,7 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
                     TextButton(
                       key: const Key('run-config-editor-apply'),
                       onPressed: _draft == null ? null : _onApply,
-                      child: Text(l10n.runApply),
+                      child: Text(l10n.run.apply),
                     ),
                     FilledButton(
                       key: const Key('run-config-editor-ok'),
@@ -359,7 +359,7 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     final draft = _draft;
 
     if (draft == null) {
-      return Text(l10n.runEditorSelectConfiguration, style: styles.sm);
+      return Text(l10n.run.editorSelectConfiguration, style: styles.sm);
     }
 
     final type = draft.configuration.type;
@@ -374,7 +374,7 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
             TpFormField<String>(
               id: 'folder',
               initialValue: draft.owner.path,
-              label: Text(l10n.runSelectFolder),
+              label: Text(l10n.run.selectFolder),
               layoutStyle: TpFormFieldLayoutStyle.inline,
               labelWidth: kLaunchConfigFormLabelWidth,
               builder: (state) {
@@ -402,7 +402,7 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
             key: ValueKey<String>('run-config-type-$type'),
             id: 'type',
             initialValue: type,
-            label: Text(l10n.runConfigurationType),
+            label: Text(l10n.run.configurationType),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: kLaunchConfigFormLabelWidth,
             builder: (state) {

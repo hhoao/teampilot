@@ -26,7 +26,7 @@ Widget host(
   WorkbenchEditorOpener? opener,
   LayoutCubit? layout,
 }) => MaterialApp(
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: appLocalizationsDelegates,
   home: MultiProvider(
     providers: [
       BlocProvider.value(value: cubit),
@@ -368,7 +368,7 @@ void main() {
     addTearDown(registered.close);
 
     Widget storeHost() => MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: appLocalizationsDelegates,
       home: MultiProvider(
         providers: [
           BlocProvider(create: (_) => LayoutCubit()),

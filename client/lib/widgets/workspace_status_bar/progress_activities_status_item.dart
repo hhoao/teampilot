@@ -102,7 +102,7 @@ class _ProgressActivitiesStatusSegmentState
           );
         }
 
-        final label = l10n.progressActivitiesMany(activities.length);
+        final label = l10n.progressActivitiesMany(count: activities.length);
         return TpActionMenuAnchor(
           controller: _popover,
           fixedPanelWidth: _ProgressActivitiesPanel.panelWidth,

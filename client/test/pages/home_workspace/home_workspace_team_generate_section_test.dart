@@ -8,8 +8,8 @@ Widget _host({
   required void Function(String) onDescriptionChanged,
 }) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: Scaffold(
       body: HomeTeamGenerateSection(
         progress: progress,

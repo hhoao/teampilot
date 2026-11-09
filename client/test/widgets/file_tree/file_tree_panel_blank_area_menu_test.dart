@@ -131,8 +131,8 @@ Widget _panel({
 }) {
   final theme = ThemeData(useMaterial3: true);
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     theme: theme,
     home: TpTheme(
       data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),

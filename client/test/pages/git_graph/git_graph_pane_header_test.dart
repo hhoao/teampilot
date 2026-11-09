@@ -37,8 +37,8 @@ void main() {
           BlocProvider.value(value: layout),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           locale: const Locale('en'),
           home: const Scaffold(
             body: GitGraphPane(workspaceId: 'ws', repoRoot: '/repo'),
@@ -111,8 +111,8 @@ void main() {
           BlocProvider.value(value: layout),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           locale: const Locale('en'),
           home: const Scaffold(
             body: GitGraphPane(workspaceId: 'ws', repoRoot: '/repo'),
@@ -149,8 +149,8 @@ void main() {
             BlocProvider.value(value: layout),
           ],
           child: MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             locale: const Locale('en'),
             home: const Scaffold(
               body: GitGraphPane(workspaceId: 'ws', repoRoot: '/repo'),
@@ -215,8 +215,8 @@ void main() {
           BlocProvider.value(value: layout),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           locale: const Locale('en'),
           home: const Scaffold(
             body: GitGraphPane(workspaceId: 'ws', repoRoot: '/repo'),
@@ -272,8 +272,8 @@ void main() {
           BlocProvider.value(value: layout),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           locale: const Locale('en'),
           home: const Scaffold(
             body: GitGraphPane(workspaceId: 'ws', repoRoot: '/repo'),
@@ -308,8 +308,8 @@ void main() {
           BlocProvider.value(value: layout),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           locale: const Locale('en'),
           home: const Scaffold(
             body: GitGraphPane(workspaceId: 'ws', repoRoot: '/repo'),

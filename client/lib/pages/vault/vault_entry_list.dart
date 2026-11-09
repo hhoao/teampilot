@@ -8,13 +8,13 @@ import '../../models/vault_entry.dart';
 
 String vaultTypeLabel(AppLocalizations l10n, VaultEntryType type) =>
     switch (type) {
-      VaultEntryType.sshPassword => l10n.vaultTypeSshPassword,
-      VaultEntryType.sshPrivateKey => l10n.vaultTypeSshPrivateKey,
-      VaultEntryType.apiKey => l10n.vaultTypeApiKey,
-      VaultEntryType.login => l10n.vaultTypeLogin,
-      VaultEntryType.token => l10n.vaultTypeToken,
-      VaultEntryType.secureNote => l10n.vaultTypeSecureNote,
-      VaultEntryType.custom => l10n.vaultTypeCustom,
+      VaultEntryType.sshPassword => l10n.vault.typeSshPassword,
+      VaultEntryType.sshPrivateKey => l10n.vault.typeSshPrivateKey,
+      VaultEntryType.apiKey => l10n.vault.typeApiKey,
+      VaultEntryType.login => l10n.vault.typeLogin,
+      VaultEntryType.token => l10n.vault.typeToken,
+      VaultEntryType.secureNote => l10n.vault.typeSecureNote,
+      VaultEntryType.custom => l10n.vault.typeCustom,
     };
 
 class VaultEntryList extends StatelessWidget {
@@ -24,14 +24,14 @@ class VaultEntryList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     return BlocBuilder<VaultCubit, VaultState>(
       builder: (context, state) {
         if (state.entries.isEmpty) {
           return TpEmptyState(
             icon: Icons.lock_outline,
-            title: l10n.vaultEmptyTitle,
-            hint: l10n.vaultEmptyHint,
+            title: l10n.vault.emptyTitle,
+            hint: l10n.vault.emptyHint,
             centered: true,
           );
         }
@@ -42,9 +42,7 @@ class VaultEntryList extends StatelessWidget {
             final entry = state.entries[index];
             return ListTile(
               key: Key('vault-entry-${entry.id}'),
-              leading: Icon(
-                entry.favorite ? Icons.star : Icons.key_outlined,
-              ),
+              leading: Icon(entry.favorite ? Icons.star : Icons.key_outlined),
               title: Text(entry.title),
               subtitle: Text(
                 '${vaultTypeLabel(l10n, entry.type)} · '

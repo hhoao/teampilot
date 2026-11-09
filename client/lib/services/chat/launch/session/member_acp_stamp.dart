@@ -4,10 +4,7 @@ import '../../../../models/team_config.dart';
 import '../../session/chat_tab.dart';
 import 'launch_acp_policy.dart';
 
-bool _memberAcpSupported({
-  required String targetId,
-  required CliTool? cli,
-}) =>
+bool _memberAcpSupported({required String targetId, required CliTool? cli}) =>
     acpAvailabilityFor(cli: cli, targetId: targetId) !=
     AcpAvailability.unsupported;
 
@@ -17,11 +14,7 @@ bool resolveMemberBindingAcp({
   required bool requested,
 }) {
   if (!_memberAcpSupported(targetId: targetId, cli: cli)) return false;
-  return resolveAcpOnTarget(
-    cli: cli,
-    targetId: targetId,
-    requested: requested,
-  );
+  return resolveAcpOnTarget(cli: cli, targetId: targetId, requested: requested);
 }
 
 bool _requestedMemberAcpSeed(
@@ -55,24 +48,20 @@ List<SessionMemberBinding> stampMemberAcp({
 }) {
   return [
     for (final member in members)
-      _bindingWithAcp(
-        member,
-        switch (memberTargets[member.rosterMemberId]) {
-          final String targetId => resolveMemberBindingAcp(
-            targetId: targetId,
-            cli: member.cli,
-            requested: _requestedMemberAcpSeed(
-              member.cli,
-              seedClaudeMemberAcp: seedClaudeMemberAcp,
-              seedCodexMemberAcp: seedCodexMemberAcp,
-              seedCursorMemberAcp: seedCursorMemberAcp,
-              seedOpencodeMemberAcp: seedOpencodeMemberAcp,
-            ),
+      _bindingWithAcp(member, switch (memberTargets[member.rosterMemberId]) {
+        final String targetId => resolveMemberBindingAcp(
+          targetId: targetId,
+          cli: member.cli,
+          requested: _requestedMemberAcpSeed(
+            member.cli,
+            seedClaudeMemberAcp: seedClaudeMemberAcp,
+            seedCodexMemberAcp: seedCodexMemberAcp,
+            seedCursorMemberAcp: seedCursorMemberAcp,
+            seedOpencodeMemberAcp: seedOpencodeMemberAcp,
           ),
-          null => false,
-        },
-        acpPermission,
-      ),
+        ),
+        null => false,
+      }, acpPermission),
   ];
 }
 

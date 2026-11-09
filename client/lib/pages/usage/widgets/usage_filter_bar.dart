@@ -64,7 +64,7 @@ class _CursorAccountFilter extends StatelessWidget {
           value: selected,
           minWidth: 120,
           entries: [
-            (_allAccounts, context.l10n.sessionUsageAccountAll),
+            (_allAccounts, context.l10n.sessionUsage.accountAll),
             for (final account in state.cursorAccounts)
               (account.accountId, account.providerName ?? account.label),
           ],
@@ -96,7 +96,7 @@ class _CliFilter extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _CliButton(
-            label: context.l10n.sessionUsageCliAll,
+            label: context.l10n.sessionUsage.cliAll,
             selected: state.cli == null,
             onTap: () => cubit.setCli(null),
           ),

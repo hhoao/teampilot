@@ -302,7 +302,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     );
     final expertLabel = ExpertMemberResolver.labelForKey(
       key: expertKey,
-      fallbackLabel: l10n.expertHubNoneSelected,
+      fallbackLabel: l10n.expert.hubNoneSelected,
       hubState: hubState,
     );
     final team = _team;
@@ -323,7 +323,9 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     final playbook = resolvedExpert?.member.playbook.trim().isNotEmpty == true
         ? resolvedExpert!.member.playbook
         : member.playbook;
-    final emptyPersonaHint = hasExpert ? null : l10n.memberPersonaEmptyNoExpert;
+    final emptyPersonaHint = hasExpert
+        ? null
+        : l10n.member.personaEmptyNoExpert;
 
     final showMemberAgentPreset = memberShowsAgentPresetUi(
       context,
@@ -345,8 +347,8 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TpPreferenceStack(
-            title: l10n.memberName,
-            subtitle: l10n.memberNameSubtitle,
+            title: l10n.member.name,
+            subtitle: l10n.member.nameSubtitle,
             titleTrailing: discrete.isTeamLead || canDelete
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
@@ -354,7 +356,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                       if (discrete.isTeamLead) const TeamLeadBadge(),
                       if (canDelete)
                         IconButton(
-                          tooltip: l10n.delete,
+                          tooltip: l10n.delete.delete,
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(
@@ -380,20 +382,20 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                   )
                 : null,
             body: Text(
-              member.name.trim().isEmpty ? l10n.memberName : member.name,
+              member.name.trim().isEmpty ? l10n.member.name : member.name,
               style: styles.md,
             ),
             showDividerBelow: true,
           ),
           TpPreferenceStack(
-            title: l10n.expertHubNav,
-            subtitle: l10n.expertHubSubtitle,
+            title: l10n.expert.hubNav,
+            subtitle: l10n.expert.hubSubtitle,
             body: Row(
               children: [
                 Expanded(child: Text(expertLabel, style: styles.md)),
                 OutlinedButton(
                   onPressed: _openExpertHubPicker,
-                  child: Text(l10n.expertHubBrowseAll),
+                  child: Text(l10n.expert.hubBrowseAll),
                 ),
               ],
             ),
@@ -405,36 +407,36 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             showDividerBelow: true,
           ),
           TpPreferenceStack(
-            title: l10n.memberResponsibilities,
-            subtitle: l10n.memberPromptSubtitle,
+            title: l10n.member.responsibilities,
+            subtitle: l10n.member.promptSubtitle,
             body: _ReadOnlyMultilineText(
               text: responsibilities,
-              emptyHint: emptyPersonaHint ?? l10n.memberResponsibilitiesEmpty,
+              emptyHint: emptyPersonaHint ?? l10n.member.responsibilitiesEmpty,
               style: styles.md,
               mutedStyle: styles.mdColored(muted),
             ),
             showDividerBelow: true,
           ),
           TpPreferenceStack(
-            title: l10n.memberPlaybook,
-            subtitle: l10n.memberPlaybookSubtitle,
+            title: l10n.member.playbook,
+            subtitle: l10n.member.playbookSubtitle,
             body: _ReadOnlyMultilineText(
               text: playbook,
-              emptyHint: emptyPersonaHint ?? l10n.memberPlaybookEmpty,
+              emptyHint: emptyPersonaHint ?? l10n.member.playbookEmpty,
               style: styles.md,
               mutedStyle: styles.mdColored(muted),
             ),
             showDividerBelow: true,
           ),
           TpDisclosure(
-            title: l10n.workspaceAdvancedSettings,
-            subtitle: l10n.workspaceAdvancedSettingsSubtitle,
+            title: l10n.workspace.advancedSettings,
+            subtitle: l10n.workspace.advancedSettingsSubtitle,
             children: [
               if (showMemberAgentPreset &&
                   memberAgentStyle != null &&
                   agentPresetCli != null)
                 TpPreferenceStack(
-                  title: l10n.agent,
+                  title: l10n.agent.agent,
                   subtitle: memberAgentPresetSubtitle(l10n, memberAgentStyle),
                   body: MemberAgentPresetField(
                     cli: agentPresetCli,
@@ -450,8 +452,8 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                   showDividerBelow: true,
                 ),
               TpPreferenceStack(
-                title: l10n.memberExtraArgs,
-                subtitle: l10n.memberExtraArgsSubtitle,
+                title: l10n.member.extraArgs,
+                subtitle: l10n.member.extraArgsSubtitle,
                 body: TextField(
                   controller: _argsCtl,
                   focusNode: _argsFocus,

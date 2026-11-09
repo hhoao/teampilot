@@ -108,37 +108,42 @@ void main() {
     expect(run.calls.first, contains('.opencode/bin/opencode'));
   });
 
-  test('OpenCode ignores a stale npm override and resolves the official v2 bin',
-      () async {
-    final run = _FakeRun({
-      opencodeOfficialRemoteBinProbe: const SshCommandResult(
-        exitCode: 0,
-        stdout: '/home/alice/.opencode/bin/opencode\n',
-      ),
-      'command -v opencode': const SshCommandResult(
-        exitCode: 0,
-        stdout: '/home/alice/.local/bin/opencode\n',
-      ),
-    });
-    final path = await locator.resolve(
-      cli: CliTool.opencode,
-      run: run.call,
-      manualPathOverride: '/home/alice/.local/bin/opencode',
-    );
-    expect(path, '/home/alice/.opencode/bin/opencode');
-    expect(run.calls, isNotEmpty, reason: 'discovery must run');
-  });
+  test(
+    'OpenCode ignores a stale npm override and resolves the official v2 bin',
+    () async {
+      final run = _FakeRun({
+        opencodeOfficialRemoteBinProbe: const SshCommandResult(
+          exitCode: 0,
+          stdout: '/home/alice/.opencode/bin/opencode\n',
+        ),
+        'command -v opencode': const SshCommandResult(
+          exitCode: 0,
+          stdout: '/home/alice/.local/bin/opencode\n',
+        ),
+      });
+      final path = await locator.resolve(
+        cli: CliTool.opencode,
+        run: run.call,
+        manualPathOverride: '/home/alice/.local/bin/opencode',
+      );
+      expect(path, '/home/alice/.opencode/bin/opencode');
+      expect(run.calls, isNotEmpty, reason: 'discovery must run');
+    },
+  );
 
-  test('OpenCode keeps a custom (non-stale) override without probing', () async {
-    final run = _FakeRun({});
-    final path = await locator.resolve(
-      cli: CliTool.opencode,
-      run: run.call,
-      manualPathOverride: '/opt/opencode',
-    );
-    expect(path, '/opt/opencode');
-    expect(run.calls, isEmpty);
-  });
+  test(
+    'OpenCode keeps a custom (non-stale) override without probing',
+    () async {
+      final run = _FakeRun({});
+      final path = await locator.resolve(
+        cli: CliTool.opencode,
+        run: run.call,
+        manualPathOverride: '/opt/opencode',
+      );
+      expect(path, '/opt/opencode');
+      expect(run.calls, isEmpty);
+    },
+  );
 
   test('falls back to ~/.local/bin when PATH probes miss', () async {
     final run = _FakeRun({

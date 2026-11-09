@@ -11,8 +11,8 @@ void main() {
     var tapped = false;
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Scaffold(
           body: WorkspaceTerminalEmptyPane(
             foreground: Colors.white,
@@ -22,10 +22,8 @@ void main() {
       ),
     );
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(WorkspaceTerminalEmptyPane)),
-    );
-    expect(find.text(l10n.workspaceTerminalNewSession), findsOneWidget);
+    final l10n = tester.element(find.byType(WorkspaceTerminalEmptyPane)).l10n;
+    expect(find.text(l10n.workspace.terminalNewSession), findsOneWidget);
 
     // The empty launcher is the only affordance in an otherwise blank terminal
     // body, so it uses readable body text + a matching icon size.
@@ -35,12 +33,12 @@ void main() {
     final icon = tester.widget<Icon>(find.byIcon(Icons.terminal_outlined));
     expect(icon.size, 22);
     final label = tester.widget<Text>(
-      find.text(l10n.workspaceTerminalNewSession),
+      find.text(l10n.workspace.terminalNewSession),
     );
     expect(label.style?.fontSize, styles.mdMedium.fontSize);
     expect(label.style?.fontWeight, FontWeight.w500);
 
-    await tester.tap(find.text(l10n.workspaceTerminalNewSession));
+    await tester.tap(find.text(l10n.workspace.terminalNewSession));
     expect(tapped, isTrue);
   });
 }

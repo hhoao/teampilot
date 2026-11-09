@@ -96,7 +96,7 @@ class _HomeConnectingPage extends StatelessWidget {
           children: [
             const CircularProgressIndicator(),
             const SizedBox(height: 16),
-            Text(context.l10n.sshProfileStatusConnecting),
+            Text(context.l10n.sshProfile.statusConnecting),
             if (target != null) ...[const SizedBox(height: 4), Text(target)],
           ],
         ),

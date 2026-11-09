@@ -194,7 +194,9 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
       if (!mounted) return;
       setState(() {
         _submitting = false;
-        _submitError = context.l10n.worktreeCreateFailed(error.toString());
+        _submitError = context.l10n.worktree.createFailed(
+          error: error.toString(),
+        );
       });
     }
   }
@@ -206,7 +208,7 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
     final styles = TpTextStyles(theme);
     final inputsEnabled = !_submitting;
     return AlertDialog(
-      title: Text(l10n.worktreeCreateTitle),
+      title: Text(l10n.worktree.createTitle),
       content: SizedBox(
         width: 420,
         child: TpForm(
@@ -221,7 +223,7 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
                 autofocus: true,
                 enabled: inputsEnabled,
                 decoration: InputDecoration(
-                  labelText: l10n.worktreeBranchLabel,
+                  labelText: l10n.worktree.branchLabel,
                   suffixIcon: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -237,7 +239,7 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
                       TpIconButton(
                         icon: Icons.casino_outlined,
                         size: TpIconButton.kCompactSize,
-                        tooltip: l10n.worktreeRandomNameTooltip,
+                        tooltip: l10n.worktree.randomNameTooltip,
                         onTap: inputsEnabled ? _applyRandomName : null,
                       ),
                     ],
@@ -256,15 +258,15 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
                     value: _selectorValue,
                     items: _selectorItems,
                     onChanged: _onSelectorChanged,
-                    hintText: l10n.worktreeBaseSelectorHint,
+                    hintText: l10n.worktree.baseSelectorHint,
                     decoration: TpSelectDecorations.themed(context),
-                    customInputTooltip: l10n.worktreeBaseSelectorHint,
+                    customInputTooltip: l10n.worktree.baseSelectorHint,
                   ),
                 ),
               ),
               const SizedBox(height: 12),
               if (_previewPath.isNotEmpty) ...[
-                Text(l10n.worktreePathLabel, style: styles.xs),
+                Text(l10n.worktree.pathLabel, style: styles.xs),
                 const SizedBox(height: 2),
                 Text(
                   _previewPath,
@@ -302,10 +304,10 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(l10n.worktreeCreating),
+                    Text(l10n.worktree.creating),
                   ],
                 )
-              : Text(l10n.worktreeCreateAction),
+              : Text(l10n.worktree.createAction),
         ),
       ],
     );

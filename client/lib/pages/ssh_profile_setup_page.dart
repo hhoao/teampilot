@@ -117,7 +117,7 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
         _privateKeyController.text.trim().isEmpty) {
       AppToast.show(
         context,
-        message: context.l10n.sshProfileFormCredentialRequired,
+        message: context.l10n.sshProfile.formCredentialRequired,
         variant: TpToastVariant.warning,
       );
       return null;
@@ -146,7 +146,7 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
       if (mounted) {
         AppToast.show(
           context,
-          message: context.l10n.vaultLockedSaveBlocked,
+          message: context.l10n.vault.lockedSaveBlocked,
           variant: TpToastVariant.error,
         );
       }
@@ -155,7 +155,7 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
       if (mounted) {
         AppToast.show(
           context,
-          message: context.l10n.sshProfileFormCredentialSaveFailed,
+          message: context.l10n.sshProfile.formCredentialSaveFailed,
           variant: TpToastVariant.warning,
         );
       }
@@ -202,7 +202,7 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: context.l10n.sshProfileTestSuccess,
+        message: context.l10n.sshProfile.testSuccess,
         variant: TpToastVariant.success,
       );
     } on Object catch (error) {

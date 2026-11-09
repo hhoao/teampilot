@@ -44,8 +44,7 @@ class _PidRuntime implements AcpSessionRuntimeApi, AcpAgentProcessPidApi {
   Stream<AcpSessionUpdate> get updates => const Stream.empty();
 
   @override
-  Stream<AgentPermissionRequest> get permissionRequests =>
-      const Stream.empty();
+  Stream<AgentPermissionRequest> get permissionRequests => const Stream.empty();
 
   @override
   Stream<AcpPendingClientRequest> get clientRequests => const Stream.empty();

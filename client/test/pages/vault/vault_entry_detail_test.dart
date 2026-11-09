@@ -4,8 +4,8 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/vault/vault_entry_detail.dart';
 
 Widget _host(Widget child) => MaterialApp(
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
-  supportedLocales: AppLocalizations.supportedLocales,
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: appLocalizationsSupportedLocales,
   locale: const Locale('en'),
   home: Scaffold(body: child),
 );

@@ -299,7 +299,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       if (path.isEmpty) {
         AppToast.show(
           context,
-          message: context.l10n.cliExecutablePathLocateFailed(title),
+          message: context.l10n.cli.executablePathLocateFailed(name: title),
           variant: TpToastVariant.error,
         );
         return;
@@ -312,14 +312,17 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: context.l10n.cliExecutablePathLocateSuccess(title, path),
+        message: context.l10n.cli.executablePathLocateSuccess(
+          name: title,
+          path: path,
+        ),
         variant: TpToastVariant.success,
       );
     } catch (_) {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: context.l10n.cliExecutablePathLocateFailed(title),
+        message: context.l10n.cli.executablePathLocateFailed(name: title),
         variant: TpToastVariant.error,
       );
     } finally {
@@ -347,8 +350,8 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     final jobs = context.read<InstallJobRegistry>();
     final scope = installJobScopeForContext(context);
     final title = upgrading
-        ? context.l10n.cliInstallUpgrading
-        : context.l10n.cliInstallInstalling;
+        ? context.l10n.cli.installUpgrading
+        : context.l10n.cli.installInstalling;
     setState(() {});
     try {
       final result = await jobs.installCli(
@@ -403,11 +406,11 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
         AppToast.show(
           context,
           message: ready
-              ? context.l10n.cliExecutablePathLocateSuccess(
-                  widget.cli.value,
-                  result.path,
+              ? context.l10n.cli.executablePathLocateSuccess(
+                  name: widget.cli.value,
+                  path: result.path,
                 )
-              : context.l10n.cliReadinessAdapterMissing,
+              : context.l10n.cli.readinessAdapterMissing,
           variant: ready ? TpToastVariant.success : TpToastVariant.error,
         );
         return;
@@ -420,7 +423,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       if (!_looksAbsolute(path)) {
         AppToast.show(
           context,
-          message: context.l10n.cliReadinessAdapterMissing,
+          message: context.l10n.cli.readinessAdapterMissing,
           variant: TpToastVariant.error,
         );
         return;
@@ -466,8 +469,8 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
         AppToast.show(
           context,
           message: result is RemoteCliReady
-              ? context.l10n.cliReadinessReady
-              : context.l10n.cliReadinessAdapterMissing,
+              ? context.l10n.cli.readinessReady
+              : context.l10n.cli.readinessAdapterMissing,
           variant: result is RemoteCliReady
               ? TpToastVariant.success
               : TpToastVariant.error,
@@ -478,8 +481,8 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       return;
     }
     final title = upgrading
-        ? context.l10n.cliInstallUpgrading
-        : context.l10n.cliInstallInstalling;
+        ? context.l10n.cli.installUpgrading
+        : context.l10n.cli.installInstalling;
     setState(() {});
     try {
       final installer = _settings?.adapterInstaller;
@@ -522,8 +525,8 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
   /// Descriptive title for the remote adapter install job (the visible button
   /// label itself is the generic "install"; the row label carries the noun).
   String _adapterJobTitle(AppLocalizations l10n) =>
-      l10n.remoteCliMachineReadinessAdapterLabel(
-        _executable?.label(l10n) ?? widget.cli.value,
+      l10n.remote.cliMachineReadinessAdapterLabel(
+        cli: _executable?.label(l10n) ?? widget.cli.value,
       );
 
   @override
@@ -569,14 +572,14 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       adapterUpdate: adapterUpdate,
     );
     final chipLabel = switch (kind) {
-      CliReadinessChipKind.ready => l10n.cliReadinessReady,
-      CliReadinessChipKind.updateAvailable => l10n.cliReadinessUpdateAvailable,
-      CliReadinessChipKind.needsSetup => l10n.cliReadinessNeedsSetup,
+      CliReadinessChipKind.ready => l10n.cli.readinessReady,
+      CliReadinessChipKind.updateAvailable => l10n.cli.readinessUpdateAvailable,
+      CliReadinessChipKind.needsSetup => l10n.cli.readinessNeedsSetup,
     };
     final userPath = cubit.configuredExecutablePath(widget.cli).trim();
     final cliVersion = displayCliVersion(
       cubit.installedVersion(widget.cli, CliBinaryKind.cli),
-      l10n.cliReadinessVersionUnknown,
+      l10n.cli.readinessVersionUnknown,
     );
     final jobs = context.read<InstallJobRegistry>();
     final installingCli = jobs.isRunning(_cliJobKey(context));
@@ -621,7 +624,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
           ),
           const SizedBox(height: 12),
           CliReadinessPathRow(
-            label: l10n.cliReadinessRowCli,
+            label: l10n.cli.readinessRowCli,
             fieldKey: Key(spec.fieldKey),
             storedPath: userPath,
             discoveredPath: cubit.discoveredExecutablePath(widget.cli),
@@ -631,8 +634,8 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
             browseKey: Key(spec.browseKey),
             onBrowse: (isRemote || busyCli) ? null : _pickFile,
             locateOrResetKey: Key(spec.resetKey),
-            locateLabel: l10n.cliExecutablePathLocate,
-            resetLabel: l10n.cliExecutablePathReset,
+            locateLabel: l10n.cli.executablePathLocate,
+            resetLabel: l10n.cli.executablePathReset,
             onLocateOrReset: busyCli
                 ? null
                 : (userPath.isEmpty ? _locateCli : _resetCliPath),
@@ -681,14 +684,14 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
         : cubit.configuredAcpAdapterPath(widget.cli);
     final adapterVersion = displayCliVersion(
       cubit.installedVersion(widget.cli, CliBinaryKind.adapter),
-      l10n.cliReadinessVersionUnknown,
+      l10n.cli.readinessVersionUnknown,
     );
     final busyAdapter = _locatingAdapter || installingAdapter;
     final showAdapterInstall =
         !adapterKnown && _settings?.adapterInstaller != null;
 
     return CliReadinessPathRow(
-      label: l10n.cliReadinessRowAcp,
+      label: l10n.cli.readinessRowAcp,
       fieldKey: AppKeys.acpAdapterPathFieldFor(widget.cli),
       storedPath: adapterStored,
       discoveredPath: remote ? '' : cubit.discoveredAcpAdapterPath(widget.cli),
@@ -714,8 +717,8 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       locateOrResetKey: adapterStored.trim().isEmpty
           ? AppKeys.acpAdapterLocateButtonFor(widget.cli)
           : AppKeys.acpAdapterResetButtonFor(widget.cli),
-      locateLabel: l10n.cliExecutablePathLocate,
-      resetLabel: l10n.cliExecutablePathReset,
+      locateLabel: l10n.cli.executablePathLocate,
+      resetLabel: l10n.cli.executablePathReset,
       onLocateOrReset: busyAdapter
           ? null
           : (adapterStored.trim().isEmpty ? _locateAdapter : _resetAdapterPath),
@@ -758,8 +761,8 @@ class _CliTransportPill extends StatelessWidget {
       labels: const ['', ''],
       icons: const [Icons.chat_bubble_outline_rounded, Icons.terminal_rounded],
       tooltips: [
-        l10n.cliTransportDefaultChat,
-        l10n.cliTransportDefaultTerminal,
+        l10n.cli.transportDefaultChat,
+        l10n.cli.transportDefaultTerminal,
       ],
       minHeight: 28,
       customWidths: const [36, 36],
@@ -772,4 +775,3 @@ class _CliTransportPill extends StatelessWidget {
     );
   }
 }
-

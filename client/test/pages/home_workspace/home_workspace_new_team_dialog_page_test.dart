@@ -79,8 +79,8 @@ void main() {
           BlocProvider<CliPresetsCubit>.value(value: presets),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           theme: ThemeData(
             colorScheme: scheme,
             useMaterial3: true,

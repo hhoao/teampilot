@@ -46,8 +46,8 @@ Future<void> _pumpEditor(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: RepositoryProvider<HomeTargetController>.value(
         value: controller,
         child: Scaffold(
@@ -90,9 +90,11 @@ void main() {
       lockTargets: true,
     );
 
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    expect(find.text(l10n.workspaceFoldersChangeTarget), findsNothing);
-    expect(find.text(l10n.workspaceFoldersAddOnAnotherMachine), findsNothing);
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
+    expect(find.text(l10n.workspace.foldersChangeTarget), findsNothing);
+    expect(find.text(l10n.workspace.foldersAddOnAnotherMachine), findsNothing);
     // The row target chip is a plain label when locked, not a TextButton.
     expect(find.widgetWithText(TextButton, 'This device'), findsNothing);
   });
@@ -107,8 +109,10 @@ void main() {
       folders: const [WorkspaceFolder(path: '/proj')],
     );
 
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    expect(find.text(l10n.workspaceFoldersAddOnAnotherMachine), findsNothing);
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
+    expect(find.text(l10n.workspace.foldersAddOnAnotherMachine), findsNothing);
   });
 
   testWidgets('unlocked editor shows Change; group picker lists all machines', (
@@ -121,12 +125,14 @@ void main() {
       folders: const [WorkspaceFolder(path: '/proj')],
     );
 
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    expect(find.text(l10n.workspaceFoldersChangeTarget), findsOneWidget);
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
+    expect(find.text(l10n.workspace.foldersChangeTarget), findsOneWidget);
 
-    await tester.tap(find.text(l10n.workspaceFoldersChangeTarget));
+    await tester.tap(find.text(l10n.workspace.foldersChangeTarget));
     await tester.pumpAndSettle();
-    expect(find.text(l10n.workspaceFoldersPickTarget), findsOneWidget);
+    expect(find.text(l10n.workspace.foldersPickTarget), findsOneWidget);
     final dialog = find.byType(TpDialog);
     expect(
       find.descendant(of: dialog, matching: find.text('This device')),
@@ -152,8 +158,10 @@ void main() {
       folders: const [WorkspaceFolder(path: '/proj')],
     );
 
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    await tester.tap(find.text(l10n.workspaceFoldersAddOnAnotherMachine));
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
+    await tester.tap(find.text(l10n.workspace.foldersAddOnAnotherMachine));
     await tester.pumpAndSettle();
     final dialog = find.byType(TpDialog);
     expect(
@@ -182,8 +190,13 @@ void main() {
       ],
     );
 
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    expect(find.text(l10n.workspaceFoldersChangeTarget), findsNWidgets(2));
-    expect(find.text(l10n.workspaceFoldersAddOnAnotherMachine), findsOneWidget);
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
+    expect(find.text(l10n.workspace.foldersChangeTarget), findsNWidgets(2));
+    expect(
+      find.text(l10n.workspace.foldersAddOnAnotherMachine),
+      findsOneWidget,
+    );
   });
 }

@@ -74,7 +74,9 @@ class SessionPersistenceWriter {
     _snapshots.replaceSessionSnapshot(patched);
     final tab = _tabFor(patched.sessionId);
     final cached = tab?.persistedSession;
-    if (tab != null && cached != null && cached.sessionId == patched.sessionId) {
+    if (tab != null &&
+        cached != null &&
+        cached.sessionId == patched.sessionId) {
       tab.persistedSession =
           SessionContinueOverridesController.mergeOntoTabCache(
             cached: cached,

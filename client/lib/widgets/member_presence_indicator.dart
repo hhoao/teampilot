@@ -194,9 +194,9 @@ String memberPresenceStatusLabel(
   AppLocalizations l10n,
   MemberPresence presence,
 ) {
-  if (presence.isWorking) return l10n.memberPresenceWorking;
-  if (presence.isBooting) return l10n.memberPresenceBooting;
-  if (presence.isIdle) return l10n.memberPresenceIdle;
-  if (presence.isConnecting) return l10n.memberPresenceConnecting;
-  return l10n.memberPresenceOffline;
+  if (presence.isWorking) return l10n.member.presenceWorking;
+  if (presence.isBooting) return l10n.member.presenceBooting;
+  if (presence.isIdle) return l10n.member.presenceIdle;
+  if (presence.isConnecting) return l10n.member.presenceConnecting;
+  return l10n.member.presenceOffline;
 }

@@ -21,7 +21,7 @@ final class CodebuddyExecutableCapability extends NpmInstallerCapability
   String get displayName => 'CodeBuddy Code';
 
   @override
-  String label(AppLocalizations l10n) => l10n.appProviderToolCodebuddy;
+  String label(AppLocalizations l10n) => l10n.appProvider.toolCodebuddy;
 
   @override
   String get defaultExecutableName => 'codebuddy';

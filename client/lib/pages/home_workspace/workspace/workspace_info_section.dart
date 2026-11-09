@@ -48,40 +48,40 @@ class WorkspaceInfoSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TpSectionHeader(
-                  title: l10n.homeWorkspaceWorkspaceSettingsBasicInfo,
+                  title: l10n.homeWorkspace.workspaceSettingsBasicInfo,
                 ),
                 WorkspaceIconSettingsRow(workspace: live),
                 _WorkspaceSettingsInlineRow(
-                  label: l10n.workspaceDisplayName,
+                  label: l10n.workspace.displayName,
                   value: live.localizedName(l10n),
                   onEdit: () => showRenameWorkspaceDialog(
                     context,
                     live,
-                    title: l10n.workspaceDisplayName,
+                    title: l10n.workspace.displayName,
                   ),
                 ),
                 _WorkspaceSettingsInlineRow(
-                  label: l10n.homeWorkspaceWorkspaceId,
+                  label: l10n.homeWorkspace.workspaceId,
                   value: live.workspaceId,
                   valueEllipsis: true,
                   onCopy: () => _copyText(
                     context,
                     live.workspaceId,
-                    toastMessage: l10n.aiMessageCopied,
+                    toastMessage: l10n.ai.messageCopied,
                   ),
                 ),
                 _WorkspaceSettingsInlineRow(
-                  label: l10n.homeWorkspaceWorkspacePath,
+                  label: l10n.homeWorkspace.workspacePath,
                   value: live.firstFolderPath.isNotEmpty
                       ? live.firstFolderPath
-                      : l10n.workspacePrimaryPathNotSelected,
+                      : l10n.workspace.primaryPathNotSelected,
                   valueEllipsis: true,
                   onCopy: live.firstFolderPath.isNotEmpty
                       ? () => _copyText(context, live.firstFolderPath)
                       : null,
                 ),
                 _WorkspaceSettingsInlineRow(
-                  label: l10n.workspaceTypeLabel,
+                  label: l10n.workspace.typeLabel,
                   valueWidget: Align(
                     alignment: Alignment.centerLeft,
                     child: WorkspaceTopologyChip(
@@ -91,15 +91,15 @@ class WorkspaceInfoSection extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 _WorkspaceSettingsInlineRow(
-                  label: l10n.workspaceSessionCount,
+                  label: l10n.workspace.sessionCount,
                   value: '$sessionCount',
                 ),
                 _WorkspaceSettingsInlineRow(
-                  label: l10n.workspaceCreatedAt,
+                  label: l10n.workspace.createdAt,
                   value: _formatTimestamp(live.createdAt),
                 ),
                 _WorkspaceSettingsInlineRow(
-                  label: l10n.workspaceUpdatedAt,
+                  label: l10n.workspace.updatedAt,
                   value: _formatTimestamp(live.updatedAt),
                   showDividerBelow: false,
                 ),
@@ -195,7 +195,7 @@ class WorkspaceConfigDangerZone extends StatelessWidget {
     return TpCard.outlined(
       child: TpPreferenceStack(
         title: l10n.dangerZone,
-        subtitle: l10n.deleteWorkspaceSubtitle,
+        subtitle: l10n.delete.workspaceSubtitle,
         body: Align(
           alignment: Alignment.centerLeft,
           child: OutlinedButton.icon(
@@ -206,7 +206,7 @@ class WorkspaceConfigDangerZone extends StatelessWidget {
               color: errorColor,
             ),
             label: Text(
-              l10n.deleteWorkspace,
+              l10n.delete.workspace,
               style: TpTextStyles.of(context).mdColored(errorColor),
             ),
             style: OutlinedButton.styleFrom(
@@ -247,7 +247,7 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
 
     Widget? action;
     if (onEdit != null) {
-      action = TextButton(onPressed: onEdit, child: Text(l10n.edit));
+      action = TextButton(onPressed: onEdit, child: Text(l10n.edit.edit));
     } else if (onCopy != null) {
       action = TextButton(onPressed: onCopy, child: Text(l10n.copy));
     }
@@ -309,7 +309,7 @@ void _copyText(BuildContext context, String text, {String? toastMessage}) {
   Clipboard.setData(ClipboardData(text: text));
   AppToast.show(
     context,
-    message: toastMessage ?? context.l10n.pathCopied(text),
+    message: toastMessage ?? context.l10n.pathCopied(path: text),
     variant: TpToastVariant.success,
   );
 }

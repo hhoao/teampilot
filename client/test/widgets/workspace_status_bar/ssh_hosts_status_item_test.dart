@@ -135,8 +135,8 @@ class _NoopSink implements StreamSink<List<int>> {
 
 Widget _host({required SshConnectionCubit cubit, required Widget child}) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     locale: const Locale('en'),
     home: BlocProvider<SshConnectionCubit>.value(
       value: cubit,
@@ -202,9 +202,11 @@ void main() {
       ),
     );
 
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
     expect(find.byKey(const Key('ssh-hosts-pill')), findsOneWidget);
-    expect(find.text(l10n.sshHostsPillCount(1)), findsOneWidget);
+    expect(find.text(l10n.ssh.hostsPillCount(count: 1)), findsOneWidget);
   });
 
   testWidgets('tap Connect on inactive row → Cubit.connect called', (
@@ -237,8 +239,10 @@ void main() {
     await tester.tap(find.byKey(const Key('ssh-hosts-pill')));
     await tester.pumpAndSettle();
 
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    await tester.tap(find.text(l10n.sshProfileConnect));
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
+    await tester.tap(find.text(l10n.sshProfile.connect));
     await tester.pump();
 
     expect(cubit.connectCalls, ['p-inactive']);
@@ -314,8 +318,10 @@ void main() {
     await tester.tap(find.byKey(const Key('ssh-hosts-pill')));
     await tester.pumpAndSettle();
 
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    await tester.tap(find.text(l10n.sshHostsManage));
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
+    await tester.tap(find.text(l10n.ssh.hostsManage));
     await tester.pump();
 
     expect(managed, 1);

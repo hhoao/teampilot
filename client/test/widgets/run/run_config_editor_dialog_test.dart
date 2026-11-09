@@ -267,8 +267,8 @@ Future<void> _pumpEditor(
 
   await tester.pumpWidget(
     MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       locale: const Locale('en'),
       home: BlocProvider<RunCubit>.value(
         value: cubit,

@@ -132,8 +132,8 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
       child: TpDialogPinnedLayout(
         header: TpDialogHeader(
           title: widget.isEditing
-              ? l10n.workspaceCliEditPresetTitle
-              : l10n.workspaceCliAddPresetTitle,
+              ? l10n.workspace.cliEditPresetTitle
+              : l10n.workspace.cliAddPresetTitle,
         ),
         body: TpForm(
           key: _formKey,
@@ -142,7 +142,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TpPreferenceStack(
-                title: l10n.workspaceCliPresetNameLabel,
+                title: l10n.workspace.cliPresetNameLabel,
                 body: TpInputFormField(
                   key: const Key('preset-name-field'),
                   controller: _nameCtl,
@@ -154,7 +154,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
                 showDividerBelow: true,
               ),
               TpPreferenceRow(
-                title: l10n.teamCliLabel,
+                title: l10n.team.cliLabel,
                 trailing: TpSelect<String>(
                   key: const Key('preset-cli-select'),
                   items: [for (final def in registry.launchable) def.id.value],
@@ -191,7 +191,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
                 showDividerBelow: true,
               ),
               TpPreferenceRow(
-                title: l10n.provider,
+                title: l10n.provider.provider,
                 trailing: TpSelectFormField<String>(
                   key: ValueKey('preset-provider-form-$_cli'),
                   id: 'provider',
@@ -254,8 +254,8 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
                 ),
               if (showEffortPicker)
                 TpPreferenceRow(
-                  title: l10n.workspaceCliEffortLevel,
-                  subtitle: l10n.workspaceCliEffortLevelSubtitle,
+                  title: l10n.workspace.cliEffortLevel,
+                  subtitle: l10n.workspace.cliEffortLevelSubtitle,
                   trailing: CliEffortPickerField(
                     key: ValueKey(
                       'preset-effort-$_providerId-$_modelId-$_effortId',
@@ -265,7 +265,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
                     provider: selectedProvider,
                     model: _modelId,
                     allowInherit: true,
-                    inheritLabel: l10n.workspaceCliEffortInheritHint,
+                    inheritLabel: l10n.workspace.cliEffortInheritHint,
                     decoration: dropdownDeco,
                     onChanged: (value) =>
                         setState(() => _effortId = value.trim()),
@@ -279,7 +279,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
           children: [
             TextButton(
               onPressed: () => _openProviderConfig(context),
-              child: Text(l10n.workspaceCliProviderConfig),
+              child: Text(l10n.workspace.cliProviderConfig),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),

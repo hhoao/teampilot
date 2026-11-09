@@ -37,9 +37,9 @@ class NdjsonDecoder {
   /// Empty lines are skipped.
   Stream<String> decode(Stream<Uint8List> bytes) async* {
     final buffer = StringBuffer();
-    await for (final chunk in bytes
-        .cast<List<int>>()
-        .transform(const Utf8Decoder(allowMalformed: true))) {
+    await for (final chunk in bytes.cast<List<int>>().transform(
+      const Utf8Decoder(allowMalformed: true),
+    )) {
       buffer.write(chunk);
       var content = buffer.toString();
       var newline = content.indexOf('\n');

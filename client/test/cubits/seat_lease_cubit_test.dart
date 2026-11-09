@@ -56,11 +56,17 @@ void main() {
           leaseId: 'acp-background-task',
           acquiredAt: DateTime(2026, 1, 1),
         );
-        expect(cubit.state.seatHasLeases(sessionId: 's', memberId: 'm'), isTrue);
+        expect(
+          cubit.state.seatHasLeases(sessionId: 's', memberId: 'm'),
+          isTrue,
+        );
         expect(
           cubit
               .state
-              .leases[agentSeatKey(sessionId: 's', memberId: 'm')]!['acp-background-task']
+              .leases[agentSeatKey(
+                sessionId: 's',
+                memberId: 'm',
+              )]!['acp-background-task']
               ?.kind,
           SeatLeaseKind.backgroundTask,
         );

@@ -56,7 +56,6 @@ class PluginProvisionContext {
   /// Target-runtime paths required by native CLI shims, such as Node's bin
   /// directory for npm-installed commands.
   final List<String> pathPrepend;
-
 }
 
 /// PluginHub contract: plugin materialization + marketplace consumption +

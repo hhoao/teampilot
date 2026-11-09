@@ -1,0 +1,41 @@
+{
+  "featureCliLabel": "CLI",
+  "featureCommitMessageSubtitle": "由源代码管理面板里的 ✨ 按钮使用。",
+  "featureCommitMessageTitle": "提交信息生成",
+  "featureConfigSummary": "{cli: String} · {provider: String} · {model: String}",
+  "featureEffortLabel": "Effort",
+  "featureModelLabel": "模型",
+  "featureTeamGenerateSubtitle": "从描述生成团队时使用。",
+  "featureTeamGenerateTitle": "团队配置生成",
+  "features": "AI 功能",
+  "featuresPageSubtitle": "为每个 AI 功能选择使用的 CLI provider、模型与 effort。",
+  "messageCancelled": "消息已取消",
+  "messageCancelledTool": "已取消工具",
+  "messageCopied": "已复制",
+  "messageExportMarkdown": "导出 Markdown",
+  "messageIncomplete": "消息未完成",
+  "messageReasoning": "推理",
+  "messageScrollToBottom": "滚动到底部",
+  "messageShowLess": "收起",
+  "messageShowMore": "显示更多",
+  "messageThinkingCommands(param=count)": {
+    "other": "运行了 {count: int} 条命令"
+  },
+  "messageThinkingEditedFiles(param=count)": {
+    "other": "编辑了 {count: int} 个文件"
+  },
+  "messageThinkingExploredFiles(param=count)": {
+    "other": "探索了 {count: int} 个文件"
+  },
+  "messageThinkingProcess": "思考过程",
+  "messageThinkingProcessStats": "思考过程 · {steps: int} 步 · {toolCalls: int} 次工具调用",
+  "messageThinkingProcessSteps": "思考过程 · {count: int} 步",
+  "messageThinkingProcessSummarySeparator": "，",
+  "messageThinkingSearches(param=count)": {
+    "other": "{count: int} 次搜索"
+  },
+  "messageToolResult": "结果",
+  "messageToolsUsed": "已使用 {count} 个工具",
+  "messageUsedTool": "已使用工具",
+  "toolFileNotFound": "找不到文件：{path: String}"
+}

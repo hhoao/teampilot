@@ -167,7 +167,7 @@ class _SvgPreviewPaneState extends State<SvgPreviewPane>
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   IconButton(
-                    tooltip: l10n.shortcutsZoomOut,
+                    tooltip: l10n.shortcuts.zoomOut,
                     icon: const Icon(Icons.remove, size: 18),
                     onPressed: canZoom
                         ? () => zoomBy(1 / PhotoZoomControllerMixin.zoomStep)
@@ -175,14 +175,14 @@ class _SvgPreviewPaneState extends State<SvgPreviewPane>
                   ),
                   Text('$scalePercent%', style: TpTextStyles.of(context).sm),
                   IconButton(
-                    tooltip: l10n.shortcutsZoomIn,
+                    tooltip: l10n.shortcuts.zoomIn,
                     icon: const Icon(Icons.add, size: 18),
                     onPressed: canZoom
                         ? () => zoomBy(PhotoZoomControllerMixin.zoomStep)
                         : null,
                   ),
                   IconButton(
-                    tooltip: l10n.shortcutsZoomReset,
+                    tooltip: l10n.shortcuts.zoomReset,
                     icon: const Icon(Icons.fit_screen_outlined, size: 18),
                     onPressed: canZoom ? resetZoom : null,
                   ),

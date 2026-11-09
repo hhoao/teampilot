@@ -14,7 +14,12 @@ void main() {
   });
 
   test('saves and loads a target', () async {
-    const target = RemoteTarget(id: 't1', name: 'dev', host: 'h', username: 'u');
+    const target = RemoteTarget(
+      id: 't1',
+      name: 'dev',
+      host: 'h',
+      username: 'u',
+    );
     await repo.save(target);
     final loaded = await repo.loadAll();
     expect(loaded, [target]);

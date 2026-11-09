@@ -41,14 +41,14 @@ class TeamHooksSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TeamConfigCardHeader(
-                  title: l10n.teamHooksAssignedCount(
-                    assignedCount,
-                    definitions.length,
+                  title: l10n.team.hooksAssignedCount(
+                    assigned: assignedCount,
+                    total: definitions.length,
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
                     icon: const Icon(Icons.bolt_outlined),
-                    label: Text(l10n.teamHooksManage),
+                    label: Text(l10n.team.hooksManage),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -57,7 +57,7 @@ class TeamHooksSection extends StatelessWidget {
                     icon: Icons.bolt_outlined,
                     title: l10n.hooksNoInstalled,
                     hint: l10n.hooksNoInstalledHint,
-                    actionLabel: l10n.teamHooksManage,
+                    actionLabel: l10n.team.hooksManage,
                     onAction: onManage,
                   )
                 else

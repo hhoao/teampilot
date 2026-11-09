@@ -42,8 +42,8 @@ Widget _harness({
   double height = 400,
 }) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     locale: const Locale('en'),
     theme: ThemeData(
       extensions: [AiMessageTheme.test(cotExpandLatestOnOpen: expandLatest)],
@@ -482,39 +482,35 @@ void main() {
     },
   );
 
-  testWidgets(
-    'jump button appears when scrolled up and badges new messages',
-    (tester) async {
-      final store = ExternalStoreAiThreadRuntime()
-        ..setMessages(_soloUserMessages(20));
+  testWidgets('jump button appears when scrolled up and badges new messages', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(20));
 
-      await tester.pumpWidget(_harness(runtime: store));
-      await pumpUntilSettled(tester);
+    await tester.pumpWidget(_harness(runtime: store));
+    await pumpUntilSettled(tester);
 
-      expect(find.byKey(kSessionHistoryScrollToBottomButtonKey), findsNothing);
+    expect(find.byKey(kSessionHistoryScrollToBottomButtonKey), findsNothing);
 
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
-      await pumpUntilSettled(tester);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
+    await pumpUntilSettled(tester);
 
-      expect(
-        find.byKey(kSessionHistoryScrollToBottomButtonKey),
-        findsOneWidget,
-      );
-      expect(find.byKey(kSessionHistoryNewMessagesDotKey), findsNothing);
+    expect(find.byKey(kSessionHistoryScrollToBottomButtonKey), findsOneWidget);
+    expect(find.byKey(kSessionHistoryNewMessagesDotKey), findsNothing);
 
-      store.setMessages([
-        ..._soloUserMessages(20),
-        AiMessage(
-          id: 'm20',
-          role: AiRole.assistant,
-          parts: const [AiTextPart(text: 'new tip')],
-        ),
-      ]);
-      await pumpUntilSettled(tester);
+    store.setMessages([
+      ..._soloUserMessages(20),
+      AiMessage(
+        id: 'm20',
+        role: AiRole.assistant,
+        parts: const [AiTextPart(text: 'new tip')],
+      ),
+    ]);
+    await pumpUntilSettled(tester);
 
-      expect(find.byKey(kSessionHistoryNewMessagesDotKey), findsOneWidget);
-    },
-  );
+    expect(find.byKey(kSessionHistoryNewMessagesDotKey), findsOneWidget);
+  });
 
   testWidgets('jump button stays hidden within the bottom threshold', (
     tester,
@@ -644,47 +640,43 @@ void main() {
     expect(position.pixels, closeTo(position.maxScrollExtent, 2.0));
   });
 
-  testWidgets(
-    'scrolling to tip hides the jump button and resumes stick',
-    (tester) async {
-      final store = ExternalStoreAiThreadRuntime()
-        ..setMessages(_soloUserMessages(20));
+  testWidgets('scrolling to tip hides the jump button and resumes stick', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(20));
 
-      await tester.pumpWidget(_harness(runtime: store));
-      await pumpUntilSettled(tester);
+    await tester.pumpWidget(_harness(runtime: store));
+    await pumpUntilSettled(tester);
 
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
-      await pumpUntilSettled(tester);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
+    await pumpUntilSettled(tester);
 
-      store.setMessages([
-        ..._soloUserMessages(20),
-        AiMessage(
-          id: 'm20',
-          role: AiRole.assistant,
-          parts: const [AiTextPart(text: 'new tip')],
-        ),
-      ]);
-      await pumpUntilSettled(tester);
+    store.setMessages([
+      ..._soloUserMessages(20),
+      AiMessage(
+        id: 'm20',
+        role: AiRole.assistant,
+        parts: const [AiTextPart(text: 'new tip')],
+      ),
+    ]);
+    await pumpUntilSettled(tester);
 
-      expect(
-        find.byKey(kSessionHistoryScrollToBottomButtonKey),
-        findsOneWidget,
-      );
+    expect(find.byKey(kSessionHistoryScrollToBottomButtonKey), findsOneWidget);
 
-      final position = tester
-          .state<ScrollableState>(find.byType(Scrollable).first)
-          .position;
-      position.jumpTo(position.maxScrollExtent);
-      await pumpUntilSettled(tester);
+    final position = tester
+        .state<ScrollableState>(find.byType(Scrollable).first)
+        .position;
+    position.jumpTo(position.maxScrollExtent);
+    await pumpUntilSettled(tester);
 
-      expect(find.byKey(kSessionHistoryScrollToBottomButtonKey), findsNothing);
+    expect(find.byKey(kSessionHistoryScrollToBottomButtonKey), findsNothing);
 
-      final viewport = tester.widget<VirtualThreadViewport>(
-        find.byType(VirtualThreadViewport),
-      );
-      expect(viewport.suppressMeasureScrollCorrection, isTrue);
-    },
-  );
+    final viewport = tester.widget<VirtualThreadViewport>(
+      find.byType(VirtualThreadViewport),
+    );
+    expect(viewport.suppressMeasureScrollCorrection, isTrue);
+  });
 
   testWidgets(
     'scroll suppresses hover effects then resumes cursor lock after idle',
@@ -753,9 +745,8 @@ void main() {
       );
       expect(innerScrollable, findsOneWidget);
 
-      ScrollCursorLock lock() => tester.widget<ScrollCursorLock>(
-        find.byType(ScrollCursorLock),
-      );
+      ScrollCursorLock lock() =>
+          tester.widget<ScrollCursorLock>(find.byType(ScrollCursorLock));
       expect(lock().active, isFalse);
 
       final position = tester.state<ScrollableState>(innerScrollable).position;
@@ -903,8 +894,8 @@ void main() {
 
     Widget tree() {
       return MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         theme: ThemeData(extensions: [AiMessageTheme.test()]),
         home: Scaffold(
@@ -991,8 +982,8 @@ void main() {
       ]);
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         theme: ThemeData(extensions: [AiMessageTheme.test()]),
         home: Scaffold(
@@ -1032,8 +1023,8 @@ void main() {
 
     Widget tree() {
       return MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         theme: ThemeData(extensions: [AiMessageTheme.test()]),
         home: Scaffold(
@@ -1106,8 +1097,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         theme: ThemeData(extensions: [AiMessageTheme.test()]),
         home: Scaffold(
@@ -1163,8 +1154,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           locale: const Locale('en'),
           theme: ThemeData(extensions: [AiMessageTheme.test()]),
           home: Scaffold(
@@ -1235,34 +1226,35 @@ void main() {
     expect(position.maxScrollExtent - position.pixels, greaterThan(30.0));
   });
 
-  testWidgets('live tip folds finished reasoning but keeps the active one open', (
-    tester,
-  ) async {
-    final store = ExternalStoreAiThreadRuntime()
-      ..setMessages([
-        AiMessage(
-          id: 'a1',
-          role: AiRole.assistant,
-          parts: const [
-            AiReasoningPart(text: 'finished thought'),
-            AiReasoningPart(text: 'active thought'),
-          ],
-        ),
-      ]);
+  testWidgets(
+    'live tip folds finished reasoning but keeps the active one open',
+    (tester) async {
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages([
+          AiMessage(
+            id: 'a1',
+            role: AiRole.assistant,
+            parts: const [
+              AiReasoningPart(text: 'finished thought'),
+              AiReasoningPart(text: 'active thought'),
+            ],
+          ),
+        ]);
 
-    await tester.pumpWidget(
-      _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
-    );
-    await _pumpLive(tester);
+      await tester.pumpWidget(
+        _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
+      );
+      await _pumpLive(tester);
 
-    expect(find.textContaining('active thought'), findsOneWidget);
-    expect(find.textContaining('finished thought'), findsNothing);
+      expect(find.textContaining('active thought'), findsOneWidget);
+      expect(find.textContaining('finished thought'), findsNothing);
 
-    await tester.pumpWidget(_harness(runtime: store));
-    await pumpUntilSettled(tester);
+      await tester.pumpWidget(_harness(runtime: store));
+      await pumpUntilSettled(tester);
 
-    expect(find.textContaining('Thinking process'), findsOneWidget);
-    expect(find.textContaining('active thought'), findsNothing);
-    expect(find.textContaining('finished thought'), findsNothing);
-  });
+      expect(find.textContaining('Thinking process'), findsOneWidget);
+      expect(find.textContaining('active thought'), findsNothing);
+      expect(find.textContaining('finished thought'), findsNothing);
+    },
+  );
 }

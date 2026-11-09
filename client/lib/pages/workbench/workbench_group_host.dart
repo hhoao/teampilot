@@ -228,8 +228,8 @@ class WorkbenchGroupHost extends StatelessWidget {
               context.l10n.workbenchStripNewMenuTooltip,
               CommandIds.sessionNewTab,
             ),
-            newConversationLabel: context.l10n.homeWorkspaceNewConversation,
-            newTerminalLabel: context.l10n.workspaceTerminalNewSession,
+            newConversationLabel: context.l10n.homeWorkspace.newConversation,
+            newTerminalLabel: context.l10n.workspace.terminalNewSession,
             onNewConversation: routeActive
                 ? () {
                     // Enter THIS group's landing, not just the focused one's.
@@ -506,7 +506,7 @@ Future<void> _showStripNewTerminalMenu({
       WorkspaceToolsScope.maybeOf(context)?.effectiveFolders ?? const [];
   final connector = context.read<WorkspaceShellConnector>();
   final launcher = context.read<WorkbenchShellLauncher>();
-  final sshFailed = context.l10n.workspaceTerminalSshConnectFailed;
+  final sshFailed = context.l10n.workspace.terminalSshConnectFailed;
   await showWorkspaceTerminalLaunchMenu(
     context: context,
     globalPosition: anchor,

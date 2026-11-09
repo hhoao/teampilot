@@ -136,7 +136,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
   Future<void> _browseIdentityFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.any,
-      dialogTitle: context.l10n.sshProfileFormIdentityFileBrowse,
+      dialogTitle: context.l10n.sshProfile.formIdentityFileBrowse,
     );
     final path = result?.files.single.path;
     if (path != null && path.isNotEmpty && mounted) {
@@ -148,7 +148,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
   Future<String?> _readIdentityFile() async {
     final path = _identityFileController.text.trim();
     if (path.isEmpty) return null;
-    final missingMessage = context.l10n.sshProfileFormIdentityFileMissing;
+    final missingMessage = context.l10n.sshProfile.formIdentityFileMissing;
     final file = File(path);
     if (!await file.exists()) {
       throw StateError(missingMessage);
@@ -164,7 +164,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
         _identityFileController.text.trim().isEmpty) {
       AppToast.show(
         context,
-        message: context.l10n.sshProfileFormCredentialRequired,
+        message: context.l10n.sshProfile.formCredentialRequired,
         variant: TpToastVariant.warning,
       );
       return null;
@@ -206,7 +206,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       if (mounted) {
         AppToast.show(
           context,
-          message: context.l10n.vaultLockedSaveBlocked,
+          message: context.l10n.vault.lockedSaveBlocked,
           variant: TpToastVariant.error,
         );
       }
@@ -215,7 +215,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       if (mounted) {
         AppToast.show(
           context,
-          message: context.l10n.sshProfileFormCredentialSaveFailed,
+          message: context.l10n.sshProfile.formCredentialSaveFailed,
           variant: TpToastVariant.warning,
         );
       }
@@ -276,7 +276,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: context.l10n.sshProfileTestSuccess,
+        message: context.l10n.sshProfile.testSuccess,
         variant: TpToastVariant.success,
       );
     } on Object catch (error) {
@@ -323,17 +323,17 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           left: _field(
             id: 'label',
             controller: _labelController,
-            label: l10n.sshProfileFormLabel,
-            hint: l10n.sshProfileFormLabelHint,
+            label: l10n.sshProfile.formLabel,
+            hint: l10n.sshProfile.formLabelHint,
           ),
           right: _field(
             id: 'host',
             controller: _hostController,
-            label: l10n.sshProfileFormHost,
-            hint: l10n.sshProfileFormHostHint,
+            label: l10n.sshProfile.formHost,
+            hint: l10n.sshProfile.formHostHint,
             required: true,
             validator: (v) => v == null || v.trim().isEmpty
-                ? l10n.sshProfileFormFieldRequired
+                ? l10n.sshProfile.formFieldRequired
                 : null,
           ),
         ),
@@ -342,18 +342,18 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           left: _field(
             id: 'username',
             controller: _usernameController,
-            label: l10n.sshProfileFormUsername,
-            hint: l10n.sshProfileFormUsernameHint,
+            label: l10n.sshProfile.formUsername,
+            hint: l10n.sshProfile.formUsernameHint,
           ),
           right: _field(
             id: 'port',
             controller: _portController,
-            label: l10n.sshProfileFormPort,
+            label: l10n.sshProfile.formPort,
             keyboardType: TextInputType.number,
             validator: (v) {
               final port = int.tryParse(v ?? '');
               if (port == null || port < 1 || port > 65535) {
-                return l10n.sshProfileFormPortInvalid;
+                return l10n.sshProfile.formPortInvalid;
               }
               return null;
             },
@@ -363,12 +363,12 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
         _field(
           id: 'identityFile',
           controller: _identityFileController,
-          label: l10n.sshProfileFormIdentityFile,
-          hint: l10n.sshProfileFormIdentityFileHint,
-          helper: l10n.sshProfileFormIdentityFileHelper,
+          label: l10n.sshProfile.formIdentityFile,
+          hint: l10n.sshProfile.formIdentityFileHint,
+          helper: l10n.sshProfile.formIdentityFileHelper,
           prefixIcon: Icons.key_outlined,
           suffix: IconButton(
-            tooltip: l10n.sshProfileFormIdentityFileBrowse,
+            tooltip: l10n.sshProfile.formIdentityFileBrowse,
             onPressed: busy ? null : _browseIdentityFile,
             icon: const Icon(Icons.folder_open_outlined),
           ),
@@ -378,19 +378,19 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
         _field(
           id: 'passphrase',
           controller: _passphraseController,
-          label: l10n.sshProfileFormPassphrase,
-          hint: l10n.sshProfileFormPassphraseHint,
+          label: l10n.sshProfile.formPassphrase,
+          hint: l10n.sshProfile.formPassphraseHint,
           obscure: true,
         ),
         const SizedBox(height: 12),
         _field(
           id: 'password',
           controller: _passwordController,
-          label: l10n.sshProfileFormPassword,
+          label: l10n.sshProfile.formPassword,
           hint: _isEditing
-              ? l10n.sshProfileFormPasswordHintEdit
-              : l10n.sshProfileFormPasswordHint,
-          helper: l10n.sshProfileFormPasswordHelper,
+              ? l10n.sshProfile.formPasswordHintEdit
+              : l10n.sshProfile.formPasswordHint,
+          helper: l10n.sshProfile.formPasswordHelper,
           obscure: true,
           onChanged: () => setState(() {}),
           onReveal: _revealPassword,
@@ -414,7 +414,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(l10n.sshProfileTest),
+                : Text(l10n.sshProfile.test),
           ),
           FilledButton(
             onPressed: busy ? null : _submit,
@@ -424,7 +424,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(_isEditing ? l10n.save : l10n.sshProfilesAddTarget),
+                : Text(_isEditing ? l10n.save : l10n.sshProfile.sAddTarget),
           ),
         ],
       ),
@@ -432,8 +432,8 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
 
     return TpDialogPageShell(
       title: _isEditing
-          ? l10n.sshProfileFormTitleEdit
-          : l10n.sshProfileFormTitleNew,
+          ? l10n.sshProfile.formTitleEdit
+          : l10n.sshProfile.formTitleNew,
       mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
       fillBody: false,
       onClose: busy ? null : () => Navigator.of(context).pop(),

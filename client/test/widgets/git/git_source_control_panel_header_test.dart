@@ -98,8 +98,8 @@ void main() {
     addTearDown(workbench.close);
     addTearDown(floating.close);
     return MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: MultiRepositoryProvider(
         providers: [
           RepositoryProvider<GitRepoStore>.value(value: store),

@@ -104,7 +104,7 @@ class _TeamLandingPickerDialogState extends State<TeamLandingPickerDialog> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: l10n.teamHubNotFound,
+        message: l10n.teamHub.notFound,
         variant: TpToastVariant.error,
       );
       setState(() {
@@ -116,7 +116,7 @@ class _TeamLandingPickerDialogState extends State<TeamLandingPickerDialog> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: l10n.teamHubNotFound,
+        message: l10n.teamHub.notFound,
         variant: TpToastVariant.error,
       );
       setState(() {
@@ -165,7 +165,7 @@ class _TeamLandingPickerDialogState extends State<TeamLandingPickerDialog> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: l10n.teamHubCloneFailed,
+        message: l10n.teamHub.cloneFailed,
         variant: TpToastVariant.error,
       );
       setState(() => _confirming = false);
@@ -173,7 +173,7 @@ class _TeamLandingPickerDialogState extends State<TeamLandingPickerDialog> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: l10n.teamHubCloneFailed,
+        message: l10n.teamHub.cloneFailed,
         variant: TpToastVariant.error,
       );
       setState(() => _confirming = false);
@@ -202,7 +202,7 @@ class _TeamLandingPickerDialogState extends State<TeamLandingPickerDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TpDialogHeader(title: l10n.teamHubTitle),
+              TpDialogHeader(title: l10n.teamHub.title),
               const SizedBox(height: 8),
               Expanded(
                 child: BlocConsumer<TeamHubCubit, TeamHubState>(
@@ -213,7 +213,7 @@ class _TeamLandingPickerDialogState extends State<TeamLandingPickerDialog> {
                     if (state.errorMessage == null) return;
                     AppToast.show(
                       context,
-                      message: context.l10n.teamHubLoadError,
+                      message: context.l10n.teamHub.loadError,
                       variant: TpToastVariant.error,
                     );
                     context.read<TeamHubCubit>().clearError();

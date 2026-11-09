@@ -120,11 +120,7 @@ class _SelectionAskAiDialogState extends State<_SelectionAskAiDialog> {
         }
       }
       if (!context.mounted) return;
-      await persistLandingDraft(
-        workspace.workspaceId,
-        draft,
-        storage: storage,
-      );
+      await persistLandingDraft(workspace.workspaceId, draft, storage: storage);
 
       if (!mounted) return;
       // Delivery (connect + inject) keeps running on captured cubits after the

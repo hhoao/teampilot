@@ -95,34 +95,37 @@ void main() {
     expect(materializer.ensureCalls, isEmpty);
   });
 
-  test('personal ACP with an attached runtime sends through the cubit', () async {
-    final built = startedPersonal();
-    await start(built.cubit);
-    var personalActivations = 0;
-    var memberActivations = 0;
-    final sessionRuntime = _FakeRuntime();
+  test(
+    'personal ACP with an attached runtime sends through the cubit',
+    () async {
+      final built = startedPersonal();
+      await start(built.cubit);
+      var personalActivations = 0;
+      var memberActivations = 0;
+      final sessionRuntime = _FakeRuntime();
 
-    final gateway = TabTeamBusGateway(
-      memberMaterializer: _FakeMaterializer(),
-      sessionRuntime: sessionRuntime,
-      tabStore: built.store,
-      activatePersonalAcp: (sessionId) async => personalActivations++,
-      activateMemberSeat: (sessionId, memberId) async => memberActivations++,
-    );
+      final gateway = TabTeamBusGateway(
+        memberMaterializer: _FakeMaterializer(),
+        sessionRuntime: sessionRuntime,
+        tabStore: built.store,
+        activatePersonalAcp: (sessionId) async => personalActivations++,
+        activateMemberSeat: (sessionId, memberId) async => memberActivations++,
+      );
 
-    final outcome = await gateway.deliverUserCommandToMember(
-      _personalAcpSession(),
-      'sess-acp',
-      'hello',
-    );
-    await Future<void>.delayed(Duration.zero);
+      final outcome = await gateway.deliverUserCommandToMember(
+        _personalAcpSession(),
+        'sess-acp',
+        'hello',
+      );
+      await Future<void>.delayed(Duration.zero);
 
-    expect(outcome.delivered, isTrue);
-    expect(built.runtime.prompts, ['hello']);
-    expect(sessionRuntime.ptyCalls, isEmpty);
-    expect(personalActivations, 0);
-    expect(memberActivations, 0);
-  });
+      expect(outcome.delivered, isTrue);
+      expect(built.runtime.prompts, ['hello']);
+      expect(sessionRuntime.ptyCalls, isEmpty);
+      expect(personalActivations, 0);
+      expect(memberActivations, 0);
+    },
+  );
 
   test('personal ACP with no runtime activates once, then delivers', () async {
     final built = startedPersonal(attach: false);
@@ -222,9 +225,7 @@ void main() {
     );
 
     expect(outcome.delivered, isTrue);
-    expect(sessionRuntime.ptyCalls, [
-      ('sess-mixed', 'builder-1', 'hello'),
-    ]);
+    expect(sessionRuntime.ptyCalls, [('sess-mixed', 'builder-1', 'hello')]);
     expect(personalActivations, 0);
     expect(memberActivations, 0);
   });

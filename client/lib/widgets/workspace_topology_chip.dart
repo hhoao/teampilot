@@ -27,15 +27,15 @@ class WorkspaceTopologyChip extends StatelessWidget {
     );
     final (label, icon) = switch (topology) {
       WorkspaceTopology.local => (
-        l10n.workspaceTopologyLocal,
+        l10n.workspace.topologyLocal,
         Icons.computer_outlined,
       ),
       WorkspaceTopology.remote => (
-        l10n.workspaceTopologyRemote,
+        l10n.workspace.topologyRemote,
         Icons.dns_outlined,
       ),
       WorkspaceTopology.mixed => (
-        l10n.workspaceTopologyMixed,
+        l10n.workspace.topologyMixed,
         Icons.hub_outlined,
       ),
     };

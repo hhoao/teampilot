@@ -164,8 +164,8 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
   String get _title {
     final l10n = context.l10n;
     return switch (widget.kind) {
-      HubPublishKind.expert => l10n.hubPublishExpertTitle,
-      HubPublishKind.team => l10n.hubPublishTeamTitle,
+      HubPublishKind.expert => l10n.hub.publishExpertTitle,
+      HubPublishKind.team => l10n.hub.publishTeamTitle,
     };
   }
 
@@ -184,18 +184,18 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
         }
         final token = await widget.credentials.resolveToken();
         if (!connected && (token == null || token.isEmpty)) {
-          setState(() => _stepError = context.l10n.hubPublishTokenRequired);
+          setState(() => _stepError = context.l10n.hub.publishTokenRequired);
           return;
         }
         setState(() => _step = HubPublishWizardStep.metadata);
       case HubPublishWizardStep.metadata:
         final slug = _slug.text.trim();
         if (slug.isEmpty) {
-          setState(() => _stepError = context.l10n.hubPublishSlugRequired);
+          setState(() => _stepError = context.l10n.hub.publishSlugRequired);
           return;
         }
         if (_isTeam && _category.text.trim().isEmpty) {
-          setState(() => _stepError = context.l10n.hubPublishCategoryRequired);
+          setState(() => _stepError = context.l10n.hub.publishCategoryRequired);
           return;
         }
         setState(() {
@@ -207,8 +207,8 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
         if (!_gatesResolved) {
           setState(() {
             _stepError = _nonPortableIds.isNotEmpty
-                ? context.l10n.hubPublishNonPortableBlocked
-                : context.l10n.hubPublishLocalExpertBlocked;
+                ? context.l10n.hub.publishNonPortableBlocked
+                : context.l10n.hub.publishLocalExpertBlocked;
           });
           return;
         }
@@ -301,7 +301,7 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
           _busy = false;
           _step = HubPublishWizardStep.auth;
           _publishError = null;
-          _stepError = context.l10n.githubAuthExpired;
+          _stepError = context.l10n.github.authExpired;
           _tokenReady = false;
         });
         return;
@@ -380,7 +380,7 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
                   TextButton(
                     key: const Key('hub-publish-switch-account'),
                     onPressed: _busy ? null : _onSwitchAccount,
-                    child: Text(l10n.githubSwitchAccount),
+                    child: Text(l10n.github.switchAccount),
                   ),
                 TextButton(
                   onPressed: _busy ? null : () => Navigator.of(context).pop(),
@@ -396,13 +396,13 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Text(l10n.hubPublishPublish),
+                        : Text(l10n.hub.publishPublish),
                   )
                 else
                   FilledButton(
                     key: const Key('hub-publish-next'),
                     onPressed: _nextEnabled ? _onNext : null,
-                    child: Text(l10n.hubPublishNext),
+                    child: Text(l10n.hub.publishNext),
                   ),
               ],
             )
@@ -412,7 +412,7 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
                 FilledButton(
                   key: const Key('hub-publish-done'),
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l10n.hubPublishDone),
+                  child: Text(l10n.hub.publishDone),
                 ),
               ],
             ),

@@ -11,8 +11,8 @@ Widget _wrap(Widget child) {
   return TpTheme(
     data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
     child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       theme: theme,
       home: Scaffold(body: Center(child: child)),
     ),
@@ -61,9 +61,9 @@ void main() {
 
     final l10n = lookupAppLocalizations(const Locale('en'));
     expect(find.text(l10n.newWorkspace), findsOneWidget);
-    expect(find.text(l10n.homeWorkspaceOpenTabs), findsOneWidget);
+    expect(find.text(l10n.homeWorkspace.openTabs), findsOneWidget);
     expect(find.text('Open One'), findsOneWidget);
-    expect(find.text(l10n.homeWorkspaceRecentlyClosed), findsOneWidget);
+    expect(find.text(l10n.homeWorkspace.recentlyClosed), findsOneWidget);
     expect(find.text('Closed One'), findsOneWidget);
   });
 
@@ -107,8 +107,8 @@ void main() {
     await tester.tap(find.byIcon(Icons.more_horiz));
     await tester.pumpAndSettle();
     final l10n = lookupAppLocalizations(const Locale('en'));
-    expect(find.text(l10n.cloneRepositoryMenu), findsOneWidget);
-    await tester.tap(find.text(l10n.cloneRepositoryMenu));
+    expect(find.text(l10n.clone.repositoryMenu), findsOneWidget);
+    await tester.tap(find.text(l10n.clone.repositoryMenu));
     await tester.pumpAndSettle();
     expect(fired, isTrue);
   });
@@ -175,7 +175,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.more_horiz));
     await tester.pumpAndSettle();
     final l10n = lookupAppLocalizations(const Locale('en'));
-    expect(find.text(l10n.homeWorkspaceOpenTabs), findsNothing);
-    expect(find.text(l10n.homeWorkspaceRecentlyClosedEmpty), findsOneWidget);
+    expect(find.text(l10n.homeWorkspace.openTabs), findsNothing);
+    expect(find.text(l10n.homeWorkspace.recentlyClosedEmpty), findsOneWidget);
   });
 }

@@ -29,7 +29,7 @@ String resolveSessionListTitle({
     final custom = display.trim();
     // Legacy English create-time fallback from the session port default.
     if (custom.isEmpty || custom == 'Team Builder') {
-      return l10n.teamGenerateBuilderTitle;
+      return l10n.team.generateBuilderTitle;
     }
     return custom;
   }

@@ -1,0 +1,14 @@
+{
+  "centerTitle": "Notifications",
+  "clearAll": "Clear",
+  "delete": "Delete",
+  "empty": "No notifications",
+  "historySection": "History",
+  "markAllRead": "Mark all as read",
+  "markRead": "Mark as read",
+  "ongoingSection": "Ongoing",
+  "timeDaysAgo": "{days: int} d ago",
+  "timeHoursAgo": "{hours: int} h ago",
+  "timeJustNow": "Just now",
+  "timeMinutesAgo": "{minutes: int} min ago"
+}

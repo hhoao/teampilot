@@ -143,11 +143,11 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TpDialogHeader(
-              title: l10n.deleteConversation,
+              title: l10n.delete.conversation,
               onClose: () => Navigator.of(ctx).pop(false),
             ),
             const SizedBox(height: 16),
-            Text(l10n.deleteConversationConfirm(name)),
+            Text(l10n.delete.conversationConfirm(name: name)),
             TpDialogActions(
               children: [
                 TextButton(
@@ -159,7 +159,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                     backgroundColor: Theme.of(ctx).colorScheme.error,
                   ),
                   onPressed: () => Navigator.of(ctx).pop(true),
-                  child: Text(l10n.delete),
+                  child: Text(l10n.delete.delete),
                 ),
               ],
             ),
@@ -182,7 +182,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         TpActionMenuPopupItem(
           value: 'open_to_side',
           icon: Icons.vertical_split_outlined,
-          label: l10n.sessionOpenToSide,
+          label: l10n.session.openToSide,
         ),
       if (!widget.archiveMode &&
           hasOpenTab &&
@@ -233,7 +233,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       TpActionMenuPopupItem(
         value: 'schedule',
         icon: Icons.schedule_rounded,
-        label: l10n.automationsSessionContextMenu,
+        label: l10n.automations.sessionContextMenu,
       ),
     );
     if (_sessionAutomationCount > 0) {
@@ -241,7 +241,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         TpActionMenuPopupItem(
           value: 'manage_schedule',
           icon: Icons.event_repeat_rounded,
-          label: l10n.automationsManageSessionContextMenu,
+          label: l10n.automations.manageSessionContextMenu,
         ),
       );
     }
@@ -261,7 +261,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         TpActionMenuPopupItem(
           value: 'delete',
           icon: Icons.delete_outline,
-          label: l10n.deleteConversation,
+          label: l10n.delete.conversation,
           destructive: true,
         ),
       ]);
@@ -348,7 +348,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
           kind: AutomationEditorKind.scheduledMessage,
           workspaceId: session.workspaceId,
           sessionId: session.sessionId,
-          defaultName: l10n.automationsSessionDefaultName(title),
+          defaultName: l10n.automations.sessionDefaultName(title: title),
         );
         if (saved != null && mounted) {
           _refreshSessionAutomationCount(context.read<AutomationCubit>().state);
@@ -400,10 +400,10 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         final fork = await chatCubit.duplicateSession(
           repo,
           session.sessionId,
-          newDisplayTitle: '$baseTitle ${l10n.sessionTitleCopySuffix}',
+          newDisplayTitle: '$baseTitle ${l10n.session.titleCopySuffix}',
         );
         if (!context.mounted) return;
-        AppToast.show(context, message: l10n.sessionDuplicated);
+        AppToast.show(context, message: l10n.session.duplicated);
         final workspace = context
             .read<ChatCubit>()
             .state
@@ -422,7 +422,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         if (context.mounted) {
           AppToast.show(
             context,
-            message: l10n.sessionDuplicateFailed,
+            message: l10n.session.duplicateFailed,
             variant: TpToastVariant.error,
           );
         }
@@ -703,7 +703,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   icon: Icons.delete_outline,
                   compact: true,
                   size: TpIconButton.kCompactSize,
-                  tooltip: l10n.deleteConversation,
+                  tooltip: l10n.delete.conversation,
                   color: cs.error,
                   onTap: () => unawaited(_confirmAndDelete(context)),
                 ),
@@ -746,7 +746,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                     if (!widget.archiveMode)
                       TpActionMenuItem(
                         icon: Icons.vertical_split_outlined,
-                        label: l10n.sessionOpenToSide,
+                        label: l10n.session.openToSide,
                         menuController: controller,
                         onTap: () => unawaited(
                           openWorkspaceSessionTabToSide(context, session),
@@ -822,7 +822,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                         ),
                       TpActionMenuItem(
                         icon: Icons.delete_outline,
-                        label: l10n.deleteConversation,
+                        label: l10n.delete.conversation,
                         destructive: true,
                         menuController: controller,
                         onTap: () => unawaited(_confirmAndDelete(context)),

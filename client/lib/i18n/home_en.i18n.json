@@ -1,0 +1,16 @@
+{
+  "connectionCancelRetry": "Stop retrying",
+  "connectionErrorAuth": "Authentication failed",
+  "connectionErrorHostKey": "Host identity changed — re-pair or confirm the new key",
+  "connectionErrorTcp": "Network unreachable",
+  "connectionErrorTimeout": "Connection timed out",
+  "connectionErrorTransport": "Connection error",
+  "connectionErrorUnknown": "Unknown error",
+  "connectionRetryNow": "Retry now",
+  "connectionRetrying": "Retrying… attempt {count: int}",
+  "connectionSwitch": "Switch connection",
+  "connectionUnreachable": "Can't reach {host: String}:{port: int}",
+  "targetSingleOptionHint": "This is the only available home on this platform.",
+  "targetSubtitle": "Where TeamPilot stores teams, workspaces, and config (the control plane). Switching uses a separate data tree; nothing is migrated automatically.",
+  "targetTitle": "Home device"
+}

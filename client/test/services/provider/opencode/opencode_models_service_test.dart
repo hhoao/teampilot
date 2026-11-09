@@ -61,10 +61,10 @@ void main() {
 
     await service.ensureLoaded();
 
-    expect(
-      service.modelIdsFor(providerId: 'opencode'),
-      ['claude-sonnet-4-5', 'deepseek-v4.1-flash-free'],
-    );
+    expect(service.modelIdsFor(providerId: 'opencode'), [
+      'claude-sonnet-4-5',
+      'deepseek-v4.1-flash-free',
+    ]);
     expect(
       service.modelIdsFor(providerId: 'opencode'),
       isNot(contains('deepseek-v4-flash-free')),
@@ -90,10 +90,10 @@ void main() {
 
     await service.ensureLoaded();
 
-    expect(
-      service.modelIdsFor(providerId: 'opencode'),
-      ['claude-sonnet-4-5', 'deepseek-v4-flash-free'],
-    );
+    expect(service.modelIdsFor(providerId: 'opencode'), [
+      'claude-sonnet-4-5',
+      'deepseek-v4-flash-free',
+    ]);
     expect(service.modelIdsFor(providerId: 'openai'), ['gpt-4o']);
   });
 

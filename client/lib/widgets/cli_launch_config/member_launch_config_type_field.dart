@@ -37,12 +37,12 @@ class MemberLaunchConfigTypeField extends StatelessWidget {
     final dropdownDeco = decoration ?? TpSelectDecorations.themed(context);
 
     return TpPreferenceRow(
-      title: l10n.memberLaunchConfigTypeLabel,
+      title: l10n.member.launchConfigTypeLabel,
       trailing: cliLaunchConfigDropdown(
         TpSelect<MemberLaunchConfigKind>(
           items: _items,
           initialItem: currentKind,
-          hintText: l10n.memberLaunchConfigTypeLabel,
+          hintText: l10n.member.launchConfigTypeLabel,
           decoration: dropdownDeco,
           itemLabel: (kind) => _kindLabel(l10n, kind),
           onChanged: (value) {
@@ -57,9 +57,9 @@ class MemberLaunchConfigTypeField extends StatelessWidget {
 
   static String _kindLabel(AppLocalizations l10n, MemberLaunchConfigKind kind) {
     return switch (kind) {
-      MemberLaunchConfigKind.inheritTeam => l10n.memberPresetInheritTeam,
-      MemberLaunchConfigKind.preset => l10n.memberLaunchConfigTypePreset,
-      MemberLaunchConfigKind.custom => l10n.memberPresetCustom,
+      MemberLaunchConfigKind.inheritTeam => l10n.member.presetInheritTeam,
+      MemberLaunchConfigKind.preset => l10n.member.launchConfigTypePreset,
+      MemberLaunchConfigKind.custom => l10n.member.presetCustom,
     };
   }
 }
@@ -92,7 +92,7 @@ class MemberLaunchInheritSummary extends StatelessWidget {
             bundle: bundle,
             providerState: providerState,
           )
-        : l10n.memberLaunchConfigInheritUnset;
+        : l10n.member.launchConfigInheritUnset;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),

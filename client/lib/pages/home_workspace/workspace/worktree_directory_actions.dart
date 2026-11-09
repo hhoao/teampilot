@@ -38,19 +38,19 @@ Future<WorktreeDirectoryMenuAction?> showWorktreeDirectoryContextMenu(
       TpActionMenuSpec.item(
         value: WorktreeDirectoryMenuAction.newConversation,
         icon: Icons.edit_outlined,
-        label: l10n.worktreeNewConversationHere,
+        label: l10n.worktree.newConversationHere,
       ),
       TpActionMenuSpec.item(
         value: WorktreeDirectoryMenuAction.copyPath,
         icon: Icons.copy_rounded,
-        label: l10n.worktreeMenuCopyPath,
+        label: l10n.worktree.menuCopyPath,
       ),
     ],
     if (canRemove)
       TpActionMenuSpec.item(
         value: WorktreeDirectoryMenuAction.remove,
         icon: Icons.delete_outline_rounded,
-        label: l10n.worktreeMenuRemove,
+        label: l10n.worktree.menuRemove,
         destructive: true,
       ),
   ];
@@ -98,7 +98,7 @@ Future<void> confirmAndRemoveWorktree({
   if (hasBusy) {
     AppToast.show(
       context,
-      message: l10n.worktreeDeleteBusyWarning,
+      message: l10n.worktree.deleteBusyWarning,
       variant: TpToastVariant.error,
     );
     return;
@@ -143,7 +143,7 @@ Future<void> confirmAndRemoveWorktree({
     if (!context.mounted) return;
     AppToast.show(
       context,
-      message: l10n.worktreeDeleteFailed(error.toString()),
+      message: l10n.worktree.deleteFailed(error: error.toString()),
       variant: TpToastVariant.error,
     );
   }

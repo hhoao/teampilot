@@ -120,20 +120,20 @@ class _WorkspaceDeadTargetRemapDialogState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TpDialogHeader(
-            title: l10n.workspaceDeadTargetRemapTitle,
+            title: l10n.workspace.deadTargetRemapTitle,
             onClose: () => Navigator.of(context).pop(),
           ),
           const SizedBox(height: 12),
           if (_showFromPicker) ...[
             Text(
-              l10n.workspaceDeadTargetRemapPickFrom,
+              l10n.workspace.deadTargetRemapPickFrom,
               style: TpTextStyles.of(context).smMedium,
             ),
             const SizedBox(height: 6),
             TpSelect<String>(
               items: widget.deadTargetIds,
               initialItem: from,
-              hintText: l10n.workspaceDeadTargetRemapPickFrom,
+              hintText: l10n.workspace.deadTargetRemapPickFrom,
               decoration: TpSelectDecorations.themed(context),
               itemLabel: _labelByIdOrId,
               searchable: widget.deadTargetIds.length >= 8,
@@ -142,10 +142,10 @@ class _WorkspaceDeadTargetRemapDialogState
             const SizedBox(height: 16),
           ],
           if (from != null) ...[
-            Text(l10n.workspaceDeadTargetRemapBody(fromLabel)),
+            Text(l10n.workspace.deadTargetRemapBody(from: fromLabel)),
             const SizedBox(height: 16),
             Text(
-              l10n.workspaceDeadTargetRemapPickTo,
+              l10n.workspace.deadTargetRemapPickTo,
               style: TpTextStyles.of(context).smMedium,
             ),
             const SizedBox(height: 6),
@@ -168,7 +168,7 @@ class _WorkspaceDeadTargetRemapDialogState
                 final candidates = snapshot.data!;
                 if (candidates.isEmpty) {
                   return Text(
-                    l10n.workspaceDeadTargetRemapNothing,
+                    l10n.workspace.deadTargetRemapNothing,
                     style: TpTextStyles.of(
                       context,
                     ).mdColored(Theme.of(context).colorScheme.error),
@@ -189,7 +189,7 @@ class _WorkspaceDeadTargetRemapDialogState
                   key: ValueKey(from),
                   items: candidates,
                   initialItem: selected,
-                  hintText: l10n.workspaceDeadTargetRemapPickTo,
+                  hintText: l10n.workspace.deadTargetRemapPickTo,
                   decoration: TpSelectDecorations.themed(context),
                   itemLabel: (t) => t.label,
                   searchable: candidates.length >= 8,
@@ -214,7 +214,7 @@ class _WorkspaceDeadTargetRemapDialogState
                       _selectedTo != null;
                   return FilledButton(
                     onPressed: canConfirm ? _confirm : null,
-                    child: Text(l10n.workspaceDeadTargetRemapConfirm),
+                    child: Text(l10n.workspace.deadTargetRemapConfirm),
                   );
                 },
               ),

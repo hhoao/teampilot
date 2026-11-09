@@ -12,8 +12,8 @@ Widget _host({
 }) {
   return MaterialApp(
     locale: const Locale('en'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: Scaffold(
       body: Builder(
         builder: (context) => TextButton(

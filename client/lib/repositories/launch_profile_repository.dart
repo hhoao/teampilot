@@ -65,13 +65,8 @@ class LaunchProfileRepository {
     HomeRuntimeIdentity plane,
   ) {
     Future<void>? pending;
-    pending =
-        _revalidateLaunchProfilesSnapshot(
-          paths,
-          store,
-          snapshot,
-          plane,
-        ).whenComplete(() {
+    pending = _revalidateLaunchProfilesSnapshot(paths, store, snapshot, plane)
+        .whenComplete(() {
           if (identical(_revalidationFuture, pending)) {
             _revalidationFuture = null;
           }

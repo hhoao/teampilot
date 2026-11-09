@@ -122,36 +122,40 @@ void main() {
     },
   );
 
-  test('attachMemberAcpRuntime runs lifecycle gate before cubit.start', () async {
-    final events = <String>[];
-    final harness = _Harness(
-      gate: ({
-        required team,
-        required member,
-        required session,
-        required sessionId,
-        required teamBusInstalled,
-        extraMcpServers,
-      }) async {
-        events.add('gate');
-        return null;
-      },
-    );
-    harness.runtime.onStart = () => events.add('start');
-    final session = _mixedSession(acp: true);
-    final team = _mixedTeam();
-    final member = _lead();
+  test(
+    'attachMemberAcpRuntime runs lifecycle gate before cubit.start',
+    () async {
+      final events = <String>[];
+      final harness = _Harness(
+        gate:
+            ({
+              required team,
+              required member,
+              required session,
+              required sessionId,
+              required teamBusInstalled,
+              extraMcpServers,
+            }) async {
+              events.add('gate');
+              return null;
+            },
+      );
+      harness.runtime.onStart = () => events.add('start');
+      final session = _mixedSession(acp: true);
+      final team = _mixedTeam();
+      final member = _lead();
 
-    final handled = await harness.service.attachMemberAcpRuntime(
-      _job(session, team, member),
-      session,
-      (team: team, member: member, cli: CliTool.claude),
-    );
+      final handled = await harness.service.attachMemberAcpRuntime(
+        _job(session, team, member),
+        session,
+        (team: team, member: member, cli: CliTool.claude),
+      );
 
-    expect(handled, isTrue);
-    expect(events, ['gate', 'start']);
-    expect(harness.tab.memberAcpRuntimes['lead'], isNotNull);
-  });
+      expect(handled, isTrue);
+      expect(events, ['gate', 'start']);
+      expect(harness.tab.memberAcpRuntimes['lead'], isNotNull);
+    },
+  );
 
   test(
     'attachMemberAcpRuntime marks the seat running and ready before start finishes',
@@ -162,10 +166,7 @@ void main() {
       final launcher = FakeMemberLauncher();
       final bus = TeamBus(launcher: launcher);
       bus.declareMember(
-        AgentNode.test(
-          memberId: 'lead',
-          lifecycle: MemberLifecycle.declared,
-        ),
+        AgentNode.test(memberId: 'lead', lifecycle: MemberLifecycle.declared),
       );
       harness.tab.teamBus = bus;
 
@@ -191,14 +192,15 @@ void main() {
     'attachMemberAcpRuntime throws when lifecycle gate fails and does not start',
     () async {
       final harness = _Harness(
-        gate: ({
-          required team,
-          required member,
-          required session,
-          required sessionId,
-          required teamBusInstalled,
-          extraMcpServers,
-        }) async => ConnectShellResult.failed,
+        gate:
+            ({
+              required team,
+              required member,
+              required session,
+              required sessionId,
+              required teamBusInstalled,
+              extraMcpServers,
+            }) async => ConnectShellResult.failed,
       );
       final session = _mixedSession(acp: true);
       final team = _mixedTeam();
@@ -227,14 +229,15 @@ void main() {
     'attachMemberAcpRuntime throws when lifecycle gate defers and does not start',
     () async {
       final harness = _Harness(
-        gate: ({
-          required team,
-          required member,
-          required session,
-          required sessionId,
-          required teamBusInstalled,
-          extraMcpServers,
-        }) async => ConnectShellResult.deferred,
+        gate:
+            ({
+              required team,
+              required member,
+              required session,
+              required sessionId,
+              required teamBusInstalled,
+              extraMcpServers,
+            }) async => ConnectShellResult.deferred,
       );
       final session = _mixedSession(acp: true);
       final team = _mixedTeam();
@@ -332,22 +335,21 @@ void main() {
               warnings: const <String>[],
               remoteCliPath: '/remote/bin/claude',
             ),
-        sshLaunchFactory:
-            ({required session, required launchTarget}) {
-              sshLaunchBuilt = true;
-              return (
-                profile: const SshProfile(
-                  id: 'p1',
-                  name: 'host',
-                  host: 'host',
-                  username: 'u',
-                  authType: SshAuthType.password,
-                ),
-                // The injected `acpRuntimeFactory` replaces the production
-                // spawner, so this opener is never invoked.
-                openChannel: (_) async => throw UnimplementedError(),
-              );
-            },
+        sshLaunchFactory: ({required session, required launchTarget}) {
+          sshLaunchBuilt = true;
+          return (
+            profile: const SshProfile(
+              id: 'p1',
+              name: 'host',
+              host: 'host',
+              username: 'u',
+              authType: SshAuthType.password,
+            ),
+            // The injected `acpRuntimeFactory` replaces the production
+            // spawner, so this opener is never invoked.
+            openChannel: (_) async => throw UnimplementedError(),
+          );
+        },
       );
       final session = _personalSession();
 
@@ -366,58 +368,64 @@ void main() {
     },
   );
 
-  test('attachMemberAcpRuntime builds an SSH launch for a remote ACP member', () async {
-    var sshLaunchBuilt = false;
-    final harness = _Harness(
-      sshLaunchFactory: ({required session, required launchTarget}) {
-        sshLaunchBuilt = true;
-        return (
-          profile: const SshProfile(
-            id: 'p1',
-            name: 'host',
-            host: 'host',
-            username: 'u',
-            authType: SshAuthType.password,
+  test(
+    'attachMemberAcpRuntime builds an SSH launch for a remote ACP member',
+    () async {
+      var sshLaunchBuilt = false;
+      final harness = _Harness(
+        sshLaunchFactory: ({required session, required launchTarget}) {
+          sshLaunchBuilt = true;
+          return (
+            profile: const SshProfile(
+              id: 'p1',
+              name: 'host',
+              host: 'host',
+              username: 'u',
+              authType: SshAuthType.password,
+            ),
+            // The injected acpRuntimeFactory replaces the production spawner,
+            // so this opener is never invoked.
+            openChannel: (_) async => throw UnimplementedError(),
+          );
+        },
+      );
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        sessionTeam: 'team-1',
+        members: [
+          SessionMemberBinding(
+            rosterMemberId: 'lead',
+            taskId: 'task-lead',
+            cli: CliTool.claude,
+            acp: true,
           ),
-          // The injected acpRuntimeFactory replaces the production spawner,
-          // so this opener is never invoked.
-          openChannel: (_) async => throw UnimplementedError(),
-        );
-      },
-    );
-    final session = AppSession(
-      sessionId: 's1',
-      workspaceId: 'w1',
-      sessionTeam: 'team-1',
-      members: [
-        SessionMemberBinding(
-          rosterMemberId: 'lead',
-          taskId: 'task-lead',
-          cli: CliTool.claude,
-          acp: true,
-        ),
-      ],
-      memberTargets: const {'lead': 'ssh:p1'},
-      createdAt: 1,
-    );
-    final team = _mixedTeam();
-    final member = _lead();
+        ],
+        memberTargets: const {'lead': 'ssh:p1'},
+        createdAt: 1,
+      );
+      final team = _mixedTeam();
+      final member = _lead();
 
-    final handled = await harness.service.attachMemberAcpRuntime(
-      _job(session, team, member),
-      session,
-      (team: team, member: member, cli: CliTool.claude),
-    );
+      final handled = await harness.service.attachMemberAcpRuntime(
+        _job(session, team, member),
+        session,
+        (team: team, member: member, cli: CliTool.claude),
+      );
 
-    expect(handled, isTrue);
-    expect(sshLaunchBuilt, isTrue);
-    expect(harness.tab.memberAcpRuntimes.keys, contains('lead'));
-    expect(harness.runtime.started, isTrue);
-    // The member spawns the CLI staged on the remote work plane, never the
-    // desktop path, and the desktop PATH is not injected into the seat env.
-    expect(harness.runtime.executable, '/remote/bin/claude');
-    expect(harness.runtime.baseEnv['PATH'], isNot(Platform.environment['PATH']));
-  });
+      expect(handled, isTrue);
+      expect(sshLaunchBuilt, isTrue);
+      expect(harness.tab.memberAcpRuntimes.keys, contains('lead'));
+      expect(harness.runtime.started, isTrue);
+      // The member spawns the CLI staged on the remote work plane, never the
+      // desktop path, and the desktop PATH is not injected into the seat env.
+      expect(harness.runtime.executable, '/remote/bin/claude');
+      expect(
+        harness.runtime.baseEnv['PATH'],
+        isNot(Platform.environment['PATH']),
+      );
+    },
+  );
 
   test('remote mixed ACP seat binds the remote bus', () async {
     final gateway = _FakeAgentStatusGateway()..sessionRegistered = true;
@@ -585,7 +593,8 @@ void main() {
       expect(
         tab.memberSshSessions.keys.toSet(),
         {'lead', 'builder', 's1'},
-        reason: 'team seats are keyed by member id; personal falls back to the '
+        reason:
+            'team seats are keyed by member id; personal falls back to the '
             'session id',
       );
     },
@@ -610,43 +619,37 @@ void main() {
       expect(lookup.registeredSeats.single.sessionId, 's1');
       expect(lookup.registeredSeats.single.memberId, 's1');
       expect(lookup.registeredSeats.single.cli, CliTool.opencode);
-      expect(
-        harness.runtime.baseEnv[opencodeEnableQuestionToolEnvKey],
-        'true',
-      );
+      expect(harness.runtime.baseEnv[opencodeEnableQuestionToolEnvKey], 'true');
     },
   );
 
-  test(
-    'attachAcpRuntime stages app-owned MCP (catalog + session SSH) for a '
-    'personal seat',
-    () async {
-      final gateway = _FakeAgentStatusGateway();
-      final harness = _Harness(gateway: gateway);
-      final session = _personalSession(cli: CliTool.opencode);
-      final workspace = Workspace(
-        workspaceId: 'w1',
-        createdAt: 1,
-        folders: const [
-          WorkspaceFolder(
-            path: '/local',
-            targetId: WorkspaceFolder.localTargetId,
-          ),
-          WorkspaceFolder(path: '/home', targetId: 'ssh:home'),
-        ],
-      );
+  test('attachAcpRuntime stages app-owned MCP (catalog + session SSH) for a '
+      'personal seat', () async {
+    final gateway = _FakeAgentStatusGateway();
+    final harness = _Harness(gateway: gateway);
+    final session = _personalSession(cli: CliTool.opencode);
+    final workspace = Workspace(
+      workspaceId: 'w1',
+      createdAt: 1,
+      folders: const [
+        WorkspaceFolder(
+          path: '/local',
+          targetId: WorkspaceFolder.localTargetId,
+        ),
+        WorkspaceFolder(path: '/home', targetId: 'ssh:home'),
+      ],
+    );
 
-      final handled = await harness.service.attachAcpRuntime(
-        _personalJob(session, workspace: workspace),
-        session,
-      );
+    final handled = await harness.service.attachAcpRuntime(
+      _personalJob(session, workspace: workspace),
+      session,
+    );
 
-      expect(handled, isTrue);
-      final names = harness.runtime.mcpServers.map((s) => s.name).toSet();
-      expect(names, contains('teampilot'));
-      expect(names, contains('ssh'));
-    },
-  );
+    expect(handled, isTrue);
+    final names = harness.runtime.mcpServers.map((s) => s.name).toSet();
+    expect(names, contains('teampilot'));
+    expect(names, contains('ssh'));
+  });
 
   test(
     'attachAcpRuntime keeps the question tool off when no responder is wired',
@@ -747,10 +750,7 @@ void main() {
       expect(seen, isNotNull);
       expect(seen!.questionsOnly, isTrue);
       expect(seen!.sessionId, 's1');
-      expect(
-        harness.runtime.baseEnv[opencodeEnableQuestionToolEnvKey],
-        'true',
-      );
+      expect(harness.runtime.baseEnv[opencodeEnableQuestionToolEnvKey], 'true');
     },
   );
 }
@@ -809,12 +809,7 @@ class _FakeAgentStatusGateway implements TeammateBusMcpGatewayPort {
 class _FakeSeatLookup implements AgentStatusSeatLookupPort {
   final registeredSeats =
       <
-        ({
-          String sessionId,
-          String memberId,
-          CliTool cli,
-          bool skipPermissions,
-        })
+        ({String sessionId, String memberId, CliTool cli, bool skipPermissions})
       >[];
 
   @override
@@ -1311,6 +1306,7 @@ class _NoopSink implements StreamSink<List<int>> {
   @override
   Future<void> get done async {}
 }
+
 class _RecordingRemoteBusSetup implements RemoteMemberBusSetupPort {
   int calls = 0;
 

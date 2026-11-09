@@ -135,7 +135,7 @@ class LogViewerPanelState extends State<LogViewerPanel> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _rawLines = [l10n.logViewerLoadFilesFailed('$e')];
+        _rawLines = [l10n.log.viewerLoadFilesFailed(error: '$e')];
         _displayedLines = _rawLines;
       });
     } finally {
@@ -165,7 +165,7 @@ class LogViewerPanelState extends State<LogViewerPanel> {
     } on Object catch (e) {
       if (!mounted) return;
       setState(() {
-        _rawLines = [l10n.logViewerReadFailed('$e')];
+        _rawLines = [l10n.log.viewerReadFailed(error: '$e')];
         _displayedLines = _rawLines;
       });
     } finally {
@@ -213,7 +213,7 @@ class LogViewerPanelState extends State<LogViewerPanel> {
     if (!mounted) return;
     AppToast.show(
       context,
-      message: context.l10n.logViewerPathCopied(p.basename(path)),
+      message: context.l10n.log.viewerPathCopied(name: p.basename(path)),
       variant: TpToastVariant.success,
     );
   }
@@ -226,7 +226,7 @@ class LogViewerPanelState extends State<LogViewerPanel> {
     if (!mounted) return;
     AppToast.show(
       context,
-      message: context.l10n.logViewerAllCopied,
+      message: context.l10n.log.viewerAllCopied,
       variant: TpToastVariant.success,
     );
   }
@@ -239,14 +239,14 @@ class LogViewerPanelState extends State<LogViewerPanel> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: l10n.logViewerClearDone,
+        message: l10n.log.viewerClearDone,
         variant: TpToastVariant.success,
       );
     } on Object catch (e) {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: l10n.logViewerClearFailed('$e'),
+        message: l10n.log.viewerClearFailed(error: '$e'),
         variant: TpToastVariant.error,
       );
     }

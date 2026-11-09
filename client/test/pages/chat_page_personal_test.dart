@@ -164,8 +164,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: MultiRepositoryProvider(
           providers: [
             RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),

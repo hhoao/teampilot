@@ -73,7 +73,7 @@ class SshHomeDisconnectedBanner extends StatelessWidget {
                 SizedBox(width: tp.spacing.sm),
                 Expanded(
                   child: Text(
-                    l10n.sshHomeDisconnectedBannerMessage,
+                    l10n.ssh.homeDisconnectedBannerMessage,
                     style: TpTextStyles.of(
                       context,
                     ).sm.copyWith(color: scheme.onErrorContainer),
@@ -89,8 +89,8 @@ class SshHomeDisconnectedBanner extends StatelessWidget {
                         ),
                   child: Text(
                     connecting
-                        ? l10n.termuxSetupConnecting
-                        : l10n.sshHomeDisconnectedReconnect,
+                        ? l10n.termux.setupConnecting
+                        : l10n.ssh.homeDisconnectedReconnect,
                   ),
                 ),
               ],

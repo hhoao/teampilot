@@ -1,8 +1,5 @@
-typedef SshProfileTransportClosedHandler = void Function(
-  String profileId,
-  Object error,
-  StackTrace stackTrace,
-);
+typedef SshProfileTransportClosedHandler =
+    void Function(String profileId, Object error, StackTrace stackTrace);
 
 /// Shared event sink for SSH connection lifecycle. Injected into
 /// the SSH factory and reconnect coordinator at bootstrap so

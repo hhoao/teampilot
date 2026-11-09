@@ -74,7 +74,7 @@ class _VaultEntryEditorDialogState extends State<VaultEntryEditorDialog> {
   }
 
   Future<void> _save() async {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     final messenger = ScaffoldMessenger.maybeOf(context);
     final cubit = context.read<VaultCubit>();
     final title = _title.text.trim();
@@ -102,15 +102,15 @@ class _VaultEntryEditorDialogState extends State<VaultEntryEditorDialog> {
     );
     await cubit.save(entry);
     if (mounted) await Navigator.of(context).maybePop();
-    messenger?.showSnackBar(SnackBar(content: Text(l10n.vaultSave)));
+    messenger?.showSnackBar(SnackBar(content: Text(l10n.vault.save)));
   }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     return AlertDialog(
       title: Text(
-        widget.existing == null ? l10n.vaultNewEntry : widget.existing!.title,
+        widget.existing == null ? l10n.vault.newEntry : widget.existing!.title,
       ),
       content: SizedBox(
         width: 560,
@@ -123,7 +123,7 @@ class _VaultEntryEditorDialogState extends State<VaultEntryEditorDialog> {
                 key: const Key('vault-editor-title'),
                 controller: _title,
                 autofocus: true,
-                decoration: InputDecoration(labelText: l10n.vaultEntryTitle),
+                decoration: InputDecoration(labelText: l10n.vault.entryTitle),
               ),
               const SizedBox(height: 12),
               TpSelect<VaultEntryType>(
@@ -134,9 +134,9 @@ class _VaultEntryEditorDialogState extends State<VaultEntryEditorDialog> {
                   if (type == null) return;
                   setState(() {
                     _type = type;
-                    _syncFields(
-                      {for (final f in _fields.entries) f.key: f.value.text},
-                    );
+                    _syncFields({
+                      for (final f in _fields.entries) f.key: f.value.text,
+                    });
                   });
                 },
                 decoration: TpSelectDecorations.themed(context),
@@ -153,24 +153,24 @@ class _VaultEntryEditorDialogState extends State<VaultEntryEditorDialog> {
               ],
               TpInput(
                 controller: _tags,
-                decoration: InputDecoration(labelText: l10n.vaultEntryTags),
+                decoration: InputDecoration(labelText: l10n.vault.entryTags),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _notes,
                 maxLines: 3,
-                decoration: InputDecoration(labelText: l10n.vaultEntryNotes),
+                decoration: InputDecoration(labelText: l10n.vault.entryNotes),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(l10n.vaultEntryFavorite),
+                title: Text(l10n.vault.entryFavorite),
                 value: _favorite,
                 onChanged: (value) => setState(() => _favorite = value),
               ),
               if (_type != VaultEntryType.sshPrivateKey)
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(l10n.vaultOnlyCopy),
+                  title: Text(l10n.vault.onlyCopy),
                   value: !_revealable,
                   onChanged: (value) => setState(() => _revealable = !value),
                 ),
@@ -181,12 +181,12 @@ class _VaultEntryEditorDialogState extends State<VaultEntryEditorDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.vaultCancel),
+          child: Text(l10n.vault.cancel),
         ),
         FilledButton(
           key: const Key('vault-editor-save'),
           onPressed: _save,
-          child: Text(l10n.vaultSave),
+          child: Text(l10n.vault.save),
         ),
       ],
     );

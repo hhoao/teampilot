@@ -77,8 +77,8 @@ class _ResourceUsageStatusSegmentState
         builder: (context, state) {
           final l10n = context.l10n;
           final tooltip =
-              '${l10n.resourceManagerTooltip(state.terminalCount)}\n'
-              '${l10n.resourceManagerTooltipHint}';
+              '${l10n.resource.managerTooltip(count: state.terminalCount)}\n'
+              '${l10n.resource.managerTooltipHint}';
 
           return TpActionMenuAnchor(
             controller: _popover,

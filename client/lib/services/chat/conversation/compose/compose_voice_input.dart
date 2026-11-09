@@ -20,12 +20,12 @@ String composeVoiceInitFailureMessage(
   ComposeVoiceInput input,
 ) {
   if (input.blockedByMacOsIdeLaunch) {
-    return l10n.workspaceChatLandingVoiceMacOsIdeLaunch;
+    return l10n.workspace.chatLandingVoiceMacOsIdeLaunch;
   }
   if (input.permissionDenied) {
-    return l10n.workspaceChatLandingVoicePermissionDenied;
+    return l10n.workspace.chatLandingVoicePermissionDenied;
   }
-  return l10n.workspaceChatLandingVoiceUnavailable;
+  return l10n.workspace.chatLandingVoiceUnavailable;
 }
 
 /// Whether [error] indicates the user denied microphone / speech permission.

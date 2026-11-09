@@ -16,8 +16,8 @@ Widget _host({required AutomationCubit cubit, required Widget child}) {
   return BlocProvider<AutomationCubit>.value(
     value: cubit,
     child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       locale: const Locale('en'),
       theme: ThemeData(colorScheme: scheme),
       home: TpTheme(
@@ -206,7 +206,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final l10n = lookupAppLocalizations(const Locale('en'));
-    expect(find.text(l10n.automationsSidebarTitle), findsOneWidget);
+    expect(find.text(l10n.automations.sidebarTitle), findsOneWidget);
     expect(find.text('Morning'), findsOneWidget);
     expect(find.text('Evening'), findsOneWidget);
     expect(
@@ -246,6 +246,6 @@ void main() {
 
     final l10n = lookupAppLocalizations(const Locale('en'));
     expect(find.byKey(const Key('scheduled-tasks-empty-icon')), findsOneWidget);
-    expect(find.text(l10n.automationsStatusBarEmpty), findsOneWidget);
+    expect(find.text(l10n.automations.statusBarEmpty), findsOneWidget);
   });
 }

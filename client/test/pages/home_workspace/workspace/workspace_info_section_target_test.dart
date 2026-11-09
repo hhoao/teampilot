@@ -39,12 +39,14 @@ void main() {
         ),
       );
 
-      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-      expect(find.text(l10n.workspaceFoldersSectionTitle), findsOneWidget);
+      final l10n = await const AppLocalizationsCompatDelegate().load(
+        const Locale('en'),
+      );
+      expect(find.text(l10n.workspace.foldersSectionTitle), findsOneWidget);
       expect(find.text(l10n.rootSandboxEnvOptInTitle), findsOneWidget);
       expect(find.text(l10n.injectSessionSshMcpTitle), findsNothing);
       expect(
-        find.text(l10n.workspaceFoldersAddOnAnotherMachine),
+        find.text(l10n.workspace.foldersAddOnAnotherMachine),
         findsOneWidget,
       );
     });
@@ -66,7 +68,9 @@ void main() {
           ),
         );
 
-        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        final l10n = await const AppLocalizationsCompatDelegate().load(
+          const Locale('en'),
+        );
         expect(find.text(l10n.injectSessionSshMcpTitle), findsOneWidget);
       });
     },
@@ -87,7 +91,9 @@ void main() {
           ),
         );
 
-        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        final l10n = await const AppLocalizationsCompatDelegate().load(
+          const Locale('en'),
+        );
         expect(find.text(l10n.injectSessionSshMcpTitle), findsOneWidget);
       });
     },
@@ -200,8 +206,8 @@ Future<void> _pumpWorkspaceInfo(
   await tester.pumpWidget(
     MaterialApp(
       locale: const Locale('en'),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: MultiRepositoryProvider(
         providers: [
           RepositoryProvider<HomeTargetController>.value(value: controller),

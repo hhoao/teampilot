@@ -5,8 +5,8 @@ import 'package:teampilot/models/floating_workspace_tab.dart';
 import 'package:teampilot/pages/floating_workspace/floating_workspace_tab_bar.dart';
 
 Widget _host(Widget child) => MaterialApp(
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
-  supportedLocales: AppLocalizations.supportedLocales,
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: appLocalizationsSupportedLocales,
   home: Scaffold(body: child),
 );
 

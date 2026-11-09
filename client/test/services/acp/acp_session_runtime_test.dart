@@ -646,36 +646,39 @@ void main() {
     },
   );
 
-  test('start with permissionPolicy Ask surfaces a bash permission card', () async {
-    acpd.RequestPermissionOutcome? outcome;
-    final runtime = makeRuntime((argv, env) async => conn);
-    await runtime.start(
-      tool: CliTool.gemini,
-      executable: 'gemini',
-      sessionToolDir: sessionToolDir,
-      workingDirectory: cwd,
-      baseEnv: const {'PATH': '/usr/bin'},
-      permissionPolicy: LaunchSecurityPolicy.ask,
-    );
+  test(
+    'start with permissionPolicy Ask surfaces a bash permission card',
+    () async {
+      acpd.RequestPermissionOutcome? outcome;
+      final runtime = makeRuntime((argv, env) async => conn);
+      await runtime.start(
+        tool: CliTool.gemini,
+        executable: 'gemini',
+        sessionToolDir: sessionToolDir,
+        workingDirectory: cwd,
+        baseEnv: const {'PATH': '/usr/bin'},
+        permissionPolicy: LaunchSecurityPolicy.ask,
+      );
 
-    final cards = <AgentPermissionRequest>[];
-    final permissionSub = runtime.permissionRequests.listen((request) {
-      cards.add(request);
-      runtime.answerPermission(AgentPermissionReplyKind.allowOnce);
-    });
-    await driveBashPermission(
-      runtime,
-      toolCallId: 'perm-ask',
-      onOutcome: (value) => outcome = value,
-    );
-    permissionSub.cancel();
+      final cards = <AgentPermissionRequest>[];
+      final permissionSub = runtime.permissionRequests.listen((request) {
+        cards.add(request);
+        runtime.answerPermission(AgentPermissionReplyKind.allowOnce);
+      });
+      await driveBashPermission(
+        runtime,
+        toolCallId: 'perm-ask',
+        onOutcome: (value) => outcome = value,
+      );
+      permissionSub.cancel();
 
-    expect(cards, hasLength(1));
-    expect(cards.single.id, 'perm-ask');
-    expect(outcome, isA<acpd.PermissionSelected>());
-    expect((outcome! as acpd.PermissionSelected).optionId, 'allow-1');
-    await runtime.close();
-  });
+      expect(cards, hasLength(1));
+      expect(cards.single.id, 'perm-ask');
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'allow-1');
+      await runtime.close();
+    },
+  );
 
   test(
     'setPermissionPolicy(Ask) after start surfaces the next bash request',
@@ -875,27 +878,29 @@ void main() {
     },
   );
 
-  test('start loads the stored session when loadSession is negotiated',
-      () async {
-    await stubInitialize(
-      agentCapabilities: const acpd.AgentCapabilities(loadSession: true),
-    );
-    agent.connection.onRequest('session/load', (params) {
-      return acpd.LoadSessionResponse().toJson();
-    });
+  test(
+    'start loads the stored session when loadSession is negotiated',
+    () async {
+      await stubInitialize(
+        agentCapabilities: const acpd.AgentCapabilities(loadSession: true),
+      );
+      agent.connection.onRequest('session/load', (params) {
+        return acpd.LoadSessionResponse().toJson();
+      });
 
-    final runtime = makeRuntime((argv, env) async => conn);
-    await runtime.start(
-      tool: CliTool.gemini,
-      executable: 'gemini',
-      sessionToolDir: sessionToolDir,
-      workingDirectory: cwd,
-      resumeSessionId: 'agent-9',
-    );
+      final runtime = makeRuntime((argv, env) async => conn);
+      await runtime.start(
+        tool: CliTool.gemini,
+        executable: 'gemini',
+        sessionToolDir: sessionToolDir,
+        workingDirectory: cwd,
+        resumeSessionId: 'agent-9',
+      );
 
-    expect(runtime.sessionId, 'agent-9');
-    await runtime.close();
-  });
+      expect(runtime.sessionId, 'agent-9');
+      await runtime.close();
+    },
+  );
 
   test('start resumes in the cwd discovered via session/list', () async {
     await stubInitialize(
@@ -938,71 +943,75 @@ void main() {
     await runtime.close();
   });
 
-  test('start resumes via session/resume when loadSession is unsupported',
-      () async {
-    await stubInitialize(
-      agentCapabilities: const acpd.AgentCapabilities(
-        sessionCapabilities: acpd.SessionCapabilities(
-          resume: acpd.CapabilityFlag(),
+  test(
+    'start resumes via session/resume when loadSession is unsupported',
+    () async {
+      await stubInitialize(
+        agentCapabilities: const acpd.AgentCapabilities(
+          sessionCapabilities: acpd.SessionCapabilities(
+            resume: acpd.CapabilityFlag(),
+          ),
         ),
-      ),
-    );
-    agent.connection.onRequest('session/resume', (params) {
-      return acpd.ResumeSessionResponse().toJson();
-    });
-
-    final runtime = makeRuntime((argv, env) async => conn);
-    await runtime.start(
-      tool: CliTool.gemini,
-      executable: 'gemini',
-      sessionToolDir: sessionToolDir,
-      workingDirectory: cwd,
-      resumeSessionId: 'agent-9',
-    );
-
-    expect(runtime.sessionId, 'agent-9');
-    await runtime.close();
-  });
-
-  test('start surfaces a load failure instead of opening a new session',
-      () async {
-    await stubInitialize(
-      agentCapabilities: const acpd.AgentCapabilities(loadSession: true),
-    );
-    agent.connection.onRequest('session/load', (params) {
-      throw acpd.RpcError(
-        code: acpd.ErrorCode.invalidParams.code,
-        message: 'session agent-9 does not belong to cwd: $cwd',
       );
-    });
-    var newCalls = 0;
-    agent.connection.onRequest('session/new', (params) {
-      newCalls++;
-      return acpd.NewSessionResponse(sessionId: 'fresh-1').toJson();
-    });
+      agent.connection.onRequest('session/resume', (params) {
+        return acpd.ResumeSessionResponse().toJson();
+      });
 
-    final runtime = makeRuntime((argv, env) async => conn);
-    await expectLater(
-      runtime.start(
+      final runtime = makeRuntime((argv, env) async => conn);
+      await runtime.start(
         tool: CliTool.gemini,
         executable: 'gemini',
         sessionToolDir: sessionToolDir,
         workingDirectory: cwd,
-        resumeSessionId: 'stale',
-      ),
-      throwsA(
-        isA<acpd.RpcError>().having(
-          (error) => error.code,
-          'code',
-          acpd.ErrorCode.invalidParams.code,
-        ),
-      ),
-    );
+        resumeSessionId: 'agent-9',
+      );
 
-    // A failed resume must not silently replace the conversation.
-    expect(newCalls, 0);
-    expect(runtime.isStarted, isFalse);
-  });
+      expect(runtime.sessionId, 'agent-9');
+      await runtime.close();
+    },
+  );
+
+  test(
+    'start surfaces a load failure instead of opening a new session',
+    () async {
+      await stubInitialize(
+        agentCapabilities: const acpd.AgentCapabilities(loadSession: true),
+      );
+      agent.connection.onRequest('session/load', (params) {
+        throw acpd.RpcError(
+          code: acpd.ErrorCode.invalidParams.code,
+          message: 'session agent-9 does not belong to cwd: $cwd',
+        );
+      });
+      var newCalls = 0;
+      agent.connection.onRequest('session/new', (params) {
+        newCalls++;
+        return acpd.NewSessionResponse(sessionId: 'fresh-1').toJson();
+      });
+
+      final runtime = makeRuntime((argv, env) async => conn);
+      await expectLater(
+        runtime.start(
+          tool: CliTool.gemini,
+          executable: 'gemini',
+          sessionToolDir: sessionToolDir,
+          workingDirectory: cwd,
+          resumeSessionId: 'stale',
+        ),
+        throwsA(
+          isA<acpd.RpcError>().having(
+            (error) => error.code,
+            'code',
+            acpd.ErrorCode.invalidParams.code,
+          ),
+        ),
+      );
+
+      // A failed resume must not silently replace the conversation.
+      expect(newCalls, 0);
+      expect(runtime.isStarted, isFalse);
+    },
+  );
 
   test('start uses session/new when no resume id is given', () async {
     agent.connection.onRequest('session/new', (params) {
@@ -1045,35 +1054,37 @@ void main() {
     await runtime.close();
   });
 
-  test('start ignores the resume id when the agent negotiates no resume',
-      () async {
-    // setUp initializes with bare AgentCapabilities: neither loadSession nor
-    // sessionResume is advertised, so the stored id is unusable.
-    var loadCalls = 0;
-    var resumeCalls = 0;
-    agent.connection.onRequest('session/load', (params) {
-      loadCalls++;
-      return acpd.LoadSessionResponse().toJson();
-    });
-    agent.connection.onRequest('session/resume', (params) {
-      resumeCalls++;
-      return acpd.ResumeSessionResponse().toJson();
-    });
+  test(
+    'start ignores the resume id when the agent negotiates no resume',
+    () async {
+      // setUp initializes with bare AgentCapabilities: neither loadSession nor
+      // sessionResume is advertised, so the stored id is unusable.
+      var loadCalls = 0;
+      var resumeCalls = 0;
+      agent.connection.onRequest('session/load', (params) {
+        loadCalls++;
+        return acpd.LoadSessionResponse().toJson();
+      });
+      agent.connection.onRequest('session/resume', (params) {
+        resumeCalls++;
+        return acpd.ResumeSessionResponse().toJson();
+      });
 
-    final runtime = makeRuntime((argv, env) async => conn);
-    await runtime.start(
-      tool: CliTool.gemini,
-      executable: 'gemini',
-      sessionToolDir: sessionToolDir,
-      workingDirectory: cwd,
-      resumeSessionId: 'agent-9',
-    );
+      final runtime = makeRuntime((argv, env) async => conn);
+      await runtime.start(
+        tool: CliTool.gemini,
+        executable: 'gemini',
+        sessionToolDir: sessionToolDir,
+        workingDirectory: cwd,
+        resumeSessionId: 'agent-9',
+      );
 
-    expect(runtime.sessionId, sessionId);
-    expect(loadCalls, 0);
-    expect(resumeCalls, 0);
-    await runtime.close();
-  });
+      expect(runtime.sessionId, sessionId);
+      expect(loadCalls, 0);
+      expect(resumeCalls, 0);
+      await runtime.close();
+    },
+  );
 
   test('loadHistory replays via in-place session/load by default', () async {
     await stubInitialize(

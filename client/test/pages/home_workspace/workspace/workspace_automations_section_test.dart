@@ -18,8 +18,8 @@ Widget _wrap(AutomationCubit cubit, Widget child) {
   return BlocProvider<AutomationCubit>.value(
     value: cubit,
     child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       locale: const Locale('en'),
       theme: ThemeData(colorScheme: scheme),
       home: TpTheme(

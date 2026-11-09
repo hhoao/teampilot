@@ -92,12 +92,18 @@ void main() {
     expect(LaunchSecurityPolicy.ask.requiresDangerousExecution, isFalse);
   });
 
-  test('acp permission named-id codec omits fullAccess and maps unknown to fullAccess', () {
-    expect(acpPermissionToJson(LaunchSecurityPolicy.fullAccess), isNull);
-    expect(acpPermissionToJson(LaunchSecurityPolicy.ask), 'ask');
-    expect(acpPermissionFromJson(null), LaunchSecurityPolicy.fullAccess);
-    expect(acpPermissionFromJson('fullAccess'), LaunchSecurityPolicy.fullAccess);
-    expect(acpPermissionFromJson('ask'), LaunchSecurityPolicy.ask);
-    expect(acpPermissionFromJson('nope'), LaunchSecurityPolicy.fullAccess);
-  });
+  test(
+    'acp permission named-id codec omits fullAccess and maps unknown to fullAccess',
+    () {
+      expect(acpPermissionToJson(LaunchSecurityPolicy.fullAccess), isNull);
+      expect(acpPermissionToJson(LaunchSecurityPolicy.ask), 'ask');
+      expect(acpPermissionFromJson(null), LaunchSecurityPolicy.fullAccess);
+      expect(
+        acpPermissionFromJson('fullAccess'),
+        LaunchSecurityPolicy.fullAccess,
+      );
+      expect(acpPermissionFromJson('ask'), LaunchSecurityPolicy.ask);
+      expect(acpPermissionFromJson('nope'), LaunchSecurityPolicy.fullAccess);
+    },
+  );
 }

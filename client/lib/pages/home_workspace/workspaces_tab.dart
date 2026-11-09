@@ -124,9 +124,7 @@ class WorkspacesListBody extends StatelessWidget {
     final content = workspaces.isEmpty
         ? const HomeEmptyWorkspaces()
         : filteredWorkspaces.isEmpty
-        ? HomeEmptyWorkspaceFilterResults(
-            query: workspaceFilterQuery.trim(),
-          )
+        ? HomeEmptyWorkspaceFilterResults(query: workspaceFilterQuery.trim())
         : WorkspaceCollection(
             workspaces: filteredWorkspaces,
             sessions: sessions,
@@ -181,7 +179,7 @@ class WorkspacesToolbar extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 360),
             child: WorkspacesFilterField(
               controller: filterController,
-              hintText: l10n.homeWorkspaceWorkspaceFilterHint,
+              hintText: l10n.homeWorkspace.workspaceFilterHint,
               onChanged: onFilterChanged,
             ),
           ),
@@ -358,7 +356,7 @@ class WorkspacesSortButton extends StatelessWidget {
       triggerBuilder: (context, controller) {
         return WorkspacesIconChip(
           icon: Icons.sort_rounded,
-          tooltip: l10n.homeWorkspaceWorkspaceSort,
+          tooltip: l10n.homeWorkspace.workspaceSort,
           onTap: () {
             if (controller.isOpen) {
               controller.close();
@@ -781,7 +779,7 @@ class HomeEmptyWorkspaceFilterResults extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            l10n.homeWorkspaceWorkspaceFilterEmpty,
+            l10n.homeWorkspace.workspaceFilterEmpty,
             style: styles.mdColored(cs.onSurfaceVariant),
           ),
         ],
@@ -809,11 +807,11 @@ class HomeEmptyWorkspaces extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            l10n.homeWorkspaceEmptyWorkspaces,
+            l10n.homeWorkspace.emptyWorkspaces,
             style: styles.mdColored(cs.onSurfaceVariant),
           ),
           Text(
-            l10n.homeWorkspaceEmptyWorkspacesHint,
+            l10n.homeWorkspace.emptyWorkspacesHint,
             style: styles.smColored(
               cs.onSurfaceVariant.withValues(alpha: 0.75),
             ),

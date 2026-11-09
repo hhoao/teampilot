@@ -175,10 +175,7 @@ class SeatLeaseCubit extends Cubit<SeatLeaseState>
   }) {
     final key = agentSeatKey(sessionId: sessionId, memberId: memberId);
     final existing = state.leases[key] ?? const <String, SeatLease>{};
-    final wanted = ids
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toSet();
+    final wanted = ids.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
     final kept = <String, SeatLease>{};
     var changed = false;
     for (final entry in existing.entries) {

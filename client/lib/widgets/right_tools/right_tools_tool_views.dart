@@ -47,7 +47,7 @@ import 'tabbed_panel.dart';
 import 'tool_view.dart';
 
 /// Index of the search tool within [_buildViews], mirroring its guards.
-/// Order: members, fileTree, git, mailbox, board, search.
+/// Order: members, l10n.fileTree.fileTree, git, mailbox, board, search.
 ///
 /// [membersVisible] must already fold in the `team != null` condition from
 /// [_buildViews]; [showMailbox]/[showBoard] come from a
@@ -569,7 +569,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
         ToolView(
           id: RightToolIds.fileTree,
           icon: Icons.folder_outlined,
-          label: l10n.fileTree,
+          label: l10n.fileTree.fileTree,
           child: FileTreePanel(
             key: const ValueKey('workspace-file-tree'),
             cubit: widget.fileTreeCubit,
@@ -624,7 +624,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
         ToolView(
           id: RightToolIds.search,
           icon: Icons.search_outlined,
-          label: l10n.workspaceSearchPanel,
+          label: l10n.workspace.searchPanel,
           // Keyed by the slice roots: BlocProvider.create runs once per
           // element, so without this key the cubit would keep its creation-
           // time slices while WorkspaceSearchPanel below receives fresh ones

@@ -18,7 +18,7 @@ Future<bool> openWorkspaceTerminalAtPath({
   final folders =
       WorkspaceToolsScope.maybeOf(context)?.effectiveFolders ?? const [];
   final launcher = context.read<WorkbenchShellLauncher>();
-  final sshFailed = context.l10n.workspaceTerminalSshConnectFailed;
+  final sshFailed = context.l10n.workspace.terminalSshConnectFailed;
 
   return launcher.openAtPath(
     workspaceId: trimmedWorkspaceId,

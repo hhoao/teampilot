@@ -227,7 +227,7 @@ class _DiffViewerState extends State<DiffViewer> {
     if (_result.rows.isEmpty) {
       return Center(
         child: Text(
-          context.l10n.diffNoChanges,
+          context.l10n.diff.noChanges,
           style: TpTextStyles.of(context).mutedMd,
         ),
       );

@@ -1,0 +1,18 @@
+{
+  "config": "服务商",
+  "configCurrentEffectivePathPrefix": "当前文件：",
+  "configEffectivePathUnresolved": "尚未解析出路径（请指定 CLI 或自定义路径）",
+  "configOpenSessionSettings": "会话设置…",
+  "configPageSubtitle": "管理 LLM 提供商和模型。",
+  "configPathBadgeCustom": "自定义",
+  "configPathBadgeDefault": "默认",
+  "configPathBrowse": "选择文件",
+  "configPathHint": "留空则使用默认路径",
+  "configPathLabel": "LLM 配置文件",
+  "configPathPickerTitle": "选择 llm_config.json",
+  "configPathReset": "默认",
+  "configPathSave": "更新",
+  "configPathSessionCardDescription": "LLM 配置文件（llm_config.json）的绝对路径。留空则使用 CLI 安装目录旁的默认路径。",
+  "configPathSessionCardDescriptionSsh": "SSH 远端主机上 llm_config.json 的绝对路径。留空则使用远端 CLI 安装目录旁的默认路径。",
+  "configSubtitle": "提供商和模型"
+}

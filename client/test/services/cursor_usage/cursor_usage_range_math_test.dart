@@ -38,7 +38,6 @@ void main() {
       expect(resolved.endMs, cursorUsageDayEndMs(ms(2026, 10, 28)));
     });
 
-
     test('custom range snaps to whole local days', () {
       final resolved = cursorUsageResolveRange(
         range: CursorUsageCustomRange(

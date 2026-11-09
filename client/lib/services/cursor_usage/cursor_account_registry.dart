@@ -71,9 +71,7 @@ final class CursorAccountRegistry implements CursorAccountDirectory {
         owningUser: override?.owningUser,
         teamId: override?.teamId ?? 0,
         providerId: providerId,
-        providerName: providerId == null
-            ? null
-            : providerNames[providerId],
+        providerName: providerId == null ? null : providerNames[providerId],
       );
     }
 
@@ -91,10 +89,11 @@ final class CursorAccountRegistry implements CursorAccountDirectory {
     final resolver = _providerNameFor;
     if (resolver == null) return const {};
     final names = <String, String>{};
-    for (final id in accounts
-        .map((auth) => auth.providerId)
-        .whereType<String>()
-        .toSet()) {
+    for (final id
+        in accounts
+            .map((auth) => auth.providerId)
+            .whereType<String>()
+            .toSet()) {
       try {
         final name = await resolver(id);
         if (name != null && name.trim().isNotEmpty) names[id] = name.trim();

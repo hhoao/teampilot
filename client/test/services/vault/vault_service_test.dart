@@ -85,32 +85,32 @@ void main() {
     expect(await service.list(query: 'octo'), hasLength(1));
     expect(await service.list(query: 'work'), hasLength(1));
     expect(await service.list(query: 'nope'), isEmpty);
-    expect(
-      await service.list(type: VaultEntryType.token),
-      isEmpty,
-    );
+    expect(await service.list(type: VaultEntryType.token), isEmpty);
   });
 
-  test('enabling encryption migrates the document and locks on reload', () async {
-    final store = _FakeStore();
-    final service = buildService(store: store);
-    await service.initialize();
-    await service.upsert(
-      const VaultEntry(id: 'a', type: VaultEntryType.token, title: 'A'),
-    );
+  test(
+    'enabling encryption migrates the document and locks on reload',
+    () async {
+      final store = _FakeStore();
+      final service = buildService(store: store);
+      await service.initialize();
+      await service.upsert(
+        const VaultEntry(id: 'a', type: VaultEntryType.token, title: 'A'),
+      );
 
-    await service.enableEncryptedBackend('master');
-    expect(service.isEncrypted, isTrue);
-    expect(service.isUnlocked, isTrue);
-    expect(store.values, isEmpty);
-    expect((await service.list()).single.id, 'a');
+      await service.enableEncryptedBackend('master');
+      expect(service.isEncrypted, isTrue);
+      expect(service.isUnlocked, isTrue);
+      expect(store.values, isEmpty);
+      expect((await service.list()).single.id, 'a');
 
-    service.lock();
-    expect(service.isLocked, isTrue);
-    await expectLater(service.list(), throwsA(isA<VaultLockedException>()));
-    await service.unlock('master');
-    expect((await service.list()).single.id, 'a');
-  });
+      service.lock();
+      expect(service.isLocked, isTrue);
+      await expectLater(service.list(), throwsA(isA<VaultLockedException>()));
+      await service.unlock('master');
+      expect((await service.list()).single.id, 'a');
+    },
+  );
 
   test('initialize does not re-lock an already unlocked vault', () async {
     final service = buildService();
@@ -208,65 +208,69 @@ void main() {
     },
   );
 
-  test('writes before initialize are rejected without touching the store', () async {
-    final store = _FakeStore();
-    final service = buildService(store: store);
-    await expectLater(
-      service.upsert(
-        const VaultEntry(id: 'a', type: VaultEntryType.token, title: 'A'),
-      ),
-      throwsA(isA<VaultStorageException>()),
-    );
-    await expectLater(
-      service.delete('a'),
-      throwsA(isA<VaultStorageException>()),
-    );
-    expect(store.values, isEmpty);
-  });
+  test(
+    'writes before initialize are rejected without touching the store',
+    () async {
+      final store = _FakeStore();
+      final service = buildService(store: store);
+      await expectLater(
+        service.upsert(
+          const VaultEntry(id: 'a', type: VaultEntryType.token, title: 'A'),
+        ),
+        throwsA(isA<VaultStorageException>()),
+      );
+      await expectLater(
+        service.delete('a'),
+        throwsA(isA<VaultStorageException>()),
+      );
+      expect(store.values, isEmpty);
+    },
+  );
 
-  test('remembers the master password and auto-unlocks a later service', () async {
-    final vaultStore = _FakeStore();
-    final master = _FakeStore();
-    final fs = InMemoryFilesystem(
-      pathContext: p.Context(style: p.Style.posix),
-    );
-    VaultService build() => VaultService(
-      keychainBackend: KeychainVaultBackend(vaultStore),
-      encryptedBackend: EncryptedVaultBackend(
-        repository: VaultRepository(rootDir: '/root/vault', fs: fs),
-        crypto: crypto,
-      ),
-      masterKeyStore: master,
-    );
+  test(
+    'remembers the master password and auto-unlocks a later service',
+    () async {
+      final vaultStore = _FakeStore();
+      final master = _FakeStore();
+      final fs = InMemoryFilesystem(
+        pathContext: p.Context(style: p.Style.posix),
+      );
+      VaultService build() => VaultService(
+        keychainBackend: KeychainVaultBackend(vaultStore),
+        encryptedBackend: EncryptedVaultBackend(
+          repository: VaultRepository(rootDir: '/root/vault', fs: fs),
+          crypto: crypto,
+        ),
+        masterKeyStore: master,
+      );
 
-    final first = build();
-    await first.initialize();
-    await first.enableEncryptedBackend('pass');
-    expect(master.values['teampilot.vault.v1.master'], 'pass');
+      final first = build();
+      await first.initialize();
+      await first.enableEncryptedBackend('pass');
+      expect(master.values['teampilot.vault.v1.master'], 'pass');
 
-    final second = build();
-    await second.initialize();
-    expect(second.isLocked, isTrue);
-    expect(await second.tryAutoUnlock(), isTrue);
-    expect(second.isUnlocked, isTrue);
-    expect(await second.verifyMasterPassphrase('pass'), isTrue);
-    expect(await second.verifyMasterPassphrase('wrong'), isFalse);
+      final second = build();
+      await second.initialize();
+      expect(second.isLocked, isTrue);
+      expect(await second.tryAutoUnlock(), isTrue);
+      expect(second.isUnlocked, isTrue);
+      expect(await second.verifyMasterPassphrase('pass'), isTrue);
+      expect(await second.verifyMasterPassphrase('wrong'), isFalse);
 
-    await second.lock();
-    expect(master.values.containsKey('teampilot.vault.v1.master'), isFalse);
+      await second.lock();
+      expect(master.values.containsKey('teampilot.vault.v1.master'), isFalse);
 
-    final third = build();
-    await third.initialize();
-    expect(await third.tryAutoUnlock(), isFalse);
-    expect(third.isLocked, isTrue);
-  });
+      final third = build();
+      await third.initialize();
+      expect(await third.tryAutoUnlock(), isFalse);
+      expect(third.isLocked, isTrue);
+    },
+  );
 
   test('a reveal-style unlock never re-remembers the password', () async {
     final vaultStore = _FakeStore();
     final master = _FakeStore();
-    final fs = InMemoryFilesystem(
-      pathContext: p.Context(style: p.Style.posix),
-    );
+    final fs = InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix));
     VaultService build() => VaultService(
       keychainBackend: KeychainVaultBackend(vaultStore),
       encryptedBackend: EncryptedVaultBackend(

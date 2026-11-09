@@ -185,10 +185,8 @@ CursorUsageReport aggregateCursorUsageReports(
     if (startMs == null || report.startMs < startMs) startMs = report.startMs;
     if (endMs == null || report.endMs > endMs) endMs = report.endMs;
     for (final entry in report.models.entries) {
-      models[entry.key] =
-          (models[entry.key] ?? const CursorUsageModelTotals()).merge(
-            entry.value,
-          );
+      models[entry.key] = (models[entry.key] ?? const CursorUsageModelTotals())
+          .merge(entry.value);
     }
   }
   return CursorUsageReport(

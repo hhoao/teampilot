@@ -61,14 +61,13 @@ void main() {
     }
     stub = await _AnthropicStub.start();
     final dockerWatch = Stopwatch()..start();
-    server = await DockerSshServer.startMixed(clientRoot: Directory.current.path);
+    server = await DockerSshServer.startMixed(
+      clientRoot: Directory.current.path,
+    );
     dockerStartMs = dockerWatch.elapsedMilliseconds;
 
     final credentials = InMemorySshCredentialStore();
-    await credentials.savePassword(
-      _profileId,
-      DockerSshServer.defaultPassword,
-    );
+    await credentials.savePassword(_profileId, DockerSshServer.defaultPassword);
     sshFactory = SshClientFactory(
       credentialStore: credentials,
       knownHostRepository: InMemorySshKnownHostRepository(),
@@ -106,7 +105,8 @@ void main() {
       cliPathOverride: (t, c) async => cliOverrides['$t|$c'],
       setCliPathOverride: (t, c, p) async => cliOverrides['$t|$c'] = p,
       acpAdapterPathOverride: (t, c) async => adapterOverrides['$t|$c'],
-      setAcpAdapterPathOverride: (t, c, p) async => adapterOverrides['$t|$c'] = p,
+      setAcpAdapterPathOverride: (t, c, p) async =>
+          adapterOverrides['$t|$c'] = p,
     );
 
     // 1. Reuse the adapter when a previous run already installed it.
@@ -149,10 +149,8 @@ void main() {
           acp: ClaudeAcpCapability(
             // Stub backend: an API key makes the adapter pick API-key mode
             // instead of looking for an Official OAuth login in the container.
-            authSource: () => ClaudeAcpAuth(
-              apiKey: _stubApiKey,
-              baseUrl: anthropic.baseUrl,
-            ),
+            authSource: () =>
+                ClaudeAcpAuth(apiKey: _stubApiKey, baseUrl: anthropic.baseUrl),
           ),
         ),
       );
@@ -268,11 +266,7 @@ class _AnthropicStub {
   static Future<_AnthropicStub> start() async {
     final server = await HttpServer.bind(InternetAddress.anyIPv4, 0);
     final stub = _AnthropicStub._(server);
-    server.listen(
-      stub._handle,
-      onError: (Object _) {},
-      cancelOnError: false,
-    );
+    server.listen(stub._handle, onError: (Object _) {}, cancelOnError: false);
     return stub;
   }
 
@@ -345,10 +339,7 @@ class _AnthropicStub {
           'delta': {'type': 'text_delta', 'text': 'PONG'},
         },
       ),
-      (
-        'content_block_stop',
-        {'type': 'content_block_stop', 'index': 0},
-      ),
+      ('content_block_stop', {'type': 'content_block_stop', 'index': 0}),
       (
         'message_delta',
         {

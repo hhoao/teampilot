@@ -70,10 +70,17 @@ void main() {
       final fs = InMemoryFilesystem();
       final store = ComposeDraftStore(fs: fs, rootPath: '/tp');
       await store.saveLanding('w1', ComposeDraft(text: 'persisted'));
-      await store.saveSession('w1', 's1', ComposeDraft(text: 'persisted session'));
+      await store.saveSession(
+        'w1',
+        's1',
+        ComposeDraft(text: 'persisted session'),
+      );
       final cache = ComposeDraftCache(persistentStore: store);
       cache.setLandingDraft('w1', ComposeDraft(text: 'typed while loading'));
-      cache.setSessionDraft('s1', ComposeDraft(text: 'typed session while loading'));
+      cache.setSessionDraft(
+        's1',
+        ComposeDraft(text: 'typed session while loading'),
+      );
 
       await cache.hydrateLanding(
         'w1',

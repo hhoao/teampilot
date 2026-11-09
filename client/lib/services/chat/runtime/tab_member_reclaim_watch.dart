@@ -185,7 +185,8 @@ class TabMemberReclaimWatch {
           cubit.state.pendingClient != null ||
           (personal &&
               ((_sessionBusyFromAttention?.call(sessionId) ?? false) ||
-                  (_sessionBusyFromDeliveryInFlight?.call(sessionId) ?? false))),
+                  (_sessionBusyFromDeliveryInFlight?.call(sessionId) ??
+                      false))),
       hasUnread:
           (tab.teamBus?.memberById(memberId)?.inbox.unreadCount ?? 0) > 0,
       isSessionPinned:

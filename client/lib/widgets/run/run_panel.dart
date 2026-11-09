@@ -183,14 +183,14 @@ class _RunPanelState extends State<RunPanel> {
             ? ColoredBox(
                 color: cs.surfaceContainerLowest,
                 child: Center(
-                  child: Text(l10n.runLoadingOutput, style: styles.mutedMd),
+                  child: Text(l10n.run.loadingOutput, style: styles.mutedMd),
                 ),
               )
             : activeSession == null
             ? ColoredBox(
                 color: cs.surfaceContainerLowest,
                 child: Center(
-                  child: Text(l10n.runEmptyOutputHint, style: styles.mutedMd),
+                  child: Text(l10n.run.emptyOutputHint, style: styles.mutedMd),
                 ),
               )
             : RunSessionPage(
@@ -235,7 +235,7 @@ class _RunPanelState extends State<RunPanel> {
                   icon: Icons.close,
                   color: cs.onSurfaceVariant,
                   size: TpIconButton.kCompactSize,
-                  tooltip: l10n.runClearExited,
+                  tooltip: l10n.run.clearExited,
                   onTap: () => unawaited(_clearExited()),
                 ),
                 itemBuilder: (context, index) {
@@ -263,7 +263,7 @@ class _RunPanelState extends State<RunPanel> {
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            l10n.runNoSessions,
+                            l10n.run.noSessions,
                             style: styles.mutedSm,
                           ),
                         ),

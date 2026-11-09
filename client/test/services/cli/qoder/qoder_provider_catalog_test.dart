@@ -27,17 +27,18 @@ void main() {
       fs: fs,
       basePath: '/app',
       machineHome: '/home/me',
-      opener: ({required executable, required configDir, required timeout}) async {
-        return const QoderModelsSnapshot(
-          modelIds: ['auto', 'qwen3.8-max', 'smodel'],
-          defaultModelId: 'auto',
-          names: {
-            'auto': 'Auto (default)',
-            'qwen3.8-max': 'Qwen3.8-Max',
-            'smodel': 'Sonus',
+      opener:
+          ({required executable, required configDir, required timeout}) async {
+            return const QoderModelsSnapshot(
+              modelIds: ['auto', 'qwen3.8-max', 'smodel'],
+              defaultModelId: 'auto',
+              names: {
+                'auto': 'Auto (default)',
+                'qwen3.8-max': 'Qwen3.8-Max',
+                'smodel': 'Sonus',
+              },
+            );
           },
-        );
-      },
     );
     await service.ensureLoaded(providerId: 'work');
 

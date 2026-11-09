@@ -26,12 +26,12 @@ class ClaudeProviderFormSection extends StatelessWidget {
         tilePadding: EdgeInsets.zero,
         childrenPadding: EdgeInsets.zero,
         title: Text(
-          l10n.appProviderAdvancedOptions,
+          l10n.appProvider.advancedOptions,
           style: styles.mdSemiboldTightSnug,
         ),
         children: [
           const SizedBox(height: 8),
-          _FieldLabel(l10n.appProviderClaudeAuthField),
+          _FieldLabel(l10n.appProvider.claudeAuthField),
           const SizedBox(height: 6),
           TpSelect<String>(
             items: _apiKeyFields,
@@ -42,7 +42,7 @@ class ClaudeProviderFormSection extends StatelessWidget {
             },
           ),
           const SizedBox(height: 6),
-          Text(l10n.appProviderClaudeAuthFieldHint, style: styles.mutedSm),
+          Text(l10n.appProvider.claudeAuthFieldHint, style: styles.mutedSm),
         ],
       ),
     );

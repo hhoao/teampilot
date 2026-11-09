@@ -117,10 +117,10 @@ class _McpDiscoveryHeader extends StatelessWidget {
       builder: (context, header) {
         final canRefresh = header.source != McpDiscoverySource.builtin;
         return TpCatalogDiscoveryHeader(
-          title: l10n.mcpDiscoverySectionTitle,
+          title: l10n.mcp.discoverySectionTitle,
           showSearch: mcpDiscoveryShowsSearch(header.source),
           searchController: searchController,
-          searchHint: l10n.mcpRegistrySearchHint,
+          searchHint: l10n.mcp.registrySearchHint,
           onSearchChanged: onSearchChanged,
           failures: [
             for (final failure in header.failures)
@@ -133,7 +133,7 @@ class _McpDiscoveryHeader extends StatelessWidget {
               ? null
               : () => context.read<McpDiscoveryCubit>().refreshRemote(),
           refreshing: header.loading && canRefresh,
-          refreshTooltip: l10n.catalogRefreshAccessibilityLabel,
+          refreshTooltip: l10n.catalog.refreshAccessibilityLabel,
           filters: [
             SizedBox(
               width: 180,
@@ -254,7 +254,7 @@ class _McpDiscoveryCatalogBody extends StatelessWidget {
                       ? TpEmptyState(
                           centered: true,
                           icon: Icons.search_off_outlined,
-                          title: l10n.mcpCatalogEmpty,
+                          title: l10n.mcp.catalogEmpty,
                         )
                       : ListView.builder(
                           padding: EdgeInsets.zero,
@@ -276,7 +276,7 @@ class _McpDiscoveryCatalogBody extends StatelessWidget {
                                         : () => context
                                               .read<McpDiscoveryCubit>()
                                               .loadMore(),
-                                    child: Text(l10n.mcpRegistryLoadMore),
+                                    child: Text(l10n.mcp.registryLoadMore),
                                   ),
                                 ),
                               );
@@ -340,11 +340,11 @@ List<McpCatalogListing> _resolveCatalogItems(
 String _mcpSortLabel(BuildContext context, CatalogSortKey sort) {
   final l10n = context.l10n;
   return switch (sort) {
-    CatalogSortKey.adoption => l10n.catalogSortAdoption,
-    CatalogSortKey.rating => l10n.catalogSortRating,
-    CatalogSortKey.updated => l10n.catalogSortUpdated,
-    CatalogSortKey.published => l10n.catalogSortPublished,
-    CatalogSortKey.name => l10n.catalogSortName,
+    CatalogSortKey.adoption => l10n.catalog.sortAdoption,
+    CatalogSortKey.rating => l10n.catalog.sortRating,
+    CatalogSortKey.updated => l10n.catalog.sortUpdated,
+    CatalogSortKey.published => l10n.catalog.sortPublished,
+    CatalogSortKey.name => l10n.catalog.sortName,
   };
 }
 
@@ -388,8 +388,8 @@ class _McpDiscoveryDisabledHint extends StatelessWidget {
     final l10n = context.l10n;
     return TpEmptyState(
       icon: Icons.cloud_off_outlined,
-      title: l10n.mcpRepoDisabledHint,
-      actionLabel: l10n.mcpEmptyGoRegistries,
+      title: l10n.mcp.repoDisabledHint,
+      actionLabel: l10n.mcp.emptyGoRegistries,
       onAction: onGoRegistries,
     );
   }

@@ -68,7 +68,7 @@ class FloatingWorkspaceChrome extends StatelessWidget {
                 context,
                 maximized
                     ? l10n.windowControlRestore
-                    : l10n.floatingWorkspaceMaximize,
+                    : l10n.floating.workspaceMaximize,
                 CommandIds.floatingMaximize,
               ),
               onTap: maximize,
@@ -78,7 +78,7 @@ class FloatingWorkspaceChrome extends StatelessWidget {
               compact: true,
               tooltip: commandTooltip(
                 context,
-                l10n.floatingWorkspaceMinimize,
+                l10n.floating.workspaceMinimize,
                 CommandIds.floatingMinimize,
               ),
               onTap: minimize,

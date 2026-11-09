@@ -31,13 +31,13 @@ class CliPresetsManageDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.workspaceCliPresetsManageTitle),
+          TpDialogHeader(title: l10n.workspace.cliPresetsManageTitle),
           const SizedBox(height: 16),
           if (presets.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
-                l10n.workspaceCliPresetsEmptyHint,
+                l10n.workspace.cliPresetsEmptyHint,
                 textAlign: TextAlign.center,
                 style: TpTextStyles.of(context).md,
               ),
@@ -48,13 +48,13 @@ class CliPresetsManageDialog extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: () => _openAddDialog(context),
             icon: const Icon(Icons.add),
-            label: Text(l10n.workspaceCliAddPresetTitle),
+            label: Text(l10n.workspace.cliAddPresetTitle),
           ),
           TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => _openProviders(context),
-                child: Text(l10n.workspaceCliProviderConfig),
+                child: Text(l10n.workspace.cliProviderConfig),
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -90,8 +90,8 @@ class CliPresetsManageDialog extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l10n.workspaceCliDeletePresetTitle),
-        content: Text(l10n.workspaceCliDeletePresetConfirm(preset.name)),
+        title: Text(l10n.workspace.cliDeletePresetTitle),
+        content: Text(l10n.workspace.cliDeletePresetConfirm(name: preset.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -99,7 +99,7 @@ class CliPresetsManageDialog extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.delete),
+            child: Text(l10n.delete.delete),
           ),
         ],
       ),
@@ -147,7 +147,7 @@ class _PresetRow extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 20),
-            tooltip: l10n.edit,
+            tooltip: l10n.edit.edit,
             onPressed: () {
               final dialog = context
                   .findAncestorWidgetOfExactType<CliPresetsManageDialog>();
@@ -158,7 +158,7 @@ class _PresetRow extends StatelessWidget {
           ),
           IconButton(
             icon: Icon(Icons.delete_outlined, size: 20, color: cs.error),
-            tooltip: l10n.delete,
+            tooltip: l10n.delete.delete,
             onPressed: () {
               final dialog = context
                   .findAncestorWidgetOfExactType<CliPresetsManageDialog>();

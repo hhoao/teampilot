@@ -17,8 +17,8 @@ HostBundle _host() {
   final cubit = LayoutCubit();
   return (
     host: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       locale: const Locale('en'),
       home: BlocProvider.value(
         value: cubit,

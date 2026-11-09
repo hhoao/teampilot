@@ -195,56 +195,52 @@ void main() {
     },
   );
 
-  test(
-    'one slow storage probe must not retire the connection',
-    () async {
-      final launcher = _StorageWorkerLauncher(realpathFailures: 1);
-      final events = SshConnectionEvents();
-      final closes = <SshTransportClosed>[];
-      events.onTransportClosed = (_, error, _) {
-        if (error is SshTransportClosed) closes.add(error);
-      };
-      final factory = SshClientFactory(
-        credentialStore: InMemorySshCredentialStore(),
-        knownHostRepository: InMemorySshKnownHostRepository(),
-        events: events,
-        workerManager: SshProfileWorkerManager(launcher: launcher),
-        storageProbeInterval: Duration.zero,
-      );
-      const profile = SshProfile(
-        id: 'p1',
-        name: 'test',
-        host: 'example.test',
-        username: 'tester',
-      );
+  test('one slow storage probe must not retire the connection', () async {
+    final launcher = _StorageWorkerLauncher(realpathFailures: 1);
+    final events = SshConnectionEvents();
+    final closes = <SshTransportClosed>[];
+    events.onTransportClosed = (_, error, _) {
+      if (error is SshTransportClosed) closes.add(error);
+    };
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      events: events,
+      workerManager: SshProfileWorkerManager(launcher: launcher),
+      storageProbeInterval: Duration.zero,
+    );
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'test',
+      host: 'example.test',
+      username: 'tester',
+    );
 
-      await factory.storageFor(profile);
-      closes.clear();
-      final probesBefore = launcher.operations
-          .where((operation) => operation == SshWorkerOperation.realpathSftp)
-          .length;
-      await factory.storageFor(profile);
+    await factory.storageFor(profile);
+    closes.clear();
+    final probesBefore = launcher.operations
+        .where((operation) => operation == SshWorkerOperation.realpathSftp)
+        .length;
+    await factory.storageFor(profile);
 
-      expect(factory.hasLiveStorageClient(profile.id), isTrue);
-      expect(
-        closes,
-        isEmpty,
-        reason: 'a single slow probe must not tear down the shared transport',
-      );
-      expect(
-        launcher.operations
-                .where(
-                  (operation) =>
-                      operation == SshWorkerOperation.realpathSftp,
-                )
-                .length -
-            probesBefore,
-        2,
-        reason: 'the failed probe is retried once before giving up',
-      );
-      await factory.close();
-    },
-  );
+    expect(factory.hasLiveStorageClient(profile.id), isTrue);
+    expect(
+      closes,
+      isEmpty,
+      reason: 'a single slow probe must not tear down the shared transport',
+    );
+    expect(
+      launcher.operations
+              .where(
+                (operation) => operation == SshWorkerOperation.realpathSftp,
+              )
+              .length -
+          probesBefore,
+      2,
+      reason: 'the failed probe is retried once before giving up',
+    );
+    await factory.close();
+  });
 
   test(
     'a persistently failing storage probe still retires the connection',

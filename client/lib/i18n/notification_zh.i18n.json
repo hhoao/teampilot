@@ -1,0 +1,14 @@
+{
+  "centerTitle": "通知",
+  "clearAll": "清空",
+  "delete": "删除",
+  "empty": "暂无通知",
+  "historySection": "历史",
+  "markAllRead": "全部标为已读",
+  "markRead": "标为已读",
+  "ongoingSection": "进行中",
+  "timeDaysAgo": "{days: int} 天",
+  "timeHoursAgo": "{hours: int} 小时",
+  "timeJustNow": "刚刚",
+  "timeMinutesAgo": "{minutes: int} 分钟"
+}

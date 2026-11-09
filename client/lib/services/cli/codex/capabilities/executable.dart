@@ -18,7 +18,7 @@ final class CodexExecutableCapability extends NpmInstallerCapability
   String get displayName => 'Codex';
 
   @override
-  String label(AppLocalizations l10n) => l10n.appProviderToolCodex;
+  String label(AppLocalizations l10n) => l10n.appProvider.toolCodex;
 
   @override
   String get defaultExecutableName => 'codex';

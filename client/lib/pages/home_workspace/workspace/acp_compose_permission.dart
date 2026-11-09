@@ -27,12 +27,7 @@ bool willLaunchAcp({
   required CliTool? cli,
   required bool requested,
   required String targetId,
-}) =>
-    resolveAcpOnTarget(
-      cli: cli,
-      targetId: targetId,
-      requested: requested,
-    );
+}) => resolveAcpOnTarget(cli: cli, targetId: targetId, requested: requested);
 
 /// Whether Landing should show the ACP Ask / Full access permission chip.
 bool showLandingAcpPermissionChip({
@@ -43,11 +38,7 @@ bool showLandingAcpPermissionChip({
   List<SessionMemberBinding> stampedMembers = const [],
 }) {
   if (isPersonal) {
-    return willLaunchAcp(
-      cli: cli,
-      requested: requested,
-      targetId: targetId,
-    );
+    return willLaunchAcp(cli: cli, requested: requested, targetId: targetId);
   }
   return stampedMembers.any((member) => member.acp);
 }
@@ -67,9 +58,9 @@ ComposePermissionControl? acpComposePermissionControl({
   return ComposePermissionControl(
     launchSecurityPolicy: current,
     supportedPolicies: supported,
-    defaultLabel: l10n.acpPermissionAskLabel,
-    fullAccessLabel: l10n.acpPermissionFullAccessLabel,
-    askLabel: l10n.acpPermissionAskLabel,
+    defaultLabel: l10n.acp.permissionAskLabel,
+    fullAccessLabel: l10n.acp.permissionFullAccessLabel,
+    askLabel: l10n.acp.permissionAskLabel,
     onSelected: onSelected,
   );
 }

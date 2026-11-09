@@ -1,0 +1,13 @@
+{
+  "workspaceCreateSessionBlocked": "请先在团队设置中确认机器分配，再在此混合工作区新建对话。",
+  "workspaceLeadPlacementInvalid": "工作区包含本地文件夹时，团队负责人必须分配到本地主机。",
+  "workspaceMemberAssignmentConfirm": "启动团队",
+  "workspaceMemberAssignmentIncomplete": "混合工作区首次启动前，请先确认成员的机器分配。",
+  "workspaceMemberAssignmentSubtitle": "左侧选择机器，右侧用 + / − 放置各成员的实例。",
+  "workspaceMemberAssignmentTitle": "分配成员到机器",
+  "workspaceMemberPlacementOnMachine": "本机 {count: int} 个",
+  "workspaceMemberPlacementProgress": "已分配 {placed: int} / {total: int}",
+  "workspacePersonalLaunchBlockedHint": "这是混合工作区。请切换到团队标签页启动对话，并确认机器分配。",
+  "workspaceRequiresTeamLaunch": "混合工作区只能通过团队身份启动。请切换到团队，并在团队设置中确认机器分配。",
+  "workspaceSessionLaunchBlocked": "该对话的机器分配已失效。请在团队设置中确认分配后新建对话。"
+}

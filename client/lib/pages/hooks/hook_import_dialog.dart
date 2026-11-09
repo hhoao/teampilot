@@ -113,7 +113,7 @@ class _HookImportDialogState extends State<HookImportDialog> {
       maxWidth: 640,
       maxHeight: 620,
       child: TpDialogPinnedLayout(
-        header: TpDialogHeader(title: l10n.hookImport),
+        header: TpDialogHeader(title: l10n.hook.import),
         body: hasPreview
             ? _buildPreview(context, result)
             : _buildInput(context, result),
@@ -130,7 +130,7 @@ class _HookImportDialogState extends State<HookImportDialog> {
               FilledButton(
                 key: const Key('hook-import-confirm'),
                 onPressed: _importing || _selected.isEmpty ? null : _import,
-                child: Text(l10n.hookImportDone(_selected.length)),
+                child: Text(l10n.hook.importDone(count: _selected.length)),
               ),
           ],
         ),
@@ -146,7 +146,7 @@ class _HookImportDialogState extends State<HookImportDialog> {
       children: [
         TpFormField<CliTool>(
           initialValue: _cli,
-          label: Text(l10n.hookImportCli),
+          label: Text(l10n.hook.importCli),
           builder: (state) => TpSelect<CliTool>(
             key: const Key('hook-import-cli'),
             items: const [
@@ -170,7 +170,7 @@ class _HookImportDialogState extends State<HookImportDialog> {
         const SizedBox(height: 12),
         TpFormField<String>(
           initialValue: '',
-          label: Text(l10n.hookImportJson),
+          label: Text(l10n.hook.importJson),
           builder: (state) => TextField(
             key: const Key('hook-import-json'),
             controller: _jsonController,
@@ -178,7 +178,7 @@ class _HookImportDialogState extends State<HookImportDialog> {
             maxLines: 8,
             onChanged: state.didChange,
             decoration: InputDecoration(
-              hintText: l10n.hookImportJsonHint,
+              hintText: l10n.hook.importJsonHint,
               errorText: state.hasError ? '' : null,
               errorStyle: const TextStyle(height: 0, fontSize: 0),
             ),
@@ -191,7 +191,7 @@ class _HookImportDialogState extends State<HookImportDialog> {
             key: const Key('hook-import-parse'),
             onPressed: _parse,
             icon: const Icon(Icons.manage_search),
-            label: Text(l10n.hookImportParse),
+            label: Text(l10n.hook.importParse),
           ),
         ),
         if (errorText != null) ...[
@@ -213,15 +213,15 @@ class _HookImportDialogState extends State<HookImportDialog> {
     if (result.warnings.isEmpty) return null;
     return result.warnings
         .map((warning) {
-          if (warning == 'hook_import_no_hooks') return l10n.hookImportNoHooks;
+          if (warning == 'hook_import_no_hooks') return l10n.hook.importNoHooks;
           if (warning.startsWith('hook_import_invalid_json')) {
             final separator = warning.indexOf(': ');
             final suffix = separator < 0
                 ? ''
                 : warning.substring(separator + 2);
             return suffix.isEmpty
-                ? l10n.hookImportInvalidJson
-                : '${l10n.hookImportInvalidJson}: $suffix';
+                ? l10n.hook.importInvalidJson
+                : '${l10n.hook.importInvalidJson}: $suffix';
           }
           return warning;
         })
@@ -280,7 +280,7 @@ class _HookImportDialogState extends State<HookImportDialog> {
                       Padding(
                         padding: const EdgeInsets.only(left: 8),
                         child: Text(
-                          l10n.hookImportOverwrite,
+                          l10n.hook.importOverwrite,
                           key: Key(
                             'hook-import-overwrite-${draft.definition.id}',
                           ),

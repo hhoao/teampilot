@@ -12,9 +12,9 @@ class ManagedProviderResetCountdown {
     if (resetsAt == null) return null;
     final nowMs = (now ?? DateTime.now()).millisecondsSinceEpoch;
     final remainingMs = resetsAt - nowMs;
-    if (remainingMs <= 0) return l10n.managedProvidersResetsSoon;
-    return l10n.managedProvidersResetsIn(
-      formatDuration(Duration(milliseconds: remainingMs)),
+    if (remainingMs <= 0) return l10n.managedProviders.resetsSoon;
+    return l10n.managedProviders.resetsIn(
+      duration: formatDuration(Duration(milliseconds: remainingMs)),
     );
   }
 

@@ -93,7 +93,7 @@ class _MemberDetailDialog extends StatelessWidget {
               : null,
         );
       case MemberConfigStatus.error:
-        body = Center(child: Text(l10n.memberDetailLoadError));
+        body = Center(child: Text(l10n.member.detailLoadError));
       case MemberConfigStatus.idle:
       case MemberConfigStatus.loading:
         body = const Center(child: CircularProgressIndicator());
@@ -136,19 +136,19 @@ class _MemberDetailDialogBodyState extends State<MemberDetailDialogBody> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.memberDetailTitle),
+          TpDialogHeader(title: l10n.member.detailTitle),
           const SizedBox(height: 24),
-          Text(l10n.memberDetailEmpty, textAlign: TextAlign.center),
+          Text(l10n.member.detailEmpty, textAlign: TextAlign.center),
         ],
       );
     }
 
     final tabs = <String>[
-      l10n.memberDetailTabOverview,
-      l10n.memberDetailTabSkills,
-      l10n.memberDetailTabMcp,
-      l10n.memberDetailTabPlugins,
-      l10n.memberDetailTabSettings,
+      l10n.member.detailTabOverview,
+      l10n.member.detailTabSkills,
+      l10n.member.detailTabMcp,
+      l10n.member.detailTabPlugins,
+      l10n.member.detailTabSettings,
     ];
 
     Widget tabContent;
@@ -157,7 +157,7 @@ class _MemberDetailDialogBodyState extends State<MemberDetailDialogBody> {
         tabContent = _OverviewTab(detail: detail);
       case 1:
         tabContent = _ListTab(
-          empty: l10n.memberDetailSectionEmpty,
+          empty: l10n.member.detailSectionEmpty,
           hasWarning: _hasWarning('skills'),
           items: [
             for (final s in detail.skills)
@@ -166,7 +166,7 @@ class _MemberDetailDialogBodyState extends State<MemberDetailDialogBody> {
         );
       case 2:
         tabContent = _ListTab(
-          empty: l10n.memberDetailSectionEmpty,
+          empty: l10n.member.detailSectionEmpty,
           hasWarning: _hasWarning('mcp'),
           items: [
             for (final m in detail.mcpServers)
@@ -175,7 +175,7 @@ class _MemberDetailDialogBodyState extends State<MemberDetailDialogBody> {
         );
       case 3:
         tabContent = _ListTab(
-          empty: l10n.memberDetailSectionEmpty,
+          empty: l10n.member.detailSectionEmpty,
           hasWarning: _hasWarning('plugins'),
           items: [
             for (final pl in detail.plugins)
@@ -184,7 +184,7 @@ class _MemberDetailDialogBodyState extends State<MemberDetailDialogBody> {
         );
       case 4:
         tabContent = _ListTab(
-          empty: l10n.memberDetailSectionEmpty,
+          empty: l10n.member.detailSectionEmpty,
           hasWarning: _hasWarning('settings'),
           items: [
             for (final e in detail.settings) (title: e.key, subtitle: e.value),
@@ -198,7 +198,7 @@ class _MemberDetailDialogBodyState extends State<MemberDetailDialogBody> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TpDialogHeader(
-          title: '${l10n.memberDetailTitle} · ${widget.memberName}',
+          title: '${l10n.member.detailTitle} · ${widget.memberName}',
           showDividerBelow: false,
         ),
         HomeContentTabBar(
@@ -230,7 +230,7 @@ class _MemberDetailDialogBodyState extends State<MemberDetailDialogBody> {
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
                 icon: const Icon(Icons.folder_open, size: 18),
-                label: Text(l10n.memberDetailOpenInFileManager),
+                label: Text(l10n.member.detailOpenInFileManager),
                 onPressed: widget.onOpenInFileManager,
               ),
             ),
@@ -248,8 +248,8 @@ class _OverviewTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final source = detail.sourceLayer == MemberConfigSourceLayer.team
-        ? l10n.memberDetailSourceTeam
-        : l10n.memberDetailSourceRuntime;
+        ? l10n.member.detailSourceTeam
+        : l10n.member.detailSourceRuntime;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -342,7 +342,7 @@ class _ListTab extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  l10n.memberDetailLoadError,
+                  l10n.member.detailLoadError,
                   style: TpTextStyles.of(
                     context,
                   ).mdColored(cs.onErrorContainer),

@@ -16,14 +16,14 @@ String automationScopeSubtitle(
   if (automation.isScheduledMessage) {
     final sessionId = automation.sessionId?.trim();
     if (sessionId != null && sessionId.isNotEmpty) {
-      return l10n.automationsScopeScheduledMessage(sessionId);
+      return l10n.automations.scopeScheduledMessage(sessionId: sessionId);
     }
-    return l10n.automationsFilterScheduledMessage;
+    return l10n.automations.filterScheduledMessage;
   }
 
   if (automation.isPersonal) {
     final presetLabel = _personalPresetLabel(automation, presets);
-    return l10n.automationsScopePersonal(presetLabel);
+    return l10n.automations.scopePersonal(preset: presetLabel);
   }
 
   final teamId = automation.teamId?.trim() ?? '';
@@ -35,9 +35,9 @@ String automationScopeSubtitle(
     automation.targetMemberId,
   );
   if (teamName != null && teamName.isNotEmpty) {
-    return l10n.automationsScopeTeam(teamName, memberName);
+    return l10n.automations.scopeTeam(team: teamName, member: memberName);
   }
-  return l10n.automationsScopeTeamMember(memberName);
+  return l10n.automations.scopeTeamMember(member: memberName);
 }
 
 /// Group header when automations are split by launch context (personal vs team).
@@ -47,13 +47,14 @@ String automationLaunchContextGroupLabel(
   required LaunchProfileState profiles,
 }) {
   if (automation.isPersonal) {
-    return l10n.automationsScopeModePersonal('Simple');
+    return l10n.automations.scopeModePersonal(profile: 'Simple');
   }
   final teamId = automation.teamId?.trim() ?? '';
-  if (teamId.isEmpty) return l10n.automationsScopeModePersonal('Simple');
+  if (teamId.isEmpty)
+    return l10n.automations.scopeModePersonal(profile: 'Simple');
   final profile = profiles.byId(teamId);
   if (profile == null) return teamId;
-  return l10n.automationsScopeModeTeam(profile.display);
+  return l10n.automations.scopeModeTeam(team: profile.display);
 }
 
 String _personalPresetLabel(Automation automation, CliPresetsState presets) {

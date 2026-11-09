@@ -50,9 +50,7 @@ class AutomationCommandExecutor {
       // Overlap bookkeeping touches the same `automations.json` as the
       // in-flight run's read-modify-write, so it must ride the same serial
       // queue instead of racing it.
-      return _enqueueSerial(
-        () => _recordOverlap(automation, trigger: trigger),
-      );
+      return _enqueueSerial(() => _recordOverlap(automation, trigger: trigger));
     }
     _running.add(automation.id);
     final next = _queue.then((_) => _run(automation, trigger: trigger));

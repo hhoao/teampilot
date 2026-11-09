@@ -23,7 +23,7 @@ Future<void> openMemberConfigDirectory(
         targetId: ctx.target.id,
         initialPath: trimmed,
         browseOnly: true,
-        title: dialogContext.l10n.memberDetailBrowseConfigDirTitle,
+        title: dialogContext.l10n.member.detailBrowseConfigDirTitle,
       ),
     );
     return;

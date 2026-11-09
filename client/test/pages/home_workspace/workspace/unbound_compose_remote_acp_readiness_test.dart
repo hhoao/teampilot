@@ -211,9 +211,8 @@ void main() {
               registry: CliToolRegistry.builtIn(),
               child: MaterialApp(
                 theme: theme,
-                localizationsDelegates:
-                    AppLocalizations.localizationsDelegates,
-                supportedLocales: AppLocalizations.supportedLocales,
+                localizationsDelegates: appLocalizationsDelegates,
+                supportedLocales: appLocalizationsSupportedLocales,
                 home: TpTheme(
                   data: TpThemeData.fromColorScheme(
                     theme.colorScheme,

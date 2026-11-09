@@ -199,10 +199,10 @@ bool _mutationShadowsDestination(ApplyOp op, String destination) {
     ApplyWriteInline(:final path) =>
       normalizedDestination == p.posix.normalize(path),
     ApplyEnsureDir() ||
-        ApplyWriteBlob() ||
-        ApplyTree() ||
-        ApplyCopyFile() ||
-        ApplyCopyTree() => false,
+    ApplyWriteBlob() ||
+    ApplyTree() ||
+    ApplyCopyFile() ||
+    ApplyCopyTree() => false,
   };
 }
 

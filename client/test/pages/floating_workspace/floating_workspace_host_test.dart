@@ -23,8 +23,8 @@ void main() {
     WorkspaceTerminalRegistry? terminalRegistry,
   }) {
     return MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       locale: const Locale('en'),
       home: RepositoryProvider<CommandBus>.value(
         value: CommandBus(),
@@ -193,8 +193,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         home: RepositoryProvider<CommandBus>.value(
           value: CommandBus(),
@@ -266,8 +266,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         home: RepositoryProvider<CommandBus>.value(
           value: CommandBus(),

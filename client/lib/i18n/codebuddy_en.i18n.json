@@ -1,0 +1,14 @@
+{
+  "credentialsActionFailed": "CodeBuddy sign-in failed.",
+  "credentialsCancel": "Cancel",
+  "credentialsDone": "Done",
+  "credentialsLogin": "Sign in",
+  "credentialsLoginExited": "CodeBuddy exited. Close this dialog and start the sign-in again.",
+  "credentialsLoginFailed": "Could not start the login terminal: {error: String}",
+  "credentialsLoginIntro": "Complete the sign-in in the terminal below. If a login-method list appears, choose one first (e.g. WeChat / enterprise domain). The CLI may open a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.",
+  "credentialsLoginStarting": "Starting CodeBuddy…",
+  "credentialsLoginTitle": "Sign in to CodeBuddy",
+  "credentialsRetry": "Retry",
+  "credentialsSendLogin": "Send /login",
+  "credentialsSignedIn": "Signed in to CodeBuddy."
+}

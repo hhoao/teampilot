@@ -116,16 +116,16 @@ class CliLaunchCustomFields extends StatelessWidget {
           _buildCliRow(context, l10n, dropdownDeco),
         if (providers.isEmpty)
           TpPreferenceRow(
-            title: providerTitle ?? l10n.provider,
+            title: providerTitle ?? l10n.provider.provider,
             trailing: Text(
-              l10n.onboardingDefaultPresetEmpty,
+              l10n.onboarding.defaultPresetEmpty,
               style: TpTextStyles.of(context).mutedSm,
             ),
             showDividerBelow: false,
           )
         else ...[
           TpPreferenceRow(
-            title: providerTitle ?? l10n.provider,
+            title: providerTitle ?? l10n.provider.provider,
             trailing: cliLaunchConfigDropdown(
               TpSelect<String>(
                 key: ValueKey(
@@ -170,7 +170,7 @@ class CliLaunchCustomFields extends StatelessWidget {
             ),
           if (showEffortPicker)
             TpPreferenceRow(
-              title: effortTitle ?? l10n.teamEffortLevel,
+              title: effortTitle ?? l10n.team.effortLevel,
               subtitle: effortSubtitle,
               trailing: cliLaunchConfigDropdown(
                 CliEffortPickerField(
@@ -203,7 +203,7 @@ class CliLaunchCustomFields extends StatelessWidget {
   ) {
     return switch (cliFieldKind) {
       CliLaunchCliFieldKind.toolList => TpPreferenceRow(
-        title: l10n.aiFeatureCliLabel,
+        title: l10n.ai.featureCliLabel,
         trailing: cliLaunchConfigDropdown(
           TpSelect<CliTool>(
             items: cliItems,
@@ -222,7 +222,7 @@ class CliLaunchCustomFields extends StatelessWidget {
         showDividerBelow: providers.isNotEmpty,
       ),
       CliLaunchCliFieldKind.mixedTeam => TpPreferenceRow(
-        title: l10n.teamCliLabel,
+        title: l10n.team.cliLabel,
         subtitle: cliSubtitle,
         trailing: cliLaunchConfigDropdown(
           TpSelect<CliTool>(
@@ -251,7 +251,7 @@ class CliLaunchCustomFields extends StatelessWidget {
         showDividerBelow: true,
       ),
       CliLaunchCliFieldKind.mixedMember => TpPreferenceRow(
-        title: l10n.teamCliLabel,
+        title: l10n.team.cliLabel,
         trailing: cliLaunchConfigDropdown(
           TpSelect<String>(
             items: mixedMemberCliItems,

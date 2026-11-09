@@ -82,10 +82,7 @@ class _SshServersPageState extends State<SshServersPage> {
 }
 
 class _SshServersView extends StatelessWidget {
-  const _SshServersView({
-    required this.embedded,
-    required this.onRemoteHome,
-  });
+  const _SshServersView({required this.embedded, required this.onRemoteHome});
 
   final bool embedded;
   final bool onRemoteHome;
@@ -97,7 +94,7 @@ class _SshServersView extends StatelessWidget {
     // SSH home is remote even when no member session is connected.
     final Widget body;
     if (!onRemoteHome) {
-      body = Center(child: Text(l10n.sshServersNotConnected));
+      body = Center(child: Text(l10n.ssh.serversNotConnected));
     } else {
       body = BlocBuilder<SshServerConfigCubit, SshServerConfigState>(
         builder: (context, state) {
@@ -112,7 +109,7 @@ class _SshServersView extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(l10n.sshServersLoadError),
+                  Text(l10n.ssh.serversLoadError),
                   const SizedBox(height: 12),
                   FilledButton(
                     onPressed: () =>
@@ -124,7 +121,7 @@ class _SshServersView extends StatelessWidget {
             );
           }
           if (state.profiles.isEmpty) {
-            return Center(child: Text(l10n.sshServersEmpty));
+            return Center(child: Text(l10n.ssh.serversEmpty));
           }
           return ListView(
             children: [
@@ -137,7 +134,7 @@ class _SshServersView extends StatelessWidget {
     }
     if (embedded) return body;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.sshServersTitle)),
+      appBar: AppBar(title: Text(l10n.ssh.serversTitle)),
       body: body,
     );
   }
@@ -157,8 +154,8 @@ class SshServerProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final authLabel = switch (profile.authType) {
-      SshAuthType.password => l10n.sshProfileFormPassword,
-      SshAuthType.privateKey => l10n.vaultTypeSshPrivateKey,
+      SshAuthType.password => l10n.sshProfile.formPassword,
+      SshAuthType.privateKey => l10n.vault.typeSshPrivateKey,
     };
     return ListTile(
       isThreeLine: true,

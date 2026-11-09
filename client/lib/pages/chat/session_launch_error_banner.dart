@@ -69,7 +69,7 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
               SizedBox(width: spacing.xs),
               Expanded(
                 child: Text(
-                  l10n.sessionFailedTitle,
+                  l10n.session.failedTitle,
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
@@ -80,8 +80,8 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
                 onPressed: () => setState(() => _reviewing = !_reviewing),
                 child: Text(
                   _reviewing
-                      ? l10n.sessionLaunchErrorHideDetails
-                      : l10n.sessionLaunchErrorReviewDetails,
+                      ? l10n.session.launchErrorHideDetails
+                      : l10n.session.launchErrorReviewDetails,
                 ),
               ),
               for (final action in widget.view.actions) ...[
@@ -89,7 +89,7 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
                 switch (action.kind) {
                   SessionLaunchFailureActionKind.remapDeadSsh => TextButton(
                     onPressed: widget.onRemapDeadTarget,
-                    child: Text(l10n.workspaceDeadTargetRemapFromLaunch),
+                    child: Text(l10n.workspace.deadTargetRemapFromLaunch),
                   ),
                   SessionLaunchFailureActionKind.retry => TextButton.icon(
                     key: AppKeys.sessionLaunchErrorRetryButton,
@@ -98,7 +98,7 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
                       size: 16,
                       loading: widget.isRetrying,
                     ),
-                    label: Text(l10n.sessionRetryButton),
+                    label: Text(l10n.session.retryButton),
                     onPressed: widget.isRetrying ? null : widget.onRetry,
                   ),
                 },
@@ -150,7 +150,7 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              l10n.sessionFailedTitle,
+              l10n.session.failedTitle,
               style: TpTextStyles.of(
                 context,
               ).smRelaxedColored(cs.onErrorContainer),
@@ -162,7 +162,7 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
                   SessionLaunchFailureActionKind.remapDeadSsh => TextButton(
                     onPressed: widget.onRemapDeadTarget,
                     style: _compactButtonStyle,
-                    child: Text(l10n.workspaceDeadTargetRemapFromLaunch),
+                    child: Text(l10n.workspace.deadTargetRemapFromLaunch),
                   ),
                   SessionLaunchFailureActionKind.retry => TextButton.icon(
                     key: AppKeys.sessionLaunchErrorRetryButton,
@@ -178,7 +178,7 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
                             ),
                           )
                         : const SizedBox.shrink(),
-                    label: Text(l10n.sessionRetryButton),
+                    label: Text(l10n.session.retryButton),
                   ),
                 },
               ),

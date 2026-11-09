@@ -268,8 +268,8 @@ void main() {
               required workingDirectory,
               extraMcpServers,
               agentStatus,
-            }) async =>
-                throw StateError('prepare should not run'),        session: session,
+            }) async => throw StateError('prepare should not run'),
+        session: session,
         team: team,
         member: member,
         workspace: Workspace(workspaceId: 'w1', createdAt: 1),
@@ -324,35 +324,37 @@ void main() {
     expect(selected.env['CLAUDE_CONFIG_DIR'], '/remote/cfg/s1');
   });
 
-  test('selectAcpRemoteLaunch falls back to local values when remote is empty',
-      () {
-    final prepared = (
-      shellLaunch: ShellLaunchSpec(
-        plan: LaunchPlan(
-          env: const {'PATH': '/remote/bin'},
-          resume: false,
-          taskId: 's1',
-          cliTeamName: '',
-          memberConfigDir: '',
-          resolvedRoots: const [],
+  test(
+    'selectAcpRemoteLaunch falls back to local values when remote is empty',
+    () {
+      final prepared = (
+        shellLaunch: ShellLaunchSpec(
+          plan: LaunchPlan(
+            env: const {'PATH': '/remote/bin'},
+            resume: false,
+            taskId: 's1',
+            cliTeamName: '',
+            memberConfigDir: '',
+            resolvedRoots: const [],
+          ),
+          launchContext: const CliLaunchContext(
+            team: TeamProfile(id: 't', name: 't'),
+            member: TeamMemberConfig(id: 's1', name: 's1'),
+          ),
         ),
-        launchContext: const CliLaunchContext(
-          team: TeamProfile(id: 't', name: 't'),
-          member: TeamMemberConfig(id: 's1', name: 's1'),
-        ),
-      ),
-      warnings: const <String>[],
-      remoteCliPath: '',
-    );
+        warnings: const <String>[],
+        remoteCliPath: '',
+      );
 
-    final selected = selectAcpRemoteLaunch(
-      prepared: prepared,
-      localExecutable: '/usr/bin/opencode',
-      localSessionToolDir: '/home/u/.local/share/tp/s1/opencode',
-    );
+      final selected = selectAcpRemoteLaunch(
+        prepared: prepared,
+        localExecutable: '/usr/bin/opencode',
+        localSessionToolDir: '/home/u/.local/share/tp/s1/opencode',
+      );
 
-    expect(selected.executable, '/usr/bin/opencode');
-    expect(selected.sessionToolDir, '/home/u/.local/share/tp/s1/opencode');
-    expect(selected.env['PATH'], '/remote/bin');
-  });
+      expect(selected.executable, '/usr/bin/opencode');
+      expect(selected.sessionToolDir, '/home/u/.local/share/tp/s1/opencode');
+      expect(selected.env['PATH'], '/remote/bin');
+    },
+  );
 }

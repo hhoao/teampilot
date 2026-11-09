@@ -264,8 +264,8 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
     final registry = context.read<InstallJobRegistry>();
 
     return OnboardingStepScaffold(
-      title: l10n.onboardingCliTitle,
-      subtitle: l10n.onboardingCliSubtitle,
+      title: l10n.onboarding.cliTitle,
+      subtitle: l10n.onboarding.cliSubtitle,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -305,7 +305,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              l10n.onboardingCliScanning,
+                              l10n.onboarding.cliScanning,
                               style: TpTextStyles.of(context).mutedMd,
                             ),
                           ),
@@ -373,7 +373,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
                     size: context.tpIconSizes.md,
                     loading: busy,
                   ),
-                  label: Text(l10n.onboardingCliRedetect),
+                  label: Text(l10n.onboarding.cliRedetect),
                 );
               },
             ),

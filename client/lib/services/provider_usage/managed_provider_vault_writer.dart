@@ -25,10 +25,8 @@ Future<ManagedProvider> saveManagedProviderWithVault({
   }
   return captureThenPersist(
     capture: capture,
-    captureEntry: () => capture.captureManaged(provider, {
-      ...existingValues,
-      ...secretValues,
-    }),
+    captureEntry: () =>
+        capture.captureManaged(provider, {...existingValues, ...secretValues}),
     persist: (result) async {
       final saved = provider.copyWith(vaultEntryId: result.entryId);
       await persist(saved);

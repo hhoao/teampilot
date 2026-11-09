@@ -210,7 +210,9 @@ class SessionChatMessageArea extends StatelessWidget {
                         if (result.isMissing) {
                           AppToast.show(
                             context,
-                            message: l10n.aiToolFileNotFound(target.path),
+                            message: l10n.ai.toolFileNotFound(
+                              path: target.path,
+                            ),
                             variant: TpToastVariant.warning,
                           );
                         }
@@ -256,8 +258,7 @@ class SessionChatMessageArea extends StatelessWidget {
                         child: AiMessageStringsScope(
                           strings: aiMessageStringsFromL10n(
                             l10n,
-                            thinkingProcessToolCalls:
-                                isAcpChatSession(session),
+                            thinkingProcessToolCalls: isAcpChatSession(session),
                           ),
                           child: AiToolCallFoldScope(
                             shouldFold: (part) =>
@@ -567,7 +568,7 @@ class _ChatOutlineLayerState extends State<_ChatOutlineLayer> {
       if (!mounted) return;
       final next = buildChatOutline(
         widget.historySeat.loadedMessages,
-        emptyPreview: context.l10n.chatUserMessageRailEmptyPreview,
+        emptyPreview: context.l10n.chat.userMessageRailEmptyPreview,
         previous: _outline,
       );
       if (identical(next, _outline)) return;
@@ -583,7 +584,7 @@ class _ChatOutlineLayerState extends State<_ChatOutlineLayer> {
     final l10n = context.l10n;
     final next = buildChatOutline(
       widget.historySeat.loadedMessages,
-      emptyPreview: l10n.chatUserMessageRailEmptyPreview,
+      emptyPreview: l10n.chat.userMessageRailEmptyPreview,
       previous: _outline,
     );
     _outline = next;
@@ -597,7 +598,8 @@ class _ChatOutlineLayerState extends State<_ChatOutlineLayer> {
       entries: _outline,
       activeId: widget.visibleOwnerId,
       onLocate: widget.onLocate,
-      semanticLabelFor: l10n.chatUserMessageRailSemanticLabel,
+      semanticLabelFor: (index, total) =>
+          l10n.chat.userMessageRailSemanticLabel(index: index, total: total),
     );
   }
 }

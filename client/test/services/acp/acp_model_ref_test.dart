@@ -8,10 +8,7 @@ void main() {
     currentId: 'opencode/flint-40b-free',
     options: [
       AcpModelOption(id: 'opencode/flint-40b-free', name: 'Flint'),
-      AcpModelOption(
-        id: 'opencode-go/deepseek-v4.1-flash',
-        name: 'Go Flash',
-      ),
+      AcpModelOption(id: 'opencode-go/deepseek-v4.1-flash', name: 'Go Flash'),
       AcpModelOption(
         id: 'opencode/deepseek-v4.1-flash-free',
         name: 'Zen Flash Free',

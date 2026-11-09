@@ -34,7 +34,7 @@ class _AutomationManagementPageState extends State<AutomationManagementPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          WorkspacePaneHeader(title: l10n.automationsTitle),
+          WorkspacePaneHeader(title: l10n.automations.title),
           Expanded(
             child:
                 AutomationsManagementTab(

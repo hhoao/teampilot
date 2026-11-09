@@ -74,7 +74,7 @@ class _OnboardingProviderImportStepState
       });
       if (!changed && providers.isEmpty) {
         setState(
-          () => _statusMessage = context.l10n.onboardingProviderImportEmpty,
+          () => _statusMessage = context.l10n.onboarding.providerImportEmpty,
         );
       }
     } on Object catch (error) {
@@ -92,8 +92,8 @@ class _OnboardingProviderImportStepState
     final l10n = context.l10n;
 
     return OnboardingStepScaffold(
-      title: l10n.onboardingProviderImportTitle,
-      subtitle: l10n.onboardingProviderImportSubtitle,
+      title: l10n.onboarding.providerImportTitle,
+      subtitle: l10n.onboarding.providerImportSubtitle,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -109,7 +109,7 @@ class _OnboardingProviderImportStepState
                   Icons.error_outline,
                   color: Theme.of(context).colorScheme.error,
                 ),
-                title: Text(l10n.onboardingProviderImportFailed),
+                title: Text(l10n.onboarding.providerImportFailed),
                 subtitle: Text('$_error'),
               ),
             )
@@ -117,7 +117,7 @@ class _OnboardingProviderImportStepState
             TpCard.outlined(
               child: ListTile(
                 leading: Icon(Icons.info_outline),
-                title: Text(l10n.onboardingProviderImportEmpty),
+                title: Text(l10n.onboarding.providerImportEmpty),
                 subtitle: _statusMessage.isEmpty ? null : Text(_statusMessage),
               ),
             )
@@ -126,7 +126,7 @@ class _OnboardingProviderImportStepState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TpSectionHeader(title: l10n.onboardingProviderImportResults),
+                  TpSectionHeader(title: l10n.onboarding.providerImportResults),
                   for (var i = 0; i < _providers.length; i++) ...[
                     ListTile(
                       leading: ProviderBrandIcon.fromConfig(
@@ -162,7 +162,7 @@ class _OnboardingProviderImportStepState
                   size: context.tpIconSizes.md,
                   loading: _importing,
                 ),
-                label: Text(l10n.onboardingProviderImportRescan),
+                label: Text(l10n.onboarding.providerImportRescan),
               ),
             ),
           ],

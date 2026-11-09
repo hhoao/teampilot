@@ -92,16 +92,9 @@ void main() {
     final paths = cap.hookMaterializationPaths(
       pathContext: ctx,
       memberToolDir: toolDir,
-      member: const TeamMemberConfig(
-        id: 'member/a',
-        name: 'n',
-        agent: 'a',
-      ),
+      member: const TeamMemberConfig(id: 'member/a', name: 'n', agent: 'a'),
     );
     expect(paths.hooksDir, ctx.join(toolDir, 'hooks'));
-    expect(
-      paths.configPath,
-      ctx.join(toolDir, 'settings', 'member-a.json'),
-    );
+    expect(paths.configPath, ctx.join(toolDir, 'settings', 'member-a.json'));
   });
 }

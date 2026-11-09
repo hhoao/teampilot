@@ -1,0 +1,10 @@
+{
+  "scaleComfortable": "Large",
+  "scaleCompact": "Small",
+  "scaleCustom": "Custom",
+  "scaleCustomHint": "50–200",
+  "scaleCustomLabel": "Scale",
+  "scaleDescription": "Size of UI text. Standard follows your system; does not change icons or spacing.",
+  "scaleStandard": "Standard",
+  "scaleTitle": "Text size"
+}

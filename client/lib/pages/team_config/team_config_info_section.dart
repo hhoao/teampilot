@@ -156,7 +156,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TpPreferenceStack(
-                  title: l10n.teamName,
+                  title: l10n.team.name,
                   body: Text(
                     key: AppKeys.teamNameField,
                     widget.team.name,
@@ -165,8 +165,8 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                   showDividerBelow: true,
                 ),
                 TpPreferenceStack(
-                  title: l10n.teamDescription,
-                  subtitle: l10n.teamDescriptionHint,
+                  title: l10n.team.description,
+                  subtitle: l10n.team.descriptionHint,
                   body: Builder(
                     builder: (context) {
                       final bodyStyle = TpTextStyles.of(context).md;
@@ -189,14 +189,14 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                   showDividerBelow: true,
                 ),
                 TpPreferenceStack(
-                  title: l10n.teamLoop,
-                  subtitle: l10n.teamLoopSubtitle,
+                  title: l10n.team.loop,
+                  subtitle: l10n.team.loopSubtitle,
                   body: TpCompactSelect<String>(
                     value: loopKey,
                     entries: [
-                      ('__default__', l10n.teamLoopDefault),
-                      ('true', l10n.teamLoopTrue),
-                      ('false', l10n.teamLoopFalse),
+                      ('__default__', l10n.team.loopDefault),
+                      ('true', l10n.team.loopTrue),
+                      ('false', l10n.team.loopFalse),
                     ],
                     onChanged: (value) {
                       final key = value ?? '__default__';
@@ -212,8 +212,8 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                 ),
                 if (showTeamCliRow)
                   TpPreferenceStack(
-                    title: l10n.teamCliLabel,
-                    subtitle: l10n.teamCliLockedSubtitle,
+                    title: l10n.team.cliLabel,
+                    subtitle: l10n.team.cliLockedSubtitle,
                     body: Row(
                       children: [
                         CliBrandIcon(
@@ -238,8 +238,8 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                     showDividerBelow: true,
                   ),
                 TpPreferenceStack(
-                  title: l10n.teamExtraArgs,
-                  subtitle: l10n.teamExtraArgsHint,
+                  title: l10n.team.extraArgs,
+                  subtitle: l10n.team.extraArgsHint,
                   body: TextField(
                     controller: _argsCtl,
                     focusNode: _argsFocus,
@@ -251,8 +251,8 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                 ),
                 if (showTeamEffort)
                   TpPreferenceStack(
-                    title: l10n.teamEffortLevel,
-                    subtitle: l10n.teamEffortLevelSubtitle,
+                    title: l10n.team.effortLevel,
+                    subtitle: l10n.team.effortLevelSubtitle,
                     body: CliEffortPickerField(
                       cli: widget.team.cli,
                       value: teamEffort,
@@ -271,8 +271,8 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                 ),
                 if (showDelegateRow)
                   TpPreferenceRow(
-                    title: l10n.teamLeadDelegateOnlyTitle,
-                    subtitle: l10n.teamLeadDelegateOnlySubtitle,
+                    title: l10n.team.leadDelegateOnlyTitle,
+                    subtitle: l10n.team.leadDelegateOnlySubtitle,
                     trailing: Switch(
                       value: widget.team.forceTeamLeadDelegateMode,
                       onChanged: (value) => widget.cubit.updateSelected(
@@ -286,8 +286,8 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                   ),
                 if (showForceWaitRow)
                   TpPreferenceRow(
-                    title: l10n.teamForceWaitBeforeStopTitle,
-                    subtitle: l10n.teamForceWaitBeforeStopSubtitle,
+                    title: l10n.team.forceWaitBeforeStopTitle,
+                    subtitle: l10n.team.forceWaitBeforeStopSubtitle,
                     trailing: Switch(
                       value: widget.team.forceWaitBeforeStop,
                       onChanged: (value) => widget.cubit.updateSelected(
@@ -451,7 +451,7 @@ class TeamDefaultPresetRow extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            l10n.teamDefaultPresetLabel,
+                            l10n.team.defaultPresetLabel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: styles.lgColored(cs.onSurface),
@@ -464,7 +464,7 @@ class TeamDefaultPresetRow extends StatelessWidget {
                     const SizedBox(height: 4),
                     if (!configured)
                       Text(
-                        l10n.teamDefaultPresetSubtitle,
+                        l10n.team.defaultPresetSubtitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: styles.smColored(cs.onSurfaceVariant),
@@ -489,7 +489,7 @@ class TeamDefaultPresetRow extends StatelessWidget {
                   cubit: cubit,
                 ),
                 icon: Icon(Icons.tune, size: context.tpIconSizes.sm),
-                label: Text(l10n.workspaceCliConfigure),
+                label: Text(l10n.workspace.cliConfigure),
               ),
             ],
           ),
@@ -553,7 +553,7 @@ class TeamConfigDangerZone extends StatelessWidget {
     return TpCard.outlined(
       child: TpPreferenceStack(
         title: l10n.dangerZone,
-        subtitle: l10n.deleteTeamSubtitle,
+        subtitle: l10n.delete.teamSubtitle,
         body: Align(
           alignment: Alignment.centerLeft,
           child: OutlinedButton.icon(
@@ -565,7 +565,7 @@ class TeamConfigDangerZone extends StatelessWidget {
               color: errorColor,
             ),
             label: Text(
-              l10n.deleteTeam,
+              l10n.delete.team,
               style: TpTextStyles.of(context).mdColored(errorColor),
             ),
             style: OutlinedButton.styleFrom(

@@ -42,11 +42,11 @@ class UsageTableToolbar extends StatelessWidget {
         style: styles.sm,
         decoration: tpSearchPillDecoration(
           context,
-          hintText: context.l10n.sessionUsageSearchHint,
+          hintText: context.l10n.sessionUsage.searchHint,
           suffixIcon: searchController.text.isEmpty
               ? null
               : IconButton(
-                  tooltip: context.l10n.sessionUsageResetFilters,
+                  tooltip: context.l10n.sessionUsage.resetFilters,
                   iconSize: 18,
                   onPressed: () {
                     searchController.clear();

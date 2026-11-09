@@ -1,0 +1,16 @@
+{
+  "cliExecutablePathDescription": "Absolute path to the Claude Code executable. Leave empty to use the one on PATH.",
+  "cliExecutablePathDescriptionSsh": "Absolute path to Claude Code on the remote SSH host. Leave empty to resolve claude from the remote PATH.",
+  "cliExecutablePathLabel": "Claude Code CLI path",
+  "launchCredentialsMissingWarning": "Claude Official credentials are missing for this team provider. Sign in from Providers settings.",
+  "officialCredentialsActionFailed": "Could not update credentials",
+  "officialCredentialsActionSuccess": "Credentials updated",
+  "officialCredentialsImportFile": "Import file…",
+  "officialCredentialsImportGlobal": "Import from ~/.claude",
+  "officialCredentialsLogin": "Sign in with Claude",
+  "officialCredentialsMissing": "No credentials saved for this provider",
+  "officialCredentialsReady": "Credentials ready",
+  "officialCredentialsRevoke": "Sign out",
+  "officialCredentialsRevokeConfirm": "Sign out and remove saved credentials for {name: String}?",
+  "officialCredentialsTitle": "Claude Official login"
+}

@@ -66,7 +66,7 @@ class _UsagePricingDialogState extends State<UsagePricingDialog> {
         if (rule != null) rules.add(rule);
       }
     } on FormatException {
-      setState(() => _error = l10n.sessionUsagePricingInvalid);
+      setState(() => _error = l10n.sessionUsage.pricingInvalid);
       return;
     }
 
@@ -81,7 +81,7 @@ class _UsagePricingDialogState extends State<UsagePricingDialog> {
     } else {
       setState(() {
         _saving = false;
-        _error = l10n.sessionUsagePricingFailed;
+        _error = l10n.sessionUsage.pricingFailed;
       });
     }
   }
@@ -91,7 +91,7 @@ class _UsagePricingDialogState extends State<UsagePricingDialog> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        content: Text(l10n.sessionUsagePricingResetConfirm),
+        content: Text(l10n.sessionUsage.pricingResetConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -99,7 +99,7 @@ class _UsagePricingDialogState extends State<UsagePricingDialog> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.sessionUsagePricingReset),
+            child: Text(l10n.sessionUsage.pricingReset),
           ),
         ],
       ),
@@ -117,7 +117,7 @@ class _UsagePricingDialogState extends State<UsagePricingDialog> {
     } else {
       setState(() {
         _saving = false;
-        _error = l10n.sessionUsagePricingFailed;
+        _error = l10n.sessionUsage.pricingFailed;
       });
     }
   }
@@ -127,7 +127,7 @@ class _UsagePricingDialogState extends State<UsagePricingDialog> {
     final l10n = context.l10n;
     return AlertDialog(
       key: AppKeys.sessionUsagePricingDialog,
-      title: Text(l10n.sessionUsagePricingTitle),
+      title: Text(l10n.sessionUsage.pricingTitle),
       content: SizedBox(
         width: 980,
         height: 560,
@@ -135,7 +135,7 @@ class _UsagePricingDialogState extends State<UsagePricingDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              l10n.sessionUsagePricingHint,
+              l10n.sessionUsage.pricingHint,
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
@@ -164,13 +164,13 @@ class _UsagePricingDialogState extends State<UsagePricingDialog> {
                   key: AppKeys.sessionUsagePricingAddButton,
                   onPressed: _saving ? null : _add,
                   icon: const Icon(Icons.add, size: 18),
-                  label: Text(l10n.sessionUsagePricingAdd),
+                  label: Text(l10n.sessionUsage.pricingAdd),
                 ),
                 const Spacer(),
                 TextButton(
                   key: AppKeys.sessionUsagePricingResetButton,
                   onPressed: _saving ? null : _reset,
-                  child: Text(l10n.sessionUsagePricingReset),
+                  child: Text(l10n.sessionUsage.pricingReset),
                 ),
                 const SizedBox(width: 8),
                 TextButton(
@@ -181,7 +181,7 @@ class _UsagePricingDialogState extends State<UsagePricingDialog> {
                 FilledButton(
                   key: AppKeys.sessionUsagePricingSaveButton,
                   onPressed: _saving ? null : _save,
-                  child: Text(l10n.sessionUsagePricingSave),
+                  child: Text(l10n.sessionUsage.pricingSave),
                 ),
               ],
             ),
@@ -221,20 +221,24 @@ class _PriceRowEditor extends StatelessWidget {
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          _field(draft.model, l10n.sessionUsagePricingModel, 220),
-          _field(draft.input, l10n.sessionUsagePricingInput, 92),
-          _field(draft.output, l10n.sessionUsagePricingOutput, 92),
-          _field(draft.cacheRead, l10n.sessionUsagePricingCacheRead, 100),
-          _field(draft.cacheWrite, l10n.sessionUsagePricingCacheWrite, 100),
-          _field(draft.cacheWrite1h, l10n.sessionUsagePricingCacheWrite1h, 110),
+          _field(draft.model, l10n.sessionUsage.pricingModel, 220),
+          _field(draft.input, l10n.sessionUsage.pricingInput, 92),
+          _field(draft.output, l10n.sessionUsage.pricingOutput, 92),
+          _field(draft.cacheRead, l10n.sessionUsage.pricingCacheRead, 100),
+          _field(draft.cacheWrite, l10n.sessionUsage.pricingCacheWrite, 100),
+          _field(
+            draft.cacheWrite1h,
+            l10n.sessionUsage.pricingCacheWrite1h,
+            110,
+          ),
           _field(
             draft.effectiveDate,
-            l10n.sessionUsagePricingEffectiveDate,
+            l10n.sessionUsage.pricingEffectiveDate,
             130,
-            hint: l10n.sessionUsagePricingEffectiveHint,
+            hint: l10n.sessionUsage.pricingEffectiveHint,
           ),
           IconButton(
-            tooltip: l10n.sessionUsagePricingDelete,
+            tooltip: l10n.sessionUsage.pricingDelete,
             onPressed: onDelete,
             icon: const Icon(Icons.delete_outline, size: 19),
           ),

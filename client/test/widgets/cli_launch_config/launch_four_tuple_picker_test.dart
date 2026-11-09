@@ -70,8 +70,8 @@ void main() {
         child: CliToolRegistryScope(
           registry: CliToolRegistry.builtIn(),
           child: MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             home: TpTheme(
               data: TpThemeData.fromColorScheme(colorScheme, scale: 1),
               child: Scaffold(

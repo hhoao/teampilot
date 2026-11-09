@@ -88,12 +88,9 @@ void main() {
     // Padding + line box must fill the forced height (minus the compact
     // density inset the decorator subtracts), or the text rides high.
     final inputStyle = theme.textTheme.bodyLarge!;
-    final lineHeight =
-        inputStyle.fontSize! * (inputStyle.height ?? 1.25);
+    final lineHeight = inputStyle.fontSize! * (inputStyle.height ?? 1.25);
     expect(
-      inset.top * 2 +
-          lineHeight +
-          VisualDensity.compact.baseSizeAdjustment.dy,
+      inset.top * 2 + lineHeight + VisualDensity.compact.baseSizeAdjustment.dy,
       moreOrLessEquals(control.input.height, epsilon: 0.01),
     );
     expect(inset.top, greaterThan(control.input.verticalPadding));

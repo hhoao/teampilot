@@ -7,9 +7,9 @@ import '../../services/storage/launch_profile_provisioner.dart';
 String? builtInTeamDisplayName(AppLocalizations l10n, String teamId) {
   return switch (teamId) {
     LaunchProfileProvisioner.defaultNativeTeamId =>
-      l10n.homeWorkspaceDefaultNativeTeamName,
+      l10n.homeWorkspace.defaultNativeTeamName,
     LaunchProfileProvisioner.defaultMixedTeamId =>
-      l10n.homeWorkspaceDefaultMixedTeamName,
+      l10n.homeWorkspace.defaultMixedTeamName,
     _ => null,
   };
 }

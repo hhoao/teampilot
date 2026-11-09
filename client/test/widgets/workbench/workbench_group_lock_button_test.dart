@@ -6,8 +6,8 @@ import 'package:teampilot/widgets/workbench/workbench_group_lock_button.dart';
 
 Widget _localizedHost(Widget child) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: Scaffold(body: child),
   );
 }

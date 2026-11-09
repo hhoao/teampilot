@@ -1,0 +1,18 @@
+{
+  "clear": "清除终端",
+  "copySelectHint": "按住 Shift 选择复制",
+  "dropCrossMachineRejected": "无法将本地文件拖入远程终端",
+  "@dropCrossMachineRejected": "Shown when a dragged file lives on a different machine than the terminal it was dropped on.",
+  "exportScrollback": "导出滚动缓冲…",
+  "find": "在终端中查找",
+  "findNoResults": "无匹配",
+  "linkClickOpensInAppDescription": "左键点击链接和文件路径时在 TeamPilot 内打开，而不是交给正在运行的程序。Ctrl/Cmd+点击始终在应用内打开。",
+  "linkClickOpensInAppTitle": "在应用内打开终端链接",
+  "openLink": "打开链接",
+  "parkedSendDismiss": "关闭",
+  "parkedSendPending": "已发送，等待接收：{content: String}",
+  "scrollbackLinesDescription": "每个会话终端保留的最大行数",
+  "scrollbackLinesTitle": "终端滚动缓冲行数",
+  "themeModeDescription": "跟随主题色或使用固定风格",
+  "themeModeTitle": "终端主题"
+}

@@ -115,13 +115,10 @@ Future<void> _pumpLanding(
           registry: CliToolRegistry.builtIn(),
           child: MaterialApp(
             theme: theme,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             home: TpTheme(
-              data: TpThemeData.fromColorScheme(
-                theme.colorScheme,
-                scale: 1,
-              ),
+              data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1),
               child: Scaffold(
                 body: UnboundComposeBody(
                   workspace: workspace,
@@ -150,29 +147,30 @@ void main() {
   });
   tearDown(tearDownTestAppStorage);
 
-  testWidgets('blocks send and shows the banner when the local CLI is missing', (
-    tester,
-  ) async {
-    var submitted = 0;
-    await _pumpLanding(
-      tester,
-      workspace: _localWorkspace(),
-      sessionPreferencesCubit: await _prefsCubit(),
-      onSubmit: () => submitted++,
-    );
+  testWidgets(
+    'blocks send and shows the banner when the local CLI is missing',
+    (tester) async {
+      var submitted = 0;
+      await _pumpLanding(
+        tester,
+        workspace: _localWorkspace(),
+        sessionPreferencesCubit: await _prefsCubit(),
+        onSubmit: () => submitted++,
+      );
 
-    expect(find.byType(LocalCliReadinessBanner), findsOneWidget);
-    // Inline actions mirror the remote readiness panel (no Settings detour).
-    expect(find.text('Install'), findsOneWidget);
-    expect(find.text('Locate'), findsOneWidget);
+      expect(find.byType(LocalCliReadinessBanner), findsOneWidget);
+      // Inline actions mirror the remote readiness panel (no Settings detour).
+      expect(find.text('Install'), findsOneWidget);
+      expect(find.text('Locate'), findsOneWidget);
 
-    await enterComposeText(tester, 'hello');
-    await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
-    await tester.pumpAndSettle();
+      await enterComposeText(tester, 'hello');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+      await tester.pumpAndSettle();
 
-    expect(submitted, 0);
-  });
+      expect(submitted, 0);
+    },
+  );
 
   testWidgets('allows send when the local CLI is known', (tester) async {
     var submitted = 0;

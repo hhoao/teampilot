@@ -1,0 +1,10 @@
+{
+  "accountUsageSession": "Cursor accounts",
+  "credentialsActionFailed": "Could not update credentials",
+  "credentialsActionSuccess": "Credentials updated",
+  "credentialsImportFile": "Import directory…",
+  "credentialsImportGlobal": "Import from ~/.cursor",
+  "credentialsLogin": "Sign in with Cursor",
+  "credentialsRevoke": "Sign out",
+  "credentialsRevokeConfirm": "Sign out and remove saved credentials for {name: String}?"
+}

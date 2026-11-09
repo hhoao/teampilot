@@ -58,7 +58,9 @@ class VaultDocumentStore {
   /// Applies a home-plane operation without ever breaking device-vault use:
   /// a dropped transport is logged and swallowed so SSH login credentials
   /// remain usable for reconnection.
-  Future<T?> _onHome<T>(Future<T> Function(VaultDocumentStore home) action) async {
+  Future<T?> _onHome<T>(
+    Future<T> Function(VaultDocumentStore home) action,
+  ) async {
     final home = _home;
     if (home == null || identical(home, this)) return null;
     try {
@@ -408,9 +410,7 @@ class VaultDocumentStore {
 
   Future<void> _mutate(VaultDocument Function(VaultDocument) update) {
     if (!_initialized) {
-      return Future<void>.error(
-        const VaultStorageException('notInitialized'),
-      );
+      return Future<void>.error(const VaultStorageException('notInitialized'));
     }
     final previous = _writeTail ?? Future<void>.value();
     final next = previous.then((_) async {

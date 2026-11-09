@@ -4,8 +4,8 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/ssh_profiles/credential_push_opt_in_tile.dart';
 
 Widget _host(Widget child) => MaterialApp(
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
-  supportedLocales: AppLocalizations.supportedLocales,
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: appLocalizationsSupportedLocales,
   home: Scaffold(body: child),
 );
 
@@ -103,7 +103,7 @@ void main() {
     await tester.pumpAndSettle();
     // dialog shows + names the host
     expect(find.textContaining('box.example'), findsWidgets);
-    final l10n = AppLocalizations.of(tester.element(find.byType(FilledButton)));
+    final l10n = tester.element(find.byType(FilledButton)).l10n;
     await tester.tap(find.text(l10n.credentialPushConfirmAction));
     await tester.pumpAndSettle();
     expect(changed, isTrue);

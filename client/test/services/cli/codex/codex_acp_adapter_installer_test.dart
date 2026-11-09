@@ -96,21 +96,18 @@ void main() {
       );
     });
 
-    test(
-      'returns TeamPilot node prefix path when only that file exists',
-      () {
-        expect(
-          locateCodexAcpAdapter(
-            environment: const {'PATH': '/usr/bin', 'HOME': '/home/u'},
-            fileExists: (p) =>
-                p ==
-                '/home/u/.local/share/com.hhoa.teampilot/toolchain/node/current/bin/codex-acp',
-            isWindows: false,
-          ),
-          '/home/u/.local/share/com.hhoa.teampilot/toolchain/node/current/bin/codex-acp',
-        );
-      },
-    );
+    test('returns TeamPilot node prefix path when only that file exists', () {
+      expect(
+        locateCodexAcpAdapter(
+          environment: const {'PATH': '/usr/bin', 'HOME': '/home/u'},
+          fileExists: (p) =>
+              p ==
+              '/home/u/.local/share/com.hhoa.teampilot/toolchain/node/current/bin/codex-acp',
+          isWindows: false,
+        ),
+        '/home/u/.local/share/com.hhoa.teampilot/toolchain/node/current/bin/codex-acp',
+      );
+    });
 
     test('locator is never an installer: lookup does not install', () {
       var probes = 0;

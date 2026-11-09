@@ -1,0 +1,4558 @@
+{
+  "@@locale": "zh",
+  "appTitle": "TeamPilot",
+  "appRailChat": "聊天",
+  "appRailRuns": "运行",
+  "appRailConfig": "配置",
+  "copy": "复制",
+  "settings": "设置",
+  "settingsPageSubtitle": "管理 FlashskyAI 团队和模型设置。",
+  "layout": "通用",
+  "layoutSubtitle": "全局工作台",
+  "save": "保存",
+  "ok": "确定",
+  "layoutPageSubtitle": "结构控件为全局设置，适用于所有团队。",
+  "toolPlacement": "工具栏位置",
+  "right": "右侧",
+  "bottom": "底部",
+  "rightTools": "右侧工具栏",
+  "openRightTools": "工具",
+  "rightToolsPanelVisible": "显示工具栏",
+  "rightToolsPanelHidden": "隐藏工具栏",
+  "rightToolsOpenTabTitle": "打开标签页",
+  "rightToolsOpenTabSubtitle": "选择要在侧边面板中打开的标签",
+  "rightToolsOpenTabEmpty": "所有工具均已打开。",
+  "sidebarPanelVisible": "显示侧边栏",
+  "sidebarPanelHidden": "隐藏侧边栏",
+  "bottomDockPanelVisible": "显示底部栏",
+  "bottomDockPanelHidden": "隐藏底部栏",
+  "bottomTray": "底部托盘",
+  "stacked": "堆叠",
+  "tabs": "标签页",
+  "stackedTools": "堆叠工具栏",
+  "tabbedTools": "标签工具栏",
+  "regionVisibility": "区域可见性",
+  "appRail": "应用导航栏",
+  "toolPlacementDescription": "将工具面板固定在右侧或沿底部边缘排列。",
+  "visibilityTeamSessionsHint": "在左侧边栏显示团队会话列表。",
+  "visibilityRightToolsHint": "打开会话时显示右侧工具栏。",
+  "sessionTabBarTitle": "会话标签栏",
+  "sessionTabBarVisibilityHint": "在工作台中心列上方显示标签栏。",
+  "visibilityMembersHint": "在工具或终端旁显示成员列表。",
+  "visibilityFileTreeHint": "显示工作区文件树以便快速浏览。",
+  "visibilityGitHint": "显示当前仓库的源代码管理面板。",
+  "workspaceSidebarGroupsView": "分组",
+  "workspaceSidebarProjectTreeView": "项目树",
+  "projectTreeOther": "其他",
+  "extensionsSettingsTitle": "扩展",
+  "extensionsSettingsDescription": "安装并启用增强 Agent 的外部工具。",
+  "extensionsNavInstalled": "已安装",
+  "extensionsEmptyTitle": "暂无可用扩展",
+  "extensionsEmptyHint": "扩展目录加载后会显示在这里。",
+  "extensionEnableLabel": "已启用",
+  "extensionInstall": "安装",
+  "extensionUninstall": "卸载",
+  "extensionInstallGuide": "安装指引",
+  "extensionStatusNotInstalled": "未安装",
+  "extensionStatusReady": "就绪",
+  "extensionStatusReadyVersion": "就绪（{version}）",
+  "extensionStatusDependencyMissing": "缺少依赖",
+  "extensionStatusDependencyMissingNamed": "缺少：{deps}",
+  "extensionDependencyMissingHint": "需要 PATH 中有 {deps}。安装后点击重新检测。",
+  "extensionCopyCommand": "复制",
+  "extensionCommandCopied": "命令已复制到剪贴板",
+  "extensionRecheck": "重新检测",
+  "extensionStatusVersionTooOld": "已安装版本过旧",
+  "extensionKindMcpServer": "代码智能（MCP）",
+  "extensionKindSettingsHook": "Token 节省（hook）",
+  "rtkSettingsTitle": "RTK 省 token",
+  "rtkSettingsEnableTitle": "启用 RTK",
+  "rtkSettingsDescription": "在命令输出进入模型前压缩 Agent Bash 结果（需本机 PATH 中有 rtk 与 jq）。",
+  "rtkSettingsStatusTitle": "本机状态",
+  "rtkSettingsInstallLink": "安装说明",
+  "rtkStatusNotFound": "PATH 中未找到 rtk",
+  "rtkStatusJqMissing": "PATH 中未找到 jq",
+  "rtkStatusInstalledGeneric": "rtk 已就绪",
+  "rtkStatusInstalled": "rtk {version} 已就绪",
+  "@rtkStatusInstalled": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "rtkStatusVersionTooOld": "rtk {version} 版本过低（需要 >= 0.23.0）",
+  "@rtkStatusVersionTooOld": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "rtkBashOnlyHint": "仅作用于 Agent 的 Bash 工具调用；内置 Read、Grep、Glob 不会自动改写。",
+  "themeModeTitle": "主题模式",
+  "themeModeDescription": "浅色、深色，或与系统外观一致。",
+  "themeColorPresetTitle": "主题色",
+  "themeColorPresetDescription": "用于按钮、开关与高亮的主色与强调色。",
+  "typographyScaleTitle": "文字大小",
+  "typographyScaleDescription": "界面文字大小。「标准」跟随系统；不改变图标与间距。",
+  "typographyScaleCompact": "紧凑",
+  "typographyScaleStandard": "标准",
+  "typographyScaleComfortable": "宽松",
+  "typographyScaleCustom": "自定义",
+  "typographyScaleCustomLabel": "缩放比例",
+  "typographyScaleCustomHint": "50–200",
+  "fontUiTitle": "界面字体",
+  "fontUiDescription": "界面文字。系统跟随操作系统默认字体。重启后生效。",
+  "fontMonoTitle": "等宽字体",
+  "fontMonoDescription": "终端、编辑器与 diff。重启后生效。",
+  "fontChangeAppliesOnRestart": "字体已保存，重启 TeamPilot 后生效。",
+  "fontOptionSystem": "系统",
+  "fontOptionNotoSansSc": "Noto Sans SC",
+  "fontOptionJetbrainsMono": "JetBrains Mono",
+  "fontOptionUbuntuSansMono": "Ubuntu Sans Mono",
+  "fontInstalledSection": "已安装",
+  "fontSearchHint": "搜索字体",
+  "uiZoomTitle": "界面缩放",
+  "uiZoomDescription": "整体缩放界面——文字、图标与间距一起。「标准」按系统缩放自动匹配。",
+  "markdownOpenModeTitle": "打开 Markdown 为",
+  "markdownOpenModeDescription": "在编辑器中打开 .md 文件时的默认视图。「记住上次」仅在本次应用会话内有效。",
+  "markdownOpenModePreview": "预览",
+  "markdownOpenModeSource": "源码",
+  "markdownOpenModeRemember": "记住上次",
+  "thinkingProcessSectionTitle": "思考过程",
+  "cotExpandLatestOnOpenTitle": "自动展开最新消息的思考过程",
+  "cotExpandLatestOnOpenDescription": "自动展开最新消息的思考过程（含推理与工具调用），思考输出结束后自动收起。",
+  "cotExpandReasoningOnOpenTitle": "打开时展开推理",
+  "cotExpandReasoningOnOpenDescription": "展开「思考过程」时，自动展开内部推理步骤。",
+  "cotExpandToolsOnOpenTitle": "打开时展开工具",
+  "cotExpandToolsOnOpenDescription": "展开「思考过程」时，自动展开内部工具调用详情。",
+  "autoOpenSubagentPreviewTitle": "自动打开子会话预览",
+  "autoOpenSubagentPreviewDescription": "子 agent 开始运行时自动弹出预览并实时跟随;按返回后停止本会话的跟随。",
+  "thinkingProcessFoldSectionTitle": "折叠进思考过程",
+  "toolCategoryRead": "读取文件",
+  "toolCategoryWrite": "写入文件",
+  "toolCategoryEdit": "编辑文件",
+  "toolCategoryCommand": "Shell 命令",
+  "toolCategorySearch": "网络搜索",
+  "toolCategoryBrowser": "浏览器",
+  "toolCategorySubagent": "子代理",
+  "toolCategoryAskUser": "询问用户",
+  "toolCategoryPlan": "计划",
+  "toolCategoryTask": "任务与待办",
+  "toolCategoryMcp": "MCP",
+  "toolCategoryOther": "其他",
+  "composePasteClipLabel": "粘贴文本",
+  "composePasteClipLines": "{lines} 行",
+  "@composePasteClipLines": {
+    "placeholders": {
+      "lines": {
+        "type": "int"
+      }
+    }
+  },
+  "composePasteClipEdit": "编辑已粘贴文本",
+  "composePasteClipRemove": "移除已粘贴文本",
+  "composePasteEditorTitle": "编辑已粘贴文本 · {lines} 行",
+  "@composePasteEditorTitle": {
+    "placeholders": {
+      "lines": {
+        "type": "int"
+      }
+    }
+  },
+  "composePasteEditorDone": "完成",
+  "composePasteEditorRemove": "移除",
+  "contentDisplayModeSectionTitle": "内容显示",
+  "chatUserMessageModeTitle": "用户消息",
+  "chatUserMessageModeDescription": "聊天中超大用户消息的呈现方式。",
+  "chatCodeBlockModeTitle": "聊天·代码块",
+  "chatCodeBlockModeDescription": "聊天中超大代码块的呈现方式。",
+  "fileCodeBlockModeTitle": "文件预览·代码块",
+  "fileCodeBlockModeDescription": "markdown 文件预览中超大代码块的呈现方式。",
+  "contentDisplayModeFoldFixedHeight": "折叠·固定高度",
+  "contentDisplayModeFoldExpandFull": "折叠·全部展开",
+  "contentDisplayModeFlatten": "铺平（自然高度）",
+  "markdownViewToggleSource": "源码",
+  "markdownViewTogglePreview": "预览",
+  "themePresetGraphite": "石墨",
+  "themePresetOcean": "海洋",
+  "themePresetViolet": "紫罗兰",
+  "themePresetAmber": "琥珀",
+  "themePresetForest": "森林",
+  "languageDescription": "菜单、按钮与标签所使用的语言。",
+  "cancel": "取消",
+  "add": "添加",
+  "delete": "删除",
+  "appearance": "外观",
+  "workspaceEntryModeTitle": "启动视图",
+  "workspaceEntryModeDescription": "App 启动后默认打开的页面。",
+  "workspaceEntryModeHome": "主页",
+  "workspaceEntryModeLastWorkspace": "恢复上次工作区",
+  "theme": "主题",
+  "themeSystem": "跟随系统",
+  "themeDark": "深色",
+  "themeLight": "浅色",
+  "language": "语言",
+  "languageSystem": "跟随系统",
+  "languageEnglish": "English",
+  "languageChinese": "中文",
+  "chatTo": "发送至：",
+  "copyPrompt": "复制提示",
+  "sendPrompt": "发送提示",
+  "chatHintText": "为 team-lead 编写提示...",
+  "emptyTimeline": "本地 shell 模式对话记录将显示在此处。",
+  "fileTree": "文件树",
+  "sourceControl": "源代码管理",
+  "gitStagedChanges": "暂存的更改",
+  "gitUnversionedFiles": "未暂存的文件",
+  "gitChanges": "要提交的变更",
+  "gitNoChanges": "没有更改",
+  "gitNotARepository": "当前文件夹不是 Git 仓库",
+  "gitInitializeRepository": "创建 Git 仓库",
+  "gitNotInstalled": "未找到 Git。安装 Git 后即可使用源代码管理。",
+  "gitCommit": "提交",
+  "gitCommitMessageHint": "消息（提交到 \"{branch}\"）",
+  "@gitCommitMessageHint": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "treeExpandAllFolders": "展开所有目录",
+  "treeCollapseAllFolders": "折叠所有目录",
+  "gitDiscard": "放弃更改",
+  "gitOpenFile": "打开文件",
+  "gitIncludeInCommit": "纳入本次提交",
+  "@gitIncludeInCommit": {
+    "description": "右键菜单动作：将文件纳入本次提交。"
+  },
+  "gitExcludeFromCommit": "排除出本次提交",
+  "@gitExcludeFromCommit": {
+    "description": "右键菜单动作：将文件排除出本次提交。"
+  },
+  "gitIncludeFolderInCommit": "纳入文件夹到本次提交",
+  "@gitIncludeFolderInCommit": {
+    "description": "右键菜单动作：将文件夹及其更改的文件纳入本次提交。"
+  },
+  "gitExcludeFolderFromCommit": "从本次提交排除文件夹",
+  "@gitExcludeFolderFromCommit": {
+    "description": "右键菜单动作：将文件夹及其更改的文件排除出本次提交。"
+  },
+  "gitShowDiff": "显示差异",
+  "gitCopyPath": "复制路径",
+  "gitDiscardFolder": "放弃文件夹中的更改",
+  "gitDiscardSelected": "放弃所选更改",
+  "gitDiscardAllUnstaged": "放弃全部未暂存更改",
+  "gitDiscardAllConfirmTitle": "放弃所有更改？",
+  "gitDiscardAllConfirmBody": "放弃工作区中的所有未暂存更改？此操作无法撤销。",
+  "gitDiscardFolderConfirmTitle": "放弃文件夹更改？",
+  "gitDiscardFolderConfirmBody": "放弃 {path} 中的所有更改？此操作无法撤销。",
+  "@gitDiscardFolderConfirmBody": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "gitDiscardConfirmTitle": "放弃更改？",
+  "gitDiscardConfirmBody": "放弃 {path} 中的所有更改？此操作无法撤销。",
+  "@gitDiscardConfirmBody": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "gitPush": "推送",
+  "gitPull": "拉取",
+  "gitFetch": "从远端获取",
+  "gitRefresh": "刷新",
+  "gitFetching": "正在获取远端更新…",
+  "gitPulling": "正在拉取…",
+  "gitPushing": "正在推送…",
+  "gitRefreshing": "正在刷新…",
+  "gitCommitting": "正在提交…",
+  "gitGeneratingCommitMessage": "正在生成提交信息…",
+  "gitFetchDone": "已获取远端更新",
+  "gitPullDone": "拉取完成",
+  "gitPushDone": "推送完成",
+  "gitAmend": "修正",
+  "gitAmendCommit": "修改提交",
+  "gitAmendConfirmTitle": "修改上一次提交？",
+  "gitAmendConfirmMessage": "这将改写最后一次提交。如果该提交已推送到远程，之后需要强制推送。",
+  "gitChangesListView": "列表视图",
+  "gitChangesTreeView": "树形视图",
+  "gitSwitchBranch": "切换分支",
+  "gitCreateBranch": "新建分支",
+  "gitNewBranchHint": "新分支名称",
+  "gitError": "Git：{message}",
+  "@gitError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "gitAheadBehind": "↑{ahead} ↓{behind}",
+  "@gitAheadBehind": {
+    "placeholders": {
+      "ahead": {
+        "type": "int"
+      },
+      "behind": {
+        "type": "int"
+      }
+    }
+  },
+  "openTeam": "启动所有成员",
+  "openMember": "打开成员",
+  "switchToMember": "切换到成员",
+  "memberPresenceOffline": "未连接",
+  "memberPresenceConnecting": "连接中…",
+  "memberPresenceBooting": "启动中…",
+  "memberPresenceIdle": "空闲",
+  "memberPresenceWorking": "工作中",
+  "filterFiles": "筛选文件",
+  "selectTeam": "选择团队",
+  "addTeamTooltip": "添加团队",
+  "addTeamTitle": "添加团队",
+  "teamCliLabel": "CLI 后端",
+  "teamModeLabel": "团队模式",
+  "@teamModeLabel": {},
+  "teamModeNative": "原生（单 CLI）",
+  "@teamModeNative": {},
+  "teamModeMixed": "混合（跨 CLI bus）",
+  "@teamModeMixed": {},
+  "memberCliInheritHint": "继承团队默认",
+  "@memberCliInheritHint": {},
+  "memberLaunchConfigTitle": "模型配置",
+  "@memberLaunchConfigTitle": {},
+  "memberLaunchConfigSubtitle": "本成员的 CLI 后端、提供商、模型与 Effort。",
+  "@memberLaunchConfigSubtitle": {},
+  "teamCliSubtitle": "创建团队时选定，之后不可更改。",
+  "teamCliComingSoon": "即将支持",
+  "teamCliLockedSubtitle": "在创建团队时已选定。",
+  "teamNameRequired": "团队名称不能为空。",
+  "teamNameAlreadyExists": "已存在名为「{name}」的团队。",
+  "workspaces": "工作区",
+  "newWorkspace": "新建工作区",
+  "homeWorkspaceMainWindow": "主窗口",
+  "windowControlMinimize": "最小化",
+  "windowControlMaximize": "最大化",
+  "windowControlRestore": "还原",
+  "windowControlClose": "关闭",
+  "windowControlAlwaysOnTop": "置顶",
+  "homeWorkspaceMyFavorites": "我的收藏",
+  "homeWorkspaceRecentVisits": "最近访问",
+  "homeWorkspacePersonal": "简单模式",
+  "homeWorkspaceAllWorkspaces": "全部工作区",
+  "homeWorkspaceDefaultPersonalWorkspaceName": "个人助手",
+  "homeWorkspaceDefaultNativeTeamName": "默认原生团队",
+  "homeWorkspaceDefaultMixedTeamName": "默认混合团队",
+  "homeWorkspacePersonalSubtitle": "不用组队，直接拉起一个 CLI 开聊。",
+  "homeWorkspaceNoData": "暂无数据",
+  "homeWorkspaceRecentlyClosed": "最近关闭",
+  "homeWorkspaceOpenTabs": "已打开",
+  "homeWorkspaceRecentlyClosedEmpty": "暂无最近关闭的工作区",
+  "homeWorkspaceNewTeam": "新建团队",
+  "homeWorkspaceProviders": "供应商",
+  "homeWorkspaceTeamWorkspaces": "团队工作区",
+  "homeWorkspaceOwner": "团队所有者",
+  "homeWorkspaceImportWorkspace": "导入工作区",
+  "homeWorkspaceSessionsLabel": "会话",
+  "homeWorkspaceEmptyWorkspaces": "该团队还没有工作区",
+  "homeWorkspaceEmptyWorkspacesHint": "新建或导入一个工作区开始吧",
+  "homeWorkspaceWorkspaceSort": "排序工作区",
+  "homeWorkspaceWorkspaceSortRecentlyUpdated": "最近更新",
+  "homeWorkspaceWorkspaceSortNameAsc": "名称（A–Z）",
+  "homeWorkspaceWorkspaceSortNameDesc": "名称（Z–A）",
+  "homeWorkspaceWorkspaceSortCreatedDesc": "创建时间",
+  "homeWorkspaceWorkspaceSortSessionCountDesc": "会话数量",
+  "homeWorkspaceWorkspaceFilterHint": "过滤工作区",
+  "homeWorkspaceWorkspaceFilterEmpty": "没有匹配的工作区",
+  "homeWorkspaceComingSoon": "功能开发中",
+  "homeWorkspaceNewTeamSubtitle": "选择团队协作模式，并填写团队名称。",
+  "homeWorkspaceNewTeamMethodCustom": "自定义模式",
+  "homeWorkspaceNewTeamMethodAi": "AI 生成",
+  "homeWorkspaceNewTeamSubtitleAi": "描述团队需求，用 AI 生成团队配置草稿。",
+  "homeWorkspaceNewTeamRecommended": "推荐",
+  "homeWorkspaceNewTeamModeBeta": "Beta",
+  "homeWorkspaceNewTeamNameHint": "请输入团队名称",
+  "homeWorkspaceCreateTeam": "创建团队",
+  "teamModeNativeTitle": "原生模式",
+  "teamModeMixedTitle": "混合模式",
+  "teamModeNativeDescription": "全部成员共用同一个 CLI，原生协同，配置简单。",
+  "teamModeMixedDescription": "不同成员可使用不同 CLI，通过 TeamBus 跨工具协作。",
+  "teamHubCloneOptionsTitle": "克隆选项",
+  "homeWorkspaceNewWorkspaceSubtitle": "选择工作区的工作目录，并为它命名。",
+  "homeWorkspaceNewWorkspaceDirectoryLabel": "工作区目录",
+  "homeWorkspaceNewWorkspaceChooseDirectory": "选择文件夹",
+  "homeWorkspaceNewWorkspaceDirectoryHint": "尚未选择目录",
+  "homeWorkspaceNewWorkspaceNameHint": "默认使用文件夹名",
+  "homeWorkspaceCreateWorkspace": "创建工作区",
+  "homeWorkspaceCloseWorkspaceTitle": "关闭工作区？",
+  "homeWorkspaceCloseWorkspaceMessage": "{count, plural, =1{关闭该标签会终止此工作区中 1 个运行中的会话。} other{关闭该标签会终止此工作区中 {count} 个运行中的会话。}}",
+  "@homeWorkspaceCloseWorkspaceMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeWorkspaceCloseWorkspaceConfirm": "关闭并终止会话",
+  "homeWorkspaceCloseAllTabsTitle": "关闭全部标签？",
+  "homeWorkspaceCloseAllTabsMessage": "{count, plural, =1{关闭全部标签会终止 1 个运行中的会话。} other{关闭全部标签会终止 {count} 个运行中的会话。}}",
+  "@homeWorkspaceCloseAllTabsMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeWorkspaceWorkspaceManagement": "工作区管理",
+  "homeWorkspaceWorkspaceList": "工作区列表",
+  "homeWorkspaceConversations": "对话管理",
+  "homeWorkspaceConversationsSection": "对话",
+  "workspaceRunningSessionsSection": "已打开",
+  "homeWorkspaceWorkspaceAgent": "智能体",
+  "workspaceAgentBuiltInSubtitle": "当前 CLI 为 flashskyai 时，对应其 --agent 参数。",
+  "workspaceAgentExtraArgs": "额外 CLI 参数",
+  "workspaceAgentExtraArgsSubtitle": "附加在本工作区 Agent 启动时的 CLI 参数。",
+  "workspaceWorkbenchAdvancedSettingsSubtitle": "本工作区的 Agent 预设与额外 CLI 参数。",
+  "workspaceAgentPromptSubtitle": "编写系统提示词，定义 Agent 在本工作区中的职责与行为边界。",
+  "workspaceAgentPromptPresetGeneral": "通用",
+  "workspaceAgentPromptPresetGeneralText": "全面协助完成本工作区中的开发任务。先理解需求与现有代码，再给出清晰方案并实施；优先小范围改动，完成后说明涉及文件与后续建议。",
+  "workspaceAgentPromptPresetDeveloper": "开发",
+  "workspaceAgentPromptPresetDeveloperText": "专注实现功能与修复问题。优先小 diff，跑相关测试，并简要说明改了哪些文件及原因。",
+  "workspaceAgentPromptPresetReviewer": "审查",
+  "workspaceAgentPromptPresetReviewerText": "只做代码审查，除非被要求否则不要改文件。\n每条意见需包含：文件路径、行号、问题、建议改法。",
+  "workspaceAgentPromptPresetResearcher": "调研",
+  "workspaceAgentPromptPresetResearcherText": "只调研并汇报，除非被要求否则不要改生产代码。\n输出需含文件路径、相关符号与建议的下一步。",
+  "workspaceCliEffortInheritHint": "使用提供商默认",
+  "workspaceCliDefaultSubtitle": "本工作区新建对话时使用的默认 CLI。",
+  "workspaceCliDefaultsTitle": "CLI 默认配置",
+  "workspaceCliDefaultsSubtitle": "为本工作区使用的每个 CLI 设置默认提供商与模型。",
+  "workspaceCliProviderModelTitle": "提供商与模型",
+  "workspaceCliEffortLevel": "推理力度",
+  "workspaceCliEffortLevelSubtitle": "本工作区使用该 CLI 时的默认力度（留空则使用提供商默认）。",
+  "workspaceCliConfigure": "配置",
+  "workspaceCliConfigured": "已配置",
+  "workspaceCliNotConfigured": "未配置",
+  "workspaceCliNotConfiguredHint": "选择提供商",
+  "workspaceCliNoProviderCatalog": "此 CLI 无需配置提供商",
+  "workspaceCliConfigSummary": "{provider} · {model}",
+  "@workspaceCliConfigSummary": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "workspaceCliAddPresetTitle": "添加预设",
+  "workspaceCliEditPresetTitle": "编辑预设",
+  "workspaceCliPresetNameLabel": "预设名称",
+  "workspaceCliPresetsManageTitle": "管理预设",
+  "workspaceCliPresetsEmptyHint": "还没有预设，创建一个开始使用",
+  "composeCascadeSavePreset": "保存当前为预设…",
+  "composeCascadeDefaultEffort": "默认",
+  "composeCascadeCustomModelId": "自定义模型 ID…",
+  "composeCascadeCustomModelIdTitle": "自定义模型 ID",
+  "composeCascadeNoModels": "暂无模型目录",
+  "composeCascadeNoProviders": "尚未配置任何服务商",
+  "composeCascadePresets": "预设",
+  "workspaceCliDeletePresetTitle": "删除预设",
+  "workspaceCliDeletePresetConfirm": "删除预设'{name}'？此操作不可撤销。",
+  "@workspaceCliDeletePresetConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "workspaceCliPresetLabel": "当前预设",
+  "workspaceCliNoPresetHint": "未选择预设",
+  "workspaceCliManagePresets": "管理",
+  "workspaceCliProviderConfig": "供应商配置",
+  "teamDefaultPresetLabel": "默认模型预设",
+  "teamDefaultPresetSubtitle": "可选的默认预设，未单独设置的成员将继承此配置。",
+  "teamDefaultPresetNone": "无",
+  "teamDefaultPresetChange": "更改",
+  "teamDefaultPresetManage": "管理",
+  "teamDefaultCliMixedSubtitle": "成员未指定时使用。",
+  "teamDefaultDialogEffortSubtitle": "团队默认力度。",
+  "presetPickerTitle": "选择预设",
+  "presetPickerNoneOption": "无（不设默认）",
+  "memberPresetLabel": "预设",
+  "memberLaunchConfigTypeLabel": "配置类型",
+  "memberLaunchConfigTypePreset": "预设",
+  "memberLaunchConfigInheritHint": "使用团队的默认 CLI、服务商、模型与 Effort。",
+  "memberLaunchConfigInheritUnset": "团队默认尚未配置。",
+  "memberPresetInheritTeam": "继承团队默认",
+  "memberPresetInheritTeamNone": "团队未设置默认",
+  "memberPresetSelectPreset": "选择预设",
+  "memberPresetCustom": "自定义配置",
+  "memberPresetViaPreset": "{presetName}（通过预设）",
+  "@memberPresetViaPreset": {
+    "placeholders": {
+      "presetName": {
+        "type": "String"
+      }
+    }
+  },
+  "memberPresetViaTeamDefault": "{presetName}（通过团队默认）",
+  "@memberPresetViaTeamDefault": {
+    "placeholders": {
+      "presetName": {
+        "type": "String"
+      }
+    }
+  },
+  "homeWorkspaceWorkspaceSkills": "技能",
+  "homeWorkspaceWorkspacePlugins": "插件",
+  "homeWorkspaceWorkspaceMcp": "MCP",
+  "homeWorkspaceWorkspaceExtensions": "扩展",
+  "homeWorkspaceWorkspaceHooks": "Hooks",
+  "workspaceSkillsAssignedCount": "已为本工作区启用 {assigned}/{total}",
+  "@workspaceSkillsAssignedCount": {
+    "placeholders": {
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceSkillsManage": "管理 Skills",
+  "workspaceHooksAssignedCount": "已为本工作区启用 {assigned}/{total}",
+  "@workspaceHooksAssignedCount": {
+    "placeholders": {
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceHooksManage": "管理 Hooks",
+  "workspaceMcpAssignedCount": "已为本工作区启用 {assigned}/{total}",
+  "@workspaceMcpAssignedCount": {
+    "placeholders": {
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceMcpManage": "管理 MCP",
+  "workspacePluginsAssignedCount": "已为本工作区选用 {assigned}/{total}",
+  "@workspacePluginsAssignedCount": {
+    "placeholders": {
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "workspacePluginsManage": "管理插件",
+  "workspacePluginsEmpty": "尚未安装插件",
+  "workspacePluginsEmptyHint": "在「发现」中安装插件后，可在此处为本工作区启用。",
+  "workspaceExtensionsTitle": "本工作区的扩展",
+  "workspaceExtensionsSubtitle": "覆盖本工作区启用哪些扩展，默认跟随全局设置。",
+  "workspaceExtensionEffectiveOn": "本工作区已启用",
+  "workspaceExtensionEffectiveOff": "本工作区未启用",
+  "homeWorkspaceTeamConfig": "团队配置",
+  "homeWorkspaceWorkspaceSettings": "工作区设置",
+  "homeWorkspaceWorkspaceMembers": "成员",
+  "homeWorkspaceWorkspaceSettingsSectionBasic": "基本设置",
+  "homeWorkspaceWorkspaceSettingsBasicInfo": "基本信息",
+  "homeWorkspaceWorkspaceId": "工作区 ID",
+  "homeWorkspaceWorkspacePath": "工作区路径",
+  "homeWorkspaceWorkspaceAdditionalDirsCount": "{count} 个附加目录",
+  "@homeWorkspaceWorkspaceAdditionalDirsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeWorkspaceWorkspaceSettingsPathsHint": "在「附加目录」行点击编辑，可添加或移除工作区附加目录。",
+  "deleteWorkspaceSubtitle": "将删除该工作区及其下所有会话，且无法恢复。",
+  "homeWorkspaceInviteMembers": "邀请成员",
+  "homeWorkspaceNewConversation": "新建对话",
+  "homeWorkspaceNewConversationChooseCli": "选择 CLI 新建对话",
+  "workbenchStripNewMenuTooltip": "新建",
+  "workbenchLockGroup": "锁定组",
+  "workbenchUnlockGroup": "解锁组",
+  "homeWorkspaceNoConversations": "该工作区还没有对话",
+  "homeWorkspaceSearchHint": "搜索",
+  "homeWorkspaceNoSearchResults": "没有匹配的对话",
+  "workspaceSearchTitle": "搜索",
+  "workspaceSearchHint": "搜索会话、文件和会话内容",
+  "workspaceSearchFilesSection": "文件",
+  "workspaceSearchSearching": "正在搜索文件…",
+  "workspaceSearchIndexing": "正在索引…",
+  "workspaceSearchRecentSessions": "最近会话",
+  "workspaceSearchFilterAll": "全部",
+  "workspaceSearchFilterConversations": "任务",
+  "workspaceSearchFilterFiles": "文件",
+  "workspaceSearchContent": "内容",
+  "workspaceSearchShowMore": "查看更多结果",
+  "workspaceSearchFilesEmptyHint": "输入关键词搜索文件",
+  "workspaceSearchNoResults": "没有匹配结果",
+  "workspaceSearchPanel": "搜索",
+  "workspaceSearchQueryHint": "搜索文件",
+  "workspaceSearchRegex": "正则",
+  "workspaceSearchCaseSensitive": "大小写",
+  "workspaceSearchGitignore": ".gitignore",
+  "workspaceSearchIncludeHint": "包含 (glob，逗号分隔)",
+  "workspaceSearchExcludeHint": "排除 (glob，逗号分隔)",
+  "workspaceSearchReplaceHint": "替换为",
+  "workspaceSearchReplaceAll": "全部替换",
+  "workspaceSearchReplaceAllTitle": "全部替换？",
+  "workspaceSearchReplaceAllMessage": "替换 {count} 处匹配？",
+  "@workspaceSearchReplaceAllMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceSearchReplace": "替换",
+  "workspaceSearchReplacedCount": "已替换 {count} 处",
+  "@workspaceSearchReplacedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceSearchCancel": "取消",
+  "workspaceSearchEmptyHint": "输入以搜索文件内容",
+  "workspaceSearchTruncated": "结果过多已截断——请细化查询",
+  "workspaceSearchBackend": "引擎：{backend}",
+  "@workspaceSearchBackend": {
+    "placeholders": {
+      "backend": {
+        "type": "String"
+      }
+    }
+  },
+  "workspaceSearchResultSummary": "{matches} 个结果 · {files} 个文件",
+  "workspaceSearchFilesToInclude": "包含的文件：",
+  "workspaceSearchFilesToExclude": "排除的文件：",
+  "workspaceSearchUseGitignore": "使用 .gitignore 设置",
+  "workspaceSearchToggleDetails": "展开搜索选项",
+  "workspaceSearchError": "搜索失败——请检查正则",
+  "workspaceSearchSliceError": "「{directory}」目录搜索失败",
+  "@workspaceSearchSliceError": {
+    "placeholders": {
+      "directory": {
+        "type": "String"
+      }
+    }
+  },
+  "appDropdownSearchHint": "搜索…",
+  "appDropdownSearchNoResults": "未找到结果",
+  "homeWorkspaceOpenWorkspaceInNewTab": "在新标签页中打开",
+  "homeWorkspaceOpenInNewTabWithOtherIdentity": "以其他身份在新标签页打开…",
+  "homeWorkspaceFavoriteWorkspace": "收藏工作区",
+  "homeWorkspaceUnfavoriteWorkspace": "取消收藏",
+  "homeWorkspaceRenameWorkspace": "修改名称",
+  "homeWorkspaceCloneWorkspace": "克隆工作区",
+  "homeWorkspaceCloneWorkspaceDisplayName": "{name}（副本）",
+  "@homeWorkspaceCloneWorkspaceDisplayName": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "homeWorkspaceCloneWorkspaceSuccess": "已克隆「{name}」。",
+  "@homeWorkspaceCloneWorkspaceSuccess": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "homeWorkspaceCloneWorkspaceFailed": "无法克隆工作区",
+  "newWorkspaceTooltip": "创建工作区",
+  "switchWorkspaceTooltip": "切换工作区",
+  "create": "创建",
+  "pickPrimaryDirectory": "选择主目录",
+  "workspacePrimaryPathRequired": "请先选择主目录。",
+  "workspacePrimaryPathNotSelected": "尚未选择主目录",
+  "workspaceDirectoryAdded": "已添加目录到工作区",
+  "newSessionTooltip": "新建会话",
+  "defaultNewChatSessionTitle": "新对话",
+  "sessionIdleNotificationTitle": "Agent 已就绪",
+  "sessionIdleNotificationSubtitle": "可以继续对话了",
+  "sessionStarting": "正在启动会话…",
+  "sessionHistoryLoading": "正在加载对话历史…",
+  "sessionHistoryRefreshing": "正在刷新对话…",
+  "sessionHistoryEmpty": "该成员暂无历史消息。",
+  "sessionHistoryError": "无法加载对话历史。",
+  "sessionHistorySoftReloadError": "无法刷新对话历史。",
+  "agentPermissionAttentionBanner": "此智能体需要在终端中确认。",
+  "agentPermissionOpenTerminal": "打开终端",
+  "agentPermissionAlwaysAllowRule": "始终允许 {rule}",
+  "exitPlanModeTitle": "计划已就绪，等待批准",
+  "exitPlanModeApprove": "批准",
+  "exitPlanModeReject": "拒绝",
+  "exitPlanModeCopyPlan": "复制计划",
+  "exitPlanModeViewPlan": "查看计划",
+  "exitPlanModePreviewTitle": "计划预览",
+  "exitPlanModeOpenPlanFile": "打开计划文件",
+  "exitPlanModeApproveFailed": "批准计划失败",
+  "exitPlanModeRejectFailed": "拒绝计划失败",
+  "agentAskUserQuestionTitle": "正在向你提问",
+  "askUserQuestionBubbleAsking": "正在提问",
+  "askUserQuestionBubbleAsked": "已询问 {count} 个问题",
+  "@askUserQuestionBubbleAsked": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "askUserQuestionBubbleUnanswered": "未回答",
+  "agentAskAnswerInTerminal": "在终端回答",
+  "agentAskCancelQuestion": "取消提问",
+  "agentAskAnswerFailed": "无法提交回答。请重试或在终端中回答。",
+  "agentAskTerminalDisconnected": "终端已断开。请重新连接或在终端中回答。",
+  "agentAskSubmitAnswers": "提交",
+  "agentAskContinue": "继续",
+  "agentAskIgnore": "忽略",
+  "agentAskKeyboardHint": "使用 Tab / 上下键选择，回车或空格选中",
+  "agentAskCustomAnswerHint": "输入你的回答…",
+  "agentAskEscToCancel": "Esc 取消",
+  "agentAskQuestionTabFallback": "问题{index}",
+  "@agentAskQuestionTabFallback": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "agentPermissionTitle": "{cliName} 需要你的授权",
+  "@agentPermissionTitle": {
+    "placeholders": {
+      "cliName": {
+        "type": "String"
+      }
+    }
+  },
+  "agentPermissionTitleGeneric": "需要你的授权",
+  "opencodePermissionTitle": "OpenCode 需要你的授权",
+  "opencodePermissionAllowOnce": "允许一次",
+  "opencodePermissionAllowAlways": "总是允许",
+  "opencodePermissionReject": "拒绝",
+  "opencodePermissionAnswerFailed": "无法提交你的决定。请重试或在终端中处理。",
+  "opencodePermissionAnswerInTerminal": "在终端处理",
+  "sessionHistoryRetry": "重试",
+  "sessionHistoryToolTurn": "工具",
+  "sessionHistoryRoleUser": "你",
+  "sessionHistoryRoleAssistant": "助手",
+  "sessionHistoryRoleSystem": "系统",
+  "sessionHistoryComposeHint": "继续对话… @ 引用文件，/ 调用技能与指令",
+  "sessionHistoryComposeStop": "停止生成",
+  "sessionHistoryContinueSaveFailed": "无法保存继续会话设置。",
+  "sessionHistoryLoadOlderHint": "上滑查看更早消息",
+  "sessionHistoryStarting": "启动中…",
+  "sessionHistoryRunning": "运行中…",
+  "sessionHistoryBackgroundRunning": "后台任务运行中…",
+  "sessionHistoryMailboxQueued": "{count} 已排队",
+  "@sessionHistoryMailboxQueued": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionHistoryMailboxQueuedDismiss": "关闭",
+  "sessionFollowUpQueued": "{count} 排队中",
+  "@sessionFollowUpQueued": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionFollowUpAddPlaceholder": "添加跟进消息",
+  "sessionFollowUpResume": "继续队列",
+  "sessionFollowUpEdit": "编辑",
+  "sessionFollowUpMoveUp": "上移",
+  "sessionFollowUpDelete": "删除",
+  "aiMessageUsedTool": "已使用工具",
+  "aiMessageCancelledTool": "已取消工具",
+  "aiMessageToolsUsed": "已使用 {count} 个工具",
+  "aiMessageReasoning": "推理",
+  "aiMessageToolResult": "结果",
+  "aiMessageCopied": "已复制",
+  "aiMessageExportMarkdown": "导出 Markdown",
+  "aiMessageIncomplete": "消息未完成",
+  "aiMessageCancelled": "消息已取消",
+  "aiMessageScrollToBottom": "滚动到底部",
+  "aiMessageShowMore": "显示更多",
+  "aiMessageShowLess": "收起",
+  "aiMessageThinkingProcess": "思考过程",
+  "aiMessageThinkingProcessSteps": "思考过程 · {count} 步",
+  "@aiMessageThinkingProcessSteps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiMessageThinkingProcessStats": "思考过程 · {steps} 步 · {toolCalls} 次工具调用",
+  "@aiMessageThinkingProcessStats": {
+    "placeholders": {
+      "steps": { "type": "int" },
+      "toolCalls": { "type": "int" }
+    }
+  },
+  "aiMessageThinkingEditedFiles": "{count, plural, other{编辑了 {count} 个文件}}",
+  "aiMessageThinkingExploredFiles": "{count, plural, other{探索了 {count} 个文件}}",
+  "aiMessageThinkingSearches": "{count, plural, other{{count} 次搜索}}",
+  "aiMessageThinkingCommands": "{count, plural, other{运行了 {count} 条命令}}",
+  "aiMessageThinkingProcessSummarySeparator": "，",
+  "aiToolFileNotFound": "找不到文件：{path}",
+  "@aiToolFileNotFound": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "subagentPreviewUnavailable": "无法打开该子会话预览",
+  "subagentPreviewBack": "返回",
+  "subagentPreviewEmpty": "暂无子会话内容",
+  "workflowCardRunMissing": "未找到该调用的 Workflow 运行记录",
+  "workflowCardAgents": "{count} 个 agent",
+  "@workflowCardAgents": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "subagentPreviewTitleAgent": "{title}",
+  "@subagentPreviewTitleAgent": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionWorkbenchViewChat": "聊天",
+  "sessionWorkbenchViewTerminal": "终端",
+  "sessionReadyTitle": "准备开始对话",
+  "sessionReadySubtitle": "与 {memberName} 在此工作区中开始对话",
+  "@sessionReadySubtitle": {
+    "placeholders": {
+      "memberName": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionReadySubtitleGeneric": "在此工作区中开始新对话",
+  "sessionReadyHint": "用日常语言描述你想做的事即可，无需输入命令。",
+  "workspaceChatLandingInputHint": "今天帮你做些什么？ @ 引用对话文件，/ 调用技能与指令",
+  "composeCommandNative": "原生命令",
+  "composeCommandPlugin": "插件",
+  "composeCommandExperimental": "实验性",
+  "composeNativeCommandGoal": "为长时间运行的工作保留持久目标。",
+  "composeNativeCommandCompact": "压缩当前对话上下文。",
+  "composeNativeCommandPlan": "将会话切换到规划工作流。",
+  "composeNativeCommandHelp": "显示此 CLI 会话中可用的命令。",
+  "workspaceChatLandingBackToWorkbench": "返回工作台",
+  "workspaceChatLandingSelectWorkspace": "选择工作空间 >",
+  "workspaceChatLandingSelectProject": "选择项目 >",
+  "workspaceChatLandingSelectWorktree": "选择 worktree >",
+  "workspaceChatLandingSelectLaunchDirectory": "选择目录 >",
+  "workspaceChatLandingModeTeam": "团队",
+  "workspaceChatLandingModeSimple": "简单对话",
+  "workspaceChatLandingUsePreset": "使用预设",
+  "workspaceChatLandingCustomLaunch": "自定义…",
+  "workspaceChatLandingCustomLaunchTitle": "自定义启动",
+  "workspaceChatLandingSkills": "技能",
+  "workspaceChatLandingConnectApps": "连应用",
+  "workspaceChatLandingAttach": "附加文件",
+  "workspaceChatLandingVoice": "语音输入",
+  "workspaceChatLandingVoiceCancel": "取消录音",
+  "workspaceChatLandingVoiceStop": "停止录音",
+  "workspaceChatLandingVoiceUnavailable": "此设备不支持语音输入",
+  "workspaceChatLandingVoicePermissionDenied": "未获得麦克风权限",
+  "workspaceChatLandingVoiceMacOsIdeLaunch": "从 IDE 启动时 macOS 不会把语音识别权限授予 TeamPilot。请直接运行 build/macos/Build/Products/Debug/TeamPilot.app，或在 Xcode 中启动。",
+  "landingTeamSettingsNavTeam": "团队默认",
+  "landingTeamSettingsNavMachines": "机器分配",
+  "landingTeamSettingsGlobalHint": "更改将应用于该团队的全局配置。",
+  "workspaceChatLandingTeamLaunchBlocked": "请先在团队设置中配置团队与成员的模型预设，再发送消息。",
+  "landingLaunchRemoteCliMissing": "启动前请在远程机器上安装所需的 CLI。",
+  "landingLaunchRemoteCliMissingDetail": "{host} 上缺少 {cli}",
+  "@landingLaunchRemoteCliMissingDetail": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      },
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "landingLaunchLocalCliMissing": "启动前请先在本机安装所需的 AI CLI。",
+  "landingLaunchLocalCliMissingTitle": "本机需要的 AI CLI",
+  "landingLaunchLocalCliMissingDetail": "未找到 {cli}",
+  "@landingLaunchLocalCliMissingDetail": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "landingLaunchLocalAdapterMissingDetail": "未找到 {cli} ACP 适配器",
+  "@landingLaunchLocalAdapterMissingDetail": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "landingLaunchLocalCliMissingHint": "可直接在此安装，或在设置 → CLI 中指定可执行文件路径。",
+  "landingLaunchAcpUnsupported": "{cli} 仅支持 ACP 对话，当前目标（{target}）无法运行 ACP。请选择本机、SSH 或 Termux 目标，或改用支持终端的 CLI。",
+  "@landingLaunchAcpUnsupported": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "landingLaunchLocalCliOpenSettings": "打开设置",
+  "remoteCliMachineReadinessTitle": "此机器上需要的 CLI",
+  "remoteCliMachineReadinessProbing": "正在检测…",
+  "remoteCliMachineReadinessReady": "{cli} 已就绪：{path}",
+  "@remoteCliMachineReadinessReady": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteCliMachineReadinessMissing": "未找到 {cli} — 请安装或设置手动路径",
+  "@remoteCliMachineReadinessMissing": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteCliMachineReadinessAdapterLabel": "{cli} ACP 适配器",
+  "remoteCliMachineReadinessFailed": "{cli}：{message}",
+  "@remoteCliMachineReadinessFailed": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteCliMachineReadinessInstallHint": "对每个缺失的 CLI 点击安装，或在目标设置中指定手动路径。",
+  "sessionStartButton": "开始对话",
+  "sessionFailedTitle": "未能启动会话",
+  "sessionLaunchErrorReviewDetails": "查看详情",
+  "sessionLaunchErrorHideDetails": "收起详情",
+  "sessionRetryButton": "重试",
+  "openFolder": "打开文件夹",
+  "copyFolderPath": "复制文件夹路径",
+  "pathCopied": "已复制路径：{path}",
+  "@pathCopied": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "workspaceDetails": "工作区详情",
+  "addWorkspaceDirectory": "添加目录",
+  "removeWorkspaceDirectory": "移除目录",
+  "removeWorkspaceMachine": "移除机器",
+  "workspaceDisplayName": "显示名称",
+  "workspaceIcon": "图标",
+  "workspaceIconPickerTitle": "选择工作区图标",
+  "workspaceIconUseDefault": "使用默认",
+  "workspaceIconUpload": "上传图标",
+  "workspaceIconUploadFailed": "无法保存图标，请使用 PNG、JPG、WEBP 或 SVG。",
+  "workspacePrimaryPath": "主目录",
+  "workspaceAdditionalDirectories": "附加目录",
+  "workspaceNoAdditionalDirectories": "暂无附加目录",
+  "workspaceSessionCount": "会话数",
+  "workspaceCreatedAt": "创建时间",
+  "workspaceUpdatedAt": "更新时间",
+  "workspaceDirectoryAlreadyPrimary": "该路径已是工作区主目录。",
+  "workspaceDirectoryAlreadyAdded": "该目录已在工作区中。",
+  "editWorkspacePrimaryPath": "编辑主目录",
+  "remoteDirectoryBrowserTitle": "浏览远程目录",
+  "remoteDirectoryBrowserUpOneLevel": "上一级",
+  "remoteDirectoryBrowserUseThisDirectory": "使用此目录",
+  "remoteDirectoryBrowserTypePathLabel": "或手动输入路径",
+  "remoteDirectoryBrowserTypePathHint": "~/work/workspace",
+  "remoteDirectoryBrowserUseTypedPath": "使用路径",
+  "remoteDirectoryBrowserError": "无法打开远程目录。你仍可在下方手动输入路径。",
+  "remoteDirectoryBrowserEmpty": "此处没有子目录",
+  "deleteWorkspace": "删除工作区",
+  "deleteWorkspaceConfirm": "删除工作区 \"{name}\" 及其所有会话？此操作不可撤销。",
+  "noSessions": "暂无会话",
+  "unknownFolder": "未知",
+  "renameConversation": "重命名对话",
+  "sessionOpenToSide": "在右侧分栏打开",
+  "deleteConversation": "删除对话",
+  "archiveConversation": "归档",
+  "closeConversation": "关闭会话",
+  "restoreConversation": "恢复",
+  "sessionArchiveTitle": "归档",
+  "sessionArchiveEmpty": "暂无归档会话",
+  "sessionArchiveEntryTooltip": "归档会话",
+  "pinConversation": "置顶对话",
+  "unpinConversation": "取消置顶",
+  "duplicateConversation": "复制对话",
+  "referenceConversation": "引用会话",
+  "referenceConversationFailed": "准备会话引用失败",
+  "sessionDuplicated": "对话已复制",
+  "sessionDuplicateFailed": "复制对话失败",
+  "sessionForkFailed": "Fork 对话失败",
+  "sessionTitleCopySuffix": "（副本）",
+  "forkFromHere": "从这里 fork",
+  "branchPrevious": "上一版本",
+  "branchNext": "下一版本",
+  "branchSwitchFailed": "切换版本失败",
+  "editUserMessage": "编辑消息",
+  "editSend": "发送",
+  "editCancel": "取消",
+  "branchEditFailed": "改后的消息发送失败",
+  "openSessionDirectory": "打开会话目录",
+  "sessionSortManual": "手动排序",
+  "sessionSortRecentlyUpdated": "最近更新",
+  "sessionSortCreatedDesc": "创建时间",
+  "sessionSortTooltip": "排序对话",
+  "renameConversationTitle": "重命名对话",
+  "deleteConversationConfirm": "删除对话 \"{name}\"？此操作不可撤销。",
+  "conversationName": "对话名称",
+  "closeTab": "关闭",
+  "closeOtherTabs": "关闭其他标签",
+  "closeRightTabs": "关闭右侧标签",
+  "closeAllTabs": "关闭全部",
+  "tabMenuSplitRight": "向右拆分",
+  "tabMenuSplitDown": "向下拆分",
+  "session": "会话",
+  "sessionPageSubtitle": "配置 Shell 会话启动方式、终端行为与存储后端。",
+  "cliConfig": "CLI",
+  "cliConfigPageSubtitle": "配置 AI 代理 CLI 可执行文件路径，并安装缺失的工具。",
+  "sshProfilesSettingsTitle": "SSH 服务器",
+  "sshServersTitle": "SSH 服务器",
+  "sshServersNotConnected": "未连接远程主机。",
+  "sshServersLoadError": "无法加载 SSH 服务器，请检查连接后重试。",
+  "sshServersEmpty": "此主机上还没有保存的 SSH 服务器。",
+  "sshProfilesPageTitle": "远程 SSH 服务器",
+  "sshProfilesPageSubtitle": "当前主目录所在主机上保存的 SSH 服务器配置；配对了同一主目录的设备共享这份清单。",
+  "sshProfilesTargetsTitle": "目标",
+  "sshProfilesTargetsSubtitle": "添加远程主机以在 TeamPilot 中连接到它。",
+  "sshProfilesImport": "导入",
+  "sshProfilesImportUnavailable": "暂不支持从 ~/.ssh/config 导入。",
+  "sshProfilesAddTarget": "添加目标",
+  "sshProfilesEmpty": "尚未配置 SSH 目标。",
+  "sshProfileStatusDisconnected": "未连接",
+  "sshProfileStatusConnecting": "连接中…",
+  "sshProfileStatusConnected": "已连接",
+  "sshProfileStatusError": "错误",
+  "sshProfileStatusReconnecting": "重连中…",
+  "sshProfileStatusAuthFailed": "认证失败",
+  "sshHostsPillCount": "{count} 台主机",
+  "@sshHostsPillCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sshHostsPillConnecting": "连接中…",
+  "sshHostsPanelTitle": "远程主机",
+  "sshHostsRowKind": "SSH 主机",
+  "sshHostsManage": "管理远程主机",
+  "sshHostsOpenTerminal": "打开终端",
+  "sshHostsOpenTerminalNoWorkspace": "请先打开一个工作区再启动终端。",
+  "sshProfileTest": "测试",
+  "sshProfileConnect": "连接",
+  "sshProfileDisconnect": "断开",
+  "sshProfileEdit": "编辑",
+  "sshProfileDelete": "删除",
+  "sshProfileRefresh": "刷新",
+  "sshProfileTestSuccess": "连接成功",
+  "sshProfileTestFailed": "连接测试失败",
+  "sshProfileTestFailedHostKey": "主机密钥未获信任",
+  "sshPenaltyRefused": "服务器暂时拒绝了连接（触发了防暴力破解保护），请等待约一分钟后重试。",
+  "sshProfileTestFailedAuth": "身份验证失败",
+  "sshProfileTestFailedAborted": "登录前连接已断开：{detail}",
+  "@sshProfileTestFailedAborted": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "sshProfileTestFailedDetail": "连接测试失败：{detail}",
+  "@sshProfileTestFailedDetail": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "sshProfileConnectSuccess": "已连接到 {host}",
+  "@sshProfileConnectSuccess": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "sshHostKeyUnknownTitle": "验证 SSH 主机密钥",
+  "sshHostKeyUnknownBody": "TeamPilot 尚未见过 {host}。请确认指纹与该机器一致后再信任。",
+  "@sshHostKeyUnknownBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "sshHostKeyMismatchTitle": "SSH 主机密钥已变更",
+  "sshHostKeyMismatchBody": "{host} 的主机密钥与 TeamPilot 先前保存的不一致。可能是系统重装，也可能是连接被劫持。",
+  "@sshHostKeyMismatchBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "sshHostKeyFingerprintLabel": "指纹",
+  "sshHostKeyPreviousFingerprintLabel": "先前信任的指纹",
+  "sshHostKeyKeyTypeLabel": "密钥类型：{keyType}",
+  "@sshHostKeyKeyTypeLabel": {
+    "placeholders": {
+      "keyType": {
+        "type": "String"
+      }
+    }
+  },
+  "sshHostKeyTrust": "信任并继续",
+  "sshHostKeyReplaceTrust": "替换并信任",
+  "sshProfileFormTitleNew": "新的 SSH 目标",
+  "sshProfileFormTitleEdit": "编辑 SSH 目标",
+  "sshProfileFormLabel": "标签",
+  "sshProfileFormLabelHint": "我的服务器",
+  "sshProfileFormHost": "主机或别名",
+  "sshProfileFormHostHint": "server、deploy@server:2222",
+  "sshProfileFormUsername": "用户名",
+  "sshProfileFormUsernameHint": "deploy",
+  "sshProfileFormPort": "端口",
+  "sshProfileFormPortInvalid": "端口须在 1–65535 之间",
+  "sshProfileFormIdentityFile": "身份文件",
+  "sshProfileFormIdentityFileHint": "~/.ssh/id_ed25519",
+  "sshProfileFormIdentityFileHelper": "可选。填写后从磁盘读取私钥。",
+  "sshProfileFormIdentityFileBrowse": "浏览…",
+  "sshProfileFormIdentityFileMissing": "找不到身份文件",
+  "sshProfileFormPassphrase": "密钥口令",
+  "sshProfileFormPassphraseHint": "可选",
+  "sshProfileFormPassword": "密码",
+  "sshProfileFormPasswordHint": "未设置身份文件时使用",
+  "sshProfileFormPasswordHintEdit": "留空则保留已保存密码",
+  "sshProfileFormPasswordHelper": "若已提供身份文件则可不填。",
+  "sshProfileFormCredentialRequired": "请提供身份文件或密码。",
+  "sshProfileFormCredentialSaveFailed": "目标已保存，但无法写入凭据。请解锁系统钥匙环后编辑该目标并重新填写。",
+  "sshProfileFormFieldRequired": "必填",
+  "sshProfileSelectorTooltip": "切换 SSH 服务器",
+  "sshProfileSelectorManage": "管理 SSH 服务器…",
+  "sshDefaultWorkingDirectoryTitle": "SSH 默认工作目录",
+  "sshDefaultWorkingDirectorySubtitle": "SSH 启动没有工作区路径时使用的远端工作目录；留空则不切换目录。",
+  "cliExecutablePathLabel": "flashskyai CLI 路径",
+  "cliExecutablePathDescription": "flashskyai 可执行文件的绝对路径。留空则使用 PATH 中查找到的版本。",
+  "cliExecutablePathDescriptionSsh": "远程 SSH 主机上 flashskyai 的绝对路径。留空则通过 SSH 自动探测。",
+  "cliExecutablePathBrowse": "浏览…",
+  "cliExecutablePathApply": "更新",
+  "cliExecutablePathReset": "重置",
+  "cliExecutablePathLocate": "定位",
+  "cliExecutablePathLocateFailed": "未能在 PATH 上找到 {name}。",
+  "@cliExecutablePathLocateFailed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "cliExecutablePathLocateSuccess": "已定位 {name}：{path}。",
+  "@cliExecutablePathLocateSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "cliExecutablePathLocateRemoteUnsupported": "远程工作面不支持定位此工具。",
+  "cliExecutablePathUsing": "当前生效：",
+  "cliExecutablePathUsingFallback": "使用 PATH 中查找的版本",
+  "cliInstallButton": "安装",
+  "cliReadinessReady": "就绪",
+  "cliReadinessUpdateAvailable": "有更新",
+  "cliReadinessNeedsSetup": "需要安装",
+  "cliReadinessRowCli": "CLI",
+  "cliReadinessRowAcp": "ACP",
+  "cliReadinessUsesCli": "使用 CLI · acp",
+  "cliReadinessAdapterMissing": "未找到适配器",
+  "cliReadinessVersionUnknown": "—",
+  "cliUpgradeButton": "升级",
+  "cliInstallUpgrading": "正在升级…",
+  "cliInstallInstalling": "安装中…",
+  "cliInstallProgressCheckingNpm": "正在检测 npm…",
+  "cliInstallProgressBootstrappingNode": "正在安装 Node.js…",
+  "cliInstallProgressInstallingCli": "正在安装 CLI…",
+  "cliInstallProgressLocatingExecutable": "正在定位 CLI 可执行文件…",
+  "cliInstallProgressDownloading": "正在下载适配器…",
+  "cliInstallProgressExtracting": "正在解压适配器…",
+  "cliInstallProgressSyncingRemoteWorkspace": "正在同步远程工作区…",
+  "sessionRemoteProvisionPreparing": "正在准备远程环境…",
+  "sessionRemoteProvisionPreparingOnHost": "正在准备远程环境（{host}）",
+  "@sessionRemoteProvisionPreparingOnHost": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionRemoteProvisionTitle": "正在准备 {member}（{host}）",
+  "@sessionRemoteProvisionTitle": {
+    "placeholders": {
+      "member": {
+        "type": "String"
+      },
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionRemoteProvisionFailed": "远程准备失败",
+  "cliExecutablePathLabelFor": "{cli} CLI 路径",
+  "@cliExecutablePathLabelFor": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "cliExecutablePathDescriptionFor": "{cli} 可执行文件的绝对路径。留空则使用 PATH 中查找到的版本。",
+  "@cliExecutablePathDescriptionFor": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "cliExecutablePathDescriptionSshFor": "远程 SSH 主机上 {cli} 的绝对路径。留空则通过 SSH 自动探测。",
+  "@cliExecutablePathDescriptionSshFor": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "claudeCliExecutablePathLabel": "Claude Code CLI 路径",
+  "claudeCliExecutablePathDescription": "Claude Code 可执行文件的绝对路径。留空则使用 PATH 中查找到的版本。",
+  "claudeCliExecutablePathDescriptionSsh": "远程 SSH 主机上 Claude Code 的绝对路径。留空则从远端 PATH 解析 claude。",
+  "shellChatWorkbench": "Shell 聊天工作台",
+  "shellSession": "Shell 会话",
+  "terminalFind": "在终端中查找",
+  "terminalFindNoResults": "无匹配",
+  "terminalClear": "清除终端",
+  "terminalDropCrossMachineRejected": "无法将本地文件拖入远程终端",
+  "editorTitle": "编辑器",
+  "editorSave": "保存",
+  "editorCut": "剪切",
+  "editorCopy": "复制",
+  "editorCopyAsAiContext": "复制为 AI 上下文",
+  "selectionAskAi": "用 AI 提问…",
+  "editorPaste": "粘贴",
+  "editorSelectAll": "全选",
+  "editorUndoEdit": "撤销",
+  "editorRedoEdit": "重做",
+  "editorRevertChanges": "撤销修改",
+  "editorClose": "关闭编辑器",
+  "editorUnsavedChangesTitle": "未保存的更改",
+  "editorUnsavedChangesDiscardFile": "放弃对「{fileName}」的未保存修改？",
+  "editorUnsavedChangesDiscardMultiple": "放弃 {count} 个文件中的未保存修改？",
+  "editorDiscard": "放弃",
+  "editorNotReady": "编辑器未就绪",
+  "editorNoFileOpen": "未打开文件",
+  "editorBinaryFileHint": "二进制文件将使用系统默认应用打开。",
+  "editorFileNotFound": "找不到文件",
+  "editorFileTooLarge": "文件过大，无法在 TeamPilot 中编辑（上限 2 MB）。",
+  "editorImageTooLarge": "图片过大，无法在 TeamPilot 中预览（上限 25 MB）。",
+  "editorImageDecodeFailed": "无法解码此图片。",
+  "editorCouldNotReadFile": "无法读取文件",
+  "editorFileReadOnly": "文件为只读",
+  "editorSaveFailed": "保存失败：{error}",
+  "editorFindHint": "查找",
+  "editorFindReplaceHint": "替换",
+  "editorFindReplaceAll": "全部替换",
+  "editorFindPrevious": "上一个匹配",
+  "editorFindNext": "下一个匹配",
+  "editorFindClose": "关闭",
+  "editorFindMatchCase": "区分大小写",
+  "editorFindUseRegex": "使用正则表达式",
+  "editorFindWholeWord": "全字匹配",
+  "editorFindToggleReplace": "切换替换",
+  "editorFindInSelection": "在选定内容中查找",
+  "editorFindReplacePreserveCase": "保留大小写",
+  "editorFindReplaceOne": "替换",
+  "editorFindNoResults": "无匹配",
+  "editorFindInvalidRegex": "正则表达式无效",
+  "fileTreeRevealActiveFile": "定位当前文件",
+  "fileTreeRefresh": "刷新",
+  "fileTreeShowFilter": "显示筛选",
+  "fileTreeHideFilter": "隐藏筛选",
+  "fileTreeRevealFailed": "无法在文件树中定位该文件",
+  "fileTreeOpenWithSystemApp": "用系统应用打开",
+  "fileTreeCopyPath": "复制路径",
+  "fileTreeCopyRelativePath": "复制相对路径",
+  "fileTreeDeleteItemTitle": "删除",
+  "fileTreeDeleteItemConfirm": "删除「{name}」？",
+  "fileTreeNewFile": "新建文件",
+  "fileTreeNewFolder": "新建文件夹",
+  "fileTreeCreateNameHint": "名称",
+  "fileTreeCut": "剪切",
+  "fileTreeCopy": "复制",
+  "fileTreePaste": "粘贴",
+  "fileTreeRename": "重命名",
+  "fileTreeRenameTitle": "重命名",
+  "fileTreeOpenInFileManager": "在文件管理器中打开",
+  "fileTreeOpenInTerminal": "在终端中打开",
+  "fileTreePasteDone": "已粘贴",
+  "fileTreeFileCreated": "已创建文件",
+  "fileTreeFolderCreated": "已创建文件夹",
+  "fileTreeRenameDone": "已重命名",
+  "fileTreeDeleteDone": "已删除",
+  "fileTreeInvalidName": "名称无效",
+  "fileTreeItemExists": "同名项目已存在",
+  "fileTreeSourceMissing": "源文件不存在",
+  "fileTreeInvalidPasteTarget": "无法粘贴到此处",
+  "fileTreeOpenInTerminalFailed": "无法打开终端",
+  "fileTreeImportConflictTitle": "项目已存在",
+  "fileTreeImportConflictBody": "目标位置已存在「{name}」。",
+  "@fileTreeImportConflictBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "fileTreeImportConflictRemaining": "{count, plural, other{之后还有 {count} 个冲突。}}",
+  "@fileTreeImportConflictRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fileTreeImportConflictRemainingZero": "没有更多冲突。",
+  "fileTreeImportConflictTypeMismatch": "文件和文件夹不能互相替换。",
+  "fileTreeImportOverwrite": "覆盖",
+  "fileTreeImportSkip": "跳过",
+  "fileTreeImportCancelAll": "全部取消",
+  "fileTreeImportApplyRemaining": "应用于剩余冲突",
+  "fileTreeImportProgressTitle": "正在导入…",
+  "fileTreeImportProgressCancel": "取消",
+  "fileTreeImportProgressCurrent": "{name}",
+  "@fileTreeImportProgressCurrent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "fileTreeImportProgressItems": "{completed} / {total}",
+  "@fileTreeImportProgressItems": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "fileTreeImportSummary": "成功 {succeeded}，跳过 {skipped}，失败 {failed}",
+  "@fileTreeImportSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "fileTreeImportSummaryCancelledSuffix": " — 已取消",
+  "fileTreeImportRejectSelf": "无法将项目移动到自身或其子目录中。",
+  "fileTreeImportDropCopy": "复制",
+  "fileTreeImportDropMove": "移动",
+  "terminalOpenLink": "打开链接",
+  "terminalExportScrollback": "导出滚动缓冲…",
+  "terminalCopySelectHint": "按住 Shift 选择复制",
+  "workspaceTerminal": "终端",
+  "workspaceTerminalClose": "关闭终端面板",
+  "workspaceTerminalNoWorkingDirectory": "请先连接会话以打开 Shell 终端",
+  "workspaceTerminalNewSession": "新建终端",
+  "workspaceTerminalNewSessionMenu": "新建终端会话菜单",
+  "workspaceTerminalNewSshSession": "新建 SSH 会话…",
+  "workspaceTerminalSettings": "设置",
+  "terminalThemeModeTitle": "终端主题",
+  "terminalThemeModeDescription": "跟随主题色或使用固定风格",
+  "workspaceTerminalThemeAdaptive": "跟随主题",
+  "workspaceTerminalThemeClassicDark": "经典暗色",
+  "workspaceTerminalThemeHighContrast": "高对比",
+  "workspaceTerminalSshConnectFailed": "SSH 配置未找到或连接失败",
+  "workspaceToolsResolveFailed": "无法打开工作区工具",
+  "workspaceToolsResolveFailedHint": "请确认远程机器可连通后再重试。",
+  "workspaceTerminalCloseSession": "关闭终端",
+  "terminalScrollbackLinesTitle": "终端滚动缓冲行数",
+  "terminalScrollbackLinesDescription": "每个会话终端保留的最大行数",
+  "terminalLinkClickOpensInAppTitle": "在应用内打开终端链接",
+  "terminalLinkClickOpensInAppDescription": "左键点击链接和文件路径时在 TeamPilot 内打开，而不是交给正在运行的程序。Ctrl/Cmd+点击始终在应用内打开。",
+  "terminalParkedSendPending": "已发送，等待接收：{content}",
+  "@terminalParkedSendPending": {
+    "placeholders": {
+      "content": {
+        "type": "String"
+      }
+    }
+  },
+  "terminalParkedSendDismiss": "关闭",
+  "mailbox": "信箱",
+  "mailboxEmpty": "暂无消息",
+  "board": "看板",
+  "boardEmpty": "暂无任务",
+  "boardPending": "待认领",
+  "boardClaimed": "进行中",
+  "boardDone": "已完成",
+  "visibilityBoardHint": "显示混合模式团队的任务看板。",
+  "autoLaunchAllMembersTitle": "连接时启动全部成员",
+  "autoLaunchAllMembersDescription": "仅对混合团队生效：开启后连接或重启会为每个有效成员启动终端；native 团队始终全员启动。",
+  "memberTerminalReclaimedTitle": "终端已回收以释放内存",
+  "memberTerminalReclaimedBody": "点击重新连接（会话会恢复）",
+  "memberTerminalNotStartedTitle": "终端未启动 — 点击启动",
+  "reclaimIdleTerminalsTitle": "回收空闲终端",
+  "reclaimIdleTerminalsDescription": "空闲超时后关闭成员/会话终端以释放内存；需要时自动重连。",
+  "reclaimIdleTerminalMinutesTitle": "空闲回收超时（分钟）",
+  "reclaimIdleTerminalMinutesDescription": "终端可保持空闲多少分钟后被回收。",
+  "openExistingSessionStartsTerminalTitle": "打开已有会话时直接启动终端",
+  "openExistingSessionStartsTerminalDescription": "开启后，从侧边栏打开对话会立即连接终端。关闭（默认）时先显示聊天视图，发送消息后才启动终端。",
+  "chatSubmitSwitchesToTerminalTitle": "发送后切换到终端",
+  "chatSubmitSwitchesToTerminalDescription": "关闭（默认）时，在聊天页发送（新建或继续）后仍留在聊天视图，终端在后台运行。开启后，发送后切换到终端。",
+  "continueSwitchRestartTitle": "重启以应用切换？",
+  "continueSwitchRestartBody": "新的供应商/模型已保存。正在运行的会话仍在使用旧配置，重启后切换才会生效。",
+  "continueSwitchRestartNow": "立即重启",
+  "continueSwitchRestartLater": "稍后",
+  "scopeSessionsToSelectedTeamTitle": "按所选团队筛选会话",
+  "scopeSessionsToSelectedTeamDescription": "开启后，侧边栏仅显示归属当前团队的会话。新建会话仍会写入当前所选团队，之后开启本选项即可看到它们。",
+  "notifyOnSessionIdleTitle": "Agent 空闲系统通知",
+  "notifyOnSessionIdleDescription": "会话结束一轮工作并进入空闲时，除应用内通知中心外，同时发送操作系统通知。",
+  "gitAutoFetchTitle": "自动拉取远程更新",
+  "gitAutoFetchDescription": "定时对源代码管理面板当前显示的仓库执行非交互的 git fetch --all --prune，保持提交/拉取计数最新。",
+  "gitAutoFetchIntervalTitle": "自动拉取间隔（分钟）",
+  "gitAutoFetchIntervalDescription": "面板打开时对选中仓库执行 fetch 的频率。",
+  "gitAutoFetchIntervalMinutesOption": "每 {minutes} 分钟",
+  "@gitAutoFetchIntervalMinutesOption": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "memberTargetAssignmentTitle": "成员所在机器",
+  "memberTargetAssignmentSubtitle": "{member} 运行所在的机器（其分配的工作区目录）。",
+  "@memberTargetAssignmentSubtitle": {
+    "placeholders": {
+      "member": {}
+    }
+  },
+  "memberTargetAssignmentInherit": "继承工作区目录",
+  "memberAssignFoldersAction": "分配目录…",
+  "credentialPushOptInTitle": "把凭证推送到此机器",
+  "credentialPushOptInSubtitle": "供远程成员认证使用。",
+  "credentialPushConfirmTitle": "确认把凭证推送到远程主机？",
+  "credentialPushConfirmBody": "provider 密钥将写入远程主机 {host}。请仅对你信任的机器开启。轮换密钥后需重推到每台已开启的机器。",
+  "@credentialPushConfirmBody": {
+    "placeholders": {
+      "host": {}
+    }
+  },
+  "credentialPushConfirmAction": "推送凭证",
+  "rootSandboxEnvOptInTitle": "为 root 注入 IS_SANDBOX",
+  "rootSandboxEnvOptInSubtitle": "root 启动 Claude 时保留 skip-permissions。",
+  "injectSessionSshMcpTitle": "注入 Session SSH MCP",
+  "injectSessionSshMcpSubtitle": "本机和远程座位都可通过 MCP 在本工作区的 SSH 机器上执行命令和传文件。更改后需重连 session。",
+  "rootSandboxEnvConfirmTitle": "确认为 root 启用 sandbox 环境变量？",
+  "rootSandboxEnvConfirmBody": "在 {host} 上以 root 启动 Claude 时，TeamPilot 将设置 IS_SANDBOX=1 并保留 --dangerously-skip-permissions。请仅对你信任的机器开启。",
+  "@rootSandboxEnvConfirmBody": {
+    "placeholders": {
+      "host": {}
+    }
+  },
+  "rootSandboxEnvConfirmAction": "启用",
+  "workspaceTargetTitle": "工作区所在机器",
+  "workspaceTargetSubtitle": "该工作区的目录所在并运行的机器。会话在此 target 上启动；切换不会移动文件。",
+  "workspaceFoldersSectionTitle": "工作区目录与机器",
+  "workspaceFoldersEditorHint": "每个目录单独指定所在机器与路径。全部本地 = 本地工作区；全部同一远程 = 项目远程；跨机 = 混合工作区（成员远程）。",
+  "workspaceFoldersPersonalTargetsLockedHint": "个人身份下无法更改目录所在机器。请切换到团队身份配置机器与目录。",
+  "workspaceFoldersPickMixedTarget": "添加到机器",
+  "workspaceTopologyLocal": "本地工作区",
+  "workspaceTopologyRemote": "远程工作区",
+  "workspaceTopologyMixed": "混合工作区",
+  "workspaceTypeLabel": "类型",
+  "mixedWorkspaceRequiresTeamLaunch": "混合工作区只能通过团队身份启动。请切换到团队，并在团队设置中确认机器分配。",
+  "mixedWorkspacePersonalLaunchBlockedHint": "这是混合工作区。请切换到团队标签页启动对话，并确认机器分配。",
+  "mixedWorkspaceMemberAssignmentTitle": "分配成员到机器",
+  "mixedWorkspaceMemberAssignmentSubtitle": "左侧选择机器，右侧用 + / − 放置各成员的实例。",
+  "mixedWorkspaceMemberAssignmentIncomplete": "混合工作区首次启动前，请先确认成员的机器分配。",
+  "mixedWorkspaceLeadPlacementInvalid": "工作区包含本地文件夹时，团队负责人必须分配到本地主机。",
+  "mixedWorkspaceMemberAssignmentConfirm": "启动团队",
+  "mixedWorkspaceCreateSessionBlocked": "请先在团队设置中确认机器分配，再在此混合工作区新建对话。",
+  "mixedWorkspaceSessionLaunchBlocked": "该对话的机器分配已失效。请在团队设置中确认分配后新建对话。",
+  "sessionLaunchMissingWorkspace": "找不到该对话所属的工作区。",
+  "sessionLaunchMissingTeamMember": "团队成员不可用，请选择团队后重试。",
+  "mixedWorkspaceMemberPlacementProgress": "已分配 {placed} / {total}",
+  "@mixedWorkspaceMemberPlacementProgress": {
+    "placeholders": {
+      "placed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "mixedWorkspaceMemberPlacementOnMachine": "本机 {count} 个",
+  "@mixedWorkspaceMemberPlacementOnMachine": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceFolderTargetLabel": "所在机器",
+  "workspaceFolderPathLabel": "目录",
+  "workspaceFoldersChangeTarget": "更换",
+  "workspaceFoldersAddOnAnotherMachine": "添加其他主机目录",
+  "workspaceFoldersPickTarget": "选择机器",
+  "workspaceFoldersPickPath": "选择目录",
+  "workspaceFoldersApplyAllLocal": "全部设为本地",
+  "workspaceFoldersApplyAllRemote": "全部设为远程…",
+  "workspaceFoldersPickRemoteTarget": "选择远程机器",
+  "workspaceDeadTargetBadge": "机器不可用",
+  "workspaceDeadTargetRemap": "重新映射…",
+  "workspaceDeadTargetRemapTitle": "重新映射机器",
+  "workspaceDeadTargetRemapBody": "将 {from} 替换为另一台机器。目录路径不会改动，目标机器上必须已有相同路径。",
+  "@workspaceDeadTargetRemapBody": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      }
+    }
+  },
+  "workspaceDeadTargetRemapPickFrom": "失效机器",
+  "workspaceDeadTargetRemapPickTo": "替换为",
+  "workspaceDeadTargetRemapConfirm": "重新映射",
+  "workspaceDeadTargetRemapNothing": "没有可映射的目标。",
+  "workspaceDeadTargetRemapFailed": "无法重新映射机器。",
+  "workspaceDeadTargetRemapFromLaunch": "重新映射机器…",
+  "homeTargetTitle": "主设备",
+  "homeTargetSubtitle": "TeamPilot 存放团队、工作区与配置的位置（控制面）。切换会使用独立的数据目录，不会自动迁移。",
+  "homeTargetSingleOptionHint": "当前平台只有这一个可用的主设备。",
+  "windowsStorageCliMismatchNativeCli": "CLI 在 WSL 中运行，但数据保存在 Windows AppData，配置可能不一致。",
+  "windowsStorageCliMismatchWslCli": "CLI 在 Windows 上运行，但数据保存在 WSL，配置可能不一致。",
+  "windowsStorageSwitchReloadHint": "切换存储后建议重连已打开的会话。",
+  "bootstrapStartupFailed": "启动失败：{error}",
+  "bootstrapUseNativeStorageInstead": "改用 Windows 本地存储",
+  "bootstrapLoadingApp": "正在启动 TeamPilot…",
+  "bootstrapLoadingWorkspaces": "正在加载工作区…",
+  "bootstrapLoadingLibraries": "正在加载资源库…",
+  "runsPlaceholder": "运行历史将显示在此处。",
+  "llmConfig": "服务商",
+  "llmConfigSubtitle": "提供商和模型",
+  "llmConfigPathLabel": "LLM 配置文件",
+  "llmConfigPathHint": "留空则使用默认路径",
+  "llmConfigPathBrowse": "选择文件",
+  "llmConfigPathSave": "更新",
+  "llmConfigPathReset": "默认",
+  "llmConfigPathBadgeDefault": "默认",
+  "llmConfigPathBadgeCustom": "自定义",
+  "llmConfigPathPickerTitle": "选择 llm_config.json",
+  "llmConfigPathSessionCardDescription": "LLM 配置文件（llm_config.json）的绝对路径。留空则使用 CLI 安装目录旁的默认路径。",
+  "llmConfigPathSessionCardDescriptionSsh": "SSH 远端主机上 llm_config.json 的绝对路径。留空则使用远端 CLI 安装目录旁的默认路径。",
+  "llmConfigCurrentEffectivePathPrefix": "当前文件：",
+  "llmConfigEffectivePathUnresolved": "尚未解析出路径（请指定 CLI 或自定义路径）",
+  "llmConfigOpenSessionSettings": "会话设置…",
+  "providers": "提供商",
+  "llmConfigPageSubtitle": "管理 LLM 提供商和模型。",
+  "providersTab": "提供商",
+  "modelsTab": "模型",
+  "rawJsonTab": "原始 JSON",
+  "addProvider": "添加提供商",
+  "providerName": "提供商名称",
+  "appProviderDisplayName": "显示名称",
+  "appProviderInternalIdPreview": "内部 id：{id}",
+  "@appProviderInternalIdPreview": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "appProviderOpencodeSubscription": "订阅",
+  "appProviderOpencodeSubscriptionOn": "已绑定 OpenCode Go，订阅模型与免费模型均可用。",
+  "appProviderOpencodeSubscriptionOff": "仅免费模型。绑定 OpenCode Go 后可使用订阅模型。",
+  "renameProviderName": "修改名称",
+  "renameProviderTitle": "修改提供商名称",
+  "deleteProvider": "删除提供商",
+  "deleteProviderConfirm": "删除提供商 {name}？",
+  "providerList": "提供商列表",
+  "filterProviders": "筛选提供商...",
+  "appProviderImport": "导入",
+  "appProviderImportNothing": "未发现可导入的提供商。",
+  "appProviderImportSuccess": "已导入 {count} 个提供商，同步到 FlashskyAI {mirrored} 个，跳过已存在 {skipped} 个。",
+  "modelsUsingProvider": "使用此提供商的模型： {count}",
+  "providerListModelCount": "{count} 个模型",
+  "proxyOnShort": "代理开",
+  "proxyOffShort": "代理关",
+  "providerDetailSubtitle": "{type} 提供商 · {count} 个模型",
+  "type": "类型",
+  "providerType": "提供商类型",
+  "providerTypeHint": "openai, claude 或自定义",
+  "proxy": "代理",
+  "proxyUrl": "代理 URL",
+  "baseUrl": "基础 URL",
+  "apiKey": "API 密钥",
+  "appProviderApiKeyEditHint": "留空则保留原密钥",
+  "appProviderCredentialLinkMode": "API Key 来源",
+  "appProviderCredentialLinkOwnKey": "使用自己的 API Key",
+  "appProviderCredentialLinkedTo": "使用 {entry} 的密钥",
+  "@appProviderCredentialLinkedTo": {
+    "placeholders": {
+      "entry": {}
+    }
+  },
+  "appProviderCredentialLinkEmpty": "还没有存有密钥的余额条目",
+  "reveal": "显示",
+  "hide": "隐藏",
+  "replaceKey": "替换密钥",
+  "deleteProviderTooltip": "删除提供商",
+  "deleteProviderWithCredentialsConfirm": "删除提供商 {name}？将同时删除该 Provider 已保存的 Claude 登录凭据。",
+  "claudeOfficialCredentialsTitle": "Claude Official 登录",
+  "claudeOfficialCredentialsReady": "凭据已就绪",
+  "claudeOfficialCredentialsMissing": "该 Provider 尚未保存凭据",
+  "providerCredentialsAuthenticated": "已认证",
+  "providerCredentialsUnauthenticated": "未认证",
+  "providerCredentialsBrowserOpened": "已打开浏览器进行授权",
+  "providerCredentialsDeviceCodeTitle": "设备验证码",
+  "providerCredentialsDeviceCodeHint": "请在浏览器中输入此一次性验证码（15 分钟内有效）",
+  "providerCredentialsReopenBrowser": "重新打开浏览器",
+  "claudeOfficialCredentialsLogin": "Claude 登录",
+  "claudeOfficialCredentialsImportGlobal": "从 ~/.claude 导入",
+  "claudeOfficialCredentialsImportFile": "导入文件…",
+  "claudeOfficialCredentialsRevoke": "退出登录",
+  "claudeOfficialCredentialsRevokeConfirm": "退出登录并删除 {name} 的已保存凭据？",
+  "claudeOfficialCredentialsActionSuccess": "凭据已更新",
+  "claudeOfficialCredentialsActionFailed": "凭据更新失败",
+  "cursorCredentialsLogin": "Cursor 登录",
+  "cursorCredentialsImportGlobal": "从 ~/.cursor 导入",
+  "cursorCredentialsImportFile": "导入目录…",
+  "cursorCredentialsRevoke": "退出登录",
+  "cursorCredentialsRevokeConfirm": "退出登录并删除 {name} 的已保存凭据？",
+  "cursorCredentialsActionSuccess": "凭据已更新",
+  "cursorCredentialsActionFailed": "凭据更新失败",
+  "codexCredentialsLogin": "OpenAI 登录",
+  "codexCredentialsImportGlobal": "从 ~/.codex 导入",
+  "codexCredentialsImportFile": "导入 auth.json…",
+  "codexCredentialsRevoke": "退出登录",
+  "codexCredentialsRevokeConfirm": "退出登录并删除 {name} 的已保存凭据？",
+  "codexCredentialsActionSuccess": "凭据已更新",
+  "codexCredentialsActionFailed": "凭据更新失败",
+  "opencodeCredentialsLogin": "Provider 登录",
+  "opencodeCredentialsImportGlobal": "从 opencode 凭据导入",
+  "opencodeCredentialsImportFile": "导入 auth.json…",
+  "opencodeCredentialsRevoke": "退出登录",
+  "opencodeCredentialsRevokeConfirm": "退出登录并删除 {name} 的已保存凭据？",
+  "opencodeCredentialsActionSuccess": "凭据已更新",
+  "opencodeCredentialsActionFailed": "凭据更新失败",
+  "providerCredentialsFailureUnsupported": "不支持此凭据操作",
+  "providerCredentialsFailureServiceUnavailable": "凭据服务不可用",
+  "providerCredentialsFailureProviderNotFound": "未找到 Provider",
+  "providerCredentialsFailurePathRequired": "请先选择文件或目录",
+  "providerCredentialsFailureSourceMissing": "未找到凭据文件：{path}",
+  "@providerCredentialsFailureSourceMissing": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "providerCredentialsFailureSourceUnreadable": "无法读取凭据文件：{path}",
+  "@providerCredentialsFailureSourceUnreadable": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "providerCredentialsFailureProviderEntryMissing": "在 {path} 中未找到 \"{providerId}\" 的凭据",
+  "@providerCredentialsFailureProviderEntryMissing": {
+    "placeholders": {
+      "providerId": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "providerCredentialsFailureProviderEntryMissingWithKeys": "在 {path} 中未找到 \"{providerId}\" 的凭据。已有：{keys}",
+  "@providerCredentialsFailureProviderEntryMissingWithKeys": {
+    "placeholders": {
+      "providerId": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      },
+      "keys": {
+        "type": "String"
+      }
+    }
+  },
+  "providerCredentialsFailureInvalidCredential": "凭据格式无效或不完整",
+  "providerCredentialsFailureDestinationExists": "凭据已存在。请先退出登录，或再次导入以覆盖。",
+  "providerCredentialsFailureRequiredFileMissing": "缺少必需文件：{path}",
+  "@providerCredentialsFailureRequiredFileMissing": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "providerCredentialsFailureLoginFailed": "登录失败（退出码 {exitCode}）",
+  "@providerCredentialsFailureLoginFailed": {
+    "placeholders": {
+      "exitCode": {
+        "type": "int"
+      }
+    }
+  },
+  "providerCredentialsFailureLoginProcessError": "无法运行登录命令：{detail}",
+  "@providerCredentialsFailureLoginProcessError": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "providerCredentialsFailureRevokeFailed": "无法退出登录或删除凭据",
+  "providerCredentialsFailureVerifyFailed": "凭据已写入但校验失败",
+  "providerCredentialsFailureStatusRefreshFailed": "凭据已更新但状态刷新失败",
+  "claudeLaunchCredentialsMissingWarning": "该 Team 绑定的 Claude Official Provider 缺少凭据，请在 Providers 设置中登录。",
+  "teamConfigIncompleteTitle": "团队配置不完整",
+  "teamConfigIncompleteBody": "团队“{team}”缺少启动所需的配置。会话仍会启动，但缺少这些配置时智能体可能无法正常工作：",
+  "@teamConfigIncompleteBody": {
+    "placeholders": {
+      "team": {
+        "type": "String"
+      }
+    }
+  },
+  "teamConfigIncompleteGoConfigure": "前往配置",
+  "teamConfigIncompleteDismiss": "稍后",
+  "teamConfigGroupTeamDefault": "团队默认",
+  "teamConfigAspectDefaultProvider": "默认服务商",
+  "teamConfigAspectProvider": "服务商",
+  "teamConfigAspectModel": "模型",
+  "teamConfigAspectCli": "CLI",
+  "teamConfigAspectSeparator": "、",
+  "teamConfigIssueSemanticLabel": "{subject}缺少：{aspects}",
+  "@teamConfigIssueSemanticLabel": {
+    "placeholders": {
+      "subject": {
+        "type": "String"
+      },
+      "aspects": {
+        "type": "String"
+      }
+    }
+  },
+  "noModelsUsingProvider": "没有模型使用此提供商。",
+  "modelsUsingProviderTitle": "使用此提供商的模型",
+  "selectProvider": "从列表中选择一个提供商",
+  "accountCredentialPath": "账户凭证路径",
+  "removePath": "移除路径",
+  "addAccountPath": "添加账户路径",
+  "api": "api",
+  "account": "account",
+  "models": "模型",
+  "addModel": "添加模型",
+  "modelName": "模型别名/名称",
+  "modelId": "模型 ID",
+  "enabled": "启用",
+  "edit": "编辑",
+  "editModelTitle": "编辑 {name}",
+  "name": "名称",
+  "actualModel": "实际模型",
+  "noModelsConfigured": "未配置模型",
+  "providerModelBackgroundTier": "用于后台/快速任务（Claude haiku 档）",
+  "missingProvider": "缺少提供商：",
+  "summary": "摘要",
+  "statProviders": "个提供商",
+  "statModels": "个模型",
+  "statMissingRefs": "缺失引用",
+  "statEmptyKeys": "空密钥",
+  "validation": "验证",
+  "allChecksPassed": "所有检查通过。",
+  "validate": "校验",
+  "back": "返回",
+  "jsonPreview": "JSON 预览",
+  "skillsTitle": "Skills",
+  "skillsSubtitle": "管理可安装的 Skill",
+  "skillsSidebarLabel": "Skills",
+  "skillsNavInstalled": "已安装",
+  "skillsNavDiscovery": "发现",
+  "skillsNavRepos": "仓库",
+  "skillsNavRegistries": "注册中心",
+  "skillsRegistryApiKeySet": "已设置 API Key",
+  "skillsRegistryAddSource": "添加注册源",
+  "skillsRegistrySourceKind": "源类型",
+  "skillsRegistrySourceKindApi": "API 源",
+  "skillsRegistrySourceKindGit": "Git 仓库",
+  "skillsRegistryProtocolLabel": "协议",
+  "skillsRegistryProtocolSkillsSh": "skills.sh 兼容",
+  "skillsRegistryProtocolSkillsMp": "SkillsMP 兼容",
+  "skillsRegistryNameLabel": "显示名称",
+  "skillsRegistryBaseUrlLabel": "API 地址",
+  "skillsRegistryBrowseQueryLabel": "默认浏览词",
+  "skillsRegistryTokenLabel": "API Key",
+  "skillsRegistryOwnerLabel": "Owner",
+  "skillsRegistryNameOfRepoLabel": "仓库名",
+  "skillsRegistryTestOk": "连接成功",
+  "skillsRegistryTestFailed": "连接失败：{error}",
+  "@skillsRegistryTestFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "skillsRegistryGoSetKey": "去注册中心设置 API Key",
+  "skillsRegistryRetry": "重试",
+  "skillsRegistrySourceExists": "该注册源已存在",
+  "skillsRegistryEditTitle": "编辑注册源",
+  "skillsRegistryRemoveTitle": "重置注册源",
+  "skillsRegistryResetConfirm": "将 {name} 重置为默认值？",
+  "@skillsRegistryResetConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "skillsInstalledCount": "已安装 {count}",
+  "skillsCheckUpdates": "检查更新",
+  "skillsCheckingUpdates": "检查中…",
+  "skillsUpdateAll": "全部更新 ({count})",
+  "skillsImportFromDisk": "从磁盘导入",
+  "skillsInstallFromZip": "从 ZIP 安装",
+  "skillsNoInstalled": "还没有安装 Skill",
+  "skillsNoInstalledHint": "打开发现页安装你的第一个 Skill。",
+  "skillsGoDiscovery": "前往发现",
+  "skillsMarketplaceLoadMore": "加载更多",
+  "skillsMarketplaceAddRepo": "添加仓库",
+  "skillsMarketplaceRepoAdded": "已添加到仓库源，可在 Repos 页安装具体技能",
+  "skillsFilterSortBy": "排序",
+  "skillsFilterSortByStars": "星数",
+  "skillsFilterSortByRecent": "最新",
+  "skillsFilterLanguage": "语言",
+  "skillsFilterAnyLanguage": "全部",
+  "skillsFilterCategory": "分类",
+  "skillsFilterAnyCategory": "全部",
+  "skillsFilterOccupation": "职业",
+  "skillsFilterAnyOccupation": "全部",
+  "skillsCardStars": "{count} 星",
+  "@skillsCardStars": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "skillsCardUpdatedAt": "更新于 {date}",
+  "@skillsCardUpdatedAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "skillsSearchPlaceholder": "搜索 Skill…",
+  "skillsFilterRepoAll": "所有仓库",
+  "skillsFilterAll": "全部",
+  "skillsFilterInstalled": "已安装",
+  "skillsFilterUninstalled": "未安装",
+  "skillsCardInstall": "安装",
+  "skillsCardDetails": "详情",
+  "skillsCardView": "查看",
+  "skillsDetailMissing": "未找到该 skill 的 SKILL.md。",
+  "skillsDetailReadError": "无法读取 SKILL.md。",
+  "skillsCardInstalled": "已安装",
+  "skillsCardUpdate": "更新",
+  "skillsCardUninstall": "卸载",
+  "skillsUpdateAvailable": "有新版本",
+  "skillsLocal": "本地",
+  "skillsRepoAdd": "添加仓库",
+  "skillsDiscoverySyncing": "正在后台检查仓库更新并同步 Skill…",
+  "skillsRepoSyncing": "更新中",
+  "skillsRepoInvalidUrl": "请输入有效的 GitHub 仓库地址，例如 https://github.com/owner/repo",
+  "skillsRepoUrl": "仓库地址",
+  "skillsRepoUrlHint": "https://github.com/owner/repo",
+  "skillsRepoBranch": "分支",
+  "skillsRepoRemove": "移除",
+  "skillsRepoRemoveConfirm": "确认移除仓库 {name}？",
+  "skillsUninstallConfirm": "卸载 {name}？",
+  "skillsOverwriteConfirm": "{name} 已安装。是否覆盖？",
+  "skillsInstallSuccess": "已安装 {name}",
+  "skillsUninstallSuccess": "已卸载 {name}",
+  "skillsUpdateSuccess": "已更新 {name}",
+  "skillsNoUpdates": "所有 Skill 均为最新",
+  "skillsImportTitle": "导入未管理的 Skill",
+  "skillsImportNothing": "未发现未管理的 Skill。",
+  "skillsImportSelected": "导入选中 {count} 个",
+  "skillsZipNoSkills": "压缩包中未发现 SKILL.md。",
+  "skillsDiscoveryEmpty": "未发现可用 Skill",
+  "skillsDiscoveryEmptyHint": "添加仓库或试用 skills.sh 来发现 Skill。",
+  "skillsDiscoveryErrorTitle": "发现失败",
+  "skillsMpQuotaHint": "SkillsMP 匿名额度（每天 50 次）已用完。设置免费 API Key 后继续。",
+  "skillsAdd": "添加",
+  "skillsRemove": "移除",
+  "skillsEnabled": "启用",
+  "skillsInstalls": "{count} 次安装",
+  "pluginsTitle": "插件",
+  "pluginsSubtitle": "管理 Claude Code 风格插件包",
+  "pluginsSidebarLabel": "插件",
+  "pluginsNavInstalled": "已安装",
+  "pluginsNavDiscovery": "发现",
+  "pluginsNavMarketplaces": "Marketplaces",
+  "pluginsInstalledCount": "已安装 {count} 个",
+  "pluginsUpdateAll": "全部更新 ({count})",
+  "pluginsImportFromDisk": "从目录导入",
+  "pluginsImportTitle": "导入未管理的插件",
+  "pluginsImportNothing": "未发现未管理的插件。",
+  "pluginsInstallFromZip": "从 ZIP 安装",
+  "pluginsCheckUpdates": "检查更新",
+  "pluginsCheckingUpdates": "检查中…",
+  "pluginsNoInstalled": "尚未安装插件",
+  "pluginsNoInstalledHint": "在 Marketplaces 选项卡添加 marketplace，然后在 Discovery 中安装。",
+  "pluginsGoDiscovery": "浏览 marketplace",
+  "pluginsCardInstall": "安装",
+  "pluginsCardDetails": "详情",
+  "pluginsCardInstalled": "已安装",
+  "pluginsCardViewSource": "查看来源",
+  "pluginsCardUpdate": "更新",
+  "pluginsUpdateAvailable": "有新版本",
+  "pluginsLocal": "本地",
+  "pluginsCardUninstall": "卸载",
+  "pluginsMarketplaceAdd": "添加 marketplace",
+  "pluginsMarketplaceUrl": "GitHub 仓库地址",
+  "pluginsMarketplaceUrlHint": "https://github.com/owner/marketplace",
+  "pluginsMarketplaceBranch": "分支",
+  "pluginsMarketplaceDisplayName": "显示名称",
+  "pluginsMarketplaceRemove": "移除 marketplace",
+  "pluginsMarketplaceRemoveConfirm": "确认移除 marketplace {url}？已安装的插件会保留。",
+  "pluginsMarketplaceInvalidUrl": "请输入合法的 GitHub 仓库地址。",
+  "pluginsMarketplacesEmpty": "尚未配置 marketplace",
+  "pluginsSearchPlaceholder": "搜索插件",
+  "pluginsFilterMarketplaceAll": "全部 marketplace",
+  "pluginsFilterAll": "全部",
+  "pluginsFilterInstalled": "已安装",
+  "pluginsFilterUninstalled": "未安装",
+  "pluginsDiscoveryEmpty": "无匹配的插件",
+  "pluginsDiscoverySyncing": "正在后台检查 marketplace 更新并同步插件…",
+  "pluginsUninstallConfirm": "确认卸载 {name}？将影响 {n} 个团队。",
+  "pluginsUninstallImpactList": "受影响的团队：",
+  "pluginCliSupportFully": "{cli}：完全支持",
+  "@pluginCliSupportFully": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "pluginCliSupportPartial": "{cli}：部分支持（丢弃 {dropped}）",
+  "@pluginCliSupportPartial": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      },
+      "dropped": {
+        "type": "String"
+      }
+    }
+  },
+  "pluginCliSupportNotApplicable": "{cli}：不适用",
+  "@pluginCliSupportNotApplicable": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "pluginComponentSkills": "技能",
+  "pluginComponentAgents": "代理",
+  "pluginComponentCommands": "命令",
+  "pluginComponentHooks": "钩子",
+  "pluginComponentMcp": "MCP",
+  "pluginComponentRules": "规则",
+  "pluginComponentApps": "应用",
+  "pluginsUninstallSuccess": "已卸载 {name}",
+  "members": "成员",
+  "teamSessions": "团队会话",
+  "configure": "配置",
+  "teamConfig": "团队配置",
+  "teamSettings": "团队设置",
+  "teamSettingsSubtitle": "团队代理",
+  "membersSubtitle": "团队代理",
+  "teamSkillsNav": "Skills",
+  "teamHooksNav": "Hooks",
+  "teamHooksAssignedCount": "已启用 {assigned}/{total}",
+  "@teamHooksAssignedCount": {
+    "placeholders": {
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "teamHooksManage": "管理 Hooks",
+  "teamSkillsAssignedCount": "已启用 {assigned}/{total}",
+  "teamSkillsManage": "全部 Skills",
+  "teamPluginsNav": "插件",
+  "teamExtensionsNav": "扩展",
+  "teamExtensionsTitle": "本团队的扩展",
+  "teamExtensionsSubtitle": "覆盖本团队启用哪些扩展，默认跟随全局设置。",
+  "teamExtensionFollowGlobal": "跟随全局",
+  "teamExtensionForceOn": "开启",
+  "teamExtensionForceOff": "关闭",
+  "teamExtensionEffectiveOn": "本团队已启用",
+  "teamExtensionEffectiveOff": "本团队未启用",
+  "teamMcpNav": "MCP",
+  "myTeamsNav": "我的团队",
+  "myTeamsTitle": "我的团队",
+  "myTeamsSubtitle": "管理本地团队配置",
+  "myTeamsMemberCount": "{count, plural, other{{count} 名成员}}",
+  "myTeamsCreatedAt": "创建于 {date}",
+  "myTeamsEmptyTitle": "还没有团队",
+  "myTeamsEmptyHint": "创建团队以管理成员、技能与插件。",
+  "myExpertsNav": "我的专家",
+  "myExpertsTitle": "我的专家",
+  "myExpertsSubtitle": "管理本地专家人设",
+  "myExpertsEmptyTitle": "还没有专家",
+  "myExpertsEmptyHint": "创建本地专家人设，以便在多个团队中复用。",
+  "myExpertsCreate": "新建专家",
+  "myExpertsEdit": "编辑",
+  "myExpertsDelete": "删除",
+  "myExpertsDeleteConfirm": "删除专家「{name}」？此操作无法撤销。",
+  "@myExpertsDeleteConfirm": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "myExpertsDeleteReferenced": "无法删除「{name}」——仍有团队花名册引用该专家。请先改派相关成员。",
+  "@myExpertsDeleteReferenced": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "myExpertsUpload": "上传",
+  "myTeamsUpload": "上传",
+  "githubSettingsTitle": "GitHub",
+  "githubSettingsSubtitle": "连接 GitHub，以便将专家和团队发布到 Hub",
+  "downloadSourcesSettingsTitle": "下载源",
+  "downloadSourcesSettingsSubtitle": "配置 GitHub 下载镜像（应用更新、Termux APK）",
+  "discoverySettingsTitle": "发现与市场",
+  "discoverySettingsSubtitle": "技能、插件与 MCP 发现内容的刷新方式。",
+  "discoveryAutoRefreshTitle": "自动刷新发现内容",
+  "discoveryAutoRefreshSubtitle": "开启后，打开发现页时若缓存超过 24 小时将自动检查更新；手动刷新始终有效。",
+  "downloadSourcesMirrorBaseUrl": "镜像基础 URL",
+  "downloadSourcesMirrorHint": "https://mirror.example",
+  "downloadSourcesSave": "保存",
+  "downloadSourcesRestoreDefaults": "恢复默认",
+  "downloadSourcesIdentity": "直连（官方）",
+  "downloadSourcesEnabledSources": "已启用源",
+  "githubSignIn": "使用 GitHub 登录",
+  "githubConnectedAs": "已连接为 @{login}",
+  "@githubConnectedAs": {
+    "placeholders": {
+      "login": {}
+    }
+  },
+  "githubConnectedGeneric": "已连接到 GitHub",
+  "githubDisconnect": "断开连接",
+  "githubSwitchAccount": "切换账号",
+  "githubWaitingCodeHint": "如有提示，请在 GitHub 上输入此验证码",
+  "githubBrowserOpened": "已打开浏览器进行授权",
+  "githubReopenBrowser": "重新打开浏览器",
+  "githubDeviceFlowUnavailable": "此构建暂不支持 GitHub 登录。请使用个人访问令牌。",
+  "githubAuthExpired": "GitHub 登录已失效",
+  "githubAuthDenied": "已取消 GitHub 授权",
+  "githubAuthExpiredRetry": "授权已过期，请重试。",
+  "githubAdvancedPat": "使用个人访问令牌",
+  "githubAdvancedPatSubtitle": "无法使用 GitHub 登录时，或你更想用带 repo 权限的令牌时。",
+  "githubNetworkError": "无法连接 GitHub，请重试。",
+  "hubPublishExpertTitle": "发布专家到 Hub",
+  "hubPublishTeamTitle": "发布团队到 Hub",
+  "hubPublishAuthHint": "使用 GitHub 登录并授权，以向 Hub 仓库发起基于 fork 的拉取请求。",
+  "hubPublishTokenLabel": "GitHub 令牌",
+  "hubPublishTokenHint": "ghp_…",
+  "hubPublishTokenStored": "已保存令牌，可在下方替换。",
+  "hubPublishTokenRequired": "发布需要 GitHub 令牌",
+  "hubPublishTokenSaveFailed": "无法保存 GitHub 令牌",
+  "hubPublishNext": "下一步",
+  "hubPublishPublish": "发布",
+  "hubPublishDone": "完成",
+  "hubPublishSlugLabel": "标识（slug）",
+  "hubPublishSlugHint": "url-safe-id",
+  "hubPublishSlugRequired": "标识为必填项",
+  "hubPublishCategoryRequired": "分类为必填项",
+  "hubPublishAuthorLabel": "作者",
+  "hubPublishLocalExpertHint": "花名册中的本地专家须先映射为已发布或内置专家，才能上传。",
+  "hubPublishLocalExpertBlocked": "请先映射所有本地专家后再继续",
+  "hubPublishRemapLabel": "发布为",
+  "hubPublishNonPortableHint": "以下依赖没有可移植来源。请先从团队配置中移除后再发布：",
+  "hubPublishNonPortableBlocked": "请先移除不可移植依赖后再继续",
+  "hubPublishGatesClear": "依赖均可移植，可继续确认。",
+  "hubPublishConfirmHint": "请核对包元数据，然后发布基于 fork 的拉取请求。",
+  "hubPublishKindLabel": "类型",
+  "hubPublishKindExpert": "专家",
+  "hubPublishKindTeam": "团队",
+  "hubPublishSuccessHint": "拉取请求已创建。可复制或打开下方链接。",
+  "hubPublishCopyLink": "复制链接",
+  "hubPublishOpenPr": "打开 PR",
+  "hubPublishBadgePrOpen": "PR 已开",
+  "hubPublishBadgePublished": "已发布",
+  "expertHubCreate": "新建",
+  "expertEditorCreateTitle": "新建专家",
+  "expertEditorEditTitle": "编辑专家",
+  "expertEditorDescription": "描述",
+  "expertEditorCategory": "分类",
+  "expertEditorTags": "标签",
+  "expertEditorTagsHint": "逗号分隔",
+  "expertEditorNameRequired": "名称为必填项。",
+  "expertEditorPromptRequired": "职责为必填项。",
+  "expertEditorPromptHint": "描述该专家的职责与工作范围。",
+  "expertEditorPlaybookHint": "可选。该专家应遵循的工作步骤与规范。",
+  "expertEditorSkillsSection": "技能",
+  "expertEditorPluginsSection": "插件",
+  "expertEditorMcpSection": "MCP",
+  "expertEditorDepsHint": "从本机已安装库中配置依赖。没有可移植来源的项会在保存时跳过。",
+  "expertEditorConfigureSkillsTitle": "配置技能",
+  "expertEditorConfigurePluginsTitle": "配置插件",
+  "expertEditorConfigureMcpTitle": "配置 MCP",
+  "expertEditorDepPickerDone": "完成",
+  "expertEditorNonPortableSkipped": "已跳过 {count} 个没有可移植来源的本地项。",
+  "@expertEditorNonPortableSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "expertEditorOrphanDeps": "已挂载（本机未安装）",
+  "expertEditorOrphanRemove": "移除",
+  "teamHubNav": "团队中心",
+  "teamHubSubtitle": "发现更多公开团队",
+  "teamHubTitle": "团队中心",
+  "teamHubDiscovery": "发现",
+  "teamHubFavorites": "我的收藏",
+  "teamHubSearchHint": "搜索公开团队",
+  "teamHubSortName": "名称",
+  "teamHubSortUpdated": "最近更新",
+  "teamHubCategoryAll": "全部",
+  "teamHubClone": "克隆为我的团队",
+  "teamHubCloning": "正在克隆…",
+  "teamHubCloneSuccess": "已克隆「{name}」。",
+  "teamHubCloneSuccessWithDeps": "已克隆「{name}」。已安装 {skillCount} 个 Skill、{pluginCount} 个插件、{mcpCount} 个 MCP 服务,并克隆了 {expertCount} 个专家。",
+  "@teamHubCloneSuccessWithDeps": {
+    "placeholders": {
+      "name": {},
+      "skillCount": {
+        "type": "int"
+      },
+      "pluginCount": {
+        "type": "int"
+      },
+      "mcpCount": {
+        "type": "int"
+      },
+      "expertCount": {
+        "type": "int"
+      }
+    }
+  },
+  "teamHubClonePartial": "已克隆「{name}」。已安装 {skillCount} 个 Skill、{pluginCount} 个插件、{mcpCount} 个 MCP 服务,克隆了 {expertCount} 个专家;{failedCount} 个未能安装:{failedNames}。",
+  "@teamHubClonePartial": {
+    "placeholders": {
+      "name": {},
+      "skillCount": {
+        "type": "int"
+      },
+      "pluginCount": {
+        "type": "int"
+      },
+      "mcpCount": {
+        "type": "int"
+      },
+      "expertCount": {
+        "type": "int"
+      },
+      "failedCount": {
+        "type": "int"
+      },
+      "failedNames": {}
+    }
+  },
+  "teamHubCloneFailed": "无法克隆该团队。",
+  "teamHubEmptyTitle": "暂无公开团队",
+  "teamHubEmptyHint": "点击刷新从注册表拉取团队。",
+  "teamHubFavoritesEmptyTitle": "暂无收藏",
+  "teamHubFavoritesEmptyHint": "点击团队上的星标即可收藏到这里。",
+  "teamHubRefresh": "刷新",
+  "teamHubLoadError": "无法加载公开团队。",
+  "teamHubDepInstalled": "已安装",
+  "teamHubDepToInstall": "将安装",
+  "teamHubMembersLabel": "成员",
+  "teamHubSkillsLabel": "技能",
+  "teamHubPluginsLabel": "插件",
+  "teamHubMcpLabel": "MCP",
+  "teamHubBrowseAll": "浏览全部团队",
+  "teamHubCardNoDescription": "无",
+  "teamHubConfirmSelection": "确认",
+  "teamHubAlreadyAdded": "已添加",
+  "teamHubNotFound": "未找到该团队。",
+  "expertHubNav": "专家中心",
+  "expertHubTitle": "专家中心",
+  "expertHubSubtitle": "发现成员角色与模板",
+  "expertHubSearchHint": "搜索专家",
+  "expertHubFavorites": "收藏",
+  "expertHubMyTemplates": "我的模板",
+  "expertHubFromTeams": "来自团队",
+  "expertHubCategoryAll": "全部",
+  "expertHubSortName": "名称",
+  "expertHubSortUpdated": "最近更新",
+  "expertHubAddToTeam": "添加到团队",
+  "expertHubLaunchInWorkspace": "在工作区启动",
+  "expertHubAdding": "添加中…",
+  "expertHubAddFailed": "无法添加该成员。",
+  "expertHubEmptyTitle": "暂无专家",
+  "expertHubEmptyHint": "刷新以从注册表获取专家。",
+  "expertHubFavoritesEmptyTitle": "暂无收藏",
+  "expertHubFavoritesEmptyHint": "点击专家卡片上的星标即可收藏。",
+  "expertHubRefresh": "刷新",
+  "expertHubLoadError": "无法加载专家。",
+  "expertHubSourceBuiltin": "内置",
+  "expertHubSourceRegistry": "注册表",
+  "expertHubSourceLocal": "我的模板",
+  "expertHubSourceTeamExtract": "来自团队",
+  "expertHubSourceClone": "克隆",
+  "expertHubPrompt": "职责",
+  "expertHubPlaybook": "工作手册",
+  "expertHubCapabilities": "能力",
+  "expertHubAddSuccess": "已将「{name}」添加到团队。",
+  "@expertHubAddSuccess": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "expertHubAddSuccessWithSkills": "已添加「{name}」。安装了 {skillCount} 个技能。",
+  "@expertHubAddSuccessWithSkills": {
+    "placeholders": {
+      "name": {},
+      "skillCount": {
+        "type": "int"
+      }
+    }
+  },
+  "expertHubAddPartial": "已添加「{name}」。安装了 {skillCount} 个技能。{failedCount} 个无法安装：{failedNames}。",
+  "@expertHubAddPartial": {
+    "placeholders": {
+      "name": {},
+      "skillCount": {
+        "type": "int"
+      },
+      "failedCount": {
+        "type": "int"
+      },
+      "failedNames": {}
+    }
+  },
+  "expertHubNoneSelected": "未选择专家",
+  "expertHubBrowseAll": "浏览全部专家",
+  "expertHubConfirmSelection": "确认",
+  "expertHubRecent": "最近使用",
+  "expertHubIgnoredInTeamMode": "专家仅在简单模式下可用。请切换到简单模式以召唤专家。",
+  "expertHubNotFound": "未找到该专家。",
+  "expertHubPreflightPartial": "已选择「{name}」。{failedCount} 个能力无法安装：{failedNames}。",
+  "@expertHubPreflightPartial": {
+    "placeholders": {
+      "name": {},
+      "failedCount": {
+        "type": "int"
+      },
+      "failedNames": {}
+    }
+  },
+  "expertHubAddFromHub": "从专家中心添加",
+  "expertHubViewInHub": "在专家中心查看",
+  "expertHubCardNoDescription": "无",
+  "expertHubViewOriginTeam": "查看来源团队",
+  "teamMcpAssignedCount": "已启用 {assigned}/{total}",
+  "@teamMcpAssignedCount": {
+    "placeholders": {
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "teamMcpManage": "管理 MCP",
+  "mcpNavTitle": "MCP 服务器",
+  "mcpSubtitle": "为 Agent 会话管理 MCP 服务器配置。",
+  "mcpNavInstalled": "已安装",
+  "mcpNavDiscovery": "发现",
+  "hookNavTitle": "Hooks",
+  "hookNew": "新建 hook",
+  "hooksNoInstalled": "暂无 hooks",
+  "hooksNoInstalledHint": "创建 hook，在 CLI 事件时运行命令。",
+  "hookEdit": "编辑 hook",
+  "hookName": "名称",
+  "hookDescription": "描述",
+  "hookEvent": "事件",
+  "hookMatcher": "匹配器",
+  "hookActionCommand": "命令",
+  "hookActionScript": "脚本",
+  "hookPolicy": "策略",
+  "hookTimeoutSec": "超时（秒）",
+  "hookEnv": "环境变量（每行 KEY=VALUE）",
+  "hookSave": "保存",
+  "hookNameRequired": "名称为必填项",
+  "hookSupportMatrix": "查看受支持程度",
+  "hookCapabilityMatrix": "能力矩阵",
+  "hookImport": "导入",
+  "hookImportCli": "CLI",
+  "hookImportJson": "Hook JSON",
+  "hookImportJsonHint": "粘贴 settings.json hooks、hooks.json 或 hooks 片段…",
+  "hookImportParse": "解析",
+  "hookImportDone": "导入 {count} 条",
+  "@hookImportDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hookImportDoneToast": "已导入 hooks",
+  "hookImportOverwrite": "将覆盖",
+  "hookImportInvalidJson": "Hook JSON 无效",
+  "hookImportNoHooks": "未找到 hooks",
+  "hookInstalledCount": "已安装 {count}",
+  "@hookInstalledCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcpNavRegistries": "注册中心",
+  "mcpInstalledSectionTitle": "已安装的 MCP",
+  "mcpInstalledCount": "已安装 {count}",
+  "@mcpInstalledCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcpProbeChecking": "检测中…",
+  "mcpProbeOffline": "离线",
+  "mcpProbeNeedsAuth": "需要授权",
+  "mcpProbeToolCount": "{count} 个工具",
+  "@mcpProbeToolCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "mcpToolsEmpty": "该服务器没有工具。",
+  "mcpToolsReload": "重新加载",
+  "mcpToolsSection": "工具",
+  "mcpToolsDone": "完成",
+  "mcpProbeRefreshAll": "刷新状态",
+  "mcpProbeOfflineHint": "无法连接此 MCP 服务器。",
+  "mcpToolsDialogTitle": "{name} 的工具",
+  "@mcpToolsDialogTitle": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "mcpNoInstalled": "还没有安装 MCP 服务器",
+  "mcpNoInstalledHint": "打开发现页，从内置模板或注册中心添加。",
+  "mcpDiscoverySectionTitle": "发现 MCP 服务器",
+  "mcpDiscoverySectionHint": "浏览内置模板，以及「仓库」中配置的远程目录。",
+  "mcpDiscoverySourceAll": "全部",
+  "mcpDiscoverySourceBuiltin": "内置",
+  "mcpSmitheryApiTokenLabel": "API Token",
+  "mcpSmitheryApiTokenHint": "Smithery API 密钥（Bearer）",
+  "mcpSmitheryApiTokenSet": "已配置 Token",
+  "mcpRegistryEditTitle": "编辑 API 地址",
+  "mcpRegistryResetTitle": "恢复默认",
+  "mcpRegistryResetConfirm": "将「{name}」恢复为默认 API 地址？",
+  "@mcpRegistryResetConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mcpRepoApiUrlLabel": "API 基础地址",
+  "mcpRepoTestConnection": "测试连接",
+  "mcpRepoResetDefault": "恢复默认",
+  "mcpRepoConfigSaved": "目录 API 设置已保存",
+  "mcpRepoTestOk": "连接成功",
+  "mcpRepoTestFailed": "连接失败：{error}",
+  "@mcpRepoTestFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "mcpRepoDisabledHint": "该目录源已禁用，请在「仓库」中启用。",
+  "mcpRegistrySmithery": "Smithery",
+  "mcpRegistryOfficial": "官方注册表",
+  "mcpRegistrySmitheryHint": "Smithery — https://api.smithery.ai",
+  "mcpRegistryOfficialHint": "官方 MCP Registry — https://registry.modelcontextprotocol.io",
+  "mcpRegistrySearchHint": "搜索服务器（如 github）",
+  "mcpRegistryLoadMore": "加载更多",
+  "mcpCatalogAdd": "添加",
+  "mcpCatalogCardNoDescription": "无",
+  "skillsCatalogCardNoDescription": "无",
+  "pluginsCatalogCardNoDescription": "无",
+  "mcpCatalogInstalled": "已安装",
+  "mcpCatalogAdded": "已加入 MCP 目录",
+  "mcpCatalogEmpty": "未找到服务器",
+  "mcpCatalogVerified": "已认证",
+  "mcpEmptyGoDiscovery": "浏览内置模板",
+  "mcpEmptyGoRegistries": "打开注册中心",
+  "mcpAdd": "添加 MCP",
+  "mcpEdit": "编辑 MCP",
+  "mcpOpenHomepage": "打开链接",
+  "mcpFormDetailHint": "选择服务器进行编辑，或添加新的 MCP 服务器。",
+  "mcpServerNotFound": "未找到该 MCP 服务器",
+  "mcpImport": "从本机导入",
+  "mcpImportEmpty": "在 ~/.claude.json 与 ~/.flashskyai.json 中未找到 MCP",
+  "mcpImportSummary": "新增 {added} 个，冲突 {conflicts} 个",
+  "@mcpImportSummary": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "conflicts": {
+        "type": "int"
+      }
+    }
+  },
+  "mcpImportOverwrite": "覆盖冲突项",
+  "mcpImportDone": "MCP 目录已更新",
+  "mcpEmpty": "目录中暂无 MCP 服务器",
+  "mcpDeleteConfirm": "删除该 MCP 服务器？",
+  "mcpFieldName": "名称",
+  "mcpFieldCommand": "命令",
+  "mcpFieldArgs": "参数（空格分隔）",
+  "mcpAddTitle": "新增 MCP",
+  "mcpAddButton": "添加 MCP",
+  "mcpImportExisting": "导入已有",
+  "mcpConfiguredCount": "已配置 {count} 个 MCP 服务器",
+  "@mcpConfiguredCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcpOAuthConnectTitle": "连接 {name}",
+  "@mcpOAuthConnectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mcpOAuthConnectHint": "在浏览器中完成 MCP 提供商登录。令牌按 Claude Code 格式写入应用配置目录（等同终端 /mcp → Authenticate）。",
+  "mcpOAuthDiscovering": "正在发现授权服务器…",
+  "mcpOAuthOpenBrowser": "打开浏览器",
+  "mcpOAuthCallbackUrlLabel": "回调地址",
+  "mcpOAuthCallbackUrlHint": "登录后粘贴完整 URL（含 ?code=）",
+  "mcpOAuthSubmitCallback": "提交地址",
+  "mcpOAuthStartConnect": "连接",
+  "mcpOAuthConnectAction": "连接",
+  "mcpOAuthConnectSuccess": "MCP OAuth 已连接",
+  "mcpOAuthStatusConnected": "OAuth 已连接",
+  "mcpOAuthStatusNeedsAuth": "需要 OAuth",
+  "mcpPresetDescFetch": "抓取网页并将 HTML 转为 Markdown，供模型使用。",
+  "mcpPresetDescTime": "时间查询：当前时间、时区转换、日期计算等。",
+  "mcpPresetDescMemory": "跨会话的持久化记忆图谱。",
+  "mcpPresetDescSequentialThinking": "结构化分步推理，适合复杂问题。",
+  "mcpPresetDescContext7": "通过 Context7 获取最新库文档。",
+  "mcpFormIdLabel": "MCP 标题（唯一）*",
+  "mcpFormDisplayNameLabel": "显示名称",
+  "mcpFormDisplayNameHint": "例如 @modelcontextprotocol/server-time",
+  "mcpFormMetadata": "附加信息",
+  "mcpFormDescriptionLabel": "描述",
+  "mcpFormDescriptionHint": "可选的描述信息",
+  "mcpFormTagsLabel": "标签（逗号分隔）",
+  "mcpFormTagsHint": "stdio, time, utility",
+  "mcpFormHomepageLabel": "主页链接",
+  "mcpFormDocsLabel": "文档链接",
+  "mcpFormJsonLabel": "完整的 JSON 配置",
+  "mcpFormFormatJson": "格式化",
+  "mcpFormRequiredFields": "请填写 MCP 标题与显示名称。",
+  "mcpFormSubmitAdd": "添加",
+  "confirm": "确认",
+  "teamPluginsAssignedCount": "已安装 {assigned}/{total}",
+  "teamPluginsManage": "全部插件",
+  "teamPluginsEmpty": "尚未安装插件",
+  "teamPluginsEmptyHint": "在「发现」中安装插件后，可在此处按团队启用。",
+  "teamPluginsGoDiscovery": "浏览 marketplace",
+  "teamPluginsMissing": "有 {count} 个已启用插件在磁盘上缺失，重新安装或手动移除。",
+  "teamPluginsRemoveMissing": "移除",
+  "teamPluginsMissingLabel": "磁盘上缺失",
+  "teamPluginsNameConflict": "因名称冲突，已链接为 {dir}",
+  "teamPluginsCliUnsupportedBanner": "当前团队 CLI 暂不支持插件，启用记录已保存但不会生效。",
+  "memberQuickList": "成员快速列表",
+  "teamName": "团队名称",
+  "teamDescription": "团队描述",
+  "teamDescriptionHint": "可选，写入 Claude roster 的 description 字段",
+  "deleteTeam": "删除团队",
+  "deleteTeamSubtitle": "从 UI 和共享的 flashskyai 数据目录中移除该团队。此操作不可撤销。",
+  "deleteTeamConfirm": "删除团队 \"{name}\"？此操作不可撤销。",
+  "dangerZone": "危险操作",
+  "teamExtraArgs": "团队额外 CLI 参数",
+  "teamExtraArgsHint": "--permission-mode acceptEdits",
+  "teamEffortLevel": "推理力度",
+  "teamEffortLevelSubtitle": "团队默认力度（Claude effortLevel / Codex model_reasoning_effort）。",
+  "memberEffortLevel": "成员力度覆盖",
+  "memberEffortLevelSubtitle": "设置后覆盖团队默认值。",
+  "memberEffortInheritHint": "继承团队默认",
+  "providerEffortLevel": "推理力度",
+  "teamLoop": "阶段循环",
+  "teamLoopSubtitle": "团队模式：true 自动推进阶段；false 需你确认后再继续。",
+  "teamLoopDefault": "默认",
+  "teamLoopTrue": "true — 自动推进",
+  "teamLoopFalse": "false — 每阶段确认",
+  "teamLeadBadge": "Leader",
+  "teamLeadDelegateOnlyTitle": "队长仅规划分派",
+  "teamLeadDelegateOnlySubtitle": "开启后将禁止队长使用一些工具。",
+  "teamForceWaitBeforeStopTitle": "让成员保持在等待循环",
+  "teamForceWaitBeforeStopSubtitle": "开启后,成员结束一个回合时会被推回 wait_for_message 而不是停止,从而持续待命接收新消息和任务。关闭则允许成员“休息”(正常停止)。",
+  "memberLaunchOrder": "成员启动顺序",
+  "saveMember": "保存成员",
+  "editTeamSubtitle": "编辑团队标识、工作目录和启动顺序。",
+  "memberName": "成员名称",
+  "memberNameSubtitle": "仅作界面展示用。若要指明职责与边界，请编辑下方的职责。",
+  "provider": "提供商",
+  "model": "模型",
+  "agent": "Agent 预设",
+  "selectAgent": "选择预设",
+  "agentBuiltInNone": "默认",
+  "agentBuiltInCustom": "自定义…",
+  "agentBuiltInSubtitle": "指定该成员以哪种 Agent 身份协作，影响其行为与可用能力。",
+  "agentFlashskyaiPresetSubtitle": "对应 flashskyai 的 --agent 参数，可选内置或自定义子 Agent。",
+  "agentClaudeTypeSubtitle": "写入 Claude 团队 roster 的 agentType；留空则使用成员 ID。",
+  "agentClaudeTypeHint": "例如 Explore、Plan 或自定义类型",
+  "agentCustomIdHint": "自定义 Agent 标识",
+  "memberExtraArgs": "成员额外 CLI 参数",
+  "memberExtraArgsSubtitle": "仅附加在该成员的 CLI 启动参数。",
+  "workspaceAdvancedSettings": "高级配置",
+  "workspaceAdvancedSettingsSubtitle": "Agent 预设与本成员的额外 CLI 参数。",
+  "prompt": "提示词",
+  "memberResponsibilities": "职责",
+  "memberPromptSubtitle": "该成员负责什么、不应做什么。会写入 Agent 的角色说明。",
+  "memberPromptPresetsLabel": "预设",
+  "memberPromptPresetTeamLead": "队长",
+  "memberPromptPresetTeamLeadText": "协调全队：将用户需求拆成任务清单（每条写明范围与验收标准），再分配给各队友实现；除阻塞性问题外，不要亲自做大块开发，可先阅读代码与文档了解现状。\n在本会话窗口与用户直接沟通。指派与跟进时只联系其他队友（按成员名称），不要把任务派给自己。汇总队友结果后回复用户，写清结论、涉及文件与后续步骤。",
+  "memberPromptPresetDeveloper": "开发",
+  "memberPromptPresetDeveloperText": "在约定范围内实现分配的任务。未经要求，不要扩大范围或顺手重构无关代码。",
+  "memberPromptPresetReviewer": "审查",
+  "memberPromptPresetReviewerText": "只做代码审查。除非被明确要求，否则不要改动文件。",
+  "memberPromptPresetResearcher": "调研",
+  "memberPromptPresetResearcherText": "只调研并汇报。除非被要求，否则不要改动生产代码。",
+  "memberPlaybook": "工作手册",
+  "memberPlaybookSubtitle": "接到任务后怎么执行：步骤、检查点、汇报格式。会作为 Agent 的操作指令。",
+  "memberPersonaEmptyNoExpert": "选择专家后可查看人设内容。",
+  "memberResponsibilitiesEmpty": "该专家未填写职责",
+  "memberPlaybookEmpty": "该专家未填写工作手册",
+  "memberPlaybookPresetDeveloperText": "测试先行：实现前先写一个会失败的测试，再用最小 diff 让它通过。每次改动后跑相关测试，并说明改了哪些文件及原因。不要把无关改动混在一起；到约定检查点要停下。若团队装有 test-driven-development skill，就遵循它。",
+  "memberPlaybookPresetReviewerText": "按序审查：①确认测试覆盖了改动；②正确性与边界情况；③可维护性及与周边代码的一致性。每条意见都要写明文件路径、行号、问题与具体改法——不要空泛夸奖，也不要只挑刺却不给改法。缺测试要显式指出。",
+  "memberPlaybookPresetResearcherText": "动手前先厘清意图：复述问题与你的假设，然后在代码库里先广度排查再深入。汇报时给出文件路径、相关符号与建议的下一步——只提建议，不改生产代码。若团队装有 brainstorming skill，先用它框定问题。",
+  "selectModel": "选择一个模型",
+  "appProviderModelEnterCustom": "输入自定义模型 ID",
+  "appProviderModelPickFromList": "从列表选择",
+  "memberOfficialClaudeModelHint": "使用 Claude 账号默认模型；请在 Providers 设置中管理 Official 登录。",
+  "editMemberSubtitle": "编辑提供商、模型、可选 Agent 预设与命令参数。",
+  "teamLeadNameRequired": "FlashskyAI 团队委托要求此成员名称必须为 team-lead。",
+  "teamLeadNotice": "FlashskyAI 团队委托要求此成员名称必须为 team-lead。",
+  "membersAndFileTree": "成员和文件树",
+  "membersAndFileTreeDescription": "将成员列表与文件树堆叠显示，或以标签页切换。",
+  "appProviderCatalogLabel": "应用级服务商目录",
+  "appProviderCatalogHint": "TeamPilot 在此维护统一服务商；团队启动时会为各工具生成隔离配置。",
+  "appProviderPresetLabel": "预设",
+  "appProviderPresetCustom": "自定义",
+  "appProviderClaudeAuthTokenDefault": "ANTHROPIC_AUTH_TOKEN（默认）",
+  "appProviderClaudeAuthApiKey": "ANTHROPIC_API_KEY",
+  "appProviderAdvancedJson": "高级 JSON 编辑",
+  "appProviderAdvancedOptions": "高级选项",
+  "appProviderWebsite": "官网",
+  "appProviderEnabledTools": "启用的工具",
+  "appProviderToolFlashskyai": "FlashskyAI",
+  "appProviderToolCodex": "Codex",
+  "appProviderToolClaude": "Claude Code",
+  "appProviderToolOpencode": "OpenCode",
+  "appProviderToolCursor": "Cursor",
+  "appProviderToolGemini": "Gemini CLI",
+  "appProviderToolCodebuddy": "CodeBuddy",
+  "appProviderToolAntigravity": "Antigravity",
+  "appProviderToolQoder": "Qoder",
+  "codebuddyCredentialsLogin": "登录",
+  "codebuddyCredentialsLoginTitle": "登录 CodeBuddy",
+  "codebuddyCredentialsLoginIntro": "在下方终端完成登录。如果出现登录方式选择，请先选择（如微信 / 企业域名）。CLI 可能会打开浏览器；如果没有打开，请手动访问它输出的链接。也可以在这里切换账号。",
+  "codebuddyCredentialsLoginStarting": "正在启动 CodeBuddy…",
+  "codebuddyCredentialsLoginFailed": "无法启动登录终端：{error}",
+  "@codebuddyCredentialsLoginFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "codebuddyCredentialsLoginExited": "CodeBuddy 已退出。请关闭此对话框后重新登录。",
+  "codebuddyCredentialsDone": "完成",
+  "codebuddyCredentialsCancel": "取消",
+  "codebuddyCredentialsRetry": "重试",
+  "codebuddyCredentialsSendLogin": "发送 /login",
+  "codebuddyCredentialsSignedIn": "已登录 CodeBuddy。",
+  "codebuddyCredentialsActionFailed": "CodeBuddy 登录失败。",
+  "antigravityCredentialsLogin": "登录",
+  "antigravityCredentialsLoginTitle": "登录 Antigravity",
+  "antigravityCredentialsLoginIntro": "在下方终端完成 Google 登录，然后点击“完成”。Antigravity 将账号保存在系统钥匙串中，所有 Antigravity 会话以及所有官方 Antigravity 供应商行都会共享该账号。",
+  "antigravityCredentialsLoginStarting": "正在启动 Antigravity…",
+  "antigravityCredentialsLoginFailed": "无法启动登录终端：{error}",
+  "@antigravityCredentialsLoginFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "antigravityCredentialsLoginExited": "Antigravity 已退出。请关闭此对话框后重新登录。",
+  "antigravityCredentialsLoginVerifyFailed": "Antigravity 未确认登录成功（agy models 执行失败）。请完成登录后再次点击“完成”。",
+  "antigravityCredentialsDone": "完成",
+  "antigravityCredentialsCancel": "取消",
+  "antigravityCredentialsRetry": "重试",
+  "antigravityCredentialsSignedIn": "已登录 Antigravity。",
+  "antigravityCredentialsActionFailed": "Antigravity 登录失败。",
+  "qoderCredentialsLogin": "登录",
+  "qoderCredentialsLoginTitle": "登录 Qoder",
+  "qoderCredentialsLoginIntro": "在下方终端完成登录。CLI 会打开浏览器；如果没有打开，请手动访问它输出的链接。也可以在这里切换账号。",
+  "qoderCredentialsLoginStarting": "正在启动 Qoder CLI…",
+  "qoderCredentialsLoginFailed": "无法启动登录终端：{error}",
+  "@qoderCredentialsLoginFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "qoderCredentialsLoginExited": "Qoder CLI 已退出。请关闭此对话框后重新登录。",
+  "qoderCredentialsDone": "完成",
+  "qoderCredentialsCancel": "取消",
+  "qoderCredentialsRelaunch": "重新启动",
+  "qoderCredentialsSignedIn": "已登录",
+  "qoderContextWindow": "上下文窗口（tokens）",
+  "qoderContextWindowHint": "留空则使用模型默认值。",
+  "qoderCredentialsActionFailed": "Qoder 操作失败",
+  "appProviderTeamToolSection": "团队默认服务商",
+  "appProviderTeamToolSubtitle": "选择本团队启动时，各工具使用的统一服务商。",
+  "appProviderTeamNone": "无",
+  "appProviderClaudeAuthField": "认证字段",
+  "appProviderClaudeAuthFieldHint": "选择写入 settings 的认证环境变量。",
+  "appProviderClaudeCredentialBinding": "OAuth 凭证来源",
+  "appProviderClaudeCredentialBindingLinked": "跟随全局（~/.claude）",
+  "appProviderClaudeCredentialBindingIsolated": "隔离副本（仅 TeamPilot）",
+  "appProviderClaudeCredentialBindingLinkedHint": "与终端里 Claude Code 共用同一份 OAuth 会话，刷新会自动保持同步。",
+  "appProviderClaudeCredentialBindingIsolatedHint": "在 TeamPilot 目录保存独立凭证副本；适用于不能与全局 Claude Code 共用登录的场景。",
+  "notes": "备注",
+  "defaultModel": "默认模型",
+  "editProvider": "编辑服务商",
+  "invalidJson": "JSON 无效，请修正语法后重试。",
+  "aboutTitle": "关于",
+  "aboutPageSubtitle": "TeamPilot 版本与应用更新。",
+  "aboutGitHub": "GitHub",
+  "aboutCurrentVersion": "当前版本",
+  "aboutVersionLoading": "加载中…",
+  "appUpdateCheck": "检查更新",
+  "appUpdateAutoCheck": "自动检查更新",
+  "appUpdateAutoCheckHint": "每次启动时自动从 GitHub 检查新版本。",
+  "appUpdateSkipVersion": "跳过此版本",
+  "appUpdateDownloadInstall": "下载并安装",
+  "appUpdateUpToDate": "已是最新版本。",
+  "appUpdateDownloading": "正在下载更新…",
+  "appUpdateInstalling": "正在安装更新…",
+  "appUpdateViewRelease": "在 GitHub 查看发布",
+  "appUpdateViewReleases": "查看发布",
+  "appUpdateNewVersion": "新版本 {version} 可用",
+  "@appUpdateNewVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "appUpdateDialogTitle": "发现新版本",
+  "appUpdateLatestVersion": "最新版本",
+  "appUpdateUnknownVersion": "未知",
+  "appUpdateChangelogTitle": "更新内容",
+  "appUpdateChangelogDefaultSection": "更新",
+  "appUpdateReadyToDownload": "准备下载",
+  "appUpdateLater": "以后更新",
+  "appUpdateDownloadNow": "立即下载",
+  "appUpdateDownloadInBackground": "后台下载",
+  "appUpdateInstallNow": "立即安装",
+  "appUpdateBrowserDownload": "浏览器下载",
+  "appUpdateInvalidPackagePath": "安装包路径无效",
+  "appUpdateReleaseBuildRequired": "请使用 Release 构建包进行应用内安装",
+  "appUpdatePackagePlatformMismatch": "安装包类型与当前系统不匹配",
+  "appUpdateInstallFailed": "安装失败：{message}",
+  "@appUpdateInstallFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "appUpdateInstallNoResult": "安装未返回结果",
+  "appUpdateInstallComplete": "安装完成",
+  "appUpdateRedirectBrowserOnly": "该链接需要在浏览器中下载",
+  "appUpdateDownloadStarting": "开始下载…",
+  "appUpdateDownloadComplete": "下载完成",
+  "appUpdateDownloadFailed": "下载失败",
+  "appUpdateDownloadError": "下载过程中发生错误：{error}",
+  "@appUpdateDownloadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "appUpdateResolvingDownloadUrl": "正在获取下载链接…",
+  "appUpdateBrowserOpened": "已在浏览器中打开下载链接",
+  "appUpdateCannotOpenDownloadLink": "无法打开下载链接",
+  "appUpdateBrowserOpenFailed": "打开浏览器失败：{error}",
+  "@appUpdateBrowserOpenFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardingTitle": "首次设置",
+  "onboardingProgress": "第 {current} / {total} 步",
+  "@onboardingProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardingSkip": "跳过",
+  "onboardingPrevious": "上一步",
+  "onboardingNext": "下一步",
+  "onboardingGetStarted": "开始使用",
+  "onboardingStepAppearance": "语言 / 主题",
+  "onboardingStepSsh": "SSH",
+  "onboardingStepCli": "CLI 工具",
+  "onboardingStepProviderImport": "导入 Provider",
+  "onboardingStepDefaultPreset": "默认预设",
+  "onboardingAppearanceTitle": "选择语言与外观",
+  "onboardingAppearanceSubtitle": "可随时在「设置 → 布局」中修改。",
+  "onboardingSshTitle": "配置 SSH 连接",
+  "onboardingSshSubtitle": "Android 通过 SSH 在远程主机运行 AI CLI。",
+  "onboardingWorkHomeTitle": "选择工作环境",
+  "onboardingWorkHomeSubtitle": "先连接本机 Termux 或远程 SSH，再检测 AI CLI。",
+  "onboardingCliTitle": "检测 CLI 工具",
+  "onboardingCliSubtitle": "定位用于启动会话的可执行文件。可安装缺失项，或稍后在设置中指定路径。",
+  "onboardingCliFound": "已找到 CLI",
+  "onboardingCliNotFound": "未在 PATH 中",
+  "onboardingCliScanning": "正在扫描 PATH 中的 CLI…",
+  "onboardingCliRedetect": "重新检测",
+  "onboardingProviderImportTitle": "导入 CLI Provider",
+  "onboardingProviderImportSubtitle": "扫描本机各 CLI 配置中的现有 Provider。",
+  "onboardingProviderImportResults": "导入结果",
+  "onboardingProviderImportEmpty": "未检测到 Provider，可稍后在设置中配置。",
+  "onboardingProviderImportFailed": "导入失败",
+  "onboardingProviderImportRescan": "重新扫描",
+  "onboardingDefaultPresetTitle": "配置默认启动预设",
+  "onboardingDefaultPresetSubtitle": "个人工作区与团队默认启动配置将共用此 CLI 预设。",
+  "onboardingDefaultPresetEmpty": "暂无可选 Provider，可跳过或在设置中添加。",
+  "onboardingDefaultPresetSelectExisting": "使用已有预设",
+  "onboardingDefaultPresetDefaultName": "默认",
+  "onboardingDefaultPresetModelHint": "该预设的主模型",
+  "onboardingRerunSetup": "重新运行设置向导",
+  "logViewerTitle": "日志",
+  "logViewerSubtitle": "应用数据目录下的运行日志与错误记录。",
+  "logViewerFileLabel": "日志文件",
+  "logViewerSearchHint": "搜索日志…",
+  "logViewerFilterTitle": "过滤",
+  "logViewerFilterLevel": "级别",
+  "logViewerWrapLines": "自动换行",
+  "logViewerAcpFrames": "ACP 协议帧日志（默认关闭）",
+  "logViewerReverseOrder": "从最新内容开始",
+  "logViewerCompactView": "简洁视图",
+  "logViewerLineCount": "{count} 行",
+  "logViewerActionsMenu": "更多操作",
+  "logViewerRefresh": "刷新",
+  "logViewerCopyPath": "复制日志路径",
+  "logViewerClearOld": "清理过期日志",
+  "logViewerEmpty": "暂无日志文件",
+  "logViewerEmptyHint": "应用运行后会在此生成日志。",
+  "logViewerPendingTitle": "日志尚未写入磁盘",
+  "logViewerPendingBody": "以下为等待写入文件的缓冲条目：",
+  "logViewerLoadFilesFailed": "加载日志列表失败：{error}",
+  "logViewerReadFailed": "读取日志失败：{error}",
+  "logViewerClearDone": "已清理过期日志",
+  "logViewerClearFailed": "清理失败：{error}",
+  "logViewerPathCopied": "已复制路径：{name}",
+  "logViewerCopyAll": "复制全部日志",
+  "logViewerAllCopied": "已复制全部过滤后的日志",
+  "initErrorTitle": "应用启动失败",
+  "initErrorDetails": "错误信息",
+  "initErrorStackTrace": "堆栈跟踪",
+  "initErrorPendingLogs": "待写入日志",
+  "initErrorViewLogs": "查看日志",
+  "initErrorCopyReport": "复制报告",
+  "initErrorCopy": "复制",
+  "initErrorCopied": "已复制",
+  "initErrorStackEmpty": "（堆栈为空）",
+  "initErrorVersion": "版本 {version}（{build}）",
+  "diffIgnoreWhitespace": "忽略空白",
+  "diffPreviousChange": "上一处更改",
+  "diffNextChange": "下一处更改",
+  "diffViewSideBySide": "并排",
+  "diffViewUnified": "统一",
+  "diffOpenSourceFile": "打开源文件",
+  "diffShowAllLines": "显示全部",
+  "diffNoChanges": "没有更改",
+  "fileDiffToggleFile": "文件",
+  "fileDiffToggleDiff": "Diff",
+  "diffChangeCounter": "{current} / {total}",
+  "@diffChangeCounter": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "diffApplyHunkTooltip": "应用到工作区",
+  "diffDiscardEditsApplyTitle": "丢弃编辑？",
+  "diffDiscardEditsApplyBody": "应用此更改将丢弃 diff 中未保存的编辑。",
+  "diffApplyFailed": "无法应用更改：{error}",
+  "@diffApplyFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "diffSaveFailed": "无法保存：{error}",
+  "@diffSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "diffReloadAfterSaveFailed": "已保存，但刷新 diff 失败。",
+  "diffFileReloadedAfterDiffWrite": "已从磁盘重新加载文件页。",
+  "diffDiscardDiffBeforeFileSaveTitle": "丢弃 diff 编辑？",
+  "diffDiscardDiffBeforeFileSaveBody": "保存文件将丢弃 diff 视图中未保存的编辑。",
+  "diffApplyDisabledNoPath": "无法应用：文件路径不可用",
+  "aiFeatures": "AI 功能",
+  "aiFeaturesPageSubtitle": "为每个 AI 功能选择使用的 CLI provider、模型与 effort。",
+  "aiFeatureCommitMessageTitle": "提交信息生成",
+  "aiFeatureCommitMessageSubtitle": "由源代码管理面板里的 ✨ 按钮使用。",
+  "aiFeatureTeamGenerateTitle": "团队配置生成",
+  "aiFeatureTeamGenerateSubtitle": "从描述生成团队时使用。",
+  "aiFeatureCliLabel": "CLI",
+  "aiFeatureModelLabel": "模型",
+  "aiFeatureEffortLabel": "Effort",
+  "aiFeatureConfigSummary": "{cli} · {provider} · {model}",
+  "@aiFeatureConfigSummary": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      },
+      "provider": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGenerateCommitMessage": "用 AI 生成提交信息",
+  "gitGenerateCommitMessageNoProvider": "请先在 设置 → AI 功能 中配置 AI provider。",
+  "teamGenTitle": "用 AI 生成",
+  "teamGenDescriptionHint": "描述你想要的团队（例如：做 Flutter 前端、需要代码审查和测试）",
+  "teamGenButton": "生成",
+  "teamGenNoProvider": "请先在 设置 → AI 功能 中配置 AI provider。",
+  "teamGenFailed": "无法生成团队，请手动编辑。",
+  "teamGenApplied": "草稿已应用，创建前请检查调整。",
+  "notificationCenterTitle": "通知",
+  "notificationOngoingSection": "进行中",
+  "progressActivitiesMany": "{count, plural, other{{count} 个活动进行中}}",
+  "@progressActivitiesMany": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "progressActivitiesPanelTitle": "进行中的活动",
+  "notificationHistorySection": "历史",
+  "notificationEmpty": "暂无通知",
+  "notificationMarkAllRead": "全部标为已读",
+  "notificationClearAll": "清空",
+  "notificationMarkRead": "标为已读",
+  "notificationDelete": "删除",
+  "notificationTimeJustNow": "刚刚",
+  "notificationTimeMinutesAgo": "{minutes} 分钟",
+  "@notificationTimeMinutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationTimeHoursAgo": "{hours} 小时",
+  "@notificationTimeHoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationTimeDaysAgo": "{days} 天",
+  "@notificationTimeDaysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "memberDetailTitle": "成员详情",
+  "memberDetailViewAction": "查看成员详情",
+  "memberDetailOpenConfigDir": "打开配置目录",
+  "memberDetailOpenInFileManager": "在文件管理器中打开",
+  "memberDetailBrowseConfigDirTitle": "配置目录",
+  "memberDetailNeedsSession": "请先打开一个会话",
+  "memberDetailTabOverview": "概览",
+  "memberDetailTabSkills": "Skills",
+  "memberDetailTabMcp": "MCP",
+  "memberDetailTabPlugins": "插件",
+  "memberDetailTabSettings": "设置",
+  "memberDetailSourceRuntime": "运行会话配置",
+  "memberDetailSourceTeam": "团队层配置（该成员未在此会话中启动）",
+  "memberDetailEmpty": "该成员尚未在此会话中启动，且团队层无配置。",
+  "memberDetailLoadError": "读取该成员的配置目录失败。",
+  "memberDetailOpenConfigDirFailed": "无法在文件管理器中打开配置目录。",
+  "memberDetailOpenConfigDirFailedOnHost": "无法在 {host} 上打开配置目录，远程主机可能没有桌面文件管理器。",
+  "@memberDetailOpenConfigDirFailedOnHost": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "memberDetailSectionEmpty": "无",
+  "cliConfigAiCliGroup": "AI CLI",
+  "cliConfigToolchainGroup": "工具链",
+  "toolchainGitLabel": "Git 可执行文件路径",
+  "toolchainNodeLabel": "Node.js / npm 路径",
+  "toolchainPathDescription": "{tool} 可执行文件的绝对路径。留空则使用 PATH 中的版本。",
+  "toolchainPathDescriptionSsh": "远程 SSH 主机上 {tool} 的绝对路径。留空则自动发现。",
+  "cliCursorExecutablePathLabel": "Cursor CLI 路径",
+  "toolchainInstallProgressChecking": "正在检查 {tool}...",
+  "toolchainGit": "Git",
+  "toolchainNode": "Node.js",
+  "homeWorkspaceLaunchWorkspaceTitle": "选择启动方式",
+  "homeWorkspaceSimpleMode": "简单模式",
+  "homeWorkspaceRememberLaunchChoice": "记住选择",
+  "worktreeCreateTitle": "新建 worktree",
+  "worktreeBranchLabel": "分支名",
+  "worktreePathLabel": "位置",
+  "worktreeCreateAction": "创建",
+  "worktreeCreating": "正在创建…",
+  "worktreeCreateFailed": "创建 worktree 失败：{error}",
+  "worktreeBaseSelectorHint": "分支或基线",
+  "worktreeRandomNameTooltip": "随机名称",
+  "worktreeDeleteTitle": "删除 worktree",
+  "worktreeDeleteBody": "删除 {branch} 的 worktree？",
+  "worktreeDeleteForce": "即使有未提交改动也强制删除",
+  "worktreeDeleteBranchToo": "同时删除分支",
+  "worktreeDeleteSessionsToo": "同时删除该 worktree 下的 {count} 个会话",
+  "worktreeDeleteAction": "删除",
+  "worktreeDeleteFailed": "删除 worktree 失败：{error}",
+  "worktreeOrphanGroup": "其他",
+  "worktreeNewWorktreeTooltip": "新建 worktree",
+  "worktreeRefreshTooltip": "刷新 worktree 列表",
+  "worktreeNewConversationHere": "在此新建会话",
+  "worktreeMenuCopyPath": "复制路径",
+  "worktreeMenuRemove": "删除 worktree",
+  "worktreeShowMore": "显示更多 {count} 个",
+  "worktreeMore": "更多",
+  "worktreeShowLess": "收起",
+  "worktreeDeleteBusyWarning": "请先停止该 worktree 下正在运行的会话，再删除。",
+  "sessionGroupCreateTooltip": "新建分组",
+  "sessionGroupCreateTitle": "新建分组",
+  "sessionGroupNameLabel": "分组名称",
+  "sessionGroupRenameTitle": "重命名分组",
+  "sessionGroupMenuRemove": "删除分组",
+  "sessionGroupAddSessionsTooltip": "添加会话",
+  "sessionGroupAddSessionsTitle": "添加会话",
+  "sessionGroupEmpty": "暂无会话",
+  "automationsTitle": "全部自动化",
+  "automationsSubtitle": "跨项目与会话定时发送消息或启动 prompt。",
+  "automationsNew": "新建自动化",
+  "automationsScheduleHourly": "每小时",
+  "automationsScheduleDaily": "每天",
+  "automationsScheduleWeekdays": "工作日",
+  "automationsScheduleWeekly": "每周",
+  "automationsScheduleCustom": "自定义 cron",
+  "automationsScheduleOnce": "一次",
+  "automationsScheduleSummaryOnce": "一次，{time}",
+  "automationsSchedule": "调度",
+  "automationsScheduleType": "类型",
+  "automationsScheduleModeOnce": "一次",
+  "automationsScheduleModeCountdown": "倒计时",
+  "automationsScheduleModeRecurring": "循环",
+  "automationsScheduleDate": "日期",
+  "automationsCountdownMinutes": "{minutes} 分钟",
+  "@automationsCountdownMinutes": { "placeholders": { "minutes": { "type": "int" } } },
+  "automationsCountdownHours": "{hours} 小时",
+  "@automationsCountdownHours": { "placeholders": { "hours": { "type": "int" } } },
+  "automationsCountdownCustom": "自定义",
+  "automationsCountdownPreview": "将在 {dateTime} 执行",
+  "@automationsCountdownPreview": { "placeholders": { "dateTime": { "type": "String" } } },
+  "automationsSchedulePastTime": "请选择未来的时间",
+  "automationsSessionContextMenu": "定时消息…",
+  "automationsManageSessionContextMenu": "管理定时消息",
+  "automationsNextRun": "下次运行：{time}",
+  "automationsNextRunNone": "暂无计划运行",
+  "automationsManageAll": "管理全部定时任务",
+  "automationsStatusBarEmpty": "暂无启用的定时任务",
+  "automationsRunNow": "立即运行",
+  "automationsRunHistory": "运行历史",
+  "automationsRunHistoryEmpty": "暂无运行记录",
+  "automationsSkippedUnavailable": "已跳过 — 会话不可用",
+  "automationsDispatchFailed": "分发失败",
+  "automationsEdit": "编辑",
+  "automationsDelete": "删除",
+  "automationsDeleteConfirm": "删除此自动化？",
+  "automationsEmpty": "暂无自动化",
+  "automationsName": "名称",
+  "automationsMessage": "消息",
+  "automationsSessionTitle": "会话标题",
+  "automationsSessionTitleHint": "留空则使用定时任务名称。",
+  "automationsEnabled": "已启用",
+  "automationsCli": "CLI",
+  "automationsReuseSession": "复用会话",
+  "automationsReuseSessionSubtitleOff": "每次运行都会新建一个对话。",
+  "automationsReuseSessionSubtitlePending": "首次运行会创建对话，之后在同一会话中继续。",
+  "automationsReuseSessionSubtitleBound": "已绑定会话 {sessionId}",
+  "automationsReuseSessionListHint": "复用对话 {sessionId}",
+  "automationsBoundSession": "绑定会话",
+  "automationsBoundSessionPending": "首次运行后自动绑定会话",
+  "automationsBoundSessionUnavailable": "会话不可用，请切换或解绑",
+  "automationsSwitchSession": "切换会话",
+  "automationsUnbindSession": "解绑",
+  "automationsSessionPickerTitle": "选择会话",
+  "automationsSessionPickerEmpty": "没有可绑定的会话",
+  "automationsPresetScopeHint": "已绑定会话，仅显示该会话 CLI 的预设。",
+  "automationsPresetCliMismatch": "所选预设与绑定会话的 CLI 不一致。",
+  "automationsPresetEmptyForCli": "该 CLI 暂无可用预设。",
+  "automationsTargetMember": "目标成员",
+  "automationsCustomCron": "Cron 表达式",
+  "automationsInvalidCron": "无效的 cron 表达式（需要 5 个字段）",
+  "automationsInvalidTime": "时间格式须为 HH:mm",
+  "automationsValidationRequired": "名称和消息为必填项",
+  "formFieldRequired": "此项为必填。",
+  "teamModeRequired": "请先选择团队模式。",
+  "hookSaveFailed": "保存 Hook 失败。",
+  "automationsTime": "时间",
+  "automationsCreateTitle": "新建自动化",
+  "automationsEditTitle": "编辑自动化",
+  "automationsCompactTitle": "定时消息",
+  "automationsSidebarTitle": "定时任务",
+  "automationsFilterAll": "全部",
+  "automationsFilterEnabled": "仅已启用",
+  "automationsFilterDisabled": "仅已禁用",
+  "automationsFilterStatusLabel": "状态",
+  "automationsFilterActionLabel": "类型",
+  "automationsFilterActionAll": "全部类型",
+  "automationsFilterScheduledMessage": "定时消息",
+  "automationsFilterLaunchPrompt": "启动 prompt",
+  "automationsSort": "排序自动化",
+  "automationsSortNameAsc": "名称 (A–Z)",
+  "automationsSortNameDesc": "名称 (Z–A)",
+  "automationsSortNextRun": "下次运行",
+  "automationsSortRecentlyUpdated": "最近更新",
+  "automationsShowFilter": "显示筛选",
+  "automationsHideFilter": "隐藏筛选",
+  "automationsScheduleSummaryHourly": "每小时 :{minute}",
+  "automationsScheduleSummaryDaily": "每天 {time}",
+  "automationsScheduleSummaryWeekdays": "工作日 {time}",
+  "automationsScheduleSummaryWeekly": "每周{day} {time}",
+  "automationsDayMonday": "周一",
+  "automationsDayTuesday": "周二",
+  "automationsDayWednesday": "周三",
+  "automationsDayThursday": "周四",
+  "automationsDayFriday": "周五",
+  "automationsDaySaturday": "周六",
+  "automationsDaySunday": "周日",
+  "automationsSessionDefaultName": "{title} — 定时消息",
+  "automationsRunStatusCompleted": "已完成",
+  "automationsRunStatusPending": "等待中",
+  "automationsRunStatusDispatching": "分发中",
+  "automationsRunStatusDispatched": "已分发",
+  "automationsRunStatusSkippedMissed": "已跳过 — 错过窗口",
+  "automationsRunStatusFailed": "失败",
+  "automationsRunStatusTimedOut": "超时",
+  "automationsRunStatusSkippedOverlap": "已跳过（上次仍在运行）",
+  "automationsExitCode": "退出码 {code}",
+  "automationsRunStdout": "标准输出",
+  "automationsRunStderr": "标准错误",
+  "automationsRunError": "错误：{error}",
+  "automationsRunDurationSeconds": "耗时 {seconds} 秒",
+  "automationsRunDurationMilliseconds": "耗时 {milliseconds} 毫秒",
+  "automationsRunOutputTruncated": "输出已截断",
+  "automationsCommand": "命令",
+  "automationsCommandHelp": "仅在 TeamPilot 运行时执行。超过宽限期的错过运行会被跳过，除非开启了补跑。",
+  "automationsCommandTimeout": "超时（秒）",
+  "automationsCommandRequired": "命令不能为空",
+  "automationsCommandTimeoutInvalid": "超时时间必须是整数秒",
+  "automationsCommandTimeoutRange": "超时时间须在 30 到 1800 秒之间",
+  "automationsCommandTooLong": "命令不能超过 2000 个字符",
+  "automationsCommandWorkingDirectory": "工作目录",
+  "automationsCommandWorkingDirectoryMain": "工作区默认目录",
+  "automationsCatchUpOnce": "启动后补跑一次",
+  "automationsMaxRunCount": "运行次数上限",
+  "automationsMaxRunCountHint": "留空表示无限制",
+  "automationsInvalidMaxRunCount": "运行次数上限须为正整数",
+  "automationsRunCountUnlimited": "已运行 {count} 次",
+  "automationsRunCountLimited": "已运行 {count} / {max}",
+  "automationsScopeModePersonal": "个人 · {profile}",
+  "automationsScopeModeTeam": "团队 · {team}",
+  "automationsScopePersonal": "个人 · {preset}",
+  "automationsScopeTeam": "团队 · {team} · {member}",
+  "automationsScopeTeamMember": "团队 · {member}",
+  "automationsScopeScheduledMessage": "定时消息 · {sessionId}",
+  "automationsLaunchMode": "对话模式",
+  "automationsLaunchProject": "项目",
+  "automationsLaunchWorktree": "Worktree",
+  "automationsLaunchProfile": "启动身份",
+  "shortcutsWorkspaceNextTab": "下一个工作区标签",
+  "shortcutsWorkspacePrevTab": "上一个工作区标签",
+  "shortcutsWorkspaceCloseTab": "关闭工作区标签",
+  "shortcutsWorkspaceReopenClosed": "重新打开已关闭的工作区标签",
+  "shortcutsWorkspaceSearch": "搜索工作区（双击 Shift）",
+  "shortcutsWorkspaceContentSearch": "在文件中查找",
+  "shortcutsStripNextTab": "下一个标签",
+  "shortcutsStripPrevTab": "上一个标签",
+  "shortcutsSessionNewTab": "新建会话标签",
+  "shortcutsSessionNewChat": "新建对话",
+  "shortcutsSessionCloseTab": "关闭会话标签",
+  "shortcutsStripFocusTab": "切换到第 {n} 个标签",
+  "@shortcutsStripFocusTab": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "shortcutsWorkspaceFocusTab": "切换到第 {n} 个工作区",
+  "@shortcutsWorkspaceFocusTab": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "shortcutsToggleSidebar": "切换侧边栏",
+  "shortcutsTogglePanel": "切换终端面板",
+  "shortcutsToggleSecondarySidebar": "切换次侧边栏",
+  "shortcutsFloatingToggle": "切换浮动工作区",
+  "shortcutsFloatingMaximize": "最大化浮动工作区",
+  "shortcutsFloatingMinimize": "最小化浮动工作区",
+  "shortcutsFloatingNewTerminal": "新建浮动终端",
+  "shortcutsFloatingOpenFile": "在浮动工作区打开文件",
+  "shortcutsZoomIn": "放大",
+  "shortcutsZoomOut": "缩小",
+  "shortcutsZoomReset": "重置缩放",
+  "shortcutsComposeSubmit": "发送消息",
+  "shortcutsComposeNewline": "插入换行",
+  "shortcutsShowCheatsheet": "显示键盘快捷键",
+  "shortcutsCategoryNavigation": "导航",
+  "shortcutsCategoryTabs": "标签",
+  "shortcutsCategoryView": "视图",
+  "shortcutsCategoryZoom": "缩放",
+  "shortcutsCategoryCompose": "输入框",
+  "shortcutsCategoryMeta": "通用",
+  "shortcutsSettingsTitle": "键盘快捷键",
+  "shortcutsPageSubtitle": "查看并自定义导航、标签、缩放和输入框的键盘快捷键。",
+  "shortcutsSearchHint": "搜索快捷键",
+  "shortcutsChangeAction": "更改…",
+  "shortcutsResetAction": "恢复默认",
+  "shortcutsUnbindAction": "取消绑定",
+  "shortcutsNotSet": "未设置",
+  "shortcutsResetAll": "全部重置",
+  "shortcutsResetAllConfirmTitle": "重置所有快捷键？",
+  "shortcutsResetAllConfirmMessage": "这会将所有键盘快捷键恢复为默认绑定。",
+  "shortcutsExport": "导出…",
+  "shortcutsImport": "导入…",
+  "shortcutsExportSuccess": "快捷键已导出。",
+  "shortcutsExportFailed": "无法导出快捷键。",
+  "shortcutsImportSuccess": "快捷键已导入。",
+  "shortcutsImportInvalidFile": "该文件不是有效的快捷键导出文件。",
+  "shortcutsImportConflictTitle": "替换冲突的快捷键？",
+  "shortcutsImportConflictMessage": "导入的快捷键与 {count} 个现有绑定冲突。是否替换？",
+  "shortcutsCheatsheetButton": "查看速查表",
+  "shortcutsCheatsheetTitle": "键盘快捷键",
+  "shortcutsCheatsheetEmpty": "没有匹配的快捷键。",
+  "shortcutsPressShortcutTitle": "按下快捷键",
+  "shortcutsPressShortcutHint": "按下组合键进行绑定。按 Escape 取消，按 Backspace 取消绑定。",
+  "shortcutsPressShortcutUnsupportedKey": "该键无法绑定。",
+  "shortcutsConflictMessage": "已被“{title}”使用。",
+  "shortcutsReplaceAction": "替换",
+  "shortcutsConflictBadgeTooltip": "与另一个快捷键冲突",
+  "runAction": "运行",
+  "runStop": "停止",
+  "runRestart": "重新运行",
+  "runNewInstance": "新实例",
+  "runDebug": "调试",
+  "runDebugUnavailable": "调试功能尚未提供",
+  "runBuild": "构建",
+  "runBuildUnavailable": "构建功能尚未提供",
+  "runMoreActions": "更多运行操作",
+  "runSelectConfiguration": "启动",
+  "runEditorSelectConfiguration": "选择配置",
+  "runCompoundConfiguration": "{name}（组合）",
+  "@runCompoundConfiguration": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "runSuggestedConfiguration": "{name}（建议）",
+  "@runSuggestedConfiguration": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "runAcceptRecommendation": "将建议配置添加到 launch.json",
+  "runRefreshDiscover": "刷新发现建议",
+  "runConfigurationTooltip": "运行配置",
+  "runOpenLaunchJson": "打开 launch.json",
+  "runAlreadyRunningTitle": "配置已在运行",
+  "runAlreadyRunningMessage": "重新运行当前会话，还是再启动一个新实例？",
+  "runStopSessionTitle": "停止正在运行的会话？",
+  "runStopSessionMessage": "“{name}”仍在运行。停止并关闭此标签页？",
+  "@runStopSessionMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "runStopAndClose": "停止并关闭",
+  "runNoSessions": "暂无运行会话",
+  "runClearExited": "清除已退出的会话",
+  "runLoadingOutput": "正在加载运行输出…",
+  "runEmptyOutputHint": "运行配置后，输出将显示在这里",
+  "runTypeUnknown": "未知启动类型：{type}",
+  "@runTypeUnknown": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "runTypeUnavailable": "启动类型“{type}”在此目标上不可用",
+  "@runTypeUnavailable": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "runTypeUnavailableRemote": "启动类型“{type}”在远程目标上不可用",
+  "@runTypeUnavailableRemote": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "runErrorNoConfiguration": "未选择配置",
+  "runErrorNoFolder": "没有工作区文件夹",
+  "runErrorSshProfileMissing": "找不到此运行目标的 SSH 配置",
+  "runErrorSshSpawnerMissing": "未配置 SSH 进程执行",
+  "runConfigureLaunchItems": "配置启动项",
+  "runConfigurationsEmpty": "暂无启动配置",
+  "runEditConfigurations": "编辑配置",
+  "runAddConfiguration": "添加配置",
+  "runDeleteConfiguration": "删除",
+  "runDeleteConfigurationConfirm": "删除配置“{name}”？",
+  "@runDeleteConfigurationConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "runStopAndDelete": "停止并删除",
+  "runApply": "应用",
+  "runDiscard": "放弃",
+  "runDiscardChangesTitle": "放弃更改？",
+  "runDiscardChangesMessage": "此配置有未保存的更改。应用、放弃，还是取消？",
+  "runSelectFolder": "选择文件夹",
+  "runConfigurationName": "名称",
+  "runConfigurationType": "类型",
+  "runTypeShellScript": "Shell 脚本",
+  "runPickLaunchType": "选择启动类型",
+  "runFieldCommand": "命令",
+  "runFieldArgs": "参数",
+  "runFieldEnv": "环境变量",
+  "runFieldCwd": "工作目录",
+  "runFieldShell": "在 Shell 中运行",
+  "runFieldScriptPath": "脚本路径",
+  "runFieldScriptText": "脚本内容",
+  "runFieldExecute": "执行方式",
+  "runFieldScriptOptions": "脚本选项",
+  "runFieldInterpreterPath": "解释器路径",
+  "runFieldInterpreterPathEditTooltip": "编辑解释器路径",
+  "runFieldInterpreterOptions": "解释器选项",
+  "runFieldExecuteInTerminal": "在终端中执行",
+  "runFieldAllowMultipleInstances": "允许运行多个实例",
+  "runFieldActivateToolWindow": "激活工具窗口",
+  "runFieldFocusToolWindow": "聚焦工具窗口",
+  "runExecuteScriptFile": "脚本文件",
+  "runExecuteScriptText": "脚本内容",
+  "runValidationCommandRequired": "命令不能为空",
+  "runValidationArgsMustBeStringList": "参数必须是字符串列表",
+  "runValidationEnvMustBeStringMap": "环境变量必须是字符串映射",
+  "runValidationCwdMustBeString": "工作目录必须是字符串",
+  "runValidationShellMustBeBoolean": "Shell 必须是布尔值",
+  "runValidationConfigurationMustBeMap": "配置必须是对象",
+  "runValidationExecuteRequired": "必须选择执行方式",
+  "runValidationExecuteInvalid": "执行方式必须是脚本文件或脚本内容",
+  "runValidationScriptPathRequired": "脚本路径不能为空",
+  "runValidationScriptTextRequired": "脚本内容不能为空",
+  "runValidationInterpreterPathMustBeString": "解释器路径必须是字符串",
+  "runValidationExecuteInTerminalMustBeBoolean": "在终端中执行必须是布尔值",
+  "runValidationAllowMultipleInstancesMustBeBoolean": "允许运行多个实例必须是布尔值",
+  "runValidationActivateToolWindowMustBeBoolean": "激活工具窗口必须是布尔值",
+  "runValidationFocusToolWindowMustBeBoolean": "聚焦工具窗口必须是布尔值",
+  "shortcutsRunSelected": "运行所选配置",
+  "shortcutsRunStop": "停止运行",
+  "shortcutsRunRestart": "重新运行",
+  "shortcutsWorkbenchSplitRight": "向右拆分编辑组",
+  "shortcutsWorkbenchSplitDown": "向下拆分编辑组",
+  "shortcutsWorkbenchSplitReset": "重置编辑组布局",
+  "shortcutsWorkbenchFocusNextGroup": "聚焦下一个编辑组",
+  "shortcutsWorkbenchMoveTabToNextGroup": "将标签页移到下一个编辑组",
+  "shortcutsCategoryRun": "运行",
+  "resourceManagerTitle": "资源管理器",
+  "resourceManagerPanelTitle": "资源管理器 - 会话",
+  "resourceManagerTooltip": "资源管理器 - {count} 个运行中会话",
+  "@resourceManagerTooltip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resourceManagerTooltipHint": "跨所有工作区的运行中会话。",
+  "resourceManagerColumnName": "名称",
+  "resourceManagerColumnCpu": "CPU",
+  "resourceManagerColumnMemory": "内存",
+  "resourceManagerRefresh": "刷新",
+  "resourceManagerKill": "结束",
+  "resourceManagerKillAll": "全部结束",
+  "resourceManagerKillAllConfirmTitle": "结束全部运行中会话？",
+  "resourceManagerKillAllConfirmBody": "将断开列表中的全部运行中会话与终端。",
+  "resourceManagerSpace": "空间",
+  "resourceManagerSpaceBeta": "Beta",
+  "resourceManagerSpaceNotScanned": "不会扫描工作区磁盘占用。",
+  "resourceManagerSystemMemoryPercent": "系统内存 {percent}%",
+  "@resourceManagerSystemMemoryPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "resourceManagerTerminalsCount": "{count} 个运行中会话",
+  "@resourceManagerTerminalsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resourceManagerEmptyTree": "当前没有运行中的会话。",
+  "resourceManagerAppProcess": "应用",
+  "resourceManagerMetricsError": "无法刷新进程指标。",
+  "resourceManagerKillFailed": "无法结束会话。",
+  "floatingWorkspaceNewTerminal": "新 Terminal",
+  "floatingWorkspaceOpenFile": "打开文件",
+  "floatingWorkspaceMinimize": "最小化",
+  "floatingWorkspaceMaximize": "最大化",
+  "floatingWorkspaceCloseTab": "关闭标签",
+  "floatingWorkspaceAddTooltip": "在浮动工作区打开",
+  "floatingWorkspaceToggleTooltip": "浮动工作区",
+  "filePreviewHostTitle": "文件预览位置",
+  "filePreviewHostDescription": "在浮动工作区或中间工作台打开文件。",
+  "filePreviewHostFloating": "浮动",
+  "filePreviewHostCenter": "中间",
+  "floatingPreviewTabsTitle": "单个预览标签页",
+  "floatingPreviewTabsDescription": "文件与 diff 预览在浮动面板中共享一个可替换的标签页，固定后保留。",
+  "termuxSetupTitle": "Termux 设置",
+  "termuxSetupIntro": "安装 Termux，粘贴一条配置脚本，然后连接 TeamPilot 的本地 SSH 服务。",
+  "termuxSetupStepInstallTermux": "1. 安装 Termux",
+  "termuxSetupInstallPlayStore": "Play 商店",
+  "termuxSetupInstallFDroid": "F-Droid",
+  "termuxSetupInstallGitHub": "GitHub",
+  "termuxSetupDownloadInstall": "下载并安装 Termux",
+  "termuxSetupDownloading": "正在下载 Termux…",
+  "termuxSetupInstalling": "正在安装…",
+  "termuxSetupDownloadFailed": "无法下载 Termux。请重试或使用应用商店链接。",
+  "termuxSetupInstallDenied": "安装已取消或被阻止。如需要请启用未知来源应用，然后重试。",
+  "termuxSetupTermuxInstalled": "Termux 已安装",
+  "termuxSetupStepRunScript": "2. 在 Termux 中粘贴这条脚本",
+  "termuxSetupScriptHint": "弹出存储授权时请允许。脚本会用 termux-services 启用 sshd（打开 Termux 即启动）。若需开机且不打开 Termux，可另装 Termux:Boot（F-Droid）。最后一行会打印用户名（例如 u0_a399）。",
+  "termuxSetupUsernameLabel": "3. 粘贴 Termux 用户名",
+  "termuxSetupUsernameHint": "例如 u0_a399",
+  "termuxSetupUsernameError": "请输入有效的 Termux 用户名（以 u 开头）",
+  "termuxSetupConnect": "连接",
+  "termuxSetupConnecting": "正在连接…",
+  "termuxSetupConnectSuccess": "已连接到 Termux",
+  "termuxSetupConnectFailed": "无法连接到 Termux",
+  "termuxSetupConnectFailedWithDetail": "无法连接到 Termux：{detail}",
+  "@termuxSetupConnectFailedWithDetail": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "termuxSetupClearSetup": "清除设置",
+  "termuxSetupClearConfirmTitle": "清除 Termux 设置？",
+  "termuxSetupClearConfirmBody": "将删除已保存的 Termux 密钥和用户名，需要重新完成 Termux 设置。",
+  "termuxSetupClearConfirmAction": "清除设置",
+  "termuxDisconnectedBannerMessage": "Termux 已断开连接。请重新连接后再使用 Shell、Git 和 Agent 会话。",
+  "termuxDisconnectedReconnect": "重新连接",
+  "termuxDisconnectedWorkOpsBlocked": "Termux 已断开连接。请通过顶部横幅重新连接后再试。",
+  "sshHomeDisconnectedBannerMessage": "远程 SSH 工作环境已断开。请重新连接后再使用 Shell、Git 和 Agent 会话。",
+  "sshHomeDisconnectedReconnect": "重新连接",
+  "bootstrapRetry": "重试",
+  "bootstrapChooseWorkEnvironment": "选择工作环境",
+  "androidWorkEnvironmentSelectorLabel": "工作环境",
+  "androidWorkEnvironmentSelectorTermux": "Termux",
+  "androidWorkEnvironmentSelectorTermuxWithUser": "Termux · {username}",
+  "androidWorkEnvironmentSelectorManageTermux": "Termux 设置…",
+  "cliTaskBoardTitle": "任务",
+  "cliTaskBoardCount": "{completed}/{total}",
+  "@cliTaskBoardCount": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "cliTaskBoardMore": "… +{count} 更多",
+  "@cliTaskBoardMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cliTaskStatusPending": "待处理",
+  "cliTaskStatusInProgress": "进行中",
+  "cliTaskStatusCompleted": "已完成",
+  "cliTaskStatusCancelled": "已取消",
+  "cliTaskStatusUnknown": "未知",
+  "cliTaskBoardShowLess": "收起",
+  "chatFindHint": "在对话中查找",
+  "chatFindNoResults": "无匹配",
+  "chatFindResults": "匹配结果",
+  "chatFindPrevious": "上一个匹配",
+  "chatFindNext": "下一个匹配",
+  "chatFindClose": "关闭查找",
+  "chatFindMatchCase": "区分大小写",
+  "chatFindWholeWord": "全字匹配",
+  "chatFindUseRegex": "使用正则表达式",
+  "chatUserMessageRailEmptyPreview": "空消息",
+  "chatUserMessageRailSemanticLabel": "用户消息第 {index} 条，共 {total} 条",
+  "htmlViewToggleEdit": "编辑",
+  "htmlViewTogglePreview": "预览",
+  "htmlPreviewOpenBrowser": "在系统浏览器打开",
+  "htmlPreviewErrorTitle": "预览不可用",
+  "htmlPreviewErrorBody": "无法加载文件进行预览。",
+  "htmlPreviewOpenedInBrowser": "预览已在系统浏览器中打开，此面板可随时重新打开。",
+  "catalogSortAdoption": "采用量最高",
+  "catalogSortRating": "评分最高",
+  "catalogSortUpdated": "最近更新",
+  "catalogSortPublished": "最近发布",
+  "catalogSortName": "名称",
+  "skillsCatalogAdoption": "安装量",
+  "mcpCatalogAdoption": "使用量",
+  "pluginsCatalogAdoption": "安装量",
+  "teamsCatalogAdoption": "添加量",
+  "expertsCatalogAdoption": "添加量",
+  "catalogMetricRating": "评分",
+  "catalogMetricUpdated": "最近更新",
+  "catalogMetricPublished": "发布日期",
+  "catalogMetricName": "名称",
+  "catalogMetricMissing": "暂无数据",
+  "catalogMetricMissingTooltip": "暂无可用数据",
+  "catalogSourceWarningLabel": "部分目录源加载失败",
+  "catalogSourceWarningEntry": "{source}：{error}",
+  "@catalogSourceWarningEntry": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "catalogSortAccessibilityLabel": "排列目录条目",
+  "catalogRefreshAccessibilityLabel": "刷新目录",
+  "catalogSourceWarningAccessibilityLabel": "有 {count} 个目录源加载失败",
+  "@catalogSourceWarningAccessibilityLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "catalogMissingMetricAccessibilityLabel": "{label}：暂无可用数据",
+  "@catalogMissingMetricAccessibilityLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "catalogCardAccessibilityLabel": "{name}，来源：{source}",
+  "@catalogCardAccessibilityLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "retry": "重试",
+  "managedProvidersNav": "管理 Provider",
+  "managedProvidersUsageNav": "余额与用量",
+  "managedProvidersTitle": "管理 Provider",
+  "managedProvidersSubtitle": "独立于 CLI Provider 配置查看余额和配额。",
+  "managedProvidersAdd": "添加 Provider",
+  "managedProvidersEmptyTitle": "暂无管理 Provider",
+  "managedProvidersEmptyHint": "添加 Provider 以独立跟踪余额和配额。",
+  "managedProvidersNoneEnabledTitle": "没有已启用的 Provider",
+  "managedProvidersNoneEnabledHint": "启用 Provider 后才会显示在状态栏并参与查询。",
+  "managedProvidersEnabled": "已启用",
+  "managedProvidersDisabled": "已禁用",
+  "managedProvidersEnable": "启用",
+  "managedProvidersDisable": "禁用",
+  "managedProvidersEdit": "编辑",
+  "managedProvidersDelete": "删除",
+  "managedProvidersRetry": "重试",
+  "managedProvidersDeleteTitle": "删除管理 Provider？",
+  "managedProvidersDeleteContent": "删除“{name}”及其缓存用量？",
+  "managedProvidersCancel": "取消",
+  "managedProvidersNewTitle": "新建管理 Provider",
+  "managedProvidersEditTitle": "编辑管理 Provider",
+  "managedProvidersQuickPresetTitle": "快速预设",
+  "managedProvidersQuickPresetHint": "使用安全默认值开始；查询前请补充凭据。",
+  "managedProvidersQuickPresetCodex": "Codex",
+  "managedProvidersQuickPresetCodexHint": "登录或导入，或手填相同字段。",
+  "managedProvidersQuickPresetClaudeCode": "Claude Code",
+  "managedProvidersQuickPresetClaudeCodeHint": "登录或导入，或手填相同字段。",
+  "managedProvidersQuickPresetCursor": "Cursor",
+  "managedProvidersQuickPresetCursorHint": "登录或导入，或手填相同字段。",
+  "managedProvidersQuickPresetCodebuddy": "CodeBuddy",
+  "managedProvidersQuickPresetCodebuddyHint": "使用 CodeBuddy 登录态查询积分余额。",
+  "managedProvidersQuickPresetDeepSeek": "DeepSeek",
+  "managedProvidersQuickPresetDeepSeekHint": "已配余额接口，需填密钥。",
+  "managedProvidersQuickPresetOpencodeGo": "OpenCode Go",
+  "managedProvidersQuickPresetOpencodeGoHint": "Zen Go 订阅用量预设，需填 API 密钥。",
+  "managedProvidersQuickPresetCustom": "自定义",
+  "managedProvidersQuickPresetCustomHint": "从零配置接口、凭据与显示格式。",
+  "managedProvidersBasicsSectionTitle": "名称与密钥",
+  "managedProvidersBasicsSectionSubtitle": "命名与必要密钥。",
+  "managedProvidersBasicsSummary": "选择预设、命名，并按需填写密钥。",
+  "managedProvidersQuerySectionTitle": "用量 API 与 JSON 解析",
+  "managedProvidersQuerySectionSubtitle": "用量 API 与 JSON 解析。",
+  "managedProvidersCredentialsSectionTitle": "凭据来源与请求写入",
+  "managedProvidersCredentialsSectionSubtitle": "凭据来源及写入请求的方式。",
+  "managedProvidersDisplaySectionTitle": "余额与额度显示",
+  "managedProvidersDisplaySectionSubtitle": "余额与额度的显示格式。",
+  "managedProvidersAdvancedSectionTitle": "适配器、类型与引用",
+  "managedProvidersAdvancedSectionSubtitle": "适配器、类型与内部引用。",
+  "managedProvidersSectionConfiguredBadge": "已配置",
+  "managedProvidersIdentity": "基本信息",
+  "managedProvidersName": "名称",
+  "managedProvidersNameHint": "显示名称",
+  "managedProvidersAdapter": "适配器",
+  "managedProvidersAdapterHint": "http-json 或已注册的适配器 ID",
+  "managedProvidersKind": "类型",
+  "managedProvidersKindApiBalance": "API 余额",
+  "managedProvidersKindSubscriptionQuota": "订阅额度",
+  "managedProvidersKindCustomHttp": "自定义 HTTP",
+  "managedProvidersKindPresetLockedHelper": "当前预设或模板已锁定类型。",
+  "managedProvidersEndpoint": "用量 API 地址",
+  "managedProvidersEndpointHint": "https://api.example.com/usage",
+  "managedProvidersEndpointHelper": "获取用量数据的请求地址。",
+  "managedProvidersMethod": "HTTP 方法",
+  "managedProvidersMethodHelper": "一般为 GET。",
+  "managedProvidersResponsePath": "响应根路径（$）",
+  "managedProvidersResponsePathHint": "$.data",
+  "managedProvidersResponsePathHelper": "数据在嵌套层时用 $ 先定位；留空从响应根解析。",
+  "managedProvidersMeasuresPath": "用量列表（$）",
+  "managedProvidersMeasuresPathHint": "$.balance_infos",
+  "managedProvidersMeasuresPathHelper": "每项一条余额的 $ 路径（如 DeepSeek）。",
+  "managedProvidersRequestMapping": "请求体（JSON）",
+  "managedProvidersRequestMappingHelper": "POST 时用；GET 留空。",
+  "managedProvidersFieldMappings": "列表项字段映射（JSON）",
+  "managedProvidersFieldMappingsHelper": "数组每项各字段在响应中的 $ 路径。",
+  "managedProvidersHeaders": "请求头（JSON）",
+  "managedProvidersHeadersHint": "Accept: application/json",
+  "managedProvidersHeadersHelper": "额外请求头；值可用花括号占位。",
+  "managedProvidersWindows": "额度窗口（JSON）",
+  "managedProvidersWindowsHint": "JSON 数组；每项含 label 与 $ 路径",
+  "managedProvidersWindowsHelper": "每条额度写一行。每项写 label 与 used / total / remaining / resetsAt 的 $ 路径。数组项请写死下标，如 $.balance_infos[0].total_balance。",
+  "managedProvidersFieldExampleLabel": "示例",
+  "managedProvidersJsonPathSeeAlso": "$ 用法详见「用量 API 与 JSON 解析」ℹ️",
+  "managedProvidersTemplateVariablesSeeAlsoQuery": "花括号用法详见「用量 API 与 JSON 解析」ℹ️",
+  "managedProvidersTemplateVariablesSeeAlsoCredentials": "花括号用法详见「凭据来源与请求写入」ℹ️",
+  "managedProvidersReferenceSyntaxHelper": "$ — 从 HTTP 响应的 JSON 里读数\n$ 表示整段响应，$.字段名 用点号一层层往下取。\n例：$.data、$.balance_infos[0].total_balance、$.rate_limit.used_percent\n\n用于「响应根路径」和额度窗口里的 used / total / remaining / resetsAt 等字段。\n\n花括号 — 往请求里填动态值（不是读响应）\n花括号内写变量名，发送时替换为凭据里的值。\n• accessToken — 访问令牌\n• accountId — 账号 ID\n• jwt.sub — JWT 的 sub\n\n用于请求头、Cookie、凭据模板。cli:… 登录后才有这些值。",
+  "managedProvidersCredentials": "凭据",
+  "managedProvidersCredentialRef": "凭据引用",
+  "managedProvidersCredentialRefHint": "仅保存引用，不会显示密钥",
+  "managedProvidersCredentialNone": "未配置凭据",
+  "managedProvidersCredentialConfigured": "已配置凭据 · 密钥已隐藏",
+  "managedProvidersCredentialSecret": "API Key / Token",
+  "managedProvidersCredentialSecretHint": "填入 Provider 的 API Key 或 Token",
+  "managedProvidersCredentialSecretExistingHint": "留空保留已保存密钥",
+  "managedProvidersCredentialSecretHelper": "留空保留已保存密钥。",
+  "managedProvidersCredentialName": "凭据参数名",
+  "managedProvidersCredentialNameHint": "Authorization 或 Cookie",
+  "managedProvidersCredentialNameHelper": "写入请求时的参数名。",
+  "managedProvidersCredentialField": "密钥字段名",
+  "managedProvidersCredentialFieldHint": "apiKey 或 accessToken",
+  "managedProvidersCredentialFieldHelper": "本地存储用的字段名。",
+  "managedProvidersCredentialPlacement": "凭据位置",
+  "managedProvidersCredentialPlacementHint": "header 或 query",
+  "managedProvidersCredentialPlacementHelper": "header 或 query。",
+  "managedProvidersCredentialSource": "凭据来源",
+  "managedProvidersCredentialSourceHint": "secret 或 cli:cursor-mp-<entry>",
+  "managedProvidersCredentialSourceHelper": "secret 读表单；cli:… 读 CLI 登录。",
+  "managedProvidersCredentialLinkMode": "凭据来源方式",
+  "managedProvidersCredentialLinkManual": "手动输入密钥",
+  "managedProvidersCredentialLinkedTo": "使用 {provider} 的凭证",
+  "@managedProvidersCredentialLinkedTo": {
+    "placeholders": {
+      "provider": {}
+    }
+  },
+  "managedProvidersCredentialLinkEmpty": "还没有可引用的供应商配置",
+  "managedProvidersCredentialTemplate": "凭据拼接模板",
+  "managedProvidersCredentialTemplateHint": "例如 WorkosCursorSessionToken=user::token",
+  "managedProvidersCredentialTemplateHelper": "拼成最终凭据值，常用于 Cookie；用花括号填变量。",
+  "managedProvidersCredentialFieldRequired": "保存 API Key 前请先填写凭据字段。",
+  "managedProvidersCredentialSaveFailed": "无法安全保存 Provider 凭据。",
+  "managedProvidersDisplay": "显示配置",
+  "managedProvidersCurrency": "货币",
+  "managedProvidersUnit": "单位",
+  "managedProvidersDecimals": "小数位",
+  "managedProvidersCurrencyMappingHelper": "已配置映射时从响应读取货币。",
+  "managedProvidersDynamicCurrencyHelper": "货币从响应映射读取。",
+  "managedProvidersEnabledTitle": "启用",
+  "managedProvidersEnabledSubtitle": "关闭后隐藏并停止查询。",
+  "managedProvidersShowPercent": "显示百分比",
+  "managedProvidersSave": "保存",
+  "managedProvidersSaveProvider": "保存 Provider",
+  "managedProvidersSaving": "保存中…",
+  "managedProvidersTestQuery": "测试查询",
+  "managedProvidersTestProviderQuery": "测试 Provider 查询",
+  "managedProvidersSaved": "管理 Provider 已保存。",
+  "managedProvidersQueryCompleted": "Provider 查询完成。",
+  "managedProvidersQueryFailed": "无法查询 Provider 用量。",
+  "managedProvidersMissingCredential": "Provider 凭据缺失。",
+  "managedProvidersAuthenticationFailed": "Provider 身份验证失败。",
+  "managedProvidersNetworkFailed": "Provider 网络请求失败。",
+  "managedProvidersHttpFailed": "Provider 服务返回错误。",
+  "managedProvidersResponseParseFailed": "无法解析 Provider 响应。",
+  "managedProvidersSaveFailed": "无法保存管理 Provider。",
+  "managedProvidersDeleteFailed": "无法删除管理 Provider。",
+  "managedProvidersLoadFailed": "无法加载管理 Provider。",
+  "managedProvidersUsageLoadFailed": "无法加载 Provider 用量。",
+  "managedProvidersRefreshFailed": "无法刷新 Provider 用量。",
+  "managedProvidersUsagePersistenceFailed": "无法保存 Provider 用量。",
+  "managedProvidersUsageInvalidated": "Provider 用量已失效。",
+  "managedProvidersRequestMappingError": "请求映射必须是 JSON 对象。",
+  "managedProvidersFieldMappingError": "字段映射必须是无密钥的 JSON 对象。",
+  "managedProvidersSecretMappingError": "请使用凭据引用，不要将密钥放入请求映射。",
+  "managedProvidersNameAdapterError": "名称和适配器不能为空。",
+  "managedProvidersDecimalError": "小数位必须是整数。",
+  "managedProvidersEndpointError": "此 HTTP 适配器需要 HTTPS 或回环地址。",
+  "managedProvidersNoUsage": "尚未查询用量",
+  "managedProvidersCachedUsage": "缓存用量",
+  "managedProvidersCachedUsageStale": "缓存用量 · 需要刷新",
+  "managedProvidersLastQueryFailed": "上次查询失败",
+  "managedProvidersLoadingUsage": "正在加载用量",
+  "managedProvidersQueryUnsupported": "不支持查询",
+  "managedProvidersUnknownUsage": "未知用量状态",
+  "managedProvidersStale": "已过期",
+  "managedProvidersError": "错误",
+  "managedProvidersRemainingPercent": "{percent}剩余 %",
+  "@managedProvidersRemainingPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "managedProvidersResetsIn": "{duration}后重置",
+  "@managedProvidersResetsIn": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "managedProvidersResetsSoon": "即将重置",
+  "gitGraphTitle": "提交图",
+  "gitGraphFetch": "抓取",
+  "gitGraphPull": "拉取",
+  "gitGraphPush": "推送",
+  "gitGraphStash": "贮藏",
+  "gitGraphRefresh": "刷新",
+  "gitGraphSearchHint": "搜索提交（消息 / 作者 / 哈希）",
+  "gitGraphSearchModeMessage": "消息",
+  "gitGraphSearchModeAuthor": "作者",
+  "gitGraphSearchModeHash": "哈希",
+  "gitGraphAllBranches": "所有分支",
+  "gitGraphCurrentBranch": "当前分支",
+  "gitGraphUncommittedChanges": "未提交的更改",
+  "gitGraphNoCommits": "未找到提交",
+  "gitGraphNotARepository": "不是 Git 仓库",
+  "gitGraphLoadMore": "加载更多",
+  "gitGraphLoadingMore": "加载中…",
+  "gitGraphSelectCommit": "选择一个提交查看详情",
+  "gitGraphHashCopied": "哈希已复制到剪贴板",
+  "gitGraphSubjectCopied": "说明已复制到剪贴板",
+  "gitGraphCheckoutBranch": "检出 {branch}",
+  "@gitGraphCheckoutBranch": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphViewBranchHistory": "查看此分支历史",
+  "gitGraphCreateBranchHere": "在此创建分支",
+  "gitGraphCreateTagHere": "在此创建标签",
+  "gitGraphCherryPick": "摘取（Cherry-pick）",
+  "gitGraphRevert": "回退（Revert）",
+  "gitGraphReset": "重置（Reset）",
+  "gitGraphResetSoft": "软重置（Soft）",
+  "gitGraphResetMixed": "混合重置（Mixed）",
+  "gitGraphResetHard": "硬重置（Hard）",
+  "gitGraphCopyHash": "复制哈希",
+  "gitGraphCopySubject": "复制说明",
+  "gitGraphCreateBranchTitle": "创建分支",
+  "gitGraphCreateTagTitle": "创建标签",
+  "gitGraphBranchNameLabel": "分支名称",
+  "gitGraphTagNameLabel": "标签名称",
+  "gitGraphTagMessageLabel": "说明（可选）",
+  "gitGraphCreate": "创建",
+  "gitGraphRevertConfirmBody": "确定回退提交 {hash} 吗？将创建一个撤销该提交的新提交。",
+  "@gitGraphRevertConfirmBody": {
+    "placeholders": {
+      "hash": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphResetHardConfirmBody": "硬重置会把“{branch}”移动到此提交，并丢弃所有未提交的更改。输入“{branch}”以确认。",
+  "@gitGraphResetHardConfirmBody": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphStashPop": "弹出",
+  "gitGraphStashApply": "应用",
+  "gitGraphStashDrop": "丢弃",
+  "gitGraphStashDropConfirmBody": "确定丢弃 {selector} 吗？此操作无法撤销。",
+  "@gitGraphStashDropConfirmBody": {
+    "placeholders": {
+      "selector": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphRenameBranch": "重命名分支…",
+  "gitGraphRenameBranchTitle": "重命名分支",
+  "gitGraphDeleteBranch": "删除分支 {name}",
+  "@gitGraphDeleteBranch": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphDeleteBranchTitle": "删除分支",
+  "gitGraphDeleteBranchConfirmBody": "确定删除分支“{name}”吗？仅能从该分支到达的提交可能变得不可达，此操作无法撤销。",
+  "@gitGraphDeleteBranchConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphDeleteRemoteBranchTitle": "删除远程分支",
+  "gitGraphDeleteRemoteBranchConfirmBody": "确定删除共享仓库上的远程分支“{name}”吗？这将影响所有协作者，且无法撤销。",
+  "@gitGraphDeleteRemoteBranchConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphViewTagHistory": "查看此标签历史",
+  "gitGraphMergeIntoCurrent": "合并 {branch} 到当前分支",
+  "@gitGraphMergeIntoCurrent": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphCheckoutCommit": "检出该提交（分离 HEAD）",
+  "gitGraphCheckoutCommitConfirmBody": "以分离 HEAD 状态检出 {hash} 吗？",
+  "@gitGraphCheckoutCommitConfirmBody": {
+    "placeholders": {
+      "hash": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphDeleteTag": "删除标签 {name}",
+  "@gitGraphDeleteTag": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphDeleteTagTitle": "删除标签",
+  "gitGraphDeleteTagConfirmBody": "确定删除标签“{name}”吗？此操作无法撤销。",
+  "@gitGraphDeleteTagConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphPushTag": "推送标签 {name}",
+  "@gitGraphPushTag": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphBranchesTags": "分支与标签",
+  "gitGraphRefsFilterHint": "过滤分支与标签",
+  "gitGraphRefsFilterEmpty": "无匹配项",
+  "gitGraphCompareFilterHint": "过滤分支、标签与提交",
+  "gitGraphLocalBranches": "本地分支",
+  "gitGraphRemoteBranches": "远程分支",
+  "gitGraphTags": "标签",
+  "gitGraphCommits": "提交",
+  "gitGraphHashSearchEmptyHint": "已加载的提交中没有匹配该哈希的记录，请继续向下滚动或点击“加载更多”以载入更早的历史。",
+  "gitGraphConflictHint": "请先解决冲突并暂存相关文件，然后提交以继续。",
+  "gitGraphColumnGraph": "图",
+  "gitGraphColumnDescription": "说明",
+  "gitGraphColumnDate": "日期",
+  "gitGraphColumnAuthor": "作者",
+  "gitGraphColumnCommit": "提交",
+  "gitGraphColumns": "列",
+  "gitGraphColumnHeaderLabel": "列头",
+  "gitGraphHideColumn": "隐藏{column}",
+  "@gitGraphHideColumn": {
+    "placeholders": {
+      "column": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGraphShowColumnHeader": "显示列头",
+  "gitGraphHideColumnHeader": "隐藏列头",
+  "gitGraphCompareWith": "与…比较",
+  "gitGraphCompareWorkingTree": "工作区（{branch}）",
+  "@gitGraphCompareWorkingTree": { "placeholders": { "branch": { "type": "String" } } },
+  "gitCompareWorkingTree": "工作区",
+  "gitCompareSubtitle": "{ref} 与当前工作区的差异",
+  "@gitCompareSubtitle": { "placeholders": { "ref": { "type": "String" } } },
+  "gitCompareEmpty": "没有差异",
+  "gitCompareLoadError": "无法加载差异",
+  "connectSettingsTitle": "手机",
+  "connectSettingsSubtitle": "扫码用 SSH 连接这台电脑",
+  "connectLanOnlyStatus": "仅局域网",
+  "connectRemoteReadyStatus": "局域网和远程",
+  "connectSshdDown": "内嵌连接服务启动失败。请重试或重启应用。",
+  "connectSshBackendLabel": "SSH 服务器",
+  "connectSshBackendEmbedded": "内置",
+  "connectSshBackendSystem": "系统 OpenSSH (22)",
+  "connectSshBackendHelp": "用本机 OpenSSH 对比内置服务器。切换后需重新扫码配对。",
+  "connectSshBackendRePair": "已配对的手机需重新扫描此电脑的配对码。",
+  "connectSystemSshdDownLinux": "22 端口没有 SSH 服务在听。请启动 OpenSSH 的 sshd，然后重试。",
+  "connectSystemSshdDownMacos": "22 端口没有 SSH 服务在听。请在「共享」中打开远程登录，然后重试。",
+  "connectRevokeSystemHint": "新登录会被拒绝。已经建立的 OpenSSH 会话可能要等断开后才会失效。",
+  "connectSshdRetry": "重试",
+  "connectRepairHint": "桌面端已升级——请重新扫码配对以恢复连接。",
+  "connectScanHint": "在手机上的 TeamPilot 中扫描此码。",
+  "connectAndroidScanHint": "扫描桌面版 TeamPilot 显示的二维码。",
+  "connectPairSheetTitle": "与电脑配对",
+  "connectPairSheetSubtitle": "扫描桌面版 TeamPilot 显示的二维码，或粘贴配对码。",
+  "connectScanQr": "扫描二维码",
+  "connectPasteCode": "粘贴配对码",
+  "connectPairCodeHint": "teampilot://pair-ssh?code=…",
+  "connectPairNow": "配对",
+  "connectPairing": "正在配对…",
+  "connectPairExpired": "配对码已过期，请重新扫描。",
+  "connectPairUpdateApp": "请更新 TeamPilot 后再扫描此配对码。",
+  "connectPairInvalid": "此配对码无效。",
+  "connectPairFailed": "无法与此电脑配对，请重试。",
+  "connectNeedLanOrRelay": "请连同一 Wi-Fi，或先在桌面填写中继地址。",
+  "connectScannerUnavailable": "相机扫描器不可用，请改为粘贴配对码。",
+  "connectScannerPermissionDenied": "需要相机权限才能扫描二维码。",
+  "connectScannerHint": "距离桌面二维码 10–30 cm；双指捏合可缩放，光线不足时打开手电筒。",
+  "connectOpenSettings": "去设置",
+  "connectQrEnlargeHint": "点击二维码可放大后再扫。",
+  "connectCopyLink": "复制链接",
+  "connectRegenerate": "重新生成",
+  "connectInterfaceLabel": "网络接口",
+  "connectNoNetworkAddress": "没有可用的非回环 IPv4 网络接口。",
+  "connectAdvancedTitle": "可达地址",
+  "connectAdvancedSubtitle": "添加可从当前局域网外访问的 SSH 地址。",
+  "connectExtraHost": "主机",
+  "connectExtraPort": "端口",
+  "connectAddEndpoint": "添加地址",
+  "connectRemoveEndpoint": "移除地址",
+  "connectRelayUrl": "中继 URL",
+  "connectRelayUrlHint": "可选的中继服务 URL",
+  "connectSaveSettings": "保存可达地址",
+  "connectInvalidEndpoint": "每个地址都需要主机名和 1 至 65535 的端口。",
+  "connectPairedDevicesTitle": "已配对设备",
+  "connectNoPairedDevices": "尚未配对手机。",
+  "connectRevokeDevice": "撤销",
+  "connectError": "无法刷新配对信息，请重试。",
+  "teamGenerateLaunch": "生成并启动",
+  "teamGenerateSettingsTitle": "生成并启动设置",
+  "teamGenerateSettingsSubtitle": "设定团队构建器如何规划阵容，以及可分配的模型配置。",
+  "teamGenerateModelPoolHint": "排名 1 最强。关键角色（如 team-lead）优先用靠前的配置。",
+  "teamGenerateEmptyPool": "还没有配置。请先添加最强的一项。",
+  "teamGeneratePickPreset": "选择预设",
+  "teamGenerateLoading": "正在加载设置…",
+  "teamGenerateGeneratorModel": "生成模型",
+  "teamGenerateMinimumMemberCount": "团队最少成员数",
+  "teamGenerateMinimumMemberCountHint": "生成的团队至少包含这么多不同的角色。",
+  "teamGenerateMinimumMemberCountInvalid": "最少需要 3 名成员。",
+  "teamGenerateTeamMode": "团队模式",
+  "teamGenerateNative": "原生",
+  "teamGenerateMixed": "混合",
+  "teamGenerateNativeCli": "原生 CLI",
+  "teamGenerateModelPool": "模型配置池",
+  "teamGenerateAddModel": "添加模型配置",
+  "teamGenerateRetainBuilderSession": "保留团队构建 Session 以便排错",
+  "teamGenerateRetainBuilderSessionHint": "开启后仍会正常打开生成的团队，但会保留构建 Session，方便查看团队生成过程。",
+  "teamGenerateHiddenPresets": "{count} 个配置因使用其他 CLI 而隐藏。",
+  "@teamGenerateHiddenPresets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamGenerateMissingPreset": "预设“{presetId}”已不存在。",
+  "@teamGenerateMissingPreset": {
+    "placeholders": {
+      "presetId": {
+        "type": "String"
+      }
+    }
+  },
+  "teamGenerateDescription": "强项与适用场景",
+  "teamGenerateTags": "标签",
+  "teamGenerateMoveUp": "上移",
+  "teamGenerateMoveDown": "下移",
+  "teamGenerateRemove": "移除",
+  "teamGenerateCapabilityNote": "团队构建器将检查工作区机器，并可能为生成的团队获取技能、插件和 MCP 服务器。",
+  "teamGenerateErrorDescriptionRequired": "请先描述需要团队处理的任务。",
+  "teamGenerateErrorAiNotConfigured": "请先配置生成模型。",
+  "teamGenerateErrorPoolEmpty": "请至少添加一个有效的模型配置。",
+  "teamGenerateErrorGeneratorUnsupported": "生成 CLI 必须支持会话、技能和 MCP。",
+  "teamGenerateErrorNativeUnsupported": "所选 CLI 不支持原生团队。",
+  "teamGenerateErrorUnavailable": "团队生成当前不可用。请重启 TeamPilot 后重试。",
+  "teamGenerateErrorStartFailed": "无法启动团队生成。请重试。",
+  "teamGenerateOpenSettings": "打开生成设置",
+  "teamGenerateBuilderTitle": "团队构建器",
+  "teamGenerateCancel": "取消生成",
+  "teamGenerateRetry": "重试",
+  "teamGenerateContinueSetup": "继续配置",
+  "teamGenerateCancelTitle": "取消团队生成？",
+  "teamGenerateCancelBody": "临时会话和暂存资源将被移除。",
+  "teamGenerateErrorTargetUnavailable": "所需机器或 CLI 当前不可用。",
+  "teamGenerateErrorStagingUnsupported": "此资源需要人工安装，无法安全暂存。",
+  "teamGenerateErrorUserActionRequired": "请完成所需的登录或配置，然后重试。",
+  "teamGenerateErrorPromptDeliveryUnknown": "TeamPilot 无法确认负责人是否已收到任务。",
+  "teamGenerateErrorRecoveryIntegrity": "无法验证恢复数据，临时会话已保留。",
+  "teamGenerateOpenLeadSession": "打开负责人会话",
+  "teamGenerateDeliveryArrived": "已收到",
+  "teamGenerateDeliverySendAgain": "再次发送…",
+  "teamGenerateDeliveryRetryTitle": "再次发送任务？",
+  "teamGenerateDeliveryRetryBody": "负责人可能会收到两次任务。",
+  "cloneRepositoryMenu": "克隆仓库…",
+  "cloneRepositorySubmit": "克隆",
+  "cloneRepositoryTitle": "克隆仓库",
+  "cloneRepositoryUrlLabel": "仓库 URL",
+  "cloneRepositoryUrlHint": "https://github.com/owner/repo.git",
+  "cloneRepositoryUrlInvalid": "请输入有效的 git URL（https://、git@、git://、ssh://）",
+  "cloneRepositoryTargetLabel": "克隆到目标",
+  "cloneRepositoryParentDirLabel": "克隆到文件夹",
+  "cloneRepositoryParentDirRequired": "请选择目标文件夹",
+  "cloneRepositoryDirNameLabel": "文件夹名称",
+  "cloneRepositoryDirNameRequired": "请输入文件夹名称",
+  "cloneRepositoryDestExists": "文件夹已存在且不为空",
+  "cloneRepositoryGitMissing": "所选目标机器上未找到 git",
+  "cloneRepositoryStarted": "已开始克隆 {url}",
+  "@cloneRepositoryStarted": { "placeholders": { "url": {} } },
+  "cloneRepositoryProgressTitle": "正在克隆 {repo}",
+  "@cloneRepositoryProgressTitle": { "placeholders": { "repo": {} } },
+  "cloneRepositorySucceeded": "已克隆 {repo}",
+  "@cloneRepositorySucceeded": { "placeholders": { "repo": {} } },
+  "cloneRepositoryFailed": "克隆失败：{repo}",
+  "@cloneRepositoryFailed": { "placeholders": { "repo": {} } },
+  "cloneRepositoryCancelled": "已取消克隆：{repo}",
+  "@cloneRepositoryCancelled": { "placeholders": { "repo": {} } },
+  "cloneRepositoryCompletedTitle": "克隆完成",
+  "cloneRepositoryCompletedBody": "{path} 已就绪。",
+  "@cloneRepositoryCompletedBody": { "placeholders": { "path": {} } },
+  "cloneRepositoryCreateWorkspace": "新建工作区",
+  "cloneRepositoryAddToWorkspace": "加入现有工作区…",
+  "cloneRepositoryChooseWorkspace": "选择工作区",
+  "cloneRepositoryAddToExistingSucceeded": "已将 {repo} 加入工作区 {workspace}",
+  "@cloneRepositoryAddToExistingSucceeded": { "placeholders": { "repo": {}, "workspace": {} } },
+  "acpLaunchFailedVersion": "当前 CLI 版本不支持 ACP 聊天模式，请更新后再试。",
+  "acpChatLaunchFailed": "无法启动 {cliName}，请确认已安装对应 CLI 后重试。",
+  "@acpChatLaunchFailed": {
+    "placeholders": {
+      "cliName": {
+        "type": "String"
+      }
+    }
+  },
+  "acpChatTurnFailed": "本轮对话失败",
+  "acpChatProcessExited": "{cliName} 意外退出",
+  "@acpChatProcessExited": {
+    "placeholders": {
+      "cliName": {
+        "type": "String"
+      }
+    }
+  },
+  "cliTransportDefaultChat": "新会话默认使用对话（ACP）",
+  "cliTransportDefaultTerminal": "新会话默认使用终端（PTY）",
+  "acpLaunchFailedAdapter": "无法启动 Claude ACP 适配器（claude-agent-acp）。请安装后重试。",
+  "acpChatNotLoggedIn": "代理尚未登录。请到设置 → 服务商完成登录后重试。",
+  "acpChatSessionOpenFailed": "无法打开 {cliName} 会话。",
+  "@acpChatSessionOpenFailed": {
+    "placeholders": {
+      "cliName": {
+        "type": "String"
+      }
+    }
+  },
+  "codexAcpLaunchFailedAdapter": "无法启动 Codex ACP 适配器（codex-acp）。请安装后重试。",
+  "codexAcpChatNotLoggedIn": "Codex 尚未登录。请到设置 → 服务商完成 ChatGPT 登录，或改用 API Key。",
+  "acpPermissionAskLabel": "询问",
+  "acpPermissionFullAccessLabel": "完全访问",
+  "acpModelSwitchFailed": "无法切换 ACP 模型，请重试。",
+  "acpModelSectionAgent": "Agent 模型",
+  "acpModelSectionLaunch": "启动配置",
+  "sessionUsageNav": "Token 用量",
+  "sessionUsageTitle": "Token 用量",
+  "sessionUsageScopeHint": "本地 + SSH · 按 TeamPilot 会话归属",
+  "sessionUsageProgressTitle": "用量同步",
+  "sessionUsageSync": "同步",
+  "sessionUsageSyncing": "同步中",
+  "sessionUsageSyncTooltip": "扫描 CLI 记录以获取新用量",
+  "sessionUsageSyncIncremental": "增量同步",
+  "sessionUsageSyncIncrementalHint": "只扫描上次同步后变化的文件",
+  "sessionUsageSyncFull": "全量同步",
+  "sessionUsageSyncFullHint": "从头重新扫描全部记录",
+  "sessionUsageCancelSync": "取消",
+  "sessionUsageCancelling": "正在取消…",
+  "sessionUsageCancelSyncTooltip": "取消用量同步",
+  "sessionUsageSyncCancelled": "已取消用量同步。",
+  "sessionUsageSyncPreparing": "正在准备扫描…",
+  "sessionUsageSyncProgress": "正在扫描 {done}/{total} 个会话 · 新增 {inserted} 条",
+  "@sessionUsageSyncProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "inserted": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageNeverSynced": "尚未同步",
+  "sessionUsageSyncedJustNow": "刚刚同步",
+  "sessionUsageLastSync": "上次同步 {time}",
+  "@sessionUsageLastSync": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageRangeToday": "今天",
+  "sessionUsageRangeLast24Hours": "近 24 小时",
+  "sessionUsageRangeSevenDays": "近 7 天",
+  "sessionUsageRangeFourteenDays": "近 14 天",
+  "sessionUsageRangeThirtyDays": "近 30 天",
+  "sessionUsageRangeAll": "全部",
+  "sessionUsageStartTime": "开始时间",
+  "sessionUsageEndTime": "结束时间",
+  "sessionUsageLiveEnd": "结束时间跟随当前时刻",
+  "sessionUsageRangeHint": "支持日期与时间，最长 30 天",
+  "sessionUsageRangeInvalidOrder": "开始时间不能晚于结束时间",
+  "sessionUsageRangeTooLong": "时间范围不能超过 30 天",
+  "sessionUsageColumnSettings": "显示的列",
+  "sessionUsageColumnReset": "恢复默认",
+  "sessionUsageSortDescending": "降序",
+  "sessionUsageSortAscending": "升序",
+  "sessionUsageAccountAll": "全部账号",
+  "sessionUsageCliAll": "全部",
+  "sessionUsageGroupBy": "分组",
+  "sessionUsageGroupSession": "会话",
+  "sessionUsageGroupMember": "成员",
+  "sessionUsageGroupModel": "模型",
+  "sessionUsageGroupCli": "CLI",
+  "sessionUsageTotalTokens": "总 Token",
+  "sessionUsageInputTokens": "输入",
+  "sessionUsageOutputTokens": "输出",
+  "sessionUsageCacheRead": "缓存读取",
+  "sessionUsageCacheWrite": "写入 {tokens}",
+  "@sessionUsageCacheWrite": {
+    "placeholders": {
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageCacheHit": "命中率 {percent}",
+  "@sessionUsageCacheHit": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageRequests": "请求",
+  "sessionUsageSessions": "会话",
+  "sessionUsageRequestsSessions": "{requests} 请求 · {sessions} 会话",
+  "@sessionUsageRequestsSessions": {
+    "placeholders": {
+      "requests": {
+        "type": "int"
+      },
+      "sessions": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageShare": "占总用量 {percent}",
+  "@sessionUsageShare": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageChartTitle": "近 7 天消耗",
+  "sessionUsageChartSubtitle": "按 CLI 堆叠",
+  "sessionUsageChartTotal": "合计 {tokens}",
+  "@sessionUsageChartTotal": {
+    "placeholders": {
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageChartAverage": "日均 {tokens}",
+  "@sessionUsageChartAverage": {
+    "placeholders": {
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageCliBreakdown": "CLI 分布",
+  "sessionUsageCacheReadShare": "缓存读占比 {percent}",
+  "@sessionUsageCacheReadShare": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageSearchHint": "搜索会话、成员或模型",
+  "sessionUsageTableEmpty": "没有匹配的记录",
+  "sessionUsageTableEmptyHint": "换个搜索词，或清除筛选条件。",
+  "sessionUsageEmptyTitle": "还没有 Token 用量",
+  "sessionUsageEmptyBody": "运行一次 Claude、Codex 或 OpenCode 会话后点击同步。也可以先清除筛选条件。",
+  "sessionUsageResetFilters": "清除筛选",
+  "sessionUsageSyncPartial": "{count} 个来源同步失败，当前显示缓存数据。",
+  "@sessionUsageSyncPartial": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageSyncFatal": "同步失败，当前显示缓存数据。",
+  "sessionUsageLoadFailed": "无法加载用量数据。",
+  "sessionUsageRetry": "重试",
+  "sessionUsageDismiss": "关闭",
+  "sessionUsageHeatmapTitle": "用量热力图",
+  "sessionUsageHeatmapSubtitle": "近 53 周 · 悬停或长按查看当天明细",
+  "sessionUsageHeatmapMetricTokens": "Token",
+  "sessionUsageHeatmapMetricHitRate": "命中率",
+  "sessionUsageHeatmapShowEarlier": "显示更早",
+  "sessionUsageHeatmapShowLess": "收起更早",
+  "sessionUsageHeatmapLess": "少",
+  "sessionUsageHeatmapMore": "多",
+  "sessionUsageHeatmapSpanSummary": "{tokens} Token · {requests} 请求 · {cost}",
+  "@sessionUsageHeatmapSpanSummary": {
+    "placeholders": {
+      "tokens": { "type": "String" },
+      "requests": { "type": "String" },
+      "cost": { "type": "String" }
+    }
+  },
+  "sessionUsageNoData": "暂无数据",
+  "sessionUsageToday": "今天",
+  "sessionUsageUnknownModel": "未知模型",
+  "sessionUsageUnknownSession": "未知会话",
+  "sessionUsageUnknownTeam": "未归属团队",
+  "sessionUsageSimpleSeat": "简单会话",
+  "sessionUsageShowing": "显示 {shown} / {total} 条记录",
+  "@sessionUsageShowing": {
+    "placeholders": {
+      "shown": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageGroupCount": "{count} 组",
+  "@sessionUsageGroupCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsagePageRange": "第 {start}–{end} 条 · 共 {total} 组",
+  "@sessionUsagePageRange": {
+    "placeholders": {
+      "start": {
+        "type": "int"
+      },
+      "end": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsagePageOf": "第 {page} / {pages} 页",
+  "@sessionUsagePageOf": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "pages": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageRowsPerPage": "每页条数",
+  "sessionUsagePrevPage": "上一页",
+  "sessionUsageNextPage": "下一页",
+  "sessionUsageCost": "成本",
+  "sessionUsageCostShort": "成本",
+  "sessionUsageCostPricedUnpriced": "已定价 {priced} 条 · 未定价 {unpriced} 条",
+  "@sessionUsageCostPricedUnpriced": {
+    "placeholders": {
+      "priced": { "type": "int" },
+      "unpriced": { "type": "int" }
+    }
+  },
+  "sessionUsageCostPartial": "部分成本：{count} 条未定价",
+  "@sessionUsageCostPartial": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "sessionUsageCostUnpriced": "未定价",
+  "sessionUsageManagePricing": "管理定价",
+  "sessionUsagePricingTitle": "模型定价",
+  "sessionUsagePricingHint": "每百万 token 的美元价格；自定义规则优先于内置参考价。",
+  "sessionUsagePricingModel": "模型",
+  "sessionUsagePricingInput": "输入",
+  "sessionUsagePricingOutput": "输出",
+  "sessionUsagePricingCacheRead": "缓存读",
+  "sessionUsagePricingCacheWrite": "缓存写",
+  "sessionUsagePricingCacheWrite1h": "1 小时缓存写",
+  "sessionUsagePricingEffectiveDate": "生效日期",
+  "sessionUsagePricingEffectiveHint": "YYYY-MM-DD",
+  "sessionUsagePricingAdd": "新增规则",
+  "sessionUsagePricingSave": "保存",
+  "sessionUsagePricingReset": "恢复默认",
+  "sessionUsagePricingResetConfirm": "移除所有自定义定价规则？",
+  "sessionUsagePricingInvalid": "请检查模型和价格输入。",
+  "sessionUsagePricingSaved": "定价已保存",
+  "sessionUsagePricingFailed": "定价保存失败。",
+  "sessionUsagePricingCorrupt": "定价文件无法读取，已使用内置价格。",
+  "sessionUsagePricingEmpty": "没有自定义规则，当前使用内置价格。",
+  "sessionUsagePricingDelete": "删除",
+  "sessionUsageStorage": "存储",
+  "sessionUsageSettings": "用量设置",
+  "sessionUsageDataSource": "数据来源",
+  "sessionUsageAutoScan": "自动扫描会话日志",
+  "sessionUsageAutoScanHint": "打开本页时立即扫描，之后每 {minutes} 分钟在后台扫描。",
+  "@sessionUsageAutoScanHint": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageScanInterval": "扫描间隔",
+  "sessionUsageIntervalMinutes": "每 {minutes} 分钟",
+  "@sessionUsageIntervalMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageSyncNow": "立即同步",
+  "sessionUsageMaintenanceEntry": "存储与 Cursor 维护",
+  "sessionUsageMaintenanceTitle": "用量存储",
+  "sessionUsageMaintenanceLines": "{lines} 行 · {events} 条事件",
+  "@sessionUsageMaintenanceLines": {
+    "placeholders": {
+      "lines": { "type": "int" },
+      "events": { "type": "int" }
+    }
+  },
+  "sessionUsageMaintenanceSize": "{size} KB",
+  "@sessionUsageMaintenanceSize": {
+    "placeholders": {
+      "size": { "type": "String" }
+    }
+  },
+  "sessionUsageMaintenanceCompact": "压缩事件",
+  "sessionUsageMaintenanceCompactHint": "合并被覆盖的历史修订，保留当前事件。",
+  "sessionUsageMaintenanceFull": "全量重扫",
+  "sessionUsageMaintenanceFullDone": "全量用量重扫完成。",
+  "sessionUsageMaintenanceFullHint": "重建全部数据源并扫描所有会话；历史缺失时使用。",
+  "sessionUsageMaintenanceCompacted": "用量存储已压缩。",
+  "sessionUsageMaintenanceFailed": "用量存储压缩失败。",
+  "sessionUsageSyncedToast": "用量同步完成",
+  "sessionUsageLoading": "正在加载用量…",
+  "sessionUsageTotalShort": "总计",
+  "sessionUsageInputShort": "输入",
+  "sessionUsageOutputShort": "输出",
+  "sessionUsageCacheShort": "缓存",
+  "sessionUsageRequestsShort": "请求",
+  "sessionUsageSessionsShort": "会话",
+  "sessionUsageShareShort": "占比",
+  "sessionUsageMixedCli": "混合",
+  "sessionUsageGroupName": "名称",
+  "cursorAccountUsageSession": "Cursor 账号",
+  "vaultPageTitle": "保险库",
+  "vaultPageSubtitle": "SSH 密码、私钥与供应商 API Key",
+  "vaultNewEntry": "新建条目",
+  "vaultSearchHint": "搜索标题、字段或标签",
+  "vaultEmptyTitle": "还没有条目",
+  "vaultEmptyHint": "在这里保存 SSH 密码、私钥或供应商 API Key。",
+  "vaultStatusKeychain": "系统钥匙串 · 无需解锁",
+  "vaultStatusEncrypted": "加密保险库 · 已锁定",
+  "vaultStatusUnlocked": "加密保险库 · 已解锁",
+  "vaultUnlock": "解锁",
+  "vaultLock": "立即锁定",
+  "vaultEnableEncryption": "启用加密保险库",
+  "vaultDisableEncryption": "停用加密保险库",
+  "vaultUnlockTitle": "解锁保险库",
+  "vaultPassphrase": "主密码",
+  "vaultPassphraseConfirm": "确认主密码",
+  "vaultPassphraseMismatch": "两次输入的密码不一致",
+  "vaultPassphraseRequired": "请输入主密码",
+  "vaultUnlockFailed": "解锁失败",
+  "vaultWrongPassphraseHint": "密码错误或文件损坏，数据未被修改。",
+  "vaultCopy": "复制",
+  "vaultReveal": "显示",
+  "vaultHide": "隐藏",
+  "vaultCopied": "已复制",
+  "vaultOnlyCopy": "仅复制",
+  "vaultReferences": "被引用",
+  "vaultNoReferences": "尚未被引用",
+  "vaultDeleteTitle": "删除条目？",
+  "vaultDeleteReferenced": "该条目仍被以下位置使用：",
+  "vaultDeleteConfirm": "删除",
+  "vaultCancel": "取消",
+  "vaultSave": "保存",
+  "vaultEntryTitle": "标题",
+  "vaultEntryType": "类型",
+  "vaultEntryTags": "标签（逗号分隔）",
+  "vaultEntryNotes": "备注",
+  "vaultEntryFavorite": "收藏",
+  "vaultTypeSshPassword": "SSH 密码",
+  "vaultTypeSshPrivateKey": "SSH 私钥",
+  "vaultTypeApiKey": "供应商 API Key",
+  "vaultTypeLogin": "账号密码",
+  "vaultTypeToken": "令牌",
+  "vaultTypeSecureNote": "安全笔记",
+  "vaultTypeCustom": "自定义",
+  "sshCredentialSource": "凭据来源",
+  "sshCredentialSourceKeychain": "本机钥匙串",
+  "sshCredentialVaultDeleted": "已删除的条目",
+  "sshSaveToVault": "保存到保险库",
+  "sshMigrateToVault": "迁移到保险库",
+  "sshVaultBadge": "保险库",
+  "vaultLockedSaveBlocked": "请先解锁保险库再保存凭据。",
+  "vaultUnavailable": "凭据保险库不可用。",
+  "vaultStoredInVault": "已存入保险库",
+  "vaultLockedQueryBlocked": "请先解锁保险库再查询用量。",
+  "homeConnectionUnreachable": "无法连接 {host}:{port}",
+  "homeConnectionRetrying": "正在重试…第 {count} 次",
+  "homeConnectionCancelRetry": "取消重试",
+  "homeConnectionRetryNow": "继续重试",
+  "homeConnectionSwitch": "切换连接",
+  "homeConnectionErrorTcp": "网络不可达",
+  "homeConnectionErrorTimeout": "连接超时",
+  "homeConnectionErrorAuth": "认证失败",
+  "homeConnectionErrorHostKey": "主机身份已变更 — 请重新配对或确认新密钥",
+  "homeConnectionErrorTransport": "连接出错",
+  "homeConnectionErrorUnknown": "未知错误",
+  "remoteConnectionsTitle": "远程连接",
+  "remoteConnectionsSubtitle": "管理本机保存的远程主机、连接与切换工作主目录；断线时同样可用。",
+  "vaultHomeOfflineHint": "未连接远程主机，保存在该主机上的业务凭据暂时不可用，重连后即可查看。"
+}

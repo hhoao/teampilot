@@ -56,9 +56,7 @@ class HomeVaultService extends VaultService {
     required HomeStorage storage,
     required SecureKeyValueStore keyStore,
   }) : super(
-         keychainBackend: RemoteVaultBackend(
-           VaultRepository.forHome(storage),
-         ),
+         keychainBackend: RemoteVaultBackend(VaultRepository.forHome(storage)),
          // Distinct file: `enableEncryptedBackend` writes the encrypted
          // document here, then clears the plain backend. Sharing one file
          // would archive the document it just wrote.

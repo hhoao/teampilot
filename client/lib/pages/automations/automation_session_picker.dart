@@ -38,13 +38,13 @@ class AutomationSessionPickerDialog extends StatelessWidget {
     return TpDialog(
       maxWidth: 420,
       child: TpDialogPinnedLayout(
-        header: TpDialogHeader(title: l10n.automationsSessionPickerTitle),
+        header: TpDialogHeader(title: l10n.automations.sessionPickerTitle),
         body: sessions.isEmpty
             ? Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
                   child: Text(
-                    l10n.automationsSessionPickerEmpty,
+                    l10n.automations.sessionPickerEmpty,
                     style: TpTextStyles.of(context).sm,
                   ),
                 ),

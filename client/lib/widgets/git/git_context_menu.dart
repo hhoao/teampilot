@@ -23,30 +23,30 @@ abstract final class GitFileContextMenu {
         TpActionMenuSpec.item(
           value: 'open',
           icon: Icons.file_open_outlined,
-          label: l10n.gitOpenFile,
+          label: l10n.git.openFile,
         ),
       TpActionMenuSpec.item(
         value: 'diff',
         icon: Icons.difference_outlined,
-        label: l10n.gitShowDiff,
+        label: l10n.git.showDiff,
       ),
       const TpActionMenuSpec.divider(),
       TpActionMenuSpec.item(
         value: staged ? 'unstage' : 'stage',
         icon: staged ? Icons.remove : Icons.add,
-        label: staged ? l10n.gitExcludeFromCommit : l10n.gitIncludeInCommit,
+        label: staged ? l10n.git.excludeFromCommit : l10n.git.includeInCommit,
       ),
       TpActionMenuSpec.item(
         value: 'discard',
         icon: Icons.undo,
-        label: l10n.gitDiscard,
+        label: l10n.git.discard,
         destructive: true,
       ),
       const TpActionMenuSpec.divider(),
       TpActionMenuSpec.item(
         value: 'copy_path',
         icon: Icons.copy,
-        label: l10n.gitCopyPath,
+        label: l10n.git.copyPath,
       ),
     ];
     final value = await showTpActionMenuFromSpecsAtTap<String>(
@@ -87,24 +87,24 @@ abstract final class GitFolderContextMenu {
       TpActionMenuSpec.item(
         value: 'stage',
         icon: Icons.add,
-        label: l10n.gitIncludeFolderInCommit,
+        label: l10n.git.includeFolderInCommit,
       ),
       TpActionMenuSpec.item(
         value: 'unstage',
         icon: Icons.remove,
-        label: l10n.gitExcludeFolderFromCommit,
+        label: l10n.git.excludeFolderFromCommit,
       ),
       TpActionMenuSpec.item(
         value: 'discard',
         icon: Icons.undo,
-        label: l10n.gitDiscardFolder,
+        label: l10n.git.discardFolder,
         destructive: true,
       ),
       const TpActionMenuSpec.divider(),
       TpActionMenuSpec.item(
         value: 'copy_path',
         icon: Icons.copy,
-        label: l10n.gitCopyPath,
+        label: l10n.git.copyPath,
       ),
     ];
     final value = await showTpActionMenuFromSpecsAtTap<String>(

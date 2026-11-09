@@ -87,7 +87,7 @@ class _ChatWorkbenchRunningTerminalState
   void _showDropOutcome(BuildContext context, DropOutcome outcome) {
     if (outcome.anyRejected && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.terminalDropCrossMachineRejected)),
+        SnackBar(content: Text(context.l10n.terminal.dropCrossMachineRejected)),
       );
     }
   }
@@ -266,8 +266,8 @@ class _ChatWorkbenchRunningTerminalState
                 child: TerminalFindBar(
                   engine: widget.session.engine,
                   controller: widget.terminalController,
-                  searchLabel: context.l10n.terminalFind,
-                  noResultsLabel: context.l10n.terminalFindNoResults,
+                  searchLabel: context.l10n.terminal.find,
+                  noResultsLabel: context.l10n.terminal.findNoResults,
                   onClose: () {
                     widget.terminalController.searchClear();
                     widget.onFindVisibleChanged(false);

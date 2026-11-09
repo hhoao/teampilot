@@ -13,10 +13,10 @@ String mcpDiscoverySourceLabel(
   AppLocalizations l10n,
   McpDiscoverySource source,
 ) => switch (source) {
-  McpDiscoverySource.all => l10n.mcpDiscoverySourceAll,
-  McpDiscoverySource.builtin => l10n.mcpDiscoverySourceBuiltin,
-  McpDiscoverySource.smithery => l10n.mcpRegistrySmithery,
-  McpDiscoverySource.official => l10n.mcpRegistryOfficial,
+  McpDiscoverySource.all => l10n.mcp.discoverySourceAll,
+  McpDiscoverySource.builtin => l10n.mcp.discoverySourceBuiltin,
+  McpDiscoverySource.smithery => l10n.mcp.registrySmithery,
+  McpDiscoverySource.official => l10n.mcp.registryOfficial,
 };
 
 bool mcpDiscoveryShowsSearch(McpDiscoverySource source) =>

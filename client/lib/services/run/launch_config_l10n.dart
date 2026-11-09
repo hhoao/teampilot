@@ -11,23 +11,23 @@ String localizeLaunchConfigFieldLabel(
   LaunchConfigSchemaField field,
 ) {
   return switch (field.key) {
-    'name' => l10n.runConfigurationName,
-    'command' => l10n.runFieldCommand,
-    'args' => l10n.runFieldArgs,
-    'env' => l10n.runFieldEnv,
-    'cwd' => l10n.runFieldCwd,
-    'shell' => l10n.runFieldShell,
-    'type' => l10n.runConfigurationType,
-    'scriptPath' => l10n.runFieldScriptPath,
-    'scriptText' => l10n.runFieldScriptText,
-    'execute' => l10n.runFieldExecute,
-    'scriptOptions' => l10n.runFieldScriptOptions,
-    'interpreterPath' => l10n.runFieldInterpreterPath,
-    'interpreterOptions' => l10n.runFieldInterpreterOptions,
-    'executeInTerminal' => l10n.runFieldExecuteInTerminal,
-    'allowMultipleInstances' => l10n.runFieldAllowMultipleInstances,
-    'activateToolWindow' => l10n.runFieldActivateToolWindow,
-    'focusToolWindow' => l10n.runFieldFocusToolWindow,
+    'name' => l10n.run.configurationName,
+    'command' => l10n.run.fieldCommand,
+    'args' => l10n.run.fieldArgs,
+    'env' => l10n.run.fieldEnv,
+    'cwd' => l10n.run.fieldCwd,
+    'shell' => l10n.run.fieldShell,
+    'type' => l10n.run.configurationType,
+    'scriptPath' => l10n.run.fieldScriptPath,
+    'scriptText' => l10n.run.fieldScriptText,
+    'execute' => l10n.run.fieldExecute,
+    'scriptOptions' => l10n.run.fieldScriptOptions,
+    'interpreterPath' => l10n.run.fieldInterpreterPath,
+    'interpreterOptions' => l10n.run.fieldInterpreterOptions,
+    'executeInTerminal' => l10n.run.fieldExecuteInTerminal,
+    'allowMultipleInstances' => l10n.run.fieldAllowMultipleInstances,
+    'activateToolWindow' => l10n.run.fieldActivateToolWindow,
+    'focusToolWindow' => l10n.run.fieldFocusToolWindow,
     _ => field.label,
   };
 }
@@ -35,7 +35,7 @@ String localizeLaunchConfigFieldLabel(
 /// Localizes a launch type id for type picker / type field display.
 String localizeLaunchTypeLabel(AppLocalizations l10n, String type) {
   if (type == ShellScriptLaunchSchema.typeName) {
-    return l10n.runTypeShellScript;
+    return l10n.run.typeShellScript;
   }
   return type;
 }
@@ -48,8 +48,8 @@ String localizeLaunchConfigEnumValue(
 ) {
   if (fieldKey == 'execute') {
     return switch (value) {
-      'scriptFile' => l10n.runExecuteScriptFile,
-      'scriptText' => l10n.runExecuteScriptText,
+      'scriptFile' => l10n.run.executeScriptFile,
+      'scriptText' => l10n.run.executeScriptText,
       _ => value,
     };
   }
@@ -67,29 +67,29 @@ abstract final class LaunchConfigValidationCodes {
 String localizeLaunchConfigValidation(AppLocalizations l10n, String code) {
   return switch (code) {
     LaunchConfigValidationCodes.configurationMustBeMap =>
-      l10n.runValidationConfigurationMustBeMap,
+      l10n.run.validationConfigurationMustBeMap,
     LaunchConfigValidationCodes.envMustBeStringMap =>
-      l10n.runValidationEnvMustBeStringMap,
+      l10n.run.validationEnvMustBeStringMap,
     LaunchConfigValidationCodes.cwdMustBeString =>
-      l10n.runValidationCwdMustBeString,
+      l10n.run.validationCwdMustBeString,
     ShellScriptValidationCodes.executeRequired =>
-      l10n.runValidationExecuteRequired,
+      l10n.run.validationExecuteRequired,
     ShellScriptValidationCodes.executeInvalid =>
-      l10n.runValidationExecuteInvalid,
+      l10n.run.validationExecuteInvalid,
     ShellScriptValidationCodes.scriptPathRequired =>
-      l10n.runValidationScriptPathRequired,
+      l10n.run.validationScriptPathRequired,
     ShellScriptValidationCodes.scriptTextRequired =>
-      l10n.runValidationScriptTextRequired,
+      l10n.run.validationScriptTextRequired,
     ShellScriptValidationCodes.interpreterPathMustBeString =>
-      l10n.runValidationInterpreterPathMustBeString,
+      l10n.run.validationInterpreterPathMustBeString,
     ShellScriptValidationCodes.executeInTerminalMustBeBoolean =>
-      l10n.runValidationExecuteInTerminalMustBeBoolean,
+      l10n.run.validationExecuteInTerminalMustBeBoolean,
     ShellScriptValidationCodes.allowMultipleInstancesMustBeBoolean =>
-      l10n.runValidationAllowMultipleInstancesMustBeBoolean,
+      l10n.run.validationAllowMultipleInstancesMustBeBoolean,
     ShellScriptValidationCodes.activateToolWindowMustBeBoolean =>
-      l10n.runValidationActivateToolWindowMustBeBoolean,
+      l10n.run.validationActivateToolWindowMustBeBoolean,
     ShellScriptValidationCodes.focusToolWindowMustBeBoolean =>
-      l10n.runValidationFocusToolWindowMustBeBoolean,
+      l10n.run.validationFocusToolWindowMustBeBoolean,
     _ => code,
   };
 }

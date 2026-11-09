@@ -42,9 +42,7 @@ void main() {
     const team = TeamProfile(
       id: 'team1',
       name: 'Team 1',
-      members: [
-        TeamMemberConfig(id: 'dev', name: 'Dev', cli: CliTool.codex),
-      ],
+      members: [TeamMemberConfig(id: 'dev', name: 'Dev', cli: CliTool.codex)],
     );
     final session = AppSession(
       sessionId: 's1',

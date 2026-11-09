@@ -30,7 +30,7 @@ class TeamLeadBadge extends StatelessWidget {
           vertical: vertical,
         ),
         child: Text(
-          l10n.teamLeadBadge,
+          l10n.team.leadBadge,
           style: styles.xsBoldColored(cs.onSecondaryContainer),
         ),
       ),

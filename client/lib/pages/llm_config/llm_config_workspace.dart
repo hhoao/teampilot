@@ -65,7 +65,7 @@ class LlmConfigWorkspace extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (showHeading)
-          WorkspacePaneHeader(title: l10n.appProviderCatalogLabel),
+          WorkspacePaneHeader(title: l10n.appProvider.catalogLabel),
         Expanded(child: body),
       ],
     );

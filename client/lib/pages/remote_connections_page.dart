@@ -30,9 +30,9 @@ class _RemoteConnectionsPageState extends State<RemoteConnectionsPage> {
   }
 
   void _openTargetsPage(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const RemoteTargetsPage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const RemoteTargetsPage()));
   }
 
   @override
@@ -119,14 +119,14 @@ class _ConnectionStatusCard extends StatelessWidget {
           children: [
             if (host != null)
               Text(
-                l10n.homeConnectionUnreachable(host, port),
+                l10n.home.connectionUnreachable(host: host, port: port),
                 textAlign: TextAlign.center,
                 style: TpTextStyles.of(context).mdBoldTightSnug,
               ),
             if (state.status == HomeConnectionStatus.reconnecting) ...[
               const SizedBox(height: 4),
               Text(
-                l10n.homeConnectionRetrying(state.attempt),
+                l10n.home.connectionRetrying(count: state.attempt),
                 textAlign: TextAlign.center,
                 style: TpTextStyles.of(context).mutedSm,
               ),
@@ -151,17 +151,17 @@ class _ConnectionStatusCard extends StatelessWidget {
                   OutlinedButton(
                     onPressed: () =>
                         context.read<HomeConnectionCubit>().cancelRetry(),
-                    child: Text(l10n.homeConnectionCancelRetry),
+                    child: Text(l10n.home.connectionCancelRetry),
                   )
                 else if (state.canRetryNow)
                   FilledButton(
                     onPressed: () =>
                         context.read<HomeConnectionCubit>().retryNow(),
-                    child: Text(l10n.homeConnectionRetryNow),
+                    child: Text(l10n.home.connectionRetryNow),
                   ),
                 OutlinedButton(
                   onPressed: onSwitchConnection,
-                  child: Text(l10n.homeConnectionSwitch),
+                  child: Text(l10n.home.connectionSwitch),
                 ),
               ],
             ),
@@ -173,12 +173,12 @@ class _ConnectionStatusCard extends StatelessWidget {
 
   String _errorKindLabel(AppLocalizations l10n, HomeErrorKind kind) {
     return switch (kind) {
-      HomeErrorKind.tcpUnreachable => l10n.homeConnectionErrorTcp,
-      HomeErrorKind.sshTimeout => l10n.homeConnectionErrorTimeout,
-      HomeErrorKind.authFailed => l10n.homeConnectionErrorAuth,
-      HomeErrorKind.hostIdentityChanged => l10n.homeConnectionErrorHostKey,
-      HomeErrorKind.transportError => l10n.homeConnectionErrorTransport,
-      HomeErrorKind.unknown => l10n.homeConnectionErrorUnknown,
+      HomeErrorKind.tcpUnreachable => l10n.home.connectionErrorTcp,
+      HomeErrorKind.sshTimeout => l10n.home.connectionErrorTimeout,
+      HomeErrorKind.authFailed => l10n.home.connectionErrorAuth,
+      HomeErrorKind.hostIdentityChanged => l10n.home.connectionErrorHostKey,
+      HomeErrorKind.transportError => l10n.home.connectionErrorTransport,
+      HomeErrorKind.unknown => l10n.home.connectionErrorUnknown,
     };
   }
 }

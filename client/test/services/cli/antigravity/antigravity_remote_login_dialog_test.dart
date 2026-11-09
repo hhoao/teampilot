@@ -12,50 +12,51 @@ import 'package:teampilot/services/ssh/ssh_member_session.dart';
 import 'package:teampilot/services/ssh/worker/ssh_worker_member_session.dart';
 
 void main() {
-  testWidgets('remote login starts agy with isolated HOME and verifies models', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(1200, 1800);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-    final session = _FakeMemberSession();
-    await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: AntigravityRemoteLoginDialog(
-          provider: const AppProviderConfig(
-            id: 'antigravity',
-            cli: CliTool.antigravity,
-            name: 'Antigravity',
-            isOfficial: true,
+  testWidgets(
+    'remote login starts agy with isolated HOME and verifies models',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 1800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final session = _FakeMemberSession();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
+          home: AntigravityRemoteLoginDialog(
+            provider: const AppProviderConfig(
+              id: 'antigravity',
+              cli: CliTool.antigravity,
+              name: 'Antigravity',
+              isOfficial: true,
+            ),
+            executable: 'agy',
+            profile: const SshProfile(
+              id: 'p1',
+              name: 'host',
+              host: 'host',
+              username: 'dev',
+              authType: SshAuthType.password,
+            ),
+            openSession: (_) async => session,
+            terminalBuilder: (_) => const SizedBox.shrink(),
           ),
-          executable: 'agy',
-          profile: const SshProfile(
-            id: 'p1',
-            name: 'host',
-            host: 'host',
-            username: 'dev',
-            authType: SshAuthType.password,
-          ),
-          openSession: (_) async => session,
-          terminalBuilder: (_) => const SizedBox.shrink(),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(session.ptyCommand, isNotNull);
-    expect(session.ptyCommand, contains('exec '));
-    expect(session.ptyCommand, contains('HOME='));
-    expect(session.ptyCommand, contains('GEMINI_HOME='));
+      expect(session.ptyCommand, isNotNull);
+      expect(session.ptyCommand, contains('exec '));
+      expect(session.ptyCommand, contains('HOME='));
+      expect(session.ptyCommand, contains('GEMINI_HOME='));
 
-    await tester.tap(find.byKey(const Key('antigravityRemoteLoginDone')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('antigravityRemoteLoginDone')));
+      await tester.pumpAndSettle();
 
-    expect(session.verified, isTrue);
-    expect(session.closed, isTrue);
-  });
+      expect(session.verified, isTrue);
+      expect(session.closed, isTrue);
+    },
+  );
 }
 
 class _FakeMemberSession implements SshMemberSession {

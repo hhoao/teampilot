@@ -217,10 +217,10 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
           key: const Key('launch-config-field-interpreterPath'),
           value: display,
           items: shells,
-          hintText: l10n.runFieldInterpreterPath,
+          hintText: l10n.run.fieldInterpreterPath,
           decoration: TpSelectDecorations.themed(context),
           searchable: shells.length >= 6,
-          customInputTooltip: l10n.runFieldInterpreterPathEditTooltip,
+          customInputTooltip: l10n.run.fieldInterpreterPathEditTooltip,
           cancelLabel: l10n.cancel,
           confirmLabel: l10n.confirm,
           onChanged: (next) {
@@ -264,7 +264,7 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
         TpFormField<String>(
           id: 'name',
           initialValue: _working.name,
-          label: Text(l10n.runConfigurationName),
+          label: Text(l10n.run.configurationName),
           layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {

@@ -100,7 +100,7 @@ class _ChatFindBarState extends State<ChatFindBar> {
             final total = controller.hits.length;
             final current = controller.currentIndex;
             final counter = total == 0
-                ? l10n.chatFindNoResults
+                ? l10n.chat.findNoResults
                 : '${current + 1}/$total';
 
             return Align(
@@ -125,7 +125,7 @@ class _ChatFindBarState extends State<ChatFindBar> {
                                 child: FindField(
                                   controller: widget.queryController,
                                   focusNode: widget.focusNode,
-                                  hint: l10n.chatFindHint,
+                                  hint: l10n.chat.findHint,
                                   autofocus: true,
                                   showClear: true,
                                   onChanged: _onChanged,
@@ -133,19 +133,19 @@ class _ChatFindBarState extends State<ChatFindBar> {
                                   toggles: [
                                     FindToggleButton(
                                       iconAsset: FindBarIcons.caseSensitive,
-                                      tooltip: l10n.chatFindMatchCase,
+                                      tooltip: l10n.chat.findMatchCase,
                                       checked: controller.caseSensitive,
                                       onTap: controller.toggleCaseSensitive,
                                     ),
                                     FindToggleButton(
                                       iconAsset: FindBarIcons.wholeWord,
-                                      tooltip: l10n.chatFindWholeWord,
+                                      tooltip: l10n.chat.findWholeWord,
                                       checked: controller.wholeWord,
                                       onTap: controller.toggleWholeWord,
                                     ),
                                     FindToggleButton(
                                       iconAsset: FindBarIcons.regexp,
-                                      tooltip: l10n.chatFindUseRegex,
+                                      tooltip: l10n.chat.findUseRegex,
                                       checked: controller.regex,
                                       onTap: controller.toggleRegex,
                                     ),
@@ -161,7 +161,7 @@ class _ChatFindBarState extends State<ChatFindBar> {
                               const FindBarDivider(),
                               FindActionButton(
                                 icon: Icons.keyboard_arrow_up,
-                                tooltip: l10n.chatFindPrevious,
+                                tooltip: l10n.chat.findPrevious,
                                 enabled: total > 0,
                                 onTap: () {
                                   controller.previous();
@@ -170,7 +170,7 @@ class _ChatFindBarState extends State<ChatFindBar> {
                               ),
                               FindActionButton(
                                 icon: Icons.keyboard_arrow_down,
-                                tooltip: l10n.chatFindNext,
+                                tooltip: l10n.chat.findNext,
                                 enabled: total > 0,
                                 onTap: () {
                                   controller.next();
@@ -180,7 +180,7 @@ class _ChatFindBarState extends State<ChatFindBar> {
                               const FindBarDivider(),
                               FindActionButton(
                                 icon: Icons.close,
-                                tooltip: l10n.chatFindClose,
+                                tooltip: l10n.chat.findClose,
                                 onTap: widget.onClose,
                               ),
                             ],
@@ -202,7 +202,7 @@ class _ChatFindBarState extends State<ChatFindBar> {
                                 child: Align(
                                   alignment: Alignment.centerLeft,
                                   child: Text(
-                                    l10n.chatFindResults,
+                                    l10n.chat.findResults,
                                     style: TpTextStyles.of(context).mdSemibold
                                         .copyWith(
                                           color: FindBarPalette.of(

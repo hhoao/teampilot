@@ -43,38 +43,38 @@ class AndroidShellChrome {
     final l10n = context.l10n;
     if (path == '/config') return l10n.settings;
     if (path == '/config/layout') return l10n.layout;
-    if (path == '/providers' || _isLlmCliRoot(path)) return l10n.llmConfig;
+    if (path == '/providers' || _isLlmCliRoot(path)) return l10n.llm.config;
     if (_isLlmProviderDetail(path)) {
-      if (path.endsWith('/edit')) return l10n.editProvider;
+      if (path.endsWith('/edit')) return l10n.edit.provider;
       if (path.endsWith('/add')) return l10n.addProvider;
       if (path.endsWith('/models')) return l10n.models;
       final name = _llmProviderNameFromPath(path);
       if (name != null) return name;
     }
-    if (path == '/config/session') return l10n.session;
-    if (path == '/config/cli') return l10n.cliConfig;
+    if (path == '/config/session') return l10n.session.session;
+    if (path == '/config/cli') return l10n.cli.config;
     if (path == '/config/remote-connections') {
-      return l10n.remoteConnectionsTitle;
+      return l10n.remote.connectionsTitle;
     }
-    if (path == '/config/ssh-profiles') return l10n.sshProfilesSettingsTitle;
-    if (path == '/config/github') return l10n.githubSettingsTitle;
-    if (path == '/config/shortcuts') return l10n.shortcutsSettingsTitle;
-    if (path == '/config/ai-features') return l10n.aiFeatures;
+    if (path == '/config/ssh-profiles') return l10n.sshProfile.sSettingsTitle;
+    if (path == '/config/github') return l10n.github.settingsTitle;
+    if (path == '/config/shortcuts') return l10n.shortcuts.settingsTitle;
+    if (path == '/config/ai-features') return l10n.ai.features;
     if (path == '/config/download-sources') {
-      return l10n.downloadSourcesSettingsTitle;
+      return l10n.download.sourcesSettingsTitle;
     }
     if (path == '/config/discovery') return l10n.discoverySettingsTitle;
     if (path == '/config/about') return l10n.aboutTitle;
-    if (path == '/config/logs') return l10n.logViewerTitle;
+    if (path == '/config/logs') return l10n.log.viewerTitle;
 
-    if (path == '/team-config') return l10n.teamConfig;
-    if (path == '/team-config/team') return l10n.teamSettings;
-    if (path == '/team-config/skills') return l10n.teamSkillsNav;
-    if (path == '/team-config/mcp') return l10n.teamMcpNav;
-    if (path == '/mcp') return l10n.mcpNavTitle;
-    if (path == '/hooks') return l10n.hookNavTitle;
-    if (path == '/mcp/add') return l10n.mcpAddTitle;
-    if (path.startsWith('/mcp/edit/')) return l10n.mcpEdit;
+    if (path == '/team-config') return l10n.team.config;
+    if (path == '/team-config/team') return l10n.team.settings;
+    if (path == '/team-config/skills') return l10n.team.skillsNav;
+    if (path == '/team-config/mcp') return l10n.team.mcpNav;
+    if (path == '/mcp') return l10n.mcp.navTitle;
+    if (path == '/hooks') return l10n.hook.navTitle;
+    if (path == '/mcp/add') return l10n.mcp.addTitle;
+    if (path.startsWith('/mcp/edit/')) return l10n.mcp.edit;
     if (path.startsWith('/mcp/')) {
       final segment = path.replaceFirst('/mcp/', '').split('/').first;
       for (final section in McpSection.values) {
@@ -87,7 +87,7 @@ class AndroidShellChrome {
       return _memberTitle(context, path) ?? l10n.members;
     }
 
-    if (path == '/skills') return l10n.skillsTitle;
+    if (path == '/skills') return l10n.skills.title;
     if (path.startsWith('/skills/')) {
       final segment = path.replaceFirst('/skills/', '');
       for (final section in SkillSection.values) {
@@ -97,7 +97,7 @@ class AndroidShellChrome {
       }
     }
 
-    if (path == '/plugins') return l10n.pluginsTitle;
+    if (path == '/plugins') return l10n.plugins.title;
     if (path.startsWith('/plugins/')) {
       final segment = path.replaceFirst('/plugins/', '').split('/').first;
       for (final section in PluginSection.values) {
@@ -212,7 +212,7 @@ class AndroidShellChrome {
     for (final member in team.members) {
       if (member.id == id) {
         final name = member.name.trim();
-        return name.isEmpty ? context.l10n.memberName : name;
+        return name.isEmpty ? context.l10n.member.name : name;
       }
     }
     return null;

@@ -117,7 +117,7 @@ class _FloatingWorkspaceToggleState extends State<FloatingWorkspaceToggle> {
             child: Tooltip(
               message: commandTooltip(
                 context,
-                l10n.floatingWorkspaceToggleTooltip,
+                l10n.floating.workspaceToggleTooltip,
                 CommandIds.floatingToggle,
               ),
               child: MouseRegion(

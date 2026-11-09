@@ -91,7 +91,7 @@ class _TeamLandingPickerLocalCardState
               ),
               TeamStatChip(
                 icon: Icons.people_alt_outlined,
-                label: l10n.myTeamsMemberCount(team.roster.length),
+                label: l10n.my.teamsMemberCount(count: team.roster.length),
               ),
             ],
           ),

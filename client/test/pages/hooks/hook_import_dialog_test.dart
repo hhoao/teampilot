@@ -44,8 +44,8 @@ void main() {
             child: BlocProvider<HookCubit>.value(
               value: cubit,
               child: MaterialApp(
-                localizationsDelegates: AppLocalizations.localizationsDelegates,
-                supportedLocales: AppLocalizations.supportedLocales,
+                localizationsDelegates: appLocalizationsDelegates,
+                supportedLocales: appLocalizationsSupportedLocales,
                 home: TpTheme(
                   data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
                   child: Builder(

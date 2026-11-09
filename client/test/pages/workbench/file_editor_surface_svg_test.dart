@@ -50,8 +50,8 @@ Future<void> _pumpSurface(WidgetTester tester, _Harness harness) async {
           BlocProvider<WorkbenchCubit>.value(value: harness.workbench),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: Scaffold(
             body: FileEditorSurface(workspaceId: 'ws', path: '/repo/icon.svg'),
           ),
@@ -103,7 +103,9 @@ void main() {
     final harness = await _createHarness(tester);
     await _pumpSurface(tester, harness);
 
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
     await tester.tap(find.byTooltip(l10n.htmlViewToggleEdit));
     expect(
       harness.opener.svgViewModes.modeFor('/repo/icon.svg'),
@@ -121,7 +123,9 @@ void main() {
   ) async {
     final harness = await _createHarness(tester, source: 'not an svg');
     await _pumpSurface(tester, harness);
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
     final errorText = l10n.editorPanelErrorMessage(
       EditorMessage.imageDecodeFailed,
     );

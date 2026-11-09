@@ -59,11 +59,7 @@ final class CursorUsageSyncAdapter {
   }
 
   /// Maps the usage page range onto the Cursor fetch range.
-  CursorUsageRange rangeFor(
-    UsageRange range, {
-    int? startMs,
-    int? endMs,
-  }) {
+  CursorUsageRange rangeFor(UsageRange range, {int? startMs, int? endMs}) {
     final now = _now();
     final nowMs = now.millisecondsSinceEpoch;
     int daysAgo(int days) => DateTime(

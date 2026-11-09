@@ -58,8 +58,8 @@ Widget _wrap({
 }) {
   return MaterialApp(
     locale: locale,
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: RepositoryProvider<AppSettingsRepository>.value(
       value: repository,
       child: TpTheme(

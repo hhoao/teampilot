@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/l10n/app_localizations_en.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/services/ssh/ssh_connection_failure.dart';
 
 void main() {
@@ -21,7 +21,7 @@ void main() {
     );
     expect(
       sshConnectionFailureUserMessage(error, l10n),
-      l10n.sshProfileTestFailedHostKey,
+      l10n.sshProfile.testFailedHostKey,
     );
   });
 
@@ -29,7 +29,7 @@ void main() {
     final error = SSHAuthFailError('bad password');
     expect(
       sshConnectionFailureUserMessage(error, l10n),
-      l10n.sshProfileTestFailedAuth,
+      l10n.sshProfile.testFailedAuth,
     );
   });
 
@@ -40,7 +40,7 @@ void main() {
     expect(isSshdPenaltyRefusal(penalty), isTrue);
     expect(
       sshConnectionFailureUserMessage(penalty, l10n),
-      l10n.sshPenaltyRefused,
+      l10n.ssh.penaltyRefused,
     );
 
     final otherHandshake = SSHHandshakeError('Invalid version: HTTP/1.1 400');
@@ -54,7 +54,7 @@ void main() {
         'SSHHandshakeError(Invalid version: Not allowed at this time)',
         l10n,
       ),
-      l10n.sshPenaltyRefused,
+      l10n.ssh.penaltyRefused,
     );
     expect(
       sshErrorDetailUserMessage('SocketException: connection refused', l10n),
@@ -66,7 +66,7 @@ void main() {
   test('maps the stale-pairing sentinel to the re-pair hint', () {
     expect(
       sshErrorDetailUserMessage(sshPairingStaleDetail, l10n),
-      l10n.connectRepairHint,
+      l10n.connect.repairHint,
     );
     // The sentinel never leaks to the user as a raw string.
     expect(

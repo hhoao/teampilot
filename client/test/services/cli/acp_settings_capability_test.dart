@@ -30,9 +30,6 @@ void main() {
   });
 
   test('Gemini has ACP but no personal-ACP settings capability', () {
-    expect(
-      registry.capability<AcpSettingsCapability>(CliTool.gemini),
-      isNull,
-    );
+    expect(registry.capability<AcpSettingsCapability>(CliTool.gemini), isNull);
   });
 }

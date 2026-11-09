@@ -43,7 +43,7 @@ class ChatWorkbenchRemoteProvisionView extends StatelessWidget {
                 Icon(Icons.error_outline, color: cs.error, size: 36),
                 const SizedBox(height: 12),
                 Text(
-                  l10n.sessionRemoteProvisionFailed,
+                  l10n.session.remoteProvisionFailed,
                   textAlign: TextAlign.center,
                   style: styles.mdMedium.copyWith(color: cs.error),
                 ),
@@ -71,13 +71,13 @@ class ChatWorkbenchRemoteProvisionView extends StatelessWidget {
     required String host,
   }) {
     if (member.isNotEmpty && host.isNotEmpty) {
-      return l10n.sessionRemoteProvisionTitle(member, host);
+      return l10n.session.remoteProvisionTitle(member: member, host: host);
     }
     if (host.isNotEmpty) {
-      return l10n.sessionRemoteProvisionPreparingOnHost(host);
+      return l10n.session.remoteProvisionPreparingOnHost(host: host);
     }
     if (member.isNotEmpty) return member;
-    return l10n.sessionRemoteProvisionPreparing;
+    return l10n.session.remoteProvisionPreparing;
   }
 
   /// Drop raw target ids (`ssh:<uuid>`) and empty strings.

@@ -218,13 +218,13 @@ class _WorkspaceSearchContentSectionState
                 autofocus: true,
                 decoration: tpSearchPillDecoration(
                   context,
-                  hintText: l10n.workspaceSearchQueryHint,
+                  hintText: l10n.workspace.searchQueryHint,
                 ),
               ),
             ),
             FilterChip(
               label: const Text('.*'),
-              tooltip: l10n.workspaceSearchRegex,
+              tooltip: l10n.workspace.searchRegex,
               selected: _isRegex,
               onSelected: (v) {
                 setState(() => _isRegex = v);
@@ -233,7 +233,7 @@ class _WorkspaceSearchContentSectionState
             ),
             FilterChip(
               label: const Text('Aa'),
-              tooltip: l10n.workspaceSearchCaseSensitive,
+              tooltip: l10n.workspace.searchCaseSensitive,
               selected: _caseSensitive,
               onSelected: (v) {
                 setState(() => _caseSensitive = v);
@@ -244,13 +244,13 @@ class _WorkspaceSearchContentSectionState
         ),
         const SizedBox(height: 4),
         if (_searching)
-          WorkspaceSearchStatusRow(label: l10n.workspaceSearchSearching)
+          WorkspaceSearchStatusRow(label: l10n.workspace.searchSearching)
         else if (query.isEmpty)
-          WorkspaceSearchStatusRow(label: l10n.workspaceSearchEmptyHint)
+          WorkspaceSearchStatusRow(label: l10n.workspace.searchEmptyHint)
         else if (_error)
-          WorkspaceSearchStatusRow(label: l10n.workspaceSearchError)
+          WorkspaceSearchStatusRow(label: l10n.workspace.searchError)
         else if (rows.isEmpty)
-          WorkspaceSearchStatusRow(label: l10n.workspaceSearchNoResults)
+          WorkspaceSearchStatusRow(label: l10n.workspace.searchNoResults)
         else
           Flexible(
             child: ListView.builder(
@@ -259,7 +259,7 @@ class _WorkspaceSearchContentSectionState
               itemBuilder: (context, i) {
                 if (_truncated && i == rows.length) {
                   return WorkspaceSearchStatusRow(
-                    label: l10n.workspaceSearchTruncated,
+                    label: l10n.workspace.searchTruncated,
                   );
                 }
                 final row = rows[i];
@@ -270,7 +270,9 @@ class _WorkspaceSearchContentSectionState
                 final sliceError = row.sliceError;
                 if (sliceError != null) {
                   return WorkspaceSearchStatusRow(
-                    label: l10n.workspaceSearchSliceError(sliceError),
+                    label: l10n.workspace.searchSliceError(
+                      directory: sliceError,
+                    ),
                   );
                 }
                 final m = row.hit!.$2;

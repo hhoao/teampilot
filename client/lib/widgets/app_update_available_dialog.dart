@@ -39,7 +39,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
     final cs = Theme.of(context).colorScheme;
     final changelogs = ChangelogData.parseMarkdownContent(
       widget.release.releaseNotes,
-      defaultSectionTitle: l10n.appUpdateChangelogDefaultSection,
+      defaultSectionTitle: l10n.app.updateChangelogDefaultSection,
     );
 
     return BlocBuilder<AppUpdateCubit, AppUpdateState>(
@@ -55,7 +55,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TpDialogHeader(title: l10n.appUpdateDialogTitle),
+              TpDialogHeader(title: l10n.app.updateDialogTitle),
               Flexible(
                 child: SingleChildScrollView(
                   child: Column(
@@ -108,7 +108,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
         Icon(Icons.arrow_forward, color: cs.onSurfaceVariant),
         Expanded(
           child: _versionColumn(
-            context.l10n.appUpdateLatestVersion,
+            context.l10n.app.updateLatestVersion,
             widget.release.version.toString(),
             CrossAxisAlignment.end,
             styles,
@@ -160,7 +160,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
         shape: const Border(),
         collapsedShape: const Border(),
         title: Text(
-          context.l10n.appUpdateChangelogTitle,
+          context.l10n.app.updateChangelogTitle,
           style: styles.smColored(cs.onSurfaceVariant),
         ),
         collapsedIconColor: cs.onSurfaceVariant,
@@ -205,7 +205,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
         alignment: Alignment.centerRight,
         child: TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.appUpdateDownloadInBackground),
+          child: Text(l10n.app.updateDownloadInBackground),
         ),
       );
     }
@@ -220,7 +220,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
         if (widget.release.htmlUrl.isNotEmpty)
           TextButton(
             onPressed: () => _open(widget.release.htmlUrl),
-            child: Text(l10n.appUpdateViewRelease),
+            child: Text(l10n.app.updateViewRelease),
           ),
         if (!hasError)
           TextButton(
@@ -228,24 +228,24 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
               cubit.skipPromptedVersion();
               Navigator.of(context).pop();
             },
-            child: Text(l10n.appUpdateSkipVersion),
+            child: Text(l10n.app.updateSkipVersion),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.appUpdateLater),
+          child: Text(l10n.app.updateLater),
         ),
         FilledButton.icon(
           onPressed: () => cubit.downloadAndInstall(
             copy: AppUpdateDownloadCopy(
-              title: l10n.appUpdateNewVersion(
-                widget.release.version.toString(),
+              title: l10n.app.updateNewVersion(
+                version: widget.release.version.toString(),
               ),
-              downloadingSubtitle: l10n.appUpdateDownloading,
-              installingSubtitle: l10n.appUpdateInstalling,
+              downloadingSubtitle: l10n.app.updateDownloading,
+              installingSubtitle: l10n.app.updateInstalling,
             ),
           ),
           icon: const Icon(Icons.download_outlined),
-          label: Text(l10n.appUpdateDownloadInstall),
+          label: Text(l10n.app.updateDownloadInstall),
         ),
       ],
     );

@@ -70,8 +70,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: _wrapTitleBar(
           chatCubit: chatCubit,
           child: const HomeTitleBar(
@@ -103,8 +103,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: _wrapTitleBar(
             chatCubit: chatCubit,
             child: HomeTitleBar(
@@ -140,8 +140,8 @@ void main() {
   testWidgets('pane visibility toggles hidden on home view', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: _wrapTitleBar(
           chatCubit: chatCubit,
           child: const HomeTitleBar(
@@ -168,8 +168,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: _wrapTitleBar(
           chatCubit: chatCubit,
           child: const Scaffold(
@@ -213,8 +213,8 @@ void main() {
           child: TpSidebarProvider(
             mobileBreakpoint: 900,
             child: MaterialApp(
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: appLocalizationsDelegates,
+              supportedLocales: appLocalizationsSupportedLocales,
               theme: theme,
               home: const Scaffold(
                 body: HomeTitleBar(
@@ -250,8 +250,8 @@ void main() {
           child: TpSidebarProvider(
             mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
             child: MaterialApp(
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: appLocalizationsDelegates,
+              supportedLocales: appLocalizationsSupportedLocales,
               theme: theme,
               home: const Scaffold(
                 body: HomeTitleBar(
@@ -298,8 +298,8 @@ void main() {
             child: TpSidebarProvider(
               mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
               child: MaterialApp(
-                localizationsDelegates: AppLocalizations.localizationsDelegates,
-                supportedLocales: AppLocalizations.supportedLocales,
+                localizationsDelegates: appLocalizationsDelegates,
+                supportedLocales: appLocalizationsSupportedLocales,
                 theme: theme,
                 home: const Scaffold(
                   body: HomeTitleBar(
@@ -344,9 +344,8 @@ void main() {
                 return TpSidebarProvider(
                   mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
                   child: MaterialApp(
-                    localizationsDelegates:
-                        AppLocalizations.localizationsDelegates,
-                    supportedLocales: AppLocalizations.supportedLocales,
+                    localizationsDelegates: appLocalizationsDelegates,
+                    supportedLocales: appLocalizationsSupportedLocales,
                     theme: theme,
                     home: const Scaffold(
                       body: HomeTitleBar(
@@ -394,8 +393,8 @@ void main() {
             child: TpSidebarProvider(
               mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
               child: MaterialApp(
-                localizationsDelegates: AppLocalizations.localizationsDelegates,
-                supportedLocales: AppLocalizations.supportedLocales,
+                localizationsDelegates: appLocalizationsDelegates,
+                supportedLocales: appLocalizationsSupportedLocales,
                 theme: theme,
                 home: const Scaffold(
                   body: HomeTitleBar(
@@ -442,8 +441,8 @@ void main() {
           child: TpSidebarProvider(
             mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
             child: MaterialApp(
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: appLocalizationsDelegates,
+              supportedLocales: appLocalizationsSupportedLocales,
               theme: theme,
               home: const Scaffold(
                 body: HomeTitleBar(
@@ -485,8 +484,8 @@ void main() {
           child: TpSidebarProvider(
             mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
             child: MaterialApp(
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: appLocalizationsDelegates,
+              supportedLocales: appLocalizationsSupportedLocales,
               theme: theme,
               home: const Scaffold(
                 body: HomeTitleBar(
@@ -521,8 +520,8 @@ void main() {
     var closeAllRequested = false;
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: _wrapTitleBar(
           chatCubit: chatCubit,
           child: HomeTitleBar(

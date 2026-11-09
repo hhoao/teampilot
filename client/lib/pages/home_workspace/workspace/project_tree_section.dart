@@ -88,7 +88,7 @@ class _ProjectTreeSectionState extends State<ProjectTreeSection> {
     if (groups.isEmpty) {
       return TpEmptyState(
         icon: Icons.forum_outlined,
-        title: context.l10n.homeWorkspaceNoConversations,
+        title: context.l10n.homeWorkspace.noConversations,
         centered: true,
       );
     }
@@ -562,8 +562,8 @@ class _ProjectTreeSessionListState extends State<_ProjectTreeSessionList> {
         if (overflow > 0)
           _ProjectTreeShowMoreRow(
             label: _showAll
-                ? context.l10n.worktreeShowLess
-                : context.l10n.worktreeMore,
+                ? context.l10n.worktree.showLess
+                : context.l10n.worktree.more,
             onTap: () => setState(() => _showAll = !_showAll),
           ),
       ],

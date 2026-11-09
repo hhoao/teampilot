@@ -58,16 +58,16 @@ class CliInstallProgressPanel extends StatelessWidget {
 
   static String _phaseLabel(AppLocalizations l10n, CliInstallPhase phase) {
     return switch (phase) {
-      CliInstallPhase.checkingNpm => l10n.cliInstallProgressCheckingNpm,
+      CliInstallPhase.checkingNpm => l10n.cli.installProgressCheckingNpm,
       CliInstallPhase.bootstrappingNode =>
-        l10n.cliInstallProgressBootstrappingNode,
-      CliInstallPhase.installingCli => l10n.cliInstallProgressInstallingCli,
+        l10n.cli.installProgressBootstrappingNode,
+      CliInstallPhase.installingCli => l10n.cli.installProgressInstallingCli,
       CliInstallPhase.locatingExecutable =>
-        l10n.cliInstallProgressLocatingExecutable,
-      CliInstallPhase.downloading => l10n.cliInstallProgressDownloading,
-      CliInstallPhase.extracting => l10n.cliInstallProgressExtracting,
+        l10n.cli.installProgressLocatingExecutable,
+      CliInstallPhase.downloading => l10n.cli.installProgressDownloading,
+      CliInstallPhase.extracting => l10n.cli.installProgressExtracting,
       CliInstallPhase.syncingRemoteWorkspace =>
-        l10n.cliInstallProgressSyncingRemoteWorkspace,
+        l10n.cli.installProgressSyncingRemoteWorkspace,
     };
   }
 }

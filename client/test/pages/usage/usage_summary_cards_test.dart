@@ -30,8 +30,8 @@ Widget _wrap({
   final textTheme = base.textTheme;
   return MaterialApp(
     locale: locale,
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     theme: base.copyWith(
       // Mirrors the app: typography is scaled through the theme type sizes.
       textTheme: textTheme.copyWith(

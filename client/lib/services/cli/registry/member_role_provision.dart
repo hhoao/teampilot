@@ -39,8 +39,7 @@ abstract final class MemberRoleProvision {
 
   /// Staged into mixed Claude ACP env so `session/new` `_meta` can forward
   /// [mixedClaudeDisallowedTools] (ACP spawn does not take `--disallowedTools`).
-  static const mixedAcpDisallowedToolsEnvKey =
-      'TEAMPILOT_ACP_DISALLOWED_TOOLS';
+  static const mixedAcpDisallowedToolsEnvKey = 'TEAMPILOT_ACP_DISALLOWED_TOOLS';
 
   /// Native Claude swarm / task tools denied via CLI `--disallowedTools` in
   /// mixed mode (settings `permissions.deny` is omitted there — see
@@ -97,7 +96,8 @@ You are the **team lead** (display name: `team-lead`). You run in the leader ses
 ''';
 
   /// Appended to mixed-mode **team lead** [role.md] (orchestration + never stand down).
-  static const mixedTeamLeadRoleAddendum = '''
+  static const mixedTeamLeadRoleAddendum =
+      '''
 # Team leader (mixed cross-CLI bus)
 You orchestrate teammates via teammate-bus MCP. **Never stand down** — there is no `finish_task` or `leave`; the session ends only when the human closes it.
 <teambus type="...">...</teambus>
@@ -124,7 +124,8 @@ While you are inside `wait_for_message`, the human types in TeamPilot — that t
 ''';
 
   /// Appended to mixed-mode **worker** [role.md] (bus coordination via MCP).
-  static const mixedTeammateRoleAddendum = '''
+  static const mixedTeammateRoleAddendum =
+      '''
 # Multi-agent teammate (cross-CLI bus)
 You coordinate with teammates ONLY through the teammate-bus MCP tools:
 <teambus type="...">...</teambus>
@@ -147,7 +148,8 @@ Either way, call `wait_for_message()` again afterwards. You never poll or claim 
   /// calls can't block long (~60s agent cap, not configurable). They never call
   /// `wait_for_message`; the bus injects a doorbell notice into their terminal
   /// when mail arrives, and they pull it with the non-blocking `read_messages`.
-  static const mixedTeammatePushRoleAddendum = '''
+  static const mixedTeammatePushRoleAddendum =
+      '''
 # Multi-agent teammate (cross-CLI bus, push delivery)
 You coordinate with teammates through the teammate-bus MCP tools:
 <teambus type="...">...</teambus>

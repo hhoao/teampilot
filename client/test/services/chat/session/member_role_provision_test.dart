@@ -198,24 +198,24 @@ void main() {
     );
   });
 
-  test('mixed role addenda ban native ListAgents and other Claude sessions', () {
-    expect(
-      MemberRoleProvision.mixedNativeSwarmBan,
-      contains('ListAgents'),
-    );
-    expect(
-      MemberRoleProvision.mixedTeamLeadRoleAddendum,
-      contains(MemberRoleProvision.mixedNativeSwarmBan.trim()),
-    );
-    expect(
-      MemberRoleProvision.mixedTeammateRoleAddendum,
-      contains(MemberRoleProvision.mixedNativeSwarmBan.trim()),
-    );
-    expect(
-      MemberRoleProvision.mixedTeammatePushRoleAddendum,
-      contains(MemberRoleProvision.mixedNativeSwarmBan.trim()),
-    );
-  });
+  test(
+    'mixed role addenda ban native ListAgents and other Claude sessions',
+    () {
+      expect(MemberRoleProvision.mixedNativeSwarmBan, contains('ListAgents'));
+      expect(
+        MemberRoleProvision.mixedTeamLeadRoleAddendum,
+        contains(MemberRoleProvision.mixedNativeSwarmBan.trim()),
+      );
+      expect(
+        MemberRoleProvision.mixedTeammateRoleAddendum,
+        contains(MemberRoleProvision.mixedNativeSwarmBan.trim()),
+      );
+      expect(
+        MemberRoleProvision.mixedTeammatePushRoleAddendum,
+        contains(MemberRoleProvision.mixedNativeSwarmBan.trim()),
+      );
+    },
+  );
 
   test('disallowedToolsForMixedClaude worker omits Agent', () {
     final tools = MemberRoleProvision.disallowedToolsForMixedClaude(

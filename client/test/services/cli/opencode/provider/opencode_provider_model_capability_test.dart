@@ -116,7 +116,11 @@ void main() {
     // upstream with "Model is unavailable".
     for (final providerId in const ['opencode', 'opencode-go']) {
       final ids = OpencodeModelCatalog.knownModelsForProvider(providerId);
-      expect(ids, isNot(contains('deepseek-v4-flash-free')), reason: providerId);
+      expect(
+        ids,
+        isNot(contains('deepseek-v4-flash-free')),
+        reason: providerId,
+      );
     }
     expect(
       OpencodeModelCatalog.knownModelsForProvider('opencode'),

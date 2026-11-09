@@ -331,8 +331,8 @@ class ManifestFilesystem implements Filesystem, OverlayFilesystem {
   }
 
   @override
-  Future<List<FsDirEntry>> listDirRecursive(String path) async =>
-      readDelegate.listDirRecursive(_resolveSourceForManifest(_normalize(path)));
+  Future<List<FsDirEntry>> listDirRecursive(String path) async => readDelegate
+      .listDirRecursive(_resolveSourceForManifest(_normalize(path)));
 
   @override
   Future<bool> createSymlink({

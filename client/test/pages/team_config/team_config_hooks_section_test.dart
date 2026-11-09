@@ -30,7 +30,7 @@ void main() {
     var teamHookIds = <String>[];
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         home: Scaffold(
           body: BlocProvider<HookCubit>.value(
             value: hookCubit,

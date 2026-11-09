@@ -1,0 +1,14 @@
+{
+  "chatLaunchFailed": "无法启动 {cliName: String}，请确认已安装对应 CLI 后重试。",
+  "chatNotLoggedIn": "代理尚未登录。请到设置 → 服务商完成登录后重试。",
+  "chatProcessExited": "{cliName: String} 意外退出",
+  "chatSessionOpenFailed": "无法打开 {cliName: String} 会话。",
+  "chatTurnFailed": "本轮对话失败",
+  "launchFailedAdapter": "无法启动 Claude ACP 适配器（claude-agent-acp）。请安装后重试。",
+  "launchFailedVersion": "当前 CLI 版本不支持 ACP 聊天模式，请更新后再试。",
+  "modelSectionAgent": "Agent 模型",
+  "modelSectionLaunch": "启动配置",
+  "modelSwitchFailed": "无法切换 ACP 模型，请重试。",
+  "permissionAskLabel": "询问",
+  "permissionFullAccessLabel": "完全访问"
+}

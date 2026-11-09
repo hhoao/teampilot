@@ -44,23 +44,22 @@ void main() {
   });
 
   Widget host(HomeStorage storage) => MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('en'),
-        theme: ThemeData(useMaterial3: true),
-        home: MultiRepositoryProvider(
-          providers: [
-            RepositoryProvider<HomeStorage>.value(value: storage),
-          ],
-          child: BlocProvider<SshConnectionCubit>.value(
-            value: connectionCubit,
-            child: const SshServersPage(),
-          ),
-        ),
-      );
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
+    locale: const Locale('en'),
+    theme: ThemeData(useMaterial3: true),
+    home: MultiRepositoryProvider(
+      providers: [RepositoryProvider<HomeStorage>.value(value: storage)],
+      child: BlocProvider<SshConnectionCubit>.value(
+        value: connectionCubit,
+        child: const SshServersPage(),
+      ),
+    ),
+  );
 
-  testWidgets('not-connected branch shows the not-connected message',
-      (tester) async {
+  testWidgets('not-connected branch shows the not-connected message', (
+    tester,
+  ) async {
     // A native home plane has no remote server catalog to read.
     await tester.pumpWidget(host(fakeHomeStorage()));
     await tester.pumpAndSettle();
@@ -84,8 +83,9 @@ void main() {
     expect(find.text('Not connected to a remote host.'), findsNothing);
   });
 
-  testWidgets('remote load failure shows a localized message and retry',
-      (tester) async {
+  testWidgets('remote load failure shows a localized message and retry', (
+    tester,
+  ) async {
     // A dropped remote transport makes the repository rethrow from loadAll().
     // The gate now follows the home plane (isRemote), not connectedHosts.
     await tester.pumpWidget(

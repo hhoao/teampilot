@@ -1,0 +1,12 @@
+{
+  "cliSupportFully": "{cli: String}：完全支持",
+  "cliSupportNotApplicable": "{cli: String}：不适用",
+  "cliSupportPartial": "{cli: String}：部分支持（丢弃 {dropped: String}）",
+  "componentAgents": "代理",
+  "componentApps": "应用",
+  "componentCommands": "命令",
+  "componentHooks": "钩子",
+  "componentMcp": "MCP",
+  "componentRules": "规则",
+  "componentSkills": "技能"
+}

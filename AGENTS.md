@@ -30,7 +30,7 @@ All app code lives under `client/lib/` (cubits, pages, repositories, services, m
 - **Paths:** injected `HomeStorage` / `RuntimeContextRegistry` — never `Directory.current` for workspace or app data roots.
 - **CLIs:** add/extend a `CliToolDefinition` + capabilities under `services/cli/registry/`; never scatter `if (cli == …)` checks across features.
 - **Logging:** user errors → l10n; diagnostics → `AppLogger`; no `print`.
-- **l10n:** edit `client/lib/l10n/app_en.arb` and `app_zh.arb` only.
+- **l10n:** slang-based; edit `client/lib/i18n/<feature>_en.i18n.json` / `_zh.i18n.json` (per-feature namespaces, `_default_*.i18n.json` for shared strings), then regenerate with `cd client && dart run slang` (never via build_runner). Access via `context.l10n.<ns>.<key>`; see `client/slang.yaml`.
 - Do not commit `client/google_fonts/` (gitignored); run `dart run tool/sync_bundled_google_fonts.dart` when touching zh UI fonts.
 - Terminal input hooks: filter ANSI CSI sequences (`FirstUserLineCapture`, `BusUserLineCapture`).
 - **Tests:** mock subprocess/filesystem via constructor injection; cubit tests that need a home plane use `setUpTestAppStorage()` / `tearDownTestAppStorage()` (shared `testHomeStorage`) in `client/test/support/post_frame_test_harness.dart` + `test_runtime_context.dart`.

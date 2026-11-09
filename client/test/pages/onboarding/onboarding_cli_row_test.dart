@@ -11,8 +11,8 @@ import 'package:teampilot/utils/ui/app_keys.dart';
 Widget _wrap(Widget child) {
   final theme = ThemeData(useMaterial3: true);
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     theme: theme,
     home: TpTheme(
       data: TpThemeData.fromColorScheme(

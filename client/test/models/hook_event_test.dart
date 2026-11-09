@@ -71,7 +71,10 @@ void main() {
         isTrue,
       );
       expect(
-        HookEventCapability.nativeEvent(HookEvent.subagentStart, CliTool.cursor),
+        HookEventCapability.nativeEvent(
+          HookEvent.subagentStart,
+          CliTool.cursor,
+        ),
         'subagentStart',
       );
       expect(

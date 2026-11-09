@@ -300,21 +300,24 @@ void main() {
     expect(cubit.state.lastErrorKind, HomeErrorKind.tcpUnreachable);
   });
 
-  test('markUnreachable surfaces a host identity change as an actionable error', () {
-    final cubit = HomeConnectionCubit(
-      connect: () async => HomeConnectResult.connected(_ctx()),
-      cancelRetry: () async {},
-      resumeRetry: () async {},
-      onConnected: () {},
-      profileId: 'p1',
-    );
-    cubit.markReconnected();
+  test(
+    'markUnreachable surfaces a host identity change as an actionable error',
+    () {
+      final cubit = HomeConnectionCubit(
+        connect: () async => HomeConnectResult.connected(_ctx()),
+        cancelRetry: () async {},
+        resumeRetry: () async {},
+        onConnected: () {},
+        profileId: 'p1',
+      );
+      cubit.markReconnected();
 
-    cubit.markUnreachable(HomeErrorKind.hostIdentityChanged);
+      cubit.markUnreachable(HomeErrorKind.hostIdentityChanged);
 
-    expect(cubit.state.status, HomeConnectionStatus.unreachable);
-    expect(cubit.state.lastErrorKind, HomeErrorKind.hostIdentityChanged);
-    expect(cubit.state.canRetryNow, isTrue);
-    expect(cubit.state.canCancelRetry, isFalse);
-  });
+      expect(cubit.state.status, HomeConnectionStatus.unreachable);
+      expect(cubit.state.lastErrorKind, HomeErrorKind.hostIdentityChanged);
+      expect(cubit.state.canRetryNow, isTrue);
+      expect(cubit.state.canCancelRetry, isFalse);
+    },
+  );
 }

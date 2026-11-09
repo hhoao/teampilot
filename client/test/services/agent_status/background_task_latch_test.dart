@@ -150,7 +150,10 @@ void main() {
       // must NOT read as "nothing in flight".
       expect(parseBackgroundTasks({'hook_event_name': 'Stop'}), isNull);
       expect(
-        parseBackgroundTasks({'hook_event_name': 'Stop', 'background_tasks': 3}),
+        parseBackgroundTasks({
+          'hook_event_name': 'Stop',
+          'background_tasks': 3,
+        }),
         isNull,
       );
     });

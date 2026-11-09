@@ -108,7 +108,7 @@ class CodeEditorFindPanel extends StatelessWidget
   Widget _buildChevronToggle(BuildContext context, bool expanded) {
     final palette = FindBarPalette.of(context);
     return Tooltip(
-      message: context.l10n.editorFindToggleReplace,
+      message: context.l10n.editor.findToggleReplace,
       child: TpHover(
         width: _chevronWidth,
         height: _rowHeight,
@@ -136,23 +136,23 @@ class CodeEditorFindPanel extends StatelessWidget
             width: _findFieldWidth,
             controller: controller.findInputController,
             focusNode: controller.findInputFocusNode,
-            hint: l10n.editorFindHint,
+            hint: l10n.editor.findHint,
             toggles: [
               FindToggleButton(
                 iconAsset: FindBarIcons.caseSensitive,
-                tooltip: l10n.editorFindMatchCase,
+                tooltip: l10n.editor.findMatchCase,
                 checked: value.option.caseSensitive,
                 onTap: controller.toggleCaseSensitive,
               ),
               FindToggleButton(
                 iconAsset: FindBarIcons.wholeWord,
-                tooltip: l10n.editorFindWholeWord,
+                tooltip: l10n.editor.findWholeWord,
                 checked: value.option.wholeWord,
                 onTap: controller.toggleWholeWord,
               ),
               FindToggleButton(
                 iconAsset: FindBarIcons.regexp,
-                tooltip: l10n.editorFindUseRegex,
+                tooltip: l10n.editor.findUseRegex,
                 checked: value.option.regex,
                 onTap: controller.toggleRegex,
               ),
@@ -168,19 +168,19 @@ class CodeEditorFindPanel extends StatelessWidget
           const SizedBox(width: 2),
           FindActionButton(
             icon: Icons.keyboard_arrow_up,
-            tooltip: l10n.editorFindPrevious,
+            tooltip: l10n.editor.findPrevious,
             enabled: hasMatch,
             onTap: controller.previousMatch,
           ),
           FindActionButton(
             icon: Icons.keyboard_arrow_down,
-            tooltip: l10n.editorFindNext,
+            tooltip: l10n.editor.findNext,
             enabled: hasMatch,
             onTap: controller.nextMatch,
           ),
           FindActionButton(
             icon: Icons.filter_alt,
-            tooltip: l10n.editorFindInSelection,
+            tooltip: l10n.editor.findInSelection,
             enabled: hasMatch && controller.canFindInSelection,
             checked: value.option.findInSelection,
             onTap: controller.toggleFindInSelection,
@@ -188,7 +188,7 @@ class CodeEditorFindPanel extends StatelessWidget
           const FindBarDivider(),
           FindActionButton(
             icon: Icons.close,
-            tooltip: l10n.editorFindClose,
+            tooltip: l10n.editor.findClose,
             onTap: controller.close,
           ),
         ],
@@ -208,11 +208,11 @@ class CodeEditorFindPanel extends StatelessWidget
             width: _findFieldWidth,
             controller: controller.replaceInputController,
             focusNode: controller.replaceInputFocusNode,
-            hint: l10n.editorFindReplaceHint,
+            hint: l10n.editor.findReplaceHint,
             toggles: [
               FindToggleButton(
                 iconAsset: FindBarIcons.upperCase,
-                tooltip: l10n.editorFindReplacePreserveCase,
+                tooltip: l10n.editor.findReplacePreserveCase,
                 checked: value.option.preserveCase,
                 onTap: controller.togglePreserveCase,
               ),
@@ -227,14 +227,14 @@ class CodeEditorFindPanel extends StatelessWidget
               FindActionButton(
                 key: const ValueKey('editor-replace-one'),
                 assetPath: FindBarIcons.replace,
-                tooltip: l10n.editorFindReplaceOne,
+                tooltip: l10n.editor.findReplaceOne,
                 enabled: hasMatch,
                 onTap: controller.replaceMatch,
               ),
               FindActionButton(
                 key: const ValueKey('editor-replace-all'),
                 assetPath: FindBarIcons.replaceAll,
-                tooltip: l10n.editorFindReplaceAll,
+                tooltip: l10n.editor.findReplaceAll,
                 enabled: hasMatch,
                 onTap: controller.replaceAllMatches,
               ),
@@ -250,6 +250,6 @@ class CodeEditorFindPanel extends StatelessWidget
     if (result != null && result.matches.isNotEmpty) {
       return '${result.index + 1}/${result.matches.length}';
     }
-    return context.l10n.editorFindNoResults;
+    return context.l10n.editor.findNoResults;
   }
 }

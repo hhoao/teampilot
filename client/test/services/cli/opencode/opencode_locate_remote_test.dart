@@ -19,37 +19,43 @@ void main() {
   SshCommandResult ok(String stdout) =>
       SshCommandResult(exitCode: 0, stdout: '$stdout\n');
 
-  test('locateRemote returns the official v2 bin when it reports a v2 banner',
-      () async {
-    const path = '/home/alice/.opencode/bin/opencode';
-    final located = await capability.locateRemote(
-      runner({
-        opencodeOfficialRemoteBinProbe: ok(path),
-        _versionCmd(path): ok('2.0.24'),
-        'command -v opencode': ok('/home/alice/.local/bin/opencode'),
-      }),
-    );
-    expect(located, path);
-  });
+  test(
+    'locateRemote returns the official v2 bin when it reports a v2 banner',
+    () async {
+      const path = '/home/alice/.opencode/bin/opencode';
+      final located = await capability.locateRemote(
+        runner({
+          opencodeOfficialRemoteBinProbe: ok(path),
+          _versionCmd(path): ok('2.0.24'),
+          'command -v opencode': ok('/home/alice/.local/bin/opencode'),
+        }),
+      );
+      expect(located, path);
+    },
+  );
 
-  test('locateRemote rejects a v1-only remote so the panel offers v2 install',
-      () async {
-    const path = '/home/alice/.local/bin/opencode';
-    final located = await capability.locateRemote(
-      runner({
-        'command -v opencode': ok(path),
-        _versionCmd(path): ok('1.18.4'),
-      }),
-    );
-    expect(located, isNull);
-  });
+  test(
+    'locateRemote rejects a v1-only remote so the panel offers v2 install',
+    () async {
+      const path = '/home/alice/.local/bin/opencode';
+      final located = await capability.locateRemote(
+        runner({
+          'command -v opencode': ok(path),
+          _versionCmd(path): ok('1.18.4'),
+        }),
+      );
+      expect(located, isNull);
+    },
+  );
 
-  test('locateRemote keeps the path when the version banner is unreadable',
-      () async {
-    const path = '/opt/opencode';
-    final located = await capability.locateRemote(
-      runner({'command -v opencode': ok(path)}),
-    );
-    expect(located, path);
-  });
+  test(
+    'locateRemote keeps the path when the version banner is unreadable',
+    () async {
+      const path = '/opt/opencode';
+      final located = await capability.locateRemote(
+        runner({'command -v opencode': ok(path)}),
+      );
+      expect(located, path);
+    },
+  );
 }

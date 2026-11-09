@@ -42,8 +42,8 @@ class _TestSectionDescriptor implements WorkspaceSectionDescriptor {
 void main() {
   Widget wrap(Widget child, {double width = 900, double height = 600}) {
     return MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: BlocProvider(
         create: (_) => LayoutCubit(),
         child: Scaffold(

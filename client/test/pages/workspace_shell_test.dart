@@ -9,8 +9,8 @@ import 'package:teampilot/widgets/workbench/workbench_group_lock_button.dart';
 
 Widget _wrapShell(Widget shell) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: BlocProvider(
       create: (_) => LayoutCubit(),
       child: Scaffold(body: shell),

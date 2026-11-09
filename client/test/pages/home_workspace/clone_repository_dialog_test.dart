@@ -15,8 +15,8 @@ Widget _harness({GlobalKey<NavigatorState>? navigatorKey, Widget? home}) {
     data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
     child: MaterialApp(
       navigatorKey: navigatorKey,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       theme: theme,
       home: Scaffold(body: Center(child: home ?? const SizedBox.shrink())),
     ),
@@ -64,10 +64,10 @@ void main() {
 
     await tester.enterText(find.byType(TextField).first, 'not a url');
     await tester.pump();
-    await tester.tap(find.text(l10n.cloneRepositorySubmit));
+    await tester.tap(find.text(l10n.clone.repositorySubmit));
     await tester.pumpAndSettle();
 
-    expect(find.text(l10n.cloneRepositoryUrlInvalid), findsOneWidget);
+    expect(find.text(l10n.clone.repositoryUrlInvalid), findsOneWidget);
     expect(
       popped,
       isFalse,
@@ -110,10 +110,10 @@ void main() {
       'https://github.com/owner/repo.git',
     );
     await tester.pump();
-    await tester.tap(find.text(l10n.cloneRepositorySubmit));
+    await tester.tap(find.text(l10n.clone.repositorySubmit));
     await tester.pumpAndSettle();
 
-    expect(find.text(l10n.cloneRepositoryParentDirRequired), findsOneWidget);
+    expect(find.text(l10n.clone.repositoryParentDirRequired), findsOneWidget);
     expect(popped, isFalse);
     navigatorKey.currentState!.pop();
     await tester.pumpAndSettle();
@@ -134,10 +134,10 @@ void main() {
       'https://github.com/owner/repo.git',
     );
     await tester.pump();
-    await tester.tap(find.text(l10n.homeWorkspaceNewWorkspaceChooseDirectory));
+    await tester.tap(find.text(l10n.homeWorkspace.newWorkspaceChooseDirectory));
     await tester.pump();
 
-    await tester.tap(find.text(l10n.cloneRepositorySubmit));
+    await tester.tap(find.text(l10n.clone.repositorySubmit));
     await tester.pumpAndSettle();
 
     expect(popped, isA<RepoCloneRequest>());

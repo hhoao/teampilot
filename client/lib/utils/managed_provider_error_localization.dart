@@ -15,24 +15,24 @@ String managedProviderErrorMessage(
   }
   if (providerCode != null) {
     return switch (providerCode) {
-      ManagedProviderErrorCode.loadFailed => l10n.managedProvidersLoadFailed,
-      ManagedProviderErrorCode.saveFailed => l10n.managedProvidersSaveFailed,
+      ManagedProviderErrorCode.loadFailed => l10n.managedProviders.loadFailed,
+      ManagedProviderErrorCode.saveFailed => l10n.managedProviders.saveFailed,
       ManagedProviderErrorCode.deleteFailed =>
-        l10n.managedProvidersDeleteFailed,
+        l10n.managedProviders.deleteFailed,
     };
   }
   return switch (usageCode) {
     ManagedProviderUsageErrorCode.loadFailed =>
-      l10n.managedProvidersUsageLoadFailed,
+      l10n.managedProviders.usageLoadFailed,
     ManagedProviderUsageErrorCode.refreshFailed =>
-      l10n.managedProvidersRefreshFailed,
+      l10n.managedProviders.refreshFailed,
     ManagedProviderUsageErrorCode.queryFailed =>
-      l10n.managedProvidersQueryFailed,
+      l10n.managedProviders.queryFailed,
     ManagedProviderUsageErrorCode.persistenceFailed =>
-      l10n.managedProvidersUsagePersistenceFailed,
+      l10n.managedProviders.usagePersistenceFailed,
     ManagedProviderUsageErrorCode.invalidated =>
-      l10n.managedProvidersUsageInvalidated,
-    null => l10n.managedProvidersQueryFailed,
+      l10n.managedProviders.usageInvalidated,
+    null => l10n.managedProviders.queryFailed,
   };
 }
 
@@ -41,15 +41,15 @@ String managedProviderSnapshotErrorMessage(
   ProviderUsageSnapshot snapshot,
 ) {
   return switch (snapshot.lastErrorCode) {
-    'missingCredential' => l10n.managedProvidersMissingCredential,
-    'authenticationFailed' => l10n.managedProvidersAuthenticationFailed,
-    'networkFailed' => l10n.managedProvidersNetworkFailed,
-    'httpFailed' => l10n.managedProvidersHttpFailed,
-    'responseParseFailed' => l10n.managedProvidersResponseParseFailed,
-    'unsupported' => l10n.managedProvidersQueryUnsupported,
+    'missingCredential' => l10n.managedProviders.missingCredential,
+    'authenticationFailed' => l10n.managedProviders.authenticationFailed,
+    'networkFailed' => l10n.managedProviders.networkFailed,
+    'httpFailed' => l10n.managedProviders.httpFailed,
+    'responseParseFailed' => l10n.managedProviders.responseParseFailed,
+    'unsupported' => l10n.managedProviders.queryUnsupported,
     _ =>
       snapshot.lastErrorMessage?.trim().isNotEmpty == true
           ? snapshot.lastErrorMessage!
-          : l10n.managedProvidersQueryFailed,
+          : l10n.managedProviders.queryFailed,
   };
 }

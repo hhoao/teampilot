@@ -10,8 +10,8 @@ import 'package:teampilot/widgets/git/git_change_tile.dart';
 
 void main() {
   Widget wrap(Widget child) => MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: Scaffold(body: SizedBox(width: 400, height: 36, child: child)),
   );
 
@@ -255,8 +255,8 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             theme: ThemeData(colorScheme: scheme, useMaterial3: true),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             home: Scaffold(
               body: SizedBox(
                 width: 400,

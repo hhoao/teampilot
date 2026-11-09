@@ -1,0 +1,18 @@
+{
+  "commandCopied": "命令已复制到剪贴板",
+  "copyCommand": "复制",
+  "dependencyMissingHint": "需要 PATH 中有 {deps: String}。安装后点击重新检测。",
+  "enableLabel": "已启用",
+  "install": "安装",
+  "installGuide": "安装指引",
+  "kindMcpServer": "代码智能（MCP）",
+  "kindSettingsHook": "Token 节省（hook）",
+  "recheck": "重新检测",
+  "statusDependencyMissing": "缺少依赖",
+  "statusDependencyMissingNamed": "缺少：{deps: String}",
+  "statusNotInstalled": "未安装",
+  "statusReady": "就绪",
+  "statusReadyVersion": "就绪（{version: String}）",
+  "statusVersionTooOld": "已安装版本过旧",
+  "uninstall": "卸载"
+}

@@ -1,0 +1,24 @@
+{
+  "expertsCreate": "New Expert",
+  "expertsDelete": "Delete",
+  "expertsDeleteConfirm": "Delete expert \"{name}\"? This cannot be undone.",
+  "expertsDeleteReferenced": "Cannot delete \"{name}\" — it is still referenced by one or more teams. Reassign those roster slots first.",
+  "expertsEdit": "Edit",
+  "expertsEmptyHint": "Create a local expert persona to reuse across teams.",
+  "expertsEmptyTitle": "No experts yet",
+  "expertsNav": "My Experts",
+  "expertsSubtitle": "Manage your local expert personas",
+  "expertsTitle": "My Experts",
+  "expertsUpload": "Upload",
+  "teamsCreatedAt": "Created {date}",
+  "teamsEmptyHint": "Create a team to manage members, skills, and plugins.",
+  "teamsEmptyTitle": "No teams yet",
+  "teamsMemberCount(param=count)": {
+    "one": "1 member",
+    "other": "{count: int} members"
+  },
+  "teamsNav": "My Teams",
+  "teamsSubtitle": "Manage your local team configurations",
+  "teamsTitle": "My Teams",
+  "teamsUpload": "Upload"
+}

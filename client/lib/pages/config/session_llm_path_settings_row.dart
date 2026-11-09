@@ -64,7 +64,7 @@ class SessionLlmConfigPathSettingsRowState
     final l10n = context.l10n;
     final cubit = context.read<LlmConfigCubit>();
     final result = await FilePicker.platform.pickFiles(
-      dialogTitle: l10n.llmConfigPathPickerTitle,
+      dialogTitle: l10n.llm.configPathPickerTitle,
       type: FileType.custom,
       allowedExtensions: const ['json'],
     );
@@ -122,19 +122,19 @@ class SessionLlmConfigPathSettingsRowState
     final resolved = state.effectiveConfigPath.trim();
     final llmFieldEmpty = _textController.text.trim().isEmpty;
     final llmEffectiveDisplay = resolved.isEmpty
-        ? l10n.llmConfigEffectivePathUnresolved
+        ? l10n.llm.configEffectivePathUnresolved
         : resolved;
     final llmHint = llmFieldEmpty
-        ? '${l10n.cliExecutablePathUsing}$llmEffectiveDisplay'
+        ? '${l10n.cli.executablePathUsing}$llmEffectiveDisplay'
         : null;
 
     final isRemote = state.storageIsRemote;
 
     return TpPreferenceStack(
-      title: l10n.llmConfigPathLabel,
+      title: l10n.llm.configPathLabel,
       subtitle: isRemote
-          ? l10n.llmConfigPathSessionCardDescriptionSsh
-          : l10n.llmConfigPathSessionCardDescription,
+          ? l10n.llm.configPathSessionCardDescriptionSsh
+          : l10n.llm.configPathSessionCardDescription,
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -166,7 +166,7 @@ class SessionLlmConfigPathSettingsRowState
                 Icons.folder_open_outlined,
                 size: context.tpIconSizes.md,
               ),
-              label: Text(l10n.cliExecutablePathBrowse),
+              label: Text(l10n.cli.executablePathBrowse),
             ),
           ],
           const SizedBox(width: 6),
@@ -175,7 +175,7 @@ class SessionLlmConfigPathSettingsRowState
             onPressed: state.isLoading || !state.isUsingCustomPath
                 ? null
                 : _reset,
-            child: Text(l10n.cliExecutablePathReset),
+            child: Text(l10n.cli.executablePathReset),
           ),
         ],
       ),

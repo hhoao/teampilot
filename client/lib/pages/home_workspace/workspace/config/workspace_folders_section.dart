@@ -123,7 +123,7 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
       if (mounted) {
         AppToast.show(
           context,
-          message: context.l10n.workspaceDeadTargetRemapFailed,
+          message: context.l10n.workspace.deadTargetRemapFailed,
           variant: TpToastVariant.error,
         );
       }
@@ -164,7 +164,7 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
               child: LinearProgressIndicator(),
             ),
           TpPreferenceStack(
-            title: l10n.workspaceFoldersSectionTitle,
+            title: l10n.workspace.foldersSectionTitle,
             subtitle: workspaceFoldersEditorHint(
               l10n,
               lockTargets: widget.lockTargets,

@@ -24,8 +24,8 @@ void main() {
     addTearDown(ctrl.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Scaffold(
           body: Align(
             alignment: Alignment.topRight,
@@ -116,7 +116,8 @@ void main() {
 
   testWidgets('CodeEditor wires the find bar through findBuilder', (
     tester,
-  ) async {    final editing = CodeLineEditingController.fromText(
+  ) async {
+    final editing = CodeLineEditingController.fromText(
       'hello world\nhello again',
     );
     final ctrl = CodeFindController(editing);
@@ -124,8 +125,8 @@ void main() {
     addTearDown(ctrl.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Scaffold(
           body: SizedBox(
             width: 800,

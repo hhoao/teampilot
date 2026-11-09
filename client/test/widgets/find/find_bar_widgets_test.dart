@@ -106,11 +106,7 @@ void main() {
 
     await tester.pumpWidget(
       _wrap(
-        FindField(
-          controller: controller,
-          focusNode: focus,
-          hint: 'Search',
-        ),
+        FindField(controller: controller, focusNode: focus, hint: 'Search'),
       ),
     );
 
@@ -217,7 +213,10 @@ void main() {
 
     final first = tester.getCenter(find.byType(FindToggleButton).at(0));
     final second = tester.getCenter(find.byType(FindToggleButton).at(1));
-    expect(second.dx - first.dx, greaterThanOrEqualTo(FindToggleButton.kSize + 6));
+    expect(
+      second.dx - first.dx,
+      greaterThanOrEqualTo(FindToggleButton.kSize + 6),
+    );
   });
 
   testWidgets('FindToggleButton highlights its glyph on hover', (tester) async {
@@ -313,8 +312,7 @@ void main() {
       ),
     );
 
-    Color? glyphColor() =>
-        tester.widget<Icon>(find.byIcon(Icons.close)).color;
+    Color? glyphColor() => tester.widget<Icon>(find.byIcon(Icons.close)).color;
 
     expect(glyphColor(), FindBarPalette.light.icon);
 

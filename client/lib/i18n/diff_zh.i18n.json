@@ -1,0 +1,21 @@
+{
+  "applyDisabledNoPath": "无法应用：文件路径不可用",
+  "applyFailed": "无法应用更改：{error: String}",
+  "applyHunkTooltip": "应用到工作区",
+  "changeCounter": "{current: int} / {total: int}",
+  "discardDiffBeforeFileSaveBody": "保存文件将丢弃 diff 视图中未保存的编辑。",
+  "discardDiffBeforeFileSaveTitle": "丢弃 diff 编辑？",
+  "discardEditsApplyBody": "应用此更改将丢弃 diff 中未保存的编辑。",
+  "discardEditsApplyTitle": "丢弃编辑？",
+  "fileReloadedAfterDiffWrite": "已从磁盘重新加载文件页。",
+  "ignoreWhitespace": "忽略空白",
+  "nextChange": "下一处更改",
+  "noChanges": "没有更改",
+  "openSourceFile": "打开源文件",
+  "previousChange": "上一处更改",
+  "reloadAfterSaveFailed": "已保存，但刷新 diff 失败。",
+  "saveFailed": "无法保存：{error: String}",
+  "showAllLines": "显示全部",
+  "viewSideBySide": "并排",
+  "viewUnified": "统一"
+}

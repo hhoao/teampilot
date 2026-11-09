@@ -82,10 +82,10 @@ class TeamExtensionsSectionState extends State<TeamExtensionsSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TeamConfigCardHeader(title: l10n.teamExtensionsTitle),
+                TeamConfigCardHeader(title: l10n.team.extensionsTitle),
                 const SizedBox(height: 6),
                 Text(
-                  l10n.teamExtensionsSubtitle,
+                  l10n.team.extensionsSubtitle,
                   style: TpTextStyles.of(context).smColored(
                     Theme.of(
                       context,
@@ -145,8 +145,9 @@ class TeamExtensionRow extends StatelessWidget {
                   Text(row.name, style: TpTextStyles.of(context).mdBold),
                   Text(
                     effective
-                        ? (effectiveOnLabel ?? l10n.teamExtensionEffectiveOn)
-                        : (effectiveOffLabel ?? l10n.teamExtensionEffectiveOff),
+                        ? (effectiveOnLabel ?? l10n.team.extensionEffectiveOn)
+                        : (effectiveOffLabel ??
+                              l10n.team.extensionEffectiveOff),
                     style: TpTextStyles.of(
                       context,
                     ).smColored(cs.onSurface.withValues(alpha: 0.6)),
@@ -164,12 +165,12 @@ class TeamExtensionRow extends StatelessWidget {
                 entries: [
                   (
                     ExtensionOverrideChoice.followGlobal,
-                    l10n.teamExtensionFollowGlobal,
+                    l10n.team.extensionFollowGlobal,
                   ),
-                  (ExtensionOverrideChoice.forceOn, l10n.teamExtensionForceOn),
+                  (ExtensionOverrideChoice.forceOn, l10n.team.extensionForceOn),
                   (
                     ExtensionOverrideChoice.forceOff,
-                    l10n.teamExtensionForceOff,
+                    l10n.team.extensionForceOff,
                   ),
                 ],
               ),

@@ -66,7 +66,7 @@ class ResourceManagerPanel extends StatelessWidget {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          l10n.resourceManagerMetricsError,
+                          l10n.resource.managerMetricsError,
                           style: styles.xs.copyWith(color: cs.onSurfaceVariant),
                         ),
                       ),
@@ -141,7 +141,7 @@ class _Header extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              l10n.resourceManagerPanelTitle,
+              l10n.resource.managerPanelTitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: styles.xs.copyWith(fontWeight: FontWeight.w600),
@@ -158,7 +158,7 @@ class _Header extends StatelessWidget {
             ),
           TpAnimatedIconButton(
             icon: Icons.refresh,
-            tooltip: l10n.resourceManagerRefresh,
+            tooltip: l10n.resource.managerRefresh,
             size: 26,
             iconSize: 14,
             compact: true,
@@ -167,7 +167,7 @@ class _Header extends StatelessWidget {
           ),
           TpIconButton(
             icon: Icons.delete_outline,
-            tooltip: l10n.resourceManagerKillAll,
+            tooltip: l10n.resource.managerKillAll,
             size: 26,
             iconSize: 14,
             compact: true,
@@ -220,8 +220,8 @@ class _TotalsRow extends StatelessWidget {
                 ),
                 if (hostPercent != null)
                   Text(
-                    l10n.resourceManagerSystemMemoryPercent(
-                      hostPercent.toStringAsFixed(0),
+                    l10n.resource.managerSystemMemoryPercent(
+                      percent: hostPercent.toStringAsFixed(0),
                     ),
                     style: styles.xs.copyWith(color: cs.onSurfaceVariant),
                   ),
@@ -276,7 +276,7 @@ class _AppRowState extends State<_AppRow> {
               const SizedBox(width: 2),
               Expanded(
                 child: Text(
-                  l10n.resourceManagerAppProcess,
+                  l10n.resource.managerAppProcess,
                   style: styles.xs.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
@@ -318,7 +318,7 @@ class _AppRowState extends State<_AppRow> {
           Padding(
             padding: const EdgeInsets.fromLTRB(28, 0, 12, 6),
             child: Text(
-              l10n.resourceManagerAppProcess,
+              l10n.resource.managerAppProcess,
               style: styles.xs.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
@@ -356,19 +356,19 @@ class _SpaceStub extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        l10n.resourceManagerSpace,
+                        l10n.resource.managerSpace,
                         style: styles.xs.copyWith(fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(width: 6),
                       TpStatusBadge(
-                        label: l10n.resourceManagerSpaceBeta,
+                        label: l10n.resource.managerSpaceBeta,
                         tone: TpStatusBadgeTone.neutral,
                       ),
                     ],
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    l10n.resourceManagerSpaceNotScanned,
+                    l10n.resource.managerSpaceNotScanned,
                     style: styles.xs.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
@@ -396,11 +396,11 @@ Future<void> _confirmKillAll(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TpDialogHeader(
-              title: l10n.resourceManagerKillAllConfirmTitle,
+              title: l10n.resource.managerKillAllConfirmTitle,
               onClose: () => Navigator.of(ctx).pop(false),
             ),
             const SizedBox(height: 12),
-            Text(l10n.resourceManagerKillAllConfirmBody),
+            Text(l10n.resource.managerKillAllConfirmBody),
             TpDialogActions(
               children: [
                 TextButton(
@@ -409,7 +409,7 @@ Future<void> _confirmKillAll(
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(ctx).pop(true),
-                  child: Text(l10n.resourceManagerKillAll),
+                  child: Text(l10n.resource.managerKillAll),
                 ),
               ],
             ),

@@ -102,11 +102,10 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
   Future<String> prepareSessionIsolatedHome({
     required Filesystem fs,
     required String canonicalHome,
-  }) =>
-      CursorWindowsHomeJunction.ensureAgentHome(
-        fs: fs,
-        canonicalHome: canonicalHome,
-      );
+  }) => CursorWindowsHomeJunction.ensureAgentHome(
+    fs: fs,
+    canonicalHome: canonicalHome,
+  );
 
   @override
   SessionHookMaterializationPaths hookMaterializationPaths({

@@ -31,7 +31,7 @@ class ClaudeCredentialBindingField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(l10n.appProviderClaudeCredentialBinding, style: styles.mdSnug),
+        Text(l10n.appProvider.claudeCredentialBinding, style: styles.mdSnug),
         const SizedBox(height: 6),
         TpSelect<CredentialBindingKind>(
           items: _items,
@@ -39,9 +39,9 @@ class ClaudeCredentialBindingField extends StatelessWidget {
           enabled: !readOnly,
           itemLabel: (kind) => switch (kind) {
             CredentialBindingKind.linked =>
-              l10n.appProviderClaudeCredentialBindingLinked,
+              l10n.appProvider.claudeCredentialBindingLinked,
             CredentialBindingKind.isolated =>
-              l10n.appProviderClaudeCredentialBindingIsolated,
+              l10n.appProvider.claudeCredentialBindingIsolated,
           },
           onChanged: (kind) {
             if (readOnly || kind == null) return;
@@ -51,8 +51,8 @@ class ClaudeCredentialBindingField extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           value == CredentialBindingKind.linked
-              ? l10n.appProviderClaudeCredentialBindingLinkedHint
-              : l10n.appProviderClaudeCredentialBindingIsolatedHint,
+              ? l10n.appProvider.claudeCredentialBindingLinkedHint
+              : l10n.appProvider.claudeCredentialBindingIsolatedHint,
           style: styles.mutedSm,
         ),
       ],

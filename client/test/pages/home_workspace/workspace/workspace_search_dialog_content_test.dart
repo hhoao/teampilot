@@ -30,7 +30,7 @@ void main() {
   });
 
   AppLocalizations l10nOf(WidgetTester tester) =>
-      AppLocalizations.of(tester.element(find.byType(Scaffold)));
+      tester.element(find.byType(Scaffold)).l10n;
 
   Widget wrapSection({
     required void Function(String path) onOpenFile,
@@ -43,8 +43,8 @@ void main() {
       ...extraSlices,
     ];
     return MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: Scaffold(
         // Expanded mirrors the dialog's bounded results area (Flexible/Expanded
         // under the dialog shell) so the section's internal shrink-wrapped
@@ -153,7 +153,7 @@ void main() {
     // The failing slice gets its own error row — even though the other slice
     // matched — and the global error row stays hidden (not all slices failed).
     expect(find.textContaining('Search failed'), findsOneWidget);
-    expect(find.text(l10nOf(tester).workspaceSearchError), findsNothing);
+    expect(find.text(l10nOf(tester).workspace.searchError), findsNothing);
   });
 
   testWidgets('all slices failing shows the global error row', (tester) async {
@@ -165,8 +165,8 @@ void main() {
     await runSearch(tester, 'hello');
     // Every slice failed: the global error row replaces the per-slice rows,
     // matching the pre-multi-root single-root behavior.
-    expect(find.text(l10n.workspaceSearchError), findsOneWidget);
-    expect(find.text(l10n.workspaceSearchNoResults), findsNothing);
+    expect(find.text(l10n.workspace.searchError), findsOneWidget);
+    expect(find.text(l10n.workspace.searchNoResults), findsNothing);
   });
 
   testWidgets('tapping a content row invokes onOpenFile with the file path', (
@@ -194,13 +194,13 @@ void main() {
       wrapSection(onOpenFile: (_) {}, root: fixture.path),
     );
     final l10n = l10nOf(tester);
-    expect(find.text(l10n.workspaceSearchEmptyHint), findsOneWidget);
+    expect(find.text(l10n.workspace.searchEmptyHint), findsOneWidget);
 
     await runSearch(tester, 'hello');
     expect(find.textContaining('a.dart:1'), findsOneWidget);
 
     await runSearch(tester, '');
-    expect(find.text(l10n.workspaceSearchEmptyHint), findsOneWidget);
+    expect(find.text(l10n.workspace.searchEmptyHint), findsOneWidget);
     expect(find.textContaining('a.dart:1'), findsNothing);
   });
 
@@ -212,8 +212,8 @@ void main() {
     await tester.pumpWidget(wrapSection(onOpenFile: (_) {}, root: null));
     final l10n = l10nOf(tester);
     await runSearch(tester, 'hello');
-    expect(find.text(l10n.workspaceSearchNoResults), findsOneWidget);
-    expect(find.text(l10n.workspaceSearchError), findsNothing);
+    expect(find.text(l10n.workspace.searchNoResults), findsOneWidget);
+    expect(find.text(l10n.workspace.searchError), findsNothing);
   });
 
   testWidgets('query with surrounding whitespace is trimmed before searching', (
@@ -233,7 +233,7 @@ void main() {
     );
     final l10n = l10nOf(tester);
     await runSearch(tester, '   ');
-    expect(find.text(l10n.workspaceSearchEmptyHint), findsOneWidget);
+    expect(find.text(l10n.workspace.searchEmptyHint), findsOneWidget);
     expect(find.byType(WorkspaceSearchFileRow), findsNothing);
   });
 
@@ -253,11 +253,11 @@ void main() {
     // Scrollable is the TextField's own; the results list is the last.
     final resultsList = find.byType(Scrollable).last;
     await tester.dragUntilVisible(
-      find.text(l10n.workspaceSearchTruncated),
+      find.text(l10n.workspace.searchTruncated),
       resultsList,
       const Offset(0, -1000),
     );
-    expect(find.text(l10n.workspaceSearchTruncated), findsOneWidget);
+    expect(find.text(l10n.workspace.searchTruncated), findsOneWidget);
     // The engine stopped at the 500th match: the last row is big.txt:500 and
     // no later line exists.
     expect(find.textContaining('big.txt:500'), findsWidgets);
@@ -273,8 +273,8 @@ void main() {
     final l10n = l10nOf(tester);
     await runSearch(tester, '[unclosed');
     expect(tester.takeException(), isNull);
-    expect(find.text(l10n.workspaceSearchError), findsOneWidget);
-    expect(find.text(l10n.workspaceSearchNoResults), findsNothing);
+    expect(find.text(l10n.workspace.searchError), findsOneWidget);
+    expect(find.text(l10n.workspace.searchNoResults), findsNothing);
   });
 
   testWidgets(
@@ -289,8 +289,8 @@ void main() {
       );
       await tester.pumpWidget(
         MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: Scaffold(
             body: WorkspaceSearchDialog(
               workspace: workspace,
@@ -316,13 +316,13 @@ void main() {
       // All mode: no content section.
       expect(find.byType(WorkspaceSearchContentSection), findsNothing);
 
-      await tester.tap(find.text(l10n.workspaceSearchContent));
+      await tester.tap(find.text(l10n.workspace.searchContent));
       await tester.pumpAndSettle();
       expect(find.byType(WorkspaceSearchContentSection), findsOneWidget);
       // Content mode is exclusive: no conversation/file sections are shown.
       expect(find.byType(ListView), findsNothing);
 
-      await tester.tap(find.text(l10n.workspaceSearchFilterAll));
+      await tester.tap(find.text(l10n.workspace.searchFilterAll));
       await tester.pumpAndSettle();
       expect(find.byType(WorkspaceSearchContentSection), findsNothing);
     },

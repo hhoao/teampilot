@@ -120,8 +120,8 @@ Widget _host(FileTreeCubit cubit, {required bool desktopShellActions}) {
   return TpTheme(
     data: TpThemeData.fallback(),
     child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: Scaffold(
         body: Builder(
           builder: (context) => GestureDetector(

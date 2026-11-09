@@ -208,8 +208,8 @@ Future<Widget> _host({
 }) async {
   final theme = ThemeData(useMaterial3: true);
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     locale: const Locale('en'),
     theme: theme,
     home: TpTheme(
@@ -276,7 +276,9 @@ void main() {
       sshKnownHostRepository: harness.knownHosts,
       sshClientFactory: harness.factory,
     );
-    l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
   });
 
   tearDown(() async {
@@ -319,8 +321,8 @@ void main() {
       ),
     );
 
-    expect(find.text(l10n.sshProfileStatusConnected), findsOneWidget);
-    expect(find.text(l10n.sshProfileDisconnect), findsOneWidget);
+    expect(find.text(l10n.sshProfile.statusConnected), findsOneWidget);
+    expect(find.text(l10n.sshProfile.disconnect), findsOneWidget);
   });
 
   testWidgets('Connect calls SshConnectionCubit.connect', (tester) async {
@@ -336,7 +338,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text(l10n.sshProfileConnect));
+    await tester.tap(find.text(l10n.sshProfile.connect));
     await tester.pump();
 
     expect(connectionCubit.connectCalls, [_profile.id]);
@@ -355,7 +357,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text(l10n.sshProfileDisconnect));
+    await tester.tap(find.text(l10n.sshProfile.disconnect));
     await tester.pump();
 
     expect(connectionCubit.disconnectCalls, [_profile.id]);
@@ -370,8 +372,8 @@ void main() {
     final theme = ThemeData(useMaterial3: true);
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         theme: theme,
         home: TpTheme(
@@ -405,7 +407,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byIcon(Icons.more_vert), findsOneWidget);
-    expect(find.text(l10n.sshProfileConnect), findsNothing);
+    expect(find.text(l10n.sshProfile.connect), findsNothing);
   });
 
   testWidgets('Test does not mark Cubit connected', (tester) async {
@@ -421,7 +423,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text(l10n.sshProfileTest));
+    await tester.tap(find.text(l10n.sshProfile.test));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pumpAndSettle(const Duration(seconds: 3));
@@ -431,8 +433,8 @@ void main() {
       connectionCubit.state.hostsById[_profile.id]!.status,
       SshHostUiStatus.disconnected,
     );
-    expect(find.text(l10n.sshProfileStatusConnected), findsNothing);
-    expect(find.text(l10n.sshProfileStatusDisconnected), findsOneWidget);
+    expect(find.text(l10n.sshProfile.statusConnected), findsNothing);
+    expect(find.text(l10n.sshProfile.statusDisconnected), findsOneWidget);
   });
 
   testWidgets(
@@ -470,13 +472,13 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text(l10n.sshProfileConnect));
+      await tester.tap(find.text(l10n.sshProfile.connect));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
       expect(prompts, 1);
       expect(connectionCubit.connectCalls, isEmpty);
-      expect(find.text(l10n.vaultLockedSaveBlocked), findsOneWidget);
+      expect(find.text(l10n.vault.lockedSaveBlocked), findsOneWidget);
       // Let the toast's dismissal timer expire before the tree is disposed.
       await tester.pump(const Duration(seconds: 6));
     },
@@ -515,13 +517,13 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text(l10n.sshProfileTest));
+    await tester.tap(find.text(l10n.sshProfile.test));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
     expect(prompts, 1);
     expect(connectionCubit.connectCalls, isEmpty);
-    expect(find.text(l10n.vaultLockedSaveBlocked), findsOneWidget);
+    expect(find.text(l10n.vault.lockedSaveBlocked), findsOneWidget);
     // Let the toast's dismissal timer expire before the tree is disposed.
     await tester.pump(const Duration(seconds: 6));
   });

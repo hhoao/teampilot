@@ -90,27 +90,29 @@ void main() {
     },
   );
 
-  test('onConnectResult leaves the flag set for non-attached results', () async {
-    final harness = _Harness();
-    final session = _mixedSession();
-    final team = _mixedTeam();
-    final member = _lead();
-    final job = _restoreJob(session, team, member);
-    harness.tab.reclaimedMemberIds.add('lead');
+  test(
+    'onConnectResult leaves the flag set for non-attached results',
+    () async {
+      final harness = _Harness();
+      final session = _mixedSession();
+      final team = _mixedTeam();
+      final member = _lead();
+      final job = _restoreJob(session, team, member);
+      harness.tab.reclaimedMemberIds.add('lead');
 
-    await harness.service.onConnectResult(
-      job,
-      session,
-      (team: team, member: member, cli: CliTool.claude),
-      ConnectShellResult.failed,
-    );
+      await harness.service.onConnectResult(job, session, (
+        team: team,
+        member: member,
+        cli: CliTool.claude,
+      ), ConnectShellResult.failed);
 
-    expect(
-      harness.tab.reclaimedMemberIds,
-      contains('lead'),
-      reason: 'a failed connect must not clear the reclaimed flag',
-    );
-  });
+      expect(
+        harness.tab.reclaimedMemberIds,
+        contains('lead'),
+        reason: 'a failed connect must not clear the reclaimed flag',
+      );
+    },
+  );
 }
 
 class _Harness {
@@ -217,7 +219,8 @@ SessionConnectJob _restoreJob(
 }
 
 class _Host implements SessionLaunchHost {
-  _Host(this.tabStore) : memberMaterializer = stubTabMemberMaterializer(tabStore);
+  _Host(this.tabStore)
+    : memberMaterializer = stubTabMemberMaterializer(tabStore);
 
   @override
   final ChatTabStore tabStore;

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/l10n/app_localizations_en.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/team_hub/team_hub_clone_feedback.dart';
 import 'package:teampilot/services/team_config/team_clone_service.dart';
 

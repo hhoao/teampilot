@@ -31,15 +31,15 @@ class ShortcutsFooterActions extends StatelessWidget {
         children: [
           OutlinedButton(
             onPressed: () => _resetAll(context),
-            child: Text(l10n.shortcutsResetAll),
+            child: Text(l10n.shortcuts.resetAll),
           ),
           OutlinedButton(
             onPressed: () => _export(context, state),
-            child: Text(l10n.shortcutsExport),
+            child: Text(l10n.shortcuts.export),
           ),
           OutlinedButton(
             onPressed: () => _import(context),
-            child: Text(l10n.shortcutsImport),
+            child: Text(l10n.shortcuts.import),
           ),
         ],
       ),
@@ -57,11 +57,11 @@ class ShortcutsFooterActions extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TpDialogHeader(
-              title: l10n.shortcutsResetAllConfirmTitle,
+              title: l10n.shortcuts.resetAllConfirmTitle,
               onClose: () => Navigator.of(ctx).pop(false),
             ),
             const SizedBox(height: 16),
-            Text(l10n.shortcutsResetAllConfirmMessage),
+            Text(l10n.shortcuts.resetAllConfirmMessage),
             TpDialogActions(
               children: [
                 TextButton(
@@ -70,7 +70,7 @@ class ShortcutsFooterActions extends StatelessWidget {
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(ctx).pop(true),
-                  child: Text(l10n.shortcutsResetAll),
+                  child: Text(l10n.shortcuts.resetAll),
                 ),
               ],
             ),
@@ -85,7 +85,7 @@ class ShortcutsFooterActions extends StatelessWidget {
   Future<void> _export(BuildContext context, ShortcutState state) async {
     final l10n = context.l10n;
     final path = await FilePicker.platform.saveFile(
-      dialogTitle: l10n.shortcutsExport,
+      dialogTitle: l10n.shortcuts.export,
       fileName: 'keybindings.json',
       type: FileType.custom,
       allowedExtensions: ['json'],
@@ -101,13 +101,13 @@ class ShortcutsFooterActions extends StatelessWidget {
       };
       await File(path).writeAsString(jsonEncode(payload));
       if (context.mounted) {
-        AppToast.show(context, message: l10n.shortcutsExportSuccess);
+        AppToast.show(context, message: l10n.shortcuts.exportSuccess);
       }
     } on Object {
       if (context.mounted) {
         AppToast.show(
           context,
-          message: l10n.shortcutsExportFailed,
+          message: l10n.shortcuts.exportFailed,
           variant: TpToastVariant.error,
         );
       }
@@ -129,7 +129,7 @@ class ShortcutsFooterActions extends StatelessWidget {
       if (context.mounted) {
         AppToast.show(
           context,
-          message: l10n.shortcutsImportInvalidFile,
+          message: l10n.shortcuts.importInvalidFile,
           variant: TpToastVariant.error,
         );
       }
@@ -149,7 +149,7 @@ class ShortcutsFooterActions extends StatelessWidget {
       await cubit.importOverrides(parsed, replaceConflicts: true);
     }
     if (context.mounted) {
-      AppToast.show(context, message: l10n.shortcutsImportSuccess);
+      AppToast.show(context, message: l10n.shortcuts.importSuccess);
     }
   }
 
@@ -164,11 +164,11 @@ class ShortcutsFooterActions extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TpDialogHeader(
-              title: l10n.shortcutsImportConflictTitle,
+              title: l10n.shortcuts.importConflictTitle,
               onClose: () => Navigator.of(ctx).pop(false),
             ),
             const SizedBox(height: 16),
-            Text(l10n.shortcutsImportConflictMessage(count)),
+            Text(l10n.shortcuts.importConflictMessage(count: count)),
             TpDialogActions(
               children: [
                 TextButton(
@@ -177,7 +177,7 @@ class ShortcutsFooterActions extends StatelessWidget {
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(ctx).pop(true),
-                  child: Text(l10n.shortcutsReplaceAction),
+                  child: Text(l10n.shortcuts.replaceAction),
                 ),
               ],
             ),

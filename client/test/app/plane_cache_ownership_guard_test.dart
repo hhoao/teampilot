@@ -98,8 +98,8 @@ void main() {
       reason: 'The static-collection matcher stopped matching typed fields.',
     );
 
-    final violations =
-        seen.where((id) => !_allowlist.contains(id)).toList()..sort();
+    final violations = seen.where((id) => !_allowlist.contains(id)).toList()
+      ..sort();
     expect(
       violations,
       isEmpty,

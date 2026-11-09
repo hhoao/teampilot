@@ -1,0 +1,10 @@
+{
+  "sourcesEnabledSources": "Enabled sources",
+  "sourcesIdentity": "identity (official)",
+  "sourcesMirrorBaseUrl": "Mirror base URL",
+  "sourcesMirrorHint": "https://mirror.example",
+  "sourcesRestoreDefaults": "Restore defaults",
+  "sourcesSave": "Save",
+  "sourcesSettingsSubtitle": "Configure mirrors for GitHub downloads (app updates, Termux APK)",
+  "sourcesSettingsTitle": "Download sources"
+}

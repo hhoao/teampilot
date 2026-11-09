@@ -78,8 +78,8 @@ void main() {
     String? selectedPath,
     ValueChanged<String>? onSelect,
   }) => MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: BlocProvider.value(
       value: cubit, // folder tiles read expanded state via context
       child: Scaffold(
@@ -111,8 +111,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: BlocProvider.value(
           value: cubit, // folder tiles read expanded state via context
           child: Scaffold(

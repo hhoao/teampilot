@@ -34,8 +34,8 @@ void main() {
   });
 
   Widget wrap(PluginState state, Widget child) => MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: BlocProvider(
       create: (_) => LayoutCubit(),
       child: Scaffold(

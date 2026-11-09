@@ -37,15 +37,15 @@ String formatUsageCost(int? microUsd) {
 }
 
 String formatUsageLastSync(BuildContext context, int? timestampMs) {
-  if (timestampMs == null) return context.l10n.sessionUsageNeverSynced;
+  if (timestampMs == null) return context.l10n.sessionUsage.neverSynced;
   final date = DateTime.fromMillisecondsSinceEpoch(timestampMs).toLocal();
   final material = MaterialLocalizations.of(context);
   final time = material.formatTimeOfDay(
     TimeOfDay.fromDateTime(date),
     alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
   );
-  return context.l10n.sessionUsageLastSync(
-    '${material.formatShortDate(date)} $time',
+  return context.l10n.sessionUsage.lastSync(
+    time: '${material.formatShortDate(date)} $time',
   );
 }
 
@@ -76,19 +76,19 @@ Color usageCliColor(CliTool cli) => switch (cli) {
 String usageGroupLabel(BuildContext context, UsageGroupBy groupBy) {
   final l10n = context.l10n;
   return switch (groupBy) {
-    UsageGroupBy.session => l10n.sessionUsageGroupSession,
-    UsageGroupBy.member => l10n.sessionUsageGroupMember,
-    UsageGroupBy.model => l10n.sessionUsageGroupModel,
-    UsageGroupBy.cli => l10n.sessionUsageGroupCli,
+    UsageGroupBy.session => l10n.sessionUsage.groupSession,
+    UsageGroupBy.member => l10n.sessionUsage.groupMember,
+    UsageGroupBy.model => l10n.sessionUsage.groupModel,
+    UsageGroupBy.cli => l10n.sessionUsage.groupCli,
   };
 }
 
 String usageGroupSubtitle(BuildContext context, String subtitle) {
   final l10n = context.l10n;
   return switch (subtitle) {
-    usageSimpleSeat => l10n.sessionUsageSimpleSeat,
-    usageUnknownTeam => l10n.sessionUsageUnknownTeam,
-    usageUnknownSession => l10n.sessionUsageUnknownSession,
+    usageSimpleSeat => l10n.sessionUsage.simpleSeat,
+    usageUnknownTeam => l10n.sessionUsage.unknownTeam,
+    usageUnknownSession => l10n.sessionUsage.unknownSession,
     _ => subtitle,
   };
 }
@@ -96,13 +96,13 @@ String usageGroupSubtitle(BuildContext context, String subtitle) {
 String usageGroupName(BuildContext context, UsageGroup group) {
   final l10n = context.l10n;
   if (group.label == cursorAccountUsageSessionId) {
-    return l10n.cursorAccountUsageSession;
+    return l10n.cursor.accountUsageSession;
   }
   return switch (group.label) {
-    usageUnknownModel => l10n.sessionUsageUnknownModel,
-    usageUnknownSession => l10n.sessionUsageUnknownSession,
-    usageUnknownTeam => l10n.sessionUsageUnknownTeam,
-    usageSimpleSeat => l10n.sessionUsageSimpleSeat,
+    usageUnknownModel => l10n.sessionUsage.unknownModel,
+    usageUnknownSession => l10n.sessionUsage.unknownSession,
+    usageUnknownTeam => l10n.sessionUsage.unknownTeam,
+    usageSimpleSeat => l10n.sessionUsage.simpleSeat,
     _ => group.label,
   };
 }
@@ -114,13 +114,13 @@ String usageGroupName(BuildContext context, UsageGroup group) {
 String usageRangeLabel(BuildContext context, UsageRange range) {
   final l10n = context.l10n;
   return switch (range) {
-    UsageRange.today => l10n.sessionUsageRangeToday,
-    UsageRange.last24Hours => l10n.sessionUsageRangeLast24Hours,
-    UsageRange.sevenDays => l10n.sessionUsageRangeSevenDays,
-    UsageRange.fourteenDays => l10n.sessionUsageRangeFourteenDays,
-    UsageRange.thirtyDays => l10n.sessionUsageRangeThirtyDays,
-    UsageRange.all => l10n.sessionUsageRangeAll,
-    UsageRange.custom => l10n.sessionUsageRangeAll,
+    UsageRange.today => l10n.sessionUsage.rangeToday,
+    UsageRange.last24Hours => l10n.sessionUsage.rangeLast24Hours,
+    UsageRange.sevenDays => l10n.sessionUsage.rangeSevenDays,
+    UsageRange.fourteenDays => l10n.sessionUsage.rangeFourteenDays,
+    UsageRange.thirtyDays => l10n.sessionUsage.rangeThirtyDays,
+    UsageRange.all => l10n.sessionUsage.rangeAll,
+    UsageRange.custom => l10n.sessionUsage.rangeAll,
   };
 }
 

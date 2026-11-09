@@ -215,7 +215,7 @@ class _SimpleCustomLaunchDialogState extends State<_SimpleCustomLaunchDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.workspaceChatLandingCustomLaunchTitle),
+          TpDialogHeader(title: l10n.workspace.chatLandingCustomLaunchTitle),
           const SizedBox(height: 16),
           CliLaunchCustomFields(
             catalogCli: catalogCli,

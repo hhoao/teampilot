@@ -94,10 +94,7 @@ void main() {
 
       // The device vault never receives business credentials.
       final deviceDocument = await KeychainVaultBackend(store).load();
-      expect(deviceDocument!.entries.map((e) => e.id), [
-        'ssh-1',
-        'ssh-2',
-      ]);
+      expect(deviceDocument!.entries.map((e) => e.id), ['ssh-1', 'ssh-2']);
       // The home-plane file holds only business credentials.
       final homeRaw = homeFs.files['/tp/vault/business.json'];
       expect(homeRaw, isNotNull);
@@ -226,21 +223,17 @@ void main() {
 
       // Zero loss: SSH credentials remain on the device.
       final deviceDocument = await KeychainVaultBackend(store).load();
-      expect(deviceDocument!.entries.map((e) => e.id), containsAll([
-        'ssh-1',
-        'biz-1',
-        'biz-2',
-      ]));
+      expect(
+        deviceDocument!.entries.map((e) => e.id),
+        containsAll(['ssh-1', 'biz-1', 'biz-2']),
+      );
       final homeRaw = homeFs.files['/tp/vault/business.json'];
       expect(homeRaw, contains('biz-1'));
       expect(homeRaw, contains('biz-2'));
       expect(homeRaw, isNot(contains('ssh-1')));
 
       // Idempotent: a second pass copies nothing.
-      expect(
-        await migrateBusinessVaultEntries(device: legacy, home: home),
-        0,
-      );
+      expect(await migrateBusinessVaultEntries(device: legacy, home: home), 0);
     });
   });
 }

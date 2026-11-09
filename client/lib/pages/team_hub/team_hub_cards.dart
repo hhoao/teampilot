@@ -99,7 +99,7 @@ class _TeamHubCardState extends State<TeamHubCard> {
 
     final description = team.description.trim();
     final descriptionText = description.isEmpty
-        ? l10n.teamHubCardNoDescription
+        ? l10n.teamHub.cardNoDescription
         : description;
     final author = team.author?.trim();
     final sourceLabel = (author != null && author.isNotEmpty)
@@ -110,12 +110,12 @@ class _TeamHubCardState extends State<TeamHubCard> {
       TeamStatChip(
         icon: Icons.people_alt_outlined,
         label: '${team.roster.length}',
-        tooltip: l10n.teamHubMembersLabel,
+        tooltip: l10n.teamHub.membersLabel,
       ),
       TeamStatChip(
         icon: Icons.auto_awesome_outlined,
         label: '${team.skillDeps.length}',
-        tooltip: l10n.teamHubSkillsLabel,
+        tooltip: l10n.teamHub.skillsLabel,
       ),
       if (team.category.isNotEmpty)
         TeamStatChip(label: team.category, accent: accent),
@@ -210,13 +210,13 @@ class _TeamHubCardState extends State<TeamHubCard> {
                         icon: Icons.download_outlined,
                         label: l10n.teamsCatalogAdoption,
                         value: team.metrics.adoptionCount?.toString(),
-                        missing: l10n.catalogMetricMissingTooltip,
+                        missing: l10n.catalog.metricMissingTooltip,
                       ),
                       rating: _metric(
                         icon: Icons.star_outline_rounded,
-                        label: l10n.catalogMetricRating,
+                        label: l10n.catalog.metricRating,
                         value: team.metrics.rating?.toStringAsFixed(1),
-                        missing: l10n.catalogMetricMissingTooltip,
+                        missing: l10n.catalog.metricMissingTooltip,
                       ),
                     ),
                   ),

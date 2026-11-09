@@ -13,7 +13,10 @@ void main() {
   test('providerIconAssetPath resolves bundled SVG presets', () {
     expect(providerIconAssetPath('anthropic'), endsWith('.svg'));
     expect(providerIconAssetPath('huoshan'), isNotNull);
-    expect(providerIconAssetPath('codebuddy'), 'assets/providers/workbuddy.svg');
+    expect(
+      providerIconAssetPath('codebuddy'),
+      'assets/providers/workbuddy.svg',
+    );
     expect(providerIconAssetPath('qoder'), 'assets/providers/qoder.svg');
     expect(
       providerIconAssetPaths.values.every((p) => p.endsWith('.svg')),

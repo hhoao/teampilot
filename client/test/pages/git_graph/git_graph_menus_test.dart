@@ -15,8 +15,8 @@ import 'package:teampilot/pages/git_graph/git_graph_menus.dart';
 import '../../support/git_graph_test_fakes.dart';
 
 Widget _host(WidgetBuilder builder) => MaterialApp(
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
-  supportedLocales: AppLocalizations.supportedLocales,
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: appLocalizationsSupportedLocales,
   locale: const Locale('en'),
   home: Builder(builder: builder),
 );
@@ -322,8 +322,8 @@ Future<void> _pumpCompareMenuHost(
         RepositoryProvider.value(value: floating),
       ],
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         home: Builder(
           builder: (context) => Center(

@@ -91,9 +91,7 @@ List<UsageHeatmapSpan> usageHeatmapSpans({
   final spans = <UsageHeatmapSpan>[];
   for (var index = 0; index < count; index++) {
     final start = _spanStart(nowMs, index);
-    final end = index == 0
-        ? today
-        : _addDays(_spanStart(nowMs, index - 1), -1);
+    final end = index == 0 ? today : _addDays(_spanStart(nowMs, index - 1), -1);
     final weeks = <List<int>>[];
     var tokens = 0;
     var requests = 0;

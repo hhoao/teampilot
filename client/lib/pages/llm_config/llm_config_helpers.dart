@@ -37,7 +37,7 @@ Future<String?> saveNewAppProvider(
     if (context.mounted) {
       AppToast.show(
         context,
-        message: context.l10n.vaultLockedSaveBlocked,
+        message: context.l10n.vault.lockedSaveBlocked,
         variant: TpToastVariant.error,
       );
     }
@@ -59,7 +59,7 @@ Future<bool> saveExistingAppProvider(
   if (!saved && context.mounted) {
     AppToast.show(
       context,
-      message: context.l10n.vaultLockedSaveBlocked,
+      message: context.l10n.vault.lockedSaveBlocked,
       variant: TpToastVariant.error,
     );
   }
@@ -85,14 +85,14 @@ Future<void> confirmDeleteAppProvider(BuildContext context, String id) async {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TpDialogHeader(
-            title: l10n.deleteProvider,
+            title: l10n.delete.provider,
             onClose: () => Navigator.pop(ctx, false),
           ),
           const SizedBox(height: 16),
           Text(
             hasCredentials
-                ? l10n.deleteProviderWithCredentialsConfirm(label)
-                : l10n.deleteProviderConfirm(label),
+                ? l10n.delete.providerWithCredentialsConfirm(name: label)
+                : l10n.delete.providerConfirm(name: label),
           ),
           TpDialogActions(
             children: [
@@ -102,7 +102,7 @@ Future<void> confirmDeleteAppProvider(BuildContext context, String id) async {
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: Text(l10n.delete),
+                child: Text(l10n.delete.delete),
               ),
             ],
           ),

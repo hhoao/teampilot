@@ -25,5 +25,4 @@ String cursorTestMemberHomeRelative(
   String memberId, {
   String teamId = cursorTestTeamId,
   String sessionId = cursorTestSessionId,
-}) =>
-    'sessions/$sessionId/runtime/$memberId/cursor/home';
+}) => 'sessions/$sessionId/runtime/$memberId/cursor/home';

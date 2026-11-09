@@ -1005,14 +1005,14 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         widget.liveChrome == SessionHistoryLiveChrome.background;
     final backgroundLabel = widget.backgroundLabel?.trim() ?? '';
     final label = switch (widget.liveChrome) {
-      SessionHistoryLiveChrome.starting => context.l10n.sessionHistoryStarting,
+      SessionHistoryLiveChrome.starting => context.l10n.session.historyStarting,
       SessionHistoryLiveChrome.background =>
         backgroundLabel.isEmpty
-            ? context.l10n.sessionHistoryBackgroundRunning
-            : '${context.l10n.sessionHistoryBackgroundRunning} · '
+            ? context.l10n.session.historyBackgroundRunning
+            : '${context.l10n.session.historyBackgroundRunning} · '
                   '$backgroundLabel',
       SessionHistoryLiveChrome.running ||
-      SessionHistoryLiveChrome.none => context.l10n.sessionHistoryRunning,
+      SessionHistoryLiveChrome.none => context.l10n.session.historyRunning,
     };
     // Column width is applied around [VirtualThreadViewport]; keep left-aligned
     // like assistant text. Tip message already uses tightened messageSpacing.
@@ -1118,9 +1118,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     final displayMessages = _displayMessages;
     final lastId = displayMessages.isEmpty ? null : displayMessages.last.id;
     final forkLabel = context.l10n.forkFromHere;
-    final editLabel = context.l10n.editUserMessage;
-    final editSendLabel = context.l10n.editSend;
-    final editCancelLabel = context.l10n.editCancel;
+    final editLabel = context.l10n.edit.userMessage;
+    final editSendLabel = context.l10n.edit.send;
+    final editCancelLabel = context.l10n.edit.cancel;
     final previousVersionLabel = context.l10n.branchPrevious;
     final nextVersionLabel = context.l10n.branchNext;
     // Last *real* message (excludes the running footer appended to the tip).
@@ -1342,8 +1342,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                               return accepted;
                             },
                             onCancelEdit: _edit.cancelEdit,
-                            onPickEditAttachments:
-                                widget.onPickEditAttachments,
+                            onPickEditAttachments: widget.onPickEditAttachments,
                             editSendLabel: editSendLabel,
                             editCancelLabel: editCancelLabel,
                             editInitialText: _edit.editingMessageId == ai.id
@@ -1436,7 +1435,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                 builder: (context, visible, _) {
                   if (!visible) return const SizedBox.shrink();
                   return SessionHistoryScrollToBottomButton(
-                    tooltip: context.l10n.aiMessageScrollToBottom,
+                    tooltip: context.l10n.ai.messageScrollToBottom,
                     showNewMessagesDot: _hasNewMessagesBelow,
                     onPressed: _animateScrollToBottom,
                     rightInset: rightInset,

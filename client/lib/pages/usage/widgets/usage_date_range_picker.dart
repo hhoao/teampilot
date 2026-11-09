@@ -34,14 +34,14 @@ class UsageDateRangePicker extends StatelessWidget {
     final now = DateTime.now();
     final value = _valueFor(state, now);
     final labels = TpDateTimeRangePickerLabels(
-      start: l10n.sessionUsageStartTime,
-      end: l10n.sessionUsageEndTime,
+      start: l10n.sessionUsage.startTime,
+      end: l10n.sessionUsage.endTime,
       confirm: l10n.confirm,
       cancel: l10n.cancel,
-      hint: l10n.sessionUsageRangeHint,
-      liveEnd: l10n.sessionUsageLiveEnd,
-      invalidOrder: l10n.sessionUsageRangeInvalidOrder,
-      tooLong: l10n.sessionUsageRangeTooLong,
+      hint: l10n.sessionUsage.rangeHint,
+      liveEnd: l10n.sessionUsage.liveEnd,
+      invalidOrder: l10n.sessionUsage.rangeInvalidOrder,
+      tooLong: l10n.sessionUsage.rangeTooLong,
     );
 
     return TpDateTimeRangePicker(

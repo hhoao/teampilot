@@ -45,8 +45,8 @@ Widget _host({
   );
   final homeController = _homeTargetController(home);
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     locale: const Locale('en'),
     theme: ThemeData(colorScheme: scheme),
     home: TpTheme(

@@ -57,8 +57,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         home: MultiRepositoryProvider(
           providers: [
@@ -118,10 +118,7 @@ void main() {
     await tester.ensureVisible(intervalSelect);
     await tester.pumpAndSettle();
     await tester.tap(
-      find.descendant(
-        of: intervalRow,
-        matching: find.byType(TpSelect<int>),
-      ),
+      find.descendant(of: intervalRow, matching: find.byType(TpSelect<int>)),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Every 15 min').last);

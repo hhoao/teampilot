@@ -102,8 +102,8 @@ class _RuntimeTargetPickerState extends State<RuntimeTargetPicker> {
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return TpPreferenceRow(
-            title: l10n.homeTargetTitle,
-            subtitle: l10n.homeTargetSubtitle,
+            title: l10n.home.targetTitle,
+            subtitle: l10n.home.targetSubtitle,
             trailing: const SizedBox(
               width: 20,
               height: 20,
@@ -114,8 +114,8 @@ class _RuntimeTargetPickerState extends State<RuntimeTargetPicker> {
 
         final options = _scoped(snapshot.data!).toList();
         return TpPreferenceRow(
-          title: l10n.homeTargetTitle,
-          subtitle: l10n.homeTargetSubtitle,
+          title: l10n.home.targetTitle,
+          subtitle: l10n.home.targetSubtitle,
           trailing: _trailing(context, options),
         );
       },

@@ -47,8 +47,8 @@ void main() {
     final cubit = GitCubit(service: _FolderGitStub())..setRepoRoot('/repo');
     onCubit?.call(cubit);
     return MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: BlocProvider.value(
         value: cubit,
         child: Scaffold(

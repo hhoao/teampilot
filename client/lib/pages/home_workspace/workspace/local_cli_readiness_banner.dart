@@ -76,7 +76,7 @@ class _LocalCliReadinessBannerState extends State<LocalCliReadinessBanner> {
           : await jobs.installCli(
               cli: requirement.cli,
               scope: const InstallJobScopeLocal(),
-              title: l10n.cliInstallInstalling,
+              title: l10n.cli.installInstalling,
               onSucceeded: (installResult) async {
                 final path = installResult.executablePath?.trim() ?? '';
                 if (path.isEmpty) return;
@@ -129,7 +129,7 @@ class _LocalCliReadinessBannerState extends State<LocalCliReadinessBanner> {
 
     return jobs.installAcpAdapter(
       installer: installer,
-      title: l10n.cliInstallInstalling,
+      title: l10n.cli.installInstalling,
       onSucceeded: onSucceeded,
     );
   }
@@ -149,19 +149,18 @@ class _LocalCliReadinessBannerState extends State<LocalCliReadinessBanner> {
     try {
       final path = requirement.kind == CliBinaryKind.adapter
           ? (await AcpAdapterDiscovery(
-              registry: registry,
-            ).locateLocal())[requirement.cli]?.trim() ??
+                  registry: registry,
+                ).locateLocal())[requirement.cli]?.trim() ??
                 ''
           : (await CliExecutableDiscovery(
-              registry: registry,
-            ).locateLocalCli(requirement.cli))
-                  ?.trim() ??
-              '';
+                  registry: registry,
+                ).locateLocalCli(requirement.cli))?.trim() ??
+                '';
       if (!mounted) return;
       if (path.isEmpty) {
         AppToast.show(
           context,
-          message: l10n.cliExecutablePathLocateFailed(label),
+          message: l10n.cli.executablePathLocateFailed(name: label),
           variant: TpToastVariant.error,
         );
         return;
@@ -176,14 +175,14 @@ class _LocalCliReadinessBannerState extends State<LocalCliReadinessBanner> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: l10n.cliExecutablePathLocateSuccess(label, path),
+        message: l10n.cli.executablePathLocateSuccess(name: label, path: path),
         variant: TpToastVariant.success,
       );
     } catch (_) {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: l10n.cliExecutablePathLocateFailed(label),
+        message: l10n.cli.executablePathLocateFailed(name: label),
         variant: TpToastVariant.error,
       );
     } finally {
@@ -208,7 +207,7 @@ class _LocalCliReadinessBannerState extends State<LocalCliReadinessBanner> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                l10n.landingLaunchLocalCliMissingTitle,
+                l10n.landing.launchLocalCliMissingTitle,
                 style: TpTextStyles.of(context).mdMedium,
               ),
               const SizedBox(height: 8),
@@ -226,11 +225,11 @@ class _LocalCliReadinessBannerState extends State<LocalCliReadinessBanner> {
                 alignment: AlignmentDirectional.centerStart,
                 child: TextButton(
                   onPressed: () => openCliConfigManagement(context),
-                  child: Text(l10n.landingLaunchLocalCliOpenSettings),
+                  child: Text(l10n.landing.launchLocalCliOpenSettings),
                 ),
               ),
               Text(
-                l10n.landingLaunchLocalCliMissingHint,
+                l10n.landing.launchLocalCliMissingHint,
                 style: TpTextStyles.of(context).smColored(cs.onSurfaceVariant),
               ),
             ],
@@ -267,8 +266,8 @@ class _LocalBinaryRow extends StatelessWidget {
         ? cliDisplayName(def, l10n, registry: registry)
         : requirement.cli.value;
     final subtitle = requirement.kind == CliBinaryKind.adapter
-        ? l10n.landingLaunchLocalAdapterMissingDetail(cliLabel)
-        : l10n.landingLaunchLocalCliMissingDetail(cliLabel);
+        ? l10n.landing.launchLocalAdapterMissingDetail(cli: cliLabel)
+        : l10n.landing.launchLocalCliMissingDetail(cli: cliLabel);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -293,13 +292,13 @@ class _LocalBinaryRow extends StatelessWidget {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(l10n.cliInstallButton),
+                  : Text(l10n.cli.installButton),
             ),
           ],
           const SizedBox(width: 4),
           TextButton(
             onPressed: busy ? null : onLocate,
-            child: Text(l10n.cliExecutablePathLocate),
+            child: Text(l10n.cli.executablePathLocate),
           ),
         ],
       ),

@@ -20,7 +20,7 @@ final class QoderExecutableCapability extends NpmInstallerCapability
   String get displayName => 'Qoder CLI';
 
   @override
-  String label(AppLocalizations l10n) => l10n.appProviderToolQoder;
+  String label(AppLocalizations l10n) => l10n.appProvider.toolQoder;
 
   @override
   String get defaultExecutableName => 'qodercli';

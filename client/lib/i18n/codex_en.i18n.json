@@ -1,0 +1,11 @@
+{
+  "acpChatNotLoggedIn": "Codex isn't logged in. Sign in with ChatGPT under Settings → Providers, or switch to an API key.",
+  "acpLaunchFailedAdapter": "Could not start the Codex ACP adapter (codex-acp). Install it and try again.",
+  "credentialsActionFailed": "Could not update credentials",
+  "credentialsActionSuccess": "Credentials updated",
+  "credentialsImportFile": "Import auth.json…",
+  "credentialsImportGlobal": "Import from ~/.codex",
+  "credentialsLogin": "Sign in with OpenAI",
+  "credentialsRevoke": "Sign out",
+  "credentialsRevokeConfirm": "Sign out and remove saved credentials for {name: String}?"
+}

@@ -250,8 +250,8 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
       if (deps.skippedNonPortableIds.isNotEmpty && mounted) {
         AppToast.show(
           context,
-          message: l10n.expertEditorNonPortableSkipped(
-            deps.skippedNonPortableIds.length,
+          message: l10n.expert.editorNonPortableSkipped(
+            count: deps.skippedNonPortableIds.length,
           ),
           variant: TpToastVariant.info,
         );
@@ -300,7 +300,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
       setState(() => _saving = false);
       AppToast.show(
         context,
-        message: l10n.expertHubAddFailed,
+        message: l10n.expert.hubAddFailed,
         variant: TpToastVariant.error,
       );
     }
@@ -345,8 +345,8 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
 
     return TpDialogPageShell(
       title: _isEditing
-          ? l10n.expertEditorEditTitle
-          : l10n.expertEditorCreateTitle,
+          ? l10n.expert.editorEditTitle
+          : l10n.expert.editorCreateTitle,
       mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
       fillBody: true,
       child: TpForm(
@@ -367,7 +367,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
                       controller: _name,
                       label: l10n.name,
                       validator: (v) => (v == null || v.trim().isEmpty)
-                          ? l10n.expertEditorNameRequired
+                          ? l10n.expert.editorNameRequired
                           : null,
                     ),
                     const SizedBox(height: 12),
@@ -375,28 +375,28 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
                       id: 'description',
                       fieldKey: const Key('expert-editor-description'),
                       controller: _description,
-                      label: l10n.expertEditorDescription,
+                      label: l10n.expert.editorDescription,
                     ),
                     const SizedBox(height: 12),
                     _textField(
                       id: 'category',
                       fieldKey: const Key('expert-editor-category'),
                       controller: _category,
-                      label: l10n.expertEditorCategory,
+                      label: l10n.expert.editorCategory,
                     ),
                     const SizedBox(height: 12),
                     TpTextareaFormField(
                       key: const Key('expert-editor-prompt'),
                       id: 'prompt',
                       controller: _prompt,
-                      label: Text(l10n.expertHubPrompt),
+                      label: Text(l10n.expert.hubPrompt),
                       decoration: InputDecoration(
-                        hintText: l10n.expertEditorPromptHint,
+                        hintText: l10n.expert.editorPromptHint,
                       ),
                       minHeight: tpTextareaHeightForLines(bodyStyle, lines: 3),
                       maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 6),
                       validator: (v) => (v == null || v.trim().isEmpty)
-                          ? l10n.expertEditorPromptRequired
+                          ? l10n.expert.editorPromptRequired
                           : null,
                     ),
                     const SizedBox(height: 12),
@@ -404,9 +404,9 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
                       key: const Key('expert-editor-playbook'),
                       id: 'playbook',
                       controller: _playbook,
-                      label: Text(l10n.expertHubPlaybook),
+                      label: Text(l10n.expert.hubPlaybook),
                       decoration: InputDecoration(
-                        hintText: l10n.expertEditorPlaybookHint,
+                        hintText: l10n.expert.editorPlaybookHint,
                       ),
                       minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
                       maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 5),
@@ -416,16 +416,16 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
                       id: 'tags',
                       fieldKey: const Key('expert-editor-tags'),
                       controller: _tags,
-                      label: l10n.expertEditorTags,
-                      hint: l10n.expertEditorTagsHint,
+                      label: l10n.expert.editorTags,
+                      hint: l10n.expert.editorTagsHint,
                       textInputAction: TextInputAction.done,
                     ),
                     const SizedBox(height: 20),
-                    Text(l10n.expertEditorDepsHint, style: styles.sm),
+                    Text(l10n.expert.editorDepsHint, style: styles.sm),
                     const SizedBox(height: 12),
                     _ExpertEditorDepSummaryRow(
                       key: const Key('expert-editor-dep-skills'),
-                      title: l10n.expertEditorSkillsSection,
+                      title: l10n.expert.editorSkillsSection,
                       countKey: const Key('expert-editor-skills-count'),
                       count: _selectedSkillIds.length,
                       configureKey: const Key('expert-editor-configure-skills'),
@@ -434,7 +434,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
                     ),
                     _ExpertEditorDepSummaryRow(
                       key: const Key('expert-editor-dep-plugins'),
-                      title: l10n.expertEditorPluginsSection,
+                      title: l10n.expert.editorPluginsSection,
                       countKey: const Key('expert-editor-plugins-count'),
                       count: _selectedPluginIds.length,
                       configureKey: const Key(
@@ -445,7 +445,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
                     ),
                     _ExpertEditorDepSummaryRow(
                       key: const Key('expert-editor-dep-mcp'),
-                      title: l10n.expertEditorMcpSection,
+                      title: l10n.expert.editorMcpSection,
                       countKey: const Key('expert-editor-mcp-count'),
                       count: _selectedMcpIds.length,
                       configureKey: const Key('expert-editor-configure-mcp'),

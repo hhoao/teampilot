@@ -131,7 +131,9 @@ void main() {
       sshKnownHostRepository: knownHosts,
       sshClientFactory: factory,
     );
-    l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
   });
 
   tearDown(() async {
@@ -145,8 +147,8 @@ void main() {
     final theme = ThemeData(useMaterial3: true);
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         theme: theme,
         home: TpTheme(
@@ -172,9 +174,7 @@ void main() {
                 BlocProvider<SshProfileCubit>.value(value: profileCubit),
                 BlocProvider<SshConnectionCubit>.value(value: connectionCubit),
               ],
-              child: const Scaffold(
-                body: RemoteConnectionsConfigSection(),
-              ),
+              child: const Scaffold(body: RemoteConnectionsConfigSection()),
             ),
           ),
         ),
@@ -188,10 +188,10 @@ void main() {
   ) async {
     await pumpSection(tester);
 
-    expect(find.text(l10n.remoteConnectionsTitle), findsOneWidget);
+    expect(find.text(l10n.remote.connectionsTitle), findsOneWidget);
     // The catalog is device-local and always present, independent of any
     // remote connection state — this is the always-reachable config surface.
     expect(find.byType(SshProfilesSection), findsOneWidget);
-    expect(find.text(l10n.sshProfilesTargetsTitle), findsOneWidget);
+    expect(find.text(l10n.sshProfile.sTargetsTitle), findsOneWidget);
   });
 }

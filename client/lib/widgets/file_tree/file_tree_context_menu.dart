@@ -37,40 +37,40 @@ abstract final class FileTreeContextMenu {
       TpActionMenuSpec.item(
         value: 'new_file',
         icon: Icons.note_add_outlined,
-        label: l10n.fileTreeNewFile,
+        label: l10n.fileTree.newFile,
       ),
       TpActionMenuSpec.item(
         value: 'new_folder',
         icon: Icons.create_new_folder_outlined,
-        label: l10n.fileTreeNewFolder,
+        label: l10n.fileTree.newFolder,
       ),
       const TpActionMenuSpec.divider(),
       TpActionMenuSpec.item(
         value: 'cut',
         icon: Icons.content_cut,
-        label: l10n.fileTreeCut,
+        label: l10n.fileTree.cut,
       ),
       TpActionMenuSpec.item(
         value: 'copy',
         icon: Icons.content_copy,
-        label: l10n.fileTreeCopy,
+        label: l10n.fileTree.copy,
       ),
       TpActionMenuSpec.item(
         value: 'paste',
         icon: Icons.content_paste,
-        label: l10n.fileTreePaste,
+        label: l10n.fileTree.paste,
         enabled: canPaste,
       ),
       const TpActionMenuSpec.divider(),
       TpActionMenuSpec.item(
         value: 'rename',
         icon: Icons.drive_file_rename_outline,
-        label: l10n.fileTreeRename,
+        label: l10n.fileTree.rename,
       ),
       TpActionMenuSpec.item(
         value: 'delete',
         icon: Icons.delete_outline,
-        label: l10n.fileTreeDeleteItemTitle,
+        label: l10n.fileTree.deleteItemTitle,
         destructive: true,
       ),
       const TpActionMenuSpec.divider(),
@@ -78,17 +78,17 @@ abstract final class FileTreeContextMenu {
         TpActionMenuSpec.item(
           value: 'external',
           icon: Icons.open_in_new,
-          label: l10n.fileTreeOpenWithSystemApp,
+          label: l10n.fileTree.openWithSystemApp,
         ),
       TpActionMenuSpec.item(
         value: 'copy_path',
         icon: Icons.copy,
-        label: l10n.fileTreeCopyPath,
+        label: l10n.fileTree.copyPath,
       ),
       TpActionMenuSpec.item(
         value: 'copy_relative_path',
         icon: Icons.copy_outlined,
-        label: l10n.fileTreeCopyRelativePath,
+        label: l10n.fileTree.copyRelativePath,
         enabled:
             tryRelativeWorkspacePath(
               absolutePath: targetPath,
@@ -101,18 +101,18 @@ abstract final class FileTreeContextMenu {
         TpActionMenuSpec.item(
           value: 'file_manager',
           icon: Icons.folder_open_outlined,
-          label: l10n.fileTreeOpenInFileManager,
+          label: l10n.fileTree.openInFileManager,
         ),
         TpActionMenuSpec.item(
           value: 'terminal',
           icon: Icons.terminal,
-          label: l10n.fileTreeOpenInTerminal,
+          label: l10n.fileTree.openInTerminal,
         ),
       ] else if (remoteFileManagerActions)
         TpActionMenuSpec.item(
           value: 'file_manager',
           icon: Icons.folder_open_outlined,
-          label: l10n.fileTreeOpenInFileManager,
+          label: l10n.fileTree.openInFileManager,
         ),
     ];
 
@@ -148,7 +148,7 @@ abstract final class FileTreeContextMenu {
         await _runOp(
           context,
           () => cubit.pasteInto(parentDir),
-          success: l10n.fileTreePasteDone,
+          success: l10n.fileTree.pasteDone,
         );
       case 'rename':
         await _promptRename(
@@ -192,7 +192,7 @@ abstract final class FileTreeContextMenu {
         if (!ok) {
           AppToast.show(
             context,
-            message: l10n.fileTreeOpenInTerminalFailed,
+            message: l10n.fileTree.openInTerminalFailed,
             variant: TpToastVariant.error,
           );
         }
@@ -216,25 +216,25 @@ abstract final class FileTreeContextMenu {
       TpActionMenuSpec.item(
         value: 'new_file',
         icon: Icons.note_add_outlined,
-        label: l10n.fileTreeNewFile,
+        label: l10n.fileTree.newFile,
       ),
       TpActionMenuSpec.item(
         value: 'new_folder',
         icon: Icons.create_new_folder_outlined,
-        label: l10n.fileTreeNewFolder,
+        label: l10n.fileTree.newFolder,
       ),
       const TpActionMenuSpec.divider(),
       TpActionMenuSpec.item(
         value: 'paste',
         icon: Icons.content_paste,
-        label: l10n.fileTreePaste,
+        label: l10n.fileTree.paste,
         enabled: canPaste,
       ),
       const TpActionMenuSpec.divider(),
       TpActionMenuSpec.item(
         value: 'refresh',
         icon: Icons.refresh,
-        label: l10n.fileTreeRefresh,
+        label: l10n.fileTree.refresh,
       ),
       TpActionMenuSpec.item(
         value: 'collapse_all',
@@ -253,7 +253,7 @@ abstract final class FileTreeContextMenu {
         TpActionMenuSpec.item(
           value: 'terminal',
           icon: Icons.terminal,
-          label: l10n.fileTreeOpenInTerminal,
+          label: l10n.fileTree.openInTerminal,
         ),
       ],
     ];
@@ -286,7 +286,7 @@ abstract final class FileTreeContextMenu {
         await _runOp(
           context,
           () => cubit.pasteInto(targetRootDir),
-          success: l10n.fileTreePasteDone,
+          success: l10n.fileTree.pasteDone,
         );
       case 'refresh':
         unawaited(cubit.refresh());
@@ -305,7 +305,7 @@ abstract final class FileTreeContextMenu {
         if (!ok) {
           AppToast.show(
             context,
-            message: l10n.fileTreeOpenInTerminalFailed,
+            message: l10n.fileTree.openInTerminalFailed,
             variant: TpToastVariant.error,
           );
         }
@@ -322,8 +322,8 @@ abstract final class FileTreeContextMenu {
     final l10n = context.l10n;
     final name = await showTpTextPromptDialog(
       context,
-      title: isFolder ? l10n.fileTreeNewFolder : l10n.fileTreeNewFile,
-      hintText: l10n.fileTreeCreateNameHint,
+      title: isFolder ? l10n.fileTree.newFolder : l10n.fileTree.newFile,
+      hintText: l10n.fileTree.createNameHint,
       confirmLabel: l10n.create,
     );
     if (!context.mounted || name == null || name.trim().isEmpty) return;
@@ -333,7 +333,9 @@ abstract final class FileTreeContextMenu {
       () => isFolder
           ? cubit.createFolder(parentDir, name)
           : cubit.createFile(parentDir, name),
-      success: isFolder ? l10n.fileTreeFolderCreated : l10n.fileTreeFileCreated,
+      success: isFolder
+          ? l10n.fileTree.folderCreated
+          : l10n.fileTree.fileCreated,
       onSuccess: isFolder
           ? null
           : () {
@@ -361,17 +363,17 @@ abstract final class FileTreeContextMenu {
     final l10n = context.l10n;
     final name = await showTpTextPromptDialog(
       context,
-      title: l10n.fileTreeRenameTitle,
+      title: l10n.fileTree.renameTitle,
       initialText: currentName,
-      hintText: l10n.fileTreeCreateNameHint,
-      confirmLabel: l10n.fileTreeRename,
+      hintText: l10n.fileTree.createNameHint,
+      confirmLabel: l10n.fileTree.rename,
     );
     if (!context.mounted || name == null || name.trim().isEmpty) return;
 
     await _runOp(
       context,
       () => cubit.renameItem(path, name),
-      success: l10n.fileTreeRenameDone,
+      success: l10n.fileTree.renameDone,
     );
   }
 
@@ -390,9 +392,9 @@ abstract final class FileTreeContextMenu {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpDialogHeader(title: l10n.fileTreeDeleteItemTitle),
+            TpDialogHeader(title: l10n.fileTree.deleteItemTitle),
             const SizedBox(height: 16),
-            Text(l10n.fileTreeDeleteItemConfirm(targetName)),
+            Text(l10n.fileTree.deleteItemConfirm(name: targetName)),
             TpDialogActions(
               children: [
                 TextButton(
@@ -403,7 +405,7 @@ abstract final class FileTreeContextMenu {
                   onPressed: throttledOnPressed('file_tree_delete', () {
                     Navigator.pop(ctx, true);
                   }),
-                  child: Text(l10n.delete),
+                  child: Text(l10n.delete.delete),
                 ),
               ],
             ),
@@ -415,7 +417,7 @@ abstract final class FileTreeContextMenu {
     await _runOp(
       context,
       () => cubit.deletePath(targetPath),
-      success: l10n.fileTreeDeleteDone,
+      success: l10n.fileTree.deleteDone,
     );
   }
 
@@ -450,10 +452,10 @@ abstract final class FileTreeContextMenu {
   static String _mapError(BuildContext context, String key) {
     final l10n = context.l10n;
     return switch (key) {
-      'invalid name' => l10n.fileTreeInvalidName,
-      'target already exists' => l10n.fileTreeItemExists,
-      'source missing' => l10n.fileTreeSourceMissing,
-      'invalid paste target' => l10n.fileTreeInvalidPasteTarget,
+      'invalid name' => l10n.fileTree.invalidName,
+      'target already exists' => l10n.fileTree.itemExists,
+      'source missing' => l10n.fileTree.sourceMissing,
+      'invalid paste target' => l10n.fileTree.invalidPasteTarget,
       _ => key,
     };
   }

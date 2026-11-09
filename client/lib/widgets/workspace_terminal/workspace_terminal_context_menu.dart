@@ -40,18 +40,18 @@ Future<void> showWorkspaceTerminalContextMenu({
     TpActionMenuSpec.item(
       value: 'find',
       icon: Icons.search,
-      label: context.l10n.terminalFind,
+      label: context.l10n.terminal.find,
     ),
     TpActionMenuSpec.item(
       value: 'clear',
       icon: Icons.cleaning_services_outlined,
-      label: context.l10n.terminalClear,
+      label: context.l10n.terminal.clear,
     ),
     if (linkUri != null)
       TpActionMenuSpec.item(
         value: 'openLink',
         icon: Icons.link,
-        label: context.l10n.terminalOpenLink,
+        label: context.l10n.terminal.openLink,
       ),
     if (linkUri != null) const TpActionMenuSpec.divider(),
     TpActionMenuSpec.item(
@@ -63,7 +63,7 @@ Future<void> showWorkspaceTerminalContextMenu({
       value: 'copy',
       icon: Icons.content_copy,
       label: (!hasSelection && mouseReporting)
-          ? menuContext.l10n.terminalCopySelectHint
+          ? menuContext.l10n.terminal.copySelectHint
           : mloc.copyButtonLabel,
       enabled: hasSelection,
     ),

@@ -1,0 +1,21 @@
+{
+  "codeBlockModeDescription": "聊天中超大代码块的呈现方式。",
+  "codeBlockModeTitle": "聊天·代码块",
+  "findClose": "关闭查找",
+  "findHint": "在对话中查找",
+  "findMatchCase": "区分大小写",
+  "findNext": "下一个匹配",
+  "findNoResults": "无匹配",
+  "findPrevious": "上一个匹配",
+  "findResults": "匹配结果",
+  "findUseRegex": "使用正则表达式",
+  "findWholeWord": "全字匹配",
+  "hintText": "为 team-lead 编写提示...",
+  "submitSwitchesToTerminalDescription": "关闭（默认）时，在聊天页发送（新建或继续）后仍留在聊天视图，终端在后台运行。开启后，发送后切换到终端。",
+  "submitSwitchesToTerminalTitle": "发送后切换到终端",
+  "to": "发送至：",
+  "userMessageModeDescription": "聊天中超大用户消息的呈现方式。",
+  "userMessageModeTitle": "用户消息",
+  "userMessageRailEmptyPreview": "空消息",
+  "userMessageRailSemanticLabel": "用户消息第 {index: int} 条，共 {total: int} 条"
+}

@@ -1,0 +1,16 @@
+{
+  "categoryAskUser": "Ask user",
+  "categoryBrowser": "Browser",
+  "categoryCommand": "Shell command",
+  "categoryEdit": "Edit file",
+  "categoryMcp": "MCP",
+  "categoryOther": "Other",
+  "categoryPlan": "Plan",
+  "categoryRead": "Read file",
+  "categorySearch": "Web search",
+  "categorySubagent": "Subagent",
+  "categoryTask": "Tasks & todos",
+  "categoryWrite": "Write file",
+  "placement": "Tool Placement",
+  "placementDescription": "Dock tool panels on the right or along the bottom edge."
+}

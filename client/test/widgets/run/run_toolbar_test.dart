@@ -323,8 +323,8 @@ Future<void> _openConfigDropdown(WidgetTester tester) async {
 Widget _host({required RunCubit cubit, RunActionPicker? pickActionResult}) {
   final theme = ThemeData(useMaterial3: true);
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     locale: const Locale('en'),
     theme: theme,
     home: TpTheme(

@@ -44,6 +44,8 @@ String acpPersistedModelRef({
   if (id.isEmpty || ns.isEmpty) return id;
   if (!catalogModel) return '$ns/$id';
   final ids = state?.options.map((option) => option.id) ?? const <String>[];
-  final matches = ids.where((option) => option == id || option.endsWith('/$id'));
+  final matches = ids.where(
+    (option) => option == id || option.endsWith('/$id'),
+  );
   return matches.length > 1 ? '$ns/$id' : id;
 }

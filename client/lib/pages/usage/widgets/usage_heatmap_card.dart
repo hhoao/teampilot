@@ -68,10 +68,10 @@ class _UsageHeatmapCardState extends State<UsageHeatmapCard> {
               final title = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(l10n.sessionUsageHeatmapTitle, style: styles.mdBold),
+                  Text(l10n.sessionUsage.heatmapTitle, style: styles.mdBold),
                   const SizedBox(height: 2),
                   Text(
-                    l10n.sessionUsageHeatmapSubtitle,
+                    l10n.sessionUsage.heatmapSubtitle,
                     style: styles.sm.copyWith(
                       color: cs.onSurface.withValues(alpha: 0.56),
                     ),
@@ -83,10 +83,10 @@ class _UsageHeatmapCardState extends State<UsageHeatmapCard> {
                 totalSwitches: _HeatmapMetric.values.length,
                 initialLabelIndex: _metric.index,
                 labels: [
-                  l10n.sessionUsageHeatmapMetricTokens,
-                  l10n.sessionUsageRequests,
-                  l10n.sessionUsageCost,
-                  l10n.sessionUsageHeatmapMetricHitRate,
+                  l10n.sessionUsage.heatmapMetricTokens,
+                  l10n.sessionUsage.requests,
+                  l10n.sessionUsage.cost,
+                  l10n.sessionUsage.heatmapMetricHitRate,
                 ],
                 variant: TpSegmentedControlVariant.outlined,
                 minWidth: 56,
@@ -124,7 +124,7 @@ class _UsageHeatmapCardState extends State<UsageHeatmapCard> {
               height: 120,
               child: Center(
                 child: Text(
-                  l10n.sessionUsageNoData,
+                  l10n.sessionUsage.noData,
                   style: styles.sm.copyWith(
                     color: cs.onSurface.withValues(alpha: 0.5),
                   ),
@@ -171,8 +171,8 @@ class _UsageHeatmapCardState extends State<UsageHeatmapCard> {
             onPressed: () => setState(() => _showEarlier = !_showEarlier),
             child: Text(
               _showEarlier
-                  ? l10n.sessionUsageHeatmapShowLess
-                  : l10n.sessionUsageHeatmapShowEarlier,
+                  ? l10n.sessionUsage.heatmapShowLess
+                  : l10n.sessionUsage.heatmapShowEarlier,
               style: styles.xs,
             ),
           ),
@@ -180,7 +180,7 @@ class _UsageHeatmapCardState extends State<UsageHeatmapCard> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              l10n.sessionUsageHeatmapLess,
+              l10n.sessionUsage.heatmapLess,
               style: styles.xs.copyWith(
                 color: cs.onSurface.withValues(alpha: 0.56),
               ),
@@ -196,7 +196,7 @@ class _UsageHeatmapCardState extends State<UsageHeatmapCard> {
                 ),
               ),
             Text(
-              l10n.sessionUsageHeatmapMore,
+              l10n.sessionUsage.heatmapMore,
               style: styles.xs.copyWith(
                 color: cs.onSurface.withValues(alpha: 0.56),
               ),
@@ -276,10 +276,10 @@ class _SpanBlock extends StatelessWidget {
           children: [
             Text(range, style: styles.smMedium),
             Text(
-              l10n.sessionUsageHeatmapSpanSummary(
-                formatUsageTokens(span.tokens),
-                '${span.requests}',
-                formatUsageCost(span.costMicroUsd),
+              l10n.sessionUsage.heatmapSpanSummary(
+                tokens: formatUsageTokens(span.tokens),
+                requests: '${span.requests}',
+                cost: formatUsageCost(span.costMicroUsd),
               ),
               style: styles.sm.copyWith(
                 color: cs.onSurface.withValues(alpha: 0.56),
@@ -314,9 +314,11 @@ class _SpanBlock extends StatelessWidget {
                           child: Row(
                             children: [
                               SizedBox(width: labelWidth),
-                              for (var week = 0;
-                                  week < usageHeatmapWeeks;
-                                  week++)
+                              for (
+                                var week = 0;
+                                week < usageHeatmapWeeks;
+                                week++
+                              )
                                 SizedBox(
                                   width: cell + gap,
                                   child: OverflowBox(
@@ -350,7 +352,8 @@ class _SpanBlock extends StatelessWidget {
                                           right: spacing.md,
                                         ),
                                         child: Text(
-                                          material.narrowWeekdays[(day + 1) % 7],
+                                          material.narrowWeekdays[(day + 1) %
+                                              7],
                                           maxLines: 1,
                                           style: labelStyle,
                                         ),
@@ -359,9 +362,7 @@ class _SpanBlock extends StatelessWidget {
                                   )
                                 : null,
                           ),
-                          for (var week = 0;
-                              week < usageHeatmapWeeks;
-                              week++)
+                          for (var week = 0; week < usageHeatmapWeeks; week++)
                             Padding(
                               padding: EdgeInsets.only(right: gap, bottom: gap),
                               child: _cell(
@@ -413,10 +414,10 @@ class _SpanBlock extends StatelessWidget {
     );
     final hitRate = data?.cacheHitRate;
     return '$date\n'
-        '${l10n.sessionUsageTotalTokens} ${formatUsageTokens(data?.tokens ?? 0)}\n'
-        '${l10n.sessionUsageRequests} ${data?.requests ?? 0}\n'
-        '${l10n.sessionUsageCost} ${formatUsageCost(data?.costMicroUsd ?? 0)}\n'
-        '${l10n.sessionUsageHeatmapMetricHitRate} '
+        '${l10n.sessionUsage.totalTokens} ${formatUsageTokens(data?.tokens ?? 0)}\n'
+        '${l10n.sessionUsage.requests} ${data?.requests ?? 0}\n'
+        '${l10n.sessionUsage.cost} ${formatUsageCost(data?.costMicroUsd ?? 0)}\n'
+        '${l10n.sessionUsage.heatmapMetricHitRate} '
         '${hitRate == null ? '—' : formatUsagePercent(hitRate)}';
   }
 }

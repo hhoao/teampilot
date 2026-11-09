@@ -11,18 +11,20 @@ class RemoteTargetSync {
   final SshServerProfileRepository servers;
 
   Future<void> push(RemoteTarget target) async {
-    await servers.save(SshServerProfile(
-      id: target.id,
-      name: target.name,
-      host: target.host,
-      port: target.port,
-      username: target.username,
-      authType: target.authType,
-      embeddedTarget: target.embeddedTarget,
-      relayUrl: target.relayUrl,
-      pairedDesktopId: target.pairedDesktopId,
-      updatedAt: target.updatedAt,
-    ));
+    await servers.save(
+      SshServerProfile(
+        id: target.id,
+        name: target.name,
+        host: target.host,
+        port: target.port,
+        username: target.username,
+        authType: target.authType,
+        embeddedTarget: target.embeddedTarget,
+        relayUrl: target.relayUrl,
+        pairedDesktopId: target.pairedDesktopId,
+        updatedAt: target.updatedAt,
+      ),
+    );
     await targets.save(target.copyWith(pendingSync: false));
   }
 

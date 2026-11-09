@@ -66,14 +66,14 @@ class ManagedProviderMeasureView extends StatelessWidget {
     AppLocalizations l10n,
     ProviderUsageStatus? status,
   ) {
-    if (status == null) return l10n.managedProvidersNoUsage;
+    if (status == null) return l10n.managedProviders.noUsage;
     return switch (status) {
-      ProviderUsageStatus.ready => l10n.managedProvidersCachedUsage,
-      ProviderUsageStatus.stale => l10n.managedProvidersCachedUsage,
-      ProviderUsageStatus.error => l10n.managedProvidersLastQueryFailed,
-      ProviderUsageStatus.loading => l10n.managedProvidersLoadingUsage,
-      ProviderUsageStatus.unsupported => l10n.managedProvidersQueryUnsupported,
-      ProviderUsageStatus.unknown => l10n.managedProvidersUnknownUsage,
+      ProviderUsageStatus.ready => l10n.managedProviders.cachedUsage,
+      ProviderUsageStatus.stale => l10n.managedProviders.cachedUsage,
+      ProviderUsageStatus.error => l10n.managedProviders.lastQueryFailed,
+      ProviderUsageStatus.loading => l10n.managedProviders.loadingUsage,
+      ProviderUsageStatus.unsupported => l10n.managedProviders.queryUnsupported,
+      ProviderUsageStatus.unknown => l10n.managedProviders.unknownUsage,
     };
   }
 
@@ -102,14 +102,14 @@ class ManagedProviderMeasureView extends StatelessWidget {
             ),
             if (status == ProviderUsageStatus.error)
               TpStatusBadge(
-                label: l10n.managedProvidersError,
+                label: l10n.managedProviders.error,
                 icon: Icons.error_outline,
                 tone: TpStatusBadgeTone.warning,
               ),
             if (onRefresh != null)
               TpAnimatedIconButton(
                 key: const Key('managed-provider-test-query'),
-                tooltip: l10n.managedProvidersTestQuery,
+                tooltip: l10n.managedProviders.testQuery,
                 icon: Icons.refresh_outlined,
                 iconSize: 20,
                 busy: refreshing,

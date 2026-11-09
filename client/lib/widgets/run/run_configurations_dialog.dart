@@ -24,13 +24,13 @@ class RunConfigurationsDialog extends StatelessWidget {
     final l10n = context.l10n;
 
     return TpDialogPageShell(
-      title: l10n.runConfigureLaunchItems,
+      title: l10n.run.configureLaunchItems,
       mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
       fillBody: true,
       trailing: TpIconButton(
         key: const Key('run-configurations-add'),
         icon: Icons.add_rounded,
-        tooltip: l10n.runAddConfiguration,
+        tooltip: l10n.run.addConfiguration,
         onTap: () => unawaited(_create(context)),
       ),
       child: Padding(
@@ -104,7 +104,7 @@ class _RunConfigurationsListBody extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              l10n.runConfigurationsEmpty,
+              l10n.run.configurationsEmpty,
               style: styles.mdColored(cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
@@ -200,13 +200,13 @@ class _RunConfigurationRow extends StatelessWidget {
               buildMenuChildren: (ctx, controller) => [
                 TpActionMenuItem(
                   icon: Icons.edit_outlined,
-                  label: l10n.edit,
+                  label: l10n.edit.edit,
                   menuController: controller,
                   onTap: () => unawaited(_edit(context)),
                 ),
                 TpActionMenuItem(
                   icon: Icons.delete_outline,
-                  label: l10n.runDeleteConfiguration,
+                  label: l10n.run.deleteConfiguration,
                   destructive: true,
                   menuController: controller,
                   onTap: () => unawaited(_delete(context)),
@@ -241,13 +241,13 @@ class _RunConfigurationRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TpDialogHeader(
-                title: l10n.runDeleteConfiguration,
+                title: l10n.run.deleteConfiguration,
                 onClose: () => Navigator.of(ctx).pop(false),
               ),
               const SizedBox(height: 12),
               Text(
-                l10n.runDeleteConfigurationConfirm(
-                  owned.configuration.name.isEmpty
+                l10n.run.deleteConfigurationConfirm(
+                  name: owned.configuration.name.isEmpty
                       ? owned.configId
                       : owned.configuration.name,
                 ),
@@ -262,8 +262,8 @@ class _RunConfigurationRow extends StatelessWidget {
                     onPressed: () => Navigator.of(ctx).pop(true),
                     child: Text(
                       running
-                          ? l10n.runStopAndDelete
-                          : l10n.runDeleteConfiguration,
+                          ? l10n.run.stopAndDelete
+                          : l10n.run.deleteConfiguration,
                     ),
                   ),
                 ],

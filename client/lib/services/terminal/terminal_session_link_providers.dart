@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
-
 import '../io/filesystem.dart';
 import 'file_path_link_provider.dart';
 import 'terminal_uri_opener.dart';

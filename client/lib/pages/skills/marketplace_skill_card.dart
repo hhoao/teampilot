@@ -44,31 +44,31 @@ class MarketplaceSkillCard extends StatelessWidget {
       title: skill.name,
       source: '${skill.repoOwner}/${skill.repoName}',
       description: skill.description,
-      emptyDescription: l10n.skillsCatalogCardNoDescription,
+      emptyDescription: l10n.skills.catalogCardNoDescription,
       adoption: TpCatalogMetricView(
         icon: Icons.download_outlined,
-        label: l10n.skillsCatalogAdoption,
+        label: l10n.skills.catalogAdoption,
         value: metrics.adoptionCount?.toString(),
-        missingValueTooltip: l10n.catalogMetricMissingTooltip,
+        missingValueTooltip: l10n.catalog.metricMissingTooltip,
       ),
       rating: TpCatalogMetricView(
         icon: Icons.star_border,
-        label: l10n.catalogMetricRating,
+        label: l10n.catalog.metricRating,
         value: metrics.rating?.toStringAsFixed(1),
-        missingValueTooltip: l10n.catalogMetricMissingTooltip,
+        missingValueTooltip: l10n.catalog.metricMissingTooltip,
       ),
       actions: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           GithubDetailsButton(
             url: skill.githubUrl,
-            label: l10n.skillsCardDetails,
+            label: l10n.skills.cardDetails,
           ),
           if (installed)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
-                l10n.skillsCardInstalled,
+                l10n.skills.cardInstalled,
                 style: styles.smSemiboldColored(const Color(0xFF15803D)),
               ),
             )
@@ -83,8 +83,8 @@ class MarketplaceSkillCard extends StatelessWidget {
                     )
                   : Text(
                       skill.isInstalledDirectly
-                          ? l10n.skillsCardInstall
-                          : l10n.skillsMarketplaceAddRepo,
+                          ? l10n.skills.cardInstall
+                          : l10n.skills.marketplaceAddRepo,
                     ),
             ),
         ],

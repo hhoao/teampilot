@@ -1,4 +1,3 @@
-
 /// Per-event status URL so identical-handler dedupe keeps every lifecycle hook.
 ///
 /// Task 19 收敛后 `mergeAgentStatusHooks` 已删除——managed agent-status 条目

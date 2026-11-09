@@ -49,18 +49,18 @@ Future<void> showChatWorkbenchTerminalContextMenu({
     TpActionMenuSpec.item(
       value: 'find',
       icon: Icons.search,
-      label: context.l10n.terminalFind,
+      label: context.l10n.terminal.find,
     ),
     if (linkUri != null)
       TpActionMenuSpec.item(
         value: 'openLink',
         icon: Icons.link,
-        label: context.l10n.terminalOpenLink,
+        label: context.l10n.terminal.openLink,
       ),
     TpActionMenuSpec.item(
       value: 'export',
       icon: Icons.download_outlined,
-      label: context.l10n.terminalExportScrollback,
+      label: context.l10n.terminal.exportScrollback,
     ),
     const TpActionMenuSpec.divider(),
     TpActionMenuSpec.item(
@@ -72,7 +72,7 @@ Future<void> showChatWorkbenchTerminalContextMenu({
       value: 'copy',
       icon: Icons.content_copy,
       label: (!hasSelection && mouseReporting)
-          ? menuContext.l10n.terminalCopySelectHint
+          ? menuContext.l10n.terminal.copySelectHint
           : mloc.copyButtonLabel,
       enabled: hasSelection,
     ),
@@ -168,7 +168,7 @@ Future<void> exportChatWorkbenchTerminalScrollback(
   TerminalEngine engine,
 ) async {
   final path = await FilePicker.platform.saveFile(
-    dialogTitle: context.l10n.terminalExportScrollback,
+    dialogTitle: context.l10n.terminal.exportScrollback,
     fileName: 'terminal-scrollback.txt',
     type: FileType.custom,
     allowedExtensions: ['txt'],

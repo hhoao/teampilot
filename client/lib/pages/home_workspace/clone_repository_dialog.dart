@@ -29,7 +29,7 @@ Future<void> showCloneRepositoryDialog(BuildContext context) async {
   context.read<RepoCloneCubit>().startClone(request);
   AppToast.show(
     context,
-    message: context.l10n.cloneRepositoryStarted(request.url),
+    message: context.l10n.clone.repositoryStarted(url: request.url),
     variant: TpToastVariant.info,
   );
 }
@@ -139,7 +139,7 @@ class _HomeCloneRepositoryDialogState extends State<HomeCloneRepositoryDialog> {
         : '';
     final hint = derivedHint.isNotEmpty
         ? derivedHint
-        : l10n.cloneRepositoryUrlHint;
+        : l10n.clone.repositoryUrlHint;
 
     return TpDialog(
       maxWidth: 640,
@@ -150,26 +150,26 @@ class _HomeCloneRepositoryDialogState extends State<HomeCloneRepositoryDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpDialogHeader(title: l10n.cloneRepositoryTitle),
+            TpDialogHeader(title: l10n.clone.repositoryTitle),
             const SizedBox(height: 16),
             TpFormField<String>(
               id: 'url',
               label: Text(
-                l10n.cloneRepositoryUrlLabel,
+                l10n.clone.repositoryUrlLabel,
                 style: styles.xsColored(cs.onSurfaceVariant),
               ),
               builder: (state) => TpInput(
                 controller: _urlController,
                 onChanged: _onUrlChanged,
                 decoration: InputDecoration(
-                  hintText: l10n.cloneRepositoryUrlHint,
+                  hintText: l10n.clone.repositoryUrlHint,
                 ),
               ),
               validator: (value) {
                 final url = _urlController.text.trim();
                 return repoCloneUrlLooksValid(url)
                     ? null
-                    : l10n.cloneRepositoryUrlInvalid;
+                    : l10n.clone.repositoryUrlInvalid;
               },
             ),
             const SizedBox(height: 16),
@@ -183,7 +183,7 @@ class _HomeCloneRepositoryDialogState extends State<HomeCloneRepositoryDialog> {
               id: 'parentDir',
               builder: (_) => const SizedBox.shrink(),
               validator: (_) => _parentDir.trim().isEmpty
-                  ? l10n.cloneRepositoryParentDirRequired
+                  ? l10n.clone.repositoryParentDirRequired
                   : null,
             ),
             const SizedBox(height: 8),
@@ -196,7 +196,7 @@ class _HomeCloneRepositoryDialogState extends State<HomeCloneRepositoryDialog> {
               id: 'dirName',
               builder: (_) => const SizedBox.shrink(),
               validator: (_) => _dirNameController.text.trim().isEmpty
-                  ? l10n.cloneRepositoryDirNameRequired
+                  ? l10n.clone.repositoryDirNameRequired
                   : null,
             ),
             const SizedBox(height: 28),
@@ -210,7 +210,7 @@ class _HomeCloneRepositoryDialogState extends State<HomeCloneRepositoryDialog> {
                 const SizedBox(width: 12),
                 FilledButton(
                   onPressed: _submit,
-                  child: Text(l10n.cloneRepositorySubmit),
+                  child: Text(l10n.clone.repositorySubmit),
                 ),
               ],
             ),
@@ -271,7 +271,7 @@ class _TargetRowState extends State<_TargetRow> {
               Icon(Icons.dns_outlined, size: 20, color: cs.onSurfaceVariant),
               const SizedBox(width: 10),
               Text(
-                l10n.cloneRepositoryTargetLabel,
+                l10n.clone.repositoryTargetLabel,
                 style: styles.mdSemiboldColored(cs.onSurface),
                 maxLines: 1,
                 softWrap: false,
@@ -342,7 +342,7 @@ class _ParentDirRow extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                l10n.cloneRepositoryParentDirLabel,
+                l10n.clone.repositoryParentDirLabel,
                 style: styles.mdSemiboldColored(cs.onSurface),
                 maxLines: 1,
                 softWrap: false,
@@ -350,7 +350,7 @@ class _ParentDirRow extends StatelessWidget {
               const Spacer(),
               OutlinedButton(
                 onPressed: onPick,
-                child: Text(l10n.homeWorkspaceNewWorkspaceChooseDirectory),
+                child: Text(l10n.homeWorkspace.newWorkspaceChooseDirectory),
               ),
             ],
           ),

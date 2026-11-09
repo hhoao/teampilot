@@ -253,9 +253,9 @@ Future<bool> _confirmDiscardDiffBeforeFileSave(BuildContext context) async {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.diffDiscardDiffBeforeFileSaveTitle),
+          TpDialogHeader(title: l10n.diff.discardDiffBeforeFileSaveTitle),
           const SizedBox(height: 12),
-          Text(l10n.diffDiscardDiffBeforeFileSaveBody),
+          Text(l10n.diff.discardDiffBeforeFileSaveBody),
           TpDialogActions(
             children: [
               TextButton(
@@ -264,7 +264,7 @@ Future<bool> _confirmDiscardDiffBeforeFileSave(BuildContext context) async {
               ),
               FilledButton(
                 onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: Text(l10n.editorDiscard),
+                child: Text(l10n.editor.discard),
               ),
             ],
           ),
@@ -320,7 +320,7 @@ class _FileEditorToolbar extends StatelessWidget {
           ),
           if (!readOnly) ...[
             TpIconButton(
-              tooltip: context.l10n.editorSave,
+              tooltip: context.l10n.editor.save,
               icon: Icons.save_outlined,
               size: TpIconButton.kCompactSize,
               compact: true,
@@ -329,7 +329,7 @@ class _FileEditorToolbar extends StatelessWidget {
                   unawaited(_saveFileWithDiffGate(context, workspaceId, path)),
             ),
             TpIconButton(
-              tooltip: context.l10n.editorRevertChanges,
+              tooltip: context.l10n.editor.revertChanges,
               icon: Icons.undo,
               size: TpIconButton.kCompactSize,
               compact: true,
@@ -355,7 +355,7 @@ class _FileEditorToolbar extends StatelessWidget {
                     if (mode == MarkdownViewMode.preview &&
                         findController != null)
                       TpIconButton(
-                        tooltip: context.l10n.editorFindHint,
+                        tooltip: context.l10n.editor.findHint,
                         icon: Icons.search_rounded,
                         size: TpIconButton.kCompactSize,
                         compact: true,
@@ -481,7 +481,7 @@ class _FileEditorBody extends StatelessWidget {
           final editor = context.read<EditorCubit>();
           final controller = editor.controllerFor(workspaceId, path);
           if (controller == null) {
-            return Center(child: Text(l10n.editorNotReady));
+            return Center(child: Text(l10n.editor.notReady));
           }
           if (mode == SvgViewMode.preview) {
             return SvgPreviewPane(workspaceId: workspaceId, path: path);
@@ -511,7 +511,7 @@ class _FileEditorBody extends StatelessWidget {
     final editor = context.read<EditorCubit>();
     final controller = editor.controllerFor(workspaceId, path);
     if (controller == null) {
-      return Center(child: Text(l10n.editorNotReady));
+      return Center(child: Text(l10n.editor.notReady));
     }
 
     if (isHtmlPreviewPath(path)) {

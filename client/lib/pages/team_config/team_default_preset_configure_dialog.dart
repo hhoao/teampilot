@@ -218,7 +218,7 @@ class _TeamDefaultPresetConfigureDialogState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.teamDefaultPresetLabel),
+          TpDialogHeader(title: l10n.team.defaultPresetLabel),
           const SizedBox(height: 16),
           TpCard.outlined(
             child: TpForm(
@@ -270,12 +270,12 @@ class _TeamDefaultPresetConfigureDialogState
                             : CliLaunchCliFieldKind.hidden,
                         cliItems: cliItems,
                         cliSubtitle: mixed
-                            ? l10n.teamDefaultCliMixedSubtitle
+                            ? l10n.team.defaultCliMixedSubtitle
                             : null,
                         onCliChanged: _applyCatalogCliChange,
                         team: team,
                         effortContext: CliLaunchEffortContext.team,
-                        effortSubtitle: l10n.teamDefaultDialogEffortSubtitle,
+                        effortSubtitle: l10n.team.defaultDialogEffortSubtitle,
                         dropdownKeyPrefix: 'team-launch',
                         decoration: dropdownDeco,
                         providerHasError:
@@ -327,7 +327,7 @@ class _TeamDefaultPresetConfigureDialogState
                           ),
                         );
                       },
-                child: Text(l10n.teamDefaultPresetManage),
+                child: Text(l10n.team.defaultPresetManage),
               ),
               TextButton(
                 onPressed: _saving ? null : () => Navigator.of(context).pop(),

@@ -86,8 +86,8 @@ class AutomationsToolbar extends StatelessWidget {
         WorkspacesIconChip(
           icon: filterPanelVisible ? Icons.filter_list_off : Icons.filter_list,
           tooltip: filterPanelVisible
-              ? l10n.automationsHideFilter
-              : l10n.automationsShowFilter,
+              ? l10n.automations.hideFilter
+              : l10n.automations.showFilter,
           onTap: onToggleFilterPanel,
         ),
         const Spacer(),
@@ -114,7 +114,7 @@ class AutomationsSortButton extends StatelessWidget {
       triggerBuilder: (context, controller) {
         return WorkspacesIconChip(
           icon: Icons.sort_rounded,
-          tooltip: l10n.automationsSort,
+          tooltip: l10n.automations.sort,
           onTap: () {
             if (controller.isOpen) {
               controller.close();
@@ -184,7 +184,7 @@ class AutomationsFilterPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            l10n.automationsFilterStatusLabel,
+            l10n.automations.filterStatusLabel,
             style: TpTextStyles.of(
               context,
             ).smSemiboldColored(cs.onSurfaceVariant),
@@ -204,7 +204,7 @@ class AutomationsFilterPanel extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            l10n.automationsFilterActionLabel,
+            l10n.automations.filterActionLabel,
             style: TpTextStyles.of(
               context,
             ).smSemiboldColored(cs.onSurfaceVariant),
@@ -231,19 +231,19 @@ class AutomationsFilterPanel extends StatelessWidget {
     AppLocalizations l10n,
     AutomationEnabledFilter filter,
   ) => switch (filter) {
-    AutomationEnabledFilter.all => l10n.automationsFilterAll,
-    AutomationEnabledFilter.enabledOnly => l10n.automationsFilterEnabled,
-    AutomationEnabledFilter.disabledOnly => l10n.automationsFilterDisabled,
+    AutomationEnabledFilter.all => l10n.automations.filterAll,
+    AutomationEnabledFilter.enabledOnly => l10n.automations.filterEnabled,
+    AutomationEnabledFilter.disabledOnly => l10n.automations.filterDisabled,
   };
 
   static String _actionFilterLabel(
     AppLocalizations l10n,
     AutomationActionFilter filter,
   ) => switch (filter) {
-    AutomationActionFilter.all => l10n.automationsFilterActionAll,
+    AutomationActionFilter.all => l10n.automations.filterActionAll,
     AutomationActionFilter.scheduledMessage =>
-      l10n.automationsFilterScheduledMessage,
-    AutomationActionFilter.launchPrompt => l10n.automationsFilterLaunchPrompt,
+      l10n.automations.filterScheduledMessage,
+    AutomationActionFilter.launchPrompt => l10n.automations.filterLaunchPrompt,
   };
 }
 

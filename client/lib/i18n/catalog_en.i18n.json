@@ -1,0 +1,20 @@
+{
+  "cardAccessibilityLabel": "{name: String}, from {source: String}",
+  "metricMissing": "No data",
+  "metricMissingTooltip": "No data available",
+  "metricName": "Name",
+  "metricPublished": "Published",
+  "metricRating": "Rating",
+  "metricUpdated": "Updated",
+  "missingMetricAccessibilityLabel": "{label: String}: no data available",
+  "refreshAccessibilityLabel": "Refresh catalog",
+  "sortAccessibilityLabel": "Sort catalog entries",
+  "sortAdoption": "Most adopted",
+  "sortName": "Name",
+  "sortPublished": "Recently published",
+  "sortRating": "Highest rated",
+  "sortUpdated": "Recently updated",
+  "sourceWarningAccessibilityLabel": "{count: int} catalog source(s) failed to load",
+  "sourceWarningEntry": "{source: String}: {error: String}",
+  "sourceWarningLabel": "Some catalog sources failed to load"
+}

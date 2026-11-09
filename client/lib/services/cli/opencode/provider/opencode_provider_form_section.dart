@@ -28,11 +28,11 @@ class OpencodeProviderFormSection extends StatelessWidget {
       value: _goBound,
       onChanged: (value) =>
           onSubscriptionChanged(value ? OpencodeGoLayer.namespace : ''),
-      title: Text(l10n.appProviderOpencodeSubscription),
+      title: Text(l10n.appProvider.opencodeSubscription),
       subtitle: Text(
         _goBound
-            ? l10n.appProviderOpencodeSubscriptionOn
-            : l10n.appProviderOpencodeSubscriptionOff,
+            ? l10n.appProvider.opencodeSubscriptionOn
+            : l10n.appProvider.opencodeSubscriptionOff,
       ),
       secondary: const Icon(Icons.workspace_premium_outlined),
     );

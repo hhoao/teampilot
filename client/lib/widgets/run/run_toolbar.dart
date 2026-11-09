@@ -208,7 +208,7 @@ class _RunOrStopGlyph extends StatelessWidget {
           _ToolbarGlyph(
             keyId: const Key('run-toolbar-stop'),
             icon: Icons.stop_rounded,
-            tooltip: l10n.runStop,
+            tooltip: l10n.run.stop,
             color: RunToolbar._actionRed,
             onTap: () {
               if (compound != null && runningIds.isNotEmpty) {
@@ -226,7 +226,7 @@ class _RunOrStopGlyph extends StatelessWidget {
         _ToolbarGlyph(
           keyId: const Key('run-toolbar-run'),
           icon: Icons.play_arrow,
-          tooltip: l10n.runAction,
+          tooltip: l10n.run.action,
           color: RunToolbar._actionGreen,
           enabled: hasSelection,
           onTap: hasSelection ? () => unawaited(_onRun(context)) : null,
@@ -258,11 +258,11 @@ class _RunOrStopGlyph extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TpDialogHeader(
-                title: l10n.runAlreadyRunningTitle,
+                title: l10n.run.alreadyRunningTitle,
                 onClose: () => Navigator.of(dialogContext).pop(),
               ),
               const SizedBox(height: 12),
-              Text(l10n.runAlreadyRunningMessage),
+              Text(l10n.run.alreadyRunningMessage),
               TpDialogActions(
                 children: [
                   TextButton(
@@ -274,12 +274,12 @@ class _RunOrStopGlyph extends StatelessWidget {
                       onPressed: () => Navigator.of(
                         dialogContext,
                       ).pop(_RerunChoice.newInstance),
-                      child: Text(l10n.runNewInstance),
+                      child: Text(l10n.run.newInstance),
                     ),
                   FilledButton(
                     onPressed: () =>
                         Navigator.of(dialogContext).pop(_RerunChoice.restart),
-                    child: Text(l10n.runRestart),
+                    child: Text(l10n.run.restart),
                   ),
                 ],
               ),
@@ -321,7 +321,7 @@ class _RunOrStopGlyph extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TpDialogHeader(
-              title: l10n.runEditConfigurations,
+              title: l10n.run.editConfigurations,
               onClose: () => Navigator.of(dialogContext).pop(false),
             ),
             const SizedBox(height: 12),
@@ -334,7 +334,7 @@ class _RunOrStopGlyph extends StatelessWidget {
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: Text(l10n.runEditConfigurations),
+                  child: Text(l10n.run.editConfigurations),
                 ),
               ],
             ),
@@ -363,7 +363,7 @@ class _BuildGlyph extends StatelessWidget {
     return _ToolbarGlyph(
       keyId: const Key('run-toolbar-build'),
       icon: Icons.build_outlined,
-      tooltip: l10n.runBuild,
+      tooltip: l10n.run.build,
       onTap: () {},
     );
   }
@@ -379,7 +379,7 @@ class _DebugGlyph extends StatelessWidget {
     return _ToolbarGlyph(
       keyId: const Key('run-toolbar-debug'),
       icon: Icons.bug_report_outlined,
-      tooltip: l10n.runDebug,
+      tooltip: l10n.run.debug,
       color: RunToolbar._actionGreen,
       onTap: () {},
     );

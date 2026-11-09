@@ -1,0 +1,15 @@
+{
+  "credentialsActionFailed": "凭据更新失败",
+  "credentialsActionSuccess": "凭据已更新",
+  "credentialsImportFile": "导入 auth.json…",
+  "credentialsImportGlobal": "从 opencode 凭据导入",
+  "credentialsLogin": "Provider 登录",
+  "credentialsRevoke": "退出登录",
+  "credentialsRevokeConfirm": "退出登录并删除 {name: String} 的已保存凭据？",
+  "permissionAllowAlways": "总是允许",
+  "permissionAllowOnce": "允许一次",
+  "permissionAnswerFailed": "无法提交你的决定。请重试或在终端中处理。",
+  "permissionAnswerInTerminal": "在终端处理",
+  "permissionReject": "拒绝",
+  "permissionTitle": "OpenCode 需要你的授权"
+}

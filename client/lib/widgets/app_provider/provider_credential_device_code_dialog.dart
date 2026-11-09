@@ -43,10 +43,10 @@ class ProviderCredentialDeviceCodeDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TpDialogHeader(title: l10n.providerCredentialsDeviceCodeTitle),
+              TpDialogHeader(title: l10n.provider.credentialsDeviceCodeTitle),
               const SizedBox(height: 16),
               Text(
-                l10n.providerCredentialsBrowserOpened,
+                l10n.provider.credentialsBrowserOpened,
                 style: TpTextStyles.of(context).mutedSm,
               ),
               const SizedBox(height: 8),
@@ -57,7 +57,7 @@ class ProviderCredentialDeviceCodeDialog extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                l10n.providerCredentialsDeviceCodeHint,
+                l10n.provider.credentialsDeviceCodeHint,
                 style: TpTextStyles.of(context).mutedSm,
               ),
               if (uri.isNotEmpty) ...[
@@ -79,7 +79,7 @@ class ProviderCredentialDeviceCodeDialog extends StatelessWidget {
                             .reopenCredentialLoginBrowser(),
                       );
                     },
-                    child: Text(l10n.providerCredentialsReopenBrowser),
+                    child: Text(l10n.provider.credentialsReopenBrowser),
                   ),
                 ],
               ),

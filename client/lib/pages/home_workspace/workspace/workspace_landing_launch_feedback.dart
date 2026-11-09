@@ -20,17 +20,19 @@ String landingLaunchBlockMessage(
   return switch (block) {
     TeamNotSelectedLaunchBlock() => l10n.selectTeam,
     MixedMemberPlacementUninitializedLaunchBlock() =>
-      l10n.mixedWorkspaceMemberAssignmentIncomplete,
+      l10n.mixed.workspaceMemberAssignmentIncomplete,
     LeadPlacementInvalidLaunchBlock() =>
-      l10n.mixedWorkspaceLeadPlacementInvalid,
+      l10n.mixed.workspaceLeadPlacementInvalid,
     TeamConfigIncompleteLaunchBlock() =>
-      l10n.workspaceChatLandingTeamLaunchBlocked,
+      l10n.workspace.chatLandingTeamLaunchBlocked,
     RemoteCliMissingLaunchBlock(:final missing) =>
       landingLaunchRemoteCliMissingMessage(l10n, missing, registry: registry),
     LocalCliMissingLaunchBlock(:final missing) =>
       landingLaunchLocalCliMissingMessage(l10n, missing, registry: registry),
-    AcpUnsupportedTargetLaunchBlock() =>
-      landingLaunchAcpUnsupportedMessage(l10n, block),
+    AcpUnsupportedTargetLaunchBlock() => landingLaunchAcpUnsupportedMessage(
+      l10n,
+      block,
+    ),
   };
 }
 
@@ -43,7 +45,7 @@ String landingLaunchAcpUnsupportedMessage(
   final label = def != null
       ? cliDisplayName(def, l10n, registry: registry)
       : block.cli.value;
-  return l10n.landingLaunchAcpUnsupported(label, block.targetId);
+  return l10n.landing.launchAcpUnsupported(cli: label, target: block.targetId);
 }
 
 String landingLaunchLocalCliMissingMessage(
@@ -51,7 +53,7 @@ String landingLaunchLocalCliMissingMessage(
   List<LocalBinaryRequirement> missing, {
   CliToolRegistry? registry,
 }) {
-  if (missing.isEmpty) return l10n.landingLaunchLocalCliMissing;
+  if (missing.isEmpty) return l10n.landing.launchLocalCliMissing;
   final reg = registry ?? CliToolRegistry.builtIn();
   final details = missing
       .map((req) {
@@ -60,11 +62,11 @@ String landingLaunchLocalCliMissingMessage(
             ? cliDisplayName(def, l10n, registry: reg)
             : req.cli.value;
         return req.kind == CliBinaryKind.adapter
-            ? l10n.landingLaunchLocalAdapterMissingDetail(cliLabel)
-            : l10n.landingLaunchLocalCliMissingDetail(cliLabel);
+            ? l10n.landing.launchLocalAdapterMissingDetail(cli: cliLabel)
+            : l10n.landing.launchLocalCliMissingDetail(cli: cliLabel);
       })
       .join('; ');
-  return '${l10n.landingLaunchLocalCliMissing} $details';
+  return '${l10n.landing.launchLocalCliMissing} $details';
 }
 
 String landingLaunchRemoteCliMissingMessage(
@@ -72,7 +74,7 @@ String landingLaunchRemoteCliMissingMessage(
   List<RemoteCliRequirement> missing, {
   CliToolRegistry? registry,
 }) {
-  if (missing.isEmpty) return l10n.landingLaunchRemoteCliMissing;
+  if (missing.isEmpty) return l10n.landing.launchRemoteCliMissing;
   final reg = registry ?? CliToolRegistry.builtIn();
   final details = missing
       .map((req) {
@@ -80,13 +82,13 @@ String landingLaunchRemoteCliMissingMessage(
         final cliLabel = def != null
             ? cliDisplayName(def, l10n, registry: reg)
             : req.cli.value;
-        return l10n.landingLaunchRemoteCliMissingDetail(
-          cliLabel,
-          req.hostLabel,
+        return l10n.landing.launchRemoteCliMissingDetail(
+          cli: cliLabel,
+          host: req.hostLabel,
         );
       })
       .join('; ');
-  return '${l10n.landingLaunchRemoteCliMissing} $details';
+  return '${l10n.landing.launchRemoteCliMissing} $details';
 }
 
 /// Toast for submit attempts blocked by [block].
@@ -104,7 +106,7 @@ void showWorkspaceLandingLaunchBlock(
     variant: TpToastVariant.warning,
     action: block is LocalCliMissingLaunchBlock
         ? TpToastAction(
-            label: context.l10n.landingLaunchLocalCliOpenSettings,
+            label: context.l10n.landing.launchLocalCliOpenSettings,
             onPressed: () => openCliConfigManagement(context),
           )
         : null,

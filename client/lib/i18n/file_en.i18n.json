@@ -1,0 +1,10 @@
+{
+  "codeBlockModeDescription": "How oversized code blocks render in the markdown file preview.",
+  "codeBlockModeTitle": "Code blocks in file preview",
+  "diffToggleDiff": "Diff",
+  "diffToggleFile": "File",
+  "previewHostCenter": "Center",
+  "previewHostDescription": "Open files in the floating workspace or the center workbench.",
+  "previewHostFloating": "Floating",
+  "previewHostTitle": "File preview"
+}

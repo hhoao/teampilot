@@ -69,10 +69,7 @@ final class AntigravityPluginProjector {
     for (final name in componentDirs) {
       final src = ctx.join(bundleDir, name);
       if ((await fs.stat(src)).isDirectory) {
-        await fs.copyTree(
-          source: src,
-          destination: ctx.join(targetDir, name),
-        );
+        await fs.copyTree(source: src, destination: ctx.join(targetDir, name));
       }
     }
 

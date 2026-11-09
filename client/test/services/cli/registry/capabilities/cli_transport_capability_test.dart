@@ -9,7 +9,9 @@ void main() {
   test('only dual-transport CLIs let the user choose', () {
     final choosable = {
       for (final cli in CliTool.values)
-        if (registry.capability<CliTransportCapability>(cli)!.canChooseTransport)
+        if (registry
+            .capability<CliTransportCapability>(cli)!
+            .canChooseTransport)
           cli,
     };
     expect(choosable, {

@@ -248,12 +248,12 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
       maxWidth: _kDialogWidth,
       maxHeight: _kDialogMaxHeight,
       child: TpDialogPinnedLayout(
-        header: TpDialogHeader(title: l10n.teamGenerateSettingsTitle),
+        header: TpDialogHeader(title: l10n.team.generateSettingsTitle),
         body: _loading
             ? Padding(
                 padding: EdgeInsets.symmetric(vertical: spacing.xl),
                 child: Text(
-                  l10n.teamGenerateLoading,
+                  l10n.team.generateLoading,
                   style: styles.smMedium.copyWith(color: cs.onSurfaceVariant),
                 ),
               )
@@ -261,7 +261,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    l10n.teamGenerateSettingsSubtitle,
+                    l10n.team.generateSettingsSubtitle,
                     style: styles.sm.copyWith(color: cs.onSurfaceVariant),
                   ),
                   SizedBox(height: spacing.lg),
@@ -271,17 +271,17 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       isDense: true,
-                      labelText: l10n.teamGenerateMinimumMemberCount,
-                      helperText: l10n.teamGenerateMinimumMemberCountHint,
+                      labelText: l10n.team.generateMinimumMemberCount,
+                      helperText: l10n.team.generateMinimumMemberCountHint,
                       errorText: _minimumMemberCount == null
-                          ? l10n.teamGenerateMinimumMemberCountInvalid
+                          ? l10n.team.generateMinimumMemberCountInvalid
                           : null,
                       border: const OutlineInputBorder(),
                     ),
                     onChanged: (_) => setState(() {}),
                   ),
                   SizedBox(height: spacing.xl),
-                  _SectionLabel(l10n.teamGenerateGeneratorModel),
+                  _SectionLabel(l10n.team.generateGeneratorModel),
                   SizedBox(height: spacing.sm),
                   LaunchFourTuplePicker(
                     value: _generator,
@@ -290,17 +290,17 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                     onChanged: (value) => setState(() => _generator = value),
                     showManagePresets: true,
                     showSavePreset: false,
-                    emptyLabel: l10n.teamGenerateErrorAiNotConfigured,
+                    emptyLabel: l10n.team.generateErrorAiNotConfigured,
                   ),
                   SizedBox(height: spacing.xl),
-                  _SectionLabel(l10n.teamGenerateTeamMode),
+                  _SectionLabel(l10n.team.generateTeamMode),
                   SizedBox(height: spacing.sm),
                   Row(
                     children: [
                       Expanded(
                         child: _ModeOption(
-                          title: l10n.teamModeNativeTitle,
-                          description: l10n.teamModeNativeDescription,
+                          title: l10n.team.modeNativeTitle,
+                          description: l10n.team.modeNativeDescription,
                           selected: _teamMode == TeamMode.native,
                           onTap: () => _setTeamMode(TeamMode.native),
                         ),
@@ -308,8 +308,8 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                       SizedBox(width: spacing.sm),
                       Expanded(
                         child: _ModeOption(
-                          title: l10n.teamModeMixedTitle,
-                          description: l10n.teamModeMixedDescription,
+                          title: l10n.team.modeMixedTitle,
+                          description: l10n.team.modeMixedDescription,
                           selected: _teamMode == TeamMode.mixed,
                           onTap: () => _setTeamMode(TeamMode.mixed),
                         ),
@@ -318,7 +318,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                   ),
                   if (_teamMode == TeamMode.native) ...[
                     SizedBox(height: spacing.md),
-                    _SectionLabel(l10n.teamGenerateNativeCli),
+                    _SectionLabel(l10n.team.generateNativeCli),
                     SizedBox(height: spacing.sm),
                     TpSelect<CliTool>(
                       key: ValueKey(
@@ -342,22 +342,22 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                     ),
                   ],
                   SizedBox(height: spacing.xl),
-                  _SectionLabel(l10n.teamGenerateModelPool),
+                  _SectionLabel(l10n.team.generateModelPool),
                   SizedBox(height: spacing.xs),
                   Text(
-                    l10n.teamGenerateModelPoolHint,
+                    l10n.team.generateModelPoolHint,
                     style: styles.sm.copyWith(color: cs.onSurfaceVariant),
                   ),
                   if (_hiddenCount > 0) ...[
                     SizedBox(height: spacing.xs),
                     Text(
-                      l10n.teamGenerateHiddenPresets(_hiddenCount),
+                      l10n.team.generateHiddenPresets(count: _hiddenCount),
                       style: styles.sm.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
                   SizedBox(height: spacing.md),
                   if (_visibleIndices.isEmpty)
-                    _EmptyPoolHint(text: l10n.teamGenerateEmptyPool)
+                    _EmptyPoolHint(text: l10n.team.generateEmptyPool)
                   else
                     for (
                       var visiblePos = 0;
@@ -376,18 +376,18 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                   TpButton(
                     variant: TpButtonVariant.outline,
                     onPressed: _addModel,
-                    child: Text(l10n.teamGenerateAddModel),
+                    child: Text(l10n.team.generateAddModel),
                   ),
                   SizedBox(height: spacing.lg),
                   Text(
-                    l10n.teamGenerateCapabilityNote,
+                    l10n.team.generateCapabilityNote,
                     style: styles.sm.copyWith(color: cs.onSurfaceVariant),
                   ),
                   SizedBox(height: spacing.lg),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
-                    title: Text(l10n.teamGenerateRetainBuilderSession),
-                    subtitle: Text(l10n.teamGenerateRetainBuilderSessionHint),
+                    title: Text(l10n.team.generateRetainBuilderSession),
+                    subtitle: Text(l10n.team.generateRetainBuilderSessionHint),
                     value: _retainBuilderSession,
                     onChanged: _loading
                         ? null
@@ -455,25 +455,25 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                   }),
                   showManagePresets: true,
                   showSavePreset: false,
-                  emptyLabel: l10n.teamGeneratePickPreset,
+                  emptyLabel: l10n.team.generatePickPreset,
                 ),
               ),
               IconButton(
-                tooltip: l10n.teamGenerateMoveUp,
+                tooltip: l10n.team.generateMoveUp,
                 onPressed: visiblePos > 0
                     ? () => _moveVisible(visiblePos, -1)
                     : null,
                 icon: const Icon(Icons.arrow_upward, size: 18),
               ),
               IconButton(
-                tooltip: l10n.teamGenerateMoveDown,
+                tooltip: l10n.team.generateMoveDown,
                 onPressed: visiblePos < indices.length - 1
                     ? () => _moveVisible(visiblePos, 1)
                     : null,
                 icon: const Icon(Icons.arrow_downward, size: 18),
               ),
               IconButton(
-                tooltip: l10n.teamGenerateRemove,
+                tooltip: l10n.team.generateRemove,
                 onPressed: () => setState(() => _rows.removeAt(rowIndex)),
                 icon: Icon(Icons.close, size: 18, color: cs.error),
               ),
@@ -488,7 +488,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                   initialValue: row.description,
                   decoration: InputDecoration(
                     isDense: true,
-                    labelText: l10n.teamGenerateDescription,
+                    labelText: l10n.team.generateDescription,
                     border: const OutlineInputBorder(),
                   ),
                   onChanged: (value) => row.description = value,
@@ -501,7 +501,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
                   initialValue: row.tags.join(', '),
                   decoration: InputDecoration(
                     isDense: true,
-                    labelText: l10n.teamGenerateTags,
+                    labelText: l10n.team.generateTags,
                     border: const OutlineInputBorder(),
                   ),
                   onChanged: (value) {
@@ -530,7 +530,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpDialogHeader(title: context.l10n.teamGenerateAddModel),
+            TpDialogHeader(title: context.l10n.team.generateAddModel),
             const SizedBox(height: 12),
             LaunchFourTuplePicker(
               value: null,
@@ -542,7 +542,7 @@ class _GenerateSettingsDialogState extends State<_GenerateSettingsDialog> {
               },
               showManagePresets: true,
               showSavePreset: false,
-              emptyLabel: context.l10n.teamGenerateAddModel,
+              emptyLabel: context.l10n.team.generateAddModel,
             ),
             TpDialogActions(
               children: [

@@ -118,16 +118,15 @@ class VaultLegacyImportService {
     final existing = _runningByKey[_importKey];
     if (existing != null) return existing;
     late final Future<void> next;
-    next = _run(markComplete: false).catchError((
-      Object error,
-      StackTrace stackTrace,
-    ) {
-      _warn('repair', error, stackTrace);
-    }).whenComplete(() {
-      if (identical(_runningByKey[_importKey], next)) {
-        _runningByKey.remove(_importKey);
-      }
-    });
+    next = _run(markComplete: false)
+        .catchError((Object error, StackTrace stackTrace) {
+          _warn('repair', error, stackTrace);
+        })
+        .whenComplete(() {
+          if (identical(_runningByKey[_importKey], next)) {
+            _runningByKey.remove(_importKey);
+          }
+        });
     _runningByKey[_importKey] = next;
     return next;
   }

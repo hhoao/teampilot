@@ -67,8 +67,8 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
               showDividerBelow: true,
             ),
             TpPreferenceRow(
-              title: l10n.sessionTabBarTitle,
-              subtitle: l10n.sessionTabBarVisibilityHint,
+              title: l10n.session.tabBarTitle,
+              subtitle: l10n.session.tabBarVisibilityHint,
               trailing: Switch(
                 key: AppKeys.sessionTabBarVisibilitySwitch,
                 value: sessionTabBarVisible,
@@ -87,7 +87,7 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
               showDividerBelow: true,
             ),
             TpPreferenceRow(
-              title: l10n.fileTree,
+              title: l10n.fileTree.fileTree,
               subtitle: l10n.visibilityFileTreeHint,
               trailing: Switch(
                 key: AppKeys.fileTreeVisibilitySwitch,

@@ -13,11 +13,10 @@ const _loggedOutAuth = '{"accessToken":"","refreshToken":""}';
 CursorAcpCapability _linuxCap(Filesystem fs) =>
     CursorAcpCapability(fs: fs, platform: CursorHomePlatform.linux);
 
-String _linuxAuthPath(String home) =>
-    CursorHomeLayout(
-      pathContext: p.Context(style: p.Style.posix),
-      platform: CursorHomePlatform.linux,
-    ).authJson(home);
+String _linuxAuthPath(String home) => CursorHomeLayout(
+  pathContext: p.Context(style: p.Style.posix),
+  platform: CursorHomePlatform.linux,
+).authJson(home);
 
 void main() {
   test('launchArgCandidates is cursor-agent acp', () {

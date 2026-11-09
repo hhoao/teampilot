@@ -239,12 +239,12 @@ class SessionRepositoryFs {
       dated.addAll(read.whereType<({String id, int createdAt})>());
     }
     // Stable createdAt-desc: equal timestamps keep directory order.
-    final ordered = [
-      for (var i = 0; i < dated.length; i++) (entry: dated[i], index: i),
-    ]..sort((a, b) {
-        final byCreated = b.entry.createdAt.compareTo(a.entry.createdAt);
-        return byCreated != 0 ? byCreated : a.index.compareTo(b.index);
-      });
+    final ordered =
+        [for (var i = 0; i < dated.length; i++) (entry: dated[i], index: i)]
+          ..sort((a, b) {
+            final byCreated = b.entry.createdAt.compareTo(a.entry.createdAt);
+            return byCreated != 0 ? byCreated : a.index.compareTo(b.index);
+          });
     return [for (final e in ordered) e.entry.id];
   }
 

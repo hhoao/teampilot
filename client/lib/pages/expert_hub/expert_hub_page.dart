@@ -116,7 +116,7 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: l10n.expertHubAddFailed,
+        message: l10n.expert.hubAddFailed,
         variant: TpToastVariant.error,
       );
     }
@@ -161,7 +161,7 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: l10n.expertHubAddFailed,
+        message: l10n.expert.hubAddFailed,
         variant: TpToastVariant.error,
       );
     }
@@ -182,7 +182,7 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
         if (!mounted) return;
         AppToast.show(
           context,
-          message: context.l10n.expertHubLoadError,
+          message: context.l10n.expert.hubLoadError,
           variant: TpToastVariant.error,
         );
         context.read<ExpertHubCubit>().clearError();
@@ -236,7 +236,7 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (detail == null)
-                WorkspacePaneHeader(title: context.l10n.expertHubTitle),
+                WorkspacePaneHeader(title: context.l10n.expert.hubTitle),
               Expanded(child: pane),
             ],
           ),

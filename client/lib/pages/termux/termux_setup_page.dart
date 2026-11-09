@@ -225,7 +225,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
   String? _validateUsername(String? value) {
     final trimmed = value?.trim() ?? '';
     if (trimmed.isEmpty || !trimmed.startsWith('u')) {
-      return context.l10n.termuxSetupUsernameError;
+      return context.l10n.termux.setupUsernameError;
     }
     return null;
   }
@@ -269,8 +269,8 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
     final l10n = context.l10n;
     final message = switch (result.phase) {
       TermuxApkAcquirePhase.installFailed ||
-      TermuxApkAcquirePhase.installNoResult => l10n.termuxSetupInstallDenied,
-      _ => l10n.termuxSetupDownloadFailed,
+      TermuxApkAcquirePhase.installNoResult => l10n.termux.setupInstallDenied,
+      _ => l10n.termux.setupDownloadFailed,
     };
     AppToast.show(context, message: message, variant: TpToastVariant.error);
   }
@@ -294,7 +294,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
     if (state.connected) {
       AppToast.show(
         context,
-        message: context.l10n.termuxSetupConnectSuccess,
+        message: context.l10n.termux.setupConnectSuccess,
         variant: TpToastVariant.success,
       );
       if (widget.embedded) {
@@ -316,7 +316,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
 
   String _connectFailureMessage(AppLocalizations l10n, String error) {
     final short = error.length > 120 ? '${error.substring(0, 117)}...' : error;
-    return l10n.termuxSetupConnectFailedWithDetail(short);
+    return l10n.termux.setupConnectFailedWithDetail(detail: short);
   }
 
   Future<void> _confirmClearSetup() async {
@@ -329,9 +329,9 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpDialogHeader(title: l10n.termuxSetupClearConfirmTitle),
+            TpDialogHeader(title: l10n.termux.setupClearConfirmTitle),
             const SizedBox(height: 16),
-            Text(l10n.termuxSetupClearConfirmBody),
+            Text(l10n.termux.setupClearConfirmBody),
             TpDialogActions(
               children: [
                 TextButton(
@@ -342,7 +342,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
                   key: const Key('termux_clear_confirm_button'),
                   variant: TpButtonVariant.destructive,
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: Text(l10n.termuxSetupClearConfirmAction),
+                  child: Text(l10n.termux.setupClearConfirmAction),
                 ),
               ],
             ),
@@ -383,7 +383,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
       children: [
         if (_termuxInstalled == true)
           Text(
-            l10n.termuxSetupTermuxInstalled,
+            l10n.termux.setupTermuxInstalled,
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(color: cs.primary),
@@ -395,8 +395,8 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
             SizedBox(height: tp.spacing.sm),
             Text(
               _acquirePhase == _TermuxAcquireUiPhase.installing
-                  ? l10n.termuxSetupInstalling
-                  : l10n.termuxSetupDownloading,
+                  ? l10n.termux.setupInstalling
+                  : l10n.termux.setupDownloading,
             ),
             SizedBox(height: tp.spacing.sm),
           ],
@@ -408,9 +408,9 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
             child: Text(
               _acquiring
                   ? (_acquirePhase == _TermuxAcquireUiPhase.installing
-                        ? l10n.termuxSetupInstalling
-                        : l10n.termuxSetupDownloading)
-                  : l10n.termuxSetupDownloadInstall,
+                        ? l10n.termux.setupInstalling
+                        : l10n.termux.setupDownloading)
+                  : l10n.termux.setupDownloadInstall,
             ),
           ),
         ],
@@ -422,17 +422,17 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
             TpButton(
               variant: TpButtonVariant.outline,
               onPressed: () => _openUrl(_termuxPlayStoreUrl),
-              child: Text(l10n.termuxSetupInstallPlayStore),
+              child: Text(l10n.termux.setupInstallPlayStore),
             ),
             TpButton(
               variant: TpButtonVariant.outline,
               onPressed: () => _openUrl(_termuxFdroidUrl),
-              child: Text(l10n.termuxSetupInstallFDroid),
+              child: Text(l10n.termux.setupInstallFDroid),
             ),
             TpButton(
               variant: TpButtonVariant.outline,
               onPressed: () => _openUrl(_termuxGitHubUrl),
-              child: Text(l10n.termuxSetupInstallGitHub),
+              child: Text(l10n.termux.setupInstallGitHub),
             ),
           ],
         ),
@@ -452,16 +452,16 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
         padding: EdgeInsets.all(tp.spacing.lg),
         children: [
           Text(
-            l10n.termuxSetupIntro,
+            l10n.termux.setupIntro,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           SizedBox(height: tp.spacing.lg),
           _SetupStep(
-            title: l10n.termuxSetupStepInstallTermux,
+            title: l10n.termux.setupStepInstallTermux,
             child: _buildInstallStep(context),
           ),
           _SetupStep(
-            title: l10n.termuxSetupStepRunScript,
+            title: l10n.termux.setupStepRunScript,
             child: _loadingKey
                 ? const Padding(
                     padding: EdgeInsets.symmetric(vertical: 8),
@@ -477,7 +477,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
                       ),
                       SizedBox(height: tp.spacing.xs),
                       Text(
-                        l10n.termuxSetupScriptHint,
+                        l10n.termux.setupScriptHint,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -486,7 +486,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
                   ),
           ),
           _SetupStep(
-            title: l10n.termuxSetupUsernameLabel,
+            title: l10n.termux.setupUsernameLabel,
             child: TextFormField(
               key: const Key('termux_username_field'),
               controller: _usernameController,
@@ -494,7 +494,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
               decoration: tpOutlineInputDecoration(
                 context,
                 decoration: InputDecoration(
-                  hintText: l10n.termuxSetupUsernameHint,
+                  hintText: l10n.termux.setupUsernameHint,
                 ),
               ),
               validator: _validateUsername,
@@ -518,11 +518,11 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                       SizedBox(width: tp.spacing.sm),
-                      Text(l10n.termuxSetupConnecting),
+                      Text(l10n.termux.setupConnecting),
                     ],
                   );
                 }
-                return Text(l10n.termuxSetupConnect);
+                return Text(l10n.termux.setupConnect);
               },
             ),
           ),
@@ -531,7 +531,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
             key: const Key('termux_clear_setup_button'),
             variant: TpButtonVariant.destructive,
             onPressed: _confirmClearSetup,
-            child: Text(l10n.termuxSetupClearSetup),
+            child: Text(l10n.termux.setupClearSetup),
           ),
         ],
       ),
@@ -542,7 +542,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.termuxSetupTitle)),
+      appBar: AppBar(title: Text(l10n.termux.setupTitle)),
       body: form,
     );
   }
@@ -614,12 +614,12 @@ class _CopyCommandBlock extends StatelessWidget {
               if (!context.mounted) return;
               AppToast.show(
                 context,
-                message: l10n.extensionCommandCopied,
+                message: l10n.extension.commandCopied,
                 variant: TpToastVariant.success,
               );
             },
             icon: const Icon(Icons.copy_rounded, size: 16),
-            label: Text(l10n.extensionCopyCommand),
+            label: Text(l10n.extension.copyCommand),
           ),
         ],
       ),

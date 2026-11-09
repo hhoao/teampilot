@@ -46,8 +46,8 @@ void main() {
     );
 
     return MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: Scaffold(
         body: WorkspaceComposeCard(
           controller: resolvedController,

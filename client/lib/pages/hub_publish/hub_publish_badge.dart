@@ -23,9 +23,9 @@ class HubPublishBadge extends StatelessWidget {
       },
       child: TeamStatChip(
         icon: Icons.merge_outlined,
-        label: l10n.hubPublishBadgePrOpen,
+        label: l10n.hub.publishBadgePrOpen,
         accent: cs.primary,
-        tooltip: l10n.hubPublishOpenPr,
+        tooltip: l10n.hub.publishOpenPr,
       ),
     );
   }

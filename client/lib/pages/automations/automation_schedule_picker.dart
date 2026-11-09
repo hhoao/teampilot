@@ -194,13 +194,13 @@ String localizedScheduleSummary(
     final date = draft.onceDate;
     final time = draft.onceTime;
     if (date != null && time != null) {
-      return l10n.automationsScheduleSummaryOnce(
-        formatAutomationScheduleDateTime(
+      return l10n.automations.scheduleSummaryOnce(
+        time: formatAutomationScheduleDateTime(
           DateTime(date.year, date.month, date.day, time.hour, time.minute),
         ),
       );
     }
-    return l10n.automationsScheduleOnce;
+    return l10n.automations.scheduleOnce;
   }
   if (draft.mode == AutomationScheduleMode.countdown) {
     // Countdown drafts only exist transiently during create; the absolute
@@ -211,23 +211,25 @@ String localizedScheduleSummary(
   final time =
       '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
   return switch (draft.preset) {
-    AutomationSchedulePreset.hourly => l10n.automationsScheduleSummaryHourly(
-      draft.minute,
+    AutomationSchedulePreset.hourly => l10n.automations.scheduleSummaryHourly(
+      minute: draft.minute,
     ),
-    AutomationSchedulePreset.daily => l10n.automationsScheduleSummaryDaily(
-      time,
+    AutomationSchedulePreset.daily => l10n.automations.scheduleSummaryDaily(
+      time: time,
     ),
     AutomationSchedulePreset.weekdays =>
-      l10n.automationsScheduleSummaryWeekdays(time),
-    AutomationSchedulePreset.weekly => l10n.automationsScheduleSummaryWeekly(
-      dayOfWeekScheduleLabel(l10n, draft.dayOfWeek ?? DateTime.monday),
-      time,
+      l10n.automations.scheduleSummaryWeekdays(time: time),
+    AutomationSchedulePreset.weekly => l10n.automations.scheduleSummaryWeekly(
+      day: dayOfWeekScheduleLabel(l10n, draft.dayOfWeek ?? DateTime.monday),
+      time: time,
     ),
     AutomationSchedulePreset.custom =>
       draft.customCron?.trim().isNotEmpty == true
           ? draft.customCron!.trim()
-          : l10n.automationsScheduleCustom,
-    AutomationSchedulePreset.once => l10n.automationsScheduleSummaryOnce(time),
+          : l10n.automations.scheduleCustom,
+    AutomationSchedulePreset.once => l10n.automations.scheduleSummaryOnce(
+      time: time,
+    ),
   };
 }
 
@@ -238,9 +240,9 @@ const kCountdownQuickPickMinutes = [5, 15, 30, 60, 120];
 /// everything else as `{minutes} min`.
 String countdownDelayLabel(AppLocalizations l10n, int minutes) {
   if (minutes > 0 && minutes % 60 == 0) {
-    return l10n.automationsCountdownHours(minutes ~/ 60);
+    return l10n.automations.countdownHours(hours: minutes ~/ 60);
   }
-  return l10n.automationsCountdownMinutes(minutes);
+  return l10n.automations.countdownMinutes(minutes: minutes);
 }
 
 /// Parses a countdown duration from a select value or custom input.
@@ -276,13 +278,13 @@ String formatAutomationScheduleDateTime(DateTime dateTime) =>
 
 String dayOfWeekScheduleLabel(AppLocalizations l10n, int dayOfWeek) {
   return switch (dayOfWeek) {
-    DateTime.monday => l10n.automationsDayMonday,
-    DateTime.tuesday => l10n.automationsDayTuesday,
-    DateTime.wednesday => l10n.automationsDayWednesday,
-    DateTime.thursday => l10n.automationsDayThursday,
-    DateTime.friday => l10n.automationsDayFriday,
-    DateTime.saturday => l10n.automationsDaySaturday,
-    _ => l10n.automationsDaySunday,
+    DateTime.monday => l10n.automations.dayMonday,
+    DateTime.tuesday => l10n.automations.dayTuesday,
+    DateTime.wednesday => l10n.automations.dayWednesday,
+    DateTime.thursday => l10n.automations.dayThursday,
+    DateTime.friday => l10n.automations.dayFriday,
+    DateTime.saturday => l10n.automations.daySaturday,
+    _ => l10n.automations.daySunday,
   };
 }
 
@@ -332,7 +334,7 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
           key: ValueKey('schedule-mode-${draft.mode.name}'),
           id: 'scheduleMode',
           initialValue: draft.mode,
-          label: Text(l10n.automationsScheduleType),
+          label: Text(l10n.automations.scheduleType),
           layoutStyle: inline,
           labelWidth: widget.labelWidth,
           builder: (state) {
@@ -420,9 +422,9 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
 
 String scheduleModeLabel(AppLocalizations l10n, AutomationScheduleMode mode) {
   return switch (mode) {
-    AutomationScheduleMode.once => l10n.automationsScheduleModeOnce,
-    AutomationScheduleMode.countdown => l10n.automationsScheduleModeCountdown,
-    AutomationScheduleMode.recurring => l10n.automationsScheduleModeRecurring,
+    AutomationScheduleMode.once => l10n.automations.scheduleModeOnce,
+    AutomationScheduleMode.countdown => l10n.automations.scheduleModeCountdown,
+    AutomationScheduleMode.recurring => l10n.automations.scheduleModeRecurring,
   };
 }
 
@@ -431,11 +433,11 @@ String schedulePresetLabel(
   AutomationSchedulePreset preset,
 ) {
   return switch (preset) {
-    AutomationSchedulePreset.hourly => l10n.automationsScheduleHourly,
-    AutomationSchedulePreset.daily => l10n.automationsScheduleDaily,
-    AutomationSchedulePreset.weekdays => l10n.automationsScheduleWeekdays,
-    AutomationSchedulePreset.weekly => l10n.automationsScheduleWeekly,
-    AutomationSchedulePreset.custom => l10n.automationsScheduleCustom,
-    AutomationSchedulePreset.once => l10n.automationsScheduleOnce,
+    AutomationSchedulePreset.hourly => l10n.automations.scheduleHourly,
+    AutomationSchedulePreset.daily => l10n.automations.scheduleDaily,
+    AutomationSchedulePreset.weekdays => l10n.automations.scheduleWeekdays,
+    AutomationSchedulePreset.weekly => l10n.automations.scheduleWeekly,
+    AutomationSchedulePreset.custom => l10n.automations.scheduleCustom,
+    AutomationSchedulePreset.once => l10n.automations.scheduleOnce,
   };
 }

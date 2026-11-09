@@ -4,12 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../services/storage/home_connect_attempt.dart';
 import '../utils/logging/logger.dart';
 
-enum HomeConnectionStatus {
-  connecting,
-  connected,
-  unreachable,
-  reconnecting,
-}
+enum HomeConnectionStatus { connecting, connected, unreachable, reconnecting }
 
 class HomeConnectionState extends Equatable {
   const HomeConnectionState({

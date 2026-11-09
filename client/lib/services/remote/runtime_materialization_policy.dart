@@ -15,12 +15,7 @@ class RuntimeMaterializationPolicy {
   ///
   /// Ordered: it is also iterated when generating remote shell scripts, and a
   /// Set would emit a different byte sequence on every run.
-  static const List<String> excludedSegments = [
-    '.git',
-    '.hg',
-    '.svn',
-    '.tmp',
-  ];
+  static const List<String> excludedSegments = ['.git', '.hg', '.svn', '.tmp'];
 
   /// Whether [relativePath] (relative to the materialization root) should be
   /// copied for [tool]. [appToolTree] is true while enumerating app-level

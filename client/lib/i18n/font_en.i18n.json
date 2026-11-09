@@ -1,0 +1,13 @@
+{
+  "changeAppliesOnRestart": "Font saved. Restart TeamPilot to apply.",
+  "installedSection": "Installed",
+  "monoDescription": "Terminal, editor, and diffs. Takes effect after restart.",
+  "monoTitle": "Monospace font",
+  "optionJetbrainsMono": "JetBrains Mono",
+  "optionNotoSansSc": "Noto Sans SC",
+  "optionSystem": "System",
+  "optionUbuntuSansMono": "Ubuntu Sans Mono",
+  "searchHint": "Search fonts",
+  "uiDescription": "UI text. System follows the OS default. Takes effect after restart.",
+  "uiTitle": "Interface font"
+}

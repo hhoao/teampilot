@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/l10n/app_localizations_en.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'package:teampilot/utils/team/launch_profile_display_name.dart';
@@ -14,7 +14,7 @@ void main() {
     );
     expect(
       launchProfileDisplayName(l10n, native),
-      l10n.homeWorkspaceDefaultNativeTeamName,
+      l10n.homeWorkspace.defaultNativeTeamName,
     );
   });
 

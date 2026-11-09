@@ -9,8 +9,8 @@ import '../../support/post_frame_test_harness.dart';
 
 Widget _wrap(Widget child) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     locale: const Locale('en'),
     home: Scaffold(body: Center(child: child)),
   );

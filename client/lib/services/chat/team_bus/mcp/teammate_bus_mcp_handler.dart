@@ -59,10 +59,7 @@ class TeammateBusMcpHandler {
   /// CodeBuddy (ACP) asks for `2025-11-25`; answering `2025-06-18` keeps the
   /// server "connected" but drops its tools from the session, so mixed teams
   /// lost the whole bus. Claude still asks for `2025-06-18`.
-  static const supportedProtocolVersions = <String>{
-    '2025-06-18',
-    '2025-11-25',
-  };
+  static const supportedProtocolVersions = <String>{'2025-06-18', '2025-11-25'};
 
   static const serverName = 'teampilot-teammate-bus';
 
@@ -147,7 +144,8 @@ class TeammateBusMcpHandler {
         final requested = req.params['protocolVersion'];
         return JsonRpcResponse.result(req.id, {
           'protocolVersion':
-              requested is String && supportedProtocolVersions.contains(requested)
+              requested is String &&
+                  supportedProtocolVersions.contains(requested)
               ? requested
               : protocolVersion,
           'capabilities': {'tools': <String, Object?>{}},

@@ -19,7 +19,7 @@ final class GeminiExecutableCapability extends NpmInstallerCapability
   String get displayName => 'Gemini CLI';
 
   @override
-  String label(AppLocalizations l10n) => l10n.appProviderToolGemini;
+  String label(AppLocalizations l10n) => l10n.appProvider.toolGemini;
 
   @override
   String get defaultExecutableName => 'gemini';

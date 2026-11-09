@@ -45,17 +45,20 @@ void main() {
     expect(res!.result!['protocolVersion'], '2025-11-25');
   });
 
-  test('initialize falls back to the server version when unsupported', () async {
-    final res = await _handler().handle(
-      'leader',
-      const JsonRpcRequest(
-        id: 0,
-        method: 'initialize',
-        params: {'protocolVersion': '1999-01-01'},
-      ),
-    );
-    expect(res!.result!['protocolVersion'], '2025-06-18');
-  });
+  test(
+    'initialize falls back to the server version when unsupported',
+    () async {
+      final res = await _handler().handle(
+        'leader',
+        const JsonRpcRequest(
+          id: 0,
+          method: 'initialize',
+          params: {'protocolVersion': '1999-01-01'},
+        ),
+      );
+      expect(res!.result!['protocolVersion'], '2025-06-18');
+    },
+  );
 
   test('notifications/initialized returns null (202, no body)', () async {
     final res = await _handler().handle(

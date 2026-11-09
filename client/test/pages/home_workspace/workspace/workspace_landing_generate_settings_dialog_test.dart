@@ -82,8 +82,8 @@ Widget buildGenerateSettingsTestHost() {
       child: CliToolRegistryScope(
         registry: CliToolRegistry.builtIn(),
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           theme: ThemeData(colorScheme: scheme, useMaterial3: true),
           home: TpTheme(
             data: TpThemeData.fromColorScheme(scheme, scale: 1),

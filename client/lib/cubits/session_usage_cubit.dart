@@ -369,7 +369,8 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       );
       // Cursor rows come from the account caches; refresh them for the current
       // range in the background, then reload the events they produce.
-      unawaited(_refreshCursorAccountUsage());    } catch (error, stackTrace) {
+      unawaited(_refreshCursorAccountUsage());
+    } catch (error, stackTrace) {
       AppLogger.instance.e(
         '[usage] load failed',
         error: error,
@@ -561,12 +562,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       _events = events;
       _computeGeneration++;
       _engine.clearCache();
-      emit(
-        state.copyWith(
-          dashboard: _computeDashboard(),
-          isComputing: false,
-        ),
-      );
+      emit(state.copyWith(dashboard: _computeDashboard(), isComputing: false));
     } on Object {
       // Keep whatever the cache already produced.
     }

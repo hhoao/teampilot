@@ -57,7 +57,7 @@ class _NotificationBellButtonState extends State<NotificationBellButton> {
       child: _BellGlyph(
         unread: badgeCount,
         size: widget.size,
-        tooltip: l10n.notificationCenterTitle,
+        tooltip: l10n.notification.centerTitle,
         onTap: _popoverController.toggle,
       ),
     );

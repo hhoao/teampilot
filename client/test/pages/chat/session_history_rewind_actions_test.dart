@@ -332,8 +332,8 @@ void main() {
     var landed = false;
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         theme: ThemeData(extensions: [AiMessageTheme.test()]),
         home: Scaffold(
@@ -415,8 +415,8 @@ void main() {
     final gate = Completer<void>();
 
     Widget build(AiThreadRuntime runtime) => MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       locale: const Locale('en'),
       theme: ThemeData(extensions: [AiMessageTheme.test()]),
       home: Scaffold(
@@ -491,8 +491,8 @@ void main() {
     final gate = Completer<void>();
 
     Widget build(AiThreadRuntime runtime) => MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       locale: const Locale('en'),
       theme: ThemeData(extensions: [AiMessageTheme.test()]),
       home: Scaffold(
@@ -553,8 +553,8 @@ void main() {
     addTearDown(branchEdit.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         theme: ThemeData(extensions: [AiMessageTheme.test()]),
         home: Scaffold(
@@ -594,8 +594,8 @@ void main() {
       ..setMessages(const [user, reply]);
 
     Widget build({required bool hold}) => MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       locale: const Locale('en'),
       theme: ThemeData(extensions: [AiMessageTheme.test()]),
       home: Scaffold(
@@ -662,8 +662,8 @@ Future<ExternalStoreAiThreadRuntime> _pumpThread(
     BlocProvider<ChatCubit>.value(
       value: cubit,
       child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         locale: const Locale('en'),
         theme: ThemeData(extensions: [AiMessageTheme.test()]),
         home: Scaffold(

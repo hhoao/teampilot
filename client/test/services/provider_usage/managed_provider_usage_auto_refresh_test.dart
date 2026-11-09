@@ -109,9 +109,7 @@ void main() {
       credentials: _NoCredentials(),
       http: _NoHttp(),
     );
-    usageCubit = ManagedProviderUsageCubit(
-      coordinator: coordinator,
-    );
+    usageCubit = ManagedProviderUsageCubit(coordinator: coordinator);
     providerCubit = ManagedProviderCubit(repository: providers);
     addTearDown(usageCubit.close);
     addTearDown(providerCubit.close);

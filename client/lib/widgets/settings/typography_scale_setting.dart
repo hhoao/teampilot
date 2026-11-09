@@ -69,22 +69,22 @@ class _TypographyScaleSettingState extends State<TypographyScaleSetting> {
   List<TpSegmentedOption<String>> _segments(AppLocalizations l10n) => [
     TpSegmentedOption<String>(
       value: 'compact',
-      label: l10n.typographyScaleCompact,
+      label: l10n.typography.scaleCompact,
       icon: Icons.density_small_outlined,
     ),
     TpSegmentedOption<String>(
       value: 'standard',
-      label: l10n.typographyScaleStandard,
+      label: l10n.typography.scaleStandard,
       icon: Icons.density_medium_outlined,
     ),
     TpSegmentedOption<String>(
       value: 'comfortable',
-      label: l10n.typographyScaleComfortable,
+      label: l10n.typography.scaleComfortable,
       icon: Icons.density_large_outlined,
     ),
     TpSegmentedOption<String>(
       value: 'custom',
-      label: l10n.typographyScaleCustom,
+      label: l10n.typography.scaleCustom,
       icon: Icons.tune_outlined,
     ),
   ];
@@ -106,7 +106,7 @@ class _TypographyScaleSettingState extends State<TypographyScaleSetting> {
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         decoration: InputDecoration(
           isDense: true,
-          hintText: l10n.typographyScaleCustomHint,
+          hintText: l10n.typography.scaleCustomHint,
           suffixText: '%',
         ),
         onSubmitted: (_) => _commitPercentInput(),

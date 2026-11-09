@@ -1,0 +1,12 @@
+{
+  "errorCopied": "已复制",
+  "errorCopy": "复制",
+  "errorCopyReport": "复制报告",
+  "errorDetails": "错误信息",
+  "errorPendingLogs": "待写入日志",
+  "errorStackEmpty": "（堆栈为空）",
+  "errorStackTrace": "堆栈跟踪",
+  "errorTitle": "应用启动失败",
+  "errorVersion": "版本 {version: String}（{build: String}）",
+  "errorViewLogs": "查看日志"
+}

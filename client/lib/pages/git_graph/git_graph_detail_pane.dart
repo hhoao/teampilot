@@ -28,7 +28,7 @@ class GitGraphDetailPane extends StatelessWidget {
         }
         final detail = state.commitDetail;
         if (detail == null) {
-          return _EmptyHint(message: context.l10n.gitGraphSelectCommit);
+          return _EmptyHint(message: context.l10n.gitGraph.selectCommit);
         }
         final openPath = state.openFilePath;
         if (openPath != null) {
@@ -126,7 +126,7 @@ class _CommitSummary extends StatelessWidget {
               TpIconButton(
                 icon: Icons.copy_rounded,
                 compact: true,
-                tooltip: context.l10n.gitGraphHashCopied,
+                tooltip: context.l10n.gitGraph.hashCopied,
                 onTap: () => unawaited(_copyHash(context)),
               ),
             ],
@@ -143,7 +143,7 @@ class _CommitSummary extends StatelessWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.maybeOf(
       context,
-    )?.showSnackBar(SnackBar(content: Text(context.l10n.gitGraphHashCopied)));
+    )?.showSnackBar(SnackBar(content: Text(context.l10n.gitGraph.hashCopied)));
   }
 }
 
@@ -155,7 +155,7 @@ class _FileList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (files.isEmpty) {
-      return _EmptyHint(message: context.l10n.diffNoChanges);
+      return _EmptyHint(message: context.l10n.diff.noChanges);
     }
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 4),

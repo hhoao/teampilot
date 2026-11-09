@@ -74,8 +74,8 @@ class _LocaleHostState extends State<_LocaleHost> {
   Widget build(BuildContext context) {
     return MaterialApp(
       locale: _locale,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: Scaffold(body: widget.child),
     );
   }

@@ -27,8 +27,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('en'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: TpTheme(
           data: TpThemeData.fromColorScheme(
             ColorScheme.fromSeed(seedColor: Colors.blue),
@@ -69,8 +69,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('zh'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: TpTheme(
           data: TpThemeData.fromColorScheme(
             ColorScheme.fromSeed(seedColor: Colors.blue),

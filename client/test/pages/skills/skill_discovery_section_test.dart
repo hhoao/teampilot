@@ -106,8 +106,8 @@ void main() {
 
   Widget wrap(SkillCubit cubit) => MaterialApp(
     locale: const Locale('en'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: Scaffold(
       body: BlocProvider<SkillCubit>.value(
         value: cubit,

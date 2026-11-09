@@ -40,9 +40,7 @@ void main() {
     test('blocks ACP-only CLI on WSL', () {
       final workspace = Workspace(
         workspaceId: 'ws-wsl',
-        folders: const [
-          WorkspaceFolder(path: '/repo', targetId: 'wsl:Ubuntu'),
-        ],
+        folders: const [WorkspaceFolder(path: '/repo', targetId: 'wsl:Ubuntu')],
         createdAt: 1,
       );
       final block = gate.syncBlock(
@@ -250,52 +248,55 @@ void main() {
       expect(block, isNull);
     });
 
-    test('probes an adapter requirement when the draft requested ACP', () async {
-      final probed = <(String, CliBinaryKind)>[];
-      final workspace = Workspace(
-        workspaceId: 'ws-1',
-        folders: [
-          const WorkspaceFolder(path: '/remote', targetId: 'ssh:host-a'),
-        ],
-        createdAt: 1,
-      );
+    test(
+      'probes an adapter requirement when the draft requested ACP',
+      () async {
+        final probed = <(String, CliBinaryKind)>[];
+        final workspace = Workspace(
+          workspaceId: 'ws-1',
+          folders: [
+            const WorkspaceFolder(path: '/remote', targetId: 'ssh:host-a'),
+          ],
+          createdAt: 1,
+        );
 
-      final block = await gate.asyncRemoteCliBlockForSimple(
-        workspace: workspace,
-        draft: const LandingLaunchContext(
-          isPersonal: true,
-          acp: true,
-          cli: CliTool.claude,
-        ),
-        projectFolderPath: '/remote',
-        globalPresets: const [],
-        selectableTargets: const [sshTarget],
-        readiness: _FakeRemoteCliReadiness(
-          onProbe: (target, cli, kind) async {
-            probed.add((cli.value, kind));
-            if (kind == CliBinaryKind.adapter) {
-              return RemoteCliMissing(targetId: target.id, cli: cli);
-            }
-            return RemoteCliReady(
-              targetId: target.id,
-              cli: cli,
-              path: '/home/u/.local/bin/claude',
-            );
-          },
-        ),
-        home: localHome,
-      );
+        final block = await gate.asyncRemoteCliBlockForSimple(
+          workspace: workspace,
+          draft: const LandingLaunchContext(
+            isPersonal: true,
+            acp: true,
+            cli: CliTool.claude,
+          ),
+          projectFolderPath: '/remote',
+          globalPresets: const [],
+          selectableTargets: const [sshTarget],
+          readiness: _FakeRemoteCliReadiness(
+            onProbe: (target, cli, kind) async {
+              probed.add((cli.value, kind));
+              if (kind == CliBinaryKind.adapter) {
+                return RemoteCliMissing(targetId: target.id, cli: cli);
+              }
+              return RemoteCliReady(
+                targetId: target.id,
+                cli: cli,
+                path: '/home/u/.local/bin/claude',
+              );
+            },
+          ),
+          home: localHome,
+        );
 
-      expect(probed, [
-        ('claude', CliBinaryKind.cli),
-        ('claude', CliBinaryKind.adapter),
-      ]);
-      expect(block, isA<RemoteCliMissingLaunchBlock>());
-      expect(
-        (block! as RemoteCliMissingLaunchBlock).missing.single.kind,
-        CliBinaryKind.adapter,
-      );
-    });
+        expect(probed, [
+          ('claude', CliBinaryKind.cli),
+          ('claude', CliBinaryKind.adapter),
+        ]);
+        expect(block, isA<RemoteCliMissingLaunchBlock>());
+        expect(
+          (block! as RemoteCliMissingLaunchBlock).missing.single.kind,
+          CliBinaryKind.adapter,
+        );
+      },
+    );
   });
 
   group('WorkspaceLandingLaunchGate.localBlock', () {
@@ -395,9 +396,7 @@ void main() {
       );
       final workspace = Workspace(
         workspaceId: 'ws-1',
-        folders: [
-          const WorkspaceFolder(path: '/local', targetId: 'local'),
-        ],
+        folders: [const WorkspaceFolder(path: '/local', targetId: 'local')],
         createdAt: 1,
         memberTargetsByTeam: {
           team.id: {'dev': 'local'},
@@ -426,9 +425,7 @@ void main() {
       );
       final workspace = Workspace(
         workspaceId: 'ws-1',
-        folders: [
-          const WorkspaceFolder(path: '/local', targetId: 'local'),
-        ],
+        folders: [const WorkspaceFolder(path: '/local', targetId: 'local')],
         createdAt: 1,
         memberTargetsByTeam: {
           team.id: {'dev': 'local'},
@@ -436,14 +433,12 @@ void main() {
         memberPlacementInitializedByTeam: {team.id: true},
       );
 
-      final block = gateWithKnown(
-        {'cli|claude'},
-        acpSeed: (_) => true,
-      ).localBlock(
-        workspace: workspace,
-        draft: LandingLaunchContext(isPersonal: false, teamId: team.id),
-        team: team,
-      );
+      final block = gateWithKnown({'cli|claude'}, acpSeed: (_) => true)
+          .localBlock(
+            workspace: workspace,
+            draft: LandingLaunchContext(isPersonal: false, teamId: team.id),
+            team: team,
+          );
 
       expect(block, isA<LocalCliMissingLaunchBlock>());
       expect(block!.missing.single.cli, CliTool.claude);
@@ -460,9 +455,7 @@ void main() {
       );
       final workspace = Workspace(
         workspaceId: 'ws-1',
-        folders: [
-          const WorkspaceFolder(path: '/local', targetId: 'local'),
-        ],
+        folders: [const WorkspaceFolder(path: '/local', targetId: 'local')],
         createdAt: 1,
         memberTargetsByTeam: {
           team.id: {'dev': 'local'},
@@ -470,14 +463,12 @@ void main() {
         memberPlacementInitializedByTeam: {team.id: true},
       );
 
-      final block = gateWithKnown(
-        {'cli|claude'},
-        acpSeed: (_) => true,
-      ).localBlock(
-        workspace: workspace,
-        draft: LandingLaunchContext(isPersonal: false, teamId: team.id),
-        team: team,
-      );
+      final block = gateWithKnown({'cli|claude'}, acpSeed: (_) => true)
+          .localBlock(
+            workspace: workspace,
+            draft: LandingLaunchContext(isPersonal: false, teamId: team.id),
+            team: team,
+          );
 
       expect(block, isA<LocalCliMissingLaunchBlock>());
       expect(block!.missing.single.cli, CliTool.claude);
@@ -494,9 +485,7 @@ void main() {
       );
       final workspace = Workspace(
         workspaceId: 'ws-1',
-        folders: [
-          const WorkspaceFolder(path: '/local', targetId: 'local'),
-        ],
+        folders: [const WorkspaceFolder(path: '/local', targetId: 'local')],
         createdAt: 1,
         memberTargetsByTeam: {
           team.id: {'dev': 'local'},
@@ -504,14 +493,12 @@ void main() {
         memberPlacementInitializedByTeam: {team.id: true},
       );
 
-      final block = gateWithKnown(
-        {'cli|claude'},
-        acpSeed: (_) => false,
-      ).localBlock(
-        workspace: workspace,
-        draft: LandingLaunchContext(isPersonal: false, teamId: team.id),
-        team: team,
-      );
+      final block = gateWithKnown({'cli|claude'}, acpSeed: (_) => false)
+          .localBlock(
+            workspace: workspace,
+            draft: LandingLaunchContext(isPersonal: false, teamId: team.id),
+            team: team,
+          );
 
       expect(block, isNull);
     });

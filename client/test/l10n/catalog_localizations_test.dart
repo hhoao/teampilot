@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/l10n/app_localizations_en.dart';
-import 'package:teampilot/l10n/app_localizations_zh.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 
 void main() {
   test(
@@ -8,16 +8,16 @@ void main() {
     () {
       final l10n = AppLocalizationsEn();
 
-      expect(l10n.catalogSortAdoption, isNotEmpty);
-      expect(l10n.catalogSortRating, isNotEmpty);
-      expect(l10n.catalogSortUpdated, isNotEmpty);
-      expect(l10n.catalogSortPublished, isNotEmpty);
-      expect(l10n.catalogSortName, isNotEmpty);
-      expect(l10n.catalogMetricRating, isNotEmpty);
-      expect(l10n.catalogMetricUpdated, isNotEmpty);
-      expect(l10n.catalogMetricPublished, isNotEmpty);
-      expect(l10n.catalogMetricMissing, isNotEmpty);
-      expect(l10n.catalogMetricMissingTooltip, isNotEmpty);
+      expect(l10n.catalog.sortAdoption, isNotEmpty);
+      expect(l10n.catalog.sortRating, isNotEmpty);
+      expect(l10n.catalog.sortUpdated, isNotEmpty);
+      expect(l10n.catalog.sortPublished, isNotEmpty);
+      expect(l10n.catalog.sortName, isNotEmpty);
+      expect(l10n.catalog.metricRating, isNotEmpty);
+      expect(l10n.catalog.metricUpdated, isNotEmpty);
+      expect(l10n.catalog.metricPublished, isNotEmpty);
+      expect(l10n.catalog.metricMissing, isNotEmpty);
+      expect(l10n.catalog.metricMissingTooltip, isNotEmpty);
     },
   );
 
@@ -28,16 +28,16 @@ void main() {
       final chinese = AppLocalizationsZh();
 
       final englishLabels = [
-        english.skillsCatalogAdoption,
-        english.mcpCatalogAdoption,
-        english.pluginsCatalogAdoption,
+        english.skills.catalogAdoption,
+        english.mcp.catalogAdoption,
+        english.plugins.catalogAdoption,
         english.teamsCatalogAdoption,
         english.expertsCatalogAdoption,
       ];
       final chineseLabels = [
-        chinese.skillsCatalogAdoption,
-        chinese.mcpCatalogAdoption,
-        chinese.pluginsCatalogAdoption,
+        chinese.skills.catalogAdoption,
+        chinese.mcp.catalogAdoption,
+        chinese.plugins.catalogAdoption,
         chinese.teamsCatalogAdoption,
         chinese.expertsCatalogAdoption,
       ];
@@ -53,18 +53,27 @@ void main() {
       final l10n = AppLocalizationsEn();
 
       expect(
-        l10n.catalogSourceWarningEntry('SkillsMP', 'request timed out'),
+        l10n.catalog.sourceWarningEntry(
+          source: 'SkillsMP',
+          error: 'request timed out',
+        ),
         contains('SkillsMP'),
       );
       expect(
-        l10n.catalogSourceWarningEntry('SkillsMP', 'request timed out'),
+        l10n.catalog.sourceWarningEntry(
+          source: 'SkillsMP',
+          error: 'request timed out',
+        ),
         contains('request timed out'),
       );
-      expect(l10n.catalogSourceWarningAccessibilityLabel(2), contains('2'));
-      expect(l10n.catalogSortAccessibilityLabel, isNotEmpty);
-      expect(l10n.catalogRefreshAccessibilityLabel, isNotEmpty);
       expect(
-        l10n.catalogMissingMetricAccessibilityLabel('Rating'),
+        l10n.catalog.sourceWarningAccessibilityLabel(count: 2),
+        contains('2'),
+      );
+      expect(l10n.catalog.sortAccessibilityLabel, isNotEmpty);
+      expect(l10n.catalog.refreshAccessibilityLabel, isNotEmpty);
+      expect(
+        l10n.catalog.missingMetricAccessibilityLabel(label: 'Rating'),
         contains('Rating'),
       );
     },

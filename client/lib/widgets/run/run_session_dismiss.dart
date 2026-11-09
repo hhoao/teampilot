@@ -28,11 +28,15 @@ Future<bool> dismissRunSessionWithConfirm({
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TpDialogHeader(
-              title: l10n.runStopSessionTitle,
+              title: l10n.run.stopSessionTitle,
               onClose: () => Navigator.of(dialogContext).pop(false),
             ),
             const SizedBox(height: 12),
-            Text(l10n.runStopSessionMessage(session.owned.configuration.name)),
+            Text(
+              l10n.run.stopSessionMessage(
+                name: session.owned.configuration.name,
+              ),
+            ),
             TpDialogActions(
               children: [
                 TextButton(
@@ -41,7 +45,7 @@ Future<bool> dismissRunSessionWithConfirm({
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: Text(l10n.runStopAndClose),
+                  child: Text(l10n.run.stopAndClose),
                 ),
               ],
             ),

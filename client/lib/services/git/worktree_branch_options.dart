@@ -1,5 +1,6 @@
 /// A local or remote-only branch choice for the worktree-create dialog.
 library;
+
 import 'dart:math';
 
 class WorktreeBranchOption {

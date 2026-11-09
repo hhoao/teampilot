@@ -16,10 +16,10 @@ class TeamMemberPromptPreset {
 
 String teamMemberPromptPresetLabel(AppLocalizations l10n, String id) {
   return switch (id) {
-    'team_lead' => l10n.memberPromptPresetTeamLead,
-    'developer' => l10n.memberPromptPresetDeveloper,
-    'reviewer' => l10n.memberPromptPresetReviewer,
-    'researcher' => l10n.memberPromptPresetResearcher,
+    'team_lead' => l10n.member.promptPresetTeamLead,
+    'developer' => l10n.member.promptPresetDeveloper,
+    'reviewer' => l10n.member.promptPresetReviewer,
+    'researcher' => l10n.member.promptPresetResearcher,
     _ => id,
   };
 }
@@ -27,10 +27,10 @@ String teamMemberPromptPresetLabel(AppLocalizations l10n, String id) {
 /// Responsibilities text (WHAT the role is) → member.responsibilities.
 String teamMemberPromptPresetText(AppLocalizations l10n, String id) {
   return switch (id) {
-    'team_lead' => l10n.memberPromptPresetTeamLeadText,
-    'developer' => l10n.memberPromptPresetDeveloperText,
-    'reviewer' => l10n.memberPromptPresetReviewerText,
-    'researcher' => l10n.memberPromptPresetResearcherText,
+    'team_lead' => l10n.member.promptPresetTeamLeadText,
+    'developer' => l10n.member.promptPresetDeveloperText,
+    'reviewer' => l10n.member.promptPresetReviewerText,
+    'researcher' => l10n.member.promptPresetResearcherText,
     _ => '',
   };
 }
@@ -40,9 +40,9 @@ String teamMemberPromptPresetText(AppLocalizations l10n, String id) {
 /// the system addendum in [MemberRoleProvision].
 String teamMemberPlaybookPresetText(AppLocalizations l10n, String id) {
   return switch (id) {
-    'developer' => l10n.memberPlaybookPresetDeveloperText,
-    'reviewer' => l10n.memberPlaybookPresetReviewerText,
-    'researcher' => l10n.memberPlaybookPresetResearcherText,
+    'developer' => l10n.member.playbookPresetDeveloperText,
+    'reviewer' => l10n.member.playbookPresetReviewerText,
+    'researcher' => l10n.member.playbookPresetResearcherText,
     _ => '',
   };
 }

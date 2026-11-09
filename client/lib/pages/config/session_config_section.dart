@@ -27,8 +27,8 @@ class SessionConfigWorkspace extends StatelessWidget {
       children: [
         if (showHeading) ...[
           _SessionHeading(
-            title: l10n.session,
-            subtitle: l10n.sessionPageSubtitle,
+            title: l10n.session.session,
+            subtitle: l10n.session.pageSubtitle,
           ),
           const SizedBox(height: 16),
         ],
@@ -169,8 +169,8 @@ class _SessionControlsState extends State<_SessionControls> {
                 const RuntimeTargetPicker(),
                 if (isSshMode) ...[
                   TpPreferenceStack(
-                    title: l10n.sshDefaultWorkingDirectoryTitle,
-                    subtitle: l10n.sshDefaultWorkingDirectorySubtitle,
+                    title: l10n.ssh.defaultWorkingDirectoryTitle,
+                    subtitle: l10n.ssh.defaultWorkingDirectorySubtitle,
                     body: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -193,7 +193,7 @@ class _SessionControlsState extends State<_SessionControls> {
                           onPressed: snapshot.defaultSshWorkingDirectory.isEmpty
                               ? null
                               : _resetSshCwd,
-                          child: Text(l10n.cliExecutablePathReset),
+                          child: Text(l10n.cli.executablePathReset),
                         ),
                       ],
                     ),
@@ -213,8 +213,8 @@ class _SessionControlsState extends State<_SessionControls> {
                 if (kShowLlmConfigPathSetting)
                   const SessionLlmConfigPathSettingsRow(),
                 TpPreferenceRow(
-                  title: l10n.terminalScrollbackLinesTitle,
-                  subtitle: l10n.terminalScrollbackLinesDescription,
+                  title: l10n.terminal.scrollbackLinesTitle,
+                  subtitle: l10n.terminal.scrollbackLinesDescription,
                   trailing: SizedBox(
                     width: 120,
                     child: TextFormField(
@@ -231,8 +231,8 @@ class _SessionControlsState extends State<_SessionControls> {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.terminalLinkClickOpensInAppTitle,
-                  subtitle: l10n.terminalLinkClickOpensInAppDescription,
+                  title: l10n.terminal.linkClickOpensInAppTitle,
+                  subtitle: l10n.terminal.linkClickOpensInAppDescription,
                   trailing: Switch(
                     key: AppKeys.terminalLinkClickOpensInAppSwitch,
                     value: snapshot.terminalLinkClickOpensInApp,
@@ -295,8 +295,8 @@ class _SessionControlsState extends State<_SessionControls> {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.chatSubmitSwitchesToTerminalTitle,
-                  subtitle: l10n.chatSubmitSwitchesToTerminalDescription,
+                  title: l10n.chat.submitSwitchesToTerminalTitle,
+                  subtitle: l10n.chat.submitSwitchesToTerminalDescription,
                   trailing: Switch(
                     key: AppKeys.chatSubmitSwitchesToTerminalSwitch,
                     value: snapshot.chatSubmitSwitchesToTerminal,
@@ -326,8 +326,8 @@ class _SessionControlsState extends State<_SessionControls> {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.gitAutoFetchTitle,
-                  subtitle: l10n.gitAutoFetchDescription,
+                  title: l10n.git.autoFetchTitle,
+                  subtitle: l10n.git.autoFetchDescription,
                   trailing: Switch(
                     value: snapshot.gitAutoFetchEnabled,
                     onChanged: (value) => cubit.setGitAutoFetchEnabled(value),
@@ -335,22 +335,22 @@ class _SessionControlsState extends State<_SessionControls> {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.gitAutoFetchIntervalTitle,
-                  subtitle: l10n.gitAutoFetchIntervalDescription,
+                  title: l10n.git.autoFetchIntervalTitle,
+                  subtitle: l10n.git.autoFetchIntervalDescription,
                   trailing: TpCompactSelect<int>(
                     value: snapshot.gitAutoFetchIntervalMinutes,
                     entries: [
-                      for (final minutes
-                          in {
-                            1,
-                            5,
-                            15,
-                            snapshot.gitAutoFetchIntervalMinutes,
-                          }.toList()
-                            ..sort())
+                      for (final minutes in {
+                        1,
+                        5,
+                        15,
+                        snapshot.gitAutoFetchIntervalMinutes,
+                      }.toList()..sort())
                         (
                           minutes,
-                          l10n.gitAutoFetchIntervalMinutesOption(minutes),
+                          l10n.git.autoFetchIntervalMinutesOption(
+                            minutes: minutes,
+                          ),
                         ),
                     ],
                     onChanged: (value) {

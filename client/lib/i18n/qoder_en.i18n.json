@@ -1,0 +1,15 @@
+{
+  "contextWindow": "Context window (tokens)",
+  "contextWindowHint": "Leave empty to use the model default.",
+  "credentialsActionFailed": "The Qoder action failed",
+  "credentialsCancel": "Cancel",
+  "credentialsDone": "Done",
+  "credentialsLogin": "Sign in",
+  "credentialsLoginExited": "Qoder CLI exited. Close this dialog and start the sign-in again.",
+  "credentialsLoginFailed": "Could not start the login terminal: {error: String}",
+  "credentialsLoginIntro": "Complete the sign-in in the terminal below. The CLI opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.",
+  "credentialsLoginStarting": "Starting Qoder CLI…",
+  "credentialsLoginTitle": "Sign in to Qoder",
+  "credentialsRelaunch": "Relaunch",
+  "credentialsSignedIn": "Signed in"
+}

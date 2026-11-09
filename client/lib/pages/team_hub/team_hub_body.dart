@@ -41,7 +41,7 @@ class TeamHubBody extends StatelessWidget {
               final searchField = TextField(
                 decoration: tpSearchPillDecoration(
                   context,
-                  hintText: l10n.teamHubSearchHint,
+                  hintText: l10n.teamHub.searchHint,
                 ),
                 onChanged: cubit.setSearch,
               );
@@ -55,18 +55,18 @@ class TeamHubBody extends StatelessWidget {
                 ],
                 initialItem: state.sort,
                 itemLabel: (s) => switch (s) {
-                  CatalogSortKey.adoption => l10n.catalogSortAdoption,
-                  CatalogSortKey.rating => l10n.catalogSortRating,
-                  CatalogSortKey.updated => l10n.catalogSortUpdated,
-                  CatalogSortKey.published => l10n.catalogSortPublished,
-                  CatalogSortKey.name => l10n.catalogSortName,
+                  CatalogSortKey.adoption => l10n.catalog.sortAdoption,
+                  CatalogSortKey.rating => l10n.catalog.sortRating,
+                  CatalogSortKey.updated => l10n.catalog.sortUpdated,
+                  CatalogSortKey.published => l10n.catalog.sortPublished,
+                  CatalogSortKey.name => l10n.catalog.sortName,
                 },
                 onChanged: (s) => s == null ? null : cubit.setSort(s),
               );
               final sourceWarning = _sourceWarning(context, state);
               final refreshButton = TpAnimatedIconButton(
                 key: const Key('team-hub-refresh'),
-                tooltip: l10n.teamHubRefresh,
+                tooltip: l10n.teamHub.refresh,
                 icon: Icons.refresh,
                 busy: state.refreshing,
                 enabled: !state.refreshing,
@@ -117,9 +117,9 @@ class TeamHubBody extends StatelessWidget {
         for (final failure in state.sourceFailures)
           TpCatalogFailureView(
             sourceLabel: failure.sourceLabel,
-            message: l10n.catalogSourceWarningEntry(
-              failure.sourceLabel,
-              failure.message,
+            message: l10n.catalog.sourceWarningEntry(
+              source: failure.sourceLabel,
+              error: failure.message,
             ),
           ),
       ],
@@ -141,8 +141,8 @@ class TeamHubBody extends StatelessWidget {
         return TpEmptyState(
           centered: true,
           icon: Icons.star_outline_rounded,
-          title: l10n.teamHubFavoritesEmptyTitle,
-          hint: l10n.teamHubFavoritesEmptyHint,
+          title: l10n.teamHub.favoritesEmptyTitle,
+          hint: l10n.teamHub.favoritesEmptyHint,
         );
       }
       return Padding(
@@ -152,9 +152,9 @@ class TeamHubBody extends StatelessWidget {
           icon: isError
               ? Icons.cloud_off_outlined
               : Icons.travel_explore_outlined,
-          title: isError ? l10n.teamHubLoadError : l10n.teamHubEmptyTitle,
-          hint: isError ? null : l10n.teamHubEmptyHint,
-          actionLabel: l10n.teamHubRefresh,
+          title: isError ? l10n.teamHub.loadError : l10n.teamHub.emptyTitle,
+          hint: isError ? null : l10n.teamHub.emptyHint,
+          actionLabel: l10n.teamHub.refresh,
           onAction: () => cubit.load(forceRefresh: true),
         ),
       );
@@ -205,7 +205,7 @@ class _FilterBar extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(inset, 0, inset, 12),
         children: [
           _FilterPill(
-            label: l10n.teamHubFavorites,
+            label: l10n.teamHub.favorites,
             icon: state.favoritesOnly
                 ? Icons.star_rounded
                 : Icons.star_outline_rounded,
@@ -221,7 +221,7 @@ class _FilterBar extends StatelessWidget {
             ),
           ),
           _FilterPill(
-            label: l10n.teamHubCategoryAll,
+            label: l10n.teamHub.categoryAll,
             count: state.allTeams.length,
             selected: selected == null,
             onTap: () => cubit.setCategory(null),

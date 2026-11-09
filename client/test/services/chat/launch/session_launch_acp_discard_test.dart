@@ -67,91 +67,100 @@ void main() {
     );
   });
 
-  test('discardPersonalAcpRuntime closes the personal cubit and marks it reclaimed',
-      () async {
-    final tabStore = ChatTabStore(storage: fakeHomeStorage())
-      ..setActiveWorkspaceId('w1');
-    final tab = ChatTab(
-      info: ChatTabInfo(id: 'sess', title: 'S', subtitle: ''),
-      cliTeamName: '',
-    );
-    tab.persistedSession = AppSession(
-      sessionId: 'sess',
-      workspaceId: 'w1',
-      createdAt: 1,
-      sessionTeam: '',
-      acp: true,
-    );
-    tabStore.registerSession(tab);
-    final host = _Host(tabStore);
-    final service = SessionLaunchService(host, storage: fakeHomeStorage());
+  test(
+    'discardPersonalAcpRuntime closes the personal cubit and marks it reclaimed',
+    () async {
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())
+        ..setActiveWorkspaceId('w1');
+      final tab = ChatTab(
+        info: ChatTabInfo(id: 'sess', title: 'S', subtitle: ''),
+        cliTeamName: '',
+      );
+      tab.persistedSession = AppSession(
+        sessionId: 'sess',
+        workspaceId: 'w1',
+        createdAt: 1,
+        sessionTeam: '',
+        acp: true,
+      );
+      tabStore.registerSession(tab);
+      final host = _Host(tabStore);
+      final service = SessionLaunchService(host, storage: fakeHomeStorage());
 
-    final cubit = await _readyCubit();
-    tab.acpRuntime = cubit;
+      final cubit = await _readyCubit();
+      tab.acpRuntime = cubit;
 
-    service.discardPersonalAcpRuntime('sess');
+      service.discardPersonalAcpRuntime('sess');
 
-    expect(tab.acpRuntime, isNull);
-    expect(tab.reclaimedAcpRuntime, isTrue);
-    expect(host.clearedLaunchError, contains('sess'));
-    expect(host.updatedTabRunning, contains('sess'));
+      expect(tab.acpRuntime, isNull);
+      expect(tab.reclaimedAcpRuntime, isTrue);
+      expect(host.clearedLaunchError, contains('sess'));
+      expect(host.updatedTabRunning, contains('sess'));
 
-    await pumpEventQueue();
-    expect(cubit.isClosed, isTrue);
-  });
+      await pumpEventQueue();
+      expect(cubit.isClosed, isTrue);
+    },
+  );
 
-  test('discardPersonalAcpRuntime is a no-op for non-ACP / missing tabs',
-      () async {
-    final tabStore = ChatTabStore(storage: fakeHomeStorage())
-      ..setActiveWorkspaceId('w1');
-    final service = SessionLaunchService(
-      _Host(tabStore),
-      storage: fakeHomeStorage(),
-    );
+  test(
+    'discardPersonalAcpRuntime is a no-op for non-ACP / missing tabs',
+    () async {
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())
+        ..setActiveWorkspaceId('w1');
+      final service = SessionLaunchService(
+        _Host(tabStore),
+        storage: fakeHomeStorage(),
+      );
 
-    service.discardPersonalAcpRuntime('');
-    service.discardPersonalAcpRuntime('missing');
+      service.discardPersonalAcpRuntime('');
+      service.discardPersonalAcpRuntime('missing');
 
-    // Team tab (not personal ACP) is never touched by this path.
-    final team = ChatTab(
-      info: ChatTabInfo(id: 'sess', title: 'S', subtitle: ''),
-      cliTeamName: '',
-    );
-    team.persistedSession = AppSession(
-      sessionId: 'sess',
-      workspaceId: 'w1',
-      createdAt: 1,
-      sessionTeam: 't',
-    );
-    tabStore.registerSession(team);
-    team.acpRuntime = await _readyCubit();
+      // Team tab (not personal ACP) is never touched by this path.
+      final team = ChatTab(
+        info: ChatTabInfo(id: 'sess', title: 'S', subtitle: ''),
+        cliTeamName: '',
+      );
+      team.persistedSession = AppSession(
+        sessionId: 'sess',
+        workspaceId: 'w1',
+        createdAt: 1,
+        sessionTeam: 't',
+      );
+      tabStore.registerSession(team);
+      team.acpRuntime = await _readyCubit();
 
-    service.discardPersonalAcpRuntime('sess');
+      service.discardPersonalAcpRuntime('sess');
 
-    expect(team.acpRuntime, isNotNull);
-    expect(team.reclaimedAcpRuntime, isFalse);
-  });
+      expect(team.acpRuntime, isNotNull);
+      expect(team.reclaimedAcpRuntime, isFalse);
+    },
+  );
 
-  test('discardAcpSeat is a no-op for blank ids / missing tab / missing cubit',
-      () async {
-    final tabStore = ChatTabStore(storage: fakeHomeStorage())
-      ..setActiveWorkspaceId('w1');
-    final service = SessionLaunchService(_Host(tabStore), storage: fakeHomeStorage());
+  test(
+    'discardAcpSeat is a no-op for blank ids / missing tab / missing cubit',
+    () async {
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())
+        ..setActiveWorkspaceId('w1');
+      final service = SessionLaunchService(
+        _Host(tabStore),
+        storage: fakeHomeStorage(),
+      );
 
-    // No tab, blank ids, missing member — all must return without throwing.
-    service.discardAcpSeat('', '');
-    service.discardAcpSeat('sess', '');
-    service.discardAcpSeat('', 'worker-1');
-    service.discardAcpSeat('missing', 'worker-1');
+      // No tab, blank ids, missing member — all must return without throwing.
+      service.discardAcpSeat('', '');
+      service.discardAcpSeat('sess', '');
+      service.discardAcpSeat('', 'worker-1');
+      service.discardAcpSeat('missing', 'worker-1');
 
-    final tab = ChatTab(
-      info: ChatTabInfo(id: 'sess', title: 'S', subtitle: ''),
-      cliTeamName: '',
-    );
-    tabStore.registerSession(tab);
-    service.discardAcpSeat('sess', 'missing-cubit');
-    expect(tab.reclaimedMemberIds, isEmpty);
-  });
+      final tab = ChatTab(
+        info: ChatTabInfo(id: 'sess', title: 'S', subtitle: ''),
+        cliTeamName: '',
+      );
+      tabStore.registerSession(tab);
+      service.discardAcpSeat('sess', 'missing-cubit');
+      expect(tab.reclaimedMemberIds, isEmpty);
+    },
+  );
 }
 
 Future<AcpChatRuntimeCubit> _readyCubit() async {
@@ -169,7 +178,8 @@ Future<AcpChatRuntimeCubit> _readyCubit() async {
 }
 
 class _Host implements SessionLaunchHost {
-  _Host(this.tabStore) : memberMaterializer = stubTabMemberMaterializer(tabStore);
+  _Host(this.tabStore)
+    : memberMaterializer = stubTabMemberMaterializer(tabStore);
 
   @override
   final ChatTabStore tabStore;

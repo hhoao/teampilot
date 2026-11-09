@@ -53,12 +53,12 @@ void main() {
   Widget wrapForm(Widget form) {
     return MaterialApp(
       localizationsDelegates: const [
-        AppLocalizations.delegate,
+        const AppLocalizationsCompatDelegate(),
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: AppLocalizations.supportedLocales,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: CliToolRegistryScope(
         registry: CliToolRegistry.builtIn(),
         child: MultiBlocProvider(
@@ -128,7 +128,7 @@ void main() {
       );
       final l10n = tester.element(find.byType(Scaffold)).l10n;
       expect(
-        find.text(l10n.appProviderCredentialLinkedTo('Entry m1')),
+        find.text(l10n.appProvider.credentialLinkedTo(entry: 'Entry m1')),
         findsOneWidget,
       );
 

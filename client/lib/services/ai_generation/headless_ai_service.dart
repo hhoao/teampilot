@@ -231,8 +231,9 @@ class HeadlessAiService {
         'Headless mode is not supported for ${cli.value}.',
       );
     }
-    if (_registry
-            .capability<HeadlessCredentialProvisioningPendingCapability>(cli) !=
+    if (_registry.capability<HeadlessCredentialProvisioningPendingCapability>(
+          cli,
+        ) !=
         null) {
       throw HeadlessAiException(
         'Headless mode for ${cli.value} is not available yet.',
@@ -394,8 +395,9 @@ class HeadlessAiService {
         'Headless mode is not supported for ${cli.value}.',
       );
     }
-    if (_registry
-            .capability<HeadlessCredentialProvisioningPendingCapability>(cli) !=
+    if (_registry.capability<HeadlessCredentialProvisioningPendingCapability>(
+          cli,
+        ) !=
         null) {
       throw HeadlessAiException(
         'Headless mode for ${cli.value} is not available yet.',

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -178,14 +178,14 @@ class LogViewerBody extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Text(
-              l10n.logViewerPendingTitle,
+              l10n.log.viewerPendingTitle,
               style: TpTextStyles.of(context).mdBoldTightSnug,
             ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Text(
-              l10n.logViewerPendingBody,
+              l10n.log.viewerPendingBody,
               style: TpTextStyles.of(context).mutedSm,
             ),
           ),
@@ -208,8 +208,8 @@ class LogViewerBody extends StatelessWidget {
     if (logFiles.isEmpty && !loading) {
       return LogViewerCenteredMessage(
         icon: Icons.article_outlined,
-        title: l10n.logViewerEmpty,
-        subtitle: l10n.logViewerEmptyHint,
+        title: l10n.log.viewerEmpty,
+        subtitle: l10n.log.viewerEmptyHint,
       );
     }
 

@@ -78,7 +78,9 @@ class _ComposePasteEditorDialogState extends State<ComposePasteEditorDialog> {
                 children: [
                   Expanded(
                     child: Text(
-                      l10n.composePasteEditorTitle(widget.clip.lineCount),
+                      l10n.compose.pasteEditorTitle(
+                        lines: widget.clip.lineCount,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: styles.lgSemibold,
@@ -119,7 +121,7 @@ class _ComposePasteEditorDialogState extends State<ComposePasteEditorDialog> {
                   TextButton.icon(
                     onPressed: _remove,
                     icon: const Icon(Icons.delete_outline_rounded),
-                    label: Text(l10n.composePasteEditorRemove),
+                    label: Text(l10n.compose.pasteEditorRemove),
                   ),
                   const Spacer(),
                   TextButton(
@@ -129,7 +131,7 @@ class _ComposePasteEditorDialogState extends State<ComposePasteEditorDialog> {
                   SizedBox(width: spacing.sm),
                   FilledButton(
                     onPressed: _commit,
-                    child: Text(l10n.composePasteEditorDone),
+                    child: Text(l10n.compose.pasteEditorDone),
                   ),
                 ],
               ),

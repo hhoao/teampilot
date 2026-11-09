@@ -19,8 +19,8 @@ class _FailingSession extends HtmlPreviewSession {
 
 Widget _app({required EditorCubit editor, required HtmlPreviewPane pane}) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: BlocProvider<EditorCubit>(create: (_) => editor, child: pane),
   );
 }

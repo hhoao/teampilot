@@ -257,8 +257,8 @@ class _Summary {
     if (providers.isEmpty) {
       return _Summary(
         providerList: const [],
-        label: l10n.managedProvidersAdd,
-        tooltip: l10n.managedProvidersEmptyHint,
+        label: l10n.managedProviders.add,
+        tooltip: l10n.managedProviders.emptyHint,
         warning: false,
         loading: false,
         selected: false,
@@ -295,8 +295,8 @@ class _Summary {
       providerList: displayList,
       label: label,
       tooltip: warning
-          ? '${l10n.managedProvidersTitle} · ${l10n.managedProvidersQueryFailed}'
-          : l10n.managedProvidersTitle,
+          ? '${l10n.managedProviders.title} · ${l10n.managedProviders.queryFailed}'
+          : l10n.managedProviders.title,
       warning: warning,
       loading: loading,
       selected: false,

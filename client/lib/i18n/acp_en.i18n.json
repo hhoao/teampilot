@@ -1,0 +1,14 @@
+{
+  "chatLaunchFailed": "Couldn't start {cliName: String}. Make sure the CLI is installed and try again.",
+  "chatNotLoggedIn": "The agent isn't logged in. Sign in under Settings → Providers, then try again.",
+  "chatProcessExited": "{cliName: String} exited unexpectedly",
+  "chatSessionOpenFailed": "Couldn't open the {cliName: String} session.",
+  "chatTurnFailed": "This turn failed",
+  "launchFailedAdapter": "Could not start the Claude ACP adapter (claude-agent-acp). Install it and try again.",
+  "launchFailedVersion": "This CLI version does not support ACP chat mode. Update the CLI and try again.",
+  "modelSectionAgent": "Agent model",
+  "modelSectionLaunch": "Launch config",
+  "modelSwitchFailed": "Couldn't switch the ACP model. Try again.",
+  "permissionAskLabel": "Ask",
+  "permissionFullAccessLabel": "Full access"
+}

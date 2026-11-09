@@ -206,8 +206,8 @@ class _CliReadinessPathRowState extends State<CliReadinessPathRow> {
                   : Icon(Icons.download_outlined, size: context.tpIconSizes.md),
               label: Text(
                 widget.installing
-                    ? l10n.cliInstallInstalling
-                    : l10n.cliInstallButton,
+                    ? l10n.cli.installInstalling
+                    : l10n.cli.installButton,
               ),
             ),
           ],
@@ -221,8 +221,8 @@ class _CliReadinessPathRowState extends State<CliReadinessPathRow> {
                   : Icon(Icons.upgrade_outlined, size: context.tpIconSizes.md),
               label: Text(
                 widget.installing
-                    ? l10n.cliInstallUpgrading
-                    : l10n.cliUpgradeButton,
+                    ? l10n.cli.installUpgrading
+                    : l10n.cli.upgradeButton,
               ),
             ),
           ],
@@ -234,7 +234,7 @@ class _CliReadinessPathRowState extends State<CliReadinessPathRow> {
               Icons.folder_open_outlined,
               size: context.tpIconSizes.md,
             ),
-            label: Text(l10n.cliExecutablePathBrowse),
+            label: Text(l10n.cli.executablePathBrowse),
           ),
           const SizedBox(width: 6),
           TextButton(

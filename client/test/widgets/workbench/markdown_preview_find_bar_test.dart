@@ -13,8 +13,8 @@ Future<MarkdownPreviewFindController> pumpBar(WidgetTester tester) async {
     ..setDocument(compileMarkdown('one two three two\n'));
   await tester.pumpWidget(
     MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: Scaffold(
         body: Align(
           alignment: Alignment.topRight,
@@ -56,11 +56,9 @@ void main() {
     final controller = await pumpBar(tester);
     await tester.enterText(find.byType(TextField), 'zzz');
     await tester.pump(const Duration(milliseconds: 200));
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(MarkdownPreviewFindBar)),
-    );
+    final l10n = tester.element(find.byType(MarkdownPreviewFindBar)).l10n;
     expect(find.byType(FindCounterText), findsOneWidget);
-    expect(find.text(l10n.editorFindNoResults), findsOneWidget);
+    expect(find.text(l10n.editor.findNoResults), findsOneWidget);
     // Prev/next disabled without hits; close stays available.
     expect(controller.counterLabel(), isEmpty);
     controller.next();
@@ -71,16 +69,14 @@ void main() {
 
   testWidgets('invalid regex shows the distinct error label', (tester) async {
     final controller = await pumpBar(tester);
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(MarkdownPreviewFindBar)),
-    );
-    await tester.tap(find.byTooltip(l10n.editorFindUseRegex));
+    final l10n = tester.element(find.byType(MarkdownPreviewFindBar)).l10n;
+    await tester.tap(find.byTooltip(l10n.editor.findUseRegex));
     await tester.pump();
     await tester.enterText(find.byType(TextField), '([ ');
     await tester.pump(const Duration(milliseconds: 200));
     expect(controller.hasError, isTrue);
-    expect(find.text(l10n.editorFindInvalidRegex), findsOneWidget);
-    expect(find.text(l10n.editorFindNoResults), findsNothing);
+    expect(find.text(l10n.editor.findInvalidRegex), findsOneWidget);
+    expect(find.text(l10n.editor.findNoResults), findsNothing);
     controller.dispose();
   });
 
@@ -91,8 +87,8 @@ void main() {
     addTearDown(controller.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Scaffold(
           body: Align(
             alignment: Alignment.topRight,
@@ -107,7 +103,9 @@ void main() {
     expect(field.controller!.text, 'two');
   });
 
-  testWidgets('find bar uses the pill radius and group divider', (tester) async {
+  testWidgets('find bar uses the pill radius and group divider', (
+    tester,
+  ) async {
     final controller = await pumpBar(tester);
     final panel = tester.widget<FindBarPanel>(find.byType(FindBarPanel));
     expect(panel.borderRadius, FindBarPanel.kPillRadius);

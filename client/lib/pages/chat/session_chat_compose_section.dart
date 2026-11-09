@@ -254,11 +254,11 @@ class SessionChatComposeSection extends StatelessWidget {
               providerId: session.provider,
               modelId: session.model,
             ),
-            emptyLabel: l10n.workspaceChatLandingUsePreset,
+            emptyLabel: l10n.workspace.chatLandingUsePreset,
           )
         : (selectedPreset?.name.trim().isNotEmpty == true
               ? selectedPreset!.name.trim()
-              : l10n.workspaceChatLandingUsePreset);
+              : l10n.workspace.chatLandingUsePreset);
     final acpModelLabel = acpModelState == null
         ? null
         : (acpModelState.currentOption?.name ??
@@ -270,7 +270,7 @@ class SessionChatComposeSection extends StatelessWidget {
       session: session,
       team: team,
       hubState: hubState,
-      expertFallback: l10n.expertHubNoneSelected,
+      expertFallback: l10n.expert.hubNoneSelected,
     );
     final workspaceForSettings = _workspaceForSettings(context);
     final showTeamSettings = !session.isSimple && team != null;
@@ -402,18 +402,19 @@ class SessionChatComposeSection extends StatelessWidget {
                           ? buildComposeModelCascadeMenuSpecs(
                               presets: presetsByRecentUse(sameCliPresets),
                               selectedPresetId: selectedPresetId,
-                              emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
+                              emptyHintLabel:
+                                  l10n.workspace.cliPresetsEmptyHint,
                               emptyProvidersLabel:
-                                  l10n.composeCascadeNoProviders,
-                              presetsLabel: l10n.composeCascadePresets,
+                                  l10n.compose.cascadeNoProviders,
+                              presetsLabel: l10n.compose.cascadePresets,
                               defaultEffortLabel:
-                                  l10n.composeCascadeDefaultEffort,
+                                  l10n.compose.cascadeDefaultEffort,
                               customModelIdLabel:
-                                  l10n.composeCascadeCustomModelId,
-                              noModelsLabel: l10n.composeCascadeNoModels,
-                              savePresetLabel: l10n.composeCascadeSavePreset,
+                                  l10n.compose.cascadeCustomModelId,
+                              noModelsLabel: l10n.compose.cascadeNoModels,
+                              savePresetLabel: l10n.compose.cascadeSavePreset,
                               managePresetsLabel:
-                                  l10n.workspaceCliAddPresetTitle,
+                                  l10n.workspace.cliAddPresetTitle,
                               cliGroups: cascadeGroups,
                               groupByCli: false,
                               modelLabel: (cli, providerId, modelId) =>
@@ -445,15 +446,16 @@ class SessionChatComposeSection extends StatelessWidget {
                               context: context,
                               presets: sameCliPresets,
                               selectedPresetId: selectedPresetId,
-                              emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
+                              emptyHintLabel:
+                                  l10n.workspace.cliPresetsEmptyHint,
                             );
                       final cascadeSpecs = acpModelState == null
                           ? launchSpecs
                           : buildSessionModelMenuSpecs(
                               launchSpecs: launchSpecs,
                               modelState: acpModelState,
-                              agentSectionLabel: l10n.acpModelSectionAgent,
-                              launchSectionLabel: l10n.acpModelSectionLaunch,
+                              agentSectionLabel: l10n.acp.modelSectionAgent,
+                              launchSectionLabel: l10n.acp.modelSectionLaunch,
                             );
                       return ListenableBuilder(
                         listenable: Listenable.merge([
@@ -495,8 +497,8 @@ class SessionChatComposeSection extends StatelessWidget {
                             focusNode: composeFocusNode,
                             clip: composeClip,
                             hint: effectiveWorking
-                                ? l10n.sessionFollowUpAddPlaceholder
-                                : l10n.sessionHistoryComposeHint,
+                                ? l10n.session.followUpAddPlaceholder
+                                : l10n.session.historyComposeHint,
                             canSubmit: canSubmit,
                             isSubmitting: isSubmitting,
                             onSubmit: () => unawaited(
@@ -547,7 +549,7 @@ class SessionChatComposeSection extends StatelessWidget {
                                 runtime: acpRuntime,
                               ),
                               teamSettingsTooltip: showTeamSettings
-                                  ? l10n.teamSettings
+                                  ? l10n.team.settings
                                   : null,
                               onTeamSettings:
                                   showTeamSettings && liveTeam != null
@@ -587,12 +589,12 @@ class SessionChatComposeSection extends StatelessWidget {
                             ),
                             dropTarget: dropTarget,
                             deferFieldMount: false,
-                            attachTooltip: l10n.workspaceChatLandingAttach,
-                            voiceTooltip: l10n.workspaceChatLandingVoice,
+                            attachTooltip: l10n.workspace.chatLandingAttach,
+                            voiceTooltip: l10n.workspace.chatLandingVoice,
                             voiceCancelTooltip:
-                                l10n.workspaceChatLandingVoiceCancel,
+                                l10n.workspace.chatLandingVoiceCancel,
                             voiceStopTooltip:
-                                l10n.workspaceChatLandingVoiceStop,
+                                l10n.workspace.chatLandingVoiceStop,
                             isVoiceListening: voiceController.isListening,
                             voiceElapsed: voiceController.elapsed,
                             voiceSoundLevel: voiceController.soundLevel,
@@ -981,7 +983,7 @@ class SessionChatComposeSection extends StatelessWidget {
     if (value is CascadeCustomModelRequest) {
       final modelId = await showComposeCustomModelIdDialog(
         context,
-        title: context.l10n.composeCascadeCustomModelIdTitle,
+        title: context.l10n.compose.cascadeCustomModelIdTitle,
         confirmLabel: context.l10n.confirm,
         initial: session.model,
       );
@@ -1036,7 +1038,7 @@ class SessionChatComposeSection extends StatelessWidget {
       if (!context.mounted) return;
       AppToast.show(
         context,
-        message: context.l10n.acpModelSwitchFailed,
+        message: context.l10n.acp.modelSwitchFailed,
         variant: TpToastVariant.warning,
       );
       return;
@@ -1283,7 +1285,7 @@ class SessionChatComposeSection extends StatelessWidget {
   static void _toastContinueSaveFailed(BuildContext context) {
     AppToast.show(
       context,
-      message: context.l10n.sessionHistoryContinueSaveFailed,
+      message: context.l10n.session.historyContinueSaveFailed,
       variant: TpToastVariant.warning,
     );
   }

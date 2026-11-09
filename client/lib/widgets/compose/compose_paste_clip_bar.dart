@@ -29,7 +29,7 @@ class ComposePasteClipBar extends StatelessWidget {
     final icons = context.tpIconSizes;
     final styles = TpTextStyles.of(context);
     final label =
-        '${l10n.composePasteClipLabel} · ${l10n.composePasteClipLines(clip.lineCount)}';
+        '${l10n.compose.pasteClipLabel} · ${l10n.compose.pasteClipLines(lines: clip.lineCount)}';
 
     final badge = Material(
       color: palette.chipFill,
@@ -63,10 +63,10 @@ class ComposePasteClipBar extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Tooltip(message: l10n.composePasteClipEdit, child: badge),
+        Tooltip(message: l10n.compose.pasteClipEdit, child: badge),
         SizedBox(width: spacing.xs),
         Tooltip(
-          message: l10n.composePasteClipRemove,
+          message: l10n.compose.pasteClipRemove,
           child: TpHover(
             shape: TpPressableShape.circle,
             width: 28,

@@ -85,19 +85,15 @@ void main() {
 
   test('parses usage, finality, cache, and 1h cache', () async {
     final ctx = _ctx();
-    final path = p.join(
-      _root,
-      'projects',
-      '-home-me-proj',
-      'native-1.jsonl',
-    );
+    final path = p.join(_root, 'projects', '-home-me-proj', 'native-1.jsonl');
     await ctx.fs.writeString(
       path,
       '${_line(id: 'm1', input: 100, output: 20, cacheRead: 30, cacheCreate: 10, cache1h: 5)}\n',
     );
-    final source = (await const ClaudeSessionUsageCapability()
-        .discoverUsageSources(ctx))
-        .single;
+    final source =
+        (await const ClaudeSessionUsageCapability().discoverUsageSources(
+          ctx,
+        )).single;
 
     final scan = await const ClaudeSessionUsageCapability().scanUsageSource(
       ctx: ctx,
@@ -123,19 +119,15 @@ void main() {
 
   test('non-final message stays importable and is replaced later', () async {
     final ctx = _ctx();
-    final path = p.join(
-      _root,
-      'projects',
-      '-home-me-proj',
-      'native-1.jsonl',
-    );
+    final path = p.join(_root, 'projects', '-home-me-proj', 'native-1.jsonl');
     await ctx.fs.writeString(
       path,
       '${_line(id: 'm1', output: 1, stopReason: null)}\n',
     );
-    final source = (await const ClaudeSessionUsageCapability()
-        .discoverUsageSources(ctx))
-        .single;
+    final source =
+        (await const ClaudeSessionUsageCapability().discoverUsageSources(
+          ctx,
+        )).single;
     final first = await const ClaudeSessionUsageCapability().scanUsageSource(
       ctx: ctx,
       source: source,
@@ -161,19 +153,15 @@ void main() {
 
   test('skips zero-usage and malformed lines', () async {
     final ctx = _ctx();
-    final path = p.join(
-      _root,
-      'projects',
-      '-home-me-proj',
-      'native-1.jsonl',
-    );
+    final path = p.join(_root, 'projects', '-home-me-proj', 'native-1.jsonl');
     await ctx.fs.writeString(
       path,
       'not-json\n${_line(id: 'm1', input: 0, output: 0)}\n${_line(id: 'm2')}\n',
     );
-    final source = (await const ClaudeSessionUsageCapability()
-        .discoverUsageSources(ctx))
-        .single;
+    final source =
+        (await const ClaudeSessionUsageCapability().discoverUsageSources(
+          ctx,
+        )).single;
 
     final scan = await const ClaudeSessionUsageCapability().scanUsageSource(
       ctx: ctx,

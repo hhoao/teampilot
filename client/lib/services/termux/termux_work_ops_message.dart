@@ -15,6 +15,6 @@ class TermuxWorkOpsMessage {
   static void resetForTesting() => _l10n = null;
 
   static String disconnectedBlocked() =>
-      _l10n?.termuxDisconnectedWorkOpsBlocked ??
+      _l10n?.termux.disconnectedWorkOpsBlocked ??
       'Termux is disconnected. Reconnect from the banner, then try again.';
 }

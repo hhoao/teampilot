@@ -7,12 +7,12 @@ String formatCoarseRelativeTime(
   DateTime? now,
 }) {
   final diff = (now ?? DateTime.now()).difference(time);
-  if (diff.inMinutes < 1) return l10n.notificationTimeJustNow;
+  if (diff.inMinutes < 1) return l10n.notification.timeJustNow;
   if (diff.inHours < 1) {
-    return l10n.notificationTimeMinutesAgo(diff.inMinutes);
+    return l10n.notification.timeMinutesAgo(minutes: diff.inMinutes);
   }
   if (diff.inDays < 1) {
-    return l10n.notificationTimeHoursAgo(diff.inHours);
+    return l10n.notification.timeHoursAgo(hours: diff.inHours);
   }
-  return l10n.notificationTimeDaysAgo(diff.inDays);
+  return l10n.notification.timeDaysAgo(days: diff.inDays);
 }

@@ -45,19 +45,19 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TpActionMenuButton(
-      tooltip: l10n.fileTree,
+      tooltip: l10n.fileTree.fileTree,
       icon: Icon(Icons.more_vert, size: context.tpIconSizes.sm),
       size: TpIconButton.kCompactSize,
       specs: [
         TpActionMenuSpec.item(
           value: FileTreeHeaderAction.refresh,
           icon: Icons.refresh,
-          label: l10n.fileTreeRefresh,
+          label: l10n.fileTree.refresh,
         ),
         TpActionMenuSpec.item(
           value: FileTreeHeaderAction.reveal,
           icon: Icons.my_location_outlined,
-          label: l10n.fileTreeRevealActiveFile,
+          label: l10n.fileTree.revealActiveFile,
         ),
         if (hasExpandedFolders)
           TpActionMenuSpec.item(
@@ -69,8 +69,8 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
           value: FileTreeHeaderAction.toggleFilter,
           icon: filterVisible ? Icons.search_off : Icons.search,
           label: filterVisible
-              ? l10n.fileTreeHideFilter
-              : l10n.fileTreeShowFilter,
+              ? l10n.fileTree.hideFilter
+              : l10n.fileTree.showFilter,
         ),
         TpActionMenuSpec.item(
           value: FileTreeHeaderAction.toggleHidden,

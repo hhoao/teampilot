@@ -2,13 +2,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_token_document.dart';
 
-ComposeToken _token(int start, int end, {String payload = '@a'}) => ComposeToken(
-  id: '$start-$end',
-  kind: ComposeTokenKind.fileReference,
-  start: start,
-  end: end,
-  payload: payload,
-);
+ComposeToken _token(int start, int end, {String payload = '@a'}) =>
+    ComposeToken(
+      id: '$start-$end',
+      kind: ComposeTokenKind.fileReference,
+      start: start,
+      end: end,
+      payload: payload,
+    );
 
 void main() {
   test('insert after token keeps the token', () {
@@ -87,7 +88,9 @@ void main() {
 
   test('selection-only changes leave tokens untouched', () {
     final doc = ComposeTokenDocument.empty.add(_token(0, 2));
-    expect(doc.applyEdit('@a hi', '@a hi').tokens.single.range,
-        const TextRange(start: 0, end: 2));
+    expect(
+      doc.applyEdit('@a hi', '@a hi').tokens.single.range,
+      const TextRange(start: 0, end: 2),
+    );
   });
 }

@@ -966,10 +966,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     if (newLength < oldLength) {
       _visibleCount = math.min(oldVisible, newLength);
     } else if (newLength > oldLength) {
-      _visibleCount = math.min(
-        newLength,
-        oldVisible + (newLength - oldLength),
-      );
+      _visibleCount = math.min(newLength, oldVisible + (newLength - oldLength));
     }
     if (newLength == 0) {
       _emitEmptyOrPendingReady(sessionId, memberId);

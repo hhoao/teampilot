@@ -103,8 +103,8 @@ Widget _host(
   Locale? locale,
 }) => MaterialApp(
   locale: locale,
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
-  supportedLocales: AppLocalizations.supportedLocales,
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: appLocalizationsSupportedLocales,
   home: MultiProvider(
     providers: [
       BlocProvider.value(value: cubit),

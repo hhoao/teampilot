@@ -92,7 +92,7 @@ class _DownloadSourcesConfigWorkspaceState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (widget.showHeading)
-              WorkspacePaneHeader(title: l10n.downloadSourcesSettingsTitle),
+              WorkspacePaneHeader(title: l10n.download.sourcesSettingsTitle),
             Expanded(
               child: SingleChildScrollView(
                 child: TpCard.outlined(
@@ -100,7 +100,7 @@ class _DownloadSourcesConfigWorkspaceState
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       TpSectionHeader(
-                        title: l10n.downloadSourcesEnabledSources,
+                        title: l10n.download.sourcesEnabledSources,
                       ),
                       for (final source in sources)
                         _SourceRow(source: source, l10n: l10n),
@@ -108,7 +108,7 @@ class _DownloadSourcesConfigWorkspaceState
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                         child: Text(
-                          l10n.downloadSourcesMirrorBaseUrl,
+                          l10n.download.sourcesMirrorBaseUrl,
                           style: TpTextStyles.of(context).smMedium,
                         ),
                       ),
@@ -117,7 +117,7 @@ class _DownloadSourcesConfigWorkspaceState
                         child: TextFormField(
                           controller: _mirrorController,
                           decoration: InputDecoration(
-                            hintText: l10n.downloadSourcesMirrorHint,
+                            hintText: l10n.download.sourcesMirrorHint,
                           ),
                           keyboardType: TextInputType.url,
                           textInputAction: TextInputAction.done,
@@ -143,14 +143,14 @@ class _DownloadSourcesConfigWorkspaceState
                                         strokeWidth: 2,
                                       ),
                                     )
-                                  : Text(l10n.downloadSourcesSave),
+                                  : Text(l10n.download.sourcesSave),
                             ),
                             TpButton(
                               variant: TpButtonVariant.outline,
                               onPressed: _restoring
                                   ? null
                                   : () => unawaited(_restoreDefaults(cubit)),
-                              child: Text(l10n.downloadSourcesRestoreDefaults),
+                              child: Text(l10n.download.sourcesRestoreDefaults),
                             ),
                           ],
                         ),
@@ -176,7 +176,7 @@ class _SourceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final rewriteLabel = source.rewriteOrigin ?? l10n.downloadSourcesIdentity;
+    final rewriteLabel = source.rewriteOrigin ?? l10n.download.sourcesIdentity;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
       child: Column(

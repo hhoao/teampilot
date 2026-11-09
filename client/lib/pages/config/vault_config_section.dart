@@ -33,12 +33,12 @@ class VaultConfigSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (showHeading) WorkspacePaneHeader(title: l10n.vaultPageTitle),
+        if (showHeading) WorkspacePaneHeader(title: l10n.vault.pageTitle),
         if (homeOffline)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(
-              l10n.vaultHomeOfflineHint,
+              l10n.vault.homeOfflineHint,
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),

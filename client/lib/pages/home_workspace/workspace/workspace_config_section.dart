@@ -29,12 +29,12 @@ enum WorkspaceConfigSection implements WorkspaceSectionDescriptor {
 
   @override
   String title(AppLocalizations l10n) => switch (this) {
-    WorkspaceConfigSection.settings => l10n.homeWorkspaceWorkspaceSettings,
-    WorkspaceConfigSection.skills => l10n.homeWorkspaceWorkspaceSkills,
-    WorkspaceConfigSection.plugins => l10n.homeWorkspaceWorkspacePlugins,
-    WorkspaceConfigSection.mcp => l10n.homeWorkspaceWorkspaceMcp,
-    WorkspaceConfigSection.extensions => l10n.homeWorkspaceWorkspaceExtensions,
-    WorkspaceConfigSection.hooks => l10n.homeWorkspaceWorkspaceHooks,
+    WorkspaceConfigSection.settings => l10n.homeWorkspace.workspaceSettings,
+    WorkspaceConfigSection.skills => l10n.homeWorkspace.workspaceSkills,
+    WorkspaceConfigSection.plugins => l10n.homeWorkspace.workspacePlugins,
+    WorkspaceConfigSection.mcp => l10n.homeWorkspace.workspaceMcp,
+    WorkspaceConfigSection.extensions => l10n.homeWorkspace.workspaceExtensions,
+    WorkspaceConfigSection.hooks => l10n.homeWorkspace.workspaceHooks,
   };
 
   @override

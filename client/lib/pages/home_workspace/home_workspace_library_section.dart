@@ -86,8 +86,8 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
     final isFavorites = widget.view == HomeLibraryView.favorites;
 
     final title = isFavorites
-        ? l10n.homeWorkspaceMyFavorites
-        : l10n.homeWorkspaceRecentVisits;
+        ? l10n.homeWorkspace.myFavorites
+        : l10n.homeWorkspace.recentVisits;
 
     final allWorkspaces = context.select<ChatCubit, List<Workspace>>(
       (c) => c.state.workspaces,
@@ -124,7 +124,7 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
                     icon: isFavorites
                         ? Icons.star_outline_rounded
                         : Icons.history_rounded,
-                    label: l10n.homeWorkspaceNoData,
+                    label: l10n.homeWorkspace.noData,
                   )
                 : isFavorites
                 ? WorkspaceCollection(

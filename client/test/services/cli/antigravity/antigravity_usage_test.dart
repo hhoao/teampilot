@@ -95,11 +95,7 @@ void main() {
         // The probe sample right after session/new carries no context.
         _record(used: 0, size: 1048576, sequence: 1),
         _record(used: 4096, sequence: 1793091272751000),
-        _record(
-          used: 8192,
-          sequence: 1793091272752000,
-          model: 'gemini-3.8-flash',
-        ),
+        _record(used: 8192, sequence: 1793091272752000, model: 'gemini-3.8-flash'),
       ].join('\n')}\n',
     );
     final capability = const AntigravitySessionUsageCapability();

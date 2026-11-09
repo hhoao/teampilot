@@ -40,8 +40,8 @@ class AcpPermissionCard extends StatelessWidget {
     final alwaysOptions = [
       for (final option in pendingPermission.always)
         option.payload == null
-            ? l10n.opencodePermissionAllowAlways
-            : l10n.agentPermissionAlwaysAllowRule(option.label),
+            ? l10n.opencode.permissionAllowAlways
+            : l10n.agent.permissionAlwaysAllowRule(rule: option.label),
     ];
     return AiMessageStringsScope(
       strings: aiMessageStringsFromL10n(
@@ -65,7 +65,7 @@ class AcpPermissionCard extends StatelessWidget {
           );
           return delivered
               ? const AiInteractiveOk()
-              : AiInteractiveFailed(l10n.opencodePermissionAnswerFailed);
+              : AiInteractiveFailed(l10n.opencode.permissionAnswerFailed);
         },
         onAnswerInTerminal: runtime.cancelTurn,
       ),

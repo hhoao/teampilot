@@ -86,7 +86,7 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
 
     final description = member.description.trim();
     final descriptionText = description.isEmpty
-        ? l10n.expertHubCardNoDescription
+        ? l10n.expert.hubCardNoDescription
         : description;
     final sourceLabel = _sourceLabel(member, l10n);
 
@@ -95,25 +95,25 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
         TeamStatChip(
           icon: Icons.psychology_outlined,
           label: '${member.member.capabilities.length}',
-          tooltip: l10n.expertHubCapabilities,
+          tooltip: l10n.expert.hubCapabilities,
         ),
       if (member.skillDeps.isNotEmpty)
         TeamStatChip(
           icon: Icons.auto_awesome_outlined,
           label: '${member.skillDeps.length}',
-          tooltip: l10n.teamHubSkillsLabel,
+          tooltip: l10n.teamHub.skillsLabel,
         ),
       if (member.pluginDeps.isNotEmpty)
         TeamStatChip(
           icon: Icons.extension_outlined,
           label: '${member.pluginDeps.length}',
-          tooltip: l10n.teamHubPluginsLabel,
+          tooltip: l10n.teamHub.pluginsLabel,
         ),
       if (member.mcpDeps.isNotEmpty)
         TeamStatChip(
           icon: Icons.cable_outlined,
           label: '${member.mcpDeps.length}',
-          tooltip: l10n.teamHubMcpLabel,
+          tooltip: l10n.teamHub.mcpLabel,
         ),
       if (member.category.isNotEmpty)
         TeamStatChip(label: member.category, accent: accent),
@@ -210,13 +210,13 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
                         icon: Icons.download_outlined,
                         label: l10n.expertsCatalogAdoption,
                         value: member.metrics.adoptionCount?.toString(),
-                        missing: l10n.catalogMetricMissingTooltip,
+                        missing: l10n.catalog.metricMissingTooltip,
                       ),
                       rating: _metric(
                         icon: Icons.star_outline_rounded,
-                        label: l10n.catalogMetricRating,
+                        label: l10n.catalog.metricRating,
                         value: member.metrics.rating?.toStringAsFixed(1),
-                        missing: l10n.catalogMetricMissingTooltip,
+                        missing: l10n.catalog.metricMissingTooltip,
                       ),
                     ),
                   ),
@@ -249,11 +249,11 @@ String _sourceLabel(DiscoverableMember member, AppLocalizations l10n) {
   final author = member.author?.trim();
   if (author != null && author.isNotEmpty) return author;
   return switch (member.source) {
-    ExpertMemberSource.builtin => l10n.expertHubSourceBuiltin,
-    ExpertMemberSource.registry => l10n.expertHubSourceRegistry,
-    ExpertMemberSource.local => l10n.expertHubSourceLocal,
-    ExpertMemberSource.teamExtract => l10n.expertHubSourceTeamExtract,
-    ExpertMemberSource.clone => l10n.expertHubSourceClone,
+    ExpertMemberSource.builtin => l10n.expert.hubSourceBuiltin,
+    ExpertMemberSource.registry => l10n.expert.hubSourceRegistry,
+    ExpertMemberSource.local => l10n.expert.hubSourceLocal,
+    ExpertMemberSource.teamExtract => l10n.expert.hubSourceTeamExtract,
+    ExpertMemberSource.clone => l10n.expert.hubSourceClone,
   };
 }
 
@@ -279,11 +279,11 @@ class ExpertSourceBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final label = switch (source) {
-      ExpertMemberSource.builtin => l10n.expertHubSourceBuiltin,
-      ExpertMemberSource.registry => l10n.expertHubSourceRegistry,
-      ExpertMemberSource.local => l10n.expertHubSourceLocal,
-      ExpertMemberSource.teamExtract => l10n.expertHubSourceTeamExtract,
-      ExpertMemberSource.clone => l10n.expertHubSourceClone,
+      ExpertMemberSource.builtin => l10n.expert.hubSourceBuiltin,
+      ExpertMemberSource.registry => l10n.expert.hubSourceRegistry,
+      ExpertMemberSource.local => l10n.expert.hubSourceLocal,
+      ExpertMemberSource.teamExtract => l10n.expert.hubSourceTeamExtract,
+      ExpertMemberSource.clone => l10n.expert.hubSourceClone,
     };
     return TeamStatChip(label: label, accent: accent);
   }

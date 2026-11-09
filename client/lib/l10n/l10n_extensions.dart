@@ -1,5 +1,5 @@
-// Hand-maintained extensions for generated [AppLocalizations].
-// Edit app_en.arb / app_zh.arb, then flutter pub get or flutter run (generate: true).
+// Hand-maintained extensions for slang-generated [AppLocalizations].
+// Edit app_en.arb / app_zh.arb, then run `dart run slang` (see slang.yaml).
 
 import 'package:flutter/widgets.dart';
 
@@ -16,82 +16,81 @@ extension AppLocalizationsX on AppLocalizations {
   String themeColorPresetName(String id) {
     switch (id) {
       case 'ocean':
-        return themePresetOcean;
+        return theme.presetOcean;
       case 'violet':
-        return themePresetViolet;
+        return theme.presetViolet;
       case 'amber':
-        return themePresetAmber;
+        return theme.presetAmber;
       case 'forest':
-        return themePresetForest;
+        return theme.presetForest;
       case 'graphite':
       default:
-        return themePresetGraphite;
+        return theme.presetGraphite;
     }
   }
 
   String providerListCaption(int modelCount, bool proxyEnabled) {
-    final countPart = providerListModelCount(modelCount);
+    final countPart = provider.listModelCount(count: modelCount);
     final proxyPart = proxyEnabled ? proxyOnShort : proxyOffShort;
     return '$countPart · $proxyPart';
   }
 
   String appProviderToolLabel(CliTool cli) {
     return switch (cli) {
-      CliTool.claude => appProviderToolClaude,
-      CliTool.codex => appProviderToolCodex,
-      CliTool.flashskyai => appProviderToolFlashskyai,
-      CliTool.opencode => appProviderToolOpencode,
-      CliTool.cursor => appProviderToolCursor,
-      CliTool.gemini => appProviderToolGemini,
-      CliTool.codebuddy => appProviderToolCodebuddy,
-      CliTool.antigravity => appProviderToolAntigravity,
-      CliTool.qoder => appProviderToolQoder,
+      CliTool.claude => appProvider.toolClaude,
+      CliTool.codex => appProvider.toolCodex,
+      CliTool.flashskyai => appProvider.toolFlashskyai,
+      CliTool.opencode => appProvider.toolOpencode,
+      CliTool.cursor => appProvider.toolCursor,
+      CliTool.gemini => appProvider.toolGemini,
+      CliTool.codebuddy => appProvider.toolCodebuddy,
+      CliTool.antigravity => appProvider.toolAntigravity,
+      CliTool.qoder => appProvider.toolQoder,
     };
   }
 
   String appProviderClaudeAuthFieldOption(String value) {
     return switch (value) {
-      'ANTHROPIC_AUTH_TOKEN' => appProviderClaudeAuthTokenDefault,
-      'ANTHROPIC_API_KEY' => appProviderClaudeAuthApiKey,
+      'ANTHROPIC_AUTH_TOKEN' => appProvider.claudeAuthTokenDefault,
+      'ANTHROPIC_API_KEY' => appProvider.claudeAuthApiKey,
       _ => value,
     };
   }
 
   String managedProviderPresetLabel(String id) => switch (id) {
-    'codex' => managedProvidersQuickPresetCodex,
-    'claude-code' => managedProvidersQuickPresetClaudeCode,
-    'cursor' => managedProvidersQuickPresetCursor,
-    'codebuddy' => managedProvidersQuickPresetCodebuddy,
-    'deepseek' => managedProvidersQuickPresetDeepSeek,
-    'opencode-go' => managedProvidersQuickPresetOpencodeGo,
-    kManagedProviderQuickPresetCustomId => managedProvidersQuickPresetCustom,
+    'codex' => managedProviders.quickPresetCodex,
+    'claude-code' => managedProviders.quickPresetClaudeCode,
+    'cursor' => managedProviders.quickPresetCursor,
+    'codebuddy' => managedProviders.quickPresetCodebuddy,
+    'deepseek' => managedProviders.quickPresetDeepSeek,
+    'opencode-go' => managedProviders.quickPresetOpencodeGo,
+    kManagedProviderQuickPresetCustomId => managedProviders.quickPresetCustom,
     _ => id,
   };
 
   String managedProviderPresetHint(String id) => switch (id) {
-    'codex' => managedProvidersQuickPresetCodexHint,
-    'claude-code' => managedProvidersQuickPresetClaudeCodeHint,
-    'cursor' => managedProvidersQuickPresetCursorHint,
-    'codebuddy' => managedProvidersQuickPresetCodebuddyHint,
-    'deepseek' => managedProvidersQuickPresetDeepSeekHint,
-    'opencode-go' => managedProvidersQuickPresetOpencodeGoHint,
+    'codex' => managedProviders.quickPresetCodexHint,
+    'claude-code' => managedProviders.quickPresetClaudeCodeHint,
+    'cursor' => managedProviders.quickPresetCursorHint,
+    'codebuddy' => managedProviders.quickPresetCodebuddyHint,
+    'deepseek' => managedProviders.quickPresetDeepSeekHint,
+    'opencode-go' => managedProviders.quickPresetOpencodeGoHint,
     kManagedProviderQuickPresetCustomId =>
-      managedProvidersQuickPresetCustomHint,
+      managedProviders.quickPresetCustomHint,
     _ => '',
   };
 
   String managedProviderKindLabel(ManagedProviderKind kind) => switch (kind) {
-    ManagedProviderKind.apiBalance => managedProvidersKindApiBalance,
+    ManagedProviderKind.apiBalance => managedProviders.kindApiBalance,
     ManagedProviderKind.subscriptionQuota =>
-      managedProvidersKindSubscriptionQuota,
-    ManagedProviderKind.customHttp => managedProvidersKindCustomHttp,
+      managedProviders.kindSubscriptionQuota,
+    ManagedProviderKind.customHttp => managedProviders.kindCustomHttp,
     ManagedProviderKind.unknown => kind.value,
   };
 }
 
-extension BuildContextL10n on BuildContext {
-  AppLocalizations get l10n => AppLocalizations.of(this);
-}
+// `BuildContextL10n` (context.l10n) lives in l10n_compat.dart and is exposed
+// through the app_localizations.dart re-export below.
 
 extension EditorL10n on AppLocalizations {
   String editorSnackbarMessage(String code) {
@@ -99,16 +98,16 @@ extension EditorL10n on AppLocalizations {
     if (diff != null) return diff;
     if (code.startsWith(EditorMessage.saveFailedPrefix)) {
       final detail = code.substring(EditorMessage.saveFailedPrefix.length);
-      return editorSaveFailed(detail);
+      return editor.saveFailed(error: detail);
     }
     return switch (code) {
-      EditorMessage.binaryFile => editorBinaryFileHint,
-      EditorMessage.readOnly => editorFileReadOnly,
-      EditorMessage.fileNotFound => editorFileNotFound,
-      EditorMessage.fileTooLarge => editorFileTooLarge,
-      EditorMessage.imageTooLarge => editorImageTooLarge,
-      EditorMessage.imageDecodeFailed => editorImageDecodeFailed,
-      EditorMessage.couldNotRead => editorCouldNotReadFile,
+      EditorMessage.binaryFile => editor.binaryFileHint,
+      EditorMessage.readOnly => editor.fileReadOnly,
+      EditorMessage.fileNotFound => editor.fileNotFound,
+      EditorMessage.fileTooLarge => editor.fileTooLarge,
+      EditorMessage.imageTooLarge => editor.imageTooLarge,
+      EditorMessage.imageDecodeFailed => editor.imageDecodeFailed,
+      EditorMessage.couldNotRead => editor.couldNotReadFile,
       _ => code,
     };
   }
@@ -117,19 +116,19 @@ extension EditorL10n on AppLocalizations {
 
   /// Localized text for diff-editor snackbar codes, or null when unrelated.
   String? diffEditorSnackbarMessage(String code) {
-    if (code == 'diffReloadAfterSaveFailed') {
-      return diffReloadAfterSaveFailed;
+    if (code == 'diff.reloadAfterSaveFailed') {
+      return diff.reloadAfterSaveFailed;
     }
-    if (code == 'diffFileReloadedAfterDiffWrite') {
-      return diffFileReloadedAfterDiffWrite;
+    if (code == 'diff.fileReloadedAfterDiffWrite') {
+      return diff.fileReloadedAfterDiffWrite;
     }
-    const applyPrefix = 'diffApplyFailed: ';
+    const applyPrefix = 'diff.applyFailed: ';
     if (code.startsWith(applyPrefix)) {
-      return diffApplyFailed(code.substring(applyPrefix.length));
+      return diff.applyFailed(error: code.substring(applyPrefix.length));
     }
-    const savePrefix = 'diffSaveFailed: ';
+    const savePrefix = 'diff.saveFailed: ';
     if (code.startsWith(savePrefix)) {
-      return diffSaveFailed(code.substring(savePrefix.length));
+      return diff.saveFailed(error: code.substring(savePrefix.length));
     }
     return null;
   }
@@ -137,8 +136,8 @@ extension EditorL10n on AppLocalizations {
 
 bool isDiffEditorSurfaceSnackbar(String code) =>
     const {
-      'diffReloadAfterSaveFailed',
-      'diffFileReloadedAfterDiffWrite',
+      'diff.reloadAfterSaveFailed',
+      'diff.fileReloadedAfterDiffWrite',
     }.contains(code) ||
-    code.startsWith('diffApplyFailed: ') ||
-    code.startsWith('diffSaveFailed: ');
+    code.startsWith('diff.applyFailed: ') ||
+    code.startsWith('diff.saveFailed: ');

@@ -191,7 +191,7 @@ class _McpEditorDialogState extends State<McpEditorDialog> {
       maxHeight: 680,
       child: TpDialogPinnedLayout(
         header: TpDialogHeader(
-          title: _isEditing ? l10n.mcpEdit : l10n.mcpAddTitle,
+          title: _isEditing ? l10n.mcp.edit : l10n.mcp.addTitle,
         ),
         body: TpForm(
           key: _formKey,
@@ -202,20 +202,20 @@ class _McpEditorDialogState extends State<McpEditorDialog> {
                 fieldKey: const Key('mcp-id'),
                 controller: _idCtrl,
                 enabled: !_isEditing,
-                label: Text(l10n.mcpFormIdLabel),
+                label: Text(l10n.mcp.formIdLabel),
                 hint: 'my-mcp-server',
                 validator: (value) => (value == null || value.trim().isEmpty)
-                    ? l10n.mcpFormRequiredFields
+                    ? l10n.mcp.formRequiredFields
                     : null,
               ),
               const SizedBox(height: 12),
               _textField(
                 fieldKey: const Key('mcp-name'),
                 controller: _nameCtrl,
-                label: Text(l10n.mcpFormDisplayNameLabel),
-                hint: l10n.mcpFormDisplayNameHint,
+                label: Text(l10n.mcp.formDisplayNameLabel),
+                hint: l10n.mcp.formDisplayNameHint,
                 validator: (value) => (value == null || value.trim().isEmpty)
-                    ? l10n.mcpFormRequiredFields
+                    ? l10n.mcp.formRequiredFields
                     : null,
               ),
               const SizedBox(height: 8),
@@ -228,7 +228,7 @@ class _McpEditorDialogState extends State<McpEditorDialog> {
                   child: Row(
                     children: [
                       Text(
-                        l10n.mcpFormMetadata,
+                        l10n.mcp.formMetadata,
                         style: TpTextStyles.of(context).mdSemiboldTightSnug,
                       ),
                       const Spacer(),
@@ -246,23 +246,23 @@ class _McpEditorDialogState extends State<McpEditorDialog> {
                 _textField(
                   fieldKey: const Key('mcp-desc'),
                   controller: _descriptionCtrl,
-                  label: Text(l10n.mcpFormDescriptionLabel),
-                  hint: l10n.mcpFormDescriptionHint,
+                  label: Text(l10n.mcp.formDescriptionLabel),
+                  hint: l10n.mcp.formDescriptionHint,
                   maxLines: 2,
                 ),
                 const SizedBox(height: 12),
                 _textField(
                   fieldKey: const Key('mcp-tags'),
                   controller: _tagsCtrl,
-                  label: Text(l10n.mcpFormTagsLabel),
-                  hint: l10n.mcpFormTagsHint,
+                  label: Text(l10n.mcp.formTagsLabel),
+                  hint: l10n.mcp.formTagsHint,
                 ),
                 const SizedBox(height: 12),
                 _textField(
                   fieldKey: const Key('mcp-homepage'),
                   controller: _homepageCtrl,
                   keyboardType: TextInputType.url,
-                  label: Text(l10n.mcpFormHomepageLabel),
+                  label: Text(l10n.mcp.formHomepageLabel),
                   hint: 'https://example.com',
                 ),
                 const SizedBox(height: 12),
@@ -270,7 +270,7 @@ class _McpEditorDialogState extends State<McpEditorDialog> {
                   fieldKey: const Key('mcp-docs'),
                   controller: _docsCtrl,
                   keyboardType: TextInputType.url,
-                  label: Text(l10n.mcpFormDocsLabel),
+                  label: Text(l10n.mcp.formDocsLabel),
                   hint: 'https://example.com/docs',
                 ),
               ],
@@ -278,13 +278,13 @@ class _McpEditorDialogState extends State<McpEditorDialog> {
               Row(
                 children: [
                   Text(
-                    l10n.mcpFormJsonLabel,
+                    l10n.mcp.formJsonLabel,
                     style: TpTextStyles.of(context).mdSemiboldTightSnug,
                   ),
                   const Spacer(),
                   TextButton(
                     onPressed: _formatJson,
-                    child: Text(l10n.mcpFormFormatJson),
+                    child: Text(l10n.mcp.formFormatJson),
                   ),
                 ],
               ),
@@ -324,7 +324,7 @@ class _McpEditorDialogState extends State<McpEditorDialog> {
             FilledButton(
               key: const Key('mcp-save'),
               onPressed: _saving ? null : _save,
-              child: Text(_isEditing ? l10n.save : l10n.mcpFormSubmitAdd),
+              child: Text(_isEditing ? l10n.save : l10n.mcp.formSubmitAdd),
             ),
           ],
         ),

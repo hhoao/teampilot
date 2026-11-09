@@ -90,11 +90,7 @@ void main() {
     await blobs.put(hash, bytes);
     final path = p.join(tmp.path, '.auth', 'user');
 
-    await WorkPlaneApplier(
-      fs: fs,
-      blobs: blobs,
-      workRoot: tmp.path,
-    ).apply(
+    await WorkPlaneApplier(fs: fs, blobs: blobs, workRoot: tmp.path).apply(
       ApplyPlan(
         workRoot: tmp.path,
         ops: [

@@ -79,9 +79,10 @@ class _ExpertEditorDepPickerDialogState
   String _title(BuildContext context) {
     final l10n = context.l10n;
     return switch (widget.category) {
-      ExpertEditorDepCategory.skills => l10n.expertEditorConfigureSkillsTitle,
-      ExpertEditorDepCategory.plugins => l10n.expertEditorConfigurePluginsTitle,
-      ExpertEditorDepCategory.mcp => l10n.expertEditorConfigureMcpTitle,
+      ExpertEditorDepCategory.skills => l10n.expert.editorConfigureSkillsTitle,
+      ExpertEditorDepCategory.plugins =>
+        l10n.expert.editorConfigurePluginsTitle,
+      ExpertEditorDepCategory.mcp => l10n.expert.editorConfigureMcpTitle,
     };
   }
 
@@ -101,7 +102,7 @@ class _ExpertEditorDepPickerDialogState
         return [
           if (orphanSkills.isNotEmpty)
             _OrphanDepList(
-              title: l10n.expertEditorOrphanDeps,
+              title: l10n.expert.editorOrphanDeps,
               labels: [for (final d in orphanSkills) d.name],
               onRemoveAt: (i) {
                 final id = orphanSkills[i].expectedLocalId;
@@ -109,7 +110,7 @@ class _ExpertEditorDepPickerDialogState
               },
             ),
           if (widget.skills.isEmpty)
-            Text(l10n.skillsNoInstalled, style: styles.sm)
+            Text(l10n.skills.noInstalled, style: styles.sm)
           else
             for (final skill in widget.skills)
               TeamSkillRow(
@@ -138,7 +139,7 @@ class _ExpertEditorDepPickerDialogState
         return [
           if (orphanPlugins.isNotEmpty)
             _OrphanDepList(
-              title: l10n.expertEditorOrphanDeps,
+              title: l10n.expert.editorOrphanDeps,
               labels: [for (final d in orphanPlugins) d.name],
               onRemoveAt: (i) {
                 final id = orphanPlugins[i].expectedLocalId;
@@ -146,7 +147,7 @@ class _ExpertEditorDepPickerDialogState
               },
             ),
           if (widget.plugins.isEmpty)
-            Text(l10n.pluginsNoInstalled, style: styles.sm)
+            Text(l10n.plugins.noInstalled, style: styles.sm)
           else
             for (final plugin in widget.plugins)
               TeamPluginRow(
@@ -173,7 +174,7 @@ class _ExpertEditorDepPickerDialogState
         return [
           if (orphanMcps.isNotEmpty)
             _OrphanDepList(
-              title: l10n.expertEditorOrphanDeps,
+              title: l10n.expert.editorOrphanDeps,
               labels: [for (final d in orphanMcps) d.name],
               onRemoveAt: (i) {
                 final id = orphanMcps[i].id;
@@ -181,7 +182,7 @@ class _ExpertEditorDepPickerDialogState
               },
             ),
           if (widget.mcps.isEmpty)
-            Text(l10n.mcpNoInstalled, style: styles.sm)
+            Text(l10n.mcp.noInstalled, style: styles.sm)
           else
             for (final server in widget.mcps)
               TeamMcpRow(
@@ -227,7 +228,7 @@ class _ExpertEditorDepPickerDialogState
                 key: const Key('expert-editor-dep-picker-done'),
                 onPressed: () =>
                     Navigator.of(context).pop(Set<String>.of(_selected)),
-                child: Text(l10n.expertEditorDepPickerDone),
+                child: Text(l10n.expert.editorDepPickerDone),
               ),
             ],
           ),
@@ -265,7 +266,7 @@ class _OrphanDepList extends StatelessWidget {
               title: Text(labels[i]),
               trailing: TextButton(
                 onPressed: () => onRemoveAt(i),
-                child: Text(l10n.expertEditorOrphanRemove),
+                child: Text(l10n.expert.editorOrphanRemove),
               ),
             ),
         ],

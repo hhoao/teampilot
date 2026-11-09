@@ -12,11 +12,11 @@ import '../../utils/ui/app_keys.dart';
 
 String _connectSshdDownCopy(AppLocalizations l10n, ConnectState state) {
   if (state.sshBackend != ConnectSshBackendKind.system) {
-    return l10n.connectSshdDown;
+    return l10n.connect.sshdDown;
   }
   return state.systemSshdHint == ConnectSystemSshdHint.macos
-      ? l10n.connectSystemSshdDownMacos
-      : l10n.connectSystemSshdDownLinux;
+      ? l10n.connect.systemSshdDownMacos
+      : l10n.connect.systemSshdDownLinux;
 }
 
 class ConnectQrPanel extends StatelessWidget {
@@ -50,7 +50,7 @@ class ConnectQrPanel extends StatelessWidget {
             key: AppKeys.connectSshdRetryCta,
             variant: TpButtonVariant.outline,
             onPressed: onRetry,
-            child: Text(l10n.connectSshdRetry),
+            child: Text(l10n.connect.sshdRetry),
           ),
         ],
       );
@@ -72,8 +72,8 @@ class ConnectQrPanel extends StatelessWidget {
       children: [
         TpStatusBadge(
           label: lanOnly
-              ? l10n.connectLanOnlyStatus
-              : l10n.connectRemoteReadyStatus,
+              ? l10n.connect.lanOnlyStatus
+              : l10n.connect.remoteReadyStatus,
           icon: lanOnly ? Icons.lan_outlined : Icons.public,
           tone: TpStatusBadgeTone.success,
         ),
@@ -99,12 +99,12 @@ class ConnectQrPanel extends StatelessWidget {
         const SizedBox(height: 8),
         Center(
           child: Text(
-            l10n.connectQrEnlargeHint,
+            l10n.connect.qrEnlargeHint,
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ),
         const SizedBox(height: 4),
-        Center(child: Text(l10n.connectScanHint)),
+        Center(child: Text(l10n.connect.scanHint)),
         const SizedBox(height: 16),
         Wrap(
           spacing: 8,
@@ -113,13 +113,13 @@ class ConnectQrPanel extends StatelessWidget {
             TpButton(
               variant: TpButtonVariant.outline,
               onPressed: onCopyLink,
-              child: Text(l10n.connectCopyLink),
+              child: Text(l10n.connect.copyLink),
             ),
             TpButton(
               key: AppKeys.connectRegenerateQr,
               variant: TpButtonVariant.outline,
               onPressed: onRegenerate,
-              child: Text(l10n.connectRegenerate),
+              child: Text(l10n.connect.regenerate),
             ),
           ],
         ),
@@ -145,7 +145,7 @@ class ConnectQrPanel extends StatelessWidget {
                   child: Center(child: _PairingQr(offer: offer)),
                 ),
                 const SizedBox(height: 8),
-                Text(context.l10n.connectScanHint),
+                Text(context.l10n.connect.scanHint),
               ],
             ),
           ),

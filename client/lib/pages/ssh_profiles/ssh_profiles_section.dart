@@ -78,7 +78,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
       if (showToast) {
         AppToast.show(
           context,
-          message: context.l10n.sshProfileTestSuccess,
+          message: context.l10n.sshProfile.testSuccess,
           variant: TpToastVariant.success,
         );
       }
@@ -110,7 +110,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
     if (host?.status == SshHostUiStatus.connected) {
       AppToast.show(
         context,
-        message: context.l10n.sshProfileConnectSuccess(profile.host),
+        message: context.l10n.sshProfile.connectSuccess(host: profile.host),
         variant: TpToastVariant.success,
       );
     } else if (host != null &&
@@ -148,7 +148,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
       if (mounted) {
         AppToast.show(
           context,
-          message: context.l10n.vaultLockedSaveBlocked,
+          message: context.l10n.vault.lockedSaveBlocked,
           variant: TpToastVariant.error,
         );
       }
@@ -229,12 +229,12 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          l10n.sshProfilesTargetsTitle,
+          l10n.sshProfile.sTargetsTitle,
           style: TpTextStyles.of(context).mdBoldTightSnug,
         ),
         const SizedBox(height: 4),
         Text(
-          l10n.sshProfilesTargetsSubtitle,
+          l10n.sshProfile.sTargetsSubtitle,
           style: TpTextStyles.of(context).mutedSm,
         ),
       ],
@@ -261,12 +261,12 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                         key: AppKeys.connectScanQr,
                         onPressed: () => showAndroidPairSheet(context),
                         icon: const Icon(Icons.qr_code_scanner, size: 18),
-                        label: Text(l10n.connectScanQr),
+                        label: Text(l10n.connect.scanQr),
                       ),
                       FilledButton.tonalIcon(
                         onPressed: () => openSshProfileEditor(context),
                         icon: const Icon(Icons.add, size: 18),
-                        label: Text(l10n.sshProfilesAddTarget),
+                        label: Text(l10n.sshProfile.sAddTarget),
                       ),
                     ],
                   ),
@@ -281,18 +281,18 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                     onPressed: () {
                       AppToast.show(
                         context,
-                        message: l10n.sshProfilesImportUnavailable,
+                        message: l10n.sshProfile.sImportUnavailable,
                         variant: TpToastVariant.info,
                       );
                     },
                     icon: const Icon(Icons.upload_outlined, size: 18),
-                    label: Text(l10n.sshProfilesImport),
+                    label: Text(l10n.sshProfile.sImport),
                   ),
                   const SizedBox(width: 8),
                   FilledButton.tonalIcon(
                     onPressed: () => openSshProfileEditor(context),
                     icon: const Icon(Icons.add, size: 18),
-                    label: Text(l10n.sshProfilesAddTarget),
+                    label: Text(l10n.sshProfile.sAddTarget),
                   ),
                 ],
               ),
@@ -318,7 +318,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  l10n.sshProfilesEmpty,
+                  l10n.sshProfile.sEmpty,
                   style: TpTextStyles.of(context).mutedMd,
                 ),
               )

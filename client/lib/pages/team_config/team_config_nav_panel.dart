@@ -47,7 +47,7 @@ class TeamConfigNavPanel extends StatelessWidget {
       trailingChildren: [
         for (final m in team.members)
           WorkspaceHubNavItem(
-            title: m.name.trim().isEmpty ? l10n.memberName : m.name.trim(),
+            title: m.name.trim().isEmpty ? l10n.member.name : m.name.trim(),
             showLeaderBadge: TeamMemberNaming.isTeamLead(m),
             icon: Icons.person_outline,
             density: WorkspaceHubNavDensity.subItem,
@@ -99,7 +99,7 @@ class TeamConfigMemberNavAddTile extends StatelessWidget {
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      '${l10n.add} ${l10n.memberName}',
+                      '${l10n.add} ${l10n.member.name}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),

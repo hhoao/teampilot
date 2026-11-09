@@ -76,7 +76,7 @@ class _WorkspaceAutomationsSectionState
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              context.l10n.automationsSidebarTitle,
+              context.l10n.automations.sidebarTitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: styles.lg,

@@ -27,8 +27,8 @@ void main() {
   Future<void> pumpSection(WidgetTester tester, ShortcutCubit cubit) async {
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: BlocProvider.value(
           value: cubit,
           child: const Scaffold(

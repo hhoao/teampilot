@@ -194,7 +194,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               if (_formError != null) _ErrorBanner(message: _formError!),
               ManagedProviderEditorSectionShell(
                 key: const Key('managed-provider-section-basics'),
-                title: l10n.managedProvidersBasicsSectionTitle,
+                title: l10n.managedProviders.basicsSectionTitle,
                 initiallyExpanded: true,
                 child: ManagedProviderBasicsSection(
                   schema: _schema,
@@ -221,7 +221,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                 const SizedBox(height: 12),
                 ManagedProviderEditorSectionShell(
                   key: const Key('managed-provider-section-query'),
-                  title: l10n.managedProvidersQuerySectionTitle,
+                  title: l10n.managedProviders.querySectionTitle,
                   referenceTip: managedProviderHttpJsonReferenceTip(l10n),
                   initiallyExpanded: _queryInitiallyExpanded,
                   child: ManagedProviderQuerySection(
@@ -242,7 +242,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               const SizedBox(height: 12),
               ManagedProviderEditorSectionShell(
                 key: const Key('managed-provider-section-credentials'),
-                title: l10n.managedProvidersCredentialsSectionTitle,
+                title: l10n.managedProviders.credentialsSectionTitle,
                 referenceTip: _isCliCredentialSource
                     ? null
                     : managedProviderHttpJsonReferenceTip(l10n),
@@ -292,10 +292,10 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               const SizedBox(height: 12),
               ManagedProviderEditorSectionShell(
                 key: const Key('managed-provider-section-display'),
-                title: l10n.managedProvidersDisplaySectionTitle,
+                title: l10n.managedProviders.displaySectionTitle,
                 initiallyExpanded: _displayInitiallyExpanded,
                 badge: _displayInitiallyExpanded
-                    ? l10n.managedProvidersSectionConfiguredBadge
+                    ? l10n.managedProviders.sectionConfiguredBadge
                     : null,
                 child: ManagedProviderDisplaySection(
                   schema: _schema,
@@ -311,10 +311,10 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
               if (_schema.hasEditableAdvancedFields)
                 ManagedProviderEditorSectionShell(
                   key: const Key('managed-provider-section-advanced'),
-                  title: l10n.managedProvidersAdvancedSectionTitle,
+                  title: l10n.managedProviders.advancedSectionTitle,
                   initiallyExpanded: _advancedInitiallyExpanded,
                   badge: _advancedInitiallyExpanded
-                      ? l10n.managedProvidersSectionConfiguredBadge
+                      ? l10n.managedProviders.sectionConfiguredBadge
                       : null,
                   child: ManagedProviderAdvancedSection(
                     schema: _schema,
@@ -332,8 +332,8 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                       onPressed: _saving ? null : _save,
                       child: Text(
                         _saving
-                            ? l10n.managedProvidersSaving
-                            : l10n.managedProvidersSaveProvider,
+                            ? l10n.managedProviders.saving
+                            : l10n.managedProviders.saveProvider,
                       ),
                     ),
                   ),
@@ -343,7 +343,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                       key: const Key('managed-provider-test-query'),
                       variant: TpButtonVariant.outline,
                       onPressed: _saving ? null : _testQuery,
-                      child: Text(l10n.managedProvidersTestProviderQuery),
+                      child: Text(l10n.managedProviders.testProviderQuery),
                     ),
                   ),
                 ],
@@ -358,8 +358,8 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         children: [
           _EmbeddedEditorHeader(
             title: provider == null
-                ? l10n.managedProvidersNewTitle
-                : l10n.managedProvidersEditTitle,
+                ? l10n.managedProviders.newTitle
+                : l10n.managedProviders.editTitle,
             showDelete: provider != null,
             deleteEnabled: !_saving,
             onBack: _handleBack,
@@ -373,14 +373,14 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       appBar: AppBar(
         title: Text(
           provider == null
-              ? l10n.managedProvidersNewTitle
-              : l10n.managedProvidersEditTitle,
+              ? l10n.managedProviders.newTitle
+              : l10n.managedProviders.editTitle,
         ),
         actions: [
           if (provider != null)
             IconButton(
               key: const Key('managed-provider-delete'),
-              tooltip: l10n.managedProvidersDelete,
+              tooltip: l10n.managedProviders.delete,
               onPressed: _saving ? null : _delete,
               icon: const Icon(Icons.delete_outline),
             ),
@@ -588,7 +588,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final l10n = context.l10n;
     final appCubit = context.read<AppProviderCubit>();
     final options = <(String, String)>[
-      ('', l10n.managedProvidersCredentialLinkManual),
+      ('', l10n.managedProviders.credentialLinkManual),
     ];
     for (final cli in CliTool.values) {
       for (final row in appCubit.state.providersFor(cli)) {
@@ -610,7 +610,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          context.l10n.managedProvidersCredentialLinkMode,
+          context.l10n.managedProviders.credentialLinkMode,
           style: TpTextStyles.of(context).smSemibold,
         ),
         const SizedBox(height: 6),
@@ -739,7 +739,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       if (credentialField.isEmpty) {
         setState(() {
           _saving = false;
-          _formError = context.l10n.managedProvidersCredentialFieldRequired;
+          _formError = context.l10n.managedProviders.credentialFieldRequired;
         });
         return;
       }
@@ -768,7 +768,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       if (!hasExisting) {
         setState(() {
           _saving = false;
-          _formError = context.l10n.managedProvidersMissingCredential;
+          _formError = context.l10n.managedProviders.missingCredential;
         });
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
@@ -876,7 +876,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _formError = context.l10n.vaultLockedSaveBlocked;
+        _formError = context.l10n.vault.lockedSaveBlocked;
       });
       return;
     } on _ManagedProviderEditorPersistenceFailed {
@@ -894,7 +894,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _formError = context.l10n.managedProvidersCredentialSaveFailed;
+        _formError = context.l10n.managedProviders.credentialSaveFailed;
       });
       return;
     }
@@ -906,7 +906,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
           await context.read<VaultUnlockGate>().ensureUnlocked()) {
         await usageCubit.queryProvider(persisted);
       } else if (mounted) {
-        setState(() => _formError = context.l10n.vaultLockedQueryBlocked);
+        setState(() => _formError = context.l10n.vault.lockedQueryBlocked);
       }
       if (!mounted) return;
     }
@@ -923,7 +923,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     }
     AppToast.show(
       context,
-      message: context.l10n.managedProvidersSaved,
+      message: context.l10n.managedProviders.saved,
       variant: TpToastVariant.success,
     );
     _handleBack();
@@ -963,7 +963,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     if (blocked) {
       AppToast.show(
         context,
-        message: l10n.vaultLockedQueryBlocked,
+        message: l10n.vault.lockedQueryBlocked,
         variant: TpToastVariant.error,
       );
       return;
@@ -981,11 +981,11 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       context,
       message: failed
           ? snapshot?.status == ProviderUsageStatus.unsupported
-                ? context.l10n.managedProvidersQueryUnsupported
+                ? context.l10n.managedProviders.queryUnsupported
                 : snapshot == null
-                ? context.l10n.managedProvidersQueryFailed
+                ? context.l10n.managedProviders.queryFailed
                 : managedProviderSnapshotErrorMessage(context.l10n, snapshot)
-          : context.l10n.managedProvidersQueryCompleted,
+          : context.l10n.managedProviders.queryCompleted,
       variant: failed ? TpToastVariant.error : TpToastVariant.success,
     );
   }
@@ -997,13 +997,13 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final body = decodeJsonObject(_requestMapping.text);
     if (name.isEmpty || adapter.isEmpty) {
       setState(
-        () => _formError = context.l10n.managedProvidersNameAdapterError,
+        () => _formError = context.l10n.managedProviders.nameAdapterError,
       );
       return null;
     }
     if (body == null || mappingContainsCredentialKey(body)) {
       setState(
-        () => _formError = context.l10n.managedProvidersSecretMappingError,
+        () => _formError = context.l10n.managedProviders.secretMappingError,
       );
       return null;
     }
@@ -1011,7 +1011,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final current = _provider;
     if ((adapter == 'http-json' || _kind == ManagedProviderKind.customHttp) &&
         !isAllowedManagedProviderEndpoint(endpoint, allowHttpLocalhost: true)) {
-      setState(() => _formError = context.l10n.managedProvidersEndpointError);
+      setState(() => _formError = context.l10n.managedProviders.endpointError);
       return null;
     }
     return ManagedProvider(
@@ -1211,7 +1211,7 @@ class _EmbeddedEditorHeader extends StatelessWidget {
         if (showDelete)
           IconButton(
             key: const Key('managed-provider-delete'),
-            tooltip: context.l10n.managedProvidersDelete,
+            tooltip: context.l10n.managedProviders.delete,
             onPressed: deleteEnabled ? onDelete : null,
             icon: const Icon(Icons.delete_outline),
           ),

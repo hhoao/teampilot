@@ -155,7 +155,11 @@ void main() {
           rootDir: '/root/vault',
           fs: InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix)),
         ),
-        crypto: const VaultCrypto(memoryKiB: 256, iterations: 1, parallelism: 1),
+        crypto: const VaultCrypto(
+          memoryKiB: 256,
+          iterations: 1,
+          parallelism: 1,
+        ),
       ),
     );
     await vault.initialize();
@@ -169,7 +173,10 @@ void main() {
     );
     final store = ManagedProviderSecretStore(_FakeSecureKeyValueStore());
     await store.write('managed-provider:m2', {'apiKey': 'from-store'});
-    final resolver = ManagedProviderCredentialResolver(store, vault: VaultAccess(vault));
+    final resolver = ManagedProviderCredentialResolver(
+      store,
+      vault: VaultAccess(vault),
+    );
     final provider = _secretEntry().copyWith(vaultEntryId: 'v1');
 
     final scope = await resolver.resolve(provider);

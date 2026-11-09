@@ -147,9 +147,7 @@ void main() {
       );
 
       final settings =
-          jsonDecode(
-                (await fs.readString(p.join(configDir, 'settings.json')))!,
-              )
+          jsonDecode((await fs.readString(p.join(configDir, 'settings.json')))!)
               as Map<String, Object?>;
       final deny = ((settings['permissions'] as Map)['deny'] as List)
           .cast<String>();

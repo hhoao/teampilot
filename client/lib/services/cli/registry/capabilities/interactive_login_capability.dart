@@ -10,7 +10,8 @@ import '../cli_capability.dart';
 /// this interface; the provider credential bar then opens
 /// [buildLoginDialog] instead of calling `execute(login)` directly, and runs
 /// `execute(login)` afterwards to record the completed sign-in.
-abstract interface class InteractiveCliLoginCapability implements CliCapability {
+abstract interface class InteractiveCliLoginCapability
+    implements CliCapability {
   /// Binary started inside the login terminal (bare name is fine; the
   /// transport starter resolves PATH / `.cmd` shims).
   String get loginExecutableName;

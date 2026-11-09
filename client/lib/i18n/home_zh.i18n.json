@@ -1,0 +1,16 @@
+{
+  "connectionCancelRetry": "取消重试",
+  "connectionErrorAuth": "认证失败",
+  "connectionErrorHostKey": "主机身份已变更 — 请重新配对或确认新密钥",
+  "connectionErrorTcp": "网络不可达",
+  "connectionErrorTimeout": "连接超时",
+  "connectionErrorTransport": "连接出错",
+  "connectionErrorUnknown": "未知错误",
+  "connectionRetryNow": "继续重试",
+  "connectionRetrying": "正在重试…第 {count: int} 次",
+  "connectionSwitch": "切换连接",
+  "connectionUnreachable": "无法连接 {host: String}:{port: int}",
+  "targetSingleOptionHint": "当前平台只有这一个可用的主设备。",
+  "targetSubtitle": "TeamPilot 存放团队、工作区与配置的位置（控制面）。切换会使用独立的数据目录，不会自动迁移。",
+  "targetTitle": "主设备"
+}

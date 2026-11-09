@@ -117,7 +117,7 @@ class _ParkedSendOverlayState extends State<ParkedSendOverlay> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          l10n.terminalParkedSendPending(msg.content),
+                          l10n.terminal.parkedSendPending(content: msg.content),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: styles.mdColored(cs.onSecondaryContainer),
@@ -125,7 +125,7 @@ class _ParkedSendOverlayState extends State<ParkedSendOverlay> {
                       ),
                       IconButton(
                         icon: Icon(Icons.close, size: 16),
-                        tooltip: l10n.terminalParkedSendDismiss,
+                        tooltip: l10n.terminal.parkedSendDismiss,
                         color: cs.onSecondaryContainer,
                         onPressed: () => _dismiss(msg),
                       ),

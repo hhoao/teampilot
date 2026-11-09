@@ -41,23 +41,27 @@ class AcpFrameLogger {
   /// JSON-RPC frames carry the key quoted (`"GEMINI_API_KEY": "…"`); agent
   /// stderr lines carry the env form (`GEMINI_API_KEY=…`). Both must be
   /// redacted before anything is buffered or mirrored to disk.
-  static final RegExp _geminiApiKeyQuotedPattern =
-      RegExp(r'"GEMINI_API_KEY"\s*:\s*"[^"]*"');
+  static final RegExp _geminiApiKeyQuotedPattern = RegExp(
+    r'"GEMINI_API_KEY"\s*:\s*"[^"]*"',
+  );
   static final RegExp _geminiApiKeyEnvPattern = RegExp(
     r'GEMINI_API_KEY\s*=\s*\S+',
   );
-  static final RegExp _cursorApiKeyQuotedPattern =
-      RegExp(r'"CURSOR_API_KEY"\s*:\s*"[^"]*"');
+  static final RegExp _cursorApiKeyQuotedPattern = RegExp(
+    r'"CURSOR_API_KEY"\s*:\s*"[^"]*"',
+  );
   static final RegExp _cursorApiKeyEnvPattern = RegExp(
     r'CURSOR_API_KEY\s*=\s*\S+',
   );
-  static final RegExp _cursorAuthTokenQuotedPattern =
-      RegExp(r'"CURSOR_AUTH_TOKEN"\s*:\s*"[^"]*"');
+  static final RegExp _cursorAuthTokenQuotedPattern = RegExp(
+    r'"CURSOR_AUTH_TOKEN"\s*:\s*"[^"]*"',
+  );
   static final RegExp _cursorAuthTokenEnvPattern = RegExp(
     r'CURSOR_AUTH_TOKEN\s*=\s*\S+',
   );
-  static final RegExp _opencodeAuthContentQuotedPattern =
-      RegExp(r'"OPENCODE_AUTH_CONTENT"\s*:\s*"(?:\\.|[^"\\])*"');
+  static final RegExp _opencodeAuthContentQuotedPattern = RegExp(
+    r'"OPENCODE_AUTH_CONTENT"\s*:\s*"(?:\\.|[^"\\])*"',
+  );
   static final RegExp _opencodeAuthContentEnvPattern = RegExp(
     r'OPENCODE_AUTH_CONTENT\s*=\s*(?:\{[\s\S]*|\S+)',
   );
@@ -67,12 +71,10 @@ class AcpFrameLogger {
   final ListQueue<String> _stderr = ListQueue<String>();
 
   /// Logs a frame (JSON-RPC message) sent to the agent.
-  void logOutgoing(String frame) =>
-      _record(_outgoing, 'ACP →', _redact(frame));
+  void logOutgoing(String frame) => _record(_outgoing, 'ACP →', _redact(frame));
 
   /// Logs a frame (JSON-RPC message) received from the agent.
-  void logIncoming(String frame) =>
-      _record(_incoming, 'ACP ←', _redact(frame));
+  void logIncoming(String frame) => _record(_incoming, 'ACP ←', _redact(frame));
 
   /// Logs one stderr line from the agent.
   void logStderr(String line) => _record(_stderr, 'ACP !', _redact(line));

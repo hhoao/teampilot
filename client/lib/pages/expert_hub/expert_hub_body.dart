@@ -74,7 +74,7 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
               final searchField = TextField(
                 decoration: tpSearchPillDecoration(
                   context,
-                  hintText: l10n.expertHubSearchHint,
+                  hintText: l10n.expert.hubSearchHint,
                 ),
                 onChanged: _onSearchChanged,
               );
@@ -88,18 +88,18 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
                 ],
                 initialItem: state.sort,
                 itemLabel: (s) => switch (s) {
-                  CatalogSortKey.adoption => l10n.catalogSortAdoption,
-                  CatalogSortKey.rating => l10n.catalogSortRating,
-                  CatalogSortKey.updated => l10n.catalogSortUpdated,
-                  CatalogSortKey.published => l10n.catalogSortPublished,
-                  CatalogSortKey.name => l10n.catalogSortName,
+                  CatalogSortKey.adoption => l10n.catalog.sortAdoption,
+                  CatalogSortKey.rating => l10n.catalog.sortRating,
+                  CatalogSortKey.updated => l10n.catalog.sortUpdated,
+                  CatalogSortKey.published => l10n.catalog.sortPublished,
+                  CatalogSortKey.name => l10n.catalog.sortName,
                 },
                 onChanged: (s) => s == null ? null : widget.cubit.setSort(s),
               );
               final sourceWarning = _sourceWarning(context, state);
               final refreshButton = TpAnimatedIconButton(
                 key: const Key('expert-hub-refresh'),
-                tooltip: l10n.expertHubRefresh,
+                tooltip: l10n.expert.hubRefresh,
                 icon: Icons.refresh,
                 busy: state.refreshing,
                 enabled: !state.refreshing,
@@ -110,7 +110,7 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
                       key: const Key('expert-hub-create'),
                       onPressed: () => widget.onCreate?.call(),
                       icon: const Icon(Icons.add),
-                      label: Text(l10n.expertHubCreate),
+                      label: Text(l10n.expert.hubCreate),
                     )
                   : null;
               if (stackControls) {
@@ -170,9 +170,9 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
         for (final failure in state.sourceFailures)
           TpCatalogFailureView(
             sourceLabel: failure.sourceLabel,
-            message: l10n.catalogSourceWarningEntry(
-              failure.sourceLabel,
-              failure.message,
+            message: l10n.catalog.sourceWarningEntry(
+              source: failure.sourceLabel,
+              error: failure.message,
             ),
           ),
       ],
@@ -194,8 +194,8 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
         return TpEmptyState(
           centered: true,
           icon: Icons.star_outline_rounded,
-          title: l10n.expertHubFavoritesEmptyTitle,
-          hint: l10n.expertHubFavoritesEmptyHint,
+          title: l10n.expert.hubFavoritesEmptyTitle,
+          hint: l10n.expert.hubFavoritesEmptyHint,
         );
       }
       return Padding(
@@ -205,9 +205,9 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
           icon: isError
               ? Icons.cloud_off_outlined
               : Icons.travel_explore_outlined,
-          title: isError ? l10n.expertHubLoadError : l10n.expertHubEmptyTitle,
-          hint: isError ? null : l10n.expertHubEmptyHint,
-          actionLabel: l10n.expertHubRefresh,
+          title: isError ? l10n.expert.hubLoadError : l10n.expert.hubEmptyTitle,
+          hint: isError ? null : l10n.expert.hubEmptyHint,
+          actionLabel: l10n.expert.hubRefresh,
           onAction: () => widget.cubit.load(forceRefresh: true),
         ),
       );
@@ -262,7 +262,7 @@ class _FilterBar extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(inset, 0, inset, 12),
         children: [
           _FilterPill(
-            label: l10n.expertHubFavorites,
+            label: l10n.expert.hubFavorites,
             icon: state.favoritesOnly
                 ? Icons.star_rounded
                 : Icons.star_outline_rounded,
@@ -270,13 +270,13 @@ class _FilterBar extends StatelessWidget {
             onTap: () => cubit.setFavoritesOnly(!state.favoritesOnly),
           ),
           _FilterPill(
-            label: l10n.expertHubMyTemplates,
+            label: l10n.expert.hubMyTemplates,
             icon: Icons.note_alt_outlined,
             selected: state.localOnly,
             onTap: () => cubit.setLocalOnly(!state.localOnly),
           ),
           _FilterPill(
-            label: l10n.expertHubFromTeams,
+            label: l10n.expert.hubFromTeams,
             icon: Icons.groups_outlined,
             selected: state.teamExtractOnly,
             onTap: () => cubit.setTeamExtractOnly(!state.teamExtractOnly),
@@ -290,7 +290,7 @@ class _FilterBar extends StatelessWidget {
             ),
           ),
           _FilterPill(
-            label: l10n.expertHubCategoryAll,
+            label: l10n.expert.hubCategoryAll,
             count: state.allMembers.length,
             selected: selected == null,
             onTap: () => cubit.setCategory(null),

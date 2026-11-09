@@ -33,7 +33,7 @@ class UsagePageHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          l10n.sessionUsageTitle,
+          l10n.sessionUsage.title,
           style: styles.xl.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 6),
@@ -43,7 +43,7 @@ class UsagePageHeader extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
-              l10n.sessionUsageScopeHint,
+              l10n.sessionUsage.scopeHint,
               style: styles.xs.copyWith(
                 color: cs.onSurface.withValues(alpha: 0.42),
               ),
@@ -85,11 +85,7 @@ class UsagePageHeader extends StatelessWidget {
   }
 
   /// One capsule: sync status (opens the sync menu) and the settings entry.
-  Widget _controls(
-    BuildContext context,
-    TpTextStyles styles,
-    ColorScheme cs,
-  ) {
+  Widget _controls(BuildContext context, TpTextStyles styles, ColorScheme cs) {
     final borderColor = cs.outlineVariant.withValues(alpha: 0.6);
     return Container(
       decoration: BoxDecoration(
@@ -104,7 +100,7 @@ class UsagePageHeader extends StatelessWidget {
           Container(width: 1, height: 20, color: borderColor),
           _segment(
             key: AppKeys.sessionUsageSettingsButton,
-            tooltip: context.l10n.sessionUsageSettings,
+            tooltip: context.l10n.sessionUsage.settings,
             onTap: onSettings,
             borderRadius: const BorderRadius.horizontal(
               right: Radius.circular(9),
@@ -129,7 +125,7 @@ class UsagePageHeader extends StatelessWidget {
     if (state.isSyncing) {
       return _segment(
         key: AppKeys.sessionUsageCancelSyncButton,
-        tooltip: l10n.sessionUsageCancelSyncTooltip,
+        tooltip: l10n.sessionUsage.cancelSyncTooltip,
         onTap: state.isCancelling ? null : onCancel,
         borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
         child: Row(
@@ -145,8 +141,8 @@ class UsagePageHeader extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               state.isCancelling
-                  ? l10n.sessionUsageCancelling
-                  : l10n.sessionUsageCancelSync,
+                  ? l10n.sessionUsage.cancelling
+                  : l10n.sessionUsage.cancelSync,
               style: styles.smMedium.copyWith(color: cs.onSurface),
             ),
           ],
@@ -162,8 +158,8 @@ class UsagePageHeader extends StatelessWidget {
           onPressed: () => onIncrementalSync(),
           child: _menuOption(
             context,
-            l10n.sessionUsageSyncIncremental,
-            l10n.sessionUsageSyncIncrementalHint,
+            l10n.sessionUsage.syncIncremental,
+            l10n.sessionUsage.syncIncrementalHint,
           ),
         ),
         MenuItemButton(
@@ -172,17 +168,16 @@ class UsagePageHeader extends StatelessWidget {
           onPressed: () => onFullSync(),
           child: _menuOption(
             context,
-            l10n.sessionUsageSyncFull,
-            l10n.sessionUsageSyncFullHint,
+            l10n.sessionUsage.syncFull,
+            l10n.sessionUsage.syncFullHint,
           ),
         ),
       ],
       builder: (context, controller, child) => _segment(
         key: AppKeys.sessionUsageSyncButton,
-        tooltip: l10n.sessionUsageSyncTooltip,
+        tooltip: l10n.sessionUsage.syncTooltip,
         borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
-        onTap: () =>
-            controller.isOpen ? controller.close() : controller.open(),
+        onTap: () => controller.isOpen ? controller.close() : controller.open(),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -232,10 +227,10 @@ class UsagePageHeader extends StatelessWidget {
   String _syncLabel(BuildContext context) {
     final l10n = context.l10n;
     final lastSyncAtMs = state.lastSyncAtMs;
-    if (lastSyncAtMs == null) return l10n.sessionUsageNeverSynced;
+    if (lastSyncAtMs == null) return l10n.sessionUsage.neverSynced;
     final elapsedMs = DateTime.now().millisecondsSinceEpoch - lastSyncAtMs;
     if (elapsedMs < const Duration(minutes: 1).inMilliseconds) {
-      return l10n.sessionUsageSyncedJustNow;
+      return l10n.sessionUsage.syncedJustNow;
     }
     return formatUsageLastSync(context, lastSyncAtMs);
   }
@@ -266,11 +261,11 @@ class UsagePageHeader extends StatelessWidget {
 String _progressLabel(BuildContext context, UsageSyncProgress? progress) {
   final l10n = context.l10n;
   if (progress == null || progress.targetsTotal == 0) {
-    return l10n.sessionUsageSyncPreparing;
+    return l10n.sessionUsage.syncPreparing;
   }
-  return l10n.sessionUsageSyncProgress(
-    progress.targetsDone,
-    progress.targetsTotal,
-    progress.inserted,
+  return l10n.sessionUsage.syncProgress(
+    done: progress.targetsDone,
+    total: progress.targetsTotal,
+    inserted: progress.inserted,
   );
 }

@@ -1,0 +1,23 @@
+{
+  "cascadeCustomModelId": "Custom model ID…",
+  "cascadeCustomModelIdTitle": "Custom model ID",
+  "cascadeDefaultEffort": "Default",
+  "cascadeNoModels": "No model catalog",
+  "cascadeNoProviders": "No providers configured",
+  "cascadePresets": "Presets",
+  "cascadeSavePreset": "Save current as preset…",
+  "commandExperimental": "Experimental",
+  "commandNative": "Native",
+  "commandPlugin": "Plugin",
+  "nativeCommandCompact": "Compact the active conversation context.",
+  "nativeCommandGoal": "Keep a durable objective for long-running work.",
+  "nativeCommandHelp": "Show commands available in this CLI session.",
+  "nativeCommandPlan": "Switch the session into a planning workflow.",
+  "pasteClipEdit": "Edit pasted text",
+  "pasteClipLabel": "Pasted text",
+  "pasteClipLines": "{lines: int} lines",
+  "pasteClipRemove": "Remove pasted text",
+  "pasteEditorDone": "Done",
+  "pasteEditorRemove": "Remove",
+  "pasteEditorTitle": "Edit pasted text · {lines: int} lines"
+}

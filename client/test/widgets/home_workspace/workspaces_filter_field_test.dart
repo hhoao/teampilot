@@ -26,9 +26,6 @@ void main() {
     final size = tester.getSize(containerFinder);
     final container = tester.widget<AnimatedContainer>(containerFinder);
     final decoration = container.decoration! as BoxDecoration;
-    expect(
-      decoration.borderRadius,
-      BorderRadius.circular(size.height / 2),
-    );
+    expect(decoration.borderRadius, BorderRadius.circular(size.height / 2));
   });
 }

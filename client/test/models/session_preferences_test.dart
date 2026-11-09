@@ -78,19 +78,13 @@ void main() {
 
     test('acpAdapterPaths round-trip and omit empties', () {
       final prefs = SessionPreferences(
-        acpAdapterPaths: const {
-          'claude': '/opt/claude-agent-acp',
-          'codex': '',
-        },
+        acpAdapterPaths: const {'claude': '/opt/claude-agent-acp', 'codex': ''},
       );
       expect(prefs.acpAdapterPathFor('claude'), '/opt/claude-agent-acp');
       expect(prefs.acpAdapterPathFor('codex'), '');
       final restored = SessionPreferences.fromJson(prefs.toJson());
       expect(restored.acpAdapterPaths, {'claude': '/opt/claude-agent-acp'});
-      expect(
-        SessionPreferences.fromJson(const {}).acpAdapterPaths,
-        isEmpty,
-      );
+      expect(SessionPreferences.fromJson(const {}).acpAdapterPaths, isEmpty);
     });
 
     test('chatSubmitSwitchesToTerminal defaults false', () {
@@ -115,9 +109,7 @@ void main() {
       expect(defaults.acpDefaultFor(CliTool.claude), isTrue);
       expect(defaults.acpDefaultFor(CliTool.gemini), isTrue);
       expect(
-        SessionPreferences.fromJson(
-          const {},
-        ).acpDefaultFor(CliTool.codex),
+        SessionPreferences.fromJson(const {}).acpDefaultFor(CliTool.codex),
         isTrue,
       );
 
@@ -128,9 +120,7 @@ void main() {
         CliTool.cursor.value: false,
       });
       expect(
-        SessionPreferences.fromJson(
-          off.toJson(),
-        ).acpDefaultFor(CliTool.cursor),
+        SessionPreferences.fromJson(off.toJson()).acpDefaultFor(CliTool.cursor),
         isFalse,
       );
     });
@@ -146,7 +136,10 @@ void main() {
       expect(migrated.acpDefaultFor(CliTool.codex), isTrue);
       expect(migrated.acpDefaultFor(CliTool.cursor), isFalse);
       expect(migrated.acpDefaultFor(CliTool.opencode), isTrue);
-      expect(migrated.toJson().containsKey('claudePersonalAcpDefault'), isFalse);
+      expect(
+        migrated.toJson().containsKey('claudePersonalAcpDefault'),
+        isFalse,
+      );
     });
 
     test('acpPermissionDefault defaults fullAccess and round-trips ask', () {

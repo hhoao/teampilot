@@ -180,7 +180,9 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
       if (path.isEmpty) {
         AppToast.show(
           context,
-          message: context.l10n.cliExecutablePathLocateFailed(widget.title),
+          message: context.l10n.cli.executablePathLocateFailed(
+            name: widget.title,
+          ),
           variant: TpToastVariant.error,
         );
         return;
@@ -191,9 +193,9 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: context.l10n.cliExecutablePathLocateSuccess(
-          widget.title,
-          path,
+        message: context.l10n.cli.executablePathLocateSuccess(
+          name: widget.title,
+          path: path,
         ),
         variant: TpToastVariant.success,
       );
@@ -201,7 +203,9 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: context.l10n.cliExecutablePathLocateFailed(widget.title),
+        message: context.l10n.cli.executablePathLocateFailed(
+          name: widget.title,
+        ),
         variant: TpToastVariant.error,
       );
     } finally {
@@ -245,7 +249,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
       await registry.installToolchain(
         toolId: widget.toolId,
         scope: scope,
-        title: context.l10n.cliInstallInstalling,
+        title: context.l10n.cli.installInstalling,
       );
       return;
     }
@@ -255,7 +259,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
       final result = await registry.installToolchain(
         toolId: widget.toolId,
         scope: scope,
-        title: context.l10n.cliInstallInstalling,
+        title: context.l10n.cli.installInstalling,
         onSucceeded: (installResult) async {
           final path = installResult.executablePath?.trim() ?? '';
           if (path.isEmpty) return;
@@ -310,7 +314,9 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
     final effective = _resolved();
     final isFallback = stored.trim().isEmpty;
     final fieldEmpty = _controller.text.trim().isEmpty;
-    final hint = fieldEmpty ? '${l10n.cliExecutablePathUsing}$effective' : null;
+    final hint = fieldEmpty
+        ? '${l10n.cli.executablePathUsing}$effective'
+        : null;
     final showInstallButton =
         widget.installKey != null &&
         fieldEmpty &&
@@ -355,8 +361,8 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
                   : Icon(Icons.download_outlined, size: context.tpIconSizes.md),
               label: Text(
                 isInstalling
-                    ? l10n.cliInstallInstalling
-                    : l10n.cliInstallButton,
+                    ? l10n.cli.installInstalling
+                    : l10n.cli.installButton,
               ),
             ),
             const SizedBox(width: 6),
@@ -368,7 +374,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
               Icons.folder_open_outlined,
               size: context.tpIconSizes.md,
             ),
-            label: Text(l10n.cliExecutablePathBrowse),
+            label: Text(l10n.cli.executablePathBrowse),
           ),
           const SizedBox(width: 6),
           TextButton(
@@ -384,8 +390,8 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
                   )
                 : Text(
                     isFallback
-                        ? l10n.cliExecutablePathLocate
-                        : l10n.cliExecutablePathReset,
+                        ? l10n.cli.executablePathLocate
+                        : l10n.cli.executablePathReset,
                   ),
           ),
         ],

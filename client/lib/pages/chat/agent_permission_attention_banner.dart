@@ -201,8 +201,10 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
       final alwaysOptions = [
         for (final option in permissionRequest.always)
           option.payload == null
-              ? context.l10n.opencodePermissionAllowAlways
-              : context.l10n.agentPermissionAlwaysAllowRule(option.label),
+              ? context.l10n.opencode.permissionAllowAlways
+              : context.l10n.agent.permissionAlwaysAllowRule(
+                  rule: option.label,
+                ),
       ];
       return _withStrings(
         context,
@@ -357,7 +359,7 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
               SizedBox(width: spacing.sm),
               Expanded(
                 child: Text(
-                  l10n.agentPermissionAttentionBanner,
+                  l10n.agent.permissionAttentionBanner,
                   style: TpTextStyles.of(context).smColored(cs.onSurface),
                 ),
               ),
@@ -372,7 +374,7 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
                   seatId: seatId,
                   selectedMemberId: selectedMemberId,
                 ),
-                child: Text(l10n.agentPermissionOpenTerminal),
+                child: Text(l10n.agent.permissionOpenTerminal),
               ),
             ],
           ),

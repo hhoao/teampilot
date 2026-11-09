@@ -35,10 +35,10 @@ void main() {
     logger.logIncoming('in-2');
     logger.logStderr('err-1');
     expect(logger.snapshot(direction: AcpFrameDirection.outgoing), ['out-1']);
-    expect(
-      logger.snapshot(direction: AcpFrameDirection.incoming),
-      ['in-1', 'in-2'],
-    );
+    expect(logger.snapshot(direction: AcpFrameDirection.incoming), [
+      'in-1',
+      'in-2',
+    ]);
     expect(logger.snapshot(direction: AcpFrameDirection.stderr), ['err-1']);
   });
 
@@ -104,7 +104,8 @@ void main() {
 
   test('redacts indented JSON OPENCODE_AUTH_CONTENT payloads', () {
     const secretKey = 'sk-live-must-not-appear';
-    const blob = '''
+    const blob =
+        '''
 {
   "openai": {
     "type": "api",
@@ -127,7 +128,8 @@ void main() {
 
   test('redacts truncated OPENCODE_AUTH_CONTENT stderr chunks', () {
     const secretKey = 'sk-trunc-must-not-appear';
-    const truncated = '''
+    const truncated =
+        '''
 OPENCODE_AUTH_CONTENT={
   "openai": {
     "type": "api",

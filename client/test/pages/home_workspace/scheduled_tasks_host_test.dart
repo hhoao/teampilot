@@ -143,9 +143,7 @@ void main() {
       expect(dialog.initial?.id, 'foreign-task');
       expect(dialog.initial?.workspaceId, 'foreign-ws');
 
-      Navigator.of(
-        tester.element(find.byType(AutomationEditorDialog)),
-      ).pop();
+      Navigator.of(tester.element(find.byType(AutomationEditorDialog))).pop();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 50));

@@ -24,8 +24,8 @@ Widget _harness({GlobalKey<NavigatorState>? navigatorKey, Widget? home}) {
     data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
     child: MaterialApp(
       navigatorKey: navigatorKey,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       theme: theme,
       home: Scaffold(body: Center(child: home ?? const SizedBox.shrink())),
     ),
@@ -72,13 +72,13 @@ void main() {
     _pushDialog(navigatorKey, CloneCompletedDialog(task: _task()));
     await tester.pumpAndSettle();
 
-    expect(find.text(l10n.cloneRepositoryCompletedTitle), findsOneWidget);
+    expect(find.text(l10n.clone.repositoryCompletedTitle), findsOneWidget);
     expect(
-      find.text(l10n.cloneRepositoryCompletedBody('/tmp/src/repo')),
+      find.text(l10n.clone.repositoryCompletedBody(path: '/tmp/src/repo')),
       findsOneWidget,
     );
-    expect(find.text(l10n.cloneRepositoryCreateWorkspace), findsOneWidget);
-    expect(find.text(l10n.cloneRepositoryAddToWorkspace), findsOneWidget);
+    expect(find.text(l10n.clone.repositoryCreateWorkspace), findsOneWidget);
+    expect(find.text(l10n.clone.repositoryAddToWorkspace), findsOneWidget);
     navigatorKey.currentState!.pop();
     await tester.pumpAndSettle();
   });
@@ -94,7 +94,7 @@ void main() {
       ).then((value) => popped = value);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text(l10n.cloneRepositoryCreateWorkspace));
+      await tester.tap(find.text(l10n.clone.repositoryCreateWorkspace));
       await tester.pumpAndSettle();
 
       expect(popped, CloneCompletionAction.newWorkspace);
@@ -112,7 +112,7 @@ void main() {
       ).then((value) => popped = value);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text(l10n.cloneRepositoryAddToWorkspace));
+      await tester.tap(find.text(l10n.clone.repositoryAddToWorkspace));
       await tester.pumpAndSettle();
 
       expect(popped, CloneCompletionAction.addToWorkspace);
@@ -155,7 +155,7 @@ void main() {
     ).then((value) => popped = true);
     await tester.pumpAndSettle();
 
-    expect(find.text(l10n.cloneRepositoryChooseWorkspace), findsOneWidget);
+    expect(find.text(l10n.clone.repositoryChooseWorkspace), findsOneWidget);
     expect(find.text('Alpha'), findsOneWidget);
     // Empty display falls back to the primary folder basename.
     expect(find.text('beta'), findsOneWidget);
@@ -205,8 +205,8 @@ void main() {
                 BlocProvider<ChatCubit>.value(value: chatCubit),
               ],
               child: MaterialApp(
-                localizationsDelegates: AppLocalizations.localizationsDelegates,
-                supportedLocales: AppLocalizations.supportedLocales,
+                localizationsDelegates: appLocalizationsDelegates,
+                supportedLocales: appLocalizationsSupportedLocales,
                 theme: theme,
                 home: Scaffold(
                   body: Center(
@@ -230,7 +230,7 @@ void main() {
       // The new-workspace wiring throws — the dialog future must still
       // complete normally (error caught + logged, not rethrown) and the
       // pending choice must be released so future clones can present.
-      await tester.tap(find.text(l10n.cloneRepositoryCreateWorkspace));
+      await tester.tap(find.text(l10n.clone.repositoryCreateWorkspace));
       await tester.pumpAndSettle();
       await dialog;
 

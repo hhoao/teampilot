@@ -47,7 +47,7 @@ class TermuxDisconnectedBanner extends StatelessWidget {
                 SizedBox(width: tp.spacing.sm),
                 Expanded(
                   child: Text(
-                    l10n.termuxDisconnectedBannerMessage,
+                    l10n.termux.disconnectedBannerMessage,
                     style: TpTextStyles.of(
                       context,
                     ).sm.copyWith(color: scheme.onErrorContainer),
@@ -61,8 +61,8 @@ class TermuxDisconnectedBanner extends StatelessWidget {
                       : () => context.read<TermuxCubit>().reconnect(),
                   child: Text(
                     state.connecting
-                        ? l10n.termuxSetupConnecting
-                        : l10n.termuxDisconnectedReconnect,
+                        ? l10n.termux.setupConnecting
+                        : l10n.termux.disconnectedReconnect,
                   ),
                 ),
               ],

@@ -5,10 +5,10 @@ enum AutomationSort { nameAsc, nameDesc, nextRunAsc, recentlyUpdated }
 
 extension AutomationSortLabels on AutomationSort {
   String label(AppLocalizations l10n) => switch (this) {
-    AutomationSort.nameAsc => l10n.automationsSortNameAsc,
-    AutomationSort.nameDesc => l10n.automationsSortNameDesc,
-    AutomationSort.nextRunAsc => l10n.automationsSortNextRun,
-    AutomationSort.recentlyUpdated => l10n.automationsSortRecentlyUpdated,
+    AutomationSort.nameAsc => l10n.automations.sortNameAsc,
+    AutomationSort.nameDesc => l10n.automations.sortNameDesc,
+    AutomationSort.nextRunAsc => l10n.automations.sortNextRun,
+    AutomationSort.recentlyUpdated => l10n.automations.sortRecentlyUpdated,
   };
 }
 

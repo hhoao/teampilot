@@ -16,20 +16,20 @@ class WorkspaceAgentPromptPreset {
 
 String workspaceAgentPromptPresetLabel(AppLocalizations l10n, String id) {
   return switch (id) {
-    'general' => l10n.workspaceAgentPromptPresetGeneral,
-    'developer' => l10n.workspaceAgentPromptPresetDeveloper,
-    'reviewer' => l10n.workspaceAgentPromptPresetReviewer,
-    'researcher' => l10n.workspaceAgentPromptPresetResearcher,
+    'general' => l10n.workspace.agentPromptPresetGeneral,
+    'developer' => l10n.workspace.agentPromptPresetDeveloper,
+    'reviewer' => l10n.workspace.agentPromptPresetReviewer,
+    'researcher' => l10n.workspace.agentPromptPresetResearcher,
     _ => id,
   };
 }
 
 String workspaceAgentPromptPresetText(AppLocalizations l10n, String id) {
   return switch (id) {
-    'general' => l10n.workspaceAgentPromptPresetGeneralText,
-    'developer' => l10n.workspaceAgentPromptPresetDeveloperText,
-    'reviewer' => l10n.workspaceAgentPromptPresetReviewerText,
-    'researcher' => l10n.workspaceAgentPromptPresetResearcherText,
+    'general' => l10n.workspace.agentPromptPresetGeneralText,
+    'developer' => l10n.workspace.agentPromptPresetDeveloperText,
+    'reviewer' => l10n.workspace.agentPromptPresetReviewerText,
+    'researcher' => l10n.workspace.agentPromptPresetResearcherText,
     _ => '',
   };
 }

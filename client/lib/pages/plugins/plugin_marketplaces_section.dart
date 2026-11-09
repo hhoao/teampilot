@@ -28,20 +28,20 @@ class PluginMarketplacesSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TpCardHeader(
-                  title: l10n.pluginsNavMarketplaces,
+                  title: l10n.plugins.navMarketplaces,
                   trailing: FilledButton.tonalIcon(
                     onPressed: () => _onAdd(context, cubit),
                     icon: Icon(Icons.add, size: context.tpIconSizes.md),
-                    label: Text(l10n.pluginsMarketplaceAdd),
+                    label: Text(l10n.plugins.marketplaceAdd),
                   ),
                 ),
                 const SizedBox(height: 12),
                 if (state.marketplaces.isEmpty)
                   TpEmptyState(
                     icon: Icons.store_outlined,
-                    title: l10n.pluginsMarketplacesEmpty,
-                    hint: l10n.pluginsNoInstalledHint,
-                    actionLabel: l10n.pluginsMarketplaceAdd,
+                    title: l10n.plugins.marketplacesEmpty,
+                    hint: l10n.plugins.noInstalledHint,
+                    actionLabel: l10n.plugins.marketplaceAdd,
                     onAction: () {},
                   )
                 else
@@ -69,7 +69,7 @@ class PluginMarketplacesSection extends StatelessWidget {
     final parsed = parseGithubRepoUrl(draft.url.trim());
     if (parsed == null) {
       if (context.mounted) {
-        showPluginSnack(context, l10n.pluginsMarketplaceInvalidUrl);
+        showPluginSnack(context, l10n.plugins.marketplaceInvalidUrl);
       }
       return;
     }
@@ -125,7 +125,7 @@ class _AddPluginMarketplaceDialogState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TpDialogHeader(
-            title: l10n.pluginsMarketplaceAdd,
+            title: l10n.plugins.marketplaceAdd,
             onClose: () => Navigator.of(context).pop(),
           ),
           const SizedBox(height: 16),
@@ -136,15 +136,15 @@ class _AddPluginMarketplaceDialogState
                 controller: _urlCtrl,
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: l10n.pluginsMarketplaceUrlHint,
-                  labelText: l10n.pluginsMarketplaceUrl,
+                  hintText: l10n.plugins.marketplaceUrlHint,
+                  labelText: l10n.plugins.marketplaceUrl,
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _branchCtrl,
                 decoration: InputDecoration(
-                  labelText: l10n.pluginsMarketplaceBranch,
+                  labelText: l10n.plugins.marketplaceBranch,
                 ),
               ),
             ],
@@ -157,7 +157,7 @@ class _AddPluginMarketplaceDialogState
               ),
               FilledButton(
                 onPressed: _submit,
-                child: Text(l10n.pluginsMarketplaceAdd),
+                child: Text(l10n.plugins.marketplaceAdd),
               ),
             ],
           ),
@@ -214,7 +214,7 @@ class PluginMarketplaceRow extends StatelessWidget {
               ),
               CatalogRegistryEditButton(
                 onPressed: () => _edit(context, cubit),
-                tooltip: l10n.edit,
+                tooltip: l10n.edit.edit,
               ),
               Switch(
                 value: marketplace.enabled,
@@ -232,7 +232,7 @@ class PluginMarketplaceRow extends StatelessWidget {
                   size: context.tpIconSizes.md,
                   color: cs.error,
                 ),
-                tooltip: l10n.pluginsMarketplaceRemove,
+                tooltip: l10n.plugins.marketplaceRemove,
                 onPressed: () => _remove(context, l10n, cubit),
               ),
             ],
@@ -265,9 +265,11 @@ class PluginMarketplaceRow extends StatelessWidget {
   ) async {
     final ok = await pluginConfirmDialog(
       context,
-      title: l10n.pluginsMarketplaceRemove,
-      message: l10n.pluginsMarketplaceRemoveConfirm(marketplace.githubUrl),
-      confirmLabel: l10n.pluginsMarketplaceRemove,
+      title: l10n.plugins.marketplaceRemove,
+      message: l10n.plugins.marketplaceRemoveConfirm(
+        url: marketplace.githubUrl,
+      ),
+      confirmLabel: l10n.plugins.marketplaceRemove,
       destructive: true,
     );
     if (!ok || !context.mounted) return;
@@ -324,7 +326,7 @@ class _EditPluginMarketplaceDialogState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TpDialogHeader(
-            title: l10n.edit,
+            title: l10n.edit.edit,
             onClose: () => Navigator.of(context).pop(),
           ),
           const SizedBox(height: 16),
@@ -338,14 +340,14 @@ class _EditPluginMarketplaceDialogState
           TextField(
             controller: _displayNameCtrl,
             decoration: InputDecoration(
-              labelText: l10n.pluginsMarketplaceDisplayName,
+              labelText: l10n.plugins.marketplaceDisplayName,
             ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _branchCtrl,
             decoration: InputDecoration(
-              labelText: l10n.pluginsMarketplaceBranch,
+              labelText: l10n.plugins.marketplaceBranch,
             ),
           ),
           TpDialogActions(

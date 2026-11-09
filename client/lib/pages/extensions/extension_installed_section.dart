@@ -20,19 +20,19 @@ class ExtensionInstalledSection extends StatelessWidget {
   String _statusText(BuildContext context, ExtensionRow row) {
     final l10n = context.l10n;
     return switch (row.status) {
-      ExtensionStatusCode.notInstalled => l10n.extensionStatusNotInstalled,
+      ExtensionStatusCode.notInstalled => l10n.extension.statusNotInstalled,
       ExtensionStatusCode.dependencyMissing =>
         row.missingRequirements.isEmpty
-            ? l10n.extensionStatusDependencyMissing
-            : l10n.extensionStatusDependencyMissingNamed(
-                row.missingRequirements.join(', '),
+            ? l10n.extension.statusDependencyMissing
+            : l10n.extension.statusDependencyMissingNamed(
+                deps: row.missingRequirements.join(', '),
               ),
-      ExtensionStatusCode.versionTooOld => l10n.extensionStatusVersionTooOld,
+      ExtensionStatusCode.versionTooOld => l10n.extension.statusVersionTooOld,
       ExtensionStatusCode.ready => () {
         final v = row.version?.trim();
         return (v == null || v.isEmpty)
-            ? l10n.extensionStatusReady
-            : l10n.extensionStatusReadyVersion(v);
+            ? l10n.extension.statusReady
+            : l10n.extension.statusReadyVersion(version: v);
       }(),
     };
   }
@@ -195,7 +195,7 @@ class _ExtensionRow extends StatelessWidget {
                   if (row.installed && row.status != ExtensionStatusCode.ready)
                     TextButton(
                       onPressed: () => cubit.recheck(row.id),
-                      child: Text(l10n.extensionRecheck),
+                      child: Text(l10n.extension.recheck),
                     ),
                   TextButton(
                     onPressed: row.installed
@@ -203,8 +203,8 @@ class _ExtensionRow extends StatelessWidget {
                         : () => cubit.install(row.id),
                     child: Text(
                       row.installed
-                          ? l10n.extensionUninstall
-                          : l10n.extensionInstall,
+                          ? l10n.extension.uninstall
+                          : l10n.extension.install,
                     ),
                   ),
                   Switch(
@@ -263,7 +263,7 @@ class _DependencyRemediation extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              l10n.extensionDependencyMissingHint(deps),
+              l10n.extension.dependencyMissingHint(deps: deps),
               style: styles.smColored(cs.onSurface.withValues(alpha: 0.75)),
             ),
             const SizedBox(height: 8),
@@ -298,11 +298,11 @@ class _DependencyRemediation extends StatelessWidget {
                     await Clipboard.setData(ClipboardData(text: command));
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(l10n.extensionCommandCopied)),
+                      SnackBar(content: Text(l10n.extension.commandCopied)),
                     );
                   },
                   icon: const Icon(Icons.copy_rounded, size: 16),
-                  label: Text(l10n.extensionCopyCommand),
+                  label: Text(l10n.extension.copyCommand),
                 ),
               ],
             ),

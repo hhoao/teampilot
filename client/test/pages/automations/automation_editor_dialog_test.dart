@@ -104,14 +104,13 @@ AppSession _simpleSession(
   String id, {
   required CliTool cli,
   String display = 'Session',
-}) =>
-    AppSession(
-      sessionId: id,
-      workspaceId: 'ws1',
-      display: display,
-      cli: cli,
-      createdAt: 1,
-    );
+}) => AppSession(
+  sessionId: id,
+  workspaceId: 'ws1',
+  display: display,
+  cli: cli,
+  createdAt: 1,
+);
 
 CliPresetsCubit _cliPresetsCubitWithTwoClis() {
   final cubit = CliPresetsCubit(
@@ -153,14 +152,13 @@ Automation _boundAutomation({
   required String sessionId,
   bool isPersonal = true,
   String? teamId,
-}) =>
-    sampleAutomation(
-      id: 'edit-bound',
-      workspaceId: 'ws1',
-      isPersonal: isPersonal,
-      presetId: presetId,
-      teamId: teamId,
-    ).copyWith(reuseSession: true, sessionId: sessionId);
+}) => sampleAutomation(
+  id: 'edit-bound',
+  workspaceId: 'ws1',
+  isPersonal: isPersonal,
+  presetId: presetId,
+  teamId: teamId,
+).copyWith(reuseSession: true, sessionId: sessionId);
 
 CliPresetsCubit _cliPresetsCubitWithPreset() {
   final cubit = CliPresetsCubit(
@@ -269,8 +267,8 @@ Widget _host({
   }
 
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: Scaffold(
       body: MultiBlocProvider(
         providers: providers,
@@ -310,18 +308,16 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
-    expect(find.text(l10n.automationsCompactTitle), findsOneWidget);
-    expect(find.text(l10n.automationsName), findsOneWidget);
-    expect(find.text(l10n.automationsMessage), findsOneWidget);
-    expect(find.text(l10n.automationsEnabled), findsOneWidget);
+    expect(find.text(l10n.automations.compactTitle), findsOneWidget);
+    expect(find.text(l10n.automations.name), findsOneWidget);
+    expect(find.text(l10n.automations.message), findsOneWidget);
+    expect(find.text(l10n.automations.enabled), findsOneWidget);
     expect(find.text(l10n.presetPickerTitle), findsNothing);
-    expect(find.text(l10n.automationsTargetMember), findsNothing);
-    expect(find.text(l10n.automationsLaunchMode), findsNothing);
-    expect(find.text(l10n.automationsSessionTitle), findsNothing);
+    expect(find.text(l10n.automations.targetMember), findsNothing);
+    expect(find.text(l10n.automations.launchMode), findsNothing);
+    expect(find.text(l10n.automations.sessionTitle), findsNothing);
   });
 
   testWidgets('simple launch prompt shows landing-aligned fields', (
@@ -353,19 +349,17 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
-    expect(find.text(l10n.automationsCreateTitle), findsOneWidget);
-    expect(find.text(l10n.automationsLaunchMode), findsOneWidget);
+    expect(find.text(l10n.automations.createTitle), findsOneWidget);
+    expect(find.text(l10n.automations.launchMode), findsOneWidget);
     expect(find.text(l10n.presetPickerTitle), findsOneWidget);
-    expect(find.text(l10n.hubPublishKindExpert), findsOneWidget);
+    expect(find.text(l10n.hub.publishKindExpert), findsOneWidget);
     expect(find.byType(TpSelect<LaunchSecurityPolicy>), findsNothing);
     expect(find.byKey(const ValueKey('launchSecurityPolicy')), findsNothing);
-    expect(find.text(l10n.automationsTargetMember), findsNothing);
-    expect(find.text(l10n.automationsSessionTitle), findsOneWidget);
-    expect(find.text(l10n.automationsSessionTitleHint), findsOneWidget);
+    expect(find.text(l10n.automations.targetMember), findsNothing);
+    expect(find.text(l10n.automations.sessionTitle), findsOneWidget);
+    expect(find.text(l10n.automations.sessionTitleHint), findsOneWidget);
   });
 
   testWidgets('team launch prompt shows team member picker', (tester) async {
@@ -398,15 +392,13 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
-    expect(find.text(l10n.automationsEditTitle), findsOneWidget);
-    expect(find.text(l10n.automationsTargetMember), findsOneWidget);
+    expect(find.text(l10n.automations.editTitle), findsOneWidget);
+    expect(find.text(l10n.automations.targetMember), findsOneWidget);
     expect(find.text('Lead'), findsOneWidget);
     expect(find.text(l10n.presetPickerTitle), findsNothing);
-    expect(find.text(l10n.hubPublishKindExpert), findsNothing);
+    expect(find.text(l10n.hub.publishKindExpert), findsNothing);
   });
 
   testWidgets(
@@ -501,9 +493,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
     expect(find.byType(TpForm), findsOneWidget);
 
@@ -511,7 +501,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text(l10n.automationsValidationRequired), findsWidgets);
+    expect(find.text(l10n.automations.validationRequired), findsWidgets);
     expect(setup.cubit.state.automations, isEmpty);
   });
 
@@ -538,9 +528,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
     final modeSelect = tester.widget<TpSelect<AutomationScheduleMode>>(
       find.byType(TpSelect<AutomationScheduleMode>),
@@ -548,7 +536,7 @@ void main() {
     expect(modeSelect.initialItem, AutomationScheduleMode.once);
     expect(find.byType(TpDatePicker), findsOneWidget);
     expect(find.byType(TpTimePicker), findsOneWidget);
-    expect(find.text(l10n.automationsMaxRunCount), findsNothing);
+    expect(find.text(l10n.automations.maxRunCount), findsNothing);
   });
 
   testWidgets(
@@ -678,7 +666,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     final l10n = l10nOfDialog(tester);
-    expect(find.text(l10n.automationsMaxRunCount), findsNothing);
+    expect(find.text(l10n.automations.maxRunCount), findsNothing);
 
     await selectScheduleModeInDialog(
       tester,
@@ -687,7 +675,7 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
-    expect(find.text(l10n.automationsMaxRunCount), findsOneWidget);
+    expect(find.text(l10n.automations.maxRunCount), findsOneWidget);
   });
 
   testWidgets('saving an expired once automation unchanged is rejected', (
@@ -743,7 +731,7 @@ void main() {
 
     // Unchanged expired target: the stored ms round-trips, the save is
     // rejected, and the dialog stays open on the once time field.
-    expect(find.text(l10n.automationsSchedulePastTime), findsOneWidget);
+    expect(find.text(l10n.automations.schedulePastTime), findsOneWidget);
     expect(
       setup.cubit.state.automations.where((a) => a.id == 'expired').single,
       isA<Automation>()
@@ -1154,7 +1142,7 @@ void main() {
         await drainPendingAsyncWork();
       });
       await tester.pump();
-      expect(find.text(l10n.automationsSchedulePastTime), findsOneWidget);
+      expect(find.text(l10n.automations.schedulePastTime), findsOneWidget);
 
       // Moving the target into the future must clear that stale error so the
       // next save validates and succeeds instead of being bricked. The
@@ -1211,9 +1199,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
     await tester.enterText(
       find.byKey(const Key('automationCommandField')),
@@ -1259,13 +1245,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
-    expect(find.text(l10n.automationsCommandWorkingDirectory), findsOneWidget);
+    expect(find.text(l10n.automations.commandWorkingDirectory), findsOneWidget);
     expect(
-      find.text(l10n.automationsCommandWorkingDirectoryMain),
+      find.text(l10n.automations.commandWorkingDirectoryMain),
       findsOneWidget,
     );
   });
@@ -1292,9 +1276,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
     await tester.enterText(
       find.byKey(const Key('automationCommandField')),
@@ -1308,7 +1290,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text(l10n.automationsCommandTimeoutRange), findsOneWidget);
+    expect(find.text(l10n.automations.commandTimeoutRange), findsOneWidget);
     expect(find.byType(AutomationEditorDialog), findsOneWidget);
     expect(
       await tester.runAsync(() => setup.repo.listForWorkspace('ws1')),
@@ -1336,15 +1318,13 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
     await tester.tap(find.text(l10n.save));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text(l10n.automationsCommandRequired), findsOneWidget);
+    expect(find.text(l10n.automations.commandRequired), findsOneWidget);
     expect(find.byType(AutomationEditorDialog), findsOneWidget);
     expect(
       await tester.runAsync(() => setup.repo.listForWorkspace('ws1')),
@@ -1384,10 +1364,16 @@ void main() {
     );
   });
 
-  testWidgets('bound session scopes preset dropdown to its CLI', (tester) async {
+  testWidgets('bound session scopes preset dropdown to its CLI', (
+    tester,
+  ) async {
     final setup = testAutomationSetup();
     final chatCubit = _chatCubitWithSessions([
-      _simpleSession('sess-codex', cli: CliTool.codex, display: 'Codex session'),
+      _simpleSession(
+        'sess-codex',
+        cli: CliTool.codex,
+        display: 'Codex session',
+      ),
     ]);
     final cliPresetsCubit = _cliPresetsCubitWithTwoClis();
     addTearDown(setup.cubit.close);
@@ -1414,19 +1400,14 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
     final presetSelect = find.descendant(
       of: find.byType(CliPresetDropdownField),
       matching: find.byType(TpSelect<String>),
     );
-    expect(
-      tester.widget<TpSelect<String>>(presetSelect).items,
-      ['p-codex'],
-    );
-    expect(find.text(l10n.automationsPresetScopeHint), findsOneWidget);
-    expect(find.text(l10n.automationsBoundSession), findsOneWidget);
+    expect(tester.widget<TpSelect<String>>(presetSelect).items, ['p-codex']);
+    expect(find.text(l10n.automations.presetScopeHint), findsOneWidget);
+    expect(find.text(l10n.automations.boundSession), findsOneWidget);
     expect(find.text('Codex session'), findsOneWidget);
   });
 
@@ -1435,7 +1416,11 @@ void main() {
   ) async {
     final setup = testAutomationSetup();
     final chatCubit = _chatCubitWithSessions([
-      _simpleSession('sess-codex', cli: CliTool.codex, display: 'Codex session'),
+      _simpleSession(
+        'sess-codex',
+        cli: CliTool.codex,
+        display: 'Codex session',
+      ),
     ]);
     final cliPresetsCubit = _cliPresetsCubitWithTwoClis();
     addTearDown(setup.cubit.close);
@@ -1461,9 +1446,7 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
     await tester.ensureVisible(
       find.byKey(const Key('automationUnbindSession')),
@@ -1487,8 +1470,16 @@ void main() {
   ) async {
     final setup = testAutomationSetup();
     final chatCubit = _chatCubitWithSessions([
-      _simpleSession('sess-codex', cli: CliTool.codex, display: 'Codex session'),
-      _simpleSession('sess-claude', cli: CliTool.claude, display: 'Claude session'),
+      _simpleSession(
+        'sess-codex',
+        cli: CliTool.codex,
+        display: 'Codex session',
+      ),
+      _simpleSession(
+        'sess-claude',
+        cli: CliTool.claude,
+        display: 'Claude session',
+      ),
     ]);
     final cliPresetsCubit = _cliPresetsCubitWithTwoClis();
     addTearDown(setup.cubit.close);
@@ -1514,9 +1505,7 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
     await tester.ensureVisible(
       find.byKey(const Key('automationSwitchSession')),
@@ -1541,7 +1530,11 @@ void main() {
   testWidgets('preset CLI mismatch blocks save', (tester) async {
     final setup = testAutomationSetup();
     final chatCubit = _chatCubitWithSessions([
-      _simpleSession('sess-codex', cli: CliTool.codex, display: 'Codex session'),
+      _simpleSession(
+        'sess-codex',
+        cli: CliTool.codex,
+        display: 'Codex session',
+      ),
     ]);
     final cliPresetsCubit = _cliPresetsCubitWithTwoClis();
     addTearDown(setup.cubit.close);
@@ -1567,13 +1560,11 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
     await tester.tap(find.text(l10n.save));
     await tester.pumpAndSettle();
-    expect(find.text(l10n.automationsPresetCliMismatch), findsOneWidget);
+    expect(find.text(l10n.automations.presetCliMismatch), findsOneWidget);
     expect(setup.cubit.state.automations, isEmpty);
   });
 
@@ -1582,7 +1573,11 @@ void main() {
   ) async {
     final setup = testAutomationSetup();
     final chatCubit = _chatCubitWithSessions([
-      _simpleSession('sess-codex', cli: CliTool.codex, display: 'Codex session'),
+      _simpleSession(
+        'sess-codex',
+        cli: CliTool.codex,
+        display: 'Codex session',
+      ),
     ]);
     final cliPresetsCubit = _cliPresetsCubitWithTwoClis();
     addTearDown(setup.cubit.close);
@@ -1608,15 +1603,13 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
     // First save is rejected: the preset CLI does not match the bound
     // session's CLI, leaving a forced error on the preset field.
     await tester.tap(find.text(l10n.save));
     await tester.pumpAndSettle();
-    expect(find.text(l10n.automationsPresetCliMismatch), findsOneWidget);
+    expect(find.text(l10n.automations.presetCliMismatch), findsOneWidget);
     expect(setup.cubit.state.automations, isEmpty);
 
     // Unbinding drops the CLI constraint. The preset field keeps its
@@ -1679,9 +1672,7 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
     expect(find.byKey(const Key('automationUnbindSession')), findsOneWidget);
     expect(find.text(l10n.presetPickerTitle), findsNothing);
@@ -1725,9 +1716,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AutomationEditorDialog)),
-    );
+    final l10n = tester.element(find.byType(AutomationEditorDialog)).l10n;
 
     await tester.enterText(
       find.byKey(const Key('automationSessionTitleField')),
@@ -1746,7 +1735,7 @@ void main() {
 }
 
 AppLocalizations l10nOfDialog(WidgetTester tester) =>
-    AppLocalizations.of(tester.element(find.byType(AutomationEditorDialog)));
+    tester.element(find.byType(AutomationEditorDialog)).l10n;
 
 Future<void> selectScheduleModeInDialog(
   WidgetTester tester,

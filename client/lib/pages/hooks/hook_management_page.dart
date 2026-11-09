@@ -40,12 +40,12 @@ class HookManagementPage extends StatelessWidget {
     final l10n = context.l10n;
     return WorkspaceAdaptiveSectionPage(
       pageKey: AppKeys.hooksWorkspace,
-      title: l10n.hookNavTitle,
+      title: l10n.hook.navTitle,
       embedded: embedded,
       compactSectionTabs: true,
       items: [
         WorkspaceSectionNavItem(
-          label: l10n.hookNavTitle,
+          label: l10n.hook.navTitle,
           icon: Icons.bolt_outlined,
           selected: true,
           onSelect: () {},
@@ -67,7 +67,9 @@ class HookManagementPage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       TpCardHeader(
-                        title: l10n.hookInstalledCount(definitions.length),
+                        title: l10n.hook.installedCount(
+                          count: definitions.length,
+                        ),
                         trailing: TpActionRow(
                           children: [
                             OutlinedButton.icon(
@@ -79,13 +81,13 @@ class HookManagementPage extends StatelessWidget {
                                 if (imported == true && context.mounted) {
                                   AppToast.show(
                                     context,
-                                    message: context.l10n.hookImportDoneToast,
+                                    message: context.l10n.hook.importDoneToast,
                                     variant: TpToastVariant.success,
                                   );
                                 }
                               },
                               icon: const Icon(Icons.file_download_outlined),
-                              label: Text(l10n.hookImport),
+                              label: Text(l10n.hook.import),
                             ),
                             FilledButton(
                               onPressed: () =>
@@ -95,7 +97,7 @@ class HookManagementPage extends StatelessWidget {
                                 children: [
                                   Icon(Icons.add, size: context.tpIconSizes.md),
                                   const SizedBox(width: 6),
-                                  Text(l10n.hookNew),
+                                  Text(l10n.hook.kNew),
                                 ],
                               ),
                             ),
@@ -184,14 +186,14 @@ class _HookRow extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               IconButton(
-                tooltip: l10n.hookEdit,
+                tooltip: l10n.hook.edit,
                 visualDensity: VisualDensity.compact,
                 iconSize: context.tpIconSizes.md,
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined),
               ),
               IconButton(
-                tooltip: l10n.delete,
+                tooltip: l10n.delete.delete,
                 visualDensity: VisualDensity.compact,
                 iconSize: context.tpIconSizes.md,
                 onPressed: onDelete,

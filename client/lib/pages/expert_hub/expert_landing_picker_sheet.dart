@@ -92,7 +92,7 @@ class _ExpertLandingPickerDialogState extends State<ExpertLandingPickerDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TpDialogHeader(title: l10n.expertHubTitle),
+              TpDialogHeader(title: l10n.expert.hubTitle),
               const SizedBox(height: 8),
               Expanded(
                 child: BlocConsumer<ExpertHubCubit, ExpertHubState>(
@@ -103,7 +103,7 @@ class _ExpertLandingPickerDialogState extends State<ExpertLandingPickerDialog> {
                     if (state.errorMessage == null) return;
                     AppToast.show(
                       context,
-                      message: context.l10n.expertHubLoadError,
+                      message: context.l10n.expert.hubLoadError,
                       variant: TpToastVariant.error,
                     );
                     context.read<ExpertHubCubit>().clearError();

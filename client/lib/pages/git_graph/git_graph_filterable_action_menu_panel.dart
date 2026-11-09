@@ -40,29 +40,29 @@ class GitGraphFilterableActionMenuPanel extends StatelessWidget {
               mainAxisSize: MainAxisSize.max,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-              if (showsSearchField) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(6, 0, 6, 4),
-                  child: TextField(
-                    focusNode: searchFocus,
-                    autofocus: true,
-                    onChanged: onFilterChanged,
-                    style: TpTextStyles.of(context).md,
-                    decoration: tpSearchPillDecoration(
-                      context,
-                      hintText: filterHint,
+                if (showsSearchField) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(6, 0, 6, 4),
+                    child: TextField(
+                      focusNode: searchFocus,
+                      autofocus: true,
+                      onChanged: onFilterChanged,
+                      style: TpTextStyles.of(context).md,
+                      decoration: tpSearchPillDecoration(
+                        context,
+                        hintText: filterHint,
+                      ),
                     ),
                   ),
+                  const TpActionMenuDivider(),
+                ],
+                Flexible(
+                  child: TpActionMenuPanel(
+                    minWidth: minWidth,
+                    menuAnchorShell: true,
+                    children: menuChildren,
+                  ),
                 ),
-                const TpActionMenuDivider(),
-              ],
-              Flexible(
-                child: TpActionMenuPanel(
-                  minWidth: minWidth,
-                  menuAnchorShell: true,
-                  children: menuChildren,
-                ),
-              ),
               ],
             ),
           ),

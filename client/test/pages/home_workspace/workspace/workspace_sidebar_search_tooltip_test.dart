@@ -70,8 +70,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Scaffold(
           body: MultiRepositoryProvider(
             providers: [
@@ -119,15 +119,13 @@ void main() {
       KeyChord.doubleTapShift(),
       isMacOS: defaultIsMacOS(),
     );
-    final l10n = AppLocalizations.of(
-      tester.element(find.byKey(AppKeys.searchSidebarTile)),
-    );
+    final l10n = tester.element(find.byKey(AppKeys.searchSidebarTile)).l10n;
     final tooltip = tester.widget<Tooltip>(
       find.descendant(
         of: find.byKey(AppKeys.searchSidebarTile),
         matching: find.byType(Tooltip),
       ),
     );
-    expect(tooltip.message, '${l10n.workspaceSearchTitle} ($expectedChord)');
+    expect(tooltip.message, '${l10n.workspace.searchTitle} ($expectedChord)');
   });
 }

@@ -1,0 +1,45 @@
+{
+  "featureCliLabel": "CLI",
+  "featureCommitMessageSubtitle": "Used by the ✨ button in the source control panel.",
+  "featureCommitMessageTitle": "Commit message generation",
+  "featureConfigSummary": "{cli: String} · {provider: String} · {model: String}",
+  "featureEffortLabel": "Effort",
+  "featureModelLabel": "Model",
+  "featureTeamGenerateSubtitle": "Used when generating a team from a description.",
+  "featureTeamGenerateTitle": "Team configuration generation",
+  "features": "AI Features",
+  "featuresPageSubtitle": "Choose which CLI provider, model, and effort each AI feature uses.",
+  "messageCancelled": "Message cancelled",
+  "messageCancelledTool": "Cancelled tool",
+  "messageCopied": "Copied",
+  "messageExportMarkdown": "Export Markdown",
+  "messageIncomplete": "Message incomplete",
+  "messageReasoning": "Reasoning",
+  "messageScrollToBottom": "Scroll to bottom",
+  "messageShowLess": "Show less",
+  "messageShowMore": "Show more",
+  "messageThinkingCommands(param=count)": {
+    "one": "ran 1 command",
+    "other": "ran {count: int} commands"
+  },
+  "messageThinkingEditedFiles(param=count)": {
+    "one": "edited 1 file",
+    "other": "edited {count: int} files"
+  },
+  "messageThinkingExploredFiles(param=count)": {
+    "one": "explored 1 file",
+    "other": "explored {count: int} files"
+  },
+  "messageThinkingProcess": "Thinking process",
+  "messageThinkingProcessStats": "Thinking process · {steps: int} steps · {toolCalls: int} tool calls",
+  "messageThinkingProcessSteps": "Thinking process · {count: int} steps",
+  "messageThinkingProcessSummarySeparator": ", ",
+  "messageThinkingSearches(param=count)": {
+    "one": "1 search",
+    "other": "{count: int} searches"
+  },
+  "messageToolResult": "Result",
+  "messageToolsUsed": "Used {count} tools",
+  "messageUsedTool": "Used tool",
+  "toolFileNotFound": "Could not find file: {path: String}"
+}

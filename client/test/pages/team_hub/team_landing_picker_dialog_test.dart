@@ -85,8 +85,8 @@ void main() {
           BlocProvider<LaunchProfileCubit>.value(value: launchCubit),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           home: home,
         ),
       ),

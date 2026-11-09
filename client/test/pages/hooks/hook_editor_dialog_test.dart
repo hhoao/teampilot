@@ -33,8 +33,8 @@ void main() {
     final scheme = ColorScheme.fromSeed(seedColor: Colors.indigo);
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: TpTheme(
           data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
           child: BlocProvider<HookCubit>.value(

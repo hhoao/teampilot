@@ -9,9 +9,9 @@ String expertLandingPreflightToastMessage(
 }) {
   if (!pack.hasFailures) return '';
   final failedNames = pack.failedDeps.map((f) => f.name).join(', ');
-  return l10n.expertHubPreflightPartial(
-    expertName,
-    pack.failedDeps.length,
-    failedNames,
+  return l10n.expert.hubPreflightPartial(
+    name: expertName,
+    failedCount: pack.failedDeps.length,
+    failedNames: failedNames,
   );
 }

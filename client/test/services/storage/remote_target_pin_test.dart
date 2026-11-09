@@ -10,7 +10,9 @@ import '../../support/test_runtime_context.dart';
 void main() {
   test('target repo stays device-local after home rebinds to ssh', () async {
     final native = await Directory.systemTemp.createTemp('native_pin_');
-    final remoteHome = await Directory.systemTemp.createTemp('remote_home_pin_');
+    final remoteHome = await Directory.systemTemp.createTemp(
+      'remote_home_pin_',
+    );
     addTearDown(() async {
       if (await native.exists()) await native.delete(recursive: true);
       if (await remoteHome.exists()) await remoteHome.delete(recursive: true);
@@ -35,14 +37,16 @@ void main() {
     expect(await repo.loadAll(), hasLength(1));
     expect((await repo.loadAll()).single.id, 't1');
     expect(
-      File(repo.fs.pathContext.join(native.path, 'remote-targets.json'))
-          .existsSync(),
+      File(
+        repo.fs.pathContext.join(native.path, 'remote-targets.json'),
+      ).existsSync(),
       isTrue,
     );
     // The rebound (remote) home must never receive the catalog.
     expect(
-      File(repo.fs.pathContext.join(remoteHome.path, 'remote-targets.json'))
-          .existsSync(),
+      File(
+        repo.fs.pathContext.join(remoteHome.path, 'remote-targets.json'),
+      ).existsSync(),
       isFalse,
     );
   });

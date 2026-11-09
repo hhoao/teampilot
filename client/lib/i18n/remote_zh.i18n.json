@@ -1,0 +1,20 @@
+{
+  "cliMachineReadinessAdapterLabel": "{cli: String} ACP 适配器",
+  "@cliMachineReadinessAdapterLabel": "Landing readiness row label for a separate ACP adapter binary.",
+  "cliMachineReadinessFailed": "{cli: String}：{message: String}",
+  "cliMachineReadinessInstallHint": "对每个缺失的 CLI 点击安装，或在目标设置中指定手动路径。",
+  "cliMachineReadinessMissing": "未找到 {cli: String} — 请安装或设置手动路径",
+  "cliMachineReadinessProbing": "正在检测…",
+  "cliMachineReadinessReady": "{cli: String} 已就绪：{path: String}",
+  "cliMachineReadinessTitle": "此机器上需要的 CLI",
+  "connectionsSubtitle": "管理本机保存的远程主机、连接与切换工作主目录；断线时同样可用。",
+  "connectionsTitle": "远程连接",
+  "directoryBrowserEmpty": "此处没有子目录",
+  "directoryBrowserError": "无法打开远程目录。你仍可在下方手动输入路径。",
+  "directoryBrowserTitle": "浏览远程目录",
+  "directoryBrowserTypePathHint": "~/work/workspace",
+  "directoryBrowserTypePathLabel": "或手动输入路径",
+  "directoryBrowserUpOneLevel": "上一级",
+  "directoryBrowserUseThisDirectory": "使用此目录",
+  "directoryBrowserUseTypedPath": "使用路径"
+}

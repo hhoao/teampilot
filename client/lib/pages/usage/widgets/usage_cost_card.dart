@@ -27,13 +27,13 @@ class UsageCostCard extends StatelessWidget {
     final hasPriced = summary.pricedEvents > 0;
     final cost = hasPriced ? summary.costMicroUsd : null;
     final details = <String>[
-      l10n.sessionUsageCostPricedUnpriced(
-        summary.pricedEvents,
-        summary.unpricedEvents,
+      l10n.sessionUsage.costPricedUnpriced(
+        priced: summary.pricedEvents,
+        unpriced: summary.unpricedEvents,
       ),
       if (summary.unpricedEvents > 0)
-        l10n.sessionUsageCostPartial(summary.unpricedEvents),
-      if (corrupted) l10n.sessionUsagePricingCorrupt,
+        l10n.sessionUsage.costPartial(count: summary.unpricedEvents),
+      if (corrupted) l10n.sessionUsage.pricingCorrupt,
     ];
 
     return Container(
@@ -63,12 +63,12 @@ class UsageCostCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(l10n.sessionUsageCost, style: styles.xs),
+                Text(l10n.sessionUsage.cost, style: styles.xs),
                 const SizedBox(height: 2),
                 Text(
                   hasPriced
                       ? formatUsageCost(cost)
-                      : l10n.sessionUsageCostUnpriced,
+                      : l10n.sessionUsage.costUnpriced,
                   style: styles.xl.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
@@ -88,7 +88,7 @@ class UsageCostCard extends StatelessWidget {
             key: AppKeys.sessionUsageManagePricingButton,
             onPressed: onManagePricing,
             icon: const Icon(Icons.tune, size: 17),
-            label: Text(l10n.sessionUsageManagePricing),
+            label: Text(l10n.sessionUsage.managePricing),
           ),
         ],
       ),

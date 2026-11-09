@@ -1,0 +1,12 @@
+{
+  "cliSupportFully": "{cli: String}: Fully supported",
+  "cliSupportNotApplicable": "{cli: String}: Not applicable",
+  "cliSupportPartial": "{cli: String}: Partially supported ({dropped: String} dropped)",
+  "componentAgents": "agents",
+  "componentApps": "apps",
+  "componentCommands": "commands",
+  "componentHooks": "hooks",
+  "componentMcp": "MCP",
+  "componentRules": "rules",
+  "componentSkills": "skills"
+}

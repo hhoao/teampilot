@@ -80,7 +80,7 @@ class OnboardingCliRow extends StatelessWidget {
         controller: controller,
         decoration: InputDecoration(
           isDense: true,
-          hintText: found ? null : l10n.onboardingCliNotFound,
+          hintText: found ? null : l10n.onboarding.cliNotFound,
           hintMaxLines: 1,
           floatingLabelBehavior: FloatingLabelBehavior.never,
         ),
@@ -95,7 +95,7 @@ class OnboardingCliRow extends StatelessWidget {
         builder: (context, busy, _) {
           return IconButton(
             key: AppKeys.cliInstallButtonFor(cli),
-            tooltip: l10n.cliInstallButton,
+            tooltip: l10n.cli.installButton,
             onPressed: busy || installing ? null : onInstall,
             icon: installing
                 ? const SizedBox(

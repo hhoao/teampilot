@@ -46,10 +46,7 @@ void main() {
         (await fs.stat('/cfg/plugins/demo/skills/demo/SKILL.md')).isFile,
         isTrue,
       );
-      expect(
-        (await fs.stat('/cfg/plugins/demo/agents/a.md')).isFile,
-        isTrue,
-      );
+      expect((await fs.stat('/cfg/plugins/demo/agents/a.md')).isFile, isTrue);
       expect(
         await fs.readString('/cfg/plugins/demo/mcp_config.json'),
         contains('bus'),
@@ -106,10 +103,7 @@ void main() {
         targetDir: '/cfg/plugins/pkg',
       );
 
-      expect(
-        (await fs.stat('/cfg/plugins/pkg/rules/team.md')).isFile,
-        isTrue,
-      );
+      expect((await fs.stat('/cfg/plugins/pkg/rules/team.md')).isFile, isTrue);
       final hooks =
           jsonDecode((await fs.readString('/cfg/plugins/pkg/hooks.json'))!)
               as Map<String, Object?>;
@@ -167,10 +161,7 @@ void main() {
       );
 
       expect((await fs.stat('/cfg/plugins/pkg/stale.md')).exists, isFalse);
-      expect(
-        (await fs.stat('/cfg/plugins/pkg/plugin.json')).isFile,
-        isTrue,
-      );
+      expect((await fs.stat('/cfg/plugins/pkg/plugin.json')).isFile, isTrue);
     });
 
     test('rejects traversing target directory names', () async {
@@ -196,10 +187,7 @@ void main() {
       expect(cap.manifestPaths?.manifestDirName, '.plugin');
       expect(cap.memberPluginsSubpath, ['plugins']);
       expect(cap.pluginsSubdir, 'plugins');
-      expect(
-        cap.pluginsRepresentation,
-        ResourceRepresentation.linkedDirectory,
-      );
+      expect(cap.pluginsRepresentation, ResourceRepresentation.linkedDirectory);
       expect(cap.consumesMarketplaces, isFalse);
       expect(cap.writesAssembledMcp, isFalse);
       expect(cap.needsSharedPluginDepsBeforeReconcile, isFalse);
@@ -221,7 +209,10 @@ void main() {
       await _provision(
         fs,
         enabledPluginIds: const ['demo', 'other'],
-        installedCatalog: [_plugin(id: 'demo'), _plugin(id: 'other')],
+        installedCatalog: [
+          _plugin(id: 'demo'),
+          _plugin(id: 'other'),
+        ],
       );
 
       expect(
@@ -287,7 +278,10 @@ void main() {
       await _provision(
         fs,
         enabledPluginIds: const ['demo', 'missing'],
-        installedCatalog: [_plugin(id: 'demo'), _plugin(id: 'missing')],
+        installedCatalog: [
+          _plugin(id: 'demo'),
+          _plugin(id: 'missing'),
+        ],
       );
 
       expect(
@@ -297,40 +291,43 @@ void main() {
       expect((await fs.stat('/cfg/plugins/missing')).exists, isFalse);
     });
 
-    test('rejects traversing bundle directories without deleting config', () async {
-      final fs = InMemoryFilesystem();
-      await fs.writeString('/cfg/keep.txt', 'keep');
-      await fs.writeString('/cfg/plugins/stale/plugin.json', '{}');
+    test(
+      'rejects traversing bundle directories without deleting config',
+      () async {
+        final fs = InMemoryFilesystem();
+        await fs.writeString('/cfg/keep.txt', 'keep');
+        await fs.writeString('/cfg/plugins/stale/plugin.json', '{}');
 
-      await _provision(
-        fs,
-        enabledPluginIds: const ['..', '../escape'],
-        installedCatalog: [
-          _plugin(id: '..', name: '..', directory: '..'),
-          _plugin(id: '../escape', name: 'escape', directory: '../escape'),
-        ],
-      );
+        await _provision(
+          fs,
+          enabledPluginIds: const ['..', '../escape'],
+          installedCatalog: [
+            _plugin(id: '..', name: '..', directory: '..'),
+            _plugin(id: '../escape', name: 'escape', directory: '../escape'),
+          ],
+        );
 
-      expect(await fs.readString('/cfg/keep.txt'), 'keep');
-      expect((await fs.stat('/cfg/plugins/..')).exists, isFalse);
-      // The unsafe entries were skipped; unrelated stale bundles are pruned
-      // inside the plugins root only.
-      expect((await fs.stat('/cfg/plugins/stale')).exists, isFalse);
-    });
+        expect(await fs.readString('/cfg/keep.txt'), 'keep');
+        expect((await fs.stat('/cfg/plugins/..')).exists, isFalse);
+        // The unsafe entries were skipped; unrelated stale bundles are pruned
+        // inside the plugins root only.
+        expect((await fs.stat('/cfg/plugins/stale')).exists, isFalse);
+      },
+    );
 
     test('prunes projected bundles no longer enabled', () async {
       final fs = InMemoryFilesystem();
       await _writeBundle(fs, '/pool/demo', 'demo');
       await fs.writeString('/cfg/plugins/removed/plugin.json', '{}');
-      await fs.writeString(
-        '/cfg/plugins/marketplaces/keep.json',
-        '{}',
-      );
+      await fs.writeString('/cfg/plugins/marketplaces/keep.json', '{}');
 
       await _provision(
         fs,
         enabledPluginIds: const ['demo'],
-        installedCatalog: [_plugin(id: 'demo'), _plugin(id: 'removed')],
+        installedCatalog: [
+          _plugin(id: 'demo'),
+          _plugin(id: 'removed'),
+        ],
       );
 
       expect(
@@ -359,11 +356,7 @@ void main() {
   });
 }
 
-Plugin _plugin({
-  required String id,
-  String? name,
-  String? directory,
-}) => Plugin(
+Plugin _plugin({required String id, String? name, String? directory}) => Plugin(
   id: id,
   name: name ?? id,
   description: 'test plugin',

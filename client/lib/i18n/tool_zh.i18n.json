@@ -1,0 +1,16 @@
+{
+  "categoryAskUser": "询问用户",
+  "categoryBrowser": "浏览器",
+  "categoryCommand": "Shell 命令",
+  "categoryEdit": "编辑文件",
+  "categoryMcp": "MCP",
+  "categoryOther": "其他",
+  "categoryPlan": "计划",
+  "categoryRead": "读取文件",
+  "categorySearch": "网络搜索",
+  "categorySubagent": "子代理",
+  "categoryTask": "任务与待办",
+  "categoryWrite": "写入文件",
+  "placement": "工具栏位置",
+  "placementDescription": "将工具面板固定在右侧或沿底部边缘排列。"
+}

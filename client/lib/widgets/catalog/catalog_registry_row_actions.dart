@@ -14,8 +14,8 @@ class CatalogRegistryAuthBadge extends StatelessWidget {
     final l10n = context.l10n;
     return TpStatusBadge(
       label: authenticated
-          ? l10n.providerCredentialsAuthenticated
-          : l10n.providerCredentialsUnauthenticated,
+          ? l10n.provider.credentialsAuthenticated
+          : l10n.provider.credentialsUnauthenticated,
       icon: authenticated ? Icons.verified_user_outlined : Icons.lock_outline,
       tone: authenticated
           ? TpStatusBadgeTone.success
@@ -38,7 +38,7 @@ class CatalogRegistryEditButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      tooltip: tooltip ?? context.l10n.edit,
+      tooltip: tooltip ?? context.l10n.edit.edit,
       onPressed: onPressed,
       icon: Icon(Icons.edit_outlined, size: context.tpIconSizes.md),
     );

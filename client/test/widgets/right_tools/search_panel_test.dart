@@ -67,8 +67,8 @@ void main() {
 
   Widget wrap(ContentSearchCubit cubit, {WorkspaceSearchPanel? panel}) {
     return MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: BlocProvider.value(
         value: cubit,
         child: Scaffold(
@@ -211,12 +211,12 @@ void main() {
         ),
       );
       await runSearch(tester, 'hello', cubit: cubit);
-      final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
+      final l10n = tester.element(find.byType(Scaffold)).l10n;
       expect(
-        find.text(l10n.workspaceSearchSliceError('missing')),
+        find.text(l10n.workspace.searchSliceError(directory: 'missing')),
         findsOneWidget,
       );
-      expect(find.text(l10n.workspaceSearchNoResults), findsNothing);
+      expect(find.text(l10n.workspace.searchNoResults), findsNothing);
     },
   );
 
@@ -306,15 +306,15 @@ void main() {
     await runSearch(tester, 'hello', cubit: cubit);
     expect(find.textContaining('hello world'), findsWidgets);
 
-    final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
-    await tester.tap(find.byTooltip(l10n.editorFindToggleReplace));
+    final l10n = tester.element(find.byType(Scaffold)).l10n;
+    await tester.tap(find.byTooltip(l10n.editor.findToggleReplace));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(1), 'hi');
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('search-replace-all')));
     await tester.pumpAndSettle();
-    expect(find.text(l10n.workspaceSearchReplaceAllTitle), findsOneWidget);
-    await tester.tap(find.text(l10n.workspaceSearchReplace).last);
+    expect(find.text(l10n.workspace.searchReplaceAllTitle), findsOneWidget);
+    await tester.tap(find.text(l10n.workspace.searchReplace).last);
     // The replace runs real file IO; interleave frames with real event-loop
     // turns so the fake-async zone can complete the read/write.
     for (var i = 0; i < 30; i++) {
@@ -324,7 +324,10 @@ void main() {
       );
     }
     await tester.pumpAndSettle();
-    expect(find.text(l10n.workspaceSearchReplacedCount(1)), findsOneWidget);
+    expect(
+      find.text(l10n.workspace.searchReplacedCount(count: 1)),
+      findsOneWidget,
+    );
     expect(File('${fixture.path}/a.dart').readAsStringSync(), 'hi world\n');
   });
 
@@ -354,8 +357,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(cubit.state.files, isEmpty);
     expect(find.textContaining('hello world'), findsNothing);
-    final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
-    expect(find.text(l10n.workspaceSearchEmptyHint), findsOneWidget);
+    final l10n = tester.element(find.byType(Scaffold)).l10n;
+    expect(find.text(l10n.workspace.searchEmptyHint), findsOneWidget);
   });
 
   testWidgets('search panels debounce independently across workspaces', (
@@ -382,8 +385,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
         home: Scaffold(
           body: Row(
             children: [
@@ -446,8 +449,11 @@ void main() {
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
     await runSearch(tester, 'hello', cubit: cubit);
-    final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
-    expect(find.text(l10n.workspaceSearchResultSummary(1, 1)), findsOneWidget);
+    final l10n = tester.element(find.byType(Scaffold)).l10n;
+    expect(
+      find.text(l10n.workspace.searchResultSummary(matches: 1, files: 1)),
+      findsOneWidget,
+    );
   });
 
   testWidgets('summary row shows the searching label while the engine runs', (
@@ -458,16 +464,16 @@ void main() {
     final cubit = _StubbedSearchCubit();
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
-    final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
+    final l10n = tester.element(find.byType(Scaffold)).l10n;
     await tester.enterText(find.byType(TextField).first, 'hello');
     await tester.pump();
-    expect(find.text(l10n.workspaceSearchSearching), findsNothing);
+    expect(find.text(l10n.workspace.searchSearching), findsNothing);
 
     cubit.debugEmitState(
       const ContentSearchState(query: 'hello', searching: true),
     );
     await tester.pump();
-    expect(find.text(l10n.workspaceSearchSearching), findsOneWidget);
+    expect(find.text(l10n.workspace.searchSearching), findsOneWidget);
 
     cubit.debugEmitState(
       ContentSearchState(
@@ -491,8 +497,11 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.text(l10n.workspaceSearchSearching), findsNothing);
-    expect(find.text(l10n.workspaceSearchResultSummary(1, 1)), findsOneWidget);
+    expect(find.text(l10n.workspace.searchSearching), findsNothing);
+    expect(
+      find.text(l10n.workspace.searchResultSummary(matches: 1, files: 1)),
+      findsOneWidget,
+    );
 
     // Clearing the query re-arms the debounce so flushing it below runs the
     // safe empty branch instead of the stubbed engine.
@@ -522,9 +531,9 @@ void main() {
     final cubit = buildCubit();
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
-    final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
+    final l10n = tester.element(find.byType(Scaffold)).l10n;
     await runSearch(tester, 'hello', cubit: cubit);
-    await tester.tap(find.byTooltip(l10n.editorFindToggleReplace));
+    await tester.tap(find.byTooltip(l10n.editor.findToggleReplace));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(1), 'hi');
     await tester.pump();
@@ -533,7 +542,7 @@ void main() {
     // must not open the confirm dialog.
     await tester.tap(find.byKey(const ValueKey('search-file-replace-all')));
     await tester.pump();
-    expect(find.text(l10n.workspaceSearchReplaceAllTitle), findsNothing);
+    expect(find.text(l10n.workspace.searchReplaceAllTitle), findsNothing);
 
     // Synthesize mouse hover over the button to activate it.
     final hover = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -552,8 +561,8 @@ void main() {
       warnIfMissed: false,
     );
     await tester.pumpAndSettle();
-    expect(find.text(l10n.workspaceSearchReplaceAllTitle), findsOneWidget);
-    await tester.tap(find.text(l10n.workspaceSearchReplace).last);
+    expect(find.text(l10n.workspace.searchReplaceAllTitle), findsOneWidget);
+    await tester.tap(find.text(l10n.workspace.searchReplace).last);
     for (var i = 0; i < 30; i++) {
       await tester.pump(const Duration(milliseconds: 50));
       await tester.runAsync(
@@ -568,12 +577,12 @@ void main() {
     final cubit = buildCubit();
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
-    final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
+    final l10n = tester.element(find.byType(Scaffold)).l10n;
     expect(find.byKey(const ValueKey('search-replace-all')), findsNothing);
-    await tester.tap(find.byTooltip(l10n.editorFindToggleReplace));
+    await tester.tap(find.byTooltip(l10n.editor.findToggleReplace));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('search-replace-all')), findsOneWidget);
-    await tester.tap(find.byTooltip(l10n.editorFindToggleReplace));
+    await tester.tap(find.byTooltip(l10n.editor.findToggleReplace));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('search-replace-all')), findsNothing);
   });
@@ -584,16 +593,16 @@ void main() {
     final cubit = buildCubit();
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
-    final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
+    final l10n = tester.element(find.byType(Scaffold)).l10n;
     expect(find.byType(TextField), findsOneWidget);
-    expect(find.text(l10n.workspaceSearchFilesToInclude), findsNothing);
-    await tester.tap(find.byTooltip(l10n.workspaceSearchToggleDetails));
+    expect(find.text(l10n.workspace.searchFilesToInclude), findsNothing);
+    await tester.tap(find.byTooltip(l10n.workspace.searchToggleDetails));
     await tester.pumpAndSettle();
     expect(find.byType(TextField), findsNWidgets(3));
-    expect(find.text(l10n.workspaceSearchFilesToInclude), findsOneWidget);
-    expect(find.text(l10n.workspaceSearchFilesToExclude), findsOneWidget);
-    expect(find.text(l10n.workspaceSearchUseGitignore), findsOneWidget);
-    await tester.tap(find.byTooltip(l10n.workspaceSearchToggleDetails));
+    expect(find.text(l10n.workspace.searchFilesToInclude), findsOneWidget);
+    expect(find.text(l10n.workspace.searchFilesToExclude), findsOneWidget);
+    expect(find.text(l10n.workspace.searchUseGitignore), findsOneWidget);
+    await tester.tap(find.byTooltip(l10n.workspace.searchToggleDetails));
     await tester.pumpAndSettle();
     expect(find.byType(TextField), findsOneWidget);
   });
@@ -602,13 +611,13 @@ void main() {
     final cubit = buildCubit();
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
-    final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
-    await tester.tap(find.byTooltip(l10n.workspaceSearchToggleDetails));
+    final l10n = tester.element(find.byType(Scaffold)).l10n;
+    await tester.tap(find.byTooltip(l10n.workspace.searchToggleDetails));
     await tester.pumpAndSettle();
     await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip(l10n.editorFindMatchCase));
-    await tester.tap(find.byTooltip(l10n.editorFindUseRegex));
+    await tester.tap(find.byTooltip(l10n.editor.findMatchCase));
+    await tester.tap(find.byTooltip(l10n.editor.findUseRegex));
     await tester.pump();
     await runSearch(tester, 'hello', cubit: cubit);
     expect(cubit.state.useGitignore, isFalse);
@@ -621,7 +630,9 @@ void main() {
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
 
-    final fields = tester.widgetList<FindField>(find.byType(FindField)).toList();
+    final fields = tester
+        .widgetList<FindField>(find.byType(FindField))
+        .toList();
     expect(fields, isNotEmpty);
     expect(fields.every((field) => field.standalone), isTrue);
   });

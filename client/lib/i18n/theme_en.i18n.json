@@ -1,0 +1,15 @@
+{
+  "theme": "Theme",
+  "colorPresetDescription": "Primary and accent colors for buttons, toggles, and highlights.",
+  "colorPresetTitle": "Theme colors",
+  "dark": "Dark",
+  "light": "Light",
+  "modeDescription": "Light, dark, or match the operating system appearance.",
+  "modeTitle": "Theme mode",
+  "presetAmber": "Amber",
+  "presetForest": "Forest",
+  "presetGraphite": "Graphite",
+  "presetOcean": "Ocean",
+  "presetViolet": "Violet",
+  "system": "System"
+}

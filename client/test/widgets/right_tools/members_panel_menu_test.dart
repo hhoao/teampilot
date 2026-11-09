@@ -31,8 +31,8 @@ Widget _host(Widget child, AppProviderCubit providerCubit) {
   );
   addTearDown(cliPresetsCubit.close);
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: MultiBlocProvider(
       providers: [
         BlocProvider.value(value: providerCubit),
@@ -77,7 +77,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(tester.element(find.byType(MembersPanel)));
+    final l10n = tester.element(find.byType(MembersPanel)).l10n;
 
     await tester.tap(
       find.byKey(const Key('member-row-m1')),
@@ -85,10 +85,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text(l10n.memberDetailViewAction), findsOneWidget);
+    expect(find.text(l10n.member.detailViewAction), findsOneWidget);
     expect(find.text(l10n.switchToMember), findsOneWidget);
     expect(find.text(l10n.openMember), findsOneWidget);
-    expect(find.text(l10n.memberDetailOpenConfigDir), findsOneWidget);
+    expect(find.text(l10n.member.detailOpenConfigDir), findsOneWidget);
   });
 
   testWidgets('tapping view-detail dispatches after the menu closes', (
@@ -119,7 +119,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(tester.element(find.byType(MembersPanel)));
+    final l10n = tester.element(find.byType(MembersPanel)).l10n;
 
     await tester.tap(
       find.byKey(const Key('member-row-m1')),
@@ -127,11 +127,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text(l10n.memberDetailViewAction));
+    await tester.tap(find.text(l10n.member.detailViewAction));
     await tester.pumpAndSettle();
 
     expect(viewedId, 'm1');
-    expect(find.text(l10n.memberDetailOpenConfigDir), findsNothing);
+    expect(find.text(l10n.member.detailOpenConfigDir), findsNothing);
   });
 
   testWidgets('tapping switch-to-member dispatches select-only', (
@@ -163,7 +163,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(tester.element(find.byType(MembersPanel)));
+    final l10n = tester.element(find.byType(MembersPanel)).l10n;
 
     await tester.tap(
       find.byKey(const Key('member-row-m1')),
@@ -238,7 +238,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(tester.element(find.byType(MembersPanel)));
+    final l10n = tester.element(find.byType(MembersPanel)).l10n;
 
     await tester.tap(
       find.byKey(const Key('member-row-m1')),
@@ -246,7 +246,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text(l10n.memberDetailViewAction));
+    await tester.tap(find.text(l10n.member.detailViewAction));
     await tester.pumpAndSettle();
 
     expect(viewed, isFalse);

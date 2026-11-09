@@ -88,8 +88,7 @@ final class AcpUsageRecord {
           _sameCost(cost, other.cost);
 
   @override
-  int get hashCode =>
-      Object.hash(sessionId, used, size, sequence, model, cost);
+  int get hashCode => Object.hash(sessionId, used, size, sequence, model, cost);
 
   static bool _sameCost(Object? a, Object? b) {
     if (identical(a, b)) return true;

@@ -54,8 +54,8 @@ class SessionWorkbenchViewIcons extends StatelessWidget {
           Icons.terminal_rounded,
         ],
         tooltips: [
-          l10n.sessionWorkbenchViewChat,
-          l10n.sessionWorkbenchViewTerminal,
+          l10n.session.workbenchViewChat,
+          l10n.session.workbenchViewTerminal,
         ],
         minWidth: 32,
         minHeight: 28,

@@ -67,10 +67,8 @@ class McpHandshakeResult {
     : status = McpProbeStatus.online,
       errorMessage = null;
 
-  const McpHandshakeResult.fail({
-    required this.status,
-    this.errorMessage,
-  }) : tools = const [];
+  const McpHandshakeResult.fail({required this.status, this.errorMessage})
+    : tools = const [];
 
   final McpProbeStatus status;
   final List<McpProbeTool> tools;

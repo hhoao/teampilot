@@ -41,7 +41,7 @@ class SshHostsPanel extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
                 child: Text(
-                  l10n.sshHostsPanelTitle,
+                  l10n.ssh.hostsPanelTitle,
                   style: styles.xs.copyWith(
                     color: cs.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
@@ -104,12 +104,12 @@ class _HostRow extends StatelessWidget {
   String _statusLabel(BuildContext context) {
     final l10n = context.l10n;
     return switch (host.status) {
-      SshHostUiStatus.disconnected => l10n.sshProfileStatusDisconnected,
-      SshHostUiStatus.connecting => l10n.sshProfileStatusConnecting,
-      SshHostUiStatus.reconnecting => l10n.sshProfileStatusReconnecting,
-      SshHostUiStatus.connected => l10n.sshProfileStatusConnected,
-      SshHostUiStatus.authFailed => l10n.sshProfileStatusAuthFailed,
-      SshHostUiStatus.error => l10n.sshProfileStatusError,
+      SshHostUiStatus.disconnected => l10n.sshProfile.statusDisconnected,
+      SshHostUiStatus.connecting => l10n.sshProfile.statusConnecting,
+      SshHostUiStatus.reconnecting => l10n.sshProfile.statusReconnecting,
+      SshHostUiStatus.connected => l10n.sshProfile.statusConnected,
+      SshHostUiStatus.authFailed => l10n.sshProfile.statusAuthFailed,
+      SshHostUiStatus.error => l10n.sshProfile.statusError,
     };
   }
 
@@ -134,8 +134,8 @@ class _HostRow extends StatelessWidget {
         detail != null &&
         detail.isNotEmpty;
     final subtitle = showDetail
-        ? '${l10n.sshHostsRowKind} · ${_statusLabel(context)} · ${sshErrorDetailUserMessage(detail, l10n)}'
-        : '${l10n.sshHostsRowKind} · ${_statusLabel(context)}';
+        ? '${l10n.ssh.hostsRowKind} · ${_statusLabel(context)} · ${sshErrorDetailUserMessage(detail, l10n)}'
+        : '${l10n.ssh.hostsRowKind} · ${_statusLabel(context)}';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
@@ -178,10 +178,10 @@ class _HostRow extends StatelessWidget {
           if (!_busy) ...[
             const SizedBox(width: 8),
             if (_reconnectable)
-              _ActionChip(label: l10n.sshProfileConnect, onTap: onConnect)
+              _ActionChip(label: l10n.sshProfile.connect, onTap: onConnect)
             else if (host.status == SshHostUiStatus.connected)
               _ActionChip(
-                label: l10n.sshProfileDisconnect,
+                label: l10n.sshProfile.disconnect,
                 onTap: onDisconnect,
                 muted: true,
               ),
@@ -190,7 +190,7 @@ class _HostRow extends StatelessWidget {
             const SizedBox(width: 4),
             _TerminalButton(
               key: Key('ssh-host-terminal-${host.profileId}'),
-              tooltip: l10n.sshHostsOpenTerminal,
+              tooltip: l10n.ssh.hostsOpenTerminal,
               onTap: onOpenTerminal!,
             ),
           ],
@@ -295,7 +295,7 @@ class _ManageRow extends StatelessWidget {
         child: Align(
           alignment: Alignment.centerLeft,
           child: Text(
-            l10n.sshHostsManage,
+            l10n.ssh.hostsManage,
             style: styles.sm.copyWith(color: cs.onSurface, height: 1.2),
           ),
         ),

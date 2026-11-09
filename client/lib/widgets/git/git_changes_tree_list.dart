@@ -90,11 +90,11 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TpDialogHeader(
-              title: l10n.gitDiscardFolderConfirmTitle,
+              title: l10n.git.discardFolderConfirmTitle,
               onClose: () => Navigator.of(ctx).pop(false),
             ),
             const SizedBox(height: 16),
-            Text(l10n.gitDiscardFolderConfirmBody(folderPath)),
+            Text(l10n.git.discardFolderConfirmBody(path: folderPath)),
             TpDialogActions(
               children: [
                 TextButton(
@@ -103,7 +103,7 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(ctx).pop(true),
-                  child: Text(l10n.gitDiscard),
+                  child: Text(l10n.git.discard),
                 ),
               ],
             ),
@@ -198,8 +198,8 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
         child: _GitChangesRootHeader(
           section: section,
           title: section == GitChangesSection.changes
-              ? context.l10n.gitChanges
-              : context.l10n.gitUnversionedFiles,
+              ? context.l10n.git.changes
+              : context.l10n.git.unversionedFiles,
           totalCount: view.totalCount,
           allSelected: view.allSelected,
           noneSelected: view.noneSelected,

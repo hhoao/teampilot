@@ -6,7 +6,8 @@ import 'registry/cli_tool_registry.dart';
 import 'remote_cli_locator.dart';
 
 class AcpAdapterDiscovery {
-  AcpAdapterDiscovery({required CliToolRegistry registry}) : _registry = registry;
+  AcpAdapterDiscovery({required CliToolRegistry registry})
+    : _registry = registry;
 
   final CliToolRegistry _registry;
 

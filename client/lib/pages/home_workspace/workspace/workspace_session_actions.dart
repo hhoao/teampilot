@@ -66,9 +66,9 @@ void dismissMobileWorkspaceDrawerForNavigation(
   if (!(TpSidebarScope.maybeOf(context)?.isMobile ?? false)) return;
   var composeLanding = false;
   try {
-    composeLanding = context
-        .read<WorkbenchCubit>()
-        .centerLandingActive(workspaceId);
+    composeLanding = context.read<WorkbenchCubit>().centerLandingActive(
+      workspaceId,
+    );
   } on ProviderNotFoundException {
     // Isolated tests may not mount [WorkbenchCubit].
   }
@@ -190,7 +190,7 @@ Future<void> openWorkspaceSessionTab(
   _handleSessionOpenStatus(
     context,
     status,
-    blockedMixedMessage: context.l10n.mixedWorkspaceSessionLaunchBlocked,
+    blockedMixedMessage: context.l10n.mixed.workspaceSessionLaunchBlocked,
   );
   if (status != SessionOpenStatus.opened) return;
   dismissMobileWorkspaceDrawerForNavigation(
@@ -253,13 +253,13 @@ void _handleSessionOpenStatus(
     case SessionOpenStatus.missingWorkspace:
       AppToast.show(
         context,
-        message: context.l10n.sessionLaunchMissingWorkspace,
+        message: context.l10n.session.launchMissingWorkspace,
         variant: TpToastVariant.warning,
       );
     case SessionOpenStatus.missingTeamMember:
       AppToast.show(
         context,
-        message: context.l10n.sessionLaunchMissingTeamMember,
+        message: context.l10n.session.launchMissingTeamMember,
         variant: TpToastVariant.warning,
       );
   }
@@ -332,7 +332,7 @@ Future<void> createAndOpenWorkspaceConversation(
   _handleSessionOpenStatus(
     context,
     status,
-    blockedMixedMessage: context.l10n.mixedWorkspaceCreateSessionBlocked,
+    blockedMixedMessage: context.l10n.mixed.workspaceCreateSessionBlocked,
   );
   if (status != SessionOpenStatus.opened) return;
   // ensureTab will not override an active run/shell/file tab.
@@ -363,10 +363,7 @@ Future<void> showWorkspaceComposeLanding(
     initialText: initialText,
     referencedSessionId: referencedSessionId,
   );
-  dismissMobileWorkspaceDrawerForNavigation(
-    context,
-    workspaceId: tabScopeId,
-  );
+  dismissMobileWorkspaceDrawerForNavigation(context, workspaceId: tabScopeId);
 }
 
 /// Opens the workspace Landing with a prompt that points the new conversation
@@ -497,7 +494,7 @@ Future<bool> submitWorkspaceLandingMessage(
     if (resolved == null) {
       AppToast.show(
         context,
-        message: l10n.expertHubNotFound,
+        message: l10n.expert.hubNotFound,
         variant: TpToastVariant.warning,
       );
       return false;
@@ -544,7 +541,7 @@ Future<bool> submitWorkspaceLandingMessage(
       _handleSessionOpenStatus(
         context,
         status,
-        blockedMixedMessage: l10n.mixedWorkspaceCreateSessionBlocked,
+        blockedMixedMessage: l10n.mixed.workspaceCreateSessionBlocked,
       );
     }
     return false;
@@ -688,7 +685,7 @@ Future<bool> submitWorkspaceLandingMessage(
       if (context.mounted) {
         AppToast.show(
           context,
-          message: '${l10n.homeWorkspaceNewConversation}: $error',
+          message: '${l10n.homeWorkspace.newConversation}: $error',
           variant: TpToastVariant.error,
         );
       }
@@ -728,7 +725,7 @@ Future<bool> submitWorkspaceLandingMessage(
       if (context.mounted) {
         AppToast.show(
           context,
-          message: l10n.homeWorkspaceNewConversation,
+          message: l10n.homeWorkspace.newConversation,
           variant: TpToastVariant.error,
         );
       }
@@ -772,7 +769,7 @@ Future<bool> submitWorkspaceLandingMessage(
         if (context.mounted) {
           AppToast.show(
             context,
-            message: l10n.homeWorkspaceNewConversation,
+            message: l10n.homeWorkspace.newConversation,
             variant: TpToastVariant.error,
           );
         }
@@ -797,7 +794,7 @@ Future<bool> submitWorkspaceLandingMessage(
       if (context.mounted) {
         AppToast.show(
           context,
-          message: '${l10n.homeWorkspaceNewConversation}: $error',
+          message: '${l10n.homeWorkspace.newConversation}: $error',
           variant: TpToastVariant.error,
         );
       }
@@ -991,14 +988,14 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
     );
   } on Object catch (error, stackTrace) {
     appLogger.e(
-      l10n.homeWorkspaceNewConversation,
+      l10n.homeWorkspace.newConversation,
       error: error,
       stackTrace: stackTrace,
     );
     if (context.mounted) {
       AppToast.show(
         context,
-        message: '${l10n.homeWorkspaceNewConversation}: $error',
+        message: '${l10n.homeWorkspace.newConversation}: $error',
         variant: TpToastVariant.error,
       );
     }

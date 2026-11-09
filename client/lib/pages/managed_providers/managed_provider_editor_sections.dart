@@ -52,7 +52,7 @@ class ManagedProviderBasicsSection extends StatelessWidget {
       children: [
         if (showPresetSelector) ...[
           _LabeledControl(
-            label: l10n.managedProvidersQuickPresetTitle,
+            label: l10n.managedProviders.quickPresetTitle,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -85,10 +85,10 @@ class ManagedProviderBasicsSection extends StatelessWidget {
         if (schema.hasField('name'))
           TpInputFormField(
             key: const Key('managed-provider-name'),
-            label: Text(l10n.managedProvidersName),
+            label: Text(l10n.managedProviders.name),
             controller: nameController,
             decoration: InputDecoration(
-              hintText: l10n.managedProvidersNameHint,
+              hintText: l10n.managedProviders.nameHint,
             ),
             validator: (value) => (value == null || value.trim().isEmpty)
                 ? context.l10n.formFieldRequired
@@ -99,11 +99,11 @@ class ManagedProviderBasicsSection extends StatelessWidget {
             key: const Key('managed-provider-enabled'),
             contentPadding: EdgeInsets.zero,
             title: Text(
-              l10n.managedProvidersEnabledTitle,
+              l10n.managedProviders.enabledTitle,
               style: TpTextStyles.of(context).md,
             ),
             subtitle: Text(
-              l10n.managedProvidersEnabledSubtitle,
+              l10n.managedProviders.enabledSubtitle,
               style: TpTextStyles.of(context).mutedSm,
             ),
             value: enabled,
@@ -113,15 +113,15 @@ class ManagedProviderBasicsSection extends StatelessWidget {
           const SizedBox(height: 12),
           _ManagedProviderTextField(
             fieldKey: const Key('managed-provider-credential-secret'),
-            label: l10n.managedProvidersCredentialSecret,
+            label: l10n.managedProviders.credentialSecret,
             controller: credentialSecretController,
             focusNode: credentialSecretFocusNode,
             hint: credentialConfigured
-                ? l10n.managedProvidersCredentialSecretExistingHint
-                : l10n.managedProvidersCredentialSecretHint,
+                ? l10n.managedProviders.credentialSecretExistingHint
+                : l10n.managedProviders.credentialSecretHint,
             tip: managedProviderFieldTip(
               l10n,
-              explanation: l10n.managedProvidersCredentialSecretHelper,
+              explanation: l10n.managedProviders.credentialSecretHelper,
             ),
             obscureText: true,
             onReveal: onRevealSecret,
@@ -171,16 +171,16 @@ class ManagedProviderQuerySection extends StatelessWidget {
           TpInputFormField(
             key: const Key('managed-provider-endpoint'),
             label: TpFormFieldLabel(
-              text: l10n.managedProvidersEndpoint,
+              text: l10n.managedProviders.endpoint,
               tip: managedProviderFieldTip(
                 l10n,
-                explanation: l10n.managedProvidersEndpointHelper,
+                explanation: l10n.managedProviders.endpointHelper,
                 example: 'https://api.deepseek.com/user/balance',
               ),
             ),
             controller: endpointController,
             decoration: InputDecoration(
-              hintText: l10n.managedProvidersEndpointHint,
+              hintText: l10n.managedProviders.endpointHint,
             ),
             keyboardType: TextInputType.url,
             validator: (value) =>
@@ -189,15 +189,15 @@ class ManagedProviderQuerySection extends StatelessWidget {
                   allowHttpLocalhost: strictEndpointResolver(),
                 )
                 ? null
-                : context.l10n.managedProvidersEndpointError,
+                : context.l10n.managedProviders.endpointError,
           ),
         if (schema.hasField('endpointConfig.method')) ...[
           const SizedBox(height: 12),
           _LabeledControl(
-            label: l10n.managedProvidersMethod,
+            label: l10n.managedProviders.method,
             tip: managedProviderFieldTip(
               l10n,
-              explanation: l10n.managedProvidersMethodHelper,
+              explanation: l10n.managedProviders.methodHelper,
               example: 'GET',
             ),
             child: TpSelect<String>(
@@ -217,14 +217,14 @@ class ManagedProviderQuerySection extends StatelessWidget {
           const SizedBox(height: 12),
           _ManagedProviderTextField(
             fieldKey: const Key('managed-provider-response-path'),
-            label: l10n.managedProvidersResponsePath,
+            label: l10n.managedProviders.responsePath,
             controller: responsePathController,
             hint: ManagedProviderEditorFieldExamples.responsePath,
             tip: managedProviderFieldTip(
               l10n,
-              explanation: l10n.managedProvidersResponsePathHelper,
+              explanation: l10n.managedProviders.responsePathHelper,
               example: ManagedProviderEditorFieldExamples.responsePath,
-              seeAlso: l10n.managedProvidersJsonPathSeeAlso,
+              seeAlso: l10n.managedProviders.jsonPathSeeAlso,
             ),
           ),
         ],
@@ -233,10 +233,10 @@ class ManagedProviderQuerySection extends StatelessWidget {
           TpTextareaFormField(
             key: const Key('managed-provider-request-mapping'),
             label: TpFormFieldLabel(
-              text: l10n.managedProvidersRequestMapping,
+              text: l10n.managedProviders.requestMapping,
               tip: managedProviderFieldTip(
                 l10n,
-                explanation: l10n.managedProvidersRequestMappingHelper,
+                explanation: l10n.managedProviders.requestMappingHelper,
                 example: ManagedProviderEditorFieldExamples.requestBody,
               ),
             ),
@@ -249,7 +249,7 @@ class ManagedProviderQuerySection extends StatelessWidget {
             validator: (value) {
               final parsed = decodeJsonObject(value ?? '');
               if (parsed == null || mappingContainsCredentialKey(parsed)) {
-                return context.l10n.managedProvidersRequestMappingError;
+                return context.l10n.managedProviders.requestMappingError;
               }
               return null;
             },
@@ -260,12 +260,12 @@ class ManagedProviderQuerySection extends StatelessWidget {
           TpTextareaFormField(
             key: const Key('managed-provider-headers'),
             label: TpFormFieldLabel(
-              text: l10n.managedProvidersHeaders,
+              text: l10n.managedProviders.headers,
               tip: managedProviderFieldTip(
                 l10n,
-                explanation: l10n.managedProvidersHeadersHelper,
+                explanation: l10n.managedProviders.headersHelper,
                 example: ManagedProviderEditorFieldExamples.headers,
-                seeAlso: l10n.managedProvidersTemplateVariablesSeeAlsoQuery,
+                seeAlso: l10n.managedProviders.templateVariablesSeeAlsoQuery,
               ),
             ),
             controller: headersController,
@@ -277,7 +277,7 @@ class ManagedProviderQuerySection extends StatelessWidget {
             validator: (value) {
               final parsed = decodeJsonObject(value ?? '');
               if (parsed == null || mappingContainsCredentialKey(parsed)) {
-                return context.l10n.managedProvidersRequestMappingError;
+                return context.l10n.managedProviders.requestMappingError;
               }
               return null;
             },
@@ -288,12 +288,12 @@ class ManagedProviderQuerySection extends StatelessWidget {
           TpTextareaFormField(
             key: const Key('managed-provider-windows'),
             label: TpFormFieldLabel(
-              text: l10n.managedProvidersWindows,
+              text: l10n.managedProviders.windows,
               tip: managedProviderFieldTip(
                 l10n,
-                explanation: l10n.managedProvidersWindowsHelper,
+                explanation: l10n.managedProviders.windowsHelper,
                 example: ManagedProviderEditorFieldExamples.windows,
-                seeAlso: l10n.managedProvidersJsonPathSeeAlso,
+                seeAlso: l10n.managedProviders.jsonPathSeeAlso,
               ),
             ),
             controller: windowsController,
@@ -354,8 +354,8 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
         ],
         Text(
           credentialConfigured
-              ? l10n.managedProvidersCredentialConfigured
-              : l10n.managedProvidersCredentialNone,
+              ? l10n.managedProviders.credentialConfigured
+              : l10n.managedProviders.credentialNone,
           style: TpTextStyles.of(
             context,
           ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),
@@ -364,12 +364,12 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
         if (schema.isFieldEditable('endpointConfig.credentialName'))
           _ManagedProviderTextField(
             fieldKey: const Key('managed-provider-credential-name'),
-            label: l10n.managedProvidersCredentialName,
+            label: l10n.managedProviders.credentialName,
             controller: credentialNameController,
-            hint: l10n.managedProvidersCredentialNameHint,
+            hint: l10n.managedProviders.credentialNameHint,
             tip: managedProviderFieldTip(
               l10n,
-              explanation: l10n.managedProvidersCredentialNameHelper,
+              explanation: l10n.managedProviders.credentialNameHelper,
               example: 'Authorization',
             ),
           ),
@@ -377,12 +377,12 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
           const SizedBox(height: 12),
           _ManagedProviderTextField(
             fieldKey: const Key('managed-provider-credential-field'),
-            label: l10n.managedProvidersCredentialField,
+            label: l10n.managedProviders.credentialField,
             controller: credentialFieldController,
-            hint: l10n.managedProvidersCredentialFieldHint,
+            hint: l10n.managedProviders.credentialFieldHint,
             tip: managedProviderFieldTip(
               l10n,
-              explanation: l10n.managedProvidersCredentialFieldHelper,
+              explanation: l10n.managedProviders.credentialFieldHelper,
               example: 'apiKey',
             ),
             onChanged: onCredentialFieldChanged,
@@ -392,12 +392,12 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
           const SizedBox(height: 12),
           _ManagedProviderTextField(
             fieldKey: const Key('managed-provider-credential-placement'),
-            label: l10n.managedProvidersCredentialPlacement,
+            label: l10n.managedProviders.credentialPlacement,
             controller: credentialPlacementController,
-            hint: l10n.managedProvidersCredentialPlacementHint,
+            hint: l10n.managedProviders.credentialPlacementHint,
             tip: managedProviderFieldTip(
               l10n,
-              explanation: l10n.managedProvidersCredentialPlacementHelper,
+              explanation: l10n.managedProviders.credentialPlacementHelper,
               example: 'header',
             ),
           ),
@@ -406,14 +406,15 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
           const SizedBox(height: 12),
           _ManagedProviderTextField(
             fieldKey: const Key('managed-provider-credential-source'),
-            label: l10n.managedProvidersCredentialSource,
+            label: l10n.managedProviders.credentialSource,
             controller: credentialSourceController,
-            hint: l10n.managedProvidersCredentialSourceHint,
+            hint: l10n.managedProviders.credentialSourceHint,
             tip: managedProviderFieldTip(
               l10n,
-              explanation: l10n.managedProvidersCredentialSourceHelper,
+              explanation: l10n.managedProviders.credentialSourceHelper,
               example: 'cli:cursor-mp-<entry>',
-              seeAlso: l10n.managedProvidersTemplateVariablesSeeAlsoCredentials,
+              seeAlso:
+                  l10n.managedProviders.templateVariablesSeeAlsoCredentials,
             ),
           ),
         ],
@@ -421,14 +422,15 @@ class ManagedProviderCredentialsSection extends StatelessWidget {
           const SizedBox(height: 12),
           _ManagedProviderTextField(
             fieldKey: const Key('managed-provider-credential-template'),
-            label: l10n.managedProvidersCredentialTemplate,
+            label: l10n.managedProviders.credentialTemplate,
             controller: credentialTemplateController,
             hint: ManagedProviderEditorFieldExamples.credentialTemplate,
             tip: managedProviderFieldTip(
               l10n,
-              explanation: l10n.managedProvidersCredentialTemplateHelper,
+              explanation: l10n.managedProviders.credentialTemplateHelper,
               example: ManagedProviderEditorFieldExamples.credentialTemplate,
-              seeAlso: l10n.managedProvidersTemplateVariablesSeeAlsoCredentials,
+              seeAlso:
+                  l10n.managedProviders.templateVariablesSeeAlsoCredentials,
             ),
           ),
         ],
@@ -469,8 +471,10 @@ class ManagedProviderLinkedCredentials extends StatelessWidget {
           Expanded(
             child: Text(
               providerName.isEmpty
-                  ? l10n.managedProvidersCredentialLinkEmpty
-                  : l10n.managedProvidersCredentialLinkedTo(providerName),
+                  ? l10n.managedProviders.credentialLinkEmpty
+                  : l10n.managedProviders.credentialLinkedTo(
+                      provider: providerName,
+                    ),
               style: TpTextStyles.of(context).sm,
             ),
           ),
@@ -510,27 +514,27 @@ class ManagedProviderDisplaySection extends StatelessWidget {
               if (schema.hasField('displayConfig.currency'))
                 _ManagedProviderTextField(
                   fieldKey: const Key('managed-provider-currency'),
-                  label: l10n.managedProvidersCurrency,
+                  label: l10n.managedProviders.currency,
                   controller: currencyController,
                   hint: 'USD',
                 ),
               if (schema.hasField('displayConfig.unit'))
                 _ManagedProviderTextField(
                   fieldKey: const Key('managed-provider-unit'),
-                  label: l10n.managedProvidersUnit,
+                  label: l10n.managedProviders.unit,
                   controller: unitController,
                   hint: 'requests / tokens',
                 ),
               if (schema.hasField('displayConfig.decimalPlaces'))
                 TpInputFormField(
                   key: const Key('managed-provider-decimal-places'),
-                  label: Text(l10n.managedProvidersDecimals),
+                  label: Text(l10n.managedProviders.decimals),
                   controller: decimalPlacesController,
                   keyboardType: TextInputType.number,
                   validator: (value) =>
                       ((value ?? '').trim().isNotEmpty &&
                           int.tryParse(value!.trim()) == null)
-                      ? context.l10n.managedProvidersDecimalError
+                      ? context.l10n.managedProviders.decimalError
                       : null,
                 ),
             ];
@@ -552,7 +556,7 @@ class ManagedProviderDisplaySection extends StatelessWidget {
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
             title: Text(
-              l10n.managedProvidersShowPercent,
+              l10n.managedProviders.showPercent,
               style: TpTextStyles.of(context).md,
             ),
             value: showPercent,
@@ -585,7 +589,7 @@ class ManagedProviderAdvancedSection extends StatelessWidget {
       children: [
         if (schema.isFieldEditable('kind'))
           _LabeledControl(
-            label: l10n.managedProvidersKind,
+            label: l10n.managedProviders.kind,
             child: TpSelect<ManagedProviderKind>(
               key: const Key('managed-provider-kind'),
               items: const [
@@ -611,10 +615,10 @@ class ManagedProviderAdvancedSection extends StatelessWidget {
           if (schema.isFieldEditable('kind')) const SizedBox(height: 12),
           TpInputFormField(
             key: const Key('managed-provider-adapter'),
-            label: Text(l10n.managedProvidersAdapter),
+            label: Text(l10n.managedProviders.adapter),
             controller: adapterController,
             decoration: InputDecoration(
-              hintText: l10n.managedProvidersAdapterHint,
+              hintText: l10n.managedProviders.adapterHint,
             ),
             validator: (value) => (value == null || value.trim().isEmpty)
                 ? context.l10n.formFieldRequired

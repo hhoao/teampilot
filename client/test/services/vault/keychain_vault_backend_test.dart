@@ -29,9 +29,7 @@ void main() {
     final store = _FakeStore();
     final backend = KeychainVaultBackend(store);
     const document = VaultDocument(
-      entries: [
-        VaultEntry(id: '1', type: VaultEntryType.token, title: 't'),
-      ],
+      entries: [VaultEntry(id: '1', type: VaultEntryType.token, title: 't')],
     );
 
     await backend.save(document);

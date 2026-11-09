@@ -12,8 +12,7 @@ AppProviderRepository providerCatalogRepository(
     storage: storage,
     // Explicit: launch-time callers must resolve `vault:` links exactly like
     // the provider cubit does.
-    linkedCredentialLookup:
-        AppProviderRepository.defaultLinkedCredentialLookup,
+    linkedCredentialLookup: AppProviderRepository.defaultLinkedCredentialLookup,
   );
 }
 

@@ -12,14 +12,14 @@ class VaultStatusSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
     return BlocBuilder<VaultCubit, VaultState>(
       builder: (context, state) {
         final cubit = context.read<VaultCubit>();
         final locked = state.encrypted && !state.unlocked;
         final label = !state.encrypted
-            ? l10n.vaultStatusKeychain
-            : (locked ? l10n.vaultStatusEncrypted : l10n.vaultStatusUnlocked);
+            ? l10n.vault.statusKeychain
+            : (locked ? l10n.vault.statusEncrypted : l10n.vault.statusUnlocked);
         return TpCard(
           padding: const EdgeInsets.all(16),
           child: Wrap(
@@ -31,21 +31,21 @@ class VaultStatusSection extends StatelessWidget {
               if (locked)
                 FilledButton(
                   onPressed: () => showVaultUnlockDialog(context),
-                  child: Text(l10n.vaultUnlock),
+                  child: Text(l10n.vault.unlock),
                 )
               else if (state.encrypted) ...[
                 OutlinedButton(
                   onPressed: cubit.lock,
-                  child: Text(l10n.vaultLock),
+                  child: Text(l10n.vault.lock),
                 ),
                 OutlinedButton(
                   onPressed: () => cubit.disableEncryption(),
-                  child: Text(l10n.vaultDisableEncryption),
+                  child: Text(l10n.vault.disableEncryption),
                 ),
               ] else
                 OutlinedButton(
                   onPressed: () => showVaultEnableEncryptionDialog(context),
-                  child: Text(l10n.vaultEnableEncryption),
+                  child: Text(l10n.vault.enableEncryption),
                 ),
             ],
           ),
@@ -56,26 +56,26 @@ class VaultStatusSection extends StatelessWidget {
 }
 
 Future<bool> showVaultUnlockDialog(BuildContext context) async {
-  final l10n = AppLocalizations.of(context);
+  final l10n = context.l10n;
   final cubit = context.read<VaultCubit>();
   final controller = TextEditingController();
   final passphrase = await showDialog<String>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text(l10n.vaultUnlockTitle),
+      title: Text(l10n.vault.unlockTitle),
       content: TpPasswordInput(
         controller: controller,
         autofocus: true,
-        decoration: InputDecoration(labelText: l10n.vaultPassphrase),
+        decoration: InputDecoration(labelText: l10n.vault.passphrase),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text(l10n.vaultCancel),
+          child: Text(l10n.vault.cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-          child: Text(l10n.vaultUnlock),
+          child: Text(l10n.vault.unlock),
         ),
       ],
     ),
@@ -95,25 +95,25 @@ Future<bool> promptVaultUnlockFromRouter() async {
 
 /// Collects a master password for an explicit reveal without changing state.
 Future<String?> showVaultPassphrasePrompt(BuildContext context) async {
-  final l10n = AppLocalizations.of(context);
+  final l10n = context.l10n;
   final controller = TextEditingController();
   final passphrase = await showDialog<String>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text(l10n.vaultUnlockTitle),
+      title: Text(l10n.vault.unlockTitle),
       content: TpPasswordInput(
         controller: controller,
         autofocus: true,
-        decoration: InputDecoration(labelText: l10n.vaultPassphrase),
+        decoration: InputDecoration(labelText: l10n.vault.passphrase),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text(l10n.vaultCancel),
+          child: Text(l10n.vault.cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-          child: Text(l10n.vaultReveal),
+          child: Text(l10n.vault.reveal),
         ),
       ],
     ),
@@ -123,33 +123,35 @@ Future<String?> showVaultPassphrasePrompt(BuildContext context) async {
 }
 
 Future<void> showVaultEnableEncryptionDialog(BuildContext context) async {
-  final l10n = AppLocalizations.of(context);
+  final l10n = context.l10n;
   final cubit = context.read<VaultCubit>();
   final first = TextEditingController();
   final second = TextEditingController();
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text(l10n.vaultEnableEncryption),
+      title: Text(l10n.vault.enableEncryption),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TpPasswordInput(
             controller: first,
             autofocus: true,
-            decoration: InputDecoration(labelText: l10n.vaultPassphrase),
+            decoration: InputDecoration(labelText: l10n.vault.passphrase),
           ),
           const SizedBox(height: 12),
           TpPasswordInput(
             controller: second,
-            decoration: InputDecoration(labelText: l10n.vaultPassphraseConfirm),
+            decoration: InputDecoration(
+              labelText: l10n.vault.passphraseConfirm,
+            ),
           ),
         ],
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: Text(l10n.vaultCancel),
+          child: Text(l10n.vault.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -157,7 +159,7 @@ Future<void> showVaultEnableEncryptionDialog(BuildContext context) async {
             if (first.text != second.text) return;
             Navigator.of(dialogContext).pop(true);
           },
-          child: Text(l10n.vaultEnableEncryption),
+          child: Text(l10n.vault.enableEncryption),
         ),
       ],
     ),

@@ -82,7 +82,7 @@ class AutomationEditorLaunchSection extends StatelessWidget {
           key: ValueKey('launch-mode-$isPersonal'),
           id: 'launchMode',
           initialValue: isPersonal ? 'simple' : 'team',
-          label: Text(l10n.automationsLaunchMode),
+          label: Text(l10n.automations.launchMode),
           layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: labelWidth,
           builder: (state) {
@@ -91,8 +91,8 @@ class AutomationEditorLaunchSection extends StatelessWidget {
               initialItem: state.value ?? 'simple',
               decoration: TpSelectDecorations.themed(context),
               itemLabel: (value) => value == 'simple'
-                  ? l10n.workspaceChatLandingModeSimple
-                  : l10n.workspaceChatLandingModeTeam,
+                  ? l10n.workspace.chatLandingModeSimple
+                  : l10n.workspace.chatLandingModeTeam,
               onChanged: (value) {
                 if (value == null) return;
                 state.didChange(value);
@@ -110,11 +110,11 @@ class AutomationEditorLaunchSection extends StatelessWidget {
             label: Text(l10n.presetPickerTitle),
             description: cliFilter == null
                 ? null
-                : Text(l10n.automationsPresetScopeHint),
+                : Text(l10n.automations.presetScopeHint),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: labelWidth,
             validator: (v) => (v == null || v.trim().isEmpty)
-                ? l10n.workspaceCliPresetsEmptyHint
+                ? l10n.workspace.cliPresetsEmptyHint
                 : null,
             builder: (state) {
               return CliPresetDropdownField(
@@ -122,7 +122,7 @@ class AutomationEditorLaunchSection extends StatelessWidget {
                 cliFilter: cliFilter,
                 emptyHint: cliFilter == null
                     ? null
-                    : l10n.automationsPresetEmptyForCli,
+                    : l10n.automations.presetEmptyForCli,
                 onChanged: (value) {
                   state.didChange(value ?? '');
                   onPresetChanged(value);
@@ -135,13 +135,13 @@ class AutomationEditorLaunchSection extends StatelessWidget {
             key: ValueKey('expert-${expertKey ?? ''}'),
             id: 'expertKey',
             initialValue: expertKey ?? '',
-            label: Text(l10n.hubPublishKindExpert),
+            label: Text(l10n.hub.publishKindExpert),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: labelWidth,
             builder: (state) {
               final label = ExpertMemberResolver.labelForKey(
                 key: expertKey,
-                fallbackLabel: l10n.expertHubNoneSelected,
+                fallbackLabel: l10n.expert.hubNoneSelected,
                 hubState: hubState,
               );
               return Align(
@@ -170,15 +170,15 @@ class AutomationEditorLaunchSection extends StatelessWidget {
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: labelWidth,
             validator: (v) {
-              if (teams.isEmpty) return l10n.automationsValidationRequired;
+              if (teams.isEmpty) return l10n.automations.validationRequired;
               final id = v?.trim() ?? '';
-              if (id.isEmpty) return l10n.automationsValidationRequired;
+              if (id.isEmpty) return l10n.automations.validationRequired;
               return null;
             },
             builder: (state) {
               if (teams.isEmpty) {
                 return Text(
-                  l10n.automationsValidationRequired,
+                  l10n.automations.validationRequired,
                   style: TpTextStyles.of(
                     context,
                   ).mdColored(Theme.of(context).colorScheme.error),
@@ -210,21 +210,21 @@ class AutomationEditorLaunchSection extends StatelessWidget {
             key: ValueKey('target-member-$targetMemberId'),
             id: 'targetMemberId',
             initialValue: targetMemberId,
-            label: Text(l10n.automationsTargetMember),
+            label: Text(l10n.automations.targetMember),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: labelWidth,
             validator: (v) {
               if (teamMembers.isEmpty) {
-                return l10n.automationsValidationRequired;
+                return l10n.automations.validationRequired;
               }
               final id = v?.trim() ?? '';
-              if (id.isEmpty) return l10n.automationsValidationRequired;
+              if (id.isEmpty) return l10n.automations.validationRequired;
               return null;
             },
             builder: (state) {
               if (teamMembers.isEmpty) {
                 return Text(
-                  l10n.automationsValidationRequired,
+                  l10n.automations.validationRequired,
                   style: TpTextStyles.of(
                     context,
                   ).mdColored(Theme.of(context).colorScheme.error),

@@ -142,7 +142,7 @@ String aiFeatureConfigLine({
   required bool hidesModelPicker,
   List<CliPreset> globalPresets = const [],
 }) {
-  if (!configured) return l10n.workspaceCliNotConfiguredHint;
+  if (!configured) return l10n.workspace.cliNotConfiguredHint;
 
   final presetId = stored?.activePresetId?.trim();
   if (presetId != null && presetId.isNotEmpty) {
@@ -189,7 +189,11 @@ String aiFeatureConfigLine({
     return '$cliLabel · $providerName · $effortLabel';
   }
   if (effortLabel.isEmpty) {
-    return l10n.aiFeatureConfigSummary(cliLabel, providerName, modelLabel);
+    return l10n.ai.featureConfigSummary(
+      cli: cliLabel,
+      provider: providerName,
+      model: modelLabel,
+    );
   }
-  return '${l10n.aiFeatureConfigSummary(cliLabel, providerName, modelLabel)} · $effortLabel';
+  return '${l10n.ai.featureConfigSummary(cli: cliLabel, provider: providerName, model: modelLabel)} · $effortLabel';
 }

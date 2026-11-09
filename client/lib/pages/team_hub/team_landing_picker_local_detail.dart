@@ -61,13 +61,15 @@ class TeamLandingPickerLocalDetail extends StatelessWidget {
                       Expanded(
                         child: TeamStatChip(
                           icon: Icons.people_alt_outlined,
-                          label: l10n.myTeamsMemberCount(team.roster.length),
+                          label: l10n.my.teamsMemberCount(
+                            count: team.roster.length,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       FilledButton(
                         onPressed: confirming ? null : onConfirm,
-                        child: Text(l10n.teamHubConfirmSelection),
+                        child: Text(l10n.teamHub.confirmSelection),
                       ),
                     ],
                   ),

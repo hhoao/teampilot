@@ -58,7 +58,7 @@ class TeamPluginsSection extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 12),
               child: TeamConfigCard(
                 child: Text(
-                  l10n.teamPluginsCliUnsupportedBanner,
+                  l10n.team.pluginsCliUnsupportedBanner,
                   style: TpTextStyles.of(
                     context,
                   ).mdColored(textBase.withValues(alpha: 0.6)),
@@ -70,9 +70,9 @@ class TeamPluginsSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TeamConfigCardHeader(
-                  title: l10n.teamPluginsAssignedCount(
-                    assignedCount,
-                    installed.length,
+                  title: l10n.team.pluginsAssignedCount(
+                    assigned: assignedCount,
+                    total: installed.length,
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
@@ -80,7 +80,7 @@ class TeamPluginsSection extends StatelessWidget {
                       Icons.widgets_outlined,
                       size: context.tpIconSizes.md,
                     ),
-                    label: Text(l10n.teamPluginsManage),
+                    label: Text(l10n.team.pluginsManage),
                   ),
                 ),
                 if (syncing) ...[
@@ -98,7 +98,7 @@ class TeamPluginsSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      l10n.teamPluginsMissing(missingIds.length),
+                      l10n.team.pluginsMissing(count: missingIds.length),
                       style: TpTextStyles.of(
                         context,
                       ).smColored(textBase.withValues(alpha: 0.75)),
@@ -109,9 +109,9 @@ class TeamPluginsSection extends StatelessWidget {
                 if (installed.isEmpty && missingIds.isEmpty)
                   TpEmptyState(
                     icon: Icons.inventory_2_outlined,
-                    title: l10n.teamPluginsEmpty,
-                    hint: l10n.teamPluginsEmptyHint,
-                    actionLabel: l10n.teamPluginsGoDiscovery,
+                    title: l10n.team.pluginsEmpty,
+                    hint: l10n.team.pluginsEmptyHint,
+                    actionLabel: l10n.team.pluginsGoDiscovery,
                     onAction:
                         onManageGlobal ??
                         () => context.go('/plugins/discovery'),
@@ -233,7 +233,7 @@ class TeamPluginRow extends StatelessWidget {
             ),
             GithubDetailsButton(
               url: plugin.githubBrowseUrl,
-              label: l10n.pluginsCardDetails,
+              label: l10n.plugins.cardDetails,
             ),
             const SizedBox(width: 8),
             Switch(value: assigned, onChanged: onAssignedChanged),
@@ -284,7 +284,7 @@ class TeamMissingPluginRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    l10n.teamPluginsMissingLabel,
+                    l10n.team.pluginsMissingLabel,
                     style: TpTextStyles.of(
                       context,
                     ).xsColored(cs.error.withValues(alpha: 0.85)),
@@ -294,7 +294,7 @@ class TeamMissingPluginRow extends StatelessWidget {
             ),
             TextButton(
               onPressed: onRemove,
-              child: Text(l10n.teamPluginsRemoveMissing),
+              child: Text(l10n.team.pluginsRemoveMissing),
             ),
           ],
         ),

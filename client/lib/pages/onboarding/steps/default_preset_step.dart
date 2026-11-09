@@ -144,7 +144,7 @@ class OnboardingDefaultPresetStepState
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_providerId.trim().isEmpty) return;
 
-    final name = l10n.onboardingDefaultPresetDefaultName;
+    final name = l10n.onboarding.defaultPresetDefaultName;
     final presetsCubit = context.read<CliPresetsCubit>();
     final launchCubit = context.read<LaunchProfileCubit>();
     final appProviderCubit = context.read<AppProviderCubit>();
@@ -211,7 +211,7 @@ class OnboardingDefaultPresetStepState
     );
 
     final cliPicker = TpPreferenceRow(
-      title: l10n.teamCliLabel,
+      title: l10n.team.cliLabel,
       trailing: TpCompactSelect<String>(
         value: _cli.value,
         entries: [
@@ -252,10 +252,10 @@ class OnboardingDefaultPresetStepState
     );
 
     return OnboardingStepScaffold(
-      title: l10n.onboardingDefaultPresetTitle,
+      title: l10n.onboarding.defaultPresetTitle,
       subtitle: providers.isEmpty
-          ? l10n.onboardingDefaultPresetEmpty
-          : l10n.onboardingDefaultPresetSubtitle,
+          ? l10n.onboarding.defaultPresetEmpty
+          : l10n.onboarding.defaultPresetSubtitle,
       body: TpCard.outlined(
         child: TpForm(
           key: _formKey,
@@ -265,7 +265,7 @@ class OnboardingDefaultPresetStepState
               cliPicker,
               if (providers.isNotEmpty) ...[
                 TpPreferenceRow(
-                  title: l10n.provider,
+                  title: l10n.provider.provider,
                   trailing: TpSelectFormField<String>(
                     key: ValueKey('provider-form-$_cli'),
                     id: 'provider',
@@ -332,14 +332,14 @@ class OnboardingDefaultPresetStepState
                   ),
                 if (showEffortPicker)
                   TpPreferenceRow(
-                    title: l10n.workspaceCliEffortLevel,
+                    title: l10n.workspace.cliEffortLevel,
                     trailing: CliEffortPickerField(
                       cli: _cli,
                       value: _effortId,
                       provider: selectedProvider,
                       model: _modelId,
                       allowInherit: true,
-                      inheritLabel: l10n.workspaceCliEffortInheritHint,
+                      inheritLabel: l10n.workspace.cliEffortInheritHint,
                       decoration: dropdownDeco,
                       onChanged: (value) {
                         setState(() => _effortId = value.trim());

@@ -1,0 +1,14 @@
+{
+  "launchAcpUnsupported": "{cli: String} only supports ACP chat, and the selected target ({target: String}) cannot run ACP. Choose a local, SSH, or Termux target, or pick a CLI with terminal support.",
+  "launchLocalAdapterMissingDetail": "{cli: String} ACP adapter not found",
+  "launchLocalCliMissing": "Install the required AI CLIs on this device before starting.",
+  "launchLocalCliMissingDetail": "{cli: String} not found",
+  "launchLocalCliMissingHint": "Install it here, or set its executable path in Settings → CLI.",
+  "launchLocalCliMissingTitle": "Required AI CLIs on this device",
+  "launchLocalCliOpenSettings": "Open settings",
+  "launchRemoteCliMissing": "Install required CLIs on remote machines before starting.",
+  "launchRemoteCliMissingDetail": "{cli: String} on {host: String}",
+  "teamSettingsGlobalHint": "Changes apply to this team's global configuration.",
+  "teamSettingsNavMachines": "Machine assignment",
+  "teamSettingsNavTeam": "Team defaults"
+}

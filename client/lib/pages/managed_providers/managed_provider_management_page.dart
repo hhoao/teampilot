@@ -97,7 +97,7 @@ class _ManagedProviderManagementPageState
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   WorkspacePaneHeader(
-                    title: context.l10n.managedProvidersTitle,
+                    title: context.l10n.managedProviders.title,
                   ),
                   Align(
                     alignment: Alignment.centerRight,
@@ -105,7 +105,7 @@ class _ManagedProviderManagementPageState
                       key: const Key('managed-provider-add'),
                       onPressed: () => _openEditor(context),
                       icon: const Icon(Icons.add),
-                      label: Text(context.l10n.managedProvidersAdd),
+                      label: Text(context.l10n.managedProviders.add),
                     ),
                   ),
                   Expanded(
@@ -211,18 +211,18 @@ class _ManagedProviderManagementPageState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.managedProvidersDeleteTitle),
+        title: Text(context.l10n.managedProviders.deleteTitle),
         content: Text(
-          context.l10n.managedProvidersDeleteContent(provider.name),
+          context.l10n.managedProviders.deleteContent(name: provider.name),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(context.l10n.managedProvidersCancel),
+            child: Text(context.l10n.managedProviders.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(context.l10n.managedProvidersDelete),
+            child: Text(context.l10n.managedProviders.delete),
           ),
         ],
       ),
@@ -269,7 +269,7 @@ class _LoadError extends StatelessWidget {
         TpButton(
           variant: TpButtonVariant.outline,
           onPressed: onRetry,
-          child: Text(context.l10n.managedProvidersRetry),
+          child: Text(context.l10n.managedProviders.retry),
         ),
       ],
     ),

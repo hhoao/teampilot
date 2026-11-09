@@ -1,0 +1,10 @@
+{
+  "sourcesEnabledSources": "已启用源",
+  "sourcesIdentity": "直连（官方）",
+  "sourcesMirrorBaseUrl": "镜像基础 URL",
+  "sourcesMirrorHint": "https://mirror.example",
+  "sourcesRestoreDefaults": "恢复默认",
+  "sourcesSave": "保存",
+  "sourcesSettingsSubtitle": "配置 GitHub 下载镜像（应用更新、Termux APK）",
+  "sourcesSettingsTitle": "下载源"
+}

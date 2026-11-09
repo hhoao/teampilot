@@ -1,0 +1,11 @@
+{
+  "previewTabsDescription": "文件与 diff 预览在浮动面板中共享一个可替换的标签页，固定后保留。",
+  "previewTabsTitle": "单个预览标签页",
+  "workspaceAddTooltip": "在浮动工作区打开",
+  "workspaceCloseTab": "关闭标签",
+  "workspaceMaximize": "最大化",
+  "workspaceMinimize": "最小化",
+  "workspaceNewTerminal": "新 Terminal",
+  "workspaceOpenFile": "打开文件",
+  "workspaceToggleTooltip": "浮动工作区"
+}

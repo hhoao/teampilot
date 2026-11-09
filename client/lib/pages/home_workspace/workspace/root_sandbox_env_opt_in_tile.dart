@@ -65,7 +65,7 @@ Future<bool> showRootSandboxEnvConfirm(
         children: [
           TpDialogHeader(title: l10n.rootSandboxEnvConfirmTitle),
           const SizedBox(height: 12),
-          Text(l10n.rootSandboxEnvConfirmBody(workspaceLabel)),
+          Text(l10n.rootSandboxEnvConfirmBody(host: workspaceLabel)),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,

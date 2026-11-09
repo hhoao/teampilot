@@ -98,7 +98,7 @@ class _ScheduledTasksStatusSegmentState
             },
           ),
           child: Tooltip(
-            message: l10n.automationsSidebarTitle,
+            message: l10n.automations.sidebarTitle,
             child: TpHover(
               key: const Key('scheduled-tasks-pill'),
               onTap: _popover.toggle,
@@ -161,7 +161,7 @@ class _ScheduledTasksPanel extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
             child: Text(
-              l10n.automationsSidebarTitle,
+              l10n.automations.sidebarTitle,
               style: styles.xs.copyWith(
                 color: cs.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
@@ -185,7 +185,7 @@ class _ScheduledTasksPanel extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      l10n.automationsStatusBarEmpty,
+                      l10n.automations.statusBarEmpty,
                       style: styles.smColored(cs.onSurfaceVariant),
                     ),
                   ],
@@ -225,7 +225,7 @@ class _ScheduledTasksPanel extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    l10n.automationsManageAll,
+                    l10n.automations.manageAll,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: styles.smMediumColored(cs.onSurfaceVariant),
@@ -253,8 +253,8 @@ class _ScheduledTaskRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final next = automation.nextRunAtMs;
     final timeLabel = next == null
-        ? l10n.automationsNextRunNone
-        : l10n.automationsNextRun(formatScheduledTaskNextRun(next));
+        ? l10n.automations.nextRunNone
+        : l10n.automations.nextRun(time: formatScheduledTaskNextRun(next));
 
     return TpHover(
       key: ValueKey('scheduled-task-${automation.id}'),

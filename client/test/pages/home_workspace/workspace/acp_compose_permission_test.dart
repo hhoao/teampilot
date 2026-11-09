@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
-import 'package:teampilot/l10n/app_localizations_en.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -15,77 +15,58 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
 
 void main() {
-  test(
-    'willLaunchAcp is true for Gemini and for requested Claude desktop',
-    () {
-      expect(
-        willLaunchAcp(
-          cli: CliTool.gemini,
-          requested: false,
-          targetId: 'local',
-        ),
-        isTrue,
-      );
-      expect(
-        willLaunchAcp(
-          cli: CliTool.codebuddy,
-          requested: false,
-          targetId: 'ssh:box',
-        ),
-        isTrue,
-        reason: 'CodeBuddy is ACP-only on remote targets',
-      );
-      expect(
-        willLaunchAcp(
-          cli: CliTool.codebuddy,
-          requested: true,
-          targetId: 'wsl:Ubuntu',
-        ),
-        isFalse,
-      );
-      expect(
-        willLaunchAcp(
-          cli: CliTool.qoder,
-          requested: false,
-          targetId: 'ssh:box',
-        ),
-        isTrue,
-        reason: 'Qoder is ACP-only on remote targets',
-      );
-      expect(
-        willLaunchAcp(
-          cli: CliTool.qoder,
-          requested: true,
-          targetId: 'wsl:Ubuntu',
-        ),
-        isFalse,
-      );
-      expect(
-        willLaunchAcp(
-          cli: CliTool.claude,
-          requested: true,
-          targetId: 'ssh:box',
-        ),
-        isTrue,
-      );
-      expect(
-        willLaunchAcp(
-          cli: CliTool.claude,
-          requested: false,
-          targetId: 'local',
-        ),
-        isFalse,
-      );
-      expect(
-        willLaunchAcp(
-          cli: CliTool.claude,
-          requested: true,
-          targetId: 'wsl:Ubuntu',
-        ),
-        isFalse,
-      );
-    },
-  );
+  test('willLaunchAcp is true for Gemini and for requested Claude desktop', () {
+    expect(
+      willLaunchAcp(cli: CliTool.gemini, requested: false, targetId: 'local'),
+      isTrue,
+    );
+    expect(
+      willLaunchAcp(
+        cli: CliTool.codebuddy,
+        requested: false,
+        targetId: 'ssh:box',
+      ),
+      isTrue,
+      reason: 'CodeBuddy is ACP-only on remote targets',
+    );
+    expect(
+      willLaunchAcp(
+        cli: CliTool.codebuddy,
+        requested: true,
+        targetId: 'wsl:Ubuntu',
+      ),
+      isFalse,
+    );
+    expect(
+      willLaunchAcp(cli: CliTool.qoder, requested: false, targetId: 'ssh:box'),
+      isTrue,
+      reason: 'Qoder is ACP-only on remote targets',
+    );
+    expect(
+      willLaunchAcp(
+        cli: CliTool.qoder,
+        requested: true,
+        targetId: 'wsl:Ubuntu',
+      ),
+      isFalse,
+    );
+    expect(
+      willLaunchAcp(cli: CliTool.claude, requested: true, targetId: 'ssh:box'),
+      isTrue,
+    );
+    expect(
+      willLaunchAcp(cli: CliTool.claude, requested: false, targetId: 'local'),
+      isFalse,
+    );
+    expect(
+      willLaunchAcp(
+        cli: CliTool.claude,
+        requested: true,
+        targetId: 'wsl:Ubuntu',
+      ),
+      isFalse,
+    );
+  });
 
   group('showLandingAcpPermissionChip', () {
     test('true for Gemini personal desktop', () {
@@ -219,9 +200,9 @@ void main() {
       );
 
       expect(control, isNotNull);
-      expect(control!.askLabel, l10n.acpPermissionAskLabel);
-      expect(control.fullAccessLabel, l10n.acpPermissionFullAccessLabel);
-      expect(control.defaultLabel, l10n.acpPermissionAskLabel);
+      expect(control!.askLabel, l10n.acp.permissionAskLabel);
+      expect(control.fullAccessLabel, l10n.acp.permissionFullAccessLabel);
+      expect(control.defaultLabel, l10n.acp.permissionAskLabel);
       expect(control.launchSecurityPolicy, LaunchSecurityPolicy.ask);
     });
   });
@@ -312,7 +293,7 @@ void main() {
         targetId: 'local',
       );
       expect(control, isNotNull);
-      expect(control!.askLabel, l10n.acpPermissionAskLabel);
+      expect(control!.askLabel, l10n.acp.permissionAskLabel);
     });
 
     test('null for PTY Claude personal when not requested', () {
@@ -355,7 +336,7 @@ void main() {
       );
       expect(control, isNotNull);
       expect(control!.launchSecurityPolicy, LaunchSecurityPolicy.ask);
-      expect(control.askLabel, l10n.acpPermissionAskLabel);
+      expect(control.askLabel, l10n.acp.permissionAskLabel);
     });
 
     test('null for personal PTY Claude', () {

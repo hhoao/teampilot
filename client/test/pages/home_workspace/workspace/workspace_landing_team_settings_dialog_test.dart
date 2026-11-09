@@ -99,8 +99,8 @@ Widget _wrap({
       child: RepositoryProvider<SessionRepository>.value(
         value: SessionRepository(storage: testHomeStorage),
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appLocalizationsSupportedLocales,
           theme: ThemeData(colorScheme: scheme, useMaterial3: true),
           home: TpTheme(
             data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
@@ -182,30 +182,30 @@ void main() {
     final l10n = lookupAppLocalizations(const Locale('en'));
 
     expect(find.byType(TpDialogNavShell), findsOneWidget);
-    expect(find.text(l10n.teamSettings), findsOneWidget);
-    expect(find.text(l10n.landingTeamSettingsNavTeam), findsOneWidget);
+    expect(find.text(l10n.team.settings), findsOneWidget);
+    expect(find.text(l10n.landing.teamSettingsNavTeam), findsOneWidget);
     expect(find.text(l10n.members), findsOneWidget);
-    expect(find.text(l10n.landingTeamSettingsNavMachines), findsOneWidget);
+    expect(find.text(l10n.landing.teamSettingsNavMachines), findsOneWidget);
     expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
     // Detail body not pushed yet on narrow.
-    expect(find.text(l10n.landingTeamSettingsGlobalHint), findsNothing);
+    expect(find.text(l10n.landing.teamSettingsGlobalHint), findsNothing);
 
-    await tester.tap(find.text(l10n.landingTeamSettingsNavTeam));
+    await tester.tap(find.text(l10n.landing.teamSettingsNavTeam));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
     // Nav route stays under detail in the nested Navigator, so two chevrons.
     expect(find.byIcon(Icons.chevron_left_rounded), findsWidgets);
-    expect(find.text(l10n.landingTeamSettingsGlobalHint), findsWidgets);
+    expect(find.text(l10n.landing.teamSettingsGlobalHint), findsWidgets);
 
     await tester.tap(find.byIcon(Icons.chevron_left_rounded).last);
     await tester.pump(); // start pop
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text(l10n.teamSettings), findsOneWidget);
+    expect(find.text(l10n.team.settings), findsOneWidget);
     expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
-    expect(find.text(l10n.landingTeamSettingsGlobalHint), findsNothing);
+    expect(find.text(l10n.landing.teamSettingsGlobalHint), findsNothing);
   });
 
   testWidgets('wide: dual-pane nav and body visible together', (tester) async {
@@ -230,16 +230,16 @@ void main() {
     final l10n = lookupAppLocalizations(const Locale('en'));
 
     expect(find.byType(TpDialogNavShell), findsOneWidget);
-    expect(find.text(l10n.teamSettings), findsOneWidget);
-    expect(find.text(l10n.landingTeamSettingsNavTeam), findsWidgets);
+    expect(find.text(l10n.team.settings), findsOneWidget);
+    expect(find.text(l10n.landing.teamSettingsNavTeam), findsWidgets);
     expect(find.text(l10n.members), findsOneWidget);
-    expect(find.text(l10n.landingTeamSettingsNavMachines), findsOneWidget);
+    expect(find.text(l10n.landing.teamSettingsNavMachines), findsOneWidget);
     expect(find.byIcon(Icons.chevron_left_rounded), findsNothing);
 
     // Deferred mount + frame for pane host.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text(l10n.landingTeamSettingsGlobalHint), findsWidgets);
+    expect(find.text(l10n.landing.teamSettingsGlobalHint), findsWidgets);
   });
 
   testWidgets('escape dismisses the draft dialog', (tester) async {
@@ -293,9 +293,9 @@ void main() {
     final l10n = lookupAppLocalizations(const Locale('en'));
     expect(find.byType(TpDialogNavShell), findsOneWidget);
     expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
-    expect(find.text(l10n.landingTeamSettingsNavTeam), findsOneWidget);
+    expect(find.text(l10n.landing.teamSettingsNavTeam), findsOneWidget);
 
-    await tester.tap(find.text(l10n.landingTeamSettingsNavTeam));
+    await tester.tap(find.text(l10n.landing.teamSettingsNavTeam));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byIcon(Icons.chevron_left_rounded), findsWidgets);

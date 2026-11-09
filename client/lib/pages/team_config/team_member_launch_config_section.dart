@@ -172,7 +172,7 @@ class _MemberLaunchConfigRowBody extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            l10n.memberLaunchConfigTitle,
+                            l10n.member.launchConfigTitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: styles.lgColored(cs.onSurface),
@@ -185,7 +185,7 @@ class _MemberLaunchConfigRowBody extends StatelessWidget {
                     const SizedBox(height: 4),
                     if (!configured)
                       Text(
-                        l10n.memberLaunchConfigSubtitle,
+                        l10n.member.launchConfigSubtitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: styles.smColored(cs.onSurfaceVariant),
@@ -210,7 +210,7 @@ class _MemberLaunchConfigRowBody extends StatelessWidget {
                   cubit: cubit,
                 ),
                 icon: Icon(Icons.tune, size: context.tpIconSizes.sm),
-                label: Text(l10n.workspaceCliConfigure),
+                label: Text(l10n.workspace.cliConfigure),
               ),
             ],
           ),
@@ -476,7 +476,7 @@ class _MemberLaunchConfigureDialogState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.memberLaunchConfigTitle),
+          TpDialogHeader(title: l10n.member.launchConfigTitle),
           const SizedBox(height: 16),
           TpCard.outlined(
             child: TpForm(
@@ -540,9 +540,9 @@ class _MemberLaunchConfigureDialogState
                         team: team,
                         member: member,
                         effortContext: CliLaunchEffortContext.member,
-                        effortSubtitle: l10n.memberEffortLevelSubtitle,
+                        effortSubtitle: l10n.member.effortLevelSubtitle,
                         effortAllowInherit: false,
-                        effortTitle: l10n.memberEffortLevel,
+                        effortTitle: l10n.member.effortLevel,
                         dropdownKeyPrefix: 'member-launch',
                         decoration: dropdownDeco,
                         providerHasError:

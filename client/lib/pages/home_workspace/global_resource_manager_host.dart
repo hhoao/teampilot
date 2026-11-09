@@ -254,7 +254,7 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
       if (mounted) {
         AppToast.show(
           context,
-          message: context.l10n.resourceManagerKillFailed,
+          message: context.l10n.resource.managerKillFailed,
           variant: TpToastVariant.error,
         );
       }
@@ -285,7 +285,7 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
     if (workspaceId.isEmpty) {
       AppToast.show(
         context,
-        message: context.l10n.sshHostsOpenTerminalNoWorkspace,
+        message: context.l10n.ssh.hostsOpenTerminalNoWorkspace,
         variant: TpToastVariant.warning,
       );
       return;
@@ -294,7 +294,8 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
       context.read<WorkbenchShellLauncher>().openSshProfileTerminal(
         workspaceId: workspaceId,
         profileId: profileId,
-        sshConnectFailedMessage: context.l10n.workspaceTerminalSshConnectFailed,
+        sshConnectFailedMessage:
+            context.l10n.workspace.terminalSshConnectFailed,
         mounted: () => mounted,
       ),
     );

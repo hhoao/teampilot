@@ -9,10 +9,7 @@ void main() {
     final paths = AppPaths('/root');
     expect(paths.vaultDir, p.join('/root', 'vault'));
     expect(paths.vaultFile, p.join('/root', 'vault', 'vault.json'));
-    expect(
-      paths.vaultBackupFile,
-      p.join('/root', 'vault', 'vault.json.bak'),
-    );
+    expect(paths.vaultBackupFile, p.join('/root', 'vault', 'vault.json.bak'));
   });
 
   test('writes atomically and archives to the backup path', () async {
@@ -26,7 +23,9 @@ void main() {
 
     await repo.archive();
     expect(await repo.exists(), isFalse);
-    expect(await fs.readString(p.join('/root/vault', 'vault.json.bak')),
-        '{"v":1}');
+    expect(
+      await fs.readString(p.join('/root/vault', 'vault.json.bak')),
+      '{"v":1}',
+    );
   });
 }

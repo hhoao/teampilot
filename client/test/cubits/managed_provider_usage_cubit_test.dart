@@ -229,9 +229,7 @@ void main() {
       await providers.upsert(_provider());
       final gate = Completer<ProviderUsageSnapshot>();
       adapter.result = gate.future;
-      final cubit = ManagedProviderUsageCubit(
-        coordinator: coordinator,
-      );
+      final cubit = ManagedProviderUsageCubit(coordinator: coordinator);
       addTearDown(cubit.close);
       await cubit.load();
 
@@ -352,9 +350,7 @@ void main() {
       await providers.upsert(_provider());
       await providers.upsert(_provider(id: 'disabled', enabled: false));
       await usage.save(_ready());
-      final cubit = ManagedProviderUsageCubit(
-        coordinator: coordinator,
-      );
+      final cubit = ManagedProviderUsageCubit(coordinator: coordinator);
       addTearDown(cubit.close);
       await cubit.load();
 
@@ -369,9 +365,7 @@ void main() {
     () async {
       await providers.upsert(_provider());
       await usage.save(_ready(staleAt: 50));
-      final cubit = ManagedProviderUsageCubit(
-        coordinator: coordinator,
-      );
+      final cubit = ManagedProviderUsageCubit(coordinator: coordinator);
       addTearDown(cubit.close);
       await cubit.load();
 

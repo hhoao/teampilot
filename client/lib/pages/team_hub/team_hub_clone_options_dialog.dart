@@ -75,17 +75,17 @@ class _TeamHubCloneOptionsDialogState extends State<TeamHubCloneOptionsDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(title: l10n.teamHubCloneOptionsTitle),
+          TpDialogHeader(title: l10n.teamHub.cloneOptionsTitle),
           const SizedBox(height: 12),
           if (!team.teamModeDeclared) ...[
-            _SectionLabel(title: l10n.teamModeLabel),
+            _SectionLabel(title: l10n.team.modeLabel),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: _OptionCard(
-                    title: l10n.teamModeNative,
-                    description: l10n.teamModeNativeDescription,
+                    title: l10n.team.modeNative,
+                    description: l10n.team.modeNativeDescription,
                     selected: _mode == TeamMode.native,
                     onTap: () => setState(() => _mode = TeamMode.native),
                   ),
@@ -93,8 +93,8 @@ class _TeamHubCloneOptionsDialogState extends State<TeamHubCloneOptionsDialog> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _OptionCard(
-                    title: l10n.teamModeMixed,
-                    description: l10n.teamModeMixedDescription,
+                    title: l10n.team.modeMixed,
+                    description: l10n.team.modeMixedDescription,
                     selected: _mode == TeamMode.mixed,
                     onTap: () => setState(() => _mode = TeamMode.mixed),
                   ),
@@ -104,7 +104,7 @@ class _TeamHubCloneOptionsDialogState extends State<TeamHubCloneOptionsDialog> {
             const SizedBox(height: 16),
           ],
           if (!team.cliDeclared) ...[
-            _SectionLabel(title: l10n.teamCliLabel),
+            _SectionLabel(title: l10n.team.cliLabel),
             const SizedBox(height: 8),
             TpCompactSelect<CliTool>(
               value: _cli,

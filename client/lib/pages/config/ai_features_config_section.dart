@@ -40,11 +40,11 @@ class AiFeaturesConfigWorkspace extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (showHeading) ...[
-                  TpSectionHeader(title: l10n.aiFeatures),
+                  TpSectionHeader(title: l10n.ai.features),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
                     child: Text(
-                      l10n.aiFeaturesPageSubtitle,
+                      l10n.ai.featuresPageSubtitle,
                       style: TpTextStyles.of(context).smMediumColored(
                         Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -53,16 +53,16 @@ class AiFeaturesConfigWorkspace extends StatelessWidget {
                 ],
                 AiFeatureConfigRow(
                   feature: AiFeatureId.commitMessage,
-                  title: l10n.aiFeatureCommitMessageTitle,
-                  intro: l10n.aiFeatureCommitMessageSubtitle,
+                  title: l10n.ai.featureCommitMessageTitle,
+                  intro: l10n.ai.featureCommitMessageSubtitle,
                   icon: Icons.auto_awesome_outlined,
                   setting: state.settingFor(AiFeatureId.commitMessage),
                   showDividerBelow: true,
                 ),
                 AiFeatureConfigRow(
                   feature: AiFeatureId.teamGenerate,
-                  title: l10n.aiFeatureTeamGenerateTitle,
-                  intro: l10n.aiFeatureTeamGenerateSubtitle,
+                  title: l10n.ai.featureTeamGenerateTitle,
+                  intro: l10n.ai.featureTeamGenerateSubtitle,
                   icon: Icons.groups_outlined,
                   setting: state.settingFor(AiFeatureId.teamGenerate),
                   showDividerBelow: false,
@@ -205,7 +205,7 @@ class AiFeatureConfigRow extends StatelessWidget {
                   initial: setting ?? resolved,
                 ),
                 icon: Icon(Icons.tune, size: context.tpIconSizes.sm),
-                label: Text(l10n.workspaceCliConfigure),
+                label: Text(l10n.workspace.cliConfigure),
               ),
             ],
           ),
@@ -427,12 +427,12 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
                     cliItems: _cliItems(registry),
                     onCliChanged: _applyCli,
                     effortContext: CliLaunchEffortContext.standalone,
-                    effortSubtitle: l10n.workspaceCliEffortLevelSubtitle,
+                    effortSubtitle: l10n.workspace.cliEffortLevelSubtitle,
                     effortAllowInherit: true,
-                    effortInheritLabel: l10n.workspaceCliEffortInheritHint,
-                    providerTitle: l10n.provider,
-                    modelTitle: l10n.aiFeatureModelLabel,
-                    effortTitle: l10n.aiFeatureEffortLabel,
+                    effortInheritLabel: l10n.workspace.cliEffortInheritHint,
+                    providerTitle: l10n.provider.provider,
+                    modelTitle: l10n.ai.featureModelLabel,
+                    effortTitle: l10n.ai.featureEffortLabel,
                     dropdownKeyPrefix: 'ai-feature-${widget.feature.key}',
                     decoration: dropdownDeco,
                     onProviderChanged: _applyProvider,
@@ -465,7 +465,7 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
                     builder: (_) => const CliPresetsManageDialog(),
                   );
                 },
-                child: Text(l10n.teamDefaultPresetManage),
+                child: Text(l10n.team.defaultPresetManage),
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),

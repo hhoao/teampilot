@@ -180,7 +180,7 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
         _cancel();
       },
       child: TpDialogPageShell(
-        title: l10n.mcpOAuthConnectTitle(widget.server.name),
+        title: l10n.mcp.oAuthConnectTitle(name: widget.server.name),
         mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
         fillBody: false,
         onClose: finishing ? () {} : _cancel,
@@ -190,13 +190,13 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(l10n.mcpOAuthConnectHint),
+              Text(l10n.mcp.oAuthConnectHint),
               if (discovering) ...[
                 const SizedBox(height: 16),
                 const LinearProgressIndicator(),
                 const SizedBox(height: 8),
                 Text(
-                  l10n.mcpOAuthDiscovering,
+                  l10n.mcp.oAuthDiscovering,
                   style: TpTextStyles.of(context).sm,
                 ),
               ],
@@ -217,7 +217,7 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
                     Icons.open_in_browser,
                     size: context.tpIconSizes.md,
                   ),
-                  label: Text(l10n.mcpOAuthOpenBrowser),
+                  label: Text(l10n.mcp.oAuthOpenBrowser),
                 ),
                 const SizedBox(height: 8),
                 SelectableText(
@@ -234,8 +234,8 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
                       controller: _callbackController,
                       enabled: !finishing,
                       decoration: InputDecoration(
-                        labelText: l10n.mcpOAuthCallbackUrlLabel,
-                        hintText: l10n.mcpOAuthCallbackUrlHint,
+                        labelText: l10n.mcp.oAuthCallbackUrlLabel,
+                        hintText: l10n.mcp.oAuthCallbackUrlHint,
                       ),
                       minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
                       maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 4),
@@ -252,7 +252,7 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
                   if (_showCallbackField)
                     FilledButton(
                       onPressed: finishing ? null : _submitManualCallback,
-                      child: Text(l10n.mcpOAuthSubmitCallback),
+                      child: Text(l10n.mcp.oAuthSubmitCallback),
                     ),
                   if (finishing)
                     const Padding(

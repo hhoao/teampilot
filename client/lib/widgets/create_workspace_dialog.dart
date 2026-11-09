@@ -61,7 +61,7 @@ class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
     if (valid.isEmpty) {
       AppToast.show(
         context,
-        message: l10n.workspacePrimaryPathRequired,
+        message: l10n.workspace.primaryPathRequired,
         variant: TpToastVariant.error,
       );
       return;
@@ -98,7 +98,7 @@ class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
             controller: _displayController,
             hint: hasDirectory
                 ? _basename(firstPath)
-                : l10n.homeWorkspaceNewWorkspaceNameHint,
+                : l10n.homeWorkspace.newWorkspaceNameHint,
             onSubmitted: (_) => _create(),
           ),
           TpDialogActions(

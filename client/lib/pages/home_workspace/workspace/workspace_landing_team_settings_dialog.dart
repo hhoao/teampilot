@@ -274,7 +274,7 @@ class _LandingTeamSettingsDialogState
           child: TpDialogNavShell(
             mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
             onClose: _cancel,
-            navTitle: (c) => c.l10n.teamSettings,
+            navTitle: (c) => c.l10n.team.settings,
             initialIndex: _initialIndex,
             onSelectedIndexChanged: (index) {
               setState(() => _selectedIndex = index);
@@ -288,9 +288,9 @@ class _LandingTeamSettingsDialogState
             canSave: _canSave,
             saving: _saving,
             placementHint: !_preparedSave.leadValid
-                ? context.l10n.mixedWorkspaceLeadPlacementInvalid
+                ? context.l10n.mixed.workspaceLeadPlacementInvalid
                 : _needsMixedInit
-                ? context.l10n.mixedWorkspaceMemberAssignmentIncomplete
+                ? context.l10n.mixed.workspaceMemberAssignmentIncomplete
                 : null,
             onCancel: _cancel,
             onSave: () => unawaited(_save()),
@@ -354,21 +354,21 @@ class _LandingTeamSettingsDialogState
           },
           navLabel: (c) => switch (section) {
             _LandingTeamSettingsSection.team =>
-              c.l10n.landingTeamSettingsNavTeam,
+              c.l10n.landing.teamSettingsNavTeam,
             _LandingTeamSettingsSection.members => c.l10n.members,
             _LandingTeamSettingsSection.machines =>
-              c.l10n.landingTeamSettingsNavMachines,
+              c.l10n.landing.teamSettingsNavMachines,
           },
           title: (c) => switch (section) {
             _LandingTeamSettingsSection.team =>
-              c.l10n.landingTeamSettingsNavTeam,
+              c.l10n.landing.teamSettingsNavTeam,
             _LandingTeamSettingsSection.members => c.l10n.members,
             _LandingTeamSettingsSection.machines =>
-              c.l10n.landingTeamSettingsNavMachines,
+              c.l10n.landing.teamSettingsNavMachines,
           },
           subtitle: (c) => switch (section) {
             _LandingTeamSettingsSection.team =>
-              c.l10n.landingTeamSettingsGlobalHint,
+              c.l10n.landing.teamSettingsGlobalHint,
             _LandingTeamSettingsSection.members =>
               '${_teamDraft.members.where((m) => m.isValid).length}',
             _LandingTeamSettingsSection.machines => _machinesSubtitle(
@@ -398,7 +398,10 @@ class _LandingTeamSettingsDialogState
       placed += memberPlacementCountForType(placement, member.id);
     }
     // Placement is source of truth: total == placed (may be 0 for non-leads).
-    return l10n.mixedWorkspaceMemberPlacementProgress(placed, placed);
+    return l10n.mixed.workspaceMemberPlacementProgress(
+      placed: placed,
+      total: placed,
+    );
   }
 }
 
@@ -478,7 +481,7 @@ class _TeamPane extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            l10n.landingTeamSettingsGlobalHint,
+            l10n.landing.teamSettingsGlobalHint,
             style: TpTextStyles.of(context).mutedSm,
           ),
           const SizedBox(height: 16),
@@ -493,8 +496,8 @@ class _TeamPane extends StatelessWidget {
                 ),
                 if (showDelegateRow)
                   TpPreferenceRow(
-                    title: l10n.teamLeadDelegateOnlyTitle,
-                    subtitle: l10n.teamLeadDelegateOnlySubtitle,
+                    title: l10n.team.leadDelegateOnlyTitle,
+                    subtitle: l10n.team.leadDelegateOnlySubtitle,
                     trailing: Switch(
                       value: team.forceTeamLeadDelegateMode,
                       onChanged: onDelegateChanged,
@@ -636,7 +639,7 @@ class _TeamDefaultPresetSummary extends StatelessWidget {
                     children: [
                       Flexible(
                         child: Text(
-                          l10n.teamDefaultPresetLabel,
+                          l10n.team.defaultPresetLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: styles.lgColored(cs.onSurface),
@@ -648,7 +651,7 @@ class _TeamDefaultPresetSummary extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    configured ? configLine : l10n.teamDefaultPresetSubtitle,
+                    configured ? configLine : l10n.team.defaultPresetSubtitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: configured
@@ -660,7 +663,7 @@ class _TeamDefaultPresetSummary extends StatelessWidget {
               final configure = OutlinedButton.icon(
                 onPressed: onConfigure,
                 icon: Icon(Icons.tune, size: context.tpIconSizes.sm),
-                label: Text(l10n.workspaceCliConfigure),
+                label: Text(l10n.workspace.cliConfigure),
               );
               if (constraints.maxWidth < 420) {
                 return Column(
@@ -842,7 +845,7 @@ class _MemberRow extends StatelessWidget {
                         Text(
                           configured
                               ? configLine
-                              : l10n.memberLaunchConfigSubtitle,
+                              : l10n.member.launchConfigSubtitle,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: configured
@@ -856,7 +859,7 @@ class _MemberRow extends StatelessWidget {
                   OutlinedButton.icon(
                     onPressed: () => onOpenMemberConfigure(member),
                     icon: Icon(Icons.tune, size: context.tpIconSizes.sm),
-                    label: Text(l10n.workspaceCliConfigure),
+                    label: Text(l10n.workspace.cliConfigure),
                   ),
                 ],
               ),
@@ -896,7 +899,7 @@ class _MachinesPane extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          l10n.mixedWorkspaceMemberAssignmentSubtitle,
+          l10n.mixed.workspaceMemberAssignmentSubtitle,
           style: TpTextStyles.of(context).mutedSm,
         ),
         const SizedBox(height: 12),

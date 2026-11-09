@@ -7,8 +7,8 @@ import 'package:teampilot/widgets/window_chrome_controls.dart';
 void main() {
   Widget wrap(Widget child) {
     return MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: Scaffold(body: Center(child: child)),
     );
   }

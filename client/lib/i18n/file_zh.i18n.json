@@ -1,0 +1,10 @@
+{
+  "codeBlockModeDescription": "markdown 文件预览中超大代码块的呈现方式。",
+  "codeBlockModeTitle": "文件预览·代码块",
+  "diffToggleDiff": "Diff",
+  "diffToggleFile": "文件",
+  "previewHostCenter": "中间",
+  "previewHostDescription": "在浮动工作区或中间工作台打开文件。",
+  "previewHostFloating": "浮动",
+  "previewHostTitle": "文件预览位置"
+}

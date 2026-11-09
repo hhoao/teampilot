@@ -1,0 +1,33 @@
+{
+  "actionCommand": "Command",
+  "actionScript": "Script",
+  "capabilityMatrix": "Capability matrix",
+  "description": "Description",
+  "edit": "Edit hook",
+  "env": "Environment (KEY=VALUE per line)",
+  "event": "Event",
+  "import": "Import",
+  "importCli": "CLI",
+  "importDone(param=count)": {
+    "one": "Import {count: int} hook",
+    "other": "Import {count: int} hooks"
+  },
+  "importDoneToast": "Hooks imported",
+  "importInvalidJson": "Invalid hook JSON",
+  "importJson": "Hook JSON",
+  "importJsonHint": "Paste settings.json hooks, hooks.json, or a hooks fragment…",
+  "importNoHooks": "No hooks found",
+  "importOverwrite": "Will overwrite",
+  "importParse": "Parse",
+  "installedCount": "{count: int} installed",
+  "matcher": "Matcher",
+  "name": "Name",
+  "nameRequired": "Name is required",
+  "navTitle": "Hooks",
+  "new": "New hook",
+  "policy": "Policy",
+  "save": "Save",
+  "saveFailed": "Failed to save hook.",
+  "supportMatrix": "View support matrix",
+  "timeoutSec": "Timeout (seconds)"
+}

@@ -8,23 +8,23 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 
 AppSession _session(String id) => AppSession(
-      sessionId: id,
-      workspaceId: 'ws1',
-      display: 'Session $id',
-      cli: CliTool.claude,
-      createdAt: 1,
-    );
+  sessionId: id,
+  workspaceId: 'ws1',
+  display: 'Session $id',
+  cli: CliTool.claude,
+  createdAt: 1,
+);
 
 Widget _host(Widget child) => MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
-        body: CliToolRegistryScope(
-          registry: CliToolRegistry.builtIn(),
-          child: child,
-        ),
-      ),
-    );
+  localizationsDelegates: appLocalizationsDelegates,
+  supportedLocales: appLocalizationsSupportedLocales,
+  home: Scaffold(
+    body: CliToolRegistryScope(
+      registry: CliToolRegistry.builtIn(),
+      child: child,
+    ),
+  ),
+);
 
 void main() {
   testWidgets('returns the tapped session id', (tester) async {

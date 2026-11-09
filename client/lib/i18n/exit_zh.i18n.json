@@ -1,0 +1,11 @@
+{
+  "planModeApprove": "批准",
+  "planModeApproveFailed": "批准计划失败",
+  "planModeCopyPlan": "复制计划",
+  "planModeOpenPlanFile": "打开计划文件",
+  "planModePreviewTitle": "计划预览",
+  "planModeReject": "拒绝",
+  "planModeRejectFailed": "拒绝计划失败",
+  "planModeTitle": "计划已就绪，等待批准",
+  "planModeViewPlan": "查看计划"
+}

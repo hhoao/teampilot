@@ -181,7 +181,7 @@ class _Header extends StatelessWidget {
     final title =
         '${_sideTitle(context, spec.left)} ↔ ${_sideTitle(context, spec.right)}';
     final subtitle = spec.right is GitCompareWorkingTree
-        ? l10n.gitCompareSubtitle(spec.left.titleLabel())
+        ? l10n.git.compareSubtitle(ref: spec.left.titleLabel())
         : null;
 
     return Container(
@@ -209,7 +209,7 @@ class _Header extends StatelessWidget {
 
   static String _sideTitle(BuildContext context, GitCompareSide side) {
     if (side is GitCompareWorkingTree) {
-      return context.l10n.gitCompareWorkingTree;
+      return context.l10n.git.compareWorkingTree;
     }
     return side.titleLabel();
   }
@@ -236,7 +236,7 @@ class _Content extends StatelessWidget {
     final error = state.error;
     if (error != null) {
       return _LoadError(
-        message: context.l10n.gitCompareLoadError,
+        message: context.l10n.git.compareLoadError,
         detail: error,
         onRetry: () => unawaited(context.read<GitCompareCubit>().refresh()),
       );
@@ -245,7 +245,7 @@ class _Content extends StatelessWidget {
     if (state.files.isEmpty) {
       return Center(
         child: Text(
-          context.l10n.gitCompareEmpty,
+          context.l10n.git.compareEmpty,
           style: TpTextStyles.of(
             context,
           ).smColored(Theme.of(context).colorScheme.onSurfaceVariant),

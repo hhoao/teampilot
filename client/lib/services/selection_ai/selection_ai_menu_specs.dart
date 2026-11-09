@@ -13,7 +13,7 @@ List<TpActionMenuSpec> selectionAiMenuSpecs({
   return [
     TpActionMenuSpec.item(
       icon: Icons.auto_awesome_outlined,
-      label: l10n.editorCopyAsAiContext,
+      label: l10n.editor.copyAsAiContext,
       enabled: copyEnabled,
       onAction: onCopyAsAiContext,
     ),

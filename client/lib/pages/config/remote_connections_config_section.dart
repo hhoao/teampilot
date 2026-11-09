@@ -23,7 +23,7 @@ class RemoteConnectionsConfigSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (showHeading)
-          WorkspacePaneHeader(title: l10n.remoteConnectionsTitle),
+          WorkspacePaneHeader(title: l10n.remote.connectionsTitle),
         const Expanded(
           child: SingleChildScrollView(
             padding: EdgeInsets.all(16),

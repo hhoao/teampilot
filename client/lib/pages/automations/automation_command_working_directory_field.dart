@@ -45,14 +45,14 @@ class AutomationCommandWorkingDirectoryField extends StatelessWidget {
       usesPosixPaths: _usesPosixPaths(context),
       storedProjectPath: selected.isEmpty ? null : selected,
     );
-    final mainLabel = l10n.automationsCommandWorkingDirectoryMain;
+    final mainLabel = l10n.automations.commandWorkingDirectoryMain;
     final label = selected.isEmpty ? mainLabel : resolver.labelFor(selected);
 
     return TpFormField<String>(
       key: ValueKey('commandWorkingDirectory-$selected'),
       id: 'commandWorkingDirectory',
       initialValue: selected,
-      label: Text(l10n.automationsCommandWorkingDirectory),
+      label: Text(l10n.automations.commandWorkingDirectory),
       layoutStyle: TpFormFieldLayoutStyle.inline,
       labelWidth: labelWidth,
       builder: (state) {

@@ -18,8 +18,8 @@ void main() {
     );
     return MaterialApp(
       theme: theme,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
       home: Scaffold(
         body: TpTheme(
           data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1),

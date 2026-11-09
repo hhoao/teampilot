@@ -114,17 +114,15 @@ AcpTransportStarter sshAcpTransportStarter({
 
 /// Everything the remote ACP starter needs: the SSH profile (for command
 /// encoding) and a lazy channel opener.
-typedef AcpSshLaunch = ({
-  SshProfile profile,
-  AcpSshChannelOpener openChannel,
-});
+typedef AcpSshLaunch = ({SshProfile profile, AcpSshChannelOpener openChannel});
 
 /// Builds one [AcpSshLaunch] for a session + target. Production opens (and
 /// stores on the tab) the member SSH session; tests inject a fake.
-typedef AcpSshLaunchFactory = AcpSshLaunch Function({
-  required AppSession session,
-  required RuntimeTarget launchTarget,
-});
+typedef AcpSshLaunchFactory =
+    AcpSshLaunch Function({
+      required AppSession session,
+      required RuntimeTarget launchTarget,
+    });
 
 /// Null → the spawner's local process starter. Non-null → the SSH starter.
 ///

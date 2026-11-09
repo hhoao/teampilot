@@ -14,8 +14,8 @@ import 'package:teampilot/utils/ui/app_keys.dart';
 Widget _wrap(SessionUsageCubit cubit) {
   return MaterialApp(
     locale: const Locale('en'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
+    supportedLocales: appLocalizationsSupportedLocales,
     home: BlocProvider.value(
       value: cubit,
       child: TpTheme(

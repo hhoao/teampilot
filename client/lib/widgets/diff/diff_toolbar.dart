@@ -91,7 +91,7 @@ class DiffToolbar extends StatelessWidget {
           if (isDirty && onSave != null)
             TpIconButton(
               icon: Icons.save_outlined,
-              tooltip: l10n.editorSave,
+              tooltip: l10n.editor.save,
               size: _actionSize,
               compact: true,
               color: iconColor,
@@ -100,7 +100,7 @@ class DiffToolbar extends StatelessWidget {
           if (showOpenSource)
             TpIconButton(
               icon: Icons.description_outlined,
-              tooltip: l10n.diffOpenSourceFile,
+              tooltip: l10n.diff.openSourceFile,
               size: _actionSize,
               compact: true,
               color: iconColor,
@@ -109,7 +109,7 @@ class DiffToolbar extends StatelessWidget {
           if (showFullContext)
             _DiffToolbarIconToggle(
               icon: Icons.unfold_more,
-              tooltip: l10n.diffShowAllLines,
+              tooltip: l10n.diff.showAllLines,
               selected: fullContext,
               color: iconColor,
               onChanged: onFullContextChanged,
@@ -117,7 +117,7 @@ class DiffToolbar extends StatelessWidget {
           if (showIgnoreWhitespace)
             _DiffToolbarIconToggle(
               icon: Icons.space_bar,
-              tooltip: l10n.diffIgnoreWhitespace,
+              tooltip: l10n.diff.ignoreWhitespace,
               selected: ignoreWhitespace,
               color: iconColor,
               onChanged: onIgnoreWhitespaceChanged,
@@ -126,8 +126,8 @@ class DiffToolbar extends StatelessWidget {
           _DiffModePill(
             mode: mode,
             onModeChanged: onModeChanged,
-            sideBySideTooltip: l10n.diffViewSideBySide,
-            unifiedTooltip: l10n.diffViewUnified,
+            sideBySideTooltip: l10n.diff.viewSideBySide,
+            unifiedTooltip: l10n.diff.viewUnified,
             color: iconColor,
           ),
           const SizedBox(width: 2),
@@ -144,7 +144,7 @@ class DiffToolbar extends StatelessWidget {
                 children: [
                   TpIconButton(
                     icon: Icons.keyboard_arrow_up,
-                    tooltip: l10n.diffPreviousChange,
+                    tooltip: l10n.diff.previousChange,
                     size: _actionSize,
                     compact: true,
                     color: iconColor,
@@ -155,15 +155,18 @@ class DiffToolbar extends StatelessWidget {
                     constraints: const BoxConstraints(minWidth: 44),
                     child: Text(
                       enabled
-                          ? l10n.diffChangeCounter(current, total)
-                          : l10n.diffNoChanges,
+                          ? l10n.diff.changeCounter(
+                              current: current,
+                              total: total,
+                            )
+                          : l10n.diff.noChanges,
                       textAlign: TextAlign.center,
                       style: styles.mutedSm,
                     ),
                   ),
                   TpIconButton(
                     icon: Icons.keyboard_arrow_down,
-                    tooltip: l10n.diffNextChange,
+                    tooltip: l10n.diff.nextChange,
                     size: _actionSize,
                     compact: true,
                     color: iconColor,

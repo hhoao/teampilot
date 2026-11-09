@@ -10,9 +10,7 @@ Uint8List _visible(String s) => Uint8List.fromList(s.codeUnits);
 /// Drives the tracker with FakeAsync's clock so the one-shot Timer and the
 /// quiet/max-wait getters share a time source. Wall `DateTime.now` is *not*
 /// advanced by `elapse` (see team_bus_routing_test).
-void _withClock(
-  void Function(FakeAsync async, DateTime Function() now) body,
-) {
+void _withClock(void Function(FakeAsync async, DateTime Function() now) body) {
   fakeAsync((async) {
     body(async, async.getClock(DateTime.utc(2026, 1, 1)).now);
   });

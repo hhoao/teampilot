@@ -113,7 +113,7 @@ class _LaunchFourTuplePickerState extends State<LaunchFourTuplePicker> {
     if (value is CascadeCustomModelRequest) {
       final modelId = await showComposeCustomModelIdDialog(
         context,
-        title: context.l10n.composeCascadeCustomModelIdTitle,
+        title: context.l10n.compose.cascadeCustomModelIdTitle,
         confirmLabel: context.l10n.confirm,
         initial: widget.value?.modelId ?? '',
       );
@@ -185,7 +185,7 @@ class _LaunchFourTuplePickerState extends State<LaunchFourTuplePicker> {
       },
       cliItems: widget.cliItems,
     );
-    final emptyLabel = widget.emptyLabel ?? l10n.workspaceChatLandingUsePreset;
+    final emptyLabel = widget.emptyLabel ?? l10n.workspace.chatLandingUsePreset;
     final label = simpleLaunchChipLabel(
       presetName: null,
       cli: widget.value?.cli,
@@ -205,14 +205,14 @@ class _LaunchFourTuplePickerState extends State<LaunchFourTuplePicker> {
     final specs = buildComposeModelCascadeMenuSpecs(
       presets: availablePresets,
       selectedPresetId: null,
-      emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
-      emptyProvidersLabel: l10n.composeCascadeNoProviders,
-      presetsLabel: l10n.composeCascadePresets,
-      defaultEffortLabel: l10n.composeCascadeDefaultEffort,
-      customModelIdLabel: l10n.composeCascadeCustomModelId,
-      noModelsLabel: l10n.composeCascadeNoModels,
-      savePresetLabel: l10n.composeCascadeSavePreset,
-      managePresetsLabel: l10n.workspaceCliAddPresetTitle,
+      emptyHintLabel: l10n.workspace.cliPresetsEmptyHint,
+      emptyProvidersLabel: l10n.compose.cascadeNoProviders,
+      presetsLabel: l10n.compose.cascadePresets,
+      defaultEffortLabel: l10n.compose.cascadeDefaultEffort,
+      customModelIdLabel: l10n.compose.cascadeCustomModelId,
+      noModelsLabel: l10n.compose.cascadeNoModels,
+      savePresetLabel: l10n.compose.cascadeSavePreset,
+      managePresetsLabel: l10n.workspace.cliAddPresetTitle,
       cliGroups: groups,
       groupByCli: widget.cliItems.length > 1,
       modelLabel: (cli, providerId, modelId) => providerModelLabel(

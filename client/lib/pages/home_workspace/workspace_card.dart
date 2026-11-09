@@ -69,7 +69,7 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
         children: [
           TpIconButton(
             icon: Icons.open_in_new_rounded,
-            tooltip: l10n.homeWorkspaceOpenWorkspaceInNewTab,
+            tooltip: l10n.homeWorkspace.openWorkspaceInNewTab,
             size: TpIconButton.kCompactSize,
             compact: true,
             onTap: _openInNewTab,
@@ -80,8 +80,8 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
                 : Icons.star_outline_rounded,
             color: widget.favorited ? cs.primary : null,
             tooltip: widget.favorited
-                ? l10n.homeWorkspaceUnfavoriteWorkspace
-                : l10n.homeWorkspaceFavoriteWorkspace,
+                ? l10n.homeWorkspace.unfavoriteWorkspace
+                : l10n.homeWorkspace.favoriteWorkspace,
             size: TpIconButton.kCompactSize,
             compact: true,
             onTap: () => unawaited(widget.onToggleFavorite()),
@@ -98,20 +98,20 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
               buildMenuChildren: (_, controller) => [
                 TpActionMenuItem(
                   icon: Icons.drive_file_rename_outline,
-                  label: l10n.homeWorkspaceRenameWorkspace,
+                  label: l10n.homeWorkspace.renameWorkspace,
                   menuController: controller,
                   onTap: () =>
                       unawaited(showRenameWorkspaceDialog(context, workspace)),
                 ),
                 TpActionMenuItem(
                   icon: Icons.copy_all_outlined,
-                  label: l10n.homeWorkspaceCloneWorkspace,
+                  label: l10n.homeWorkspace.cloneWorkspace,
                   menuController: controller,
                   onTap: () => unawaited(cloneWorkspace(context, workspace)),
                 ),
                 TpActionMenuItem(
                   icon: Icons.delete_outline,
-                  label: l10n.deleteWorkspace,
+                  label: l10n.delete.workspace,
                   destructive: true,
                   menuController: controller,
                   onTap: () =>
@@ -141,7 +141,7 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
           const Spacer(),
           WorkspaceCardSessionBar(
             sessionCount: widget.sessionCount,
-            sessionCountLabel: l10n.homeWorkspaceSessionsLabel,
+            sessionCountLabel: l10n.homeWorkspace.sessionsLabel,
             workspace: workspace,
             showContextIcon: widget.showSessionContextIcon,
           ),
@@ -159,7 +159,7 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
         TpActionMenuSpec.item(
           value: 'newTab',
           icon: Icons.open_in_new_rounded,
-          label: l10n.homeWorkspaceOpenWorkspaceInNewTab,
+          label: l10n.homeWorkspace.openWorkspaceInNewTab,
         ),
       ],
     );

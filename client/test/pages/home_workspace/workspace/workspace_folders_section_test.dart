@@ -43,8 +43,8 @@ void main() {
 
         await tester.pumpWidget(
           MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appLocalizationsSupportedLocales,
             home: MultiRepositoryProvider(
               providers: [
                 RepositoryProvider<HomeTargetController>.value(
@@ -70,8 +70,10 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 100));
         await tester.pump();
 
-        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-        expect(find.text(l10n.workspaceFoldersSectionTitle), findsOneWidget);
+        final l10n = await const AppLocalizationsCompatDelegate().load(
+          const Locale('en'),
+        );
+        expect(find.text(l10n.workspace.foldersSectionTitle), findsOneWidget);
         expect(find.text('This device'), findsOneWidget);
         expect(find.text(l10n.addWorkspaceDirectory), findsOneWidget);
       });

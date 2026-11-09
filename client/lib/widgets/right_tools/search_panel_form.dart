@@ -21,7 +21,7 @@ class SearchPanelChevron extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = FindBarPalette.of(context);
     return Tooltip(
-      message: context.l10n.editorFindToggleReplace,
+      message: context.l10n.editor.findToggleReplace,
       child: TpHover(
         width: 16,
         height: FindField.kHeight,
@@ -56,7 +56,7 @@ class SearchPanelDetailsToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     return FindActionButton(
       icon: Icons.more_horiz,
-      tooltip: context.l10n.workspaceSearchToggleDetails,
+      tooltip: context.l10n.workspace.searchToggleDetails,
       checked: expanded || highlighted,
       onTap: onTap,
     );
@@ -97,20 +97,20 @@ class SearchPanelDetailsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        label(l10n.workspaceSearchFilesToInclude),
+        label(l10n.workspace.searchFilesToInclude),
         FindField(
           controller: includeController,
           focusNode: includeFocusNode,
-          hint: l10n.workspaceSearchIncludeHint,
+          hint: l10n.workspace.searchIncludeHint,
           standalone: true,
           onChanged: onGlobChanged,
         ),
         const SizedBox(height: 8),
-        label(l10n.workspaceSearchFilesToExclude),
+        label(l10n.workspace.searchFilesToExclude),
         FindField(
           controller: excludeController,
           focusNode: excludeFocusNode,
-          hint: l10n.workspaceSearchExcludeHint,
+          hint: l10n.workspace.searchExcludeHint,
           standalone: true,
           onChanged: onGlobChanged,
         ),
@@ -127,7 +127,7 @@ class SearchPanelDetailsSection extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 6),
-            Text(l10n.workspaceSearchUseGitignore, style: styles.sm),
+            Text(l10n.workspace.searchUseGitignore, style: styles.sm),
           ],
         ),
       ],
