@@ -3419,6 +3419,56 @@ Future<AppShell> buildAppShell({
       );
     }
 
+    final notifiedDiscoveredSessionIds = <String>{};
+
+    Future<void> notifyDiscoveredSessions(
+      String workspaceId,
+      List<AppSession> sessions,
+    ) async {
+      if (sessions.isEmpty) return;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final fresh = <AppSession>[];
+      for (final session in sessions) {
+        if (!notifiedDiscoveredSessionIds.add(session.sessionId)) continue;
+        if (now - session.createdAt <=
+            const Duration(minutes: 10).inMilliseconds) {
+          fresh.add(session);
+        }
+      }
+      if (fresh.isEmpty) return;
+      final newest = fresh.reduce((a, b) => a.createdAt >= b.createdAt ? a : b);
+      final workspace = chatCubit.state.workspaces
+          .where((item) => item.workspaceId == workspaceId)
+          .firstOrNull;
+      final workspaceName = workspace?.display.trim() ?? '';
+      final locale = PlatformDispatcher.instance.locale;
+      final l10n = lookupAppLocalizations(
+        basicLocaleListResolution([locale], appLocalizationsSupportedLocales),
+      );
+      final title = l10n.session.remoteDiscoveredTitle;
+      final body = workspaceName.isEmpty
+          ? l10n.session.remoteDiscoveredBody
+          : '$workspaceName · ${l10n.session.remoteDiscoveredBody}';
+      final payload = HomeWorkspaceRoute.sessionLocation(
+        workspaceId: workspaceId,
+        sessionId: newest.sessionId,
+      );
+      notificationCubit.record(
+        title: title,
+        message: body,
+        variant: TpToastVariant.success,
+        payload: payload,
+      );
+      final notifier = DesktopSystemNotifier.instance;
+      if (await notifier.isAppFocused()) return;
+      await notifier.showNotification(
+        title: title,
+        body: body,
+        subtitle: title,
+        payload: payload,
+      );
+    }
+
     final sessionProtocolController = SessionProtocolController(
       deviceId: SharedStateIdentity.deviceId,
       remoteCubit: sessionRemoteActivityCubit,
@@ -3457,6 +3507,10 @@ Future<AppShell> buildAppShell({
       unawaited(
         sessionProtocolController.refreshSessions(workspaceId: workspaceId),
       );
+    };
+    chatCubit.onWorkspaceSessionsDiscovered = (workspaceId, sessions) {
+      if (!connectionModeService.isLocalMode) return;
+      unawaited(notifyDiscoveredSessions(workspaceId, sessions));
     };
     chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
     // Landing seed routing: pods own the store; these sinks are the fallback.

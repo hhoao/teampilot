@@ -42,6 +42,8 @@
   "historyToolTurn": "Tool",
   "idleNotificationSubtitle": "Ready for your next message",
   "idleNotificationTitle": "Agent ready",
+  "remoteDiscoveredTitle": "New conversation from mobile",
+  "remoteDiscoveredBody": "Tap to open the new conversation",
   "launchErrorHideDetails": "Hide details",
   "launchErrorReviewDetails": "View details",
   "launchMissingTeamMember": "Team member is not available. Select a team and try again.",
