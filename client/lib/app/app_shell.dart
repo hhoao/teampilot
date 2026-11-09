@@ -4871,16 +4871,14 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       return MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: appLocalizationsSupportedLocales,
-        home: TranslationProvider(
-          child: BootstrapStartupErrorPage(
-            error: _error!,
-            showChooseWorkEnvironment: Platform.isAndroid,
-            showNativeStorageFallback: _canFallbackToNativeStorage,
-            retrying: _retrying,
-            onRetry: _retryBootstrap,
-            onChooseWorkEnvironment: _chooseWorkEnvironmentAndRetry,
-            onNativeStorageFallback: _switchToNativeStorageAndRetry,
-          ),
+        home: BootstrapStartupErrorPage(
+          error: _error!,
+          showChooseWorkEnvironment: Platform.isAndroid,
+          showNativeStorageFallback: _canFallbackToNativeStorage,
+          retrying: _retrying,
+          onRetry: _retryBootstrap,
+          onChooseWorkEnvironment: _chooseWorkEnvironmentAndRetry,
+          onNativeStorageFallback: _switchToNativeStorageAndRetry,
         ),
       );
     }
@@ -4890,7 +4888,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         debugShowCheckedModeBanner: false,
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: appLocalizationsSupportedLocales,
-        home: TranslationProvider(child: const AppBootstrapLoadingPage()),
+        home: const AppBootstrapLoadingPage(),
       );
     }
     return MultiBlocProvider(
