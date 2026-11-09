@@ -174,6 +174,13 @@ flutter_launcher_icons:
   ios: false
   image_path: assets/icons/icon_bg.png
   min_sdk_android: 21
+  # Adaptive icon (Android 8+). The foreground mark is sized once in
+  # `icon_foreground.png` (46% of the canvas), so `inset` must stay 0 — the
+  # default 16% would shrink it again on top of the legacy-icon scaling we are
+  # avoiding.
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/icons/icon_foreground.png
+  adaptive_icon_foreground_inset: 0
   windows:
     generate: true
     image_path: assets/icons/icon_bg.png

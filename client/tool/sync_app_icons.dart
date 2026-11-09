@@ -7,6 +7,12 @@
 //
 // Source artwork: `assets/icons/icon_bg.png` (launcher icon with background;
 // prefer 1024×1024). Transparent-only mark: `assets/icons/icon.png`.
+//
+// Android also gets an adaptive icon: `assets/icons/icon_foreground.png` is the
+// transparent mark rendered at 46% of the canvas (a bit tighter than the 52% in
+// `icon_bg.png`, because Android masks the layer full-bleed), paired with a
+// white background and `adaptive_icon_foreground_inset: 0`. Keep the ratio when
+// replacing it — Android derives the size from the full canvas.
 
 import 'dart:io';
 
