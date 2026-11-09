@@ -81,6 +81,7 @@ class SshClientFactory {
     SshProfileWorkerManager? workerManager,
     int maxConcurrentHandshakes = 3,
     this.drainGracePeriod = const Duration(seconds: 5),
+    this.storageProbeInterval = const Duration(seconds: 15),
   }) : _credentialStore = credentialStore,
        _knownHostRepository = knownHostRepository,
        _events = events ?? SshConnectionEvents(),
@@ -109,6 +110,7 @@ class SshClientFactory {
     );
     _workerStoragePool = _SshWorkerStoragePool(
       manager: resolvedWorkerManager,
+      probeInterval: storageProbeInterval,
       resolveDialTarget: resolveWorkerDialTarget,
       waitForDrain: (profileId) =>
           _waitForTrackedOperations(profileId, drainGracePeriod),
@@ -127,6 +129,10 @@ class SshClientFactory {
   /// Maximum time an evicted storage connection remains available to
   /// operations that already borrowed it.
   final Duration drainGracePeriod;
+
+  /// How often a cached storage lease is probed before reuse. Overridable in
+  /// tests so probe behavior can be exercised without waiting out the window.
+  final Duration storageProbeInterval;
 
   final SshCredentialStore _credentialStore;
   final SshKnownHostRepository _knownHostRepository;

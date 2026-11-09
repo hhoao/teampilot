@@ -15,6 +15,7 @@ typedef _SshWorkerStorageClosed =
 final class _SshWorkerStoragePool {
   _SshWorkerStoragePool({
     required SshProfileWorkerManager manager,
+    required this.probeInterval,
     required _SshWorkerDialTargetResolver resolveDialTarget,
     required Future<void> Function(String profileId) waitForDrain,
     required bool Function(String profileId) isBusy,
@@ -28,7 +29,7 @@ final class _SshWorkerStoragePool {
        _onTransportClosed = onTransportClosed;
 
   final SshProfileWorkerManager _manager;
-  final Duration probeInterval = const Duration(seconds: 15);
+  final Duration probeInterval;
   final _SshWorkerDialTargetResolver _resolveDialTarget;
   final Future<void> Function(String profileId) _waitForDrain;
   final bool Function(String profileId) _isBusy;
@@ -193,14 +194,21 @@ final class _SshWorkerStoragePool {
   }
 
   Future<bool> _probe(SshWorkerStorageClient storage) async {
-    try {
-      // Probe the SFTP plane itself. A shell `exec` probe rejects valid
-      // SFTP-only accounts and adds a full exec-channel round trip.
-      await storage.realpath('.', timeout: SshStorageIo.probeTimeout);
-      return true;
-    } on Object {
-      return false;
+    // A single slow SFTP round trip is common on mobile links during a radio
+    // wake-up or a network handover. Retiring the lease on that one blip tears
+    // down every session plane and forces a full relaunch, so confirm with a
+    // second probe before declaring the transport dead.
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        // Probe the SFTP plane itself. A shell `exec` probe rejects valid
+        // SFTP-only accounts and adds a full exec-channel round trip.
+        await storage.realpath('.', timeout: SshStorageIo.probeTimeout);
+        return true;
+      } on Object {
+        // Retry once below.
+      }
     }
+    return false;
   }
 
   void disconnectProfile(
