@@ -44,12 +44,17 @@ class AiMessageActionBar extends StatefulWidget {
     this.previousVersionLabel = 'Previous version',
     this.nextVersionLabel = 'Next version',
     this.dense = false,
+    this.timestampText,
     super.key,
   });
 
   /// Compact chrome for bars placed under a user bubble: shorter row and
   /// smaller hit targets so the bar reads as message chrome, not a toolbar.
   final bool dense;
+
+  /// Pre-formatted timestamp label rendered at the start of the action row.
+  /// The package stays free of date formatting / l10n — callers pass text.
+  final String? timestampText;
 
   final AiMessage message;
   final AiActionBarReveal reveal;
@@ -188,7 +193,8 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
         widget.onRetryDelivery != null ||
         widget.onEdit != null ||
         widget.onFork != null ||
-        _showsVersion) {
+        _showsVersion ||
+        widget.timestampText != null) {
       _actionsMounted = true;
     }
   }
@@ -258,6 +264,17 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (widget.timestampText != null)
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: Text(
+              widget.timestampText!,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
         if (widget.onRetryDelivery != null)
           _LiteIconAction(
             label: strings.retryDelivery,
