@@ -8,6 +8,10 @@ import '../../../repositories/ssh_known_host_repository.dart';
 import '../ssh_credentials_resolver.dart';
 import 'ssh_worker_protocol.dart';
 
+/// Resolves the vault entry that owns [profileId]'s SSH secrets when the
+/// catalog record cannot carry a `vaultEntryId` (home-plane server rows).
+typedef SshVaultEntryIdResolver = Future<String?> Function(String profileId);
+
 /// UI-isolate handler for credential and host-key challenges from an SSH
 /// profile worker.
 ///
@@ -22,6 +26,7 @@ class SshWorkerAuthBridge {
     void Function(String storageKey, String fingerprintHex)? onHostKeyPersist,
     SshWorkerDialTargetResolver? dialTargetResolver,
     VaultCredentialReader? vault,
+    SshVaultEntryIdResolver? vaultEntryIdFor,
     void Function(String message)? log,
   }) : _credentialStore = credentialStore,
        _hostKeyTrustPolicy = SshHostKeyTrustPolicy(
@@ -31,12 +36,14 @@ class SshWorkerAuthBridge {
        ),
        _dialTargetResolver = dialTargetResolver,
        _vault = vault,
+       _vaultEntryIdFor = vaultEntryIdFor,
        _log = log;
 
   final SshCredentialStore _credentialStore;
   final SshHostKeyTrustPolicy _hostKeyTrustPolicy;
   final SshWorkerDialTargetResolver? _dialTargetResolver;
   final VaultCredentialReader? _vault;
+  final SshVaultEntryIdResolver? _vaultEntryIdFor;
   final void Function(String message)? _log;
 
   /// Resolves one challenge from the current worker generation.
@@ -91,10 +98,10 @@ class SshWorkerAuthBridge {
   }
 
   Future<String?> _credential(SshProfile profile, String field) async {
-    final entryId = profile.vaultEntryId;
     final vault = _vault;
-    if (entryId != null && entryId.isNotEmpty && vault != null) {
-      return vault(entryId, field);
+    if (vault != null) {
+      final entryId = await _vaultEntryId(profile);
+      if (entryId != null) return vault(entryId, field);
     }
     return switch (field) {
       'password' => _credentialStore.loadPassword(profile.id),
@@ -102,6 +109,22 @@ class SshWorkerAuthBridge {
       'passphrase' => _credentialStore.loadPrivateKeyPassphrase(profile.id),
       _ => null,
     };
+  }
+
+  /// A catalog record that cannot carry a credential reference still owns its
+  /// vault entry by profile id. A locked or unreachable vault must never break
+  /// the legacy keychain fallback.
+  Future<String?> _vaultEntryId(SshProfile profile) async {
+    final linked = profile.vaultEntryId?.trim() ?? '';
+    if (linked.isNotEmpty) return linked;
+    final resolve = _vaultEntryIdFor;
+    if (resolve == null) return null;
+    try {
+      final resolved = (await resolve(profile.id))?.trim() ?? '';
+      return resolved.isEmpty ? null : resolved;
+    } on Object {
+      return null;
+    }
   }
 
   Future<String?> passwordFor(SshProfile profile) =>

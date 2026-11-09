@@ -9,8 +9,41 @@ import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
+import 'package:teampilot/services/ssh/worker/ssh_worker_protocol.dart';
 
 void main() {
+  test(
+    'factory auth bridge resolves owner vault entry for plane rows',
+    () async {
+      final requested = <String>[];
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        vaultCredentials: (entryId, field) async {
+          requested.add('$entryId/$field');
+          return 'vault-secret';
+        },
+        vaultEntryIdFor: (profileId) async => 'owner-entry-1',
+      );
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
+
+      final reply = await factory.workerAuthHandlerFor(profile)(
+        SshWorkerAuthChallenge.password(
+          requestId: 'password-owner',
+          profileId: profile.id,
+        ),
+      );
+
+      expect(reply.secretValue, 'vault-secret');
+      expect(requested, ['owner-entry-1/password']);
+    },
+  );
+
   test('clientForStorage rebuilds when keepalive probe fails', () async {
     var createCount = 0;
     var pingCount = 0;

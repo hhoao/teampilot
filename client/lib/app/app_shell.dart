@@ -908,12 +908,32 @@ Future<AppShell> buildAppShell({
   );
   final sshKnownHostRepo = SharedPrefsSshKnownHostRepository(preferences);
   final sshConnectionEvents = SshConnectionEvents();
+  // Shared home-plane catalog rows cannot carry a vault reference; the device
+  // vault entry is owned by the profile id instead. Resolve it at connect time
+  // so a row created on the plane still finds the secret this device saved.
+  // Without this, "test connection" (which resolves the owner entry in the
+  // editor) succeeds while the durable connect gets an empty password.
+  Future<String?> sshVaultEntryIdFor(String profileId) async {
+    try {
+      await vaultAccess.tryAutoUnlock();
+      final entry = await vaultCredentialCapture.findOwner(
+        vaultOwnerKindSshProfile,
+        profileId,
+      );
+      final entryId = (entry?.id ?? '').trim();
+      return entryId.isEmpty ? null : entryId;
+    } on Object {
+      return null;
+    }
+  }
+
   final sshWorkerAuthBridge = SshWorkerAuthBridge(
     credentialStore: sshCredentialStore,
     knownHostRepository: sshKnownHostRepo,
     onHostKeyPrompt: showSshHostKeyPrompt,
     dialTargetResolver: (profile) => pairedRelayTunnels.targetFor(profile.id),
     vault: (entryId, field) => vaultAccess.functionalField(entryId, field),
+    vaultEntryIdFor: sshVaultEntryIdFor,
   );
   const sshWorkerCaptureMode = String.fromEnvironment(
     'SSH_WORKER_CAPTURE_MODE',
@@ -939,6 +959,7 @@ Future<AppShell> buildAppShell({
     dialTargetResolver: (profile) => pairedRelayTunnels.targetFor(profile.id),
     vaultCredentials: (entryId, field) =>
         vaultAccess.functionalField(entryId, field),
+    vaultEntryIdFor: sshVaultEntryIdFor,
     workerAuthBridge: sshWorkerAuthBridge,
     workerManager: sshProfileWorkerManager,
   );
