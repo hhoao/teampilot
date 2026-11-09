@@ -125,6 +125,15 @@ Future<void> main(List<String> args) async {
                 'seq=${invalidation.seq} kind=${invalidation.kind}',
               );
             }
+          case SessionMessageType.contentDelta:
+            final delta = SessionContentDelta.fromJson(envelope.body);
+            if (delta != null) {
+              stdout.writeln(
+                'contentDelta session=${delta.sessionId} '
+                'member=${delta.memberId} seq=${delta.seq} '
+                'kind=${delta.kind} bytes=${delta.payload.length}',
+              );
+            }
           case SessionMessageType.attention:
             stdout.writeln('attention ${jsonEncode(envelope.body)}');
           case SessionMessageType.intentResult:
@@ -177,7 +186,12 @@ Future<void> main(List<String> args) async {
     body: {
       'proto': sessionProtocolVersion,
       'device': 'session-protocol-probe',
-      'caps': const ['state', 'content.invalidated', 'intent.turn.cancel'],
+      'caps': const [
+        'state',
+        'content.invalidated',
+        'content.delta',
+        'intent.turn.cancel',
+      ],
     },
   );
 

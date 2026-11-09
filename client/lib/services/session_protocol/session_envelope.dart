@@ -14,6 +14,7 @@ abstract final class SessionMessageType {
   static const snapshot = 'snapshot';
   static const delta = 'delta';
   static const content = 'content';
+  static const contentDelta = 'contentDelta';
   static const contentAck = 'contentAck';
   static const intent = 'intent';
   static const intentResult = 'intentResult';

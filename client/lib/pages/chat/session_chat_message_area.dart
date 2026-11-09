@@ -55,6 +55,7 @@ class SessionChatMessageArea extends StatelessWidget {
     required this.shellMemberId,
     required this.isSubmitting,
     this.userStoppedTurn = false,
+    this.remoteBusy = false,
     required this.state,
     required this.historySeat,
     required this.top,
@@ -84,6 +85,7 @@ class SessionChatMessageArea extends StatelessWidget {
   final String shellMemberId;
   final bool isSubmitting;
   final bool userStoppedTurn;
+  final bool remoteBusy;
   final AiHistoryState state;
   final AiHistorySeat historySeat;
   final AiSubagentAttachment? top;
@@ -323,13 +325,15 @@ class SessionChatMessageArea extends StatelessWidget {
                                       bool sessionHasLeases, [
                                       String? backgroundLabel,
                                     ]) {
-                                      final turnInFlight = historyTurnInFlight(
-                                        isSubmitting: isSubmitting,
-                                        awaitingAssistant:
-                                            state.awaitingAssistant,
-                                        sessionBusy: activity.isBusy,
-                                        userStoppedTurn: userStoppedTurn,
-                                      );
+                                      final turnInFlight =
+                                          historyTurnInFlight(
+                                            isSubmitting: isSubmitting,
+                                            awaitingAssistant:
+                                                state.awaitingAssistant,
+                                            sessionBusy: activity.isBusy,
+                                            userStoppedTurn: userStoppedTurn,
+                                          ) ||
+                                          remoteBusy;
                                       final liveChrome =
                                           SessionHistoryLiveChromeX.resolve(
                                             turnInFlight: turnInFlight,

@@ -28,6 +28,8 @@ import '../services/session_protocol/session_authority.dart';
 import '../services/session_protocol/session_models.dart';
 import '../services/session_sync/chat_session_activity_source.dart';
 import '../services/session_sync/chat_session_control_port.dart';
+import '../services/session_sync/session_content_invalidation_bus.dart';
+import '../services/session_sync/session_content_stream_bus.dart';
 import '../services/session_sync/session_protocol_controller.dart';
 import 'session_protocol_home.dart';
 import '../cubits/chat_cubit.dart';
@@ -94,6 +96,7 @@ import '../cubits/board_cubit.dart';
 import '../utils/session/workspace_tab_session_scope.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
+
 import 'package:shared_ui/shared_ui.dart';
 
 import '../cubits/notification_cubit.dart';
@@ -351,7 +354,9 @@ import '../services/github/github_credentials_store.dart';
 import '../services/github/github_device_flow_auth.dart';
 import '../services/hub_publish/http_github_api_client.dart';
 import '../services/ssh/ssh_client_factory.dart';
+
 import 'package:url_launcher/url_launcher.dart';
+
 import '../services/ssh/ssh_connection_events.dart';
 import '../services/ssh/worker/ssh_profile_worker_manager.dart';
 import '../services/ssh/worker/ssh_worker_auth_bridge.dart';
@@ -758,6 +763,8 @@ class AppShell {
   /// so teardown can cancel it.
   StreamSubscription<StoragePlaneChange>? _vaultPlaneSyncSub;
   StreamSubscription<SessionRemoteActivityState>? _sessionRemoteRefreshSub;
+  StreamSubscription<SessionContentInvalidation>? _contentInvalidationSub;
+  StreamSubscription<SessionContentStreamChunk>? _contentStreamSub;
   final CommandBus commandBus;
   final ShortcutCubit shortcutCubit;
   final WorkspaceChromeCommands workspaceChromeCommands;
@@ -1285,9 +1292,8 @@ Future<AppShell> buildAppShell({
   // plane and never travels through the home plane.
   final deviceId = await DeviceIdStore(
     fs: deviceLocalHomeStorage(nativeAppDataPath).fs,
-    path: AppPaths.pathContextForDataRoot(
-      nativeAppDataPath,
-    ).join(nativeAppDataPath, 'shared-state', 'device-id'),
+    path: AppPaths.pathContextForDataRoot(nativeAppDataPath)
+        .join(nativeAppDataPath, 'shared-state', 'device-id'),
   ).loadOrCreate();
   SharedStateIdentity.configure(deviceId: deviceId);
   homeWorkspaceUiCache = HomeWorkspaceUiCache(storage: homeStorage);
@@ -1378,9 +1384,8 @@ Future<AppShell> buildAppShell({
       (entryId) async {
         final perCli = await Future.wait([
           for (final cli in CliTool.values)
-            AppProviderRepository(
-              storage: homeStorage,
-            ).loadProviders(cli, reconcileCredentials: false),
+            AppProviderRepository(storage: homeStorage)
+                .loadProviders(cli, reconcileCredentials: false),
         ]);
         return [
           for (final providers in perCli)
@@ -1571,9 +1576,8 @@ Future<AppShell> buildAppShell({
             await resolvedManagedProviderSecretStore.delete(ref);
           }
           // Clear provider-config rows that referenced this entry's secret.
-          await ManagedProviderLinkJanitor(
-            appProviderCubit: appProviderCubit,
-          ).clearLinksFor(provider.id);
+          await ManagedProviderLinkJanitor(appProviderCubit: appProviderCubit)
+              .clearLinksFor(provider.id);
         },
       );
   final managedProviderControlPlane = ManagedProviderControlPlane(
@@ -2020,9 +2024,8 @@ Future<AppShell> buildAppShell({
                 manifest.id,
           };
         }
-        return (await extensionRepository.load(
-          forceReload: true,
-        )).globalEnabled;
+        return (await extensionRepository.load(forceReload: true))
+            .globalEnabled;
       },
       cliToolRegistry: cliToolRegistry,
       cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
@@ -3347,6 +3350,25 @@ Future<AppShell> buildAppShell({
       controlPort: ChatSessionControlPort(chatCubit),
     );
     final sessionActivitySource = ChatSessionActivitySource(chatCubit);
+    final contentInvalidationSub = SessionContentInvalidationBus.stream.listen((
+      event,
+    ) {
+      if (!connectionModeService.isLocalMode) return;
+      sessionAuthority.publishContentInvalidated(
+        sessionId: event.sessionId,
+        memberId: event.memberId,
+      );
+    });
+    final contentStreamSub = SessionContentStreamBus.stream.listen((chunk) {
+      if (!connectionModeService.isLocalMode) return;
+      sessionAuthority.publishContentDelta(
+        sessionId: chunk.sessionId,
+        memberId: chunk.memberId,
+        kind: 'acp.messages',
+        payload: chunk.payload,
+        partial: !chunk.replace,
+      );
+    });
     final sessionRemoteRefreshSub = sessionRemoteActivityCubit.stream.listen((
       state,
     ) {
@@ -3355,9 +3377,13 @@ Future<AppShell> buildAppShell({
         for (final session in chatCubit.state.sessions) session.sessionId,
       };
       for (final snapshot in state.sessions.values) {
-        if (known.contains(snapshot.sessionId)) continue;
         final workspaceId = snapshot.workspaceId;
         if (workspaceId.isEmpty) continue;
+        chatCubit.upsertRemoteSessionHint(
+          sessionId: snapshot.sessionId,
+          workspaceId: workspaceId,
+        );
+        if (known.contains(snapshot.sessionId)) continue;
         unawaited(chatCubit.refreshSessionsForWorkspace(workspaceId));
       }
     });
@@ -3398,7 +3424,20 @@ Future<AppShell> buildAppShell({
       remoteCubit: sessionRemoteActivityCubit,
       authority: sessionAuthority,
       onContentInvalidated: (invalidation) {
+        SessionContentInvalidationBus.publish(
+          sessionId: invalidation.sessionId,
+          memberId: invalidation.memberId,
+        );
         chatCubit.onSessionHistoryStale?.call(invalidation.sessionId);
+      },
+      onContentDelta: (delta) {
+        if (delta.kind != 'acp.messages') return;
+        SessionContentStreamBus.publish(
+          sessionId: delta.sessionId,
+          memberId: delta.memberId,
+          payload: delta.payload,
+          replace: !delta.partial,
+        );
       },
       onAttention: (attention) {
         unawaited(notifyRemoteAttention(attention));
@@ -4418,6 +4457,8 @@ Future<AppShell> buildAppShell({
     shell._homeProfileWatchSub = homeProfileWatchSub;
     shell._vaultPlaneSyncSub = vaultPlaneSyncSub;
     shell._sessionRemoteRefreshSub = sessionRemoteRefreshSub;
+    shell._contentInvalidationSub = contentInvalidationSub;
+    shell._contentStreamSub = contentStreamSub;
     managedProviderControlPlaneLease.transferOwnership();
     await applyHomeEventTransport();
     return shell;
@@ -4785,6 +4826,8 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       shell._homeProfileWatchSub?.cancel();
       shell._vaultPlaneSyncSub?.cancel();
       unawaited(shell._sessionRemoteRefreshSub?.cancel());
+      unawaited(shell._contentInvalidationSub?.cancel());
+      unawaited(shell._contentStreamSub?.cancel());
       final lifecycleHandler = shell.sessionLifecycleHandler;
       if (lifecycleHandler != null) {
         _eventDispatcher.unregister(lifecycleHandler);

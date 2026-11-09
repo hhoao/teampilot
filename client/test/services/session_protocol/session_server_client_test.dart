@@ -96,6 +96,7 @@ void main() {
       var snapshots = 0;
       final deltas = <SessionDelta>[];
       final contents = <SessionContentInvalidated>[];
+      final contentDeltas = <SessionContentDelta>[];
       final attentions = <SessionAttention>[];
       final client = SessionClient(
         channel: pipe.client,
@@ -104,6 +105,7 @@ void main() {
           onSnapshot: (value) => snapshots++,
           onDelta: deltas.add,
           onContent: contents.add,
+          onContentDelta: contentDeltas.add,
           onAttention: attentions.add,
         ),
       );
@@ -126,6 +128,27 @@ void main() {
       authority.publishContentInvalidated(sessionId: 's1');
       await _waitFor(() => contents.isNotEmpty);
       expect(contents.single.sessionId, 's1');
+
+      authority.publishContentDelta(
+        sessionId: 's1',
+        memberId: 'dev',
+        kind: 'acp.messages',
+        payload: '{"v":2,"type":"reset"}\n',
+      );
+      await _waitFor(() => contentDeltas.isNotEmpty);
+      expect(contentDeltas.single.kind, 'acp.messages');
+      expect(contentDeltas.single.seq, 1);
+      expect(contentDeltas.single.payload, '{"v":2,"type":"reset"}\n');
+
+      authority.publishContentDelta(
+        sessionId: 's1',
+        memberId: 'dev',
+        kind: 'acp.messages',
+        payload: '{"v":2,"type":"part"}\n',
+      );
+      await _waitFor(() => contentDeltas.length == 2);
+      expect(contentDeltas.last.seq, 2);
+      expect(contentDeltas.last.baseSeq, 1);
 
       authority.publishAttention(sessionId: 's1', kind: 'idle', id: 'a1');
       await _waitFor(() => attentions.isNotEmpty);

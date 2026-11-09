@@ -296,9 +296,15 @@ Envelope {
   - 取消：`turn.cancel` → PTY `interruptSelectedMemberTurn` / ACP `cancelTurn`。
   - 实时内容：`onSessionHistoryStale` 在桌面发布 `content` 失效；手机收到后触发 history soft reload。ACP history-only 座位额外每 2s 重读 app transcript，覆盖没有 commit hook 的情况。
   - 通知：authority 在 working → idle 且 readyToChat 时发布 `attention{kind:idle}`；手机 client 走 `DesktopSystemNotifier` + 通知中心。
-  - UI：`RemoteSessionControlBanner` 在远程 client 上显示 Stop；`SessionRemoteActivityCubit` 提供远端 busy/seat 投影。
-  - 新会话发现：snapshot/delta 带 `workspaceId`；手机收到未知 session 时调用 `ChatCubit.refreshSessionsForWorkspace`，补上 SFTP 没有 watcher 的缺口。EventTransport 的 `sessionLifecycle`（spawned/started/closed）也注册了 consumer 作为兜底（含自动化创建、非打开 tab 的会话）。
+  - UI：远程 busy 时 compose 发送按钮切换为 Stop；`SessionChatView` 不再挂浮动 `RemoteSessionControlBanner`。`SessionRemoteActivityCubit` 提供远端 busy/seat 投影。
+  - 新会话发现：snapshot/delta 带 `workspaceId`；手机收到未知 session 时调用 `ChatCubit.refreshSessionsForWorkspace`，补上 SFTP 没有 watcher 的缺口；SFTP 列表刷新前先用 `ChatCubit.upsertRemoteSessionHint` 插入占位行。EventTransport 的 `sessionLifecycle`（spawned/started/closed）也注册了 consumer 作为兜底（含自动化创建、非打开 tab 的会话）。
   - 广告文件自愈：EventTransport 与 session protocol 的 server 每 10s 检查广告文件，缺失时重写；手机读取失败时日志带绝对路径与 homeRoot，便于定位 home 不一致。
+  - SSH worker storage 修复：`SshWorkerLeaseStorageTransport` 的 request/stream id 改为 worker-scoped `lease.resourceId`，避免两个并发 transport 都用 `storage-0` / `read-0` 导致 `Duplicate SSH worker request id`、`transport_closed` 和 session list 加载失败。
+  - Sidebar：运行列表与 spinner 合并 `MemberPresenceCubit.occupiedSessionIds` 与 remote session/busy 投影；“已打开”包含远端 open tab，split 布局下远端 session 追加在 group 之后。
+  - Compose：远程 busy 时发送按钮切换为 Stop；点击走 session-plane `turn.cancel`。History 底部 `liveChrome` 也合并远程 busy，显示“运行中…”。
+  - ACP 实时：`AcpChatRuntimeCubit._persist` 把变更按 `chunkCoalesceWindow`（60ms）合并，用 `buildAcpChatTranscriptDelta(fullParts: true)` 生成 transcript v2 delta（变更 part / drop；流式文本也发全量 part，保证重复或补发幂等），发布到 `SessionContentStreamBus`；桌面 authority 用 `contentDelta`（`kind=acp.messages`，payload 为 delta JSONL）推给手机。手机 `SessionChatView` 用 `applyAcpChatTranscriptDelta` 只重建受影响的消息并按 id 合并到 history seat；消息重排或 part 缩短时本批改为 `partial:false` 全量替换。turn 结束仍发一次 `content` 失效做最终对账，2s 轮询保留为断线兜底。
+  - 内容流协议：`contentDelta` 带 per-session+seat `seq` / `baseSeq` / `epoch`；当前是 transcript part 级 patch（文本用全量 part 换幂等，带宽高于 append），不是 token 级 delta，也没有 credit/ack/resume，丢包由 turn-end invalidation 与 2s 轮询收敛。
+  - 调试：`tool/session_protocol_probe.dart` 可在桌面 loopback 直接 hello/snapshot/delta/intent，用于不接手机时验证 authority。
 - Device plane
   - `DeviceIdStore` 在 `nativeAppDataPath/shared-state/device-id` 生成稳定 id；`SharedStateIdentity` 注入 shared-state 时钟。
 - 测试
@@ -306,13 +312,18 @@ Envelope {
   - `test/services/home_workspace/shared_state_stores_test.dart`：多设备 merge、legacy 迁移。
   - `test/services/session_protocol/`：帧、authority、server/client 往返。
   - `test/cubits/session_remote_activity_cubit_test.dart`：远端投影。
+  - `test/services/acp/acp_chat_transcript_replay_test.dart`：v2 delta 应用、drop、reset、fullParts 幂等。
+  - `test/cubits/chat/acp/acp_chat_runtime_cubit_test.dart`：ACP 内容流发布。
+  - `test/services/session_sync/session_content_invalidation_bus_test.dart`：ACP commit 失效总线。
+  - `test/cubits/chat_cubit_test.dart`：远端 session 占位行。
+  - `test/pages/home_workspace/workspace/workspace_sidebar_split_groups_test.dart`：远端 open/working 投影。
 
 已知偏离 / 待补：
 
 1. **序列化**：当前 envelope 用 JSON（长度前缀帧）；原计划的 Protobuf 需要 `protoc` + `protoc_plugin`，当前构建环境没有 `protoc`。语义层已隔离，后续只替换 codec。
 2. **attention 持久化**：当前是 live-only；断线期间的 idle 通知不会补发。需要 journal + ack 才能做到“离线后补拉”。
-3. **内容流**：目前是失效信号 + softReload / ACP 2s poll，不是 token 级 delta；屏幕 diff 也未实现。
+3. **内容流**：已落地 transcript part 级 ACP `contentDelta`（60ms 合并；流式文本发全量 part 以保证幂等）；还不是 token 级 delta，文本带宽高于 append；屏幕 diff 未实现；缺少 credit/ack/resume，断线靠 turn-end invalidation 与 2s poll 收敛。
 4. **安全**：仍是 SSH / loopback 信任模型；设备公钥、capability ACL、intent 审计未做。
 5. **多 controller / handoff**：未做；同一 seat 目前没有显式 controller lease。
 6. **headless / tray**：未做；桌面关窗仍退出。
-7. **ACP commit hook**：没有在 `AcpChatTranscriptWriter.append` 发布 content 失效；2s poll 是兜底。
+7. **ACP commit hook**：没有在 `AcpChatTranscriptWriter.append` 发布 content 失效；当前由 `AcpChatRuntimeCubit._persist` 发布 `contentDelta`，2s poll 仍作为兜底。

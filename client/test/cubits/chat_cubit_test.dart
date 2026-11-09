@@ -1514,6 +1514,34 @@ void main() {
       },
     );
 
+    test('upsertRemoteSessionHint appends a placeholder once', () async {
+      final tmp = await Directory.systemTemp.createTemp(
+        'chat_cubit_remote_hint_',
+      );
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: testHomeStorage,
+      );
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        storage: testHomeStorage,
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+      );
+      _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+      cubit.upsertRemoteSessionHint(sessionId: 'remote-1', workspaceId: 'ws-1');
+      cubit.upsertRemoteSessionHint(sessionId: 'remote-1', workspaceId: 'ws-1');
+
+      expect(cubit.state.sessions, hasLength(1));
+      final hint = cubit.state.sessions.single;
+      expect(hint.sessionId, 'remote-1');
+      expect(hint.workspaceId, 'ws-1');
+      expect(hint.display, 'remote-1');
+    });
+
     test('toggleSessionPin patches pinned and updatedAt in memory', () async {
       final tmp = await Directory.systemTemp.createTemp(
         'chat_cubit_toggle_pin_',

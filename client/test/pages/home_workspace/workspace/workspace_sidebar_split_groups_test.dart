@@ -9,6 +9,7 @@ import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/session_groups_cubit.dart';
+import 'package:teampilot/cubits/session_remote_activity_cubit.dart';
 import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
@@ -20,6 +21,8 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_sidebar.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_sidebar_row_metrics.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/session_protocol/session_models.dart';
+import 'package:teampilot/widgets/session_working_spinner.dart';
 import 'package:teampilot/widgets/sidebar_session_tile.dart';
 
 import '../../../support/post_frame_test_harness.dart';
@@ -79,6 +82,7 @@ void main() {
     List<String> ids = const ['a', 'b'],
     double height = 1000,
     bool embedFooter = true,
+    SessionRemoteActivityCubit? remoteCubit,
   }) async {
     await tester.runAsync(() => groupsCubit.load(_workspace.workspaceId));
     chatCubit.emit(
@@ -107,6 +111,10 @@ void main() {
                 BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
                 BlocProvider<AgentAttentionCubit>.value(value: attentionCubit),
                 BlocProvider<SessionGroupsCubit>.value(value: groupsCubit),
+                if (remoteCubit != null)
+                  BlocProvider<SessionRemoteActivityCubit>.value(
+                    value: remoteCubit,
+                  ),
                 BlocProvider(
                   create: (_) => ShortcutCubit(storage: testHomeStorage),
                 ),
@@ -128,6 +136,42 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 120));
   }
+
+  testWidgets('remote session appears in Open and shows the working spinner', (
+    tester,
+  ) async {
+    final remote = SessionRemoteActivityCubit();
+    addTearDown(remote.close);
+    remote.applySnapshots([
+      const SessionSnapshot(
+        sessionId: 'remote-1',
+        epoch: 1,
+        revision: 1,
+        workspaceId: 'ws-1',
+        seats: [
+          SessionSeatActivity(
+            sessionId: 'remote-1',
+            memberId: 'developer-0',
+            state: SessionSeatActivity.stateWorking,
+          ),
+        ],
+      ),
+    ]);
+
+    await pumpSidebar(tester, ids: const ['remote-1'], remoteCubit: remote);
+
+    expect(
+      find.byKey(const ValueKey('workspace-running-session-remote-1')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('workspace-running-session-remote-1')),
+        matching: find.byType(SessionWorkingSpinner),
+      ),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('split layout renders open sessions grouped by column', (
     tester,

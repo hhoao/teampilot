@@ -552,4 +552,154 @@ void main() {
     final loaded = await writer.loadMessages();
     expect((loaded.single.parts.single as AiTextPart).text, text);
   });
+
+  test('applies a text delta without rebuilding untouched messages', () {
+    final user = const AiMessage(
+      id: 'u1',
+      role: AiRole.user,
+      parts: [AiTextPart(text: 'hi')],
+    );
+    final assistant = const AiMessage(
+      id: 'a1',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'Hel')],
+    );
+    final previous = [user, assistant];
+    final next = [
+      user,
+      const AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'Hello')],
+      ),
+    ];
+    final records = buildAcpChatTranscriptDelta(previous: previous, next: next);
+    expect(records, isNotNull);
+    final result = applyAcpChatTranscriptDelta(
+      current: previous,
+      jsonl: records!.map(_line).join('\n'),
+    );
+    expect(result.replaceAll, isFalse);
+    expect(result.removedIds, isEmpty);
+    expect(result.messages, hasLength(1));
+    expect((result.messages.single.parts.single as AiTextPart).text, 'Hello');
+  });
+
+  test('fullParts makes a text patch idempotent', () {
+    final user = const AiMessage(
+      id: 'u1',
+      role: AiRole.user,
+      parts: [AiTextPart(text: 'hi')],
+    );
+    final assistant = const AiMessage(
+      id: 'a1',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'Hel')],
+    );
+    final next = const AiMessage(
+      id: 'a1',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'Hello')],
+    );
+    final records = buildAcpChatTranscriptDelta(
+      previous: [user, assistant],
+      next: [user, next],
+      fullParts: true,
+    );
+    expect(records, isNotNull);
+    expect(records!.single['type'], 'part');
+    final jsonl = records.map(_line).join('\n');
+
+    final once = applyAcpChatTranscriptDelta(
+      current: [user, assistant],
+      jsonl: jsonl,
+    );
+    expect((once.messages.single.parts.single as AiTextPart).text, 'Hello');
+    final twice = applyAcpChatTranscriptDelta(
+      current: [user, once.messages.single],
+      jsonl: jsonl,
+    );
+    expect((twice.messages.single.parts.single as AiTextPart).text, 'Hello');
+  });
+
+  test('applies a drop and reports the removed id', () {
+    final user = const AiMessage(
+      id: 'u1',
+      role: AiRole.user,
+      parts: [AiTextPart(text: 'hi')],
+    );
+    final assistant = const AiMessage(
+      id: 'a1',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'gone')],
+    );
+    final records = buildAcpChatTranscriptDelta(
+      previous: [user, assistant],
+      next: [user],
+    );
+    final result = applyAcpChatTranscriptDelta(
+      current: [user, assistant],
+      jsonl: records!.map(_line).join('\n'),
+    );
+    expect(result.replaceAll, isFalse);
+    expect(result.removedIds, {'a1'});
+    expect(result.messages, isEmpty);
+  });
+
+  test('reset replaces the whole list', () {
+    final user = const AiMessage(
+      id: 'u1',
+      role: AiRole.user,
+      parts: [AiTextPart(text: 'hi')],
+    );
+    final result = applyAcpChatTranscriptDelta(
+      current: [user],
+      jsonl: '${_line({'v': 2, 'type': 'reset'})}\n',
+    );
+    expect(result.replaceAll, isTrue);
+    expect(result.messages, isEmpty);
+  });
+
+  test('reset snapshot drops parts missing from the new snapshot', () {
+    final current = [
+      const AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [
+          AiTextPart(text: 'one'),
+          AiTextPart(text: 'two'),
+        ],
+      ),
+    ];
+    final next = [
+      const AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'only')],
+      ),
+    ];
+    final result = applyAcpChatTranscriptDelta(
+      current: current,
+      jsonl:
+          '${_line({'v': 2, 'type': 'reset'})}\n'
+          '${encodeAcpChatTranscript(next)}',
+    );
+    expect(result.replaceAll, isTrue);
+    expect(result.messages.single.parts, hasLength(1));
+    expect((result.messages.single.parts.single as AiTextPart).text, 'only');
+  });
+
+  test('reordering is not expressible as a keyed delta', () {
+    final a = const AiMessage(
+      id: 'a',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'a')],
+    );
+    final b = const AiMessage(
+      id: 'b',
+      role: AiRole.assistant,
+      parts: [AiTextPart(text: 'b')],
+    );
+    expect(buildAcpChatTranscriptDelta(previous: [a, b], next: [b, a]), isNull);
+  });
 }

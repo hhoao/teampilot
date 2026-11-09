@@ -36,6 +36,7 @@ final class SessionProtocolController {
     required this.remoteCubit,
     this.authority,
     this.onContentInvalidated,
+    this.onContentDelta,
     this.onAttention,
     int Function()? pid,
   }) : _pid = pid ?? _currentPid;
@@ -47,6 +48,7 @@ final class SessionProtocolController {
   final SessionRemoteActivityCubit remoteCubit;
   final void Function(SessionContentInvalidated invalidation)?
   onContentInvalidated;
+  final void Function(SessionContentDelta delta)? onContentDelta;
   final void Function(SessionAttention attention)? onAttention;
   final int Function() _pid;
 
@@ -151,6 +153,13 @@ final class SessionProtocolController {
             'seq=${invalidation.seq}',
           );
           onContentInvalidated?.call(invalidation);
+        },
+        onContentDelta: (delta) {
+          appLogger.d(
+            '[$_tag] client content-delta session=${delta.sessionId} '
+            'kind=${delta.kind} seq=${delta.seq} bytes=${delta.payload.length}',
+          );
+          onContentDelta?.call(delta);
         },
         onAttention: (attention) {
           appLogger.i(

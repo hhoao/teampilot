@@ -2298,13 +2298,48 @@ class ChatCubit extends Cubit<ChatState>
       await inflight;
       return;
     }
-    final load = _hydrateWorkspaceSessions(repo, id);
+    final load = _hydrateWorkspaceSessions(repo, id).catchError((
+      Object error,
+      StackTrace stackTrace,
+    ) {
+      appLogger.e(
+        '[chat] session refresh failed workspace=$id: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    });
     _sessionHydrationByWorkspace[id] = load;
     try {
       await load;
     } finally {
       _sessionHydrationByWorkspace.remove(id);
     }
+  }
+
+  /// Adds a lightweight placeholder for a remote session before its
+  /// `session.json` is hydrated over SFTP.
+  ///
+  /// The session plane can report a session the mobile home has never listed.
+  /// Without a local row the sidebar filters it out (it only renders known
+  /// `AppSession`s) and the user cannot open it until a manual refresh lands.
+  void upsertRemoteSessionHint({
+    required String sessionId,
+    required String workspaceId,
+  }) {
+    if (isClosed) return;
+    final sid = sessionId.trim();
+    final wid = workspaceId.trim();
+    if (sid.isEmpty || wid.isEmpty) return;
+    if (state.sessions.any((session) => session.sessionId == sid)) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final hint = AppSession(
+      sessionId: sid,
+      workspaceId: wid,
+      display: sid,
+      createdAt: now,
+      updatedAt: now,
+    );
+    emit(state.copyWith(sessions: [...state.sessions, hint]));
   }
 
   Future<List<AppSession>> sessionsForWorkspaceReady(String workspaceId) async {

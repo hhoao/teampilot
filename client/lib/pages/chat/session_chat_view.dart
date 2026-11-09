@@ -47,7 +47,11 @@ import '../../services/chat/conversation/history/acp_seat_transcript_reader.dart
 import '../../services/chat/conversation/history/ai_history_live_refresh_controller.dart';
 import '../../services/chat/conversation/history/failed_message_store.dart';
 import '../../services/chat/conversation/history/chat_transcript_find_controller.dart';
+import '../../services/acp/acp_chat_transcript_replay.dart';
 import '../../services/chat/conversation/history/history_seat_key.dart';
+import '../../services/session_sync/session_content_invalidation_bus.dart';
+import '../../services/session_sync/session_content_stream_bus.dart';
+import '../../widgets/remote_activity_builder.dart';
 import '../../services/chat/session/chat_tab.dart';
 import 'ai_message_strings_from_l10n.dart';
 import '../../services/chat/conversation/history/history_hydration_scope.dart';
@@ -71,7 +75,6 @@ import 'chat_reveal_controller.dart';
 import 'session_follow_up_compose_submit.dart';
 import 'history_continue_delivery.dart';
 import 'operator_history_send.dart';
-import 'remote_session_control_banner.dart';
 import 'session_history_review_submit.dart';
 import 'subagent_preview_controller.dart';
 
@@ -190,6 +193,9 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// runtime (history-only open, reclaimed runtime).
   String? _acpSnapshotSeatKey;
   Timer? _acpSnapshotPoll;
+  StreamSubscription<SessionContentInvalidation>? _contentInvalidationSub;
+  StreamSubscription<SessionContentStreamChunk>? _contentStreamSub;
+  DateTime? _lastContentStreamAt;
 
   /// True from optimistic enqueue through connect/boot/inject settle so idle
   /// grace cannot blank tip chrome while History continue is still in flight.
@@ -300,6 +306,25 @@ class _SessionChatViewState extends State<SessionChatView> {
     unawaited(_loadHistoryThenHydratePersistedPendingUsers());
     _bindAcpRuntime();
     _syncAcpSnapshotPoll();
+    _contentInvalidationSub = SessionContentInvalidationBus.stream.listen((
+      event,
+    ) {
+      if (!mounted || event.sessionId != widget.session.sessionId) return;
+      if (!_usesAcpTranscript || widget.acpRuntime != null) return;
+      unawaited(_loadAcpTranscriptSnapshot(force: true));
+    });
+    _contentStreamSub = SessionContentStreamBus.stream.listen((chunk) {
+      if (!mounted || chunk.sessionId != widget.session.sessionId) return;
+      if (widget.acpRuntime != null) return;
+      final memberId = widget.selectedMemberId.trim();
+      if (chunk.memberId.isNotEmpty && chunk.memberId != memberId) return;
+      _lastContentStreamAt = DateTime.now();
+      if (chunk.replace) {
+        _seat?.adoptExternalMessages(decodeAcpChatTranscript(chunk.payload));
+        return;
+      }
+      _seat?.applyExternalTranscriptDelta(chunk.payload);
+    });
     unawaited(_loadWorkspaceProjectBundle());
   }
 
@@ -453,6 +478,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (seatChanged) {
       _userStoppedTurn.value = false;
       _acpSnapshotSeatKey = null;
+      _lastContentStreamAt = null;
       _locator.cancel();
       _visibleOwnerId.value = null;
       _locateHighlightId = null;
@@ -494,6 +520,14 @@ class _SessionChatViewState extends State<SessionChatView> {
     }
     _acpSnapshotPoll ??= Timer.periodic(const Duration(seconds: 2), (_) {
       if (!mounted) return;
+      // A live content stream is already updating this seat; keep the poll as
+      // a fallback that resumes once deltas stop (unsupported host, dropped
+      // connection, or a turn that ended without a final patch).
+      final lastStream = _lastContentStreamAt;
+      if (lastStream != null &&
+          DateTime.now().difference(lastStream) < const Duration(seconds: 4)) {
+        return;
+      }
       unawaited(_loadAcpTranscriptSnapshot(force: true));
     });
   }
@@ -577,6 +611,10 @@ class _SessionChatViewState extends State<SessionChatView> {
     _awaitingIdleGraceTimer = null;
     _acpSnapshotPoll?.cancel();
     _acpSnapshotPoll = null;
+    unawaited(_contentInvalidationSub?.cancel());
+    _contentInvalidationSub = null;
+    unawaited(_contentStreamSub?.cancel());
+    _contentStreamSub = null;
     unawaited(_operatorMailboxSub.cancel());
     unawaited(_acpRuntimeSub?.cancel());
     _acpRuntimeSub = null;
@@ -1621,14 +1659,6 @@ class _SessionChatViewState extends State<SessionChatView> {
       children: [
         Positioned.fill(child: _buildContent(context)),
         Positioned(top: spacing.sm, right: spacing.sm, child: capsule()),
-        Positioned(
-          top: 48,
-          left: spacing.sm,
-          child: RemoteSessionControlBanner(
-            sessionId: widget.session.sessionId,
-            memberId: _shellMemberId,
-          ),
-        ),
       ],
     );
   }
@@ -1846,49 +1876,64 @@ class _SessionChatViewState extends State<SessionChatView> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.stretch,
                                       children: [
-                                        SessionChatMessageArea(
-                                          session: widget.session,
-                                          workspace: widget.workspace,
-                                          selectedMemberId: selectedMemberId,
-                                          shellMemberId: _shellMemberId,
-                                          isSubmitting: _isSubmitting,
-                                          userStoppedTurn:
-                                              _userStoppedTurn.value,
-                                          state: state,
-                                          historySeat: historySeat,
-                                          top: top,
-                                          previewTitle: previewTitle,
-                                          subagentPreview: _subagentPreview,
-                                          taskBoardController:
-                                              _taskBoardController,
-                                          findVisible: _findVisible,
-                                          highlightMessageId:
-                                              _locateHighlightId,
-                                          visibleOwnerId: _visibleOwnerId,
-                                          onLocateOutline: (e) => unawaited(
-                                            _locator.locate(
-                                              id: e.id,
-                                              index: e.messageIndex,
-                                              highlight: false,
-                                              animate: true,
-                                            ),
-                                          ),
-                                          findController: _findController,
-                                          findQueryController:
-                                              _findQueryController,
-                                          findFocusNode: _findFocusNode,
-                                          revealController: _revealController,
-                                          historyCap: historyCap,
-                                          onRetry: () =>
-                                              _loadHistory(force: true),
-                                          onRetryFailedMessage: (id) =>
-                                              unawaited(
-                                                _retryFailedMessage(id),
+                                        RemoteActivityBuilder(
+                                          builder: (context, remote) {
+                                            final remoteBusy =
+                                                remote.isBusy(
+                                                  widget.session.sessionId,
+                                                ) ||
+                                                remote.isMemberBusy(
+                                                  widget.session.sessionId,
+                                                  _shellMemberId,
+                                                );
+                                            return SessionChatMessageArea(
+                                              session: widget.session,
+                                              workspace: widget.workspace,
+                                              selectedMemberId:
+                                                  selectedMemberId,
+                                              shellMemberId: _shellMemberId,
+                                              isSubmitting: _isSubmitting,
+                                              userStoppedTurn:
+                                                  _userStoppedTurn.value,
+                                              state: state,
+                                              historySeat: historySeat,
+                                              top: top,
+                                              previewTitle: previewTitle,
+                                              subagentPreview: _subagentPreview,
+                                              taskBoardController:
+                                                  _taskBoardController,
+                                              findVisible: _findVisible,
+                                              highlightMessageId:
+                                                  _locateHighlightId,
+                                              visibleOwnerId: _visibleOwnerId,
+                                              remoteBusy: remoteBusy,
+                                              onLocateOutline: (e) => unawaited(
+                                                _locator.locate(
+                                                  id: e.id,
+                                                  index: e.messageIndex,
+                                                  highlight: false,
+                                                  animate: true,
+                                                ),
                                               ),
-                                          onPickEditAttachments:
-                                              _pickEditAttachments,
-                                          onCloseFind: _closeFind,
-                                          onNavigateFind: _navigateFindTo,
+                                              findController: _findController,
+                                              findQueryController:
+                                                  _findQueryController,
+                                              findFocusNode: _findFocusNode,
+                                              revealController:
+                                                  _revealController,
+                                              historyCap: historyCap,
+                                              onRetry: () =>
+                                                  _loadHistory(force: true),
+                                              onRetryFailedMessage: (id) =>
+                                                  unawaited(
+                                                    _retryFailedMessage(id),
+                                                  ),
+                                              onPickEditAttachments:
+                                                  _pickEditAttachments,
+                                              onCloseFind: _closeFind,
+                                              onNavigateFind: _navigateFindTo,
+                                            );
+                                          },
                                         ),
                                         if (top == null)
                                           ListenableBuilder(
@@ -1897,64 +1942,85 @@ class _SessionChatViewState extends State<SessionChatView> {
                                               _userStoppedTurn,
                                             ]),
                                             builder: (context, _) {
-                                              return _provideAcpRuntime(
-                                                SessionChatComposeSection(
-                                                  session: session,
-                                                  workspace: widget.workspace,
-                                                  selectedMemberId:
-                                                      selectedMemberId,
-                                                  shellMemberId: _shellMemberId,
-                                                  composeController:
-                                                      _controller,
-                                                  composeClip: _clip,
-                                                  composeFocusNode: _focusNode,
-                                                  voiceController: _voice,
-                                                  isSubmitting: _isSubmitting,
-                                                  workspaceRoot: _workspaceRoot,
-                                                  workspaceBundle:
-                                                      _workspaceBundle,
-                                                  launchError:
-                                                      widget.launchError,
-                                                  onRemapDeadTarget:
-                                                      widget.onRemapDeadTarget,
-                                                  onRetry: () => unawaited(
-                                                    _retryLaunchOrLatestFailed(),
-                                                  ),
-                                                  sessionConnectInProgress: widget
-                                                      .sessionConnectInProgress,
-                                                  isMailboxUnread:
-                                                      widget.isMailboxUnread,
-                                                  mailboxQueued: _mailboxQueued,
-                                                  mailboxQueuedSeats:
-                                                      _mailboxQueuedSeats,
-                                                  mailboxQueuedClearToken:
-                                                      _mailboxQueuedClearToken,
-                                                  onMailboxConsumed: (mailId) {
-                                                    if (!mounted) return;
-                                                    unawaited(
-                                                      _seat
-                                                          ?.refreshMailboxTimeline(),
-                                                    );
-                                                  },
-                                                  onAttach: () =>
-                                                      unawaited(_attachFiles()),
-                                                  onPasteImage:
-                                                      _pasteComposeImage,
-                                                  routeActive:
-                                                      widget.routeActive,
-                                                  onSubmit:
-                                                      _handleComposeSubmit,
-                                                  userStoppedTurn:
-                                                      _userStoppedTurn.value,
-                                                  onUserStoppedTurn:
-                                                      _onUserStoppedTurn,
-                                                  turnStarting:
-                                                      _composeTurnStarting(
-                                                        context
-                                                            .read<ChatCubit>(),
+                                              return RemoteActivityBuilder(
+                                                builder: (context, remote) {
+                                                  return _provideAcpRuntime(
+                                                    SessionChatComposeSection(
+                                                      session: session,
+                                                      workspace:
+                                                          widget.workspace,
+                                                      selectedMemberId:
+                                                          selectedMemberId,
+                                                      shellMemberId:
+                                                          _shellMemberId,
+                                                      composeController:
+                                                          _controller,
+                                                      composeClip: _clip,
+                                                      composeFocusNode:
+                                                          _focusNode,
+                                                      voiceController: _voice,
+                                                      isSubmitting:
+                                                          _isSubmitting,
+                                                      workspaceRoot:
+                                                          _workspaceRoot,
+                                                      workspaceBundle:
+                                                          _workspaceBundle,
+                                                      launchError:
+                                                          widget.launchError,
+                                                      onRemapDeadTarget: widget
+                                                          .onRemapDeadTarget,
+                                                      onRetry: () => unawaited(
+                                                        _retryLaunchOrLatestFailed(),
                                                       ),
-                                                  acpRuntime: widget.acpRuntime,
-                                                ),
+                                                      sessionConnectInProgress:
+                                                          widget
+                                                              .sessionConnectInProgress,
+                                                      isMailboxUnread: widget
+                                                          .isMailboxUnread,
+                                                      mailboxQueued:
+                                                          _mailboxQueued,
+                                                      mailboxQueuedSeats:
+                                                          _mailboxQueuedSeats,
+                                                      mailboxQueuedClearToken:
+                                                          _mailboxQueuedClearToken,
+                                                      onMailboxConsumed: (mailId) {
+                                                        if (!mounted) return;
+                                                        unawaited(
+                                                          _seat
+                                                              ?.refreshMailboxTimeline(),
+                                                        );
+                                                      },
+                                                      onAttach: () => unawaited(
+                                                        _attachFiles(),
+                                                      ),
+                                                      onPasteImage:
+                                                          _pasteComposeImage,
+                                                      routeActive:
+                                                          widget.routeActive,
+                                                      onSubmit:
+                                                          _handleComposeSubmit,
+                                                      userStoppedTurn:
+                                                          _userStoppedTurn
+                                                              .value,
+                                                      onUserStoppedTurn:
+                                                          _onUserStoppedTurn,
+                                                      turnStarting:
+                                                          _composeTurnStarting(
+                                                            context
+                                                                .read<
+                                                                  ChatCubit
+                                                                >(),
+                                                          ),
+                                                      acpRuntime:
+                                                          widget.acpRuntime,
+                                                      remoteBusyMemberId:
+                                                          remoteBusyMemberId(
+                                                            remote,
+                                                            session.sessionId,
+                                                          ),
+                                                    ),
+                                                  );
+                                                },
                                               );
                                             },
                                           ),
