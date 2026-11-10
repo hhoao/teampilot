@@ -134,11 +134,23 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
   }
 
   Future<void> _importPrivateKey() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.any,
-      withData: true,
-      dialogTitle: context.l10n.sshProfile.formIdentityFileImport,
-    );
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        withData: true,
+        dialogTitle: context.l10n.sshProfile.formIdentityFileImport,
+      );
+    } on Object {
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.sshProfile.formIdentityFileImportFailed,
+          variant: TpToastVariant.warning,
+        );
+      }
+      return;
+    }
     final picked = result?.files.firstOrNull;
     if (picked == null) return;
     final bytes = picked.bytes;
