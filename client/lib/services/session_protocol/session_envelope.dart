@@ -16,6 +16,7 @@ abstract final class SessionMessageType {
   static const content = 'content';
   static const contentDelta = 'contentDelta';
   static const contentAck = 'contentAck';
+  static const sessionList = 'sessionList';
   static const intent = 'intent';
   static const intentResult = 'intentResult';
   static const attention = 'attention';

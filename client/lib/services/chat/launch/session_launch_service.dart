@@ -331,6 +331,10 @@ class SessionLaunchService
     }
     tab.persistedSession = persistedWithTitle;
     _h.replaceSessionSnapshot(persistedWithTitle);
+    final host = _h;
+    if (host is SessionPersistedEventPort) {
+      (host as SessionPersistedEventPort).sessionPersisted(persistedWithTitle);
+    }
     return persistedWithTitle;
   }
 

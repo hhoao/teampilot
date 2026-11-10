@@ -12,6 +12,7 @@ typedef SessionDeltaHandler = void Function(SessionDelta delta);
 typedef SessionContentHandler =
     void Function(SessionContentInvalidated invalidation);
 typedef SessionContentDeltaHandler = void Function(SessionContentDelta delta);
+typedef SessionListHandler = void Function(SessionListDelta delta);
 typedef SessionAttentionHandler = void Function(SessionAttention attention);
 typedef SessionErrorHandler = void Function(String code, String message);
 typedef SessionVoidHandler = void Function();
@@ -24,6 +25,7 @@ final class SessionClientCallbacks {
     this.onDelta,
     this.onContent,
     this.onContentDelta,
+    this.onSessionList,
     this.onAttention,
     this.onError,
     this.onReady,
@@ -34,6 +36,7 @@ final class SessionClientCallbacks {
   final SessionDeltaHandler? onDelta;
   final SessionContentHandler? onContent;
   final SessionContentDeltaHandler? onContentDelta;
+  final SessionListHandler? onSessionList;
   final SessionAttentionHandler? onAttention;
   final SessionErrorHandler? onError;
   final SessionVoidHandler? onReady;
@@ -159,11 +162,24 @@ final class SessionClient {
         workspaceId: workspaceId,
       );
 
+  Future<SessionIntentResult> createSession({
+    required String workspaceId,
+    required String sessionId,
+    required Map<String, Object?> entry,
+  }) => _sendIntent(
+    op: 'session.create',
+    sessionId: sessionId,
+    memberId: '',
+    workspaceId: workspaceId,
+    sessionListEntry: entry,
+  );
+
   Future<SessionIntentResult> _sendIntent({
     required String op,
     required String sessionId,
     required String memberId,
     String workspaceId = '',
+    Map<String, Object?>? sessionListEntry,
     String? expectedTurnId,
   }) async {
     if (_closed) {
@@ -180,6 +196,7 @@ final class SessionClient {
       sessionId: sessionId,
       memberId: memberId,
       workspaceId: workspaceId,
+      sessionListEntry: sessionListEntry,
       expectedEpoch: _epoch,
       expectedTurnId: expectedTurnId,
       deadline: DateTime.now().toUtc().add(intentTimeout),
@@ -269,6 +286,10 @@ final class SessionClient {
       case SessionMessageType.contentDelta:
         final delta = SessionContentDelta.fromJson(envelope.body);
         if (delta != null) callbacks.onContentDelta?.call(delta);
+        break;
+      case SessionMessageType.sessionList:
+        final delta = SessionListDelta.fromJson(envelope.body);
+        if (delta != null) callbacks.onSessionList?.call(delta);
         break;
       case SessionMessageType.attention:
         final attention = SessionAttention.fromJson(envelope.body);
@@ -393,6 +414,28 @@ final class SessionClientConnection {
     }
   }
 
+  Future<SessionIntentResult> createSession({
+    required String workspaceId,
+    required String sessionId,
+    required Map<String, Object?> entry,
+  }) {
+    final client = _client;
+    if (client == null || !client.isReady) {
+      return Future.value(
+        const SessionIntentResult(
+          id: '',
+          status: SessionIntentStatus.rejected,
+          code: 'not_connected',
+        ),
+      );
+    }
+    return client.createSession(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      entry: entry,
+    );
+  }
+
   Future<SessionIntentResult> refreshSessions({required String workspaceId}) {
     final client = _client;
     if (client == null || !client.isReady) {
@@ -447,6 +490,7 @@ final class SessionClientConnection {
             onDelta: callbacks.onDelta,
             onContent: callbacks.onContent,
             onContentDelta: callbacks.onContentDelta,
+            onSessionList: callbacks.onSessionList,
             onAttention: callbacks.onAttention,
             onError: callbacks.onError,
             onReady: () {

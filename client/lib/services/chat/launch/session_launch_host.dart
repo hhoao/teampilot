@@ -70,6 +70,13 @@ abstract interface class SessionSnapshotPort {
   void emitSnapshot(ChatDataSnapshot snapshot);
 }
 
+/// Optional launch-host extension: fired after a session row was persisted to
+/// the shared home (not for the in-memory provisional row). Kept separate from
+/// [SessionLaunchHost] so existing test hosts do not need a new required member.
+abstract interface class SessionPersistedEventPort {
+  void sessionPersisted(AppSession session);
+}
+
 /// Seam [SessionLaunchService] uses to read/emit ChatState and reach the other
 /// collaborators. Implemented by ChatCubit, which stays the sole emit owner
 /// (the service routes every state write through [applyState] / the connect

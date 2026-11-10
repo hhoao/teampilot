@@ -37,6 +37,7 @@ final class SessionProtocolController {
     this.authority,
     this.onContentInvalidated,
     this.onContentDelta,
+    this.onSessionList,
     this.onAttention,
     int Function()? pid,
   }) : _pid = pid ?? _currentPid;
@@ -49,6 +50,7 @@ final class SessionProtocolController {
   final void Function(SessionContentInvalidated invalidation)?
   onContentInvalidated;
   final void Function(SessionContentDelta delta)? onContentDelta;
+  final void Function(SessionListDelta delta)? onSessionList;
   final void Function(SessionAttention attention)? onAttention;
   final int Function() _pid;
 
@@ -58,12 +60,58 @@ final class SessionProtocolController {
   final Set<SessionServer> _servers = {};
   SessionClientConnection? _client;
   final Set<String> _pendingRefreshWorkspaces = {};
+  final List<
+    ({String workspaceId, String sessionId, Map<String, Object?> entry})
+  >
+  _pendingCreates = [];
   Future<void>? _acceptLoop;
   Timer? _advertisementTimer;
 
   SessionProtocolRole get role => _role;
 
   bool get isClient => _role == SessionProtocolRole.client;
+
+  Future<SessionIntentResult> createSession({
+    required String workspaceId,
+    required String sessionId,
+    required Map<String, Object?> entry,
+  }) async {
+    final wid = workspaceId.trim();
+    final sid = sessionId.trim();
+    if (wid.isEmpty || sid.isEmpty) {
+      return const SessionIntentResult(
+        id: '',
+        status: SessionIntentStatus.rejected,
+        code: 'session_row_required',
+      );
+    }
+    if (_role == SessionProtocolRole.server) {
+      return const SessionIntentResult(
+        id: '',
+        status: SessionIntentStatus.rejected,
+        code: 'server_role',
+      );
+    }
+    final pending = (workspaceId: wid, sessionId: sid, entry: entry);
+    final client = _client;
+    if (client == null || !client.isReady) {
+      _pendingCreates.add(pending);
+      return const SessionIntentResult(
+        id: '',
+        status: SessionIntentStatus.rejected,
+        code: 'not_connected',
+      );
+    }
+    final result = await client.createSession(
+      workspaceId: wid,
+      sessionId: sid,
+      entry: entry,
+    );
+    if (!result.ok && result.code == 'not_connected') {
+      _pendingCreates.add(pending);
+    }
+    return result;
+  }
 
   Future<SessionIntentResult> refreshSessions({
     required String workspaceId,
@@ -115,6 +163,24 @@ final class SessionProtocolController {
     }
   }
 
+  Future<void> _flushPendingCreates() async {
+    if (_role != SessionProtocolRole.client) return;
+    final client = _client;
+    if (client == null || !client.isReady) return;
+    final pending = _pendingCreates.toList();
+    _pendingCreates.clear();
+    for (final item in pending) {
+      final result = await client.createSession(
+        workspaceId: item.workspaceId,
+        sessionId: item.sessionId,
+        entry: item.entry,
+      );
+      if (!result.ok && result.code == 'not_connected') {
+        _pendingCreates.add(item);
+      }
+    }
+  }
+
   Future<SessionIntentResult> cancelTurn({
     required String sessionId,
     required String memberId,
@@ -137,6 +203,7 @@ final class SessionProtocolController {
   Future<void> applyServer(SessionProtocolServerConfig config) async {
     await applyNone();
     _pendingRefreshWorkspaces.clear();
+    _pendingCreates.clear();
     final server = authority;
     if (server == null) {
       throw StateError('session-protocol server requires an authority');
@@ -213,6 +280,14 @@ final class SessionProtocolController {
           );
           onContentDelta?.call(delta);
         },
+        onSessionList: (delta) {
+          appLogger.i(
+            '[$_tag] client session-list workspace=${delta.workspaceId} '
+            'rev=${delta.revision} upserted=${delta.upserted.length} '
+            'removed=${delta.removed.length}',
+          );
+          onSessionList?.call(delta);
+        },
         onAttention: (attention) {
           appLogger.i(
             '[$_tag] client attention session=${attention.sessionId} '
@@ -223,6 +298,7 @@ final class SessionProtocolController {
         onReady: () {
           appLogger.i('[$_tag] client ready');
           unawaited(_flushPendingRefreshes());
+          unawaited(_flushPendingCreates());
         },
         onError: (code, message) {
           appLogger.w('[$_tag] client error code=$code message=$message');

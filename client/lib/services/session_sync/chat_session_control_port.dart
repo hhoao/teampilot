@@ -1,4 +1,5 @@
 import '../../cubits/chat_cubit.dart';
+import '../../models/session_list_entry.dart';
 import '../session_protocol/session_control_port.dart';
 
 /// Routes session-plane cancel intents to the desktop's real runtime.
@@ -6,6 +7,26 @@ final class ChatSessionControlPort implements SessionControlPort {
   ChatSessionControlPort(this._chat);
 
   final ChatCubit _chat;
+
+  @override
+  Future<void> adoptSession({
+    required String workspaceId,
+    required Map<String, Object?> entry,
+  }) async {
+    final id = workspaceId.trim();
+    final sessionId = entry['sessionId'];
+    if (id.isEmpty || sessionId is! String || sessionId.trim().isEmpty) {
+      return;
+    }
+    if (!_chat.state.workspaces.any(
+      (workspace) => workspace.workspaceId == id,
+    )) {
+      // The session may belong to a workspace created on another device.
+      await _chat.refreshWorkspaceFromHome(id);
+    }
+    final session = SessionListEntry.fromJson(entry).toListSession(id);
+    _chat.adoptRemoteSession(session);
+  }
 
   @override
   Future<void> refreshWorkspaceSessions(String workspaceId) async {

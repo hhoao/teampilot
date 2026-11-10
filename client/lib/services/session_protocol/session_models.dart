@@ -179,7 +179,8 @@ final class SessionDelta {
   }
 }
 
-/// Typed control request. Supported ops: `turn.cancel`, `session.refresh`.
+/// Typed control request. Supported ops: `turn.cancel`, `session.refresh`,
+/// `session.create`.
 final class SessionIntent {
   const SessionIntent({
     required this.id,
@@ -187,6 +188,7 @@ final class SessionIntent {
     required this.sessionId,
     this.memberId = '',
     this.workspaceId = '',
+    this.sessionListEntry,
     this.expectedEpoch,
     this.expectedTurnId,
     this.deadline,
@@ -200,6 +202,9 @@ final class SessionIntent {
   /// Workspace-scoped ops (for example `session.refresh`) target this id
   /// instead of a running session.
   final String workspaceId;
+
+  /// `SessionListEntry.toJson()` for `session.create`.
+  final Map<String, Object?>? sessionListEntry;
   final int? expectedEpoch;
   final String? expectedTurnId;
   final DateTime? deadline;
@@ -210,6 +215,7 @@ final class SessionIntent {
     'sessionId': sessionId,
     'memberId': memberId,
     if (workspaceId.isNotEmpty) 'workspaceId': workspaceId,
+    if (sessionListEntry != null) 'session': sessionListEntry,
     if (expectedEpoch != null) 'expectedEpoch': expectedEpoch,
     if (expectedTurnId != null) 'expectedTurnId': expectedTurnId,
     if (deadline != null) 'deadline': deadline!.toUtc().toIso8601String(),
@@ -223,6 +229,7 @@ final class SessionIntent {
     if (id is! String || op is! String || sessionId is! String) return null;
     final memberId = json['memberId'];
     final workspaceId = json['workspaceId'];
+    final session = json['session'];
     final expectedEpoch = json['expectedEpoch'];
     final expectedTurnId = json['expectedTurnId'];
     final deadline = json['deadline'];
@@ -232,6 +239,12 @@ final class SessionIntent {
       sessionId: sessionId,
       memberId: memberId is String ? memberId : '',
       workspaceId: workspaceId is String ? workspaceId : '',
+      sessionListEntry: session is Map
+          ? {
+              for (final entry in session.entries)
+                entry.key.toString(): entry.value,
+            }
+          : null,
       expectedEpoch: expectedEpoch is num ? expectedEpoch.toInt() : null,
       expectedTurnId: expectedTurnId is String ? expectedTurnId : null,
       deadline: deadline is String ? DateTime.tryParse(deadline) : null,
@@ -394,6 +407,57 @@ final class SessionContentDelta {
       kind: kind,
       payload: payload,
       partial: partial is bool ? partial : true,
+    );
+  }
+}
+
+/// One workspace's session-list delta, independent of running seats.
+final class SessionListDelta {
+  const SessionListDelta({
+    required this.workspaceId,
+    required this.revision,
+    this.upserted = const [],
+    this.removed = const [],
+  });
+
+  final String workspaceId;
+  final int revision;
+
+  /// `SessionListEntry.toJson()` rows.
+  final List<Map<String, Object?>> upserted;
+  final List<String> removed;
+
+  Map<String, Object?> toJson() => {
+    'workspaceId': workspaceId,
+    'revision': revision,
+    'upserted': upserted,
+    'removed': removed,
+  };
+
+  static SessionListDelta? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final workspaceId = json['workspaceId'];
+    if (workspaceId is! String || workspaceId.isEmpty) return null;
+    final revision = json['revision'];
+    final rawUpserted = json['upserted'];
+    final rawRemoved = json['removed'];
+    return SessionListDelta(
+      workspaceId: workspaceId,
+      revision: revision is num ? revision.toInt() : 0,
+      upserted: [
+        if (rawUpserted is List)
+          for (final item in rawUpserted)
+            if (item is Map)
+              {
+                for (final entry in item.entries)
+                  entry.key.toString(): entry.value,
+              },
+      ],
+      removed: [
+        if (rawRemoved is List)
+          for (final item in rawRemoved)
+            if (item is String && item.isNotEmpty) item,
+      ],
     );
   }
 }

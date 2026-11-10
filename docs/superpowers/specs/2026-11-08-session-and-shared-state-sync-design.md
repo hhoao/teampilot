@@ -294,11 +294,11 @@ Envelope {
   - `client/lib/services/session_sync/`：ChatCubit → authority 的 activity source、ChatCubit 控制端口、TCP loopback server/client 控制器。
   - `client/lib/app/session_protocol_home.dart` + `app_shell.dart` 接线：local home 起 server（广告文件 `<home>/session-protocol.json`），SSH home 起 client（`forwardLocal`）。
   - 取消：`turn.cancel` → PTY `interruptSelectedMemberTurn` / ACP `cancelTurn`。
-  - 列表刷新：`session.refresh{workspaceId}` → `ChatCubit.refreshWorkspaceFromHome`；桌面未知该 workspace 时先 `loadWorkspaceIndex`，再 `refreshSessionsForWorkspace`。移动端在 `sessionStarted` 或本地 `createSession`/`deleteSession` 后发送；client 未 ready 时排队，连接建立后补发。
+  - 会话列表：`session.create{workspaceId, SessionListEntry}` → authority `adoptRemoteSession` + `session.list` 广播；移动端创建后直接发，client 未 ready 时排队。`session.list` 只带列表行，完整 session 文档仍按需从共享 home 读取。`session.refresh` 保留为手动/兜底。
   - 实时内容：`onSessionHistoryStale` 在桌面发布 `content` 失效；手机收到后触发 history soft reload。ACP history-only 座位额外每 2s 重读 app transcript，覆盖没有 commit hook 的情况。
   - 通知：authority 在 working → idle 且 readyToChat 时发布 `attention{kind:idle}`；手机 client 走 `DesktopSystemNotifier` + 通知中心。
   - UI：远程 busy 时 compose 发送按钮切换为 Stop；`SessionChatView` 不再挂浮动 `RemoteSessionControlBanner`。`SessionRemoteActivityCubit` 提供远端 busy/seat 投影。
-  - 新会话发现：snapshot/delta 带 `workspaceId`；手机收到未知 session 时调用 `ChatCubit.refreshSessionsForWorkspace`，补上 SFTP 没有 watcher 的缺口；SFTP 列表刷新前先用 `ChatCubit.upsertRemoteSessionHint` 插入占位行。EventTransport 的 `sessionLifecycle`（spawned/started/closed）也注册了 consumer 作为兜底（含自动化创建、非打开 tab 的会话）。
+  - 新会话发现：snapshot/delta 带 `workspaceId`；`session.list` 把其他设备创建的行推到手机，`applyRemoteSessionList` 只补缺失/占位行；打开时再按需从共享 home 读取完整文档。EventTransport 的 `sessionLifecycle`（spawned/started/closed）保留为兜底。
   - 广告文件自愈：EventTransport 与 session protocol 的 server 每 10s 检查广告文件，缺失时重写；手机读取失败时日志带绝对路径与 homeRoot，便于定位 home 不一致。
   - SSH worker storage 修复：`SshWorkerLeaseStorageTransport` 的 request/stream id 改为 worker-scoped `lease.resourceId`，避免两个并发 transport 都用 `storage-0` / `read-0` 导致 `Duplicate SSH worker request id`、`transport_closed` 和 session list 加载失败。
   - Sidebar：运行列表与 spinner 合并 `MemberPresenceCubit.occupiedSessionIds` 与 remote session/busy 投影；“已打开”包含远端 open tab，split 布局下远端 session 追加在 group 之后。
