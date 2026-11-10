@@ -7173,12 +7173,6 @@ class AppLocalizations$session$en {
 	/// en: 'Agent ready'
 	String get idleNotificationTitle => 'Agent ready';
 
-	/// en: 'New conversation from mobile'
-	String get remoteDiscoveredTitle => 'New conversation from mobile';
-
-	/// en: 'Tap to open the new conversation'
-	String get remoteDiscoveredBody => 'Tap to open the new conversation';
-
 	/// en: 'Hide details'
 	String get launchErrorHideDetails => 'Hide details';
 
@@ -12276,8 +12270,6 @@ extension on AppLocalizations {
 			'session.historyToolTurn' => 'Tool',
 			'session.idleNotificationSubtitle' => 'Ready for your next message',
 			'session.idleNotificationTitle' => 'Agent ready',
-			'session.remoteDiscoveredTitle' => 'New conversation from mobile',
-			'session.remoteDiscoveredBody' => 'Tap to open the new conversation',
 			'session.launchErrorHideDetails' => 'Hide details',
 			'session.launchErrorReviewDetails' => 'View details',
 			'session.launchMissingTeamMember' => 'Team member is not available. Select a team and try again.',
