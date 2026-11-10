@@ -130,6 +130,8 @@ class QoderModelsService {
     this.cacheTtl = const Duration(hours: 6),
     this.probeTimeout = const Duration(seconds: 20),
     this.machineHome,
+    this.namespace = 'qoder',
+    this.useMachineAuthFallback = true,
   }) : _storage = storage,
        _fsOverride = fs,
        _basePathOverride = basePath?.trim(),
@@ -147,6 +149,12 @@ class QoderModelsService {
 
   /// Test seam for the read-only machine login fallback.
   final String? machineHome;
+
+  /// Auth/temp/cache segment for this build (`qoder` vs `qoder-cn`).
+  final String namespace;
+
+  /// Whether an unconfigured provider may probe from `~/.qoder/.auth`.
+  final bool useMachineAuthFallback;
 
   final Map<String, QoderModelsCacheEntry> _memory = {};
   final Map<String, Future<void>> _inFlight = {};
@@ -242,7 +250,7 @@ class QoderModelsService {
     final configDir = roots.fs.pathContext.join(
       roots.basePath,
       'tmp',
-      'qoder-models',
+      '$namespace-models',
       _safeSegment(providerId),
     );
     final store = QoderAuthStore(
@@ -250,6 +258,8 @@ class QoderModelsService {
       basePath: roots.basePath,
       pathContext: roots.fs.pathContext,
       machineHome: machineHome,
+      namespace: namespace,
+      useMachineFallback: useMachineAuthFallback,
     );
     final seeded = await store.seedSessionAuth(
       providerId: providerId,
@@ -313,7 +323,7 @@ class QoderModelsService {
   String _cacheFilePath(_ResolvedStorage roots, String key) => roots
       .fs
       .pathContext
-      .join(roots.basePath, 'cache', 'qoder_models', '$key.json');
+      .join(roots.basePath, 'cache', '${namespace}_models', '$key.json');
 
   Future<QoderModelsCacheEntry?> _readDiskCache(
     _ResolvedStorage roots,

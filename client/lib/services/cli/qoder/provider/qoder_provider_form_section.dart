@@ -4,12 +4,12 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/team_config.dart';
 import '../../../../widgets/app_provider/cli_effort_picker_field.dart';
 
 /// Qoder-only provider fields: reasoning effort and context window.
 class QoderProviderFormSection extends StatefulWidget {
   const QoderProviderFormSection({
+    required this.cli,
     required this.effort,
     required this.contextWindow,
     required this.defaultModel,
@@ -18,6 +18,7 @@ class QoderProviderFormSection extends StatefulWidget {
     super.key,
   });
 
+  final CliTool cli;
   final String effort;
   final String contextWindow;
   final String defaultModel;
@@ -71,13 +72,13 @@ class _QoderProviderFormSectionState extends State<QoderProviderFormSection> {
           ),
           const SizedBox(height: 6),
           CliEffortPickerField(
-            cli: CliTool.qoder,
+            cli: widget.cli,
             value: widget.effort,
             model: widget.defaultModel,
             provider: AppProviderConfig(
-              id: 'qoder-form',
-              cli: CliTool.qoder,
-              name: 'Qoder',
+              id: '${widget.cli.value}-form',
+              cli: widget.cli,
+              name: widget.cli.value == 'qoder-cn' ? 'Qoder CN' : 'Qoder',
               defaultModel: widget.defaultModel,
             ),
             onChanged: widget.onEffortChanged,

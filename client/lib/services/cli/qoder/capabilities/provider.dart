@@ -23,6 +23,7 @@ import '../provider/qoder_models_service.dart';
 import '../provider/qoder_provider_form_section.dart';
 import '../provider/qoder_provider_settings_resolver.dart';
 import '../provider_presets.dart';
+import '../qoder_flavor.dart';
 import 'defaults.dart';
 
 abstract final class QoderFormExtraKeys {
@@ -140,12 +141,19 @@ final class QoderProviderCapability extends CatalogModelCapability
         InteractiveCliLoginCapability,
         ModelDisplayNameCapability,
         ModelDescriptionCapability {
-  const QoderProviderCapability({this.storage, this.modelsService});
+  const QoderProviderCapability({
+    this.storage,
+    this.modelsService,
+    this.flavor = QoderFlavor.global,
+  });
 
   final HomeStorage? storage;
 
   /// Live account catalog; absent in the pre-configure registry (tests/args).
   final QoderModelsService? modelsService;
+
+  /// Distribution identity (global vs CN binary/account store).
+  final QoderFlavor flavor;
 
   QoderAuthStore? get _authStore {
     final home = storage;
@@ -155,16 +163,18 @@ final class QoderProviderCapability extends CatalogModelCapability
       basePath: home.paths.basePath,
       pathContext: home.fs.pathContext,
       machineHome: home.home,
+      namespace: flavor.authNamespace,
+      useMachineFallback: flavor.allowMachineAuthFallback,
     );
   }
 
   static const configDirEnvKey = 'QODER_CONFIG_DIR';
 
   @override
-  CliTool get catalogCli => CliTool.qoder;
+  CliTool get catalogCli => flavor.cli;
 
   @override
-  String? get defaultOfficialProviderId => 'qoder';
+  String? get defaultOfficialProviderId => flavor.providerId;
 
   @override
   Future<ProviderCatalogSnapshot> loadFromLiveSources(
@@ -238,6 +248,7 @@ final class QoderProviderCapability extends CatalogModelCapability
     ProviderFormSectionProps props,
   ) {
     return QoderProviderFormSection(
+      cli: flavor.cli,
       effort: props.extra[QoderFormExtraKeys.effort]?.toString() ?? '',
       contextWindow:
           props.extra[QoderFormExtraKeys.contextWindow]?.toString() ?? '',
@@ -373,7 +384,7 @@ final class QoderProviderCapability extends CatalogModelCapability
   }
 
   @override
-  String get loginExecutableName => 'qodercli';
+  String get loginExecutableName => flavor.executableName;
 
   @override
   List<String> get loginArguments => const ['login'];
@@ -389,6 +400,8 @@ final class QoderProviderCapability extends CatalogModelCapability
       fs: storage.fs,
       basePath: storage.paths.basePath,
       pathContext: storage.fs.pathContext,
+      namespace: flavor.authNamespace,
+      useMachineFallback: flavor.allowMachineAuthFallback,
     );
     return QoderLoginDialog(
       executable: executable,
@@ -464,7 +477,7 @@ final class QoderProviderCapability extends CatalogModelCapability
     final configDir = delegate.sessionToolDir(
       ctx.scope.workspaceId,
       ctx.scope.sessionId,
-      CliTool.qoder.value,
+      flavor.cli.value,
       memberId: ctx.scope.memberId,
     );
     await delegate.fs.ensureDir(configDir);
@@ -514,7 +527,7 @@ final class QoderProviderCapability extends CatalogModelCapability
     await delegate.writeSettingsFile(
       settingsPath,
       settings,
-      tool: CliTool.qoder.value,
+      tool: flavor.cli.value,
       teamId: ctx.team?.id,
       workspaceId: ctx.workspaceId,
     );
@@ -565,6 +578,7 @@ final class QoderProviderCapability extends CatalogModelCapability
       basePath: ctx.catalog.basePath,
       fs: ctx.catalog.fs,
       storage: home,
+      cli: flavor.cli,
     );
     final team = ctx.team;
     if (team != null) {

@@ -21,6 +21,8 @@ class QoderAuthStore {
     required this.basePath,
     required this.pathContext,
     String? machineHome,
+    this.namespace = 'qoder',
+    this.useMachineFallback = true,
   }) : machineHome =
            machineHome ??
            (Platform.environment['HOME'] ??
@@ -31,6 +33,14 @@ class QoderAuthStore {
   final String basePath;
   final p.Context pathContext;
   final String machineHome;
+
+  /// Root segment for the login and provider stores (`cli-login/<ns>`,
+  /// `providers/<ns>`). Separate builds must not share accounts.
+  final String namespace;
+
+  /// Whether an unconfigured provider may seed from `~/.qoder/.auth`. Disabled
+  /// for builds whose account store is not the machine's global login.
+  final bool useMachineFallback;
 
   static const userFileName = 'user';
   static const machineIdFileName = 'machine_id';
@@ -54,7 +64,7 @@ class QoderAuthStore {
   void restrictFile(String path) => _restrict(path);
 
   String loginRoot(String providerId) =>
-      pathContext.join(basePath, 'cli-login', 'qoder', _safe(providerId));
+      pathContext.join(basePath, 'cli-login', namespace, _safe(providerId));
 
   String loginHome(String providerId) =>
       pathContext.join(loginRoot(providerId), 'home');
@@ -64,7 +74,7 @@ class QoderAuthStore {
       pathContext.join(loginRoot(providerId), 'workspace');
 
   String providerAuthDir(String providerId) =>
-      pathContext.join(basePath, 'providers', 'qoder', _safe(providerId));
+      pathContext.join(basePath, 'providers', namespace, _safe(providerId));
 
   Future<bool> hasProviderAuth(String providerId) =>
       _hasAuthPair(providerAuthDir(providerId));
@@ -114,7 +124,7 @@ class QoderAuthStore {
   /// The per-provider store wins when it is complete; otherwise the machine
   /// login `~/.qoder/.auth`. Null when neither holds the pair — a partial
   /// provider row never falls back to the machine login — or when the home is
-  /// unknown.
+  /// unknown or [useMachineFallback] is off.
   Future<String?> authSourceDir(String providerId) async {
     final providerDir = providerAuthDir(providerId);
     if ((await fs.stat(providerDir)).exists) {
@@ -125,7 +135,7 @@ class QoderAuthStore {
       );
       return null;
     }
-    if (machineHome.isEmpty) return null;
+    if (!useMachineFallback || machineHome.isEmpty) return null;
     final machineAuth = pathContext.join(machineHome, '.qoder', '.auth');
     return await _hasAuthPair(machineAuth) ? machineAuth : null;
   }
