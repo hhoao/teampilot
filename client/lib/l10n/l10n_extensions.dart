@@ -64,6 +64,8 @@ extension AppLocalizationsX on AppLocalizations {
     'codebuddy' => managedProviders.quickPresetCodebuddy,
     'deepseek' => managedProviders.quickPresetDeepSeek,
     'opencode-go' => managedProviders.quickPresetOpencodeGo,
+    'qoder' => managedProviders.quickPresetQoder,
+    'qoder-cn' => managedProviders.quickPresetQoderCn,
     kManagedProviderQuickPresetCustomId => managedProviders.quickPresetCustom,
     _ => id,
   };
@@ -75,6 +77,8 @@ extension AppLocalizationsX on AppLocalizations {
     'codebuddy' => managedProviders.quickPresetCodebuddyHint,
     'deepseek' => managedProviders.quickPresetDeepSeekHint,
     'opencode-go' => managedProviders.quickPresetOpencodeGoHint,
+    'qoder' => managedProviders.quickPresetQoderHint,
+    'qoder-cn' => managedProviders.quickPresetQoderCnHint,
     kManagedProviderQuickPresetCustomId =>
       managedProviders.quickPresetCustomHint,
     _ => '',

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:teampilot/l10n/l10n_extensions.dart';
 import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_presets.dart';
 
@@ -153,5 +154,13 @@ void main() {
       'qoder-cn',
       kManagedProviderQuickPresetCustomId,
     ]);
+  });
+
+  test('every quick preset id has an English label and hint', () {
+    final l10n = AppLocalizationsEn();
+    for (final id in managedProviderQuickPresetOptionIds) {
+      expect(l10n.managedProviderPresetLabel(id), isNotEmpty, reason: id);
+      expect(l10n.managedProviderPresetHint(id), isNotEmpty, reason: id);
+    }
   });
 }
