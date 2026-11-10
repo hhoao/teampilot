@@ -41,6 +41,20 @@ abstract class AcpAgentTranslator {
   String? translateStopMeta(StopReason reason, Map<String, Object?> meta) =>
       null;
 
+  /// True when this agent reports the end of a run it started on its own —
+  /// e.g. the follow-up turn it drains for a finished background task. No
+  /// client `session/prompt` request is open for that run, so without this
+  /// report the out-of-turn watch cannot tell "the agent resumed" from "the
+  /// agent is idle again".
+  bool get reportsOutOfTurnRunEnd => false;
+
+  /// Recognizes the CLI-private notification that ends such a run, returning
+  /// its stop reason, or null when [update] is some other frame.
+  ///
+  /// [update] is the inner `session/update` payload (already unwrapped from
+  /// `{sessionId, update}`).
+  StopReason? translateOutOfTurnRunEnd(Map<String, Object?> update) => null;
+
   /// Wire JSON for `session/request_permission`.
   ///
   /// ACP nests the outcome: `{outcome: {outcome, optionId}}` (see

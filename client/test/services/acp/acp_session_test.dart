@@ -14,6 +14,7 @@ import 'package:teampilot/services/acp/acp_frame_logger.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_transport.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
+import 'package:teampilot/services/cli/codebuddy/capabilities/acp.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/acp.dart';
 import 'package:teampilot/services/cli/gemini/capabilities/acp.dart';
 
@@ -385,6 +386,27 @@ void main() {
       expect(finishedUpdate.state, 'completed');
     },
   );
+
+  test('codebuddy private session_end becomes an out-of-turn stop', () async {
+    await rebuildConnection(const CodebuddyAcpTranslator());
+    session = await openSession();
+    final stop = session.updates.first;
+    agent.connection.notify(
+      'session/update',
+      params: {
+        'sessionId': sessionId,
+        'update': {
+          'sessionUpdate': 'session_end',
+          'stopReason': 'end_turn',
+          '_meta': {'codebuddy.ai/requestId': 'req-1'},
+        },
+      },
+    );
+
+    final update = await stop;
+    expect(update, isA<AcpOutOfTurnStop>());
+    expect((update as AcpOutOfTurnStop).kind, AcpStopKind.endTurn);
+  });
 
   test('tool_call rawInput reaches the update as args', () async {
     session = await openSession();

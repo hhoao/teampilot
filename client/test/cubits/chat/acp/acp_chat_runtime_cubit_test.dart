@@ -1707,43 +1707,46 @@ void main() {
     },
   );
 
-  test('ask pending: clientRequests emit → pendingClient ask; answerAsk delegates and clears', () async {
-    final attention = AgentAttentionCubit(pruneInterval: null);
-    final cubit = bootCubit(attention: attention);
-    await cubit.start(
-      executable: 'gemini',
-      sessionToolDir: '/tmp/tool',
-      workingDirectory: '/w',
-    );
-    const ask = AcpPendingAsk(
-      questions: [
-        AiAskUserQuestion(
-          question: 'Mode?',
-          options: [AiAskUserOption(label: 'Agent')],
-        ),
-      ],
-      toolCallId: 'ask-1',
-    );
-    runtime.clientRequestsController.add(ask);
-    await pumpEventQueue();
+  test(
+    'ask pending: clientRequests emit → pendingClient ask; answerAsk delegates and clears',
+    () async {
+      final attention = AgentAttentionCubit(pruneInterval: null);
+      final cubit = bootCubit(attention: attention);
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      const ask = AcpPendingAsk(
+        questions: [
+          AiAskUserQuestion(
+            question: 'Mode?',
+            options: [AiAskUserOption(label: 'Agent')],
+          ),
+        ],
+        toolCallId: 'ask-1',
+      );
+      runtime.clientRequestsController.add(ask);
+      await pumpEventQueue();
 
-    expect(cubit.state.pendingClient, same(ask));
-    expect(cubit.state.pendingPermission, isNull);
-    expect(
-      attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
-      AgentSeatAttention.waiting,
-    );
+      expect(cubit.state.pendingClient, same(ask));
+      expect(cubit.state.pendingPermission, isNull);
+      expect(
+        attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
+        AgentSeatAttention.waiting,
+      );
 
-    await cubit.answerAsk(const AcpAskHoldReply.skipped());
-    expect(cubit.state.pendingClient, isNull);
-    expect(runtime.lastAskReply?.skipped, isTrue);
-    expect(
-      attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
-      AgentSeatAttention.working,
-    );
-    await cubit.close();
-    await attention.close();
-  });
+      await cubit.answerAsk(const AcpAskHoldReply.skipped());
+      expect(cubit.state.pendingClient, isNull);
+      expect(runtime.lastAskReply?.skipped, isTrue);
+      expect(
+        attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
+        AgentSeatAttention.working,
+      );
+      await cubit.close();
+      await attention.close();
+    },
+  );
 
   test(
     'cancelTurn while ask pending clears pendingClient and cancels runtime',
@@ -2087,27 +2090,30 @@ void main() {
     },
   );
 
-  test('session/new RpcError → launchFailed kind + sessionOpenFailed copy with reason', () async {
-    runtime.startError = acpd.RpcError(
-      code: -32603,
-      message: 'Internal error',
-      data: {'message': 'Failed to initialize session services'},
-    );
-    final cubit = bootCubit();
-    await cubit.start(
-      executable: 'cursor-agent',
-      sessionToolDir: '/tmp/tool',
-      workingDirectory: '/w',
-    );
+  test(
+    'session/new RpcError → launchFailed kind + sessionOpenFailed copy with reason',
+    () async {
+      runtime.startError = acpd.RpcError(
+        code: -32603,
+        message: 'Internal error',
+        data: {'message': 'Failed to initialize session services'},
+      );
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'cursor-agent',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
 
-    expect(cubit.state.phase, AcpChatPhase.ended);
-    expect(cubit.state.error?.kind, AcpChatErrorKind.launchFailed);
-    expect(
-      (cubit.state.messages.single.parts.single as AiTextPart).text,
-      'Failed to open the session: Failed to initialize session services',
-    );
-    await cubit.close();
-  });
+      expect(cubit.state.phase, AcpChatPhase.ended);
+      expect(cubit.state.error?.kind, AcpChatErrorKind.launchFailed);
+      expect(
+        (cubit.state.messages.single.parts.single as AiTextPart).text,
+        'Failed to open the session: Failed to initialize session services',
+      );
+      await cubit.close();
+    },
+  );
 
   test(
     'session/new RpcError without useful data → sessionOpenFailed copy only',
@@ -3376,10 +3382,9 @@ void main() {
       sessionId: 's1',
       tool: CliTool.claude,
       seatLeases: leases,
-      backgroundTranscriptFactory: ({
-        required String sessionToolDir,
-        required String sessionId,
-      }) => source,
+      backgroundTranscriptFactory:
+          ({required String sessionToolDir, required String sessionId}) =>
+              source,
       backgroundSyncInterval: const Duration(milliseconds: 10),
       backgroundSyncWindow: const Duration(minutes: 1),
     )..ensureStrings(_testStrings);
@@ -3416,6 +3421,160 @@ void main() {
 
     await waitFor(() => leases.releases.isNotEmpty);
     expect(_textOf(cubit.state.messages.last), contains('All tests passed'));
+    await cubit.close();
+  });
+
+  test(
+    'a reported out-of-turn run end releases the lease, not resumed output',
+    () async {
+      final source = _FakeBackgroundTranscript();
+      final leases = _RecordingSeatLeases();
+      final cubit = AcpChatRuntimeCubit(
+        runtime: runtime,
+        sessionId: 's1',
+        tool: CliTool.claude,
+        seatLeases: leases,
+        backgroundTranscriptFactory:
+            ({required String sessionToolDir, required String sessionId}) =>
+                source,
+        // The CLI reports the end of the run it drains for the finished
+        // background task (CodeBuddy's `session_end`).
+        holdsLeaseForOutOfTurnRun: true,
+        backgroundSyncInterval: const Duration(milliseconds: 10),
+        backgroundSyncWindow: const Duration(minutes: 1),
+      )..ensureStrings(_testStrings);
+      await cubit.start(
+        executable: 'claude-agent-acp',
+        sessionToolDir: '/tmp/claude',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+
+      await sendBackgroundTurn(cubit);
+      await waitFor(() => leases.acquires.isNotEmpty);
+
+      // The task finished and the agent resumed: its first output is the
+      // *start* of a follow-up run, which can stay busy long after this text.
+      source.result = AcpBackgroundTranscriptResult(
+        changed: true,
+        messages: [
+          AiMessage(
+            id: 'claude-0',
+            role: AiRole.user,
+            parts: const [AiTextPart(text: 'run')],
+          ),
+          AiMessage(
+            id: 'claude-1',
+            role: AiRole.assistant,
+            parts: const [AiTextPart(text: 'Started')],
+          ),
+          AiMessage(
+            id: 'claude-2',
+            role: AiRole.assistant,
+            parts: const [AiTextPart(text: 'Task done, running the follow-up')],
+          ),
+        ],
+      );
+
+      await waitFor(
+        () => _textOf(cubit.state.messages.last).contains('follow-up'),
+      );
+      expect(
+        cubit.state.inTurn,
+        isTrue,
+        reason: 'the resumed run is a turn in flight, not idle',
+      );
+      expect(
+        leases.releases,
+        isEmpty,
+        reason: 'the resumed run is still in flight, not idle',
+      );
+
+      runtime.emit(const AcpOutOfTurnStop(kind: AcpStopKind.endTurn));
+      await waitFor(() => leases.releases.isNotEmpty);
+      expect(
+        leases.releases.single.leaseId,
+        AcpChatRuntimeCubit.backgroundLeaseId,
+      );
+      await waitFor(() => !cubit.state.inTurn);
+      await cubit.close();
+    },
+  );
+
+  test('live out-of-turn output starts a working turn', () async {
+    final leases = _RecordingSeatLeases();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.claude,
+      seatLeases: leases,
+      holdsLeaseForOutOfTurnRun: true,
+      backgroundSyncInterval: const Duration(hours: 1),
+      backgroundSyncWindow: const Duration(minutes: 1),
+    )..ensureStrings(_testStrings);
+    await cubit.start(
+      executable: 'claude-agent-acp',
+      sessionToolDir: '/tmp/claude',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+
+    await sendBackgroundTurn(cubit);
+    await waitFor(() => leases.acquires.isNotEmpty);
+    expect(cubit.state.inTurn, isFalse);
+
+    // The CLI drained the task notification and is answering again: its
+    // live output is a turn in flight even though we never sent a prompt.
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'Reading the output',
+        isThought: false,
+      ),
+    );
+    await waitFor(() => cubit.state.inTurn);
+    expect(leases.releases, isEmpty);
+
+    runtime.emit(const AcpOutOfTurnStop(kind: AcpStopKind.endTurn));
+    await waitFor(() => leases.releases.isNotEmpty);
+    await waitFor(() => !cubit.state.inTurn);
+    await cubit.close();
+  });
+
+  test('an out-of-turn stop with no resumed output keeps the lease', () async {
+    final source = _FakeBackgroundTranscript();
+    final leases = _RecordingSeatLeases();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.claude,
+      seatLeases: leases,
+      backgroundTranscriptFactory:
+          ({required String sessionToolDir, required String sessionId}) =>
+              source,
+      holdsLeaseForOutOfTurnRun: true,
+      // No poll between arming and the stop, so the watch cannot have seen
+      // the follow-up run's output yet.
+      backgroundSyncInterval: const Duration(hours: 1),
+      backgroundSyncWindow: const Duration(minutes: 1),
+    )..ensureStrings(_testStrings);
+    await cubit.start(
+      executable: 'claude-agent-acp',
+      sessionToolDir: '/tmp/claude',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+
+    await sendBackgroundTurn(cubit);
+    await waitFor(() => leases.acquires.isNotEmpty);
+
+    // The same frame ends a run the client cancelled; with no resumed
+    // output behind it, the watch must keep holding the lease.
+    runtime.emit(const AcpOutOfTurnStop(kind: AcpStopKind.cancelled));
+    await pumpEventQueue();
+    await pumpEventQueue();
+    expect(leases.releases, isEmpty);
+    expect(cubit.state.inTurn, isFalse);
     await cubit.close();
   });
 
@@ -3464,10 +3623,9 @@ void main() {
     final leases = _RecordingSeatLeases();
     final cubit = bootCubit(
       seatLeases: leases,
-      backgroundLivenessFactory: ({
-        required String sessionToolDir,
-        required String sessionId,
-      }) => probe,
+      backgroundLivenessFactory:
+          ({required String sessionToolDir, required String sessionId}) =>
+              probe,
       backgroundSyncInterval: const Duration(milliseconds: 10),
     );
     await cubit.start(
@@ -3491,10 +3649,9 @@ void main() {
     () async {
       final source = _FakeBackgroundTranscript()..result = null;
       final cubit = bootCubit(
-        backgroundTranscriptFactory: ({
-          required String sessionToolDir,
-          required String sessionId,
-        }) => source,
+        backgroundTranscriptFactory:
+            ({required String sessionToolDir, required String sessionId}) =>
+                source,
       );
       await cubit.start(
         executable: 'claude-agent-acp',

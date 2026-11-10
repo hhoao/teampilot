@@ -63,6 +63,36 @@ final class CodebuddyAcpTranslator extends AcpAgentTranslator {
     return _errorMessage(raw);
   }
 
+  /// CodeBuddy answers a `session/prompt` with its stop reason, but a run it
+  /// drains itself (the `<task-notification>` turn for a finished background
+  /// task) has no prompt request to answer. It reports that run's end with a
+  /// private notification instead:
+  ///
+  /// ```json
+  /// {"sessionUpdate": "session_end", "stopReason": "end_turn", "_meta": {...}}
+  /// ```
+  ///
+  /// Only the follow-up run emits it — a client-initiated turn ends through
+  /// the prompt response — so it is an unambiguous "that out-of-turn run is
+  /// over" signal, not a duplicate stop.
+  @override
+  bool get reportsOutOfTurnRunEnd => true;
+
+  @override
+  StopReason? translateOutOfTurnRunEnd(Map<String, Object?> update) {
+    if (update['sessionUpdate'] != 'session_end') return null;
+    final raw = update['stopReason'];
+    if (raw is! String || raw.isEmpty) return StopReason.endTurn;
+    return switch (raw) {
+      'cancelled' => StopReason.cancelled,
+      'max_tokens' => StopReason.maxTokens,
+      'max_turn_requests' => StopReason.maxTurnRequests,
+      'refusal' => StopReason.refusal,
+      // Unknown/new values still mean the run is over.
+      _ => StopReason.endTurn,
+    };
+  }
+
   /// Extracts the nested error `message`, falling back to the raw string
   /// when it is not the expected JSON envelope.
   String _errorMessage(String raw) {

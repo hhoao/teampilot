@@ -225,6 +225,18 @@ subagent / monitor / workflow。
 若某 CLI 的新版本改用别的字段，仍需要补进 `AcpSession._isBackgroundToolCall`；只有等 ACP v2
 落地 `state_update`，才能完全摆脱这种逐字段猜测。
 
+- **2026-11-10 补充：后台任务结束后 agent 的恢复回合**。后台任务完成时，CLI 会自动 drain 一条
+  `<task-notification>` prompt，在同一会话里起一个**新 run**（没有 `session/prompt` 请求，
+  客户端看不到回合开始/结束）。旧逻辑把重放里出现的「新助手文本」当成「后台工作已结束」，
+  立刻释放租约 → 恢复 run 跑几十秒的前台命令期间侧栏显示空闲。现在：
+  `AcpAgentTranslator.reportsOutOfTurnRunEnd` / `translateOutOfTurnRunEnd` 描述各 CLI 是否上报
+  该 run 的结束帧（codebuddy 的私有 `session_end`，经 `AcpSession` 映射为 `AcpOutOfTurnStop`）。
+  有上报的 CLI 一旦看到恢复输出（live chunk/tool_call，或重放增长）就把该 run 当作**在途回合**：
+  `inTurn=true`、attention working（侧栏 spinner、输入排队、回收保护），并保持租约轮询；收到结束帧
+  才 `_endTurn`（跳过 rewind checkpoint，没有用户消息可锚定）并释放租约。监视窗口到期仍未等到
+  结束帧时本地收尾，避免 spinner 永久卡住。没有结束帧上报的 CLI 维持原行为（恢复输出即视为监视
+  结束）。
+
 - **阶段 4：cursor 已完成，gemini 待做**
   - **cursor：已做**。实测 `cursor-agent` 2026.10.14 的 hook 表含
     `subagentStart` / `subagentStop`，载荷带 `subagent_id` / `subagent_type`。此前

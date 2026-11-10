@@ -638,6 +638,15 @@ class AcpRuntimeAttach {
         cli,
         remote: remote,
       ),
+      // CLIs that report the end of a run they start themselves can hold the
+      // seat lease through it instead of dropping it on the first resumed
+      // output.
+      holdsLeaseForOutOfTurnRun:
+          _host.cliRegistry
+              .capability<AcpCapability>(cli)
+              ?.translator
+              .reportsOutOfTurnRunEnd ??
+          false,
     )..ensureStrings(_host.acpChatStrings?.call(cli) ?? defaultAcpChatStrings);
   }
 

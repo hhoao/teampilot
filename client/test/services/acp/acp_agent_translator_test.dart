@@ -1,6 +1,7 @@
 import 'package:acpd/acpd.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/acp/acp_agent_translator.dart';
+import 'package:teampilot/services/cli/codebuddy/capabilities/acp.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/acp.dart';
 import 'package:teampilot/services/cli/gemini/capabilities/acp.dart';
 
@@ -66,6 +67,44 @@ void main() {
     expect(cursor.encodePermissionResponse(const PermissionCancelled()), {
       'outcome': {'outcome': 'cancelled'},
     });
+  });
+
+  test('codebuddy maps its private session_end to a stop reason', () {
+    const codebuddy = CodebuddyAcpTranslator();
+    expect(codebuddy.reportsOutOfTurnRunEnd, isTrue);
+    expect(
+      codebuddy.translateOutOfTurnRunEnd({'sessionUpdate': 'session_end'}),
+      StopReason.endTurn,
+    );
+    expect(
+      codebuddy.translateOutOfTurnRunEnd({
+        'sessionUpdate': 'session_end',
+        'stopReason': 'cancelled',
+      }),
+      StopReason.cancelled,
+    );
+    expect(
+      codebuddy.translateOutOfTurnRunEnd({
+        'sessionUpdate': 'session_end',
+        'stopReason': 'some_future_reason',
+      }),
+      StopReason.endTurn,
+      reason: 'an unknown reason still means the run is over',
+    );
+    expect(
+      codebuddy.translateOutOfTurnRunEnd({
+        'sessionUpdate': 'agent_message_chunk',
+      }),
+      isNull,
+    );
+  });
+
+  test('agents without a private run-end frame keep the default', () {
+    expect(translator.reportsOutOfTurnRunEnd, isFalse);
+    expect(
+      translator.translateOutOfTurnRunEnd({'sessionUpdate': 'session_end'}),
+      isNull,
+    );
   });
 }
 

@@ -230,6 +230,25 @@ final class AcpStop extends AcpSessionUpdate {
   int get hashCode => Object.hash(kind, message);
 }
 
+/// The end of a run the agent started on its own — typically the follow-up
+/// turn it drains for a finished background task. There is no
+/// `session/prompt` request open for it, so it cannot arrive as [AcpStop];
+/// CLIs that report it do so with a private notification (CodeBuddy's
+/// `session_end`). It only tells the out-of-turn watch that the resumed run
+/// is over.
+final class AcpOutOfTurnStop extends AcpSessionUpdate {
+  const AcpOutOfTurnStop({required this.kind});
+
+  final AcpStopKind kind;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is AcpOutOfTurnStop && kind == other.kind;
+
+  @override
+  int get hashCode => kind.hashCode;
+}
+
 /// Auth status from the agent (`_auth/status_update` or an unknown
 /// `session/update` with the same payload). Reporting-only: `kind: none`
 /// is a CLI probe, not a confirmed logout, so the chat cubit does not
@@ -929,6 +948,19 @@ class AcpAgentSession {
           return;
         }
         _emit(subagent);
+        return;
+      }
+      // A run the agent started itself (drained background-task
+      // notification) has no prompt request, so its end arrives as a
+      // CLI-private notification rather than a prompt response.
+      final outOfTurnStop = _connection.translator.translateOutOfTurnRunEnd(
+        Map<String, Object?>.from(nested),
+      );
+      if (outOfTurnStop != null) {
+        final id = raw['sessionId'];
+        if (id != null && id != sessionId) return;
+        if (collecting) return;
+        _emit(AcpOutOfTurnStop(kind: _mapStopReason(outOfTurnStop)));
         return;
       }
     }

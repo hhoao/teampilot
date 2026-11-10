@@ -178,6 +178,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     AcpBackgroundLivenessProbeFactory? backgroundLivenessFactory,
     Duration? backgroundSyncInterval,
     this.backgroundSyncWindow = defaultBackgroundSyncWindow,
+    this.holdsLeaseForOutOfTurnRun = false,
     this.chunkCoalesceWindow = defaultChunkCoalesceWindow,
     this.onTurnCheckpoint,
   }) : _runtime = runtime,
@@ -264,6 +265,15 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   final Duration? _backgroundSyncInterval;
   final Duration backgroundSyncWindow;
 
+  /// Whether this agent reports the end of a run it started on its own (see
+  /// `AcpAgentTranslator.reportsOutOfTurnRunEnd`).
+  ///
+  /// Only then can the watch tell "the agent resumed to handle the finished
+  /// background task" from "the agent is idle again": it holds the seat lease
+  /// through that resumed run and drops it on the reported end. Without the
+  /// report, resumed output still means the watch is over.
+  final bool holdsLeaseForOutOfTurnRun;
+
   /// Upper bound on how long streamed text/reasoning deltas stay buffered
   /// before one state emit carries them all.
   ///
@@ -347,6 +357,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   /// A background watch is live (lease held, polling scheduled).
   bool _backgroundWorkActive = false;
+
+  /// The watch has seen the agent resume on its own (live output, or replayed
+  /// output past the arm-time baseline). That is a follow-up run in flight —
+  /// distinct from the background task having finished.
+  bool _resumedRunActive = false;
 
   /// Whether the watch has not folded a reconcile yet (used to tell a fast
   /// completion of the armed task from a brand-new background launch).
@@ -983,6 +998,15 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     if (!replaying && _ignoreLiveTurnUpdates && _isTurnContentUpdate(update)) {
       return;
     }
+    // Live agent output while the watch is armed and no client turn is open:
+    // the CLI resumed on its own to handle the finished background task.
+    if (!replaying &&
+        _backgroundWorkActive &&
+        !state.inTurn &&
+        (update is AcpMessageChunk && update.role == AcpRole.assistant ||
+            update is AcpToolCallUpdate)) {
+      _beginResumedTurn();
+    }
     switch (update) {
       case AcpMessageChunk():
         if (isClosed) return;
@@ -1013,6 +1037,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         if (isClosed || replaying) return;
         _flushPendingStreamRuns();
         await _onStop(update);
+      case AcpOutOfTurnStop():
+        if (isClosed || replaying) return;
+        unawaited(_onOutOfTurnStop());
       case AcpAuthNotice():
         if (isClosed || replaying) return;
         // `_auth/status_update` is reporting-only. `kind: none` comes from an
@@ -1062,7 +1089,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// Whether [update] carries turn content that must not leak out of a
   /// cancelled turn. Stops, auth notices and model state remain live.
   static bool _isTurnContentUpdate(AcpSessionUpdate update) => switch (update) {
-    AcpStop() || AcpAuthNotice() || AcpModelStateUpdate() => false,
+    AcpStop() ||
+    AcpOutOfTurnStop() ||
+    AcpAuthNotice() ||
+    AcpModelStateUpdate() => false,
     _ => true,
   };
 
@@ -1277,7 +1307,12 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   @visibleForTesting
   Future<void> debugEndTurnForTest() => _endTurn();
 
-  Future<void> _endTurn() async {
+  /// Ends the visible turn.
+  ///
+  /// [skipCheckpoint] is set for a run the client did not start (the agent's
+  /// own follow-up after a background task): it has no user message to anchor
+  /// a rewind checkpoint to.
+  Future<void> _endTurn({bool skipCheckpoint = false}) async {
     if (_closing || isClosed) return;
     final wasInTurn = state.inTurn;
     final callback = onTurnCheckpoint;
@@ -1290,7 +1325,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     }
     // Snapshot before idle. Attention done and inTurn false start the
     // follow-up drain, which must not write the next turn into this commit.
-    if (wasInTurn && callback != null && messageId.isNotEmpty) {
+    if (!skipCheckpoint &&
+        wasInTurn &&
+        callback != null &&
+        messageId.isNotEmpty) {
       try {
         await callback(
           messageId,
@@ -1671,7 +1709,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         return;
       }
       if (baseline != null && textLen > baseline && _liveSubagents.isEmpty) {
-        _stopBackgroundSync();
+        _noteResumedRun(textLen);
       }
       return;
     }
@@ -1685,7 +1723,49 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       _backgroundBaselineTextLen = textLen;
       return;
     }
-    if (textLen > baseline && _liveSubagents.isEmpty) _stopBackgroundSync();
+    if (textLen > baseline && _liveSubagents.isEmpty) {
+      _noteResumedRun(textLen);
+    }
+  }
+
+  /// The agent's out-of-turn output grew: the watched background task finished
+  /// and the agent resumed to handle its notification.
+  ///
+  /// That resumed run is a **turn in flight**, not idle background work: the
+  /// agent is answering (and may keep the CLI busy long after its first
+  /// token), so the seat turns "working" and new input queues behind it.
+  /// [_onOutOfTurnStop] ends it when the CLI reports the run's end; the
+  /// baseline moves meanwhile so the run's own growth does not look like
+  /// completion again.
+  ///
+  /// Without such a report the resumed output is the last evidence this watch
+  /// will get, so the watch ends there as before.
+  void _noteResumedRun(int textLen) {
+    if (!holdsLeaseForOutOfTurnRun) {
+      _stopBackgroundSync();
+      return;
+    }
+    _backgroundBaselineTextLen = textLen;
+    _beginResumedTurn();
+  }
+
+  /// Marks the agent's self-started run as an in-flight turn.
+  ///
+  /// It has no `session/prompt` of ours, but from the operator's side it is the
+  /// same state: the agent is working, input belongs behind it, and the seat
+  /// must stay reclaim-protected until the run ends.
+  void _beginResumedTurn() {
+    if (_closing || isClosed || _resumedRunActive) return;
+    _resumedRunActive = true;
+    emit(
+      state.copyWith(
+        inTurn: true,
+        activity: state.activity == AcpChatActivity.none
+            ? AcpChatActivity.thinking
+            : state.activity,
+      ),
+    );
+    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.working));
   }
 
   int _assistantTextLen(List<AiMessage> messages) {
@@ -1704,7 +1784,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     final started = _backgroundSyncStartedAt;
     if (started == null) return;
     if (DateTime.now().difference(started) >= backgroundSyncWindow) {
-      _stopBackgroundSync();
+      _expireBackgroundWatch();
       return;
     }
     _backgroundSyncTimer = Timer(_nextBackgroundSyncDelay(started), () {
@@ -1735,7 +1815,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     final started = _backgroundSyncStartedAt;
     if (started == null ||
         DateTime.now().difference(started) >= backgroundSyncWindow) {
-      _stopBackgroundSync();
+      _expireBackgroundWatch();
       return;
     }
     unawaited(_runBackgroundSyncTick(started));
@@ -1772,10 +1852,51 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     return true;
   }
 
+  /// The agent finished a run it started on its own — the follow-up it drains
+  /// for a finished background task. That run is modelled as an in-flight turn
+  /// ([_beginResumedTurn]), so this ends it.
+  ///
+  /// The same frame also ends a run the client cancelled, so it only settles a
+  /// watch whose resumed run the watch has actually seen. A run shorter than
+  /// the poll cadence gets one reconcile first.
+  Future<void> _onOutOfTurnStop() async {
+    if (!_backgroundWorkActive) return;
+    if (!_resumedRunActive) {
+      if (state.inTurn) {
+        // A client turn owns the seat; this frame ended the resumed run behind
+        // it, so only the background watch is over.
+        _stopBackgroundSync();
+        return;
+      }
+      await syncHistory();
+      if (_closing || isClosed || !_backgroundWorkActive) return;
+      if (!_resumedRunActive) return;
+    }
+    _stopBackgroundSync();
+    await _endTurn(skipCheckpoint: true);
+    // The resumed run's final answer usually lands after the last output the
+    // UI saw; reconcile once so it shows without waiting for a reopen.
+    await syncHistory();
+  }
+
+  /// Releases the seat lease when the watch window closes.
+  ///
+  /// A resumed turn has no client prompt and no guaranteed end frame for every
+  /// CLI, so the window is its last bound: leaving `inTurn` set would pin the
+  /// working indicator (and queue every follow-up) forever.
+  void _expireBackgroundWatch() {
+    final resumedTurn = _resumedRunActive && state.inTurn;
+    _stopBackgroundSync();
+    if (resumedTurn && !_closing && !isClosed) {
+      unawaited(_endTurn(skipCheckpoint: true));
+    }
+  }
+
   void _stopBackgroundSync() {
     _backgroundSyncTimer?.cancel();
     _backgroundSyncTimer = null;
     _backgroundSyncStartedAt = null;
+    _resumedRunActive = false;
     if (!_backgroundWorkActive) return;
     _backgroundWorkActive = false;
     _backgroundBaselineTextLen = null;
