@@ -463,6 +463,45 @@ void main() {
 
     expect(await vault.readField(stored.entryId, 'password'), 'secret');
   });
+
+  test(
+    'editing keeps the stored private key even when the keychain has a stale '
+    'value',
+    () async {
+      final vault = await _vault();
+      final repository = SshProfileRepository(storage: fakeHomeStorage());
+      final credentials = InMemorySshCredentialStore();
+      final capture = VaultCredentialCapture(vault: vault);
+      final gate = VaultUnlockGate(vault: vault, prompt: () async => true);
+      final privateKeyProfile = profile.copyWith(
+        authType: SshAuthType.privateKey,
+      );
+
+      // Seed the owner entry directly, so no saveSshProfileWithVault call
+      // clears the keychain via deleteAll before the edit under test.
+      final stored = await capture.captureSsh(
+        privateKeyProfile,
+        privateKey: 'secret-key',
+      );
+      // A stale legacy keychain copy must not win over the stored vault key.
+      await credentials.savePrivateKey('p1', 'legacy-key');
+
+      // Edit mode: the inactive password is a remove (''), while the active
+      // private key / passphrase fields signal "keep" (null).
+      await saveSshProfileWithVault(
+        profile: privateKeyProfile,
+        password: '',
+        privateKey: null,
+        passphrase: null,
+        capture: capture,
+        unlockGate: gate,
+        repository: repository,
+        credentialStore: credentials,
+      );
+
+      expect(await vault.readField(stored.entryId, 'privateKey'), 'secret-key');
+    },
+  );
 }
 
 class _ThrowingSshProfileRepository implements SshProfileRepository {

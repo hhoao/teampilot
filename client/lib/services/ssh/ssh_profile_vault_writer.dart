@@ -19,9 +19,12 @@ class SshProfileVaultWriteResult {
 /// Captures SSH secrets in the vault, then saves the profile metadata.
 ///
 /// Field semantics match the capture service: `null` keeps the stored value,
-/// `''` removes it, a value overwrites it. For a profile that is not linked
-/// yet, empty password/key/passphrase arguments are filled from the legacy
-/// keychain so an edit never silently drops an existing secret.
+/// `''` removes it, a value overwrites it. A first-time save (no owner vault
+/// entry) fills an empty active field from the legacy keychain so an unlinked
+/// row adopts an existing secret. When an owner entry already exists, the
+/// editing guard skips that backfill whenever the active auth-type fields
+/// signal "keep" (`null`), so a stale keychain copy cannot overwrite or
+/// delete the stored secret.
 ///
 /// The keychain is never written. After the profile is saved, its legacy
 /// keychain secrets are deleted (best effort); a failure there does not fail
@@ -44,14 +47,20 @@ Future<SshProfileVaultWriteResult> saveSshProfileWithVault({
   var effectivePrivateKey = privateKey;
   var effectivePassphrase = passphrase;
   if (!linked) {
-    // An owner entry already holds this device's secret. A null input means
-    // "keep it"; adopting a (possibly empty) legacy keychain value here would
-    // overwrite or delete that stored secret.
+    // An owner entry already holds this device's secret. When the active
+    // auth-type fields are `null` they signal "keep"; adopting a (possibly
+    // empty) legacy keychain value here would overwrite or delete that
+    // stored secret. Password auth keeps on `password`; private-key auth on
+    // `privateKey`/`passphrase`. First-time saves (no owner) still adopt
+    // legacy values, and explicit values / `''` removals still flow through.
     final owned = await capture.findOwner(
       vaultOwnerKindSshProfile,
       profile.id,
     );
-    final preserveStored = owned != null && effectivePassword == null;
+    final activeFieldsKeep = profile.authType == SshAuthType.privateKey
+        ? effectivePrivateKey == null && effectivePassphrase == null
+        : effectivePassword == null;
+    final preserveStored = owned != null && activeFieldsKeep;
     if (!preserveStored) {
       if (profile.authType == SshAuthType.password &&
           (effectivePassword == null || effectivePassword.isEmpty)) {
@@ -121,11 +130,14 @@ typedef SshEditorSecretInputs = ({
   String? passphrase,
 });
 
-/// Maps editor field state to the writer's null/''/value contract.
+/// Maps editor field state to the writer's three-state secret contract:
+/// `null` keeps the stored value, `''` removes it, a value overwrites it.
 ///
-/// A linked profile keeps an emptied field (`null`); an unlinked profile
-/// passes `''` so the writer can adopt the legacy keychain value. The
-/// inactive auth-type fields are always `''` (remove).
+/// Editing or linked keeps an emptied active field (`null`); a new, unlinked
+/// row emits `''` for first-save adoption from the legacy keychain. The
+/// writer's editing guard skips that backfill when an owner entry already
+/// exists and the active fields signal "keep". Inactive auth-type fields are
+/// always `''` (remove).
 SshEditorSecretInputs sshEditorSecretInputs({
   required SshAuthType authType,
   required bool linked,
@@ -169,18 +181,17 @@ Future<SshEditorSecretInputs> resolveSshEditorTestSecrets({
   required SshVaultFieldReader? readVaultField,
   required SshCredentialStore credentialStore,
 }) async {
-  final readVault = readVaultField;
   if (authType == SshAuthType.password) {
     var password = _nonEmpty(passwordText);
-    password ??= await readVault?.call('password');
+    password ??= await readVaultField?.call('password');
     password ??= _nonEmpty(await credentialStore.loadPassword(profileId));
     return (password: password, privateKey: null, passphrase: null);
   }
   var privateKey = _nonEmpty(privateKeyPem);
-  privateKey ??= await readVault?.call('privateKey');
+  privateKey ??= await readVaultField?.call('privateKey');
   privateKey ??= _nonEmpty(await credentialStore.loadPrivateKey(profileId));
   var passphrase = _nonEmpty(passphraseText);
-  passphrase ??= await readVault?.call('passphrase');
+  passphrase ??= await readVaultField?.call('passphrase');
   passphrase ??= _nonEmpty(
     await credentialStore.loadPrivateKeyPassphrase(profileId),
   );
