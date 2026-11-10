@@ -134,6 +134,9 @@ final class QoderProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
     implements
         ProviderCapability,
+        // The ACP account catalog must be reachable from the pickers'
+        // `onModelsOpened` refresh, which gates on this marker.
+        RefreshableProviderModelCapability,
         InteractiveCliLoginCapability,
         ModelDisplayNameCapability,
         ModelDescriptionCapability {

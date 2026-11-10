@@ -133,11 +133,17 @@ class CursorAgentModelsService {
     final existing = _inFlight[key];
     if (existing != null) return existing;
 
-    final task = _load(
-      key,
-      providerId: providerId,
-      executable: executable,
-    ).whenComplete(() => _inFlight.remove(key));
+    final task =
+        _load(
+          key,
+          providerId: providerId,
+          executable: executable,
+          forceRefresh: forceRefresh,
+        ).whenComplete(() {
+          // Block body: returning the removed future would make whenComplete
+          // wait on itself and never complete.
+          _inFlight.remove(key);
+        });
     _inFlight[key] = task;
     return task;
   }
@@ -146,9 +152,10 @@ class CursorAgentModelsService {
     String cacheKey, {
     required String providerId,
     String? executable,
+    required bool forceRefresh,
   }) async {
     final roots = await _resolveStorage();
-    final disk = await _readDiskCache(roots, cacheKey);
+    final disk = forceRefresh ? null : await _readDiskCache(roots, cacheKey);
     if (disk != null && _isFresh(disk)) {
       _memory[cacheKey] = disk;
       _catalogUpdates.bump();

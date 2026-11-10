@@ -81,17 +81,26 @@ class ApiModelCatalogService {
   Future<void> ensureLoaded({
     required String providerId,
     required AppProviderConfig provider,
+    String? accessToken,
     bool forceRefresh = false,
   }) {
     final key = providerId.trim();
-    if (key.isEmpty || provider.apiKey.trim().isEmpty) return Future.value();
+    final token = accessToken?.trim() ?? '';
+    if (key.isEmpty || (provider.apiKey.trim().isEmpty && token.isEmpty)) {
+      return Future.value();
+    }
     if (!forceRefresh && _isFresh(_memory[key])) return Future.value();
 
     final existing = _inFlight[key];
     if (existing != null) return existing;
 
-    final task = _load(key, provider: provider, forceRefresh: forceRefresh)
-        .whenComplete(() {
+    final task =
+        _load(
+          key,
+          provider: provider,
+          accessToken: token,
+          forceRefresh: forceRefresh,
+        ).whenComplete(() {
           _inFlight.remove(key);
         });
     _inFlight[key] = task;
@@ -113,6 +122,7 @@ class ApiModelCatalogService {
     String providerId, {
     required AppProviderConfig provider,
     required bool forceRefresh,
+    String accessToken = '',
   }) async {
     final roots = await _resolveStorage();
     final disk = await _readDiskCache(roots, providerId);
@@ -122,7 +132,7 @@ class ApiModelCatalogService {
       return;
     }
 
-    final fetched = await _fetchLive(provider);
+    final fetched = await _fetchLive(provider, accessToken: accessToken);
     if (fetched != null) {
       _memory[providerId] = fetched;
       try {
@@ -141,11 +151,15 @@ class ApiModelCatalogService {
   }
 
   Future<ApiModelCatalogCacheEntry?> _fetchLive(
-    AppProviderConfig provider,
-  ) async {
+    AppProviderConfig provider, {
+    String accessToken = '',
+  }) async {
     try {
       final response = await _httpClient
-          .get(_modelsUri(provider.baseUrl), headers: _headers(provider))
+          .get(
+            _modelsUri(provider.baseUrl),
+            headers: _headers(provider, accessToken: accessToken),
+          )
           .timeout(const Duration(seconds: 10));
       if (response.statusCode != 200) return null;
       final modelIds = parseModelIds(jsonDecode(response.body));
@@ -159,7 +173,23 @@ class ApiModelCatalogService {
     }
   }
 
-  Map<String, String> _headers(AppProviderConfig provider) {
+  Map<String, String> _headers(
+    AppProviderConfig provider, {
+    String accessToken = '',
+  }) {
+    final token = accessToken.trim();
+    if (token.isNotEmpty) {
+      // Claude Code's OAuth access token is a bearer credential; the beta
+      // header opts into the OAuth-authenticated endpoints.
+      return switch (protocol) {
+        ApiModelCatalogProtocol.openAi => {'Authorization': 'Bearer $token'},
+        ApiModelCatalogProtocol.anthropic => {
+          'Authorization': 'Bearer $token',
+          'anthropic-version': '2023-06-01',
+          'anthropic-beta': 'oauth-2025-04-20',
+        },
+      };
+    }
     final key = provider.apiKey.trim();
     return switch (protocol) {
       ApiModelCatalogProtocol.openAi => {'Authorization': 'Bearer $key'},

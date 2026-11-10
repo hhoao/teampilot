@@ -7,6 +7,7 @@ import '../../../services/cli/codex/codex_bootstrap_entry.dart';
 import '../../../services/cli/codex/capabilities/acp.dart';
 import '../../../services/cli/codex/capabilities/acp_adapter_installer.dart';
 import '../../../services/cli/codex/capabilities/headless.dart';
+import '../../../services/cli/codex/provider/codex_models_service.dart';
 import '../../../services/cli/cursor/cursor_bootstrap_entry.dart';
 import '../../../services/cli/flashskyai/capabilities/headless.dart';
 import '../../../services/cli/flashskyai/capabilities/provider.dart';
@@ -38,6 +39,7 @@ import '../antigravity/antigravity_bootstrap_entry.dart';
 import '../antigravity/antigravity_tool.dart';
 import '../antigravity/capabilities/acp_settings.dart';
 import '../antigravity/capabilities/provider.dart';
+import '../antigravity/provider/antigravity_models_service.dart';
 import '../claude/claude_tool.dart';
 import '../codebuddy/codebuddy_tool.dart';
 import '../codebuddy/capabilities/provider.dart';
@@ -86,6 +88,9 @@ void registerBuiltInCliTools(
       provider: CodexProviderCapability(
         modelsService: codexEntry?.modelsService,
         credentials: codexEntry?.credentialsService,
+        cliModelsService: storage == null
+            ? null
+            : CodexModelsService(storage: storage),
         storage: storage,
       ),
       headless: CodexHeadlessCapability(storage: storage),
@@ -150,7 +155,12 @@ void registerBuiltInCliTools(
   );
   registry.register(
     AntigravityCliTool(
-      provider: AntigravityProviderCapability(storage: storage),
+      provider: AntigravityProviderCapability(
+        storage: storage,
+        modelsService: storage == null
+            ? null
+            : AntigravityModelsService(storage: storage),
+      ),
       acpSettings: AntigravityAcpSettings(
         installer: antigravityEntry?.acpInstaller,
       ),

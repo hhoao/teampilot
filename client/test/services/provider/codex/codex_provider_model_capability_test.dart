@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/cli/codex/capabilities/provider.dart';
+import 'package:teampilot/services/cli/codex/provider/codex_models_service.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/provider/api_model_catalog_service.dart';
 
@@ -40,7 +41,7 @@ void main() {
   });
 
   test(
-    'Codex OAuth provider uses static catalog without a network request',
+    'Codex OAuth provider uses the CLI catalog without a network request',
     () async {
       var requests = 0;
       final service = ApiModelCatalogService(
@@ -54,6 +55,24 @@ void main() {
         }),
         storage: fakeHomeStorage(),
       );
+      var cliCalls = 0;
+      final cliService = CodexModelsService(
+        fs: InMemoryFilesystem(),
+        basePath: '/data/tp',
+        executable: 'codex',
+        processRunner:
+            (executable, arguments, {environment, workingDirectory}) async {
+              cliCalls++;
+              return const CodexModelsProcessResult(
+                exitCode: 0,
+                stdout:
+                    '{"models":['
+                    '{"slug":"gpt-6-astra","visibility":"list"}'
+                    ']}',
+                stderr: '',
+              );
+            },
+      );
       const provider = AppProviderConfig(
         id: 'openai-official',
         cli: CliTool.codex,
@@ -61,22 +80,26 @@ void main() {
         category: AppProviderCategory.official,
         isOfficial: true,
       );
-      final capability = CodexProviderCapability(modelsService: service);
+      final capability = CodexProviderCapability(
+        modelsService: service,
+        cliModelsService: cliService,
+      );
 
       await capability.refreshModelCatalog(
         providerId: provider.id,
         provider: provider,
       );
 
-      expect(
-        capability.modelCandidates(
-          provider: provider,
-          providerId: provider.id,
-          currentModel: '',
-        ),
-        contains('gpt-5.3-codex'),
+      final models = capability.modelCandidates(
+        provider: provider,
+        providerId: provider.id,
+        currentModel: '',
       );
+
+      expect(models, contains('gpt-6-astra'));
+      expect(models, isNot(contains('gpt-5.3-codex')));
       expect(requests, 0);
+      expect(cliCalls, 1);
     },
   );
 

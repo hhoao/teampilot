@@ -30,7 +30,7 @@ void main() {
   });
 
   test('resolveLaunchEffort falls back to team then default', () {
-    const capability = CodexProviderCapability();
+    final capability = CodexProviderCapability();
     final team = TeamProfile(
       id: 't1',
       name: 'Team',

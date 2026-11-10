@@ -69,6 +69,43 @@ class ClaudeProviderCredentialsService {
     return credentialPath(providerId);
   }
 
+  /// OAuth access token from the effective credential file, or null when the
+  /// binding has no usable token (missing, empty, or expired).
+  ///
+  /// The Claude account can list its models through `GET /v1/models` with this
+  /// bearer token; the API-key path cannot see subscription-only models.
+  Future<String?> readAccessToken(
+    String providerId, {
+    CredentialBindingKind binding = CredentialBindingKind.linked,
+    String? homeDirectory,
+  }) async {
+    final path = effectiveCredentialPath(
+      providerId,
+      binding: binding,
+      homeDirectory: homeDirectory,
+    );
+    final raw = await _fs.readString(path);
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final oauth = decoded['claudeAiOauth'];
+      if (oauth is! Map) return null;
+      final token = oauth['accessToken']?.toString().trim() ?? '';
+      if (token.isEmpty) return null;
+      final expiresAt = (oauth['expiresAt'] as num?)?.toInt() ?? 0;
+      if (expiresAt > 0) {
+        final millis = expiresAt > 1000000000000 ? expiresAt : expiresAt * 1000;
+        if (DateTime.now().millisecondsSinceEpoch >= millis - 60 * 1000) {
+          return null;
+        }
+      }
+      return token;
+    } on FormatException {
+      return null;
+    }
+  }
+
   Future<CredentialProbe> probe(
     String providerId, {
     CredentialBindingKind binding = CredentialBindingKind.linked,

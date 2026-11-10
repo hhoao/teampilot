@@ -32,6 +32,7 @@ import '../provider/codex_home_provisioner.dart';
 import '../provider/codex_hook_writer.dart';
 import '../provider/codex_live_import.dart';
 import '../provider/codex_model_catalog.dart';
+import '../provider/codex_models_service.dart';
 import '../provider/codex_managed_hook_overlay.dart';
 import '../provider/codex_official_provider.dart';
 import '../provider/codex_provider_credentials_service.dart';
@@ -43,11 +44,14 @@ abstract final class CodexFormExtraKeys {
   static const effort = 'effort';
 }
 
-/// OpenAI `/models` catalog for API-key providers, with OAuth static fallback.
+/// Model catalogs for Codex: the `/models` endpoint for API-key providers,
+/// the CLI's own `debug models` catalog for account (OAuth) rows, then the
+/// bundled static fallback.
 final class CodexCatalogSource implements ModelCatalogSource {
-  const CodexCatalogSource(this._modelsService);
+  const CodexCatalogSource(this._modelsService, this._cliModelsService);
 
   final ApiModelCatalogService? _modelsService;
+  final CodexModelsService? _cliModelsService;
 
   @override
   List<String> modelsFor({
@@ -59,6 +63,15 @@ final class CodexCatalogSource implements ModelCatalogSource {
               const []
         : const <String>[];
     if (live.isNotEmpty) return live;
+    // The CLI's bundled catalog describes the signed-in account; custom
+    // OpenAI-compatible endpoints have their own model list.
+    final canUseCliCatalog =
+        provider == null || isOfficialCodexOAuthProvider(provider);
+    if (canUseCliCatalog) {
+      final fromCli =
+          _cliModelsService?.modelIdsFor(providerId: providerId) ?? const [];
+      if (fromCli.isNotEmpty) return fromCli;
+    }
     return CodexModelCatalog.knownModelsForProviderId(
       providerId,
       provider: provider,
@@ -70,15 +83,19 @@ final class CodexCatalogSource implements ModelCatalogSource {
 final class CodexProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
     implements ProviderCapability, RefreshableProviderModelCapability {
-  const CodexProviderCapability({
+  CodexProviderCapability({
     ApiModelCatalogService? modelsService,
     CodexProviderCredentialsService? credentials,
+    this.cliModelsService,
     this.storage,
   }) : _modelsService = modelsService,
        _credentials = credentials;
 
   final ApiModelCatalogService? _modelsService;
   final CodexProviderCredentialsService? _credentials;
+
+  /// Live `codex debug models` catalog; absent in the pre-configure registry.
+  final CodexModelsService? cliModelsService;
 
   /// Home control-plane storage injected at registry construction; required
   /// for workspace-trust provisioning. Null only for `const`-constructed
@@ -149,13 +166,13 @@ final class CodexProviderCapability extends CatalogModelCapability
     return config;
   }
 
-  // ---- ProviderModelCapability (live OpenAI catalog + static fallback) ----
+  // ---- ProviderModelCapability (live OpenAI/CLI catalogs + static) ----
   @override
   bool get supportsModelTiers => false;
 
   @override
   List<ModelCatalogSource> get catalogSources => [
-    CodexCatalogSource(_modelsService),
+    CodexCatalogSource(_modelsService, cliModelsService),
   ];
 
   @override
@@ -164,8 +181,16 @@ final class CodexProviderCapability extends CatalogModelCapability
   }
 
   @override
-  Listenable get catalogUpdates =>
-      _modelsService?.catalogUpdates ?? _emptyCatalogUpdates;
+  late final Listenable catalogUpdates = _mergedCatalogUpdates();
+
+  Listenable _mergedCatalogUpdates() {
+    final http = _modelsService;
+    final cli = cliModelsService;
+    return Listenable.merge([
+      if (http != null) http.catalogUpdates,
+      if (cli != null) cli.catalogUpdates,
+    ]);
+  }
 
   @override
   Future<void> refreshModelCatalog({
@@ -173,12 +198,22 @@ final class CodexProviderCapability extends CatalogModelCapability
     AppProviderConfig? provider,
     String? executable,
     bool forceRefresh = false,
-  }) {
-    final service = _modelsService;
-    if (service == null || provider == null) return Future.value();
-    return service.ensureLoaded(
+  }) async {
+    if (provider == null) return;
+    // API-key rows answer from their own `/models` endpoint; account (OAuth)
+    // rows get the CLI's bundled catalog, which a plain API call cannot see.
+    if (provider.apiKey.trim().isNotEmpty) {
+      await _modelsService?.ensureLoaded(
+        providerId: providerId,
+        provider: provider,
+        forceRefresh: forceRefresh,
+      );
+      return;
+    }
+    if (provider.baseUrl.trim().isNotEmpty) return;
+    await cliModelsService?.ensureLoaded(
       providerId: providerId,
-      provider: provider,
+      executable: executable,
       forceRefresh: forceRefresh,
     );
   }
@@ -563,7 +598,7 @@ final class CodexProviderCapability extends CatalogModelCapability
     if (profileEffort != null && profileEffort.trim().isNotEmpty) {
       return profileEffort.trim();
     }
-    const capability = CodexProviderCapability();
+    final capability = CodexProviderCapability();
     return resolveLaunchEffort(
       capability: capability,
       cli: CliTool.codex,
@@ -617,14 +652,4 @@ final class CodexProviderCapability extends CatalogModelCapability
     storage: storage,
     repository: providerCatalogRepository(catalog, storage: storage),
   );
-}
-
-final _emptyCatalogUpdates = _EmptyListenable();
-
-final class _EmptyListenable implements Listenable {
-  @override
-  void addListener(VoidCallback listener) {}
-
-  @override
-  void removeListener(VoidCallback listener) {}
 }

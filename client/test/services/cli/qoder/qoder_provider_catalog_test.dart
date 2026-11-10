@@ -87,4 +87,29 @@ void main() {
       'Sonus',
     );
   });
+
+  test('the live catalog is refreshable from the pickers', () async {
+    final fs = InMemoryFilesystem();
+    await fs.ensureDir('/home/me/.qoder/.auth');
+    await fs.writeString('/home/me/.qoder/.auth/user', 'USER');
+    await fs.writeString('/home/me/.qoder/.auth/machine_id', 'MACHINE');
+    var calls = 0;
+    final service = QoderModelsService(
+      fs: fs,
+      basePath: '/app',
+      machineHome: '/home/me',
+      opener:
+          ({required executable, required configDir, required timeout}) async {
+            calls++;
+            return const QoderModelsSnapshot(modelIds: ['auto', 'smodel']);
+          },
+    );
+    final capability = QoderProviderCapability(modelsService: service);
+
+    expect(capability, isA<RefreshableProviderModelCapability>());
+    await capability.refreshModelCatalog(providerId: 'work');
+
+    expect(calls, 1);
+    expect(service.modelIdsFor(providerId: 'work'), ['auto', 'smodel']);
+  });
 }

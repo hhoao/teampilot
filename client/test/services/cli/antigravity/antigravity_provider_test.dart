@@ -8,6 +8,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/cli/antigravity/capabilities/provider.dart';
 import 'package:teampilot/services/cli/antigravity/provider/antigravity_model_catalog.dart';
+import 'package:teampilot/services/cli/antigravity/provider/antigravity_models_service.dart';
 import 'package:teampilot/services/cli/antigravity/provider_presets.dart';
 import 'package:teampilot/services/cli/registry/capabilities/interactive_login_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
@@ -91,6 +92,61 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
         ),
         AntigravityModelCatalog.fallback,
       );
+    });
+
+    test('the agy models listing replaces the fallback catalog', () async {
+      final fs = InMemoryFilesystem();
+      final service = AntigravityModelsService(
+        fs: fs,
+        basePath: '/app',
+        executable: 'agy',
+        processRunner:
+            (executable, arguments, {environment, workingDirectory}) async =>
+                const AntigravityModelsProcessResult(
+                  exitCode: 0,
+                  stdout:
+                      'gemini-3.8-flash-high\tGemini 3.8 Flash (High)\n'
+                      'claude-sonnet-4-6\tClaude Sonnet 4.6\n',
+                  stderr: '',
+                ),
+      );
+      await service.ensureLoaded(providerId: 'antigravity');
+      final cap = AntigravityProviderCapability(modelsService: service);
+
+      final models = cap.catalogSources.single.modelsFor(
+        provider: null,
+        providerId: 'antigravity',
+      );
+
+      expect(models, ['gemini-3.8-flash', 'claude-sonnet-4-6']);
+      expect(models, isNot(contains('gemini-4-argon')));
+      expect(cap, isA<RefreshableProviderModelCapability>());
+    });
+
+    test('refresh runs the agy models listing', () async {
+      var calls = 0;
+      final service = AntigravityModelsService(
+        fs: InMemoryFilesystem(),
+        basePath: '/app',
+        executable: 'agy',
+        processRunner:
+            (executable, arguments, {environment, workingDirectory}) async {
+              calls++;
+              return const AntigravityModelsProcessResult(
+                exitCode: 0,
+                stdout: 'gemini-3.8-flash-high\tGemini 3.8 Flash\n',
+                stderr: '',
+              );
+            },
+      );
+      final cap = AntigravityProviderCapability(modelsService: service);
+
+      await cap.refreshModelCatalog(providerId: 'antigravity');
+
+      expect(calls, 1);
+      expect(service.modelIdsFor(providerId: 'antigravity'), [
+        'gemini-3.8-flash',
+      ]);
     });
   });
 

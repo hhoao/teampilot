@@ -9,16 +9,22 @@ import '../../../provider/passthrough_provider_form_capability.dart';
 import '../../../remote/remote_credential_materializer.dart';
 import '../../registry/capabilities/provider_capability.dart';
 
-/// Static built-in Gemini model catalog for this phase (consulted the google
-/// entry of opencode_model_catalog.dart for current naming). Task 8+ (ACP)
-/// revisits whether a live catalog is needed.
+/// Static built-in Gemini model catalog.
+///
+/// Gemini CLI has no model-listing command, and its ACP `session/new` does not
+/// return `availableModels` (only `--model` selection), so there is no live
+/// source to probe. Keep this table in step with the ids the CLI accepts;
+/// users can still type a custom id in the picker.
 abstract final class GeminiModelCatalog {
   const GeminiModelCatalog._();
 
   static const googleModels = <String>[
+    'gemini-4-argon',
+    'gemini-3.8-flash',
+    'gemini-3.7-flash',
+    'gemini-3.6-flash',
+    'gemini-3.5-flash',
     'gemini-2.5-pro',
-    'gemini-2.5-flash',
-    'gemini-3-flash',
   ];
 
   static List<String> modelsFor({

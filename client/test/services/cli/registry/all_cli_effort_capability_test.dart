@@ -29,7 +29,7 @@ void main() {
   });
 
   test('CodexEffortCapability uses provider placement', () {
-    const capability = CodexProviderCapability();
+    final capability = CodexProviderCapability();
     const provider = AppProviderConfig(
       id: 'p1',
       cli: CliTool.codex,

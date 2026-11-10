@@ -66,9 +66,14 @@ final class ClaudeCatalogSource implements ModelCatalogSource {
     required AppProviderConfig? provider,
     required String providerId,
   }) {
-    final live = provider?.apiKey.trim().isNotEmpty == true
-        ? _modelsService?.modelIdsFor(providerId: provider?.id ?? providerId) ??
-              const []
+    // Account (linked OAuth) rows can list their models too; the live cache
+    // only exists after refreshModelCatalog read a usable token.
+    final canUseLive =
+        provider != null &&
+        (provider.apiKey.trim().isNotEmpty ||
+            isOfficialClaudeProvider(provider));
+    final live = canUseLive
+        ? _modelsService?.modelIdsFor(providerId: provider.id) ?? const []
         : const <String>[];
     if (live.isNotEmpty) return live;
     return ClaudeModelCatalog.knownModelsForProviderId(
@@ -223,12 +228,24 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     AppProviderConfig? provider,
     String? executable,
     bool forceRefresh = false,
-  }) {
+  }) async {
     final service = _modelsService;
     if (service == null || provider == null) return Future.value();
-    return service.ensureLoaded(
+    var accessToken = '';
+    if (provider.apiKey.trim().isEmpty && isOfficialClaudeProvider(provider)) {
+      // Subscription rows only expose models through the OAuth token.
+      accessToken =
+          await _service?.readAccessToken(
+            providerId,
+            binding: resolveCredentialBinding(provider),
+          ) ??
+          '';
+      if (accessToken.isEmpty) return;
+    }
+    await service.ensureLoaded(
       providerId: providerId,
       provider: provider,
+      accessToken: accessToken,
       forceRefresh: forceRefresh,
     );
   }

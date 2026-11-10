@@ -3,7 +3,7 @@ import 'package:teampilot/services/cli/registry/capabilities/provider_capability
 import 'package:teampilot/services/cli/codex/capabilities/provider.dart';
 
 void main() {
-  const capability = CodexProviderCapability();
+  final capability = CodexProviderCapability();
 
   group('CodexProviderFormCapability', () {
     test('buildConfig writes model_reasoning_effort when set', () {

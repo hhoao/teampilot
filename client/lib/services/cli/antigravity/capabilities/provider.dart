@@ -18,21 +18,29 @@ import '../../registry/capabilities/interactive_login_capability.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../provider/antigravity_login_dialog.dart';
 import '../provider/antigravity_model_catalog.dart';
+import '../provider/antigravity_models_service.dart';
 import '../provider/antigravity_remote_login_dialog.dart';
 import '../provider/antigravity_provider_settings_resolver.dart';
 import '../provider_presets.dart';
 
 final class _AntigravityCatalogSource implements ModelCatalogSource {
-  const _AntigravityCatalogSource();
+  const _AntigravityCatalogSource(this._modelsService);
+
+  final AntigravityModelsService? _modelsService;
 
   @override
   List<String> modelsFor({
     required AppProviderConfig? provider,
     required String providerId,
-  }) => AntigravityModelCatalog.modelsFor(
-    provider: provider,
-    providerId: providerId,
-  );
+  }) {
+    final live =
+        _modelsService?.modelIdsFor(providerId: providerId) ?? const [];
+    if (live.isNotEmpty) return live;
+    return AntigravityModelCatalog.modelsFor(
+      provider: provider,
+      providerId: providerId,
+    );
+  }
 }
 
 /// How a provider row authenticates against the Antigravity ACP adapter.
@@ -79,12 +87,18 @@ const _authModeConfigKey = 'authMode';
 /// (`GEMINI_API_KEY`) through [SessionHomeContribution.environment].
 final class AntigravityProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
-    implements ProviderCapability, InteractiveCliLoginCapability {
-  const AntigravityProviderCapability({this.storage});
+    implements
+        ProviderCapability,
+        RefreshableProviderModelCapability,
+        InteractiveCliLoginCapability {
+  const AntigravityProviderCapability({this.storage, this.modelsService});
 
   /// Home control-plane storage injected at registry construction; required to
   /// read the provider catalog and to host the login terminal.
   final HomeStorage? storage;
+
+  /// Live `agy models` catalog; absent in the pre-configure registry.
+  final AntigravityModelsService? modelsService;
 
   static const _modelProviderApiKey = 'gemini';
 
@@ -122,13 +136,13 @@ final class AntigravityProviderCapability extends CatalogModelCapability
   @override
   String defaultApiKeyField() => 'api_key';
 
-  // ---- ProviderModelCapability (static catalog) ----
+  // ---- ProviderModelCapability (live `agy models`, static fallback) ----
   @override
   bool get supportsModelTiers => false;
 
   @override
-  List<ModelCatalogSource> get catalogSources => const [
-    _AntigravityCatalogSource(),
+  List<ModelCatalogSource> get catalogSources => [
+    _AntigravityCatalogSource(modelsService),
   ];
 
   @override
@@ -136,7 +150,8 @@ final class AntigravityProviderCapability extends CatalogModelCapability
       ProviderModelPickerMode.catalogWithCustomEntry;
 
   @override
-  Listenable get catalogUpdates => _emptyCatalogUpdates;
+  Listenable get catalogUpdates =>
+      modelsService?.catalogUpdates ?? _emptyCatalogUpdates;
 
   @override
   Future<void> refreshModelCatalog({
@@ -144,7 +159,15 @@ final class AntigravityProviderCapability extends CatalogModelCapability
     AppProviderConfig? provider,
     String? executable,
     bool forceRefresh = false,
-  }) async {}
+  }) {
+    final service = modelsService;
+    if (service == null) return Future.value();
+    return service.ensureLoaded(
+      providerId: providerId,
+      executable: executable,
+      forceRefresh: forceRefresh,
+    );
+  }
 
   // ---- ProviderCredentialCapability (Google account via agy login) ----
   @override

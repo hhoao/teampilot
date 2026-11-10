@@ -97,6 +97,67 @@ void main() {
     expect(request.headers['anthropic-version'], '2023-06-01');
   });
 
+  test('Anthropic OAuth bearer token authenticates model listing', () async {
+    late http.Request request;
+    final service = ApiModelCatalogService(
+      storage: fakeHomeStorage(),
+      protocol: ApiModelCatalogProtocol.anthropic,
+      fs: InMemoryFilesystem(),
+      basePath: '/data/tp',
+      cacheDirectory: 'claude_models',
+      httpClient: MockClient((next) async {
+        request = next;
+        return http.Response('{"data":[{"id":"claude-opus-5-5"}]}', 200);
+      }),
+    );
+
+    await service.ensureLoaded(
+      providerId: 'claude-official',
+      provider: const AppProviderConfig(
+        id: 'claude-official',
+        cli: CliTool.claude,
+        name: 'Claude',
+        isOfficial: true,
+      ),
+      accessToken: 'oauth-token',
+    );
+
+    expect(request.headers['authorization'], 'Bearer oauth-token');
+    expect(request.headers['anthropic-beta'], 'oauth-2025-04-20');
+    expect(request.headers.containsKey('x-api-key'), isFalse);
+    expect(service.modelIdsFor(providerId: 'claude-official'), [
+      'claude-opus-5-5',
+    ]);
+  });
+
+  test('no request without an API key or OAuth token', () async {
+    var requests = 0;
+    final service = ApiModelCatalogService(
+      storage: fakeHomeStorage(),
+      protocol: ApiModelCatalogProtocol.anthropic,
+      fs: InMemoryFilesystem(),
+      basePath: '/data/tp',
+      cacheDirectory: 'claude_models',
+      httpClient: MockClient((_) async {
+        requests++;
+        return http.Response('{}', 200);
+      }),
+    );
+
+    await service.ensureLoaded(
+      providerId: 'claude-official',
+      provider: const AppProviderConfig(
+        id: 'claude-official',
+        cli: CliTool.claude,
+        name: 'Claude',
+        isOfficial: true,
+      ),
+    );
+
+    expect(requests, 0);
+    expect(service.modelIdsFor(providerId: 'claude-official'), isEmpty);
+  });
+
   test('successful refresh writes cache and notifies listeners', () async {
     final fs = InMemoryFilesystem();
     var notifications = 0;

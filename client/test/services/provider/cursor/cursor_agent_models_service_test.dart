@@ -26,4 +26,36 @@ void main() {
     expect(service.modelIdsFor(), ['gpt-5.2']);
     expect(service.defaultModelIdFor(), 'gpt-5.2');
   });
+
+  test('a cold probe completes and caches the parsed ids', () async {
+    final fs = InMemoryFilesystem();
+    var calls = 0;
+    final service = CursorAgentModelsService(
+      fs: fs,
+      basePath: '/data/tp',
+      storage: fakeHomeStorage(filesystem: fs),
+      processRunner: (_, _, {environment, workingDirectory}) async {
+        calls++;
+        return const CursorAgentModelsProcessResult(
+          exitCode: 0,
+          stdout:
+              'Available models\n'
+              'gpt-5.2 - GPT-5.2\n'
+              'sonnet-4.6 - Sonnet 4.6\n'
+              'Tip: use --model to switch\n',
+          stderr: '',
+        );
+      },
+    );
+
+    await service
+        .ensureLoaded(providerId: 'cursor-account')
+        .timeout(const Duration(seconds: 2));
+
+    expect(calls, 1);
+    expect(service.modelIdsFor(providerId: 'cursor-account'), [
+      'gpt-5.2',
+      'sonnet-4.6',
+    ]);
+  });
 }
