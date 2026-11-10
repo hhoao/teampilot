@@ -76,8 +76,10 @@ class GrokDashboardUsageAdapter implements ManagedProviderUsageAdapter {
         ManagedProviderUsageQueryErrorCode.missingCredential,
       );
     }
-    final accountId = values['accountId'] ?? '';
-    return 'WorkosCursorSessionToken=$accountId::$accessToken';
+    return expandHttpJsonTemplate(
+      'WorkosCursorSessionToken={accountId}::{accessToken}',
+      values,
+    );
   }
 
   static Map<String, String> _scopeToValues(ProviderCredentialScope scope) {

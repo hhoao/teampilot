@@ -231,6 +231,56 @@ void main() {
     expect(http.requests, isEmpty);
   });
 
+  test('fills accountId from jwt sub when the scope omits it', () async {
+    final payload = base64Url
+        .encode(utf8.encode('{"sub":"user_01ABC"}'))
+        .replaceAll('=', '');
+    final jwt = 'eyJhbGciOiJub25lIn0.$payload.sig';
+    final http = _QueueHttp([_usageOk, _prepaidOk]);
+
+    await fetch(
+      http,
+      reader: _CursorReader(_Scope({'accessToken': jwt})),
+    );
+
+    expect(
+      http.requests.first.headers['Cookie'],
+      'WorkosCursorSessionToken=user_01ABC::$jwt',
+    );
+  });
+
+  test('drops empty accountId colons in the session cookie', () async {
+    final http = _QueueHttp([_usageOk, _prepaidOk]);
+
+    await fetch(
+      http,
+      reader: const _CursorReader(_Scope({'accessToken': 'tok'})),
+    );
+
+    expect(
+      http.requests.first.headers['Cookie'],
+      'WorkosCursorSessionToken=tok',
+    );
+  });
+
+  test('usage-status 403 is authenticationFailed and hides the token', () async {
+    final http = _QueueHttp([
+      const ProviderUsageHttpResponse(statusCode: 403, body: 'jwt-token'),
+    ]);
+
+    try {
+      await fetch(http);
+      fail('expected the fetch to fail');
+    } on ManagedProviderUsageQueryError catch (error) {
+      expect(
+        error.code,
+        ManagedProviderUsageQueryErrorCode.authenticationFailed,
+      );
+      expect(error.toString(), isNot(contains('jwt-token')));
+    }
+    expect(http.requests, hasLength(1));
+  });
+
   test('usage-status 500 maps to httpFailed', () async {
     final http = _QueueHttp([
       const ProviderUsageHttpResponse(statusCode: 500, body: '{}'),
