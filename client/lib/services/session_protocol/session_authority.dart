@@ -243,6 +243,48 @@ final class SessionAuthority {
         );
       }
     }
+    if (intent.op == 'session.remove') {
+      final workspaceId = intent.workspaceId.trim();
+      final sessionId = intent.sessionId.trim();
+      if (workspaceId.isEmpty || sessionId.isEmpty) {
+        return SessionIntentResult(
+          id: intent.id,
+          status: SessionIntentStatus.rejected,
+          epoch: epoch,
+          code: 'session_row_required',
+        );
+      }
+      try {
+        await _controlPort.removeSession(
+          workspaceId: workspaceId,
+          sessionId: sessionId,
+        );
+        final delta = publishSessionList(
+          workspaceId: workspaceId,
+          removed: [sessionId],
+        );
+        return SessionIntentResult(
+          id: intent.id,
+          status: SessionIntentStatus.applied,
+          epoch: epoch,
+          revision: delta.revision,
+        );
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '[session-authority] session.remove failed workspace=$workspaceId '
+          'session=$sessionId',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return SessionIntentResult(
+          id: intent.id,
+          status: SessionIntentStatus.rejected,
+          epoch: epoch,
+          code: 'control_failed',
+          message: '$error',
+        );
+      }
+    }
     final session = snapshot(intent.sessionId);
     if (session == null) {
       return SessionIntentResult(

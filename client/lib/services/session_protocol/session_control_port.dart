@@ -22,4 +22,10 @@ abstract interface class SessionControlPort {
     required String workspaceId,
     required Map<String, Object?> entry,
   });
+
+  /// Removes a session row created on another device.
+  Future<void> removeSession({
+    required String workspaceId,
+    required String sessionId,
+  });
 }

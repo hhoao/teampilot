@@ -12,6 +12,7 @@ final class _Control implements SessionControlPort {
   int cancels = 0;
   final List<String> refreshes = [];
   final List<Map<String, Object?>> adopted = [];
+  final List<String> removed = [];
 
   @override
   Future<void> cancelTurn({
@@ -32,6 +33,14 @@ final class _Control implements SessionControlPort {
     required Map<String, Object?> entry,
   }) async {
     adopted.add(entry);
+  }
+
+  @override
+  Future<void> removeSession({
+    required String workspaceId,
+    required String sessionId,
+  }) async {
+    removed.add(sessionId);
   }
 }
 
@@ -161,6 +170,16 @@ void main() {
       await _waitFor(() => sessionLists.isNotEmpty);
       expect(sessionLists.single.workspaceId, 'ws1');
       expect(sessionLists.single.upserted, [entry]);
+
+      final removed = await client.removeSession(
+        workspaceId: 'ws1',
+        sessionId: 's-new',
+      );
+      expect(removed.status, SessionIntentStatus.applied);
+      expect(control.removed, ['s-new']);
+      await _waitFor(() => sessionLists.length == 2);
+      expect(sessionLists.last.workspaceId, 'ws1');
+      expect(sessionLists.last.removed, ['s-new']);
 
       authority.publishContentInvalidated(sessionId: 's1');
       await _waitFor(() => contents.isNotEmpty);
