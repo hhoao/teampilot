@@ -371,10 +371,7 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
               modelId: model,
             ),
             label: modelLabel?.call(group.cli, p.id, model) ?? model,
-            subtitle: switch (modelTooltip?.call(group.cli, p.id, model)) {
-              final text? => Text(text),
-              null => null,
-            },
+            subtitleSuffix: modelTooltip?.call(group.cli, p.id, model),
             children: [
               TpActionMenuSpec.item(
                 value: CascadeModelPick(
@@ -408,6 +405,7 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
               modelId: model,
             ),
             label: modelLabel?.call(group.cli, p.id, model) ?? model,
+            subtitleSuffix: modelTooltip?.call(group.cli, p.id, model),
             tooltip: modelTooltip?.call(group.cli, p.id, model),
             tooltipPlacement: TpTooltipPlacement.right,
           ),
