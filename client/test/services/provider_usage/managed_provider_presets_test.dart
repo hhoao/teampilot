@@ -12,6 +12,8 @@ void main() {
       'codebuddy',
       'deepseek',
       'opencode-go',
+      'qoder',
+      'qoder-cn',
     ]);
 
     final codex = managedProviderPresetById('codex')!;
@@ -72,6 +74,32 @@ void main() {
     expect(preset.template.credentialRef, isNull);
   });
 
+  test('Qoder presets are PAT-backed and region-specific', () {
+    final global = managedProviderPresetById('qoder')!;
+    expect(global.template.name, 'Qoder');
+    expect(global.template.kind, ManagedProviderKind.subscriptionQuota);
+    expect(global.template.adapterId, 'qoder-usage');
+    expect(
+      global.template.endpointConfig.url,
+      'https://openapi.qoder.sh/api/v2/quota/usage',
+    );
+    expect(global.template.endpointConfig.method, 'GET');
+    expect(global.template.endpointConfig.credentialField, 'apiKey');
+    expect(global.template.endpointConfig.credentialSource, 'secret');
+    expect(global.template.displayConfig.unit, 'credits');
+    expect(global.schema?.isFieldEditable('endpointConfig.url'), isTrue);
+    expect(global.schema?.isFieldEditable('apiKey'), isTrue);
+    expect(global.schema?.hasField('endpointConfig.windows'), isFalse);
+
+    final cn = managedProviderPresetById('qoder-cn')!;
+    expect(cn.template.name, 'Qoder CN');
+    expect(
+      cn.template.endpointConfig.url,
+      'https://openapi.qoder.com.cn/api/v2/quota/usage',
+    );
+    expect(cn.template.adapterId, 'qoder-usage');
+  });
+
   test('lookup returns null for unknown preset ids', () {
     expect(managedProviderPresetById('not-a-preset'), isNull);
   });
@@ -121,6 +149,8 @@ void main() {
       'codebuddy',
       'deepseek',
       'opencode-go',
+      'qoder',
+      'qoder-cn',
       kManagedProviderQuickPresetCustomId,
     ]);
   });

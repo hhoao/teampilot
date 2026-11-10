@@ -153,6 +153,110 @@ const _deepSeekEditorSchema = ManagedProviderEditorSchema(
   firstQuery: true,
 );
 
+ManagedProviderEditorSchema _qoderEditorSchema({
+  required String name,
+  required String url,
+}) => ManagedProviderEditorSchema(
+  sections: const {
+    ManagedProviderEditorSection.basics,
+    ManagedProviderEditorSection.query,
+    ManagedProviderEditorSection.credentials,
+    ManagedProviderEditorSection.display,
+    ManagedProviderEditorSection.advanced,
+  },
+  fields: [
+    ManagedProviderEditorField(
+      key: 'name',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: true,
+      defaultValue: name,
+    ),
+    const ManagedProviderEditorField(
+      key: 'kind',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: true,
+      defaultValue: 'subscriptionQuota',
+      readOnly: true,
+    ),
+    const ManagedProviderEditorField(
+      key: 'adapterId',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: true,
+      defaultValue: 'qoder-usage',
+      readOnly: true,
+    ),
+    ManagedProviderEditorField(
+      key: 'endpointConfig.url',
+      kind: ManagedProviderEditorFieldKind.url,
+      required: true,
+      defaultValue: url,
+    ),
+    const ManagedProviderEditorField(
+      key: 'endpointConfig.method',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: true,
+      defaultValue: 'GET',
+      readOnly: true,
+    ),
+    const ManagedProviderEditorField(
+      key: 'apiKey',
+      kind: ManagedProviderEditorFieldKind.secret,
+      required: true,
+    ),
+    const ManagedProviderEditorField(
+      key: 'displayConfig.unit',
+      kind: ManagedProviderEditorFieldKind.text,
+      required: false,
+      defaultValue: 'credits',
+    ),
+    const ManagedProviderEditorField(
+      key: 'displayConfig.decimalPlaces',
+      kind: ManagedProviderEditorFieldKind.integer,
+      required: false,
+      defaultValue: '2',
+    ),
+    const ManagedProviderEditorField(
+      key: 'displayConfig.showPercent',
+      kind: ManagedProviderEditorFieldKind.toggle,
+      required: false,
+      defaultValue: 'false',
+    ),
+    const ManagedProviderEditorField(
+      key: 'enabled',
+      kind: ManagedProviderEditorFieldKind.toggle,
+      required: false,
+      defaultValue: 'true',
+    ),
+  ],
+  firstQuery: true,
+);
+
+ManagedProviderPreset _qoderPreset({
+  required String id,
+  required String name,
+  required String url,
+}) => ManagedProviderPreset(
+  id: id,
+  labelId: id,
+  hintId: id,
+  template: ManagedProvider(
+    id: '',
+    name: name,
+    kind: ManagedProviderKind.subscriptionQuota,
+    adapterId: 'qoder-usage',
+    endpointConfig: ManagedProviderEndpointConfig(
+      url: url,
+      method: 'GET',
+      credentialField: 'apiKey',
+    ),
+    displayConfig: ManagedProviderDisplayConfig(
+      unit: 'credits',
+      decimalPlaces: 2,
+    ),
+  ),
+  schema: _qoderEditorSchema(name: name, url: url),
+);
+
 final List<ManagedProviderPreset> builtInManagedProviderPresets =
     List.unmodifiable([
       ManagedProviderPreset(
@@ -393,6 +497,16 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
             ],
           ),
         ),
+      ),
+      _qoderPreset(
+        id: 'qoder',
+        name: 'Qoder',
+        url: 'https://openapi.qoder.sh/api/v2/quota/usage',
+      ),
+      _qoderPreset(
+        id: 'qoder-cn',
+        name: 'Qoder CN',
+        url: 'https://openapi.qoder.com.cn/api/v2/quota/usage',
       ),
     ]);
 
