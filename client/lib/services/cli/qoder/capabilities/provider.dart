@@ -249,7 +249,7 @@ final class QoderProviderCapability extends CatalogModelCapability
     ProviderFormSectionProps props,
   ) {
     return QoderProviderFormSection(
-      cli: flavor.cli,
+      flavor: flavor,
       effort: props.extra[QoderFormExtraKeys.effort]?.toString() ?? '',
       contextWindow:
           props.extra[QoderFormExtraKeys.contextWindow]?.toString() ?? '',
