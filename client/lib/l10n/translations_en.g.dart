@@ -8364,9 +8364,6 @@ class AppLocalizations$sshProfile$en {
 	/// en: 'Private key'
 	String get formIdentityFile => 'Private key';
 
-	/// en: 'Import…'
-	String get formIdentityFileBrowse => 'Import…';
-
 	/// en: 'Paste the private key, or import it from a file.'
 	String get formIdentityFileHelper => 'Paste the private key, or import it from a file.';
 
@@ -8378,9 +8375,6 @@ class AppLocalizations$sshProfile$en {
 
 	/// en: 'Could not read the selected file; paste the key instead'
 	String get formIdentityFileImportFailed => 'Could not read the selected file; paste the key instead';
-
-	/// en: 'Identity file not found'
-	String get formIdentityFileMissing => 'Identity file not found';
 
 	/// en: 'Label'
 	String get formLabel => 'Label';
@@ -12657,12 +12651,10 @@ extension on AppLocalizations {
 			'sshProfile.formHost' => 'Host or alias',
 			'sshProfile.formHostHint' => 'server, deploy@server:2222',
 			'sshProfile.formIdentityFile' => 'Private key',
-			'sshProfile.formIdentityFileBrowse' => 'Import…',
 			'sshProfile.formIdentityFileHelper' => 'Paste the private key, or import it from a file.',
 			'sshProfile.formIdentityFileHint' => '-----BEGIN OPENSSH PRIVATE KEY-----',
 			'sshProfile.formIdentityFileImport' => 'Import from file',
 			'sshProfile.formIdentityFileImportFailed' => 'Could not read the selected file; paste the key instead',
-			'sshProfile.formIdentityFileMissing' => 'Identity file not found',
 			'sshProfile.formLabel' => 'Label',
 			'sshProfile.formLabelHint' => 'My server',
 			'sshProfile.formPassphrase' => 'Key passphrase',
@@ -12683,10 +12675,10 @@ extension on AppLocalizations {
 			'sshProfile.statusAuthFailed' => 'Authentication failed',
 			'sshProfile.statusConnected' => 'Connected',
 			'sshProfile.statusConnecting' => 'Connecting…',
-			_ => null,
-		} ?? switch (path) {
 			'sshProfile.statusDisconnected' => 'Disconnected',
 			'sshProfile.statusError' => 'Error',
+			_ => null,
+		} ?? switch (path) {
 			'sshProfile.statusReconnecting' => 'Reconnecting…',
 			'sshProfile.test' => 'Test',
 			'sshProfile.testFailed' => 'Connection test failed',
@@ -13197,10 +13189,10 @@ extension on AppLocalizations {
 			'worktree.deleteFailed' => ({required Object error}) => 'Failed to remove worktree: ${error}',
 			'worktree.deleteForce' => 'Force-remove even if it has uncommitted changes',
 			'worktree.deleteSessionsToo' => ({required Object count}) => 'Also delete the ${count} conversations in this worktree',
-			_ => null,
-		} ?? switch (path) {
 			'worktree.deleteTitle' => 'Remove worktree',
 			'worktree.menuCopyPath' => 'Copy path',
+			_ => null,
+		} ?? switch (path) {
 			'worktree.menuRemove' => 'Remove worktree',
 			'worktree.more' => 'More',
 			'worktree.newConversationHere' => 'New conversation here',

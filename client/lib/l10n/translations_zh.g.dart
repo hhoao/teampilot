@@ -3286,12 +3286,10 @@ class _AppLocalizations$sshProfile$zh extends AppLocalizations$sshProfile$en {
 	@override String get formHost => '主机或别名';
 	@override String get formHostHint => 'server、deploy@server:2222';
 	@override String get formIdentityFile => '私钥内容';
-	@override String get formIdentityFileBrowse => '导入…';
 	@override String get formIdentityFileHelper => '可直接粘贴私钥，或从文件导入。';
 	@override String get formIdentityFileHint => '-----BEGIN OPENSSH PRIVATE KEY-----';
 	@override String get formIdentityFileImport => '从文件导入';
 	@override String get formIdentityFileImportFailed => '无法读取所选文件，请直接粘贴私钥';
-	@override String get formIdentityFileMissing => '找不到身份文件';
 	@override String get formLabel => '标签';
 	@override String get formLabelHint => '我的服务器';
 	@override String get formPassphrase => '密钥口令';
@@ -6481,12 +6479,10 @@ extension on AppLocalizationsZh {
 			'sshProfile.formHost' => '主机或别名',
 			'sshProfile.formHostHint' => 'server、deploy@server:2222',
 			'sshProfile.formIdentityFile' => '私钥内容',
-			'sshProfile.formIdentityFileBrowse' => '导入…',
 			'sshProfile.formIdentityFileHelper' => '可直接粘贴私钥，或从文件导入。',
 			'sshProfile.formIdentityFileHint' => '-----BEGIN OPENSSH PRIVATE KEY-----',
 			'sshProfile.formIdentityFileImport' => '从文件导入',
 			'sshProfile.formIdentityFileImportFailed' => '无法读取所选文件，请直接粘贴私钥',
-			'sshProfile.formIdentityFileMissing' => '找不到身份文件',
 			'sshProfile.formLabel' => '标签',
 			'sshProfile.formLabelHint' => '我的服务器',
 			'sshProfile.formPassphrase' => '密钥口令',
@@ -6507,10 +6503,10 @@ extension on AppLocalizationsZh {
 			'sshProfile.statusAuthFailed' => '认证失败',
 			'sshProfile.statusConnected' => '已连接',
 			'sshProfile.statusConnecting' => '连接中…',
-			_ => null,
-		} ?? switch (path) {
 			'sshProfile.statusDisconnected' => '未连接',
 			'sshProfile.statusError' => '错误',
+			_ => null,
+		} ?? switch (path) {
 			'sshProfile.statusReconnecting' => '重连中…',
 			'sshProfile.test' => '测试',
 			'sshProfile.testFailed' => '连接测试失败',
@@ -7021,10 +7017,10 @@ extension on AppLocalizationsZh {
 			'worktree.deleteFailed' => ({required Object error}) => '删除 worktree 失败：${error}',
 			'worktree.deleteForce' => '即使有未提交改动也强制删除',
 			'worktree.deleteSessionsToo' => ({required Object count}) => '同时删除该 worktree 下的 ${count} 个会话',
-			_ => null,
-		} ?? switch (path) {
 			'worktree.deleteTitle' => '删除 worktree',
 			'worktree.menuCopyPath' => '复制路径',
+			_ => null,
+		} ?? switch (path) {
 			'worktree.menuRemove' => '删除 worktree',
 			'worktree.more' => '更多',
 			'worktree.newConversationHere' => '在此新建会话',
