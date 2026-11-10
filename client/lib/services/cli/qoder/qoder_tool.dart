@@ -27,6 +27,7 @@ import '../registry/resources/default_resource_capability.dart';
 import 'capabilities/acp.dart';
 import 'capabilities/defaults.dart';
 import 'capabilities/executable.dart';
+import 'capabilities/executable_cn.dart';
 import 'capabilities/headless.dart';
 import 'capabilities/history/ai_history_capability.dart';
 import 'capabilities/hook_writer.dart';
@@ -36,39 +37,70 @@ import 'capabilities/prompt.dart';
 import 'capabilities/provider.dart';
 import 'capabilities/session.dart';
 import 'capabilities/usage/session_usage.dart';
+import 'qoder_flavor.dart';
 
-/// Qoder CLI (`qodercli`), ACP-only.
+/// Qoder CLI (`qodercli` or `qoderclicn`), ACP-only.
 final class QoderCliTool implements CliToolDefinition {
-  const QoderCliTool({
-    this.teamBehavior = const QoderTeamBehavior(),
-    this.executable = const QoderExecutableCapability(),
-    this.session = const QoderCliSessionCapability(),
-    this.provider = const QoderProviderCapability(),
-    this.terminalBehavior = const QoderTerminalBehavior(),
-    this.memberConfigInspection = const DefaultMemberConfigInspection(),
-    this.plugin = const QoderPluginCapability(),
-    this.chatInteraction = const QoderChatInteraction(),
-    this.runtimeEvents = const QoderChatInteraction(),
-    this.skill = const DefaultSkillCapability(),
-    this.nativeCommands = const QoderNativeCommands(),
-    this.aiHistory = const QoderAiHistoryCapability(),
-    this.sessionUsage = const QoderSessionUsageCapability(),
-    this.userExtraArgs = const UserExtraArgsProvider(),
-    this.prompt = const QoderPromptCapability(),
-    this.mcp = const QoderMcpCapability(),
-    this.hookWriter = const QoderHookWriter(),
-    this.workspaceBaseInfo = const QoderWorkspaceBaseInfo(),
-    this.launchSecurity = const AcpAskFullAccessCliLaunchSecurityCapability(),
-    this.headless = const QoderHeadlessCapability(),
-    this.acp = const QoderAcpCapability(),
-    this.acpSettings = const DefaultAcpSettingsCapability(
+  QoderCliTool({
+    QoderFlavor flavor = QoderFlavor.global,
+    QoderTeamBehavior teamBehavior = const QoderTeamBehavior(),
+    CliExecutableCapability? executable,
+    CliSessionCapability session = const QoderCliSessionCapability(),
+    QoderProviderCapability? provider,
+    QoderTerminalBehavior terminalBehavior = const QoderTerminalBehavior(),
+    MemberConfigInspectionCapability memberConfigInspection =
+        const DefaultMemberConfigInspection(),
+    QoderPluginCapability plugin = const QoderPluginCapability(),
+    QoderChatInteraction chatInteraction = const QoderChatInteraction(),
+    QoderChatInteraction runtimeEvents = const QoderChatInteraction(),
+    SkillCapability skill = const DefaultSkillCapability(),
+    QoderNativeCommands nativeCommands = const QoderNativeCommands(),
+    QoderAiHistoryCapability? aiHistory,
+    QoderSessionUsageCapability? sessionUsage,
+    UserExtraArgsProvider userExtraArgs = const UserExtraArgsProvider(),
+    QoderPromptCapability? prompt,
+    QoderMcpCapability mcp = const QoderMcpCapability(),
+    QoderHookWriter? hookWriter,
+    QoderWorkspaceBaseInfo workspaceBaseInfo = const QoderWorkspaceBaseInfo(),
+    CliLaunchSecurityCapability launchSecurity =
+        const AcpAskFullAccessCliLaunchSecurityCapability(),
+    QoderHeadlessCapability? headless,
+    QoderAcpCapability? acp,
+    AcpSettingsCapability acpSettings = const DefaultAcpSettingsCapability(
       usesSeparateAdapter: false,
     ),
-    this.transport = const CliTransportCapability(
+    CliTransportCapability transport = const CliTransportCapability(
       supported: {CliTransport.acp},
     ),
-  });
+  }) : _flavor = flavor,
+       teamBehavior = teamBehavior,
+       executable = executable ?? qoderExecutableForFlavor(flavor),
+       session = session,
+       provider = provider ?? QoderProviderCapability(flavor: flavor),
+       terminalBehavior = terminalBehavior,
+       memberConfigInspection = memberConfigInspection,
+       plugin = plugin,
+       chatInteraction = chatInteraction,
+       runtimeEvents = runtimeEvents,
+       skill = skill,
+       nativeCommands = nativeCommands,
+       aiHistory = aiHistory ?? QoderAiHistoryCapability(flavor: flavor),
+       sessionUsage =
+           sessionUsage ?? QoderSessionUsageCapability(flavor: flavor),
+       userExtraArgs = userExtraArgs,
+       prompt = prompt ?? QoderPromptCapability(flavor: flavor),
+       mcp = mcp,
+       hookWriter = hookWriter ?? QoderHookWriter(flavor: flavor),
+       workspaceBaseInfo = workspaceBaseInfo,
+       launchSecurity = launchSecurity,
+       headless = headless ?? QoderHeadlessCapability(flavor: flavor),
+       acp =
+           acp ??
+           QoderAcpCapability(transcriptFallbackPrefix: flavor.cli.value),
+       acpSettings = acpSettings,
+       transport = transport;
 
+  final QoderFlavor _flavor;
   final ProviderCapability provider;
   final CliSessionCapability session;
   final CliExecutableCapability executable;
@@ -94,7 +126,7 @@ final class QoderCliTool implements CliToolDefinition {
   final CliTransportCapability transport;
 
   @override
-  CliTool get id => CliTool.qoder;
+  CliTool get id => _flavor.cli;
 
   @override
   bool get isLaunchSupported => true;
@@ -126,3 +158,8 @@ final class QoderCliTool implements CliToolDefinition {
     transport,
   ];
 }
+
+CliExecutableCapability qoderExecutableForFlavor(QoderFlavor flavor) =>
+    flavor.isCn
+        ? const QoderCnExecutableCapability()
+        : const QoderExecutableCapability();

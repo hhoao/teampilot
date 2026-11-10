@@ -193,7 +193,8 @@ final class QoderProviderCapability extends CatalogModelCapability
   bool get usesLlmConfigJsonPreview => false;
 
   @override
-  List<AppProviderPreset> get presets => QoderProviderPresets.all;
+  List<AppProviderPreset> get presets =>
+      flavor.isCn ? QoderProviderPresets.cn : QoderProviderPresets.global;
 
   @override
   Map<String, Object?> defaultConfig() => const {};

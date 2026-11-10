@@ -28,7 +28,13 @@ void main() {
     expect(CliTool.tryParse('Qoder'), CliTool.qoder);
   });
 
-  test('CliTool.values length is 9 after adding antigravity and qoder', () {
-    expect(CliTool.values.length, 9);
+  test('CliTool has a qoder-cn value that parses round-trip', () {
+    expect(CliTool.qoderCn.value, 'qoder-cn');
+    expect(CliTool.tryParse('qoder-cn'), CliTool.qoderCn);
+    expect(CliTool.tryParse('Qoder-CN'), CliTool.qoderCn);
+  });
+
+  test('CliTool.values length is 10 after adding qoder-cn', () {
+    expect(CliTool.values.length, 10);
   });
 }

@@ -466,6 +466,7 @@ String _sectionTitle(AppLocalizations l10n, CliTool cli) {
     CliTool.codebuddy => l10n.appProvider.toolCodebuddy,
     CliTool.antigravity => l10n.appProvider.toolAntigravity,
     CliTool.qoder => l10n.appProvider.toolQoder,
+    CliTool.qoderCn => l10n.appProvider.toolQoderCn,
   };
 }
 
@@ -485,6 +486,7 @@ String _actionLabel(
       CliTool.codebuddy => l10n.codebuddy.credentialsLogin,
       CliTool.antigravity => l10n.antigravity.credentialsLogin,
       CliTool.qoder => l10n.qoder.credentialsLogin,
+      CliTool.qoderCn => l10n.qoder.credentialsLogin,
     },
     ProviderCredentialActionKind.importGlobal => switch (cli) {
       CliTool.claude => l10n.claude.officialCredentialsImportGlobal,
@@ -496,6 +498,7 @@ String _actionLabel(
       CliTool.codebuddy => l10n.appProvider.toolCodebuddy,
       CliTool.antigravity => l10n.appProvider.toolAntigravity,
       CliTool.qoder => l10n.appProvider.toolQoder,
+      CliTool.qoderCn => l10n.appProvider.toolQoderCn,
     },
     ProviderCredentialActionKind.importFile => switch (cli) {
       CliTool.claude => l10n.claude.officialCredentialsImportFile,
@@ -507,6 +510,7 @@ String _actionLabel(
       CliTool.codebuddy => l10n.appProvider.toolCodebuddy,
       CliTool.antigravity => l10n.appProvider.toolAntigravity,
       CliTool.qoder => l10n.appProvider.toolQoder,
+      CliTool.qoderCn => l10n.appProvider.toolQoderCn,
     },
     ProviderCredentialActionKind.importDirectory =>
       l10n.cursor.credentialsImportFile,
@@ -520,6 +524,7 @@ String _actionLabel(
       CliTool.codebuddy => l10n.appProvider.toolCodebuddy,
       CliTool.antigravity => l10n.appProvider.toolAntigravity,
       CliTool.qoder => l10n.appProvider.toolQoder,
+      CliTool.qoderCn => l10n.appProvider.toolQoderCn,
     },
   };
 }
@@ -550,6 +555,7 @@ String _revokeConfirmMessage(
     CliTool.codebuddy => l10n.appProvider.toolCodebuddy,
     CliTool.antigravity => l10n.appProvider.toolAntigravity,
     CliTool.qoder => l10n.appProvider.toolQoder,
+    CliTool.qoderCn => l10n.appProvider.toolQoderCn,
   };
 }
 

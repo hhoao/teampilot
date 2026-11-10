@@ -153,6 +153,7 @@ class _HookImportDialogState extends State<HookImportDialog> {
               CliTool.claude,
               CliTool.codebuddy,
               CliTool.qoder,
+              CliTool.qoderCn,
               CliTool.flashskyai,
               CliTool.codex,
               CliTool.cursor,

@@ -69,6 +69,10 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'SessionStart',
       ),
+      CliTool.qoderCn: HookCliSupport(
+        supported: true,
+        nativeEvent: 'SessionStart',
+      ),
       CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'SessionStart',
@@ -96,6 +100,10 @@ abstract final class HookEventCapability {
         nativeEvent: 'SessionEnd',
       ),
       CliTool.qoder: HookCliSupport(supported: true, nativeEvent: 'SessionEnd'),
+      CliTool.qoderCn: HookCliSupport(
+        supported: true,
+        nativeEvent: 'SessionEnd',
+      ),
       CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'SessionEnd',
@@ -116,6 +124,10 @@ abstract final class HookEventCapability {
         nativeEvent: 'UserPromptSubmit',
       ),
       CliTool.qoder: HookCliSupport(
+        supported: true,
+        nativeEvent: 'UserPromptSubmit',
+      ),
+      CliTool.qoderCn: HookCliSupport(
         supported: true,
         nativeEvent: 'UserPromptSubmit',
       ),
@@ -152,6 +164,10 @@ abstract final class HookEventCapability {
         nativeEvent: 'PreToolUse',
       ),
       CliTool.qoder: HookCliSupport(supported: true, nativeEvent: 'PreToolUse'),
+      CliTool.qoderCn: HookCliSupport(
+        supported: true,
+        nativeEvent: 'PreToolUse',
+      ),
       CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'PreToolUse',
@@ -181,6 +197,10 @@ abstract final class HookEventCapability {
         nativeEvent: 'PostToolUse',
       ),
       CliTool.qoder: HookCliSupport(
+        supported: true,
+        nativeEvent: 'PostToolUse',
+      ),
+      CliTool.qoderCn: HookCliSupport(
         supported: true,
         nativeEvent: 'PostToolUse',
       ),
@@ -219,6 +239,10 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'PostToolUseFailure',
       ),
+      CliTool.qoderCn: HookCliSupport(
+        supported: true,
+        nativeEvent: 'PostToolUseFailure',
+      ),
       CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'PostToolUseFailure',
@@ -245,6 +269,10 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'PermissionRequest',
       ),
+      CliTool.qoderCn: HookCliSupport(
+        supported: true,
+        nativeEvent: 'PermissionRequest',
+      ),
       CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'PermissionRequest',
@@ -263,6 +291,7 @@ abstract final class HookEventCapability {
       CliTool.claude: HookCliSupport(supported: true, nativeEvent: 'Stop'),
       CliTool.codebuddy: HookCliSupport(supported: true, nativeEvent: 'Stop'),
       CliTool.qoder: HookCliSupport(supported: true, nativeEvent: 'Stop'),
+      CliTool.qoderCn: HookCliSupport(supported: true, nativeEvent: 'Stop'),
       CliTool.flashskyai: HookCliSupport(supported: true, nativeEvent: 'Stop'),
       CliTool.codex: HookCliSupport(supported: true, nativeEvent: 'Stop'),
       CliTool.cursor: HookCliSupport(supported: true, nativeEvent: 'stop'),
@@ -283,6 +312,10 @@ abstract final class HookEventCapability {
         nativeEvent: 'StopFailure',
       ),
       CliTool.qoder: HookCliSupport(
+        supported: true,
+        nativeEvent: 'StopFailure',
+      ),
+      CliTool.qoderCn: HookCliSupport(
         supported: true,
         nativeEvent: 'StopFailure',
       ),
@@ -339,6 +372,10 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'SubagentStop',
       ),
+      CliTool.qoderCn: HookCliSupport(
+        supported: true,
+        nativeEvent: 'SubagentStop',
+      ),
       CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'SubagentStop',
@@ -362,6 +399,10 @@ abstract final class HookEventCapability {
         nativeEvent: 'PreCompact',
       ),
       CliTool.qoder: HookCliSupport(supported: true, nativeEvent: 'PreCompact'),
+      CliTool.qoderCn: HookCliSupport(
+        supported: true,
+        nativeEvent: 'PreCompact',
+      ),
       CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'PreCompact',
@@ -382,6 +423,10 @@ abstract final class HookEventCapability {
         nativeEvent: 'Notification',
       ),
       CliTool.qoder: HookCliSupport(
+        supported: true,
+        nativeEvent: 'Notification',
+      ),
+      CliTool.qoderCn: HookCliSupport(
         supported: true,
         nativeEvent: 'Notification',
       ),

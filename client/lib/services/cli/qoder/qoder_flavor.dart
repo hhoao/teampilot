@@ -39,4 +39,18 @@ final class QoderFlavor {
     authNamespace: 'qoder',
     allowMachineAuthFallback: true,
   );
+
+  static const cn = QoderFlavor(
+    cli: CliTool.qoderCn,
+    executableName: 'qoderclicn',
+    displayName: 'Qoder CLI CN',
+    providerId: 'qoder-cn',
+    providerLabel: 'Qoder CN',
+    websiteUrl: 'https://qoder.com.cn',
+    installUrl: 'https://qoder.com.cn/install',
+    authNamespace: 'qoder-cn',
+    allowMachineAuthFallback: false,
+  );
+
+  bool get isCn => cli == CliTool.qoderCn;
 }
