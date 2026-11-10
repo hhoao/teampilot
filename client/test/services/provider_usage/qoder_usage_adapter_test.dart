@@ -66,10 +66,7 @@ void main() {
 
     final usage = http.requests.last;
     expect(usage.method, 'GET');
-    expect(
-      usage.uri.toString(),
-      'https://openapi.qoder.sh/api/v2/quota/usage',
-    );
+    expect(usage.uri.toString(), 'https://openapi.qoder.sh/api/v2/quota/usage');
     expect(usage.headers['authorization'], 'Bearer jt-test');
     expect(usage.headers['accept'], 'application/json');
     expect(usage.headers['user-agent'], 'teampilot-qoder-usage/1.0');
@@ -107,10 +104,7 @@ void main() {
   test('uses the CN openapi host when the preset URL is CN', () async {
     final http = _QueueHttp([_exchangeOk, _usageOk]);
 
-    await fetch(
-      http,
-      url: 'https://openapi.qoder.com.cn/api/v2/quota/usage',
-    );
+    await fetch(http, url: 'https://openapi.qoder.com.cn/api/v2/quota/usage');
 
     expect(http.requests.map((request) => request.uri.host), [
       'openapi.qoder.com.cn',
@@ -145,9 +139,7 @@ void main() {
 
     await expectLater(
       fetch(http, credentials: const {}),
-      throwsA(
-        queryError(ManagedProviderUsageQueryErrorCode.missingCredential),
-      ),
+      throwsA(queryError(ManagedProviderUsageQueryErrorCode.missingCredential)),
     );
     expect(http.requests, isEmpty);
   });
@@ -161,9 +153,7 @@ void main() {
       await expectLater(
         fetch(http),
         throwsA(
-          queryError(
-            ManagedProviderUsageQueryErrorCode.authenticationFailed,
-          ),
+          queryError(ManagedProviderUsageQueryErrorCode.authenticationFailed),
         ),
       );
       expect(http.requests, hasLength(1));
@@ -207,49 +197,58 @@ void main() {
     );
   });
 
-  test('exchange response without a token fails with responseParseFailed', () async {
-    final http = _QueueHttp([
-      const ProviderUsageHttpResponse(statusCode: 200, body: '{}'),
-    ]);
+  test(
+    'exchange response without a token fails with responseParseFailed',
+    () async {
+      final http = _QueueHttp([
+        const ProviderUsageHttpResponse(statusCode: 200, body: '{}'),
+      ]);
 
-    await expectLater(
-      fetch(http),
-      throwsA(
-        queryError(ManagedProviderUsageQueryErrorCode.responseParseFailed),
-      ),
-    );
-  });
+      await expectLater(
+        fetch(http),
+        throwsA(
+          queryError(ManagedProviderUsageQueryErrorCode.responseParseFailed),
+        ),
+      );
+    },
+  );
 
-  test('usage response that is not JSON fails with responseParseFailed', () async {
-    final http = _QueueHttp([
-      _exchangeOk,
-      const ProviderUsageHttpResponse(statusCode: 200, body: 'not-json'),
-    ]);
+  test(
+    'usage response that is not JSON fails with responseParseFailed',
+    () async {
+      final http = _QueueHttp([
+        _exchangeOk,
+        const ProviderUsageHttpResponse(statusCode: 200, body: 'not-json'),
+      ]);
 
-    await expectLater(
-      fetch(http),
-      throwsA(
-        queryError(ManagedProviderUsageQueryErrorCode.responseParseFailed),
-      ),
-    );
-  });
+      await expectLater(
+        fetch(http),
+        throwsA(
+          queryError(ManagedProviderUsageQueryErrorCode.responseParseFailed),
+        ),
+      );
+    },
+  );
 
-  test('usage response without buckets or percentage fails with responseParseFailed', () async {
-    final http = _QueueHttp([
-      _exchangeOk,
-      const ProviderUsageHttpResponse(
-        statusCode: 200,
-        body: '{"expiresAt":1790000000000}',
-      ),
-    ]);
+  test(
+    'usage response without buckets or percentage fails with responseParseFailed',
+    () async {
+      final http = _QueueHttp([
+        _exchangeOk,
+        const ProviderUsageHttpResponse(
+          statusCode: 200,
+          body: '{"expiresAt":1790000000000}',
+        ),
+      ]);
 
-    await expectLater(
-      fetch(http),
-      throwsA(
-        queryError(ManagedProviderUsageQueryErrorCode.responseParseFailed),
-      ),
-    );
-  });
+      await expectLater(
+        fetch(http),
+        throwsA(
+          queryError(ManagedProviderUsageQueryErrorCode.responseParseFailed),
+        ),
+      );
+    },
+  );
 
   test('renders only buckets present in the response', () async {
     final http = _QueueHttp([
@@ -272,8 +271,7 @@ void main() {
       _exchangeOk,
       const ProviderUsageHttpResponse(
         statusCode: 200,
-        body:
-            '{"orgResourcePackage":{"total":100,"used":10,"remaining":90}}',
+        body: '{"orgResourcePackage":{"total":100,"used":10,"remaining":90}}',
       ),
     ]);
 

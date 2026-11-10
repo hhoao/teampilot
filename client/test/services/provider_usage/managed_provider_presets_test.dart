@@ -162,5 +162,16 @@ void main() {
       expect(l10n.managedProviderPresetLabel(id), isNotEmpty, reason: id);
       expect(l10n.managedProviderPresetHint(id), isNotEmpty, reason: id);
     }
+
+    expect(l10n.managedProviderPresetLabel('qoder'), 'Qoder');
+    expect(l10n.managedProviderPresetLabel('qoder-cn'), 'Qoder CN');
+    expect(
+      l10n.managedProviderPresetHint('qoder-cn'),
+      contains('qoder.com.cn'),
+    );
+    expect(
+      l10n.managedProviderPresetHint('qoder'),
+      isNot(contains('qoder.com.cn')),
+    );
   });
 }

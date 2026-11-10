@@ -216,7 +216,8 @@ class QoderUsageAdapter implements ManagedProviderUsageAdapter {
   static bool _hasQuotaNumber(
     Map<String, Object?> bucket, {
     required String totalKey,
-  }) => _finiteNonNegative(bucket['used']) != null ||
+  }) =>
+      _finiteNonNegative(bucket['used']) != null ||
       _finiteNonNegative(bucket['remaining']) != null ||
       _finiteNonNegative(bucket[totalKey]) != null;
 
