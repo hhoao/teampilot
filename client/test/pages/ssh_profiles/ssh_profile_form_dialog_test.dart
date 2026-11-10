@@ -227,4 +227,31 @@ void main() {
     expect(entryId, isNotNull);
     expect(await h.vault.readField(entryId!, 'privateKey'), pem);
   });
+
+  testWidgets('reveals the saved password for a plane row with no vault link', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final h = await pumpEditor(tester, profile: _target);
+    await VaultCredentialCapture(vault: h.vault).captureSsh(
+      _target,
+      password: 's3cret',
+    );
+
+    // The dialog has two TpPasswordInput fields (passphrase, then password)
+    // and both toggles share the same key. The password field is second.
+    final toggles = find.byKey(const ValueKey('password-visibility-toggle'));
+    expect(toggles, findsNWidgets(2));
+    // The password field is last of seven; keep it in view before tapping.
+    await tester.ensureVisible(toggles.at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(toggles.at(1));
+    await tester.pumpAndSettle();
+
+    expect(find.text('s3cret'), findsOneWidget);
+  });
 }
