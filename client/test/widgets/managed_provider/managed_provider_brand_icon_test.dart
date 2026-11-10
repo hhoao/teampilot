@@ -51,6 +51,19 @@ void main() {
     );
   });
 
+  test('Grok host uses bundled grok', () {
+    expect(
+      resolveManagedProviderBrandIcon(
+        _provider(
+          name: 'Grok / Cursor / X',
+          url:
+              'https://grok.com/dashboard/api/dashboard/v2/usage-status?scope=user',
+        ).copyWith(kind: ManagedProviderKind.subscriptionQuota),
+      ),
+      const ManagedProviderBrandIconSpec.bundled('grok'),
+    );
+  });
+
   test('DeepSeek host or name uses bundled deepseek', () {
     expect(
       resolveManagedProviderBrandIcon(
