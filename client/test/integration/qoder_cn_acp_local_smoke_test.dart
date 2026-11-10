@@ -35,8 +35,7 @@ void main() {
         File(p.join(auth, 'user')).existsSync() &&
         File(p.join(auth, 'machine_id')).existsSync();
     if (executable == null || !hasAuthPair) {
-      // ignore: avoid_print
-      print(
+      markTestSkipped(
         '[qoder-cn-acp] skipped: qoderclicn or QODER_CN_AUTH_DIR '
         '({user,machine_id}) is missing',
       );
