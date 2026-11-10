@@ -28,8 +28,8 @@ const _target = SshProfile(
 );
 
 /// Records writes so the test can tell which catalog the editor wrote to.
-class _RecordingRepository extends SshProfileRepository {
-  _RecordingRepository() : super(storage: fakeHomeStorage());
+class RecordingRepository extends SshProfileRepository {
+  RecordingRepository() : super(storage: fakeHomeStorage());
 
   final saves = <SshProfile>[];
   SshProfile? stored;
@@ -82,8 +82,8 @@ Future<VaultService> _vault() async {
   return service;
 }
 
-class _EditorHarness {
-  const _EditorHarness({
+class EditorHarness {
+  const EditorHarness({
     required this.deviceRepository,
     required this.planeRepository,
     required this.credentials,
@@ -92,20 +92,20 @@ class _EditorHarness {
     required this.vault,
   });
 
-  final _RecordingRepository deviceRepository;
-  final _RecordingRepository planeRepository;
+  final RecordingRepository deviceRepository;
+  final RecordingRepository planeRepository;
   final InMemorySshCredentialStore credentials;
   final SshProfileCubit deviceCubit;
   final SshProfileCubit planeCubit;
   final VaultService vault;
 }
 
-Future<_EditorHarness> pumpEditor(
+Future<EditorHarness> pumpEditor(
   WidgetTester tester, {
   SshProfile? profile,
 }) async {
-  final deviceRepository = _RecordingRepository();
-  final planeRepository = _RecordingRepository();
+  final deviceRepository = RecordingRepository();
+  final planeRepository = RecordingRepository();
   final credentials = InMemorySshCredentialStore();
   final deviceCubit = SshProfileCubit(
     profileRepository: deviceRepository,
@@ -174,7 +174,7 @@ Future<_EditorHarness> pumpEditor(
   );
   await tester.tap(find.text('open'));
   await tester.pumpAndSettle();
-  return _EditorHarness(
+  return EditorHarness(
     deviceRepository: deviceRepository,
     planeRepository: planeRepository,
     credentials: credentials,
