@@ -301,6 +301,11 @@ void main() {
   Future<void> applyPreset(WidgetTester tester, String label) async {
     await tester.tap(find.byKey(const Key('managed-provider-quick-preset')));
     await tester.pumpAndSettle();
+    final search = find.byType(TpSelectSearchField);
+    if (search.evaluate().isNotEmpty) {
+      await tester.enterText(search, label);
+      await tester.pump();
+    }
     await tester.tap(find.text(label).last);
     await tester.pumpAndSettle();
   }
