@@ -165,7 +165,8 @@ registry.register(
 );
 ```
 
-现有 Global 注册补上 `flavor: QoderFlavor.global` 与 `QoderModelsService` 的显式参数；行为不变。
+现有 Global 注册补上 `flavor: QoderFlavor.global`，并显式传入
+`QoderModelsService(namespace: 'qoder', executable: 'qodercli', useMachineAuthFallback: true)`；行为不变。
 
 ## 可执行文件与安装
 
@@ -295,7 +296,7 @@ registry.register(
   - `writeSettingsFile(..., tool: flavor.cli.value, ...)`
   - `QODER_CONFIG_DIR` 环境变量保持同名
 - `_resolveLaunchProvider` 使用带 flavor 的 `QoderProviderSettingsResolver`。
-- `buildExtraSection` 把 `flavor.cli` 传给 `QoderProviderFormSection`。
+- `buildExtraSection` 把 `flavor.cli` 传给 `QoderProviderFormSection`；表单内部用该值构造 effort picker 的 `CliTool` 与临时 `AppProviderConfig`。
 
 ### Provider 解析
 
