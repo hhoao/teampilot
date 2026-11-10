@@ -180,7 +180,7 @@ final class SessionDelta {
 }
 
 /// Typed control request. Supported ops: `turn.cancel`, `session.refresh`,
-/// `session.create`.
+/// `session.create`, `session.remove`.
 final class SessionIntent {
   const SessionIntent({
     required this.id,

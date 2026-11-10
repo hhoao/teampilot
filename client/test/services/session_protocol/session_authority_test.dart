@@ -7,6 +7,7 @@ final class _Control implements SessionControlPort {
   int cancels = 0;
   final List<String> refreshes = [];
   final List<Map<String, Object?>> adopted = [];
+  final List<String> removed = [];
 
   @override
   Future<void> cancelTurn({
@@ -27,6 +28,14 @@ final class _Control implements SessionControlPort {
     required Map<String, Object?> entry,
   }) async {
     adopted.add(entry);
+  }
+
+  @override
+  Future<void> removeSession({
+    required String workspaceId,
+    required String sessionId,
+  }) async {
+    removed.add(sessionId);
   }
 }
 
@@ -192,6 +201,32 @@ void main() {
     expect(result.code, 'session_row_required');
     expect(control.adopted, isEmpty);
   });
+
+  test(
+    'session.remove removes the row and publishes a removed delta',
+    () async {
+      final lists = <SessionListDelta>[];
+      final sub = authority.sessionLists.listen(lists.add);
+
+      final result = await authority.handleIntent(
+        const SessionIntent(
+          id: 'r1',
+          op: 'session.remove',
+          sessionId: 's-old',
+          workspaceId: 'ws-1',
+          expectedEpoch: 7,
+        ),
+      );
+
+      expect(result.status, SessionIntentStatus.applied);
+      expect(control.removed, ['s-old']);
+      await Future<void>.delayed(Duration.zero);
+      expect(lists, hasLength(1));
+      expect(lists.single.workspaceId, 'ws-1');
+      expect(lists.single.removed, ['s-old']);
+      await sub.cancel();
+    },
+  );
 
   test('stale epoch is rejected', () async {
     authority.updateSeats('s1', [_seat(SessionSeatActivity.stateWorking)]);

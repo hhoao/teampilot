@@ -64,6 +64,7 @@ final class SessionProtocolController {
     ({String workspaceId, String sessionId, Map<String, Object?> entry})
   >
   _pendingCreates = [];
+  final List<({String workspaceId, String sessionId})> _pendingRemoves = [];
   Future<void>? _acceptLoop;
   Timer? _advertisementTimer;
 
@@ -109,6 +110,43 @@ final class SessionProtocolController {
     );
     if (!result.ok && result.code == 'not_connected') {
       _pendingCreates.add(pending);
+    }
+    return result;
+  }
+
+  Future<SessionIntentResult> removeSession({
+    required String workspaceId,
+    required String sessionId,
+  }) async {
+    final wid = workspaceId.trim();
+    final sid = sessionId.trim();
+    if (wid.isEmpty || sid.isEmpty) {
+      return const SessionIntentResult(
+        id: '',
+        status: SessionIntentStatus.rejected,
+        code: 'session_row_required',
+      );
+    }
+    if (_role == SessionProtocolRole.server) {
+      return const SessionIntentResult(
+        id: '',
+        status: SessionIntentStatus.rejected,
+        code: 'server_role',
+      );
+    }
+    final pending = (workspaceId: wid, sessionId: sid);
+    final client = _client;
+    if (client == null || !client.isReady) {
+      _pendingRemoves.add(pending);
+      return const SessionIntentResult(
+        id: '',
+        status: SessionIntentStatus.rejected,
+        code: 'not_connected',
+      );
+    }
+    final result = await client.removeSession(workspaceId: wid, sessionId: sid);
+    if (!result.ok && result.code == 'not_connected') {
+      _pendingRemoves.add(pending);
     }
     return result;
   }
@@ -181,6 +219,23 @@ final class SessionProtocolController {
     }
   }
 
+  Future<void> _flushPendingRemoves() async {
+    if (_role != SessionProtocolRole.client) return;
+    final client = _client;
+    if (client == null || !client.isReady) return;
+    final pending = _pendingRemoves.toList();
+    _pendingRemoves.clear();
+    for (final item in pending) {
+      final result = await client.removeSession(
+        workspaceId: item.workspaceId,
+        sessionId: item.sessionId,
+      );
+      if (!result.ok && result.code == 'not_connected') {
+        _pendingRemoves.add(item);
+      }
+    }
+  }
+
   Future<SessionIntentResult> cancelTurn({
     required String sessionId,
     required String memberId,
@@ -204,6 +259,7 @@ final class SessionProtocolController {
     await applyNone();
     _pendingRefreshWorkspaces.clear();
     _pendingCreates.clear();
+    _pendingRemoves.clear();
     final server = authority;
     if (server == null) {
       throw StateError('session-protocol server requires an authority');
@@ -299,6 +355,7 @@ final class SessionProtocolController {
           appLogger.i('[$_tag] client ready');
           unawaited(_flushPendingRefreshes());
           unawaited(_flushPendingCreates());
+          unawaited(_flushPendingRemoves());
         },
         onError: (code, message) {
           appLogger.w('[$_tag] client error code=$code message=$message');

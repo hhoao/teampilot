@@ -29,6 +29,23 @@ final class ChatSessionControlPort implements SessionControlPort {
   }
 
   @override
+  Future<void> removeSession({
+    required String workspaceId,
+    required String sessionId,
+  }) async {
+    final sid = sessionId.trim();
+    final wid = workspaceId.trim();
+    if (sid.isEmpty) return;
+    if (wid.isNotEmpty) {
+      final existing = _chat.state.sessions
+          .where((session) => session.sessionId == sid)
+          .firstOrNull;
+      if (existing != null && existing.workspaceId != wid) return;
+    }
+    _chat.removeSessionSnapshot(sid);
+  }
+
+  @override
   Future<void> refreshWorkspaceSessions(String workspaceId) async {
     final id = workspaceId.trim();
     if (id.isEmpty) return;

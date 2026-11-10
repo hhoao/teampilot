@@ -3479,6 +3479,21 @@ Future<AppShell> buildAppShell({
         );
       }
     };
+    chatCubit.onSessionRemoved = (workspaceId, sessionId) {
+      if (connectionModeService.isLocalMode) {
+        sessionAuthority.publishSessionList(
+          workspaceId: workspaceId,
+          removed: [sessionId],
+        );
+      } else if (connectionModeService.isSshMode) {
+        unawaited(
+          sessionProtocolController.removeSession(
+            workspaceId: workspaceId,
+            sessionId: sessionId,
+          ),
+        );
+      }
+    };
     chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
     // Landing seed routing: pods own the store; these sinks are the fallback.
     chatCubit.onSeedHistoryPending = (sid, mid, text) => aiHistoryCubit

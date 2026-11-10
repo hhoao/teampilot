@@ -174,6 +174,16 @@ final class SessionClient {
     sessionListEntry: entry,
   );
 
+  Future<SessionIntentResult> removeSession({
+    required String workspaceId,
+    required String sessionId,
+  }) => _sendIntent(
+    op: 'session.remove',
+    sessionId: sessionId,
+    memberId: '',
+    workspaceId: workspaceId,
+  );
+
   Future<SessionIntentResult> _sendIntent({
     required String op,
     required String sessionId,
@@ -412,6 +422,23 @@ final class SessionClientConnection {
       timer.cancel();
       if (identical(_backoffGate, gate)) _backoffGate = null;
     }
+  }
+
+  Future<SessionIntentResult> removeSession({
+    required String workspaceId,
+    required String sessionId,
+  }) {
+    final client = _client;
+    if (client == null || !client.isReady) {
+      return Future.value(
+        const SessionIntentResult(
+          id: '',
+          status: SessionIntentStatus.rejected,
+          code: 'not_connected',
+        ),
+      );
+    }
+    return client.removeSession(workspaceId: workspaceId, sessionId: sessionId);
   }
 
   Future<SessionIntentResult> createSession({

@@ -948,6 +948,10 @@ void main() {
       _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
 
       await cubit.loadWorkspaceData(repo);
+      final removed = <String>[];
+      cubit.onSessionRemoved = (workspaceId, sessionId) {
+        removed.add(sessionId);
+      };
       await composeDraftCache.saveSession(
         workspace.workspaceId,
         session.sessionId,
@@ -960,6 +964,7 @@ void main() {
       await postFrame.flush();
 
       expect(composeDraftCache.sessionDraft(session.sessionId), isNull);
+      expect(removed, [session.sessionId]);
       expect(
         await ComposeDraftStore(
           fs: testHomeStorage.fs,

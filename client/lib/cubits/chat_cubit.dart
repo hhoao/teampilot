@@ -268,6 +268,10 @@ class ChatCubit extends Cubit<ChatState>
   /// application never call this (they must not echo back).
   void Function(AppSession session)? onSessionCreated;
 
+  /// Fired after a local session row is deleted. Desktop broadcasts
+  /// `session.list{removed}`; the mobile client sends `session.remove`.
+  void Function(String workspaceId, String sessionId)? onSessionRemoved;
+
   /// Test stand-in for [SeatRewindStore.commitTurn] so cubit tests do not
   /// shell out to git. Production leaves this null and builds the store.
   @visibleForTesting
@@ -3675,6 +3679,7 @@ class ChatCubit extends Cubit<ChatState>
         sessionId,
       );
       _notifyAutomationsChanged();
+      onSessionRemoved?.call(session.workspaceId, sessionId);
     }
   }
 
