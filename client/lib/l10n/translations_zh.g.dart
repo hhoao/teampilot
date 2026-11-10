@@ -2126,6 +2126,8 @@ class _AppLocalizations$managedProviders$zh extends AppLocalizations$managedProv
 	@override String get quickPresetCodexHint => '登录或导入，或手填相同字段。';
 	@override String get quickPresetCursor => 'Cursor';
 	@override String get quickPresetCursorHint => '登录或导入，或手填相同字段。';
+	@override String get quickPresetGrokX => 'Grok / Cursor / X';
+	@override String get quickPresetGrokXHint => '使用 Cursor 登录态查询 grok.com 合一后的周额度和预付费。';
 	@override String get quickPresetCustom => '自定义';
 	@override String get quickPresetCustomHint => '从零配置接口、凭据与显示格式。';
 	@override String get quickPresetDeepSeek => 'DeepSeek';
@@ -5515,6 +5517,8 @@ extension on AppLocalizationsZh {
 			'managedProviders.quickPresetCodexHint' => '登录或导入，或手填相同字段。',
 			'managedProviders.quickPresetCursor' => 'Cursor',
 			'managedProviders.quickPresetCursorHint' => '登录或导入，或手填相同字段。',
+			'managedProviders.quickPresetGrokX' => 'Grok / Cursor / X',
+			'managedProviders.quickPresetGrokXHint' => '使用 Cursor 登录态查询 grok.com 合一后的周额度和预付费。',
 			'managedProviders.quickPresetCustom' => '自定义',
 			'managedProviders.quickPresetCustomHint' => '从零配置接口、凭据与显示格式。',
 			'managedProviders.quickPresetDeepSeek' => 'DeepSeek',
@@ -5993,10 +5997,10 @@ extension on AppLocalizationsZh {
 			'run.configurationTooltip' => '运行配置',
 			'run.configurationType' => '类型',
 			'run.configurationsEmpty' => '暂无启动配置',
-			'run.configureLaunchItems' => '配置启动项',
-			'run.debug' => '调试',
 			_ => null,
 		} ?? switch (path) {
+			'run.configureLaunchItems' => '配置启动项',
+			'run.debug' => '调试',
 			'run.debugUnavailable' => '调试功能尚未提供',
 			'run.deleteConfiguration' => '删除',
 			'run.deleteConfigurationConfirm' => ({required String name}) => '删除配置“${name}”？',
@@ -6507,10 +6511,10 @@ extension on AppLocalizationsZh {
 			'sshProfile.formUsernameHint' => 'deploy',
 			'sshProfile.refresh' => '刷新',
 			'sshProfile.selectorManage' => '管理 SSH 服务器…',
-			'sshProfile.selectorTooltip' => '切换 SSH 服务器',
-			'sshProfile.statusAuthFailed' => '认证失败',
 			_ => null,
 		} ?? switch (path) {
+			'sshProfile.selectorTooltip' => '切换 SSH 服务器',
+			'sshProfile.statusAuthFailed' => '认证失败',
 			'sshProfile.statusConnected' => '已连接',
 			'sshProfile.statusConnecting' => '连接中…',
 			'sshProfile.statusDisconnected' => '未连接',
@@ -7021,10 +7025,10 @@ extension on AppLocalizationsZh {
 			'worktree.deleteAction' => '删除',
 			'worktree.deleteBody' => ({required Object branch}) => '删除 ${branch} 的 worktree？',
 			'worktree.deleteBranchToo' => '同时删除分支',
-			'worktree.deleteBusyWarning' => '请先停止该 worktree 下正在运行的会话，再删除。',
-			'worktree.deleteFailed' => ({required Object error}) => '删除 worktree 失败：${error}',
 			_ => null,
 		} ?? switch (path) {
+			'worktree.deleteBusyWarning' => '请先停止该 worktree 下正在运行的会话，再删除。',
+			'worktree.deleteFailed' => ({required Object error}) => '删除 worktree 失败：${error}',
 			'worktree.deleteForce' => '即使有未提交改动也强制删除',
 			'worktree.deleteSessionsToo' => ({required Object count}) => '同时删除该 worktree 下的 ${count} 个会话',
 			'worktree.deleteTitle' => '删除 worktree',

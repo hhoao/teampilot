@@ -63,6 +63,9 @@ ManagedProviderBrandIconSpec resolveManagedProviderBrandIcon(
   if (host == 'cursor.com') {
     return const ManagedProviderBrandIconSpec.bundled('cursor');
   }
+  if (host == 'grok.com') {
+    return const ManagedProviderBrandIconSpec.bundled('grok');
+  }
   if (host == 'api.anthropic.com' ||
       host == 'anthropic.com' ||
       name == 'claude code' ||

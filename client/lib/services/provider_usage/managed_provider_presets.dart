@@ -404,6 +404,22 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
         ),
       ),
       ManagedProviderPreset(
+        id: 'grok-x',
+        labelId: 'grok-x',
+        hintId: 'grok-x',
+        template: ManagedProvider(
+          id: '',
+          name: 'Grok / Cursor / X',
+          kind: ManagedProviderKind.subscriptionQuota,
+          adapterId: 'grok-dashboard-usage',
+          endpointConfig: ManagedProviderEndpointConfig(
+            url:
+                'https://grok.com/dashboard/api/dashboard/v2/usage-status?scope=user',
+            credentialSource: 'cli:cursor',
+          ),
+        ),
+      ),
+      ManagedProviderPreset(
         id: 'codebuddy',
         labelId: 'codebuddy',
         hintId: 'codebuddy',

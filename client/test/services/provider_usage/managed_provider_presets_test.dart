@@ -10,6 +10,7 @@ void main() {
       'codex',
       'claude-code',
       'cursor',
+      'grok-x',
       'codebuddy',
       'deepseek',
       'opencode-go',
@@ -41,6 +42,26 @@ void main() {
       cursor.template.endpointConfig.credentialTemplate,
       'WorkosCursorSessionToken={accountId}::{accessToken}',
     );
+
+    final grokX = managedProviderPresetById('grok-x')!;
+    expect(grokX.labelId, 'grok-x');
+    expect(grokX.hintId, 'grok-x');
+    expect(grokX.schema, isNull);
+    expect(grokX.template.name, 'Grok / Cursor / X');
+    expect(grokX.template.kind, ManagedProviderKind.subscriptionQuota);
+    expect(grokX.template.adapterId, 'grok-dashboard-usage');
+    expect(
+      grokX.template.endpointConfig.url,
+      'https://grok.com/dashboard/api/dashboard/v2/usage-status?scope=user',
+    );
+    expect(grokX.template.endpointConfig.method, 'GET');
+    expect(grokX.template.endpointConfig.credentialSource, 'cli:cursor');
+    expect(grokX.template.endpointConfig.windows, isEmpty);
+    expect(grokX.template.endpointConfig.credentialTemplate, isNull);
+    expect(grokX.template.endpointConfig.headers, isEmpty);
+    expect(grokX.template.displayConfig.currency, isNull);
+    expect(grokX.template.displayConfig.decimalPlaces, isNull);
+    expect(grokX.template.displayConfig.showPercent, isFalse);
 
     final codebuddy = managedProviderPresetById('codebuddy')!;
     expect(codebuddy.template.name, 'CodeBuddy');
@@ -147,6 +168,7 @@ void main() {
       'codex',
       'claude-code',
       'cursor',
+      'grok-x',
       'codebuddy',
       'deepseek',
       'opencode-go',

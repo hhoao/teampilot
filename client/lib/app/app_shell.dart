@@ -318,6 +318,7 @@ import '../services/provider_usage/adapters/claude_official_subscription_auth.da
 import '../services/provider_usage/adapters/codebuddy_credits_adapter.dart';
 import '../services/provider_usage/adapters/codex_official_subscription_auth.dart';
 import '../services/provider_usage/adapters/cursor_official_subscription_auth.dart';
+import '../services/provider_usage/adapters/grok_dashboard_usage_adapter.dart';
 import '../services/provider_usage/adapters/http_json_mapping_adapter.dart';
 import '../services/provider_usage/adapters/qoder_usage_adapter.dart';
 import '../services/provider_usage/cli_credential_source.dart';
@@ -492,6 +493,7 @@ ManagedProviderUsageRegistry buildDefaultManagedProviderUsageRegistry({
 }) {
   return ManagedProviderUsageRegistry([
     HttpJsonMappingAdapter(cliCredentials: cliCredentials),
+    GrokDashboardUsageAdapter(cliCredentials: cliCredentials),
     if (fs != null && basePath != null)
       CodebuddyCreditsUsageAdapter(fs: fs, basePath: basePath),
     QoderUsageAdapter(),

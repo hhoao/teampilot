@@ -5269,6 +5269,12 @@ class AppLocalizations$managedProviders$en {
 	/// en: 'Sign in or import credentials below, or fill the same fields manually.'
 	String get quickPresetCursorHint => 'Sign in or import credentials below, or fill the same fields manually.';
 
+	/// en: 'Grok / Cursor / X'
+	String get quickPresetGrokX => 'Grok / Cursor / X';
+
+	/// en: 'Query the unified weekly pool and prepaid balance on grok.com with your Cursor sign-in.'
+	String get quickPresetGrokXHint => 'Query the unified weekly pool and prepaid balance on grok.com with your Cursor sign-in.';
+
 	/// en: 'Custom'
 	String get quickPresetCustom => 'Custom';
 
@@ -11695,6 +11701,8 @@ extension on AppLocalizations {
 			'managedProviders.quickPresetCodexHint' => 'Sign in or import credentials below, or fill the same fields manually.',
 			'managedProviders.quickPresetCursor' => 'Cursor',
 			'managedProviders.quickPresetCursorHint' => 'Sign in or import credentials below, or fill the same fields manually.',
+			'managedProviders.quickPresetGrokX' => 'Grok / Cursor / X',
+			'managedProviders.quickPresetGrokXHint' => 'Query the unified weekly pool and prepaid balance on grok.com with your Cursor sign-in.',
 			'managedProviders.quickPresetCustom' => 'Custom',
 			'managedProviders.quickPresetCustomHint' => 'Configure endpoint, credentials, and display from scratch.',
 			'managedProviders.quickPresetDeepSeek' => 'DeepSeek',
@@ -12173,10 +12181,10 @@ extension on AppLocalizations {
 			'run.configurationTooltip' => 'Run configuration',
 			'run.configurationType' => 'Type',
 			'run.configurationsEmpty' => 'No launch configurations yet',
-			'run.configureLaunchItems' => 'Configure launch configurations',
-			'run.debug' => 'Debug',
 			_ => null,
 		} ?? switch (path) {
+			'run.configureLaunchItems' => 'Configure launch configurations',
+			'run.debug' => 'Debug',
 			'run.debugUnavailable' => 'Debug is not available yet',
 			'run.deleteConfiguration' => 'Delete',
 			'run.deleteConfigurationConfirm' => ({required String name}) => 'Delete configuration "${name}"?',
@@ -12687,10 +12695,10 @@ extension on AppLocalizations {
 			'sshProfile.formUsernameHint' => 'deploy',
 			'sshProfile.refresh' => 'Refresh',
 			'sshProfile.selectorManage' => 'Manage SSH servers…',
-			'sshProfile.selectorTooltip' => 'Switch SSH server',
-			'sshProfile.statusAuthFailed' => 'Authentication failed',
 			_ => null,
 		} ?? switch (path) {
+			'sshProfile.selectorTooltip' => 'Switch SSH server',
+			'sshProfile.statusAuthFailed' => 'Authentication failed',
 			'sshProfile.statusConnected' => 'Connected',
 			'sshProfile.statusConnecting' => 'Connecting…',
 			'sshProfile.statusDisconnected' => 'Disconnected',
@@ -13201,10 +13209,10 @@ extension on AppLocalizations {
 			'worktree.deleteAction' => 'Remove',
 			'worktree.deleteBody' => ({required Object branch}) => 'Remove the worktree for ${branch}?',
 			'worktree.deleteBranchToo' => 'Also delete the branch',
-			'worktree.deleteBusyWarning' => 'Stop the running conversations in this worktree before removing it.',
-			'worktree.deleteFailed' => ({required Object error}) => 'Failed to remove worktree: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'worktree.deleteBusyWarning' => 'Stop the running conversations in this worktree before removing it.',
+			'worktree.deleteFailed' => ({required Object error}) => 'Failed to remove worktree: ${error}',
 			'worktree.deleteForce' => 'Force-remove even if it has uncommitted changes',
 			'worktree.deleteSessionsToo' => ({required Object count}) => 'Also delete the ${count} conversations in this worktree',
 			'worktree.deleteTitle' => 'Remove worktree',

@@ -8,6 +8,7 @@ import 'package:teampilot/repositories/managed_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
 import 'package:teampilot/services/provider_usage/adapters/codebuddy_credits_adapter.dart';
 import 'package:teampilot/services/provider_usage/adapters/claude_official_subscription_auth.dart';
+import 'package:teampilot/services/provider_usage/adapters/grok_dashboard_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/adapters/http_json_mapping_adapter.dart';
 import 'package:teampilot/services/provider_usage/adapters/qoder_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/cli_credential_source.dart';
@@ -29,10 +30,14 @@ import 'package:teampilot/services/storage/home_storage.dart';
 void main() {
   tearDown(resetTestHomeStorage);
 
-  test('default registry exposes http-json and qoder adapters', () {
+  test('default registry exposes http-json, grok, and qoder adapters', () {
     final registry = buildDefaultManagedProviderUsageRegistry();
 
     expect(registry.adapterFor('http-json'), isA<HttpJsonMappingAdapter>());
+    expect(
+      registry.adapterFor('grok-dashboard-usage'),
+      isA<GrokDashboardUsageAdapter>(),
+    );
     expect(registry.adapterFor('qoder-usage'), isA<QoderUsageAdapter>());
     expect(registry.adapterFor('codebuddy-credits'), isNull);
     expect(registry.adapterFor('official-claude-subscription'), isNull);
