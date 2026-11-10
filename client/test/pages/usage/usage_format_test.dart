@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/session_usage_dashboard.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/usage/usage_format.dart';
 
 void main() {
@@ -23,6 +24,7 @@ void main() {
               usageRangeLabel(context, UsageRange.fourteenDays),
               'Last 14 days',
             );
+            expect(usageCliLabel(CliTool.qoderCn), 'Qoder CN');
             return const SizedBox.shrink();
           },
         ),
