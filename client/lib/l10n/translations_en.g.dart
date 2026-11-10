@@ -8358,8 +8358,8 @@ class AppLocalizations$sshProfile$en {
 	/// en: 'Edit'
 	String get edit => 'Edit';
 
-	/// en: 'Provide an identity file or password.'
-	String get formCredentialRequired => 'Provide an identity file or password.';
+	/// en: 'Provide a private key or password.'
+	String get formCredentialRequired => 'Provide a private key or password.';
 
 	/// en: 'Target saved, but credentials could not be stored. Unlock the system keyring and edit the target to re-enter them.'
 	String get formCredentialSaveFailed => 'Target saved, but credentials could not be stored. Unlock the system keyring and edit the target to re-enter them.';
@@ -8373,20 +8373,20 @@ class AppLocalizations$sshProfile$en {
 	/// en: 'server, deploy@server:2222'
 	String get formHostHint => 'server, deploy@server:2222';
 
-	/// en: 'Identity file'
-	String get formIdentityFile => 'Identity file';
+	/// en: 'Private key'
+	String get formIdentityFile => 'Private key';
 
-	/// en: 'Browse…'
-	String get formIdentityFileBrowse => 'Browse…';
+	/// en: 'Paste the private key, or import it from a file.'
+	String get formIdentityFileHelper => 'Paste the private key, or import it from a file.';
 
-	/// en: 'Optional. Reads the private key from disk when set.'
-	String get formIdentityFileHelper => 'Optional. Reads the private key from disk when set.';
+	/// en: '-----BEGIN OPENSSH PRIVATE KEY-----'
+	String get formIdentityFileHint => '-----BEGIN OPENSSH PRIVATE KEY-----';
 
-	/// en: '~/.ssh/id_ed25519'
-	String get formIdentityFileHint => '~/.ssh/id_ed25519';
+	/// en: 'Import from file'
+	String get formIdentityFileImport => 'Import from file';
 
-	/// en: 'Identity file not found'
-	String get formIdentityFileMissing => 'Identity file not found';
+	/// en: 'Could not read the selected file; paste the key instead'
+	String get formIdentityFileImportFailed => 'Could not read the selected file; paste the key instead';
 
 	/// en: 'Label'
 	String get formLabel => 'Label';
@@ -8403,11 +8403,11 @@ class AppLocalizations$sshProfile$en {
 	/// en: 'Password'
 	String get formPassword => 'Password';
 
-	/// en: 'Optional if an identity file is provided.'
-	String get formPasswordHelper => 'Optional if an identity file is provided.';
+	/// en: 'Optional if a private key is provided.'
+	String get formPasswordHelper => 'Optional if a private key is provided.';
 
-	/// en: 'Use when no identity file is set'
-	String get formPasswordHint => 'Use when no identity file is set';
+	/// en: 'Use when no private key is set'
+	String get formPasswordHint => 'Use when no private key is set';
 
 	/// en: 'Leave empty to keep saved password'
 	String get formPasswordHintEdit => 'Leave empty to keep saved password';
@@ -12661,23 +12661,23 @@ extension on AppLocalizations {
 			'sshProfile.delete' => 'Delete',
 			'sshProfile.disconnect' => 'Disconnect',
 			'sshProfile.edit' => 'Edit',
-			'sshProfile.formCredentialRequired' => 'Provide an identity file or password.',
+			'sshProfile.formCredentialRequired' => 'Provide a private key or password.',
 			'sshProfile.formCredentialSaveFailed' => 'Target saved, but credentials could not be stored. Unlock the system keyring and edit the target to re-enter them.',
 			'sshProfile.formFieldRequired' => 'Required',
 			'sshProfile.formHost' => 'Host or alias',
 			'sshProfile.formHostHint' => 'server, deploy@server:2222',
-			'sshProfile.formIdentityFile' => 'Identity file',
-			'sshProfile.formIdentityFileBrowse' => 'Browse…',
-			'sshProfile.formIdentityFileHelper' => 'Optional. Reads the private key from disk when set.',
-			'sshProfile.formIdentityFileHint' => '~/.ssh/id_ed25519',
-			'sshProfile.formIdentityFileMissing' => 'Identity file not found',
+			'sshProfile.formIdentityFile' => 'Private key',
+			'sshProfile.formIdentityFileHelper' => 'Paste the private key, or import it from a file.',
+			'sshProfile.formIdentityFileHint' => '-----BEGIN OPENSSH PRIVATE KEY-----',
+			'sshProfile.formIdentityFileImport' => 'Import from file',
+			'sshProfile.formIdentityFileImportFailed' => 'Could not read the selected file; paste the key instead',
 			'sshProfile.formLabel' => 'Label',
 			'sshProfile.formLabelHint' => 'My server',
 			'sshProfile.formPassphrase' => 'Key passphrase',
 			'sshProfile.formPassphraseHint' => 'Optional',
 			'sshProfile.formPassword' => 'Password',
-			'sshProfile.formPasswordHelper' => 'Optional if an identity file is provided.',
-			'sshProfile.formPasswordHint' => 'Use when no identity file is set',
+			'sshProfile.formPasswordHelper' => 'Optional if a private key is provided.',
+			'sshProfile.formPasswordHint' => 'Use when no private key is set',
 			'sshProfile.formPasswordHintEdit' => 'Leave empty to keep saved password',
 			'sshProfile.formPort' => 'Port',
 			'sshProfile.formPortInvalid' => 'Port must be between 1 and 65535',

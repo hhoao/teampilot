@@ -240,6 +240,7 @@ Future<Widget> _gateHost({
       RepositoryProvider<VaultUnlockGate>.value(
         value: VaultUnlockGate(vault: vault, prompt: () async => true),
       ),
+      RepositoryProvider<VaultService>.value(value: vault),
     ],
     child: MaterialApp(
       localizationsDelegates: appLocalizationsDelegates,
@@ -370,19 +371,21 @@ void main() {
     expect(find.text(l10n.sshProfile.sEmpty), findsOneWidget);
   });
 
-  testWidgets('full-page editor push/pop returns to list', (tester) async {
+  testWidgets('editor dialog opens and closing it returns to the list', (
+    tester,
+  ) async {
     await pumpGatedEmptyList(tester);
 
     final ctx = tester.element(find.byType(RemoteConnectionsPage));
-    // Do not await: push completes only after the route is popped.
-    final editor = openSshProfileEditor(ctx, useFullPageEditor: true);
+    // Do not await: the future completes only after the dialog pops.
+    final editor = openSshProfileEditor(ctx);
     await tester.pumpAndSettle();
-    expect(find.text('新增 SSH Profile'), findsOneWidget);
+    expect(find.byType(TpDialogPageShell), findsOneWidget);
 
-    await tester.pageBack();
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     await editor;
-    expect(find.text('新增 SSH Profile'), findsNothing);
+    expect(find.byType(TpDialogPageShell), findsNothing);
     expect(find.text(l10n.sshProfile.sEmpty), findsOneWidget);
   });
 
@@ -419,28 +422,24 @@ void main() {
     expect(find.text(l10n.sshProfile.sEmpty), findsOneWidget);
 
     final ctx = tester.element(find.byType(RemoteConnectionsPage));
-    // ignore: unawaited_futures — completes when setup route pops
-    openSshProfileEditor(ctx, useFullPageEditor: true);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text('新增 SSH Profile'), findsOneWidget);
+    // ignore: unawaited_futures — completes when the dialog pops
+    openSshProfileEditor(ctx);
+    await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextFormField).at(0), 'My Box');
-    await tester.enterText(find.byType(TextFormField).at(1), 'example.com');
-    await tester.enterText(find.byType(TextFormField).at(3), 'alice');
-    await tester.enterText(
-      find.byType(TpTextarea),
-      '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
-    );
+    // Dialog field order: label(0), host(1), username(2), port(3),
+    // private key(4), passphrase(5), password(6).
+    await tester.enterText(find.byType(TextField).at(0), 'My Box');
+    await tester.enterText(find.byType(TextField).at(1), 'example.com');
+    await tester.enterText(find.byType(TextField).at(2), 'alice');
+    await tester.enterText(find.byType(TextField).at(6), 'password123');
 
-    await tester.scrollUntilVisible(
-      find.widgetWithText(ElevatedButton, '保存 Profile'),
-      200,
-      scrollable: find.byType(Scrollable).last,
+    await tester.tap(
+      find.descendant(
+        of: find.byType(TpDialogPageShell),
+        matching: find.text('Add target'),
+      ),
     );
-    await tester.tap(find.widgetWithText(ElevatedButton, '保存 Profile'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pumpAndSettle();
     for (var i = 0; i < 40 && profileCubit.state.isLoading; i++) {
       await tester.pump(const Duration(milliseconds: 50));
     }

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,14 +9,8 @@ import '../cubits/ssh_server_config_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/ssh_profile.dart';
 import '../models/ssh_server_profile.dart';
-import '../repositories/ssh_credential_store.dart';
-import '../repositories/ssh_profile_repository.dart';
 import '../repositories/ssh_server_profile_repository.dart';
-import '../services/ssh/ssh_profile_connection_tester.dart';
 import '../services/storage/home_storage.dart';
-import '../services/terminal/terminal_transport_factory.dart';
-import '../services/vault/vault_service.dart';
-import 'ssh_profile_setup_page.dart';
 import 'ssh_profiles/ssh_profile_form_dialog.dart';
 
 /// Remote-only catalog of SSH server configurations.
@@ -178,37 +171,7 @@ class SshServerProfileCard extends StatelessWidget {
 Future<void> openSshProfileEditor(
   BuildContext context, {
   SshProfile? profile,
-  bool? useFullPageEditor,
 }) async {
-  final fullPage = useFullPageEditor ?? Platform.isAndroid;
-  if (fullPage) {
-    VaultService? vaultService;
-    try {
-      vaultService = context.read<VaultService>();
-    } on ProviderNotFoundException {
-      vaultService = null;
-    }
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => SshProfileSetupPage(
-          profileRepository: context.read<SshProfileRepository>(),
-          credentialStore: context.read<SshCredentialStore>(),
-          initialProfile: profile,
-          vaultService: vaultService,
-          connectionTester: SshProfileConnectionTester(
-            clientFactory: context
-                .read<TerminalTransportFactory>()
-                .sshClientFactory,
-          ),
-          onProfileSaved: () {
-            Navigator.of(context).maybePop();
-            context.read<SshProfileCubit>().load();
-          },
-        ),
-      ),
-    );
-    return;
-  }
   await showSshProfileFormDialog(context, profile: profile);
 }
 

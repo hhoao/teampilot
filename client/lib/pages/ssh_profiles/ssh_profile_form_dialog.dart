@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -69,7 +69,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
   late final TextEditingController _hostController;
   late final TextEditingController _usernameController;
   late final TextEditingController _portController;
-  late final TextEditingController _identityFileController;
+  late final TextEditingController _privateKeyController;
   late final TextEditingController _passphraseController;
   late final TextEditingController _passwordController;
   var _saving = false;
@@ -85,7 +85,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     _hostController = TextEditingController(text: p?.host ?? '');
     _usernameController = TextEditingController(text: p?.username ?? '');
     _portController = TextEditingController(text: '${p?.port ?? 22}');
-    _identityFileController = TextEditingController();
+    _privateKeyController = TextEditingController();
     _passphraseController = TextEditingController();
     _passwordController = TextEditingController();
   }
@@ -96,7 +96,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     _hostController.dispose();
     _usernameController.dispose();
     _portController.dispose();
-    _identityFileController.dispose();
+    _privateKeyController.dispose();
     _passphraseController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -128,32 +128,46 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
   }
 
   bool get _usesPasswordAuth {
-    if (_identityFileController.text.isNotEmpty) return false;
+    if (_privateKeyController.text.isNotEmpty) return false;
     if (_passwordController.text.isNotEmpty) return true;
     return widget.initialProfile?.authType == SshAuthType.password;
   }
 
-  Future<void> _browseIdentityFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.any,
-      dialogTitle: context.l10n.sshProfile.formIdentityFileBrowse,
-    );
-    final path = result?.files.single.path;
-    if (path != null && path.isNotEmpty && mounted) {
-      setState(() => _identityFileController.text = path);
-      _formKey.currentState?.setFieldValue('identityFile', path);
+  Future<void> _importPrivateKey() async {
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        withData: true,
+        dialogTitle: context.l10n.sshProfile.formIdentityFileImport,
+      );
+    } on Object {
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.sshProfile.formIdentityFileImportFailed,
+          variant: TpToastVariant.warning,
+        );
+      }
+      return;
     }
-  }
-
-  Future<String?> _readIdentityFile() async {
-    final path = _identityFileController.text.trim();
-    if (path.isEmpty) return null;
-    final missingMessage = context.l10n.sshProfile.formIdentityFileMissing;
-    final file = File(path);
-    if (!await file.exists()) {
-      throw StateError(missingMessage);
+    final picked = result?.files.firstOrNull;
+    if (picked == null) return;
+    final bytes = picked.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.sshProfile.formIdentityFileImportFailed,
+          variant: TpToastVariant.warning,
+        );
+      }
+      return;
     }
-    return file.readAsString();
+    if (!mounted) return;
+    final text = utf8.decode(bytes, allowMalformed: true);
+    setState(() => _privateKeyController.text = text);
+    _formKey.currentState?.setFieldValue('privateKey', text);
   }
 
   Future<SshProfile?> _save({required bool notify}) async {
@@ -161,7 +175,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     final profile = _buildProfile();
     if (!_isEditing &&
         !_usesPasswordAuth &&
-        _identityFileController.text.trim().isEmpty) {
+        _privateKeyController.text.trim().isEmpty) {
       AppToast.show(
         context,
         message: context.l10n.sshProfile.formCredentialRequired,
@@ -176,15 +190,14 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       final repository = widget.repository;
       final credentialStore = context.read<SshCredentialStore>();
       final usesPassword = _usesPasswordAuth;
-      final privateKeyPem = usesPassword
-          ? ''
-          : (await _readIdentityFile() ?? '');
+      final privateKeyPem = usesPassword ? '' : _privateKeyController.text;
       final inputs = sshEditorSecretInputs(
         authType: usesPassword ? SshAuthType.password : SshAuthType.privateKey,
         linked: linked,
         passwordText: _passwordController.text,
         privateKeyPem: privateKeyPem,
         passphraseText: _passphraseController.text,
+        isEditing: _isEditing,
       );
       final result = await saveSshProfileWithVault(
         profile: profile,
@@ -253,18 +266,14 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     try {
       final profile = _buildProfile();
       final usesPassword = _usesPasswordAuth;
-      final linkedId = widget.initialProfile?.vaultEntryId ?? '';
-      final vault = linkedId.isNotEmpty ? context.read<VaultService>() : null;
+      final vault = context.read<VaultService>();
       final secrets = await resolveSshEditorTestSecrets(
         authType: usesPassword ? SshAuthType.password : SshAuthType.privateKey,
         profileId: profile.id,
         passwordText: _passwordController.text,
-        privateKeyPem: usesPassword ? '' : (await _readIdentityFile() ?? ''),
+        privateKeyPem: usesPassword ? '' : _privateKeyController.text,
         passphraseText: _passphraseController.text,
-        vaultEntryId: linkedId,
-        readVaultField: vault == null
-            ? null
-            : (field) => vault.readField(linkedId, field),
+        readVaultField: resolveSshVaultFieldReader(vault, profile),
         credentialStore: credentialStore,
       );
       await SshProfileConnectionTester(clientFactory: sshClientFactory).test(
@@ -360,20 +369,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           ),
         ),
         const SizedBox(height: 16),
-        _field(
-          id: 'identityFile',
-          controller: _identityFileController,
-          label: l10n.sshProfile.formIdentityFile,
-          hint: l10n.sshProfile.formIdentityFileHint,
-          helper: l10n.sshProfile.formIdentityFileHelper,
-          prefixIcon: Icons.key_outlined,
-          suffix: IconButton(
-            tooltip: l10n.sshProfile.formIdentityFileBrowse,
-            onPressed: busy ? null : _browseIdentityFile,
-            icon: const Icon(Icons.folder_open_outlined),
-          ),
-          onChanged: () => setState(() {}),
-        ),
+        _privateKeyField(),
         const SizedBox(height: 12),
         _field(
           id: 'passphrase',
@@ -521,6 +517,32 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           decoration: decoration,
         );
       },
+    );
+  }
+
+  Widget _privateKeyField() {
+    final l10n = context.l10n;
+    return TpFormField<String>(
+      id: 'privateKey',
+      initialValue: _privateKeyController.text,
+      label: Text(l10n.sshProfile.formIdentityFile),
+      builder: (state) => TextField(
+        controller: _privateKeyController,
+        minLines: 4,
+        maxLines: 4,
+        decoration: InputDecoration(
+          hintText: l10n.sshProfile.formIdentityFileHint,
+          helperText: l10n.sshProfile.formIdentityFileHelper,
+          suffixIcon: IconButton(
+            tooltip: l10n.sshProfile.formIdentityFileImport,
+            onPressed: _importPrivateKey,
+            icon: const Icon(Icons.upload_file_outlined),
+          ),
+          errorText: state.hasError ? '' : null,
+          errorStyle: const TextStyle(height: 0, fontSize: 0),
+        ),
+        onChanged: state.didChange,
+      ),
     );
   }
 }
