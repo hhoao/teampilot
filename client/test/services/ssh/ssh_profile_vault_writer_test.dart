@@ -244,7 +244,6 @@ void main() {
         passwordText: 'typed',
         privateKeyPem: '',
         passphraseText: '',
-        vaultEntryId: 'v1',
         readVaultField: (_) async => 'stored',
         credentialStore: credentials,
       );
@@ -256,28 +255,24 @@ void main() {
 
     test('empty password falls back to the vault, then the keychain', () async {
       await credentials.savePassword('p1', 'legacy');
-      Future<SshEditorSecretInputs> resolve({
-        required String? vaultEntryId,
-        required String? stored,
-      }) {
+      Future<SshEditorSecretInputs> resolve({required String? stored}) {
         return resolveSshEditorTestSecrets(
           authType: SshAuthType.password,
           profileId: 'p1',
           passwordText: '',
           privateKeyPem: '',
           passphraseText: '',
-          vaultEntryId: vaultEntryId,
           readVaultField: stored == null ? null : (_) async => stored,
           credentialStore: credentials,
         );
       }
 
       expect(
-        (await resolve(vaultEntryId: 'v1', stored: 'stored')).password,
+        (await resolve(stored: 'stored')).password,
         'stored',
       );
       expect(
-        (await resolve(vaultEntryId: null, stored: null)).password,
+        (await resolve(stored: null)).password,
         'legacy',
       );
     });
@@ -285,17 +280,13 @@ void main() {
     test('private key falls back to the vault, then the keychain', () async {
       await credentials.savePrivateKey('p1', 'legacy-pem');
       await credentials.savePrivateKeyPassphrase('p1', 'legacy-pass');
-      Future<SshEditorSecretInputs> resolve({
-        required String? vaultEntryId,
-        required String? storedKey,
-      }) {
+      Future<SshEditorSecretInputs> resolve({required String? storedKey}) {
         return resolveSshEditorTestSecrets(
           authType: SshAuthType.privateKey,
           profileId: 'p1',
           passwordText: 'ignored',
           privateKeyPem: '',
           passphraseText: '',
-          vaultEntryId: vaultEntryId,
           readVaultField: storedKey == null
               ? null
               : (field) async => switch (field) {
@@ -307,17 +298,35 @@ void main() {
         );
       }
 
-      final fromVault = await resolve(
-        vaultEntryId: 'v1',
-        storedKey: 'vault-pem',
-      );
+      final fromVault = await resolve(storedKey: 'vault-pem');
       expect(fromVault.privateKey, 'vault-pem');
       expect(fromVault.passphrase, 'vault-pass');
       expect(fromVault.password, isNull);
 
-      final fromKeychain = await resolve(vaultEntryId: null, storedKey: null);
+      final fromKeychain = await resolve(storedKey: null);
       expect(fromKeychain.privateKey, 'legacy-pem');
       expect(fromKeychain.passphrase, 'legacy-pass');
+    });
+
+    test('plane-row owner credentials feed an editor test connection', () async {
+      final vault = await _vault();
+      await VaultCredentialCapture(vault: vault).captureSsh(
+        profile,
+        password: 'secret',
+      );
+      final reader = resolveSshVaultFieldReader(vault, profile);
+
+      final secrets = await resolveSshEditorTestSecrets(
+        authType: SshAuthType.password,
+        profileId: profile.id,
+        passwordText: '',
+        privateKeyPem: '',
+        passphraseText: '',
+        readVaultField: reader,
+        credentialStore: credentials,
+      );
+
+      expect(secrets.password, 'secret');
     });
   });
 

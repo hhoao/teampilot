@@ -166,11 +166,10 @@ Future<SshEditorSecretInputs> resolveSshEditorTestSecrets({
   required String passwordText,
   required String privateKeyPem,
   required String passphraseText,
-  required String? vaultEntryId,
   required SshVaultFieldReader? readVaultField,
   required SshCredentialStore credentialStore,
 }) async {
-  final readVault = (vaultEntryId ?? '').isNotEmpty ? readVaultField : null;
+  final readVault = readVaultField;
   if (authType == SshAuthType.password) {
     var password = _nonEmpty(passwordText);
     password ??= await readVault?.call('password');

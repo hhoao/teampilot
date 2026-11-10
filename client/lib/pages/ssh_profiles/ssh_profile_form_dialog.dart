@@ -254,18 +254,14 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     try {
       final profile = _buildProfile();
       final usesPassword = _usesPasswordAuth;
-      final linkedId = widget.initialProfile?.vaultEntryId ?? '';
-      final vault = linkedId.isNotEmpty ? context.read<VaultService>() : null;
+      final vault = context.read<VaultService>();
       final secrets = await resolveSshEditorTestSecrets(
         authType: usesPassword ? SshAuthType.password : SshAuthType.privateKey,
         profileId: profile.id,
         passwordText: _passwordController.text,
         privateKeyPem: usesPassword ? '' : _privateKeyController.text,
         passphraseText: _passphraseController.text,
-        vaultEntryId: linkedId,
-        readVaultField: vault == null
-            ? null
-            : (field) => vault.readField(linkedId, field),
+        readVaultField: resolveSshVaultFieldReader(vault, profile),
         credentialStore: credentialStore,
       );
       await SshProfileConnectionTester(clientFactory: sshClientFactory).test(
