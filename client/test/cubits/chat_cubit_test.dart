@@ -1556,7 +1556,7 @@ void main() {
       },
     );
 
-    test('createSession notifies the local session-list hook', () async {
+    test('createSession notifies the local session-created hook', () async {
       final tmp = await Directory.systemTemp.createTemp(
         'chat_cubit_create_hook_',
       );
@@ -1576,14 +1576,54 @@ void main() {
 
       final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
       await cubit.loadWorkspaceIndex(repo);
-      final changed = <String>[];
-      cubit.onLocalSessionListChanged = changed.add;
+      final createdRows = <AppSession>[];
+      cubit.onSessionCreated = createdRows.add;
 
       final created = await cubit.createSession(ws.workspaceId, repo);
 
       expect(created.workspaceId, ws.workspaceId);
-      expect(changed, [ws.workspaceId]);
+      expect(createdRows.single.sessionId, created.sessionId);
     });
+
+    test(
+      'applyRemoteSessionList upserts and removes rows without echoing',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp(
+          'chat_cubit_remote_list_',
+        );
+        final repo = SessionRepository(
+          rootDir: tmp.path,
+          storage: testHomeStorage,
+        );
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
+          sessionRepository: repo,
+          postFrameScheduler: postFrame.scheduler,
+        );
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+        var createdRows = 0;
+        cubit.onSessionCreated = (_) => createdRows++;
+
+        cubit.applyRemoteSessionList(
+          workspaceId: 'ws-1',
+          upserted: const [
+            {'sessionId': 'remote-1', 'display': 'Remote', 'createdAt': 1},
+          ],
+        );
+        expect(cubit.state.sessions.single.sessionId, 'remote-1');
+        expect(cubit.state.sessions.single.display, 'Remote');
+
+        cubit.applyRemoteSessionList(
+          workspaceId: 'ws-1',
+          removed: const ['remote-1'],
+        );
+        expect(cubit.state.sessions, isEmpty);
+        expect(createdRows, 0);
+      },
+    );
 
     test('upsertRemoteSessionHint appends a placeholder once', () async {
       final tmp = await Directory.systemTemp.createTemp(

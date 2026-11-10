@@ -11,6 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/failed_message_record.dart';
 import '../models/session_activity.dart';
+import '../models/session_list_entry.dart';
 import '../models/workspace.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_launch_context.dart';
@@ -128,6 +129,7 @@ class ChatCubit extends Cubit<ChatState>
     with ChatConnectStateMixin
     implements
         SessionLaunchHost,
+        SessionPersistedEventPort,
         WorkspaceSnapshotPatchPort,
         SeatRewindHost,
         PtyCheckpointHost {
@@ -259,11 +261,12 @@ class ChatCubit extends Cubit<ChatState>
   /// Fired when History should drop cache / reload (disconnect or switch back).
   void Function(String sessionId)? onSessionHistoryStale;
 
-  /// Fired after a local create/delete changes the shared home's session list.
+  /// Fired after a session row is created locally.
   ///
-  /// The mobile app uses this to send a session-plane `session.refresh` intent
-  /// so the desktop authority re-reads the workspace instead of staying stale.
-  void Function(String workspaceId)? onLocalSessionListChanged;
+  /// Desktop publishes it through the session authority; the mobile client
+  /// sends a `session.create` intent. Remote adoption and `session.list`
+  /// application never call this (they must not echo back).
+  void Function(AppSession session)? onSessionCreated;
 
   /// Test stand-in for [SeatRewindStore.commitTurn] so cubit tests do not
   /// shell out to git. Production leaves this null and builds the store.
@@ -915,7 +918,16 @@ class ChatCubit extends Cubit<ChatState>
 
   @override
   void replaceSessionSnapshot(AppSession session) {
+    final isNew = !state.sessions.any(
+      (existing) => existing.sessionId == session.sessionId,
+    );
     _emitSnapshot(_dataStore.replaceSession(stateSnapshot(), session));
+    if (isNew) onSessionCreated?.call(session);
+  }
+
+  @override
+  void sessionPersisted(AppSession session) {
+    onSessionCreated?.call(session);
   }
 
   @override
@@ -2388,6 +2400,89 @@ class ChatCubit extends Cubit<ChatState>
     emit(state.copyWith(sessions: [...state.sessions, hint]));
   }
 
+  /// Inserts a session row adopted from a `session.create` intent.
+  ///
+  /// Does not fire [onSessionCreated]: the authority already broadcast the row
+  /// and must not echo another create back to the client.
+  void adoptRemoteSession(AppSession session) {
+    if (isClosed) return;
+    final id = session.sessionId.trim();
+    if (id.isEmpty) return;
+    final sessions = [...state.sessions];
+    final index = sessions.indexWhere((item) => item.sessionId == id);
+    if (index < 0) {
+      sessions.add(session);
+    } else {
+      sessions[index] = _mergeSessionListRow(sessions[index], session);
+    }
+    _emitSnapshot(
+      _dataStore.deriveSnapshot(
+        workspaces: state.workspaces,
+        sessions: sessions,
+      ),
+    );
+  }
+
+  /// Applies a `session.list` delta from the authority.
+  ///
+  /// Existing full rows are kept; only missing placeholders are replaced by
+  /// the lighter list entry. This keeps a mobile-created full session intact
+  /// when its own row echoes back.
+  void applyRemoteSessionList({
+    required String workspaceId,
+    List<Map<String, Object?>> upserted = const [],
+    List<String> removed = const [],
+  }) {
+    if (isClosed) return;
+    final wid = workspaceId.trim();
+    if (wid.isEmpty) return;
+    final sessions = [...state.sessions];
+    final removedIds = removed.toSet();
+    if (removedIds.isNotEmpty) {
+      sessions.removeWhere(
+        (session) =>
+            session.workspaceId == wid &&
+            removedIds.contains(session.sessionId),
+      );
+    }
+    for (final raw in upserted) {
+      final entry = SessionListEntry.fromJson(raw);
+      final id = entry.sessionId.trim();
+      if (id.isEmpty) continue;
+      final candidate = entry.toListSession(wid);
+      final index = sessions.indexWhere((item) => item.sessionId == id);
+      if (index < 0) {
+        sessions.add(candidate);
+      } else {
+        sessions[index] = _mergeSessionListRow(sessions[index], candidate);
+      }
+    }
+    _emitSnapshot(
+      _dataStore.deriveSnapshot(
+        workspaces: state.workspaces,
+        sessions: sessions,
+      ),
+    );
+  }
+
+  static AppSession _mergeSessionListRow(AppSession current, AppSession row) {
+    return current.copyWith(
+      display: row.display.trim().isEmpty ? current.display : row.display,
+      folders: row.folders.isEmpty ? current.folders : row.folders,
+      sessionTeam: row.sessionTeam.isEmpty
+          ? current.sessionTeam
+          : row.sessionTeam,
+      cli: row.cli ?? current.cli,
+      updatedAt: row.updatedAt > 0 ? row.updatedAt : current.updatedAt,
+      pinned: row.pinned,
+      sortOrder: row.sortOrder,
+      archived: row.archived,
+      purpose: row.purpose,
+      workflowId: row.workflowId,
+      acp: row.acp || current.acp,
+    );
+  }
+
   Future<List<AppSession>> sessionsForWorkspaceReady(String workspaceId) async {
     await ensureSessionsForWorkspace(workspaceId);
     return sessionsForWorkspace(
@@ -2536,7 +2631,7 @@ class ChatCubit extends Cubit<ChatState>
     );
     _dataStore.markSessionDocument(session.sessionId);
     _emitSnapshot(_dataStore.appendSession(stateSnapshot(), session));
-    onLocalSessionListChanged?.call(session.workspaceId);
+    onSessionCreated?.call(session);
     return session;
   }
 
@@ -2572,7 +2667,11 @@ class ChatCubit extends Cubit<ChatState>
       identityRepository: identityRepository,
     );
     _emitSnapshot(result.snapshot);
-    onLocalSessionListChanged?.call(result.workspaceId);
+    for (final session in result.snapshot.sessions) {
+      if (session.workspaceId == result.workspaceId) {
+        onSessionCreated?.call(session);
+      }
+    }
     return result.workspaceId;
   }
 
@@ -3168,7 +3267,7 @@ class ChatCubit extends Cubit<ChatState>
       ),
       base: state.copyWith(sessions: sessions),
     );
-    onLocalSessionListChanged?.call(created.workspaceId);
+    onSessionCreated?.call(created);
     return created;
   }
 
@@ -3576,7 +3675,6 @@ class ChatCubit extends Cubit<ChatState>
         sessionId,
       );
       _notifyAutomationsChanged();
-      onLocalSessionListChanged?.call(session.workspaceId);
     }
   }
 
@@ -3594,7 +3692,11 @@ class ChatCubit extends Cubit<ChatState>
       rosterMembers: rosterMembers,
     );
     _emitSnapshot(result.snapshot);
-    onLocalSessionListChanged?.call(result.workspace.workspaceId);
+    for (final session in result.snapshot.sessions) {
+      if (session.workspaceId == result.workspace.workspaceId) {
+        onSessionCreated?.call(session);
+      }
+    }
     return result.workspace;
   }
 

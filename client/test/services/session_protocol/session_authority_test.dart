@@ -6,6 +6,7 @@ import 'package:teampilot/services/session_protocol/session_models.dart';
 final class _Control implements SessionControlPort {
   int cancels = 0;
   final List<String> refreshes = [];
+  final List<Map<String, Object?>> adopted = [];
 
   @override
   Future<void> cancelTurn({
@@ -18,6 +19,14 @@ final class _Control implements SessionControlPort {
   @override
   Future<void> refreshWorkspaceSessions(String workspaceId) async {
     refreshes.add(workspaceId);
+  }
+
+  @override
+  Future<void> adoptSession({
+    required String workspaceId,
+    required Map<String, Object?> entry,
+  }) async {
+    adopted.add(entry);
   }
 }
 
@@ -134,6 +143,54 @@ void main() {
     expect(result.status, SessionIntentStatus.rejected);
     expect(result.code, 'workspace_required');
     expect(control.refreshes, isEmpty);
+  });
+
+  test(
+    'session.create adopts row and publishes a session-list delta',
+    () async {
+      final lists = <SessionListDelta>[];
+      final sub = authority.sessionLists.listen(lists.add);
+      const entry = <String, Object?>{
+        'sessionId': 's-new',
+        'display': 'Mobile session',
+        'createdAt': 10,
+      };
+
+      final result = await authority.handleIntent(
+        const SessionIntent(
+          id: 'c1',
+          op: 'session.create',
+          sessionId: 's-new',
+          workspaceId: 'ws-1',
+          sessionListEntry: entry,
+          expectedEpoch: 7,
+        ),
+      );
+
+      expect(result.status, SessionIntentStatus.applied);
+      expect(control.adopted, [entry]);
+      await Future<void>.delayed(Duration.zero);
+      expect(lists, hasLength(1));
+      expect(lists.single.workspaceId, 'ws-1');
+      expect(lists.single.revision, 1);
+      expect(lists.single.upserted, [entry]);
+      await sub.cancel();
+    },
+  );
+
+  test('session.create without a row is rejected', () async {
+    final result = await authority.handleIntent(
+      const SessionIntent(
+        id: 'c1',
+        op: 'session.create',
+        sessionId: 's-new',
+        workspaceId: 'ws-1',
+      ),
+    );
+
+    expect(result.status, SessionIntentStatus.rejected);
+    expect(result.code, 'session_row_required');
+    expect(control.adopted, isEmpty);
   });
 
   test('stale epoch is rejected', () async {

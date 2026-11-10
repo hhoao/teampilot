@@ -11,6 +11,7 @@ import 'package:teampilot/services/session_protocol/session_server.dart';
 final class _Control implements SessionControlPort {
   int cancels = 0;
   final List<String> refreshes = [];
+  final List<Map<String, Object?>> adopted = [];
 
   @override
   Future<void> cancelTurn({
@@ -23,6 +24,14 @@ final class _Control implements SessionControlPort {
   @override
   Future<void> refreshWorkspaceSessions(String workspaceId) async {
     refreshes.add(workspaceId);
+  }
+
+  @override
+  Future<void> adoptSession({
+    required String workspaceId,
+    required Map<String, Object?> entry,
+  }) async {
+    adopted.add(entry);
   }
 }
 
@@ -103,6 +112,7 @@ void main() {
       final deltas = <SessionDelta>[];
       final contents = <SessionContentInvalidated>[];
       final contentDeltas = <SessionContentDelta>[];
+      final sessionLists = <SessionListDelta>[];
       final attentions = <SessionAttention>[];
       final client = SessionClient(
         channel: pipe.client,
@@ -112,6 +122,7 @@ void main() {
           onDelta: deltas.add,
           onContent: contents.add,
           onContentDelta: contentDeltas.add,
+          onSessionList: sessionLists.add,
           onAttention: attentions.add,
         ),
       );
@@ -134,6 +145,22 @@ void main() {
       final refresh = await client.refreshSessions(workspaceId: 'ws1');
       expect(refresh.status, SessionIntentStatus.applied);
       expect(control.refreshes, ['ws1']);
+
+      const entry = <String, Object?>{
+        'sessionId': 's-new',
+        'display': 'From mobile',
+        'createdAt': 10,
+      };
+      final created = await client.createSession(
+        workspaceId: 'ws1',
+        sessionId: 's-new',
+        entry: entry,
+      );
+      expect(created.status, SessionIntentStatus.applied);
+      expect(control.adopted, [entry]);
+      await _waitFor(() => sessionLists.isNotEmpty);
+      expect(sessionLists.single.workspaceId, 'ws1');
+      expect(sessionLists.single.upserted, [entry]);
 
       authority.publishContentInvalidated(sessionId: 's1');
       await _waitFor(() => contents.isNotEmpty);

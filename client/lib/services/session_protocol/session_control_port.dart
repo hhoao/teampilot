@@ -13,4 +13,13 @@ abstract interface class SessionControlPort {
   /// Used by a mobile client after it creates a conversation: the desktop
   /// authority has no file watcher on the home, so it must be told to refresh.
   Future<void> refreshWorkspaceSessions(String workspaceId);
+
+  /// Adopts a session row created on another device.
+  ///
+  /// [entry] is a `SessionListEntry.toJson()` snapshot; the authority inserts
+  /// it into the local session list and broadcasts a `session.list` delta.
+  Future<void> adoptSession({
+    required String workspaceId,
+    required Map<String, Object?> entry,
+  });
 }

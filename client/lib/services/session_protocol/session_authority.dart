@@ -31,6 +31,7 @@ final class SessionAuthority {
   final Map<String, String> _workspaceIds = {};
   final Map<String, int> _contentSeq = {};
   final Map<String, int> _contentDeltaSeq = {};
+  final Map<String, int> _sessionListRevisions = {};
 
   final StreamController<SessionDelta> _deltas =
       StreamController<SessionDelta>.broadcast();
@@ -38,12 +39,15 @@ final class SessionAuthority {
       StreamController<SessionContentInvalidated>.broadcast();
   final StreamController<SessionContentDelta> _contentDeltas =
       StreamController<SessionContentDelta>.broadcast();
+  final StreamController<SessionListDelta> _sessionLists =
+      StreamController<SessionListDelta>.broadcast();
   final StreamController<SessionAttention> _attention =
       StreamController<SessionAttention>.broadcast();
 
   Stream<SessionDelta> get deltas => _deltas.stream;
   Stream<SessionContentInvalidated> get content => _content.stream;
   Stream<SessionContentDelta> get contentDeltas => _contentDeltas.stream;
+  Stream<SessionListDelta> get sessionLists => _sessionLists.stream;
   Stream<SessionAttention> get attention => _attention.stream;
 
   List<SessionSnapshot> snapshots() {
@@ -121,6 +125,7 @@ final class SessionAuthority {
     _workspaceIds.clear();
     _contentSeq.clear();
     _contentDeltaSeq.clear();
+    _sessionListRevisions.clear();
   }
 
   SessionDelta? removeSession(String sessionId) {
@@ -188,6 +193,44 @@ final class SessionAuthority {
       } on Object catch (error, stackTrace) {
         appLogger.w(
           '[session-authority] refresh failed workspace=$workspaceId',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return SessionIntentResult(
+          id: intent.id,
+          status: SessionIntentStatus.rejected,
+          epoch: epoch,
+          code: 'control_failed',
+          message: '$error',
+        );
+      }
+    }
+    if (intent.op == 'session.create') {
+      final workspaceId = intent.workspaceId.trim();
+      final entry = intent.sessionListEntry;
+      if (workspaceId.isEmpty || entry == null) {
+        return SessionIntentResult(
+          id: intent.id,
+          status: SessionIntentStatus.rejected,
+          epoch: epoch,
+          code: 'session_row_required',
+        );
+      }
+      try {
+        await _controlPort.adoptSession(workspaceId: workspaceId, entry: entry);
+        final delta = publishSessionList(
+          workspaceId: workspaceId,
+          upserted: [entry],
+        );
+        return SessionIntentResult(
+          id: intent.id,
+          status: SessionIntentStatus.applied,
+          epoch: epoch,
+          revision: delta.revision,
+        );
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '[session-authority] session.create failed workspace=$workspaceId',
           error: error,
           stackTrace: stackTrace,
         );
@@ -284,6 +327,25 @@ final class SessionAuthority {
     return event;
   }
 
+  /// Publishes a session-list delta for one workspace.
+  SessionListDelta publishSessionList({
+    required String workspaceId,
+    List<Map<String, Object?>> upserted = const [],
+    List<String> removed = const [],
+  }) {
+    final trimmed = workspaceId.trim();
+    final revision = (_sessionListRevisions[trimmed] ?? 0) + 1;
+    _sessionListRevisions[trimmed] = revision;
+    final delta = SessionListDelta(
+      workspaceId: trimmed,
+      revision: revision,
+      upserted: upserted,
+      removed: removed,
+    );
+    if (!_sessionLists.isClosed) _sessionLists.add(delta);
+    return delta;
+  }
+
   /// Publishes one semantic content patch. Sequence is per session+seat stream.
   SessionContentDelta publishContentDelta({
     required String sessionId,
@@ -334,6 +396,7 @@ final class SessionAuthority {
     await _deltas.close();
     await _content.close();
     await _contentDeltas.close();
+    await _sessionLists.close();
     await _attention.close();
   }
 

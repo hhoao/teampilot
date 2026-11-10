@@ -30,7 +30,6 @@ import '../services/session_sync/chat_session_activity_source.dart';
 import '../services/session_sync/chat_session_control_port.dart';
 import '../services/session_sync/session_content_invalidation_bus.dart';
 import '../services/session_sync/session_content_stream_bus.dart';
-import '../services/session_sync/session_dir_change_parser.dart';
 import '../services/session_sync/session_protocol_controller.dart';
 import 'session_protocol_home.dart';
 import '../cubits/chat_cubit.dart';
@@ -78,6 +77,7 @@ import '../services/chat/conversation/approvals/exit_plan_mode_approval_service.
 import '../services/chat/team_generation/mcp/team_composer_mcp_handler.dart';
 import '../models/app_provider_config.dart';
 import '../models/app_session.dart';
+import '../models/session_list_entry.dart';
 import '../services/catalog/catalog_runtime.dart';
 import '../services/catalog/catalog_mutation_bus.dart';
 import '../services/catalog/catalog_production.dart';
@@ -229,7 +229,6 @@ import '../services/vault/vault_reference_indexer.dart';
 import '../services/vault/vault_service.dart';
 import '../services/vault/vault_unlock_gate.dart';
 import '../services/io/local_filesystem.dart';
-import '../services/io/workspace_fs_watcher.dart';
 import '../services/connect/connect_agent.dart';
 import '../services/connect/authorized_keys_file.dart';
 import '../services/connect/connect_backend_host.dart';
@@ -765,8 +764,6 @@ class AppShell {
   /// so teardown can cancel it.
   StreamSubscription<StoragePlaneChange>? _vaultPlaneSyncSub;
   StreamSubscription<SessionRemoteActivityState>? _sessionRemoteRefreshSub;
-  WorkspaceFsWatcher? _sessionListWatcher;
-  StreamSubscription<FsChangeBatch>? _sessionListWatchSub;
   StreamSubscription<SessionContentInvalidation>? _contentInvalidationSub;
   StreamSubscription<SessionContentStreamChunk>? _contentStreamSub;
   final CommandBus commandBus;
@@ -3391,38 +3388,6 @@ Future<AppShell> buildAppShell({
         unawaited(chatCubit.refreshSessionsForWorkspace(workspaceId));
       }
     });
-    WorkspaceFsWatcher? sessionListWatcher;
-    StreamSubscription<FsChangeBatch>? sessionListWatchSub;
-    if (connectionModeService.isLocalMode) {
-      final watcher = WorkspaceFsWatcher(
-        fs: homeStorage.fs,
-        root: homeStorage.paths.workspaceDir,
-        dispatcher: eventDispatcher,
-        autoStart: true,
-      );
-      if (watcher.isSupported) {
-        appLogger.i(
-          '[session-watch] watching ${homeStorage.paths.workspaceDir}',
-        );
-        sessionListWatcher = watcher;
-        sessionListWatchSub = watcher.onChanged.listen((batch) {
-          if (!batch.structural) return;
-          final ids = workspaceIdsFromSessionChangeDirs(
-            batch.changedDirs,
-            workspaceRoot: homeStorage.paths.workspaceDir,
-            pathContext: homeStorage.fs.pathContext,
-          );
-          if (ids.isEmpty) return;
-          appLogger.i('[session-watch] sessions changed ids=${ids.join(',')}');
-          for (final id in ids) {
-            unawaited(chatCubit.refreshWorkspaceFromHome(id));
-          }
-        });
-      } else {
-        appLogger.i('[session-watch] unsupported for this home');
-        watcher.dispose();
-      }
-    }
     Future<void> notifyRemoteAttention(SessionAttention attention) async {
       if (attention.kind != 'idle') return;
       final session = chatCubit.state.sessions
@@ -3475,6 +3440,14 @@ Future<AppShell> buildAppShell({
           replace: !delta.partial,
         );
       },
+      onSessionList: (delta) {
+        if (!connectionModeService.isSshMode) return;
+        chatCubit.applyRemoteSessionList(
+          workspaceId: delta.workspaceId,
+          upserted: delta.upserted,
+          removed: delta.removed,
+        );
+      },
       onAttention: (attention) {
         unawaited(notifyRemoteAttention(attention));
       },
@@ -3489,10 +3462,22 @@ Future<AppShell> buildAppShell({
         sessionAuthority.publishContentInvalidated(sessionId: sessionId);
       }
     };
-    chatCubit.onLocalSessionListChanged = (workspaceId) {
-      unawaited(
-        sessionProtocolController.refreshSessions(workspaceId: workspaceId),
-      );
+    chatCubit.onSessionCreated = (session) {
+      final entry = SessionListEntry.fromSession(session).toJson();
+      if (connectionModeService.isLocalMode) {
+        sessionAuthority.publishSessionList(
+          workspaceId: session.workspaceId,
+          upserted: [entry],
+        );
+      } else if (connectionModeService.isSshMode) {
+        unawaited(
+          sessionProtocolController.createSession(
+            workspaceId: session.workspaceId,
+            sessionId: session.sessionId,
+            entry: entry,
+          ),
+        );
+      }
     };
     chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
     // Landing seed routing: pods own the store; these sinks are the fallback.
@@ -4366,13 +4351,6 @@ Future<AppShell> buildAppShell({
         : _SessionLifecycleRefreshHandler(
             chatCubit,
             () => connectionModeService.isSshMode,
-            onSessionStarted: (workspaceId) {
-              unawaited(
-                sessionProtocolController.refreshSessions(
-                  workspaceId: workspaceId,
-                ),
-              );
-            },
           );
     if (eventDispatcher != null && sessionLifecycleHandler != null) {
       eventDispatcher.registerFamily<SessionLifecycleKind>(
@@ -4505,8 +4483,6 @@ Future<AppShell> buildAppShell({
     shell._homeProfileWatchSub = homeProfileWatchSub;
     shell._vaultPlaneSyncSub = vaultPlaneSyncSub;
     shell._sessionRemoteRefreshSub = sessionRemoteRefreshSub;
-    shell._sessionListWatcher = sessionListWatcher;
-    shell._sessionListWatchSub = sessionListWatchSub;
     shell._contentInvalidationSub = contentInvalidationSub;
     shell._contentStreamSub = contentStreamSub;
     managedProviderControlPlaneLease.transferOwnership();
@@ -4876,10 +4852,6 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       shell._homeProfileWatchSub?.cancel();
       shell._vaultPlaneSyncSub?.cancel();
       unawaited(shell._sessionRemoteRefreshSub?.cancel());
-      unawaited(shell._sessionListWatchSub?.cancel());
-      unawaited(
-        shell._sessionListWatcher?.stopAndDispose() ?? Future<void>.value(),
-      );
       unawaited(shell._contentInvalidationSub?.cancel());
       unawaited(shell._contentStreamSub?.cancel());
       final lifecycleHandler = shell.sessionLifecycleHandler;
@@ -4988,25 +4960,16 @@ Future<void> _teardownConnect(AppShell? shell) async {
 /// this workspace's cached session list explicitly.
 final class _SessionLifecycleRefreshHandler
     implements event_bus.EventHandler<SessionLifecycleEvent> {
-  _SessionLifecycleRefreshHandler(
-    this._chat,
-    this._isSsh, {
-    this.onSessionStarted,
-  });
+  _SessionLifecycleRefreshHandler(this._chat, this._isSsh);
 
   final ChatCubit _chat;
   final bool Function() _isSsh;
-  final void Function(String workspaceId)? onSessionStarted;
 
   @override
   void handle(SessionLifecycleEvent event) {
-    if (event.memberId != null) return;
+    if (!_isSsh() || event.memberId != null) return;
     final workspaceId = event.workspaceId.trim();
     if (workspaceId.isEmpty) return;
-    if (event.eventKind == SessionLifecycleKind.sessionStarted) {
-      onSessionStarted?.call(workspaceId);
-    }
-    if (!_isSsh()) return;
     unawaited(_chat.refreshSessionsForWorkspace(workspaceId));
   }
 }
