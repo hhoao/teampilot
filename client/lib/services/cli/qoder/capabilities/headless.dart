@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/team_config.dart';
+import '../../../../models/launch_security_policy.dart';
 import '../../../../utils/logging/logger_utils.dart';
 import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
@@ -12,6 +12,7 @@ import '../../registry/launch/headless_launch_context_adapter.dart';
 import '../../registry/launch/user_extra_args_provider.dart';
 import '../provider/qoder_auth_store.dart';
 import '../provider/qoder_provider_settings_resolver.dart';
+import '../qoder_flavor.dart';
 
 /// Qoder one-shot via `qodercli -p`.
 ///
@@ -22,10 +23,15 @@ import '../provider/qoder_provider_settings_resolver.dart';
 final class QoderHeadlessCapability
     with HeadlessProvisionSupport
     implements HeadlessCapability {
-  const QoderHeadlessCapability({this.storage});
+  const QoderHeadlessCapability({
+    this.storage,
+    this.flavor = QoderFlavor.global,
+  });
 
   @override
   final HomeStorage? storage;
+
+  final QoderFlavor flavor;
 
   static const configDirEnvKey = 'QODER_CONFIG_DIR';
   static const credentialsMissingWarning = 'qoder_credentials_missing';
@@ -40,7 +46,7 @@ final class QoderHeadlessCapability
   bool get supportsPromptStdin => true;
 
   @override
-  String get executable => 'qodercli';
+  String get executable => flavor.executableName;
 
   @override
   Map<String, String> buildEnvironment(HeadlessLaunchContext context) => {
@@ -54,7 +60,7 @@ final class QoderHeadlessCapability
   Iterable<CliLaunchArgContribution> buildHeadlessLaunchArgs(
     CliHeadlessLaunchContext ctx,
   ) sync* {
-    final interactive = interactiveContextForHeadless(ctx, CliTool.qoder);
+    final interactive = interactiveContextForHeadless(ctx, flavor.cli);
     yield CliLaunchArgContribution(
       key: 'qoder-headless-command',
       phase: LaunchArgPhase.command,
@@ -164,6 +170,8 @@ final class QoderHeadlessCapability
       basePath: basePath,
       pathContext: fs.pathContext,
       machineHome: home,
+      namespace: flavor.authNamespace,
+      useMachineFallback: flavor.allowMachineAuthFallback,
     );
     if (await store.seedSessionAuth(
       providerId: providerId,
@@ -191,6 +199,7 @@ final class QoderHeadlessCapability
       basePath: basePath,
       fs: fs,
       storage: homeStorage,
+      cli: flavor.cli,
     );
     final byId = await resolver.findById(ctx.providerId);
     if (byId != null) return byId;

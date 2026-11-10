@@ -1,8 +1,8 @@
 import '../../../../models/hook_entry.dart';
 import '../../../../models/hook_event.dart';
-import '../../../../models/team_config.dart';
 import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/config_profile/claude_family_hook_writer.dart';
+import '../qoder_flavor.dart';
 
 /// Qoder hook renderer.
 ///
@@ -13,16 +13,20 @@ import '../../registry/config_profile/claude_family_hook_writer.dart';
 final class QoderHookWriter
     with BusProtocolHookDefaults
     implements HookCapability {
-  const QoderHookWriter({this.denyReason = 'TeamPilot hook policy'});
+  const QoderHookWriter({
+    this.denyReason = 'TeamPilot hook policy',
+    this.flavor = QoderFlavor.global,
+  });
 
   final String denyReason;
+  final QoderFlavor flavor;
 
   ClaudeFamilyHookWriter get _delegate =>
       ClaudeFamilyHookWriter(denyReason: denyReason);
 
   @override
   String? nativeEvent(HookEvent event) =>
-      HookEventCapability.nativeEvent(event, CliTool.qoder);
+      HookEventCapability.nativeEvent(event, flavor.cli);
 
   @override
   bool get supportsMatcher => true;

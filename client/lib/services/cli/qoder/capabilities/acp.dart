@@ -75,9 +75,11 @@ final class QoderAcpTranslator extends AcpAgentTranslator {
 /// fails with auth-required, which is why no `authenticate` call is made.
 final class QoderAcpCapability
     implements AcpCapability, AcpBackgroundTranscriptCapability {
-  const QoderAcpCapability();
+  const QoderAcpCapability({this.transcriptFallbackPrefix = 'qoder'});
 
   static const configDirEnvKey = 'QODER_CONFIG_DIR';
+
+  final String transcriptFallbackPrefix;
 
   @override
   String agentExecutable(String cliExecutable) => cliExecutable;
@@ -140,5 +142,6 @@ final class QoderAcpCapability
     fs: fs,
     sessionToolDir: sessionToolDir,
     sessionId: sessionId,
+    fallbackPrefix: transcriptFallbackPrefix,
   );
 }

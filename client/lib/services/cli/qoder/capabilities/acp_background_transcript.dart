@@ -16,7 +16,8 @@ final class QoderAcpBackgroundTranscriptSource
     required super.fs,
     required super.sessionToolDir,
     required super.sessionId,
-  }) : super(lineAppend: appendQoderJsonlEvent, fallbackPrefix: 'qoder');
+    String fallbackPrefix = 'qoder',
+  }) : super(lineAppend: appendQoderJsonlEvent, fallbackPrefix: fallbackPrefix);
 }
 
 /// Parses one Qoder JSONL event, dropping agent-only system notices.

@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import '../../../../../models/session_usage.dart';
-import '../../../../../models/team_config.dart';
 import '../../../registry/capabilities/session_usage_capability.dart';
 import '../../../../usage/jsonl_usage_cursor_reader.dart';
+import '../../qoder_flavor.dart';
 
 /// Qoder native usage.
 ///
@@ -14,7 +14,9 @@ import '../../../../usage/jsonl_usage_cursor_reader.dart';
 /// attached to more than one JSONL record, so requests are deduped by
 /// `message.id` (falling back to the record `uuid`).
 final class QoderSessionUsageCapability implements SessionUsageCapability {
-  const QoderSessionUsageCapability();
+  const QoderSessionUsageCapability({this.flavor = QoderFlavor.global});
+
+  final QoderFlavor flavor;
 
   @override
   Future<List<SessionUsageSource>> discoverUsageSources(
@@ -53,7 +55,7 @@ final class QoderSessionUsageCapability implements SessionUsageCapability {
         if (!seen.add(full)) continue;
         out.add(
           SessionUsageSource(
-            id: 'qoder-jsonl:$full',
+            id: '${flavor.cli.value}-jsonl:$full',
             path: full,
             kind: UsageSourceKind.jsonl,
             sessionId: ctx.sessionId,
@@ -105,10 +107,10 @@ final class QoderSessionUsageCapability implements SessionUsageCapability {
       }
       final tokens = _tokensOf(usage);
       if (tokens.totalBillable == 0) continue;
-      final requestId = 'qoder:$messageId';
+      final requestId = '${flavor.cli.value}:$messageId';
       final event = SessionUsageEvent(
         requestId: requestId,
-        cli: CliTool.qoder,
+        cli: flavor.cli,
         model: model,
         inputTokens: tokens.input,
         outputTokens: tokens.output,
