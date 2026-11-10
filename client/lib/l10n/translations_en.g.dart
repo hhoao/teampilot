@@ -8346,8 +8346,8 @@ class AppLocalizations$sshProfile$en {
 	/// en: 'Edit'
 	String get edit => 'Edit';
 
-	/// en: 'Provide an identity file or password.'
-	String get formCredentialRequired => 'Provide an identity file or password.';
+	/// en: 'Provide a private key or password.'
+	String get formCredentialRequired => 'Provide a private key or password.';
 
 	/// en: 'Target saved, but credentials could not be stored. Unlock the system keyring and edit the target to re-enter them.'
 	String get formCredentialSaveFailed => 'Target saved, but credentials could not be stored. Unlock the system keyring and edit the target to re-enter them.';
@@ -8361,17 +8361,23 @@ class AppLocalizations$sshProfile$en {
 	/// en: 'server, deploy@server:2222'
 	String get formHostHint => 'server, deploy@server:2222';
 
-	/// en: 'Identity file'
-	String get formIdentityFile => 'Identity file';
+	/// en: 'Private key'
+	String get formIdentityFile => 'Private key';
 
-	/// en: 'Browse…'
-	String get formIdentityFileBrowse => 'Browse…';
+	/// en: 'Import…'
+	String get formIdentityFileBrowse => 'Import…';
 
-	/// en: 'Optional. Reads the private key from disk when set.'
-	String get formIdentityFileHelper => 'Optional. Reads the private key from disk when set.';
+	/// en: 'Paste the private key, or import it from a file.'
+	String get formIdentityFileHelper => 'Paste the private key, or import it from a file.';
 
-	/// en: '~/.ssh/id_ed25519'
-	String get formIdentityFileHint => '~/.ssh/id_ed25519';
+	/// en: '-----BEGIN OPENSSH PRIVATE KEY-----'
+	String get formIdentityFileHint => '-----BEGIN OPENSSH PRIVATE KEY-----';
+
+	/// en: 'Import from file'
+	String get formIdentityFileImport => 'Import from file';
+
+	/// en: 'Could not read the selected file; paste the key instead'
+	String get formIdentityFileImportFailed => 'Could not read the selected file; paste the key instead';
 
 	/// en: 'Identity file not found'
 	String get formIdentityFileMissing => 'Identity file not found';
@@ -8391,11 +8397,11 @@ class AppLocalizations$sshProfile$en {
 	/// en: 'Password'
 	String get formPassword => 'Password';
 
-	/// en: 'Optional if an identity file is provided.'
-	String get formPasswordHelper => 'Optional if an identity file is provided.';
+	/// en: 'Optional if a private key is provided.'
+	String get formPasswordHelper => 'Optional if a private key is provided.';
 
-	/// en: 'Use when no identity file is set'
-	String get formPasswordHint => 'Use when no identity file is set';
+	/// en: 'Use when no private key is set'
+	String get formPasswordHint => 'Use when no private key is set';
 
 	/// en: 'Leave empty to keep saved password'
 	String get formPasswordHintEdit => 'Leave empty to keep saved password';
@@ -11111,57 +11117,57 @@ extension on AppLocalizations {
 			'file.previewHostDescription' => 'Open files in the floating workspace or the center workbench.',
 			'file.previewHostFloating' => 'Floating',
 			'file.previewHostTitle' => 'File preview',
-			'l10n.fileTree.fileTree' => 'File Tree',
-			'l10n.fileTree.copy' => 'Copy',
-			'l10n.fileTree.copyPath' => 'Copy path',
-			'l10n.fileTree.copyRelativePath' => 'Copy relative path',
-			'l10n.fileTree.createNameHint' => 'Name',
-			'l10n.fileTree.cut' => 'Cut',
-			'l10n.fileTree.deleteDone' => 'Deleted',
-			'l10n.fileTree.deleteItemConfirm' => ({required String name}) => 'Delete "${name}"?',
-			'l10n.fileTree.deleteItemTitle' => 'Delete',
-			'l10n.fileTree.fileCreated' => 'File created',
-			'l10n.fileTree.folderCreated' => 'Folder created',
-			'l10n.fileTree.hideFilter' => 'Hide file filter',
-			'l10n.fileTree.importApplyRemaining' => 'Apply to remaining conflicts',
-			'l10n.fileTree.importCancelAll' => 'Cancel all',
-			'l10n.fileTree.importConflictBody' => ({required String name}) => '"${name}" already exists at the destination.',
-			'l10n.fileTree.importConflictRemaining' => ({required int count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '1 more conflict after this.', other: '${count} more conflicts after this.', ), 
-			'l10n.fileTree.importConflictRemainingZero' => 'No further conflicts.',
-			'l10n.fileTree.importConflictTitle' => 'Item already exists',
-			'l10n.fileTree.importConflictTypeMismatch' => 'A file and a folder cannot replace each other.',
-			'l10n.fileTree.importDropCopy' => 'Copy',
-			'l10n.fileTree.importDropMove' => 'Move',
-			'l10n.fileTree.importOverwrite' => 'Overwrite',
-			'l10n.fileTree.importProgressCancel' => 'Cancel',
-			'l10n.fileTree.importProgressCurrent' => ({required String name}) => '${name}',
+			'fileTree.fileTree' => 'File Tree',
+			'fileTree.copy' => 'Copy',
+			'fileTree.copyPath' => 'Copy path',
+			'fileTree.copyRelativePath' => 'Copy relative path',
+			'fileTree.createNameHint' => 'Name',
+			'fileTree.cut' => 'Cut',
+			'fileTree.deleteDone' => 'Deleted',
+			'fileTree.deleteItemConfirm' => ({required String name}) => 'Delete "${name}"?',
+			'fileTree.deleteItemTitle' => 'Delete',
+			'fileTree.fileCreated' => 'File created',
+			'fileTree.folderCreated' => 'Folder created',
+			'fileTree.hideFilter' => 'Hide file filter',
+			'fileTree.importApplyRemaining' => 'Apply to remaining conflicts',
+			'fileTree.importCancelAll' => 'Cancel all',
+			'fileTree.importConflictBody' => ({required String name}) => '"${name}" already exists at the destination.',
+			'fileTree.importConflictRemaining' => ({required int count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '1 more conflict after this.', other: '${count} more conflicts after this.', ), 
+			'fileTree.importConflictRemainingZero' => 'No further conflicts.',
+			'fileTree.importConflictTitle' => 'Item already exists',
+			'fileTree.importConflictTypeMismatch' => 'A file and a folder cannot replace each other.',
+			'fileTree.importDropCopy' => 'Copy',
+			'fileTree.importDropMove' => 'Move',
+			'fileTree.importOverwrite' => 'Overwrite',
+			'fileTree.importProgressCancel' => 'Cancel',
+			'fileTree.importProgressCurrent' => ({required String name}) => '${name}',
 			_ => null,
 		} ?? switch (path) {
-			'l10n.fileTree.importProgressItems' => ({required int completed, required int total}) => '${completed} / ${total}',
-			'l10n.fileTree.importProgressTitle' => 'Importing…',
-			'l10n.fileTree.importRejectSelf' => 'Cannot move or copy an item into itself or its children.',
-			'l10n.fileTree.importSkip' => 'Skip',
-			'l10n.fileTree.importSummary' => ({required int succeeded, required int skipped, required int failed}) => '${succeeded} succeeded, ${skipped} skipped, ${failed} failed',
-			'l10n.fileTree.importSummaryCancelledSuffix' => ' — cancelled',
-			'l10n.fileTree.invalidName' => 'Invalid name',
-			'l10n.fileTree.invalidPasteTarget' => 'Cannot paste here',
-			'l10n.fileTree.itemExists' => 'An item with that name already exists',
-			'l10n.fileTree.newFile' => 'New File',
-			'l10n.fileTree.newFolder' => 'New Folder',
-			'l10n.fileTree.openInFileManager' => 'Reveal in File Manager',
-			'l10n.fileTree.openInTerminal' => 'Open in Terminal',
-			'l10n.fileTree.openInTerminalFailed' => 'Could not open a terminal',
-			'l10n.fileTree.openWithSystemApp' => 'Open with system app',
-			'l10n.fileTree.paste' => 'Paste',
-			'l10n.fileTree.pasteDone' => 'Pasted',
-			'l10n.fileTree.refresh' => 'Refresh',
-			'l10n.fileTree.rename' => 'Rename',
-			'l10n.fileTree.renameDone' => 'Renamed',
-			'l10n.fileTree.renameTitle' => 'Rename',
-			'l10n.fileTree.revealActiveFile' => 'Reveal active file',
-			'l10n.fileTree.revealFailed' => 'Cannot reveal this file in the file tree',
-			'l10n.fileTree.showFilter' => 'Show file filter',
-			'l10n.fileTree.sourceMissing' => 'The copied item no longer exists',
+			'fileTree.importProgressItems' => ({required int completed, required int total}) => '${completed} / ${total}',
+			'fileTree.importProgressTitle' => 'Importing…',
+			'fileTree.importRejectSelf' => 'Cannot move or copy an item into itself or its children.',
+			'fileTree.importSkip' => 'Skip',
+			'fileTree.importSummary' => ({required int succeeded, required int skipped, required int failed}) => '${succeeded} succeeded, ${skipped} skipped, ${failed} failed',
+			'fileTree.importSummaryCancelledSuffix' => ' — cancelled',
+			'fileTree.invalidName' => 'Invalid name',
+			'fileTree.invalidPasteTarget' => 'Cannot paste here',
+			'fileTree.itemExists' => 'An item with that name already exists',
+			'fileTree.newFile' => 'New File',
+			'fileTree.newFolder' => 'New Folder',
+			'fileTree.openInFileManager' => 'Reveal in File Manager',
+			'fileTree.openInTerminal' => 'Open in Terminal',
+			'fileTree.openInTerminalFailed' => 'Could not open a terminal',
+			'fileTree.openWithSystemApp' => 'Open with system app',
+			'fileTree.paste' => 'Paste',
+			'fileTree.pasteDone' => 'Pasted',
+			'fileTree.refresh' => 'Refresh',
+			'fileTree.rename' => 'Rename',
+			'fileTree.renameDone' => 'Renamed',
+			'fileTree.renameTitle' => 'Rename',
+			'fileTree.revealActiveFile' => 'Reveal active file',
+			'fileTree.revealFailed' => 'Cannot reveal this file in the file tree',
+			'fileTree.showFilter' => 'Show file filter',
+			'fileTree.sourceMissing' => 'The copied item no longer exists',
 			'floating.previewTabsDescription' => 'File and diff previews share one replaceable tab in the floating panel until pinned.',
 			'floating.previewTabsTitle' => 'Single preview tab',
 			'floating.workspaceAddTooltip' => 'Open in floating workspace',
@@ -12645,23 +12651,25 @@ extension on AppLocalizations {
 			'sshProfile.delete' => 'Delete',
 			'sshProfile.disconnect' => 'Disconnect',
 			'sshProfile.edit' => 'Edit',
-			'sshProfile.formCredentialRequired' => 'Provide an identity file or password.',
+			'sshProfile.formCredentialRequired' => 'Provide a private key or password.',
 			'sshProfile.formCredentialSaveFailed' => 'Target saved, but credentials could not be stored. Unlock the system keyring and edit the target to re-enter them.',
 			'sshProfile.formFieldRequired' => 'Required',
 			'sshProfile.formHost' => 'Host or alias',
 			'sshProfile.formHostHint' => 'server, deploy@server:2222',
-			'sshProfile.formIdentityFile' => 'Identity file',
-			'sshProfile.formIdentityFileBrowse' => 'Browse…',
-			'sshProfile.formIdentityFileHelper' => 'Optional. Reads the private key from disk when set.',
-			'sshProfile.formIdentityFileHint' => '~/.ssh/id_ed25519',
+			'sshProfile.formIdentityFile' => 'Private key',
+			'sshProfile.formIdentityFileBrowse' => 'Import…',
+			'sshProfile.formIdentityFileHelper' => 'Paste the private key, or import it from a file.',
+			'sshProfile.formIdentityFileHint' => '-----BEGIN OPENSSH PRIVATE KEY-----',
+			'sshProfile.formIdentityFileImport' => 'Import from file',
+			'sshProfile.formIdentityFileImportFailed' => 'Could not read the selected file; paste the key instead',
 			'sshProfile.formIdentityFileMissing' => 'Identity file not found',
 			'sshProfile.formLabel' => 'Label',
 			'sshProfile.formLabelHint' => 'My server',
 			'sshProfile.formPassphrase' => 'Key passphrase',
 			'sshProfile.formPassphraseHint' => 'Optional',
 			'sshProfile.formPassword' => 'Password',
-			'sshProfile.formPasswordHelper' => 'Optional if an identity file is provided.',
-			'sshProfile.formPasswordHint' => 'Use when no identity file is set',
+			'sshProfile.formPasswordHelper' => 'Optional if a private key is provided.',
+			'sshProfile.formPasswordHint' => 'Use when no private key is set',
 			'sshProfile.formPasswordHintEdit' => 'Leave empty to keep saved password',
 			'sshProfile.formPort' => 'Port',
 			'sshProfile.formPortInvalid' => 'Port must be between 1 and 65535',
@@ -12675,10 +12683,10 @@ extension on AppLocalizations {
 			'sshProfile.statusAuthFailed' => 'Authentication failed',
 			'sshProfile.statusConnected' => 'Connected',
 			'sshProfile.statusConnecting' => 'Connecting…',
-			'sshProfile.statusDisconnected' => 'Disconnected',
-			'sshProfile.statusError' => 'Error',
 			_ => null,
 		} ?? switch (path) {
+			'sshProfile.statusDisconnected' => 'Disconnected',
+			'sshProfile.statusError' => 'Error',
 			'sshProfile.statusReconnecting' => 'Reconnecting…',
 			'sshProfile.test' => 'Test',
 			'sshProfile.testFailed' => 'Connection test failed',
@@ -13189,10 +13197,10 @@ extension on AppLocalizations {
 			'worktree.deleteFailed' => ({required Object error}) => 'Failed to remove worktree: ${error}',
 			'worktree.deleteForce' => 'Force-remove even if it has uncommitted changes',
 			'worktree.deleteSessionsToo' => ({required Object count}) => 'Also delete the ${count} conversations in this worktree',
-			'worktree.deleteTitle' => 'Remove worktree',
-			'worktree.menuCopyPath' => 'Copy path',
 			_ => null,
 		} ?? switch (path) {
+			'worktree.deleteTitle' => 'Remove worktree',
+			'worktree.menuCopyPath' => 'Copy path',
 			'worktree.menuRemove' => 'Remove worktree',
 			'worktree.more' => 'More',
 			'worktree.newConversationHere' => 'New conversation here',
