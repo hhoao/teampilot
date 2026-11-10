@@ -319,6 +319,7 @@ import '../services/provider_usage/adapters/codebuddy_credits_adapter.dart';
 import '../services/provider_usage/adapters/codex_official_subscription_auth.dart';
 import '../services/provider_usage/adapters/cursor_official_subscription_auth.dart';
 import '../services/provider_usage/adapters/http_json_mapping_adapter.dart';
+import '../services/provider_usage/adapters/qoder_usage_adapter.dart';
 import '../services/provider_usage/cli_credential_source.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/remote_cli_locator.dart';
@@ -493,6 +494,7 @@ ManagedProviderUsageRegistry buildDefaultManagedProviderUsageRegistry({
     HttpJsonMappingAdapter(cliCredentials: cliCredentials),
     if (fs != null && basePath != null)
       CodebuddyCreditsUsageAdapter(fs: fs, basePath: basePath),
+    QoderUsageAdapter(),
   ]);
 }
 

@@ -9,6 +9,7 @@ import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
 import 'package:teampilot/services/provider_usage/adapters/codebuddy_credits_adapter.dart';
 import 'package:teampilot/services/provider_usage/adapters/claude_official_subscription_auth.dart';
 import 'package:teampilot/services/provider_usage/adapters/http_json_mapping_adapter.dart';
+import 'package:teampilot/services/provider_usage/adapters/qoder_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/cli_credential_source.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart'
@@ -28,10 +29,11 @@ import 'package:teampilot/services/storage/home_storage.dart';
 void main() {
   tearDown(resetTestHomeStorage);
 
-  test('default registry exposes only the http-json adapter', () {
+  test('default registry exposes http-json and qoder adapters', () {
     final registry = buildDefaultManagedProviderUsageRegistry();
 
     expect(registry.adapterFor('http-json'), isA<HttpJsonMappingAdapter>());
+    expect(registry.adapterFor('qoder-usage'), isA<QoderUsageAdapter>());
     expect(registry.adapterFor('codebuddy-credits'), isNull);
     expect(registry.adapterFor('official-claude-subscription'), isNull);
     expect(registry.adapterFor('official-codex-subscription'), isNull);
