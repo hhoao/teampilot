@@ -381,6 +381,53 @@ void main() {
       reason: 'unlinked empty lets the writer adopt the keychain value',
     );
   });
+
+  test('editing without retyping the password keeps the stored secret', () async {
+    final vault = await _vault();
+    final repository = SshProfileRepository(storage: fakeHomeStorage());
+    final credentials = InMemorySshCredentialStore();
+    final capture = VaultCredentialCapture(vault: vault);
+    final gate = VaultUnlockGate(vault: vault, prompt: () async => true);
+
+    final first = await saveSshProfileWithVault(
+      profile: profile,
+      password: 'secret',
+      privateKey: null,
+      passphrase: null,
+      capture: capture,
+      unlockGate: gate,
+      repository: repository,
+      credentialStore: credentials,
+    );
+
+    // A home-plane row has no vaultEntryId on reload (that is `profile`).
+    await saveSshProfileWithVault(
+      profile: profile,
+      password: null,
+      privateKey: null,
+      passphrase: null,
+      capture: capture,
+      unlockGate: gate,
+      repository: repository,
+      credentialStore: credentials,
+    );
+
+    expect(await vault.readField(first.capture.entryId, 'password'), 'secret');
+  });
+
+  test('editor mapping preserves an empty password when editing an unlinked row', () {
+    expect(
+      sshEditorSecretInputs(
+        authType: SshAuthType.password,
+        linked: false,
+        isEditing: true,
+        passwordText: '',
+        privateKeyPem: '',
+        passphraseText: '',
+      ).password,
+      isNull,
+    );
+  });
 }
 
 class _ThrowingSshProfileRepository implements SshProfileRepository {

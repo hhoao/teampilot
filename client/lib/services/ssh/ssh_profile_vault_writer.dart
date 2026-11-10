@@ -44,18 +44,30 @@ Future<SshProfileVaultWriteResult> saveSshProfileWithVault({
   var effectivePrivateKey = privateKey;
   var effectivePassphrase = passphrase;
   if (!linked) {
-    if (profile.authType == SshAuthType.password &&
-        (effectivePassword == null || effectivePassword.isEmpty)) {
-      effectivePassword = await credentialStore.loadPassword(profile.id);
-    }
-    if (profile.authType == SshAuthType.privateKey) {
-      if (effectivePrivateKey == null || effectivePrivateKey.isEmpty) {
-        effectivePrivateKey = await credentialStore.loadPrivateKey(profile.id);
+    // An owner entry already holds this device's secret. A null input means
+    // "keep it"; adopting a (possibly empty) legacy keychain value here would
+    // overwrite or delete that stored secret.
+    final owned = await capture.findOwner(
+      vaultOwnerKindSshProfile,
+      profile.id,
+    );
+    final preserveStored = owned != null && effectivePassword == null;
+    if (!preserveStored) {
+      if (profile.authType == SshAuthType.password &&
+          (effectivePassword == null || effectivePassword.isEmpty)) {
+        effectivePassword = await credentialStore.loadPassword(profile.id);
       }
-      if (effectivePassphrase == null || effectivePassphrase.isEmpty) {
-        effectivePassphrase = await credentialStore.loadPrivateKeyPassphrase(
-          profile.id,
-        );
+      if (profile.authType == SshAuthType.privateKey) {
+        if (effectivePrivateKey == null || effectivePrivateKey.isEmpty) {
+          effectivePrivateKey = await credentialStore.loadPrivateKey(
+            profile.id,
+          );
+        }
+        if (effectivePassphrase == null || effectivePassphrase.isEmpty) {
+          effectivePassphrase = await credentialStore.loadPrivateKeyPassphrase(
+            profile.id,
+          );
+        }
       }
     }
   }
@@ -120,10 +132,13 @@ SshEditorSecretInputs sshEditorSecretInputs({
   required String passwordText,
   required String privateKeyPem,
   required String passphraseText,
+  bool isEditing = false,
 }) {
   if (authType == SshAuthType.password) {
     return (
-      password: passwordText.isEmpty ? (linked ? null : '') : passwordText,
+      password: passwordText.isEmpty
+          ? ((isEditing || linked) ? null : '')
+          : passwordText,
       privateKey: '',
       passphrase: '',
     );
