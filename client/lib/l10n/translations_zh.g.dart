@@ -2860,8 +2860,6 @@ class _AppLocalizations$session$zh extends AppLocalizations$session$en {
 	@override String get historyToolTurn => '工具';
 	@override String get idleNotificationSubtitle => '可以继续对话了';
 	@override String get idleNotificationTitle => 'Agent 已就绪';
-	@override String get remoteDiscoveredTitle => '移动端新建了会话';
-	@override String get remoteDiscoveredBody => '点击打开新会话';
 	@override String get launchErrorHideDetails => '收起详情';
 	@override String get launchErrorReviewDetails => '查看详情';
 	@override String get launchMissingTeamMember => '团队成员不可用，请选择团队后重试。';
@@ -6100,8 +6098,6 @@ extension on AppLocalizationsZh {
 			'session.historyToolTurn' => '工具',
 			'session.idleNotificationSubtitle' => '可以继续对话了',
 			'session.idleNotificationTitle' => 'Agent 已就绪',
-			'session.remoteDiscoveredTitle' => '移动端新建了会话',
-			'session.remoteDiscoveredBody' => '点击打开新会话',
 			'session.launchErrorHideDetails' => '收起详情',
 			'session.launchErrorReviewDetails' => '查看详情',
 			'session.launchMissingTeamMember' => '团队成员不可用，请选择团队后重试。',

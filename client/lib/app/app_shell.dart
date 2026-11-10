@@ -30,6 +30,7 @@ import '../services/session_sync/chat_session_activity_source.dart';
 import '../services/session_sync/chat_session_control_port.dart';
 import '../services/session_sync/session_content_invalidation_bus.dart';
 import '../services/session_sync/session_content_stream_bus.dart';
+import '../services/session_sync/session_dir_change_parser.dart';
 import '../services/session_sync/session_protocol_controller.dart';
 import 'session_protocol_home.dart';
 import '../cubits/chat_cubit.dart';
@@ -228,6 +229,7 @@ import '../services/vault/vault_reference_indexer.dart';
 import '../services/vault/vault_service.dart';
 import '../services/vault/vault_unlock_gate.dart';
 import '../services/io/local_filesystem.dart';
+import '../services/io/workspace_fs_watcher.dart';
 import '../services/connect/connect_agent.dart';
 import '../services/connect/authorized_keys_file.dart';
 import '../services/connect/connect_backend_host.dart';
@@ -763,6 +765,8 @@ class AppShell {
   /// so teardown can cancel it.
   StreamSubscription<StoragePlaneChange>? _vaultPlaneSyncSub;
   StreamSubscription<SessionRemoteActivityState>? _sessionRemoteRefreshSub;
+  WorkspaceFsWatcher? _sessionListWatcher;
+  StreamSubscription<FsChangeBatch>? _sessionListWatchSub;
   StreamSubscription<SessionContentInvalidation>? _contentInvalidationSub;
   StreamSubscription<SessionContentStreamChunk>? _contentStreamSub;
   final CommandBus commandBus;
@@ -3387,6 +3391,38 @@ Future<AppShell> buildAppShell({
         unawaited(chatCubit.refreshSessionsForWorkspace(workspaceId));
       }
     });
+    WorkspaceFsWatcher? sessionListWatcher;
+    StreamSubscription<FsChangeBatch>? sessionListWatchSub;
+    if (connectionModeService.isLocalMode) {
+      final watcher = WorkspaceFsWatcher(
+        fs: homeStorage.fs,
+        root: homeStorage.paths.workspaceDir,
+        dispatcher: eventDispatcher,
+        autoStart: true,
+      );
+      if (watcher.isSupported) {
+        appLogger.i(
+          '[session-watch] watching ${homeStorage.paths.workspaceDir}',
+        );
+        sessionListWatcher = watcher;
+        sessionListWatchSub = watcher.onChanged.listen((batch) {
+          if (!batch.structural) return;
+          final ids = workspaceIdsFromSessionChangeDirs(
+            batch.changedDirs,
+            workspaceRoot: homeStorage.paths.workspaceDir,
+            pathContext: homeStorage.fs.pathContext,
+          );
+          if (ids.isEmpty) return;
+          appLogger.i('[session-watch] sessions changed ids=${ids.join(',')}');
+          for (final id in ids) {
+            unawaited(chatCubit.refreshWorkspaceFromHome(id));
+          }
+        });
+      } else {
+        appLogger.i('[session-watch] unsupported for this home');
+        watcher.dispose();
+      }
+    }
     Future<void> notifyRemoteAttention(SessionAttention attention) async {
       if (attention.kind != 'idle') return;
       final session = chatCubit.state.sessions
@@ -3415,56 +3451,6 @@ Future<AppShell> buildAppShell({
         title: title,
         body: l10n.session.idleNotificationSubtitle,
         subtitle: l10n.session.idleNotificationTitle,
-        payload: payload,
-      );
-    }
-
-    final notifiedDiscoveredSessionIds = <String>{};
-
-    Future<void> notifyDiscoveredSessions(
-      String workspaceId,
-      List<AppSession> sessions,
-    ) async {
-      if (sessions.isEmpty) return;
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final fresh = <AppSession>[];
-      for (final session in sessions) {
-        if (!notifiedDiscoveredSessionIds.add(session.sessionId)) continue;
-        if (now - session.createdAt <=
-            const Duration(minutes: 10).inMilliseconds) {
-          fresh.add(session);
-        }
-      }
-      if (fresh.isEmpty) return;
-      final newest = fresh.reduce((a, b) => a.createdAt >= b.createdAt ? a : b);
-      final workspace = chatCubit.state.workspaces
-          .where((item) => item.workspaceId == workspaceId)
-          .firstOrNull;
-      final workspaceName = workspace?.display.trim() ?? '';
-      final locale = PlatformDispatcher.instance.locale;
-      final l10n = lookupAppLocalizations(
-        basicLocaleListResolution([locale], appLocalizationsSupportedLocales),
-      );
-      final title = l10n.session.remoteDiscoveredTitle;
-      final body = workspaceName.isEmpty
-          ? l10n.session.remoteDiscoveredBody
-          : '$workspaceName · ${l10n.session.remoteDiscoveredBody}';
-      final payload = HomeWorkspaceRoute.sessionLocation(
-        workspaceId: workspaceId,
-        sessionId: newest.sessionId,
-      );
-      notificationCubit.record(
-        title: title,
-        message: body,
-        variant: TpToastVariant.success,
-        payload: payload,
-      );
-      final notifier = DesktopSystemNotifier.instance;
-      if (await notifier.isAppFocused()) return;
-      await notifier.showNotification(
-        title: title,
-        body: body,
-        subtitle: title,
         payload: payload,
       );
     }
@@ -3507,10 +3493,6 @@ Future<AppShell> buildAppShell({
       unawaited(
         sessionProtocolController.refreshSessions(workspaceId: workspaceId),
       );
-    };
-    chatCubit.onWorkspaceSessionsDiscovered = (workspaceId, sessions) {
-      if (!connectionModeService.isLocalMode) return;
-      unawaited(notifyDiscoveredSessions(workspaceId, sessions));
     };
     chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
     // Landing seed routing: pods own the store; these sinks are the fallback.
@@ -4523,6 +4505,8 @@ Future<AppShell> buildAppShell({
     shell._homeProfileWatchSub = homeProfileWatchSub;
     shell._vaultPlaneSyncSub = vaultPlaneSyncSub;
     shell._sessionRemoteRefreshSub = sessionRemoteRefreshSub;
+    shell._sessionListWatcher = sessionListWatcher;
+    shell._sessionListWatchSub = sessionListWatchSub;
     shell._contentInvalidationSub = contentInvalidationSub;
     shell._contentStreamSub = contentStreamSub;
     managedProviderControlPlaneLease.transferOwnership();
@@ -4892,6 +4876,10 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       shell._homeProfileWatchSub?.cancel();
       shell._vaultPlaneSyncSub?.cancel();
       unawaited(shell._sessionRemoteRefreshSub?.cancel());
+      unawaited(shell._sessionListWatchSub?.cancel());
+      unawaited(
+        shell._sessionListWatcher?.stopAndDispose() ?? Future<void>.value(),
+      );
       unawaited(shell._contentInvalidationSub?.cancel());
       unawaited(shell._contentStreamSub?.cancel());
       final lifecycleHandler = shell.sessionLifecycleHandler;
