@@ -63,7 +63,6 @@ class AppLocalizationsZh extends AppLocalizations with BaseTranslations<AppLocal
 	@override String get apiKey => 'API 密钥';
 	@override String get appearance => '外观';
 	@override String get archiveConversation => '归档';
-	@override String askUserQuestionBubbleAsked({required int count}) => '已询问 ${count} 个问题';
 	@override String get askUserQuestionBubbleAsking => '正在提问';
 	@override String get askUserQuestionBubbleUnanswered => '未回答';
 	@override String get autoLaunchAllMembersDescription => '仅对混合团队生效：开启后连接或重启会为每个有效成员启动终端；native 团队始终全员启动。';
@@ -338,6 +337,7 @@ class AppLocalizationsZh extends AppLocalizations with BaseTranslations<AppLocal
 	@override String workflowCardAgents({required int count}) => '${count} 个 agent';
 	@override String get workflowCardRunMissing => '未找到该调用的 Workflow 运行记录';
 	@override String get workspaces => '工作区';
+	@override String askUserQuestionBubbleAsked({required int count}) => '已询问 ${count} 个问题';
 	@override late final _AppLocalizations$acp$zh acp = _AppLocalizations$acp$zh._(_root);
 	@override late final _AppLocalizations$agent$zh agent = _AppLocalizations$agent$zh._(_root);
 	@override late final _AppLocalizations$ai$zh ai = _AppLocalizations$ai$zh._(_root);
@@ -1799,7 +1799,6 @@ class _AppLocalizations$homeWorkspace$zh extends AppLocalizations$homeWorkspace$
 	@override String get teamConfig => '团队配置';
 	@override String get teamWorkspaces => '团队工作区';
 	@override String get unfavoriteWorkspace => '取消收藏';
-	@override String workspaceAdditionalDirsCount({required int count}) => '${count} 个附加目录';
 	@override String get workspaceAgent => '智能体';
 	@override String get workspaceExtensions => '扩展';
 	@override String get workspaceFilterEmpty => '没有匹配的工作区';
@@ -1823,6 +1822,7 @@ class _AppLocalizations$homeWorkspace$zh extends AppLocalizations$homeWorkspace$
 	@override String get workspaceSortNameDesc => '名称（Z–A）';
 	@override String get workspaceSortRecentlyUpdated => '最近更新';
 	@override String get workspaceSortSessionCountDesc => '会话数量';
+	@override String workspaceAdditionalDirsCount({required int count}) => '${count} 个附加目录';
 }
 
 // Path: hook
@@ -1841,7 +1841,6 @@ class _AppLocalizations$hook$zh extends AppLocalizations$hook$en {
 	@override String get event => '事件';
 	@override String get import => '导入';
 	@override String get importCli => 'CLI';
-	@override String importDone({required int count}) => '导入 ${count} 条';
 	@override String get importDoneToast => '已导入 hooks';
 	@override String get importInvalidJson => 'Hook JSON 无效';
 	@override String get importJson => 'Hook JSON';
@@ -1860,6 +1859,7 @@ class _AppLocalizations$hook$zh extends AppLocalizations$hook$en {
 	@override String get saveFailed => '保存 Hook 失败。';
 	@override String get supportMatrix => '查看受支持程度';
 	@override String get timeoutSec => '超时（秒）';
+	@override String importDone({required int count}) => '导入 ${count} 条';
 }
 
 // Path: hub
@@ -2126,6 +2126,8 @@ class _AppLocalizations$managedProviders$zh extends AppLocalizations$managedProv
 	@override String get quickPresetCodexHint => '登录或导入，或手填相同字段。';
 	@override String get quickPresetCursor => 'Cursor';
 	@override String get quickPresetCursorHint => '登录或导入，或手填相同字段。';
+	@override String get quickPresetGrokX => 'Grok / Cursor / X';
+	@override String get quickPresetGrokXHint => '使用 Cursor 登录态查询 grok.com 合一后的周额度和预付费。';
 	@override String get quickPresetCustom => '自定义';
 	@override String get quickPresetCustomHint => '从零配置接口、凭据与显示格式。';
 	@override String get quickPresetDeepSeek => 'DeepSeek';
@@ -3256,7 +3258,6 @@ class _AppLocalizations$ssh$zh extends AppLocalizations$ssh$en {
 	@override String get hostsOpenTerminalNoWorkspace => '请先打开一个工作区再启动终端。';
 	@override String get hostsPanelTitle => '远程主机';
 	@override String get hostsPillConnecting => '连接中…';
-	@override String hostsPillCount({required int count}) => '${count} 台主机';
 	@override String get hostsRowKind => 'SSH 主机';
 	@override String get migrateToVault => '迁移到保险库';
 	@override String get penaltyRefused => '服务器暂时拒绝了连接（触发了防暴力破解保护），请等待约一分钟后重试。';
@@ -3266,6 +3267,7 @@ class _AppLocalizations$ssh$zh extends AppLocalizations$ssh$en {
 	@override String get serversNotConnected => '未连接远程主机。';
 	@override String get serversTitle => 'SSH 服务器';
 	@override String get vaultBadge => '保险库';
+	@override String hostsPillCount({required int count}) => '${count} 台主机';
 }
 
 // Path: sshProfile
@@ -3961,7 +3963,6 @@ extension on AppLocalizationsZh {
 			'apiKey' => 'API 密钥',
 			'appearance' => '外观',
 			'archiveConversation' => '归档',
-			'askUserQuestionBubbleAsked' => ({required int count}) => '已询问 ${count} 个问题',
 			'askUserQuestionBubbleAsking' => '正在提问',
 			'askUserQuestionBubbleUnanswered' => '未回答',
 			'autoLaunchAllMembersDescription' => '仅对混合团队生效：开启后连接或重启会为每个有效成员启动终端；native 团队始终全员启动。',
@@ -4222,6 +4223,7 @@ extension on AppLocalizationsZh {
 			'workflowCardAgents' => ({required int count}) => '${count} 个 agent',
 			'workflowCardRunMissing' => '未找到该调用的 Workflow 运行记录',
 			'workspaces' => '工作区',
+			'askUserQuestionBubbleAsked' => ({required int count}) => '已询问 ${count} 个问题',
 			'acp.chatLaunchFailed' => ({required String cliName}) => '无法启动 ${cliName}，请确认已安装对应 CLI 后重试。',
 			'acp.chatNotLoggedIn' => '代理尚未登录。请到设置 → 服务商完成登录后重试。',
 			'acp.chatProcessExited' => ({required String cliName}) => '${cliName} 意外退出',
@@ -4939,57 +4941,57 @@ extension on AppLocalizationsZh {
 			'file.previewHostDescription' => '在浮动工作区或中间工作台打开文件。',
 			'file.previewHostFloating' => '浮动',
 			'file.previewHostTitle' => '文件预览位置',
-			'l10n.fileTree.fileTree' => '文件树',
-			'l10n.fileTree.copy' => '复制',
-			'l10n.fileTree.copyPath' => '复制路径',
-			'l10n.fileTree.copyRelativePath' => '复制相对路径',
-			'l10n.fileTree.createNameHint' => '名称',
-			'l10n.fileTree.cut' => '剪切',
-			'l10n.fileTree.deleteDone' => '已删除',
-			'l10n.fileTree.deleteItemConfirm' => ({required String name}) => '删除「${name}」？',
-			'l10n.fileTree.deleteItemTitle' => '删除',
-			'l10n.fileTree.fileCreated' => '已创建文件',
-			'l10n.fileTree.folderCreated' => '已创建文件夹',
-			'l10n.fileTree.hideFilter' => '隐藏筛选',
-			'l10n.fileTree.importApplyRemaining' => '应用于剩余冲突',
-			'l10n.fileTree.importCancelAll' => '全部取消',
-			'l10n.fileTree.importConflictBody' => ({required String name}) => '目标位置已存在「${name}」。',
-			'l10n.fileTree.importConflictRemaining' => ({required int count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, other: '之后还有 ${count} 个冲突。', ), 
-			'l10n.fileTree.importConflictRemainingZero' => '没有更多冲突。',
-			'l10n.fileTree.importConflictTitle' => '项目已存在',
-			'l10n.fileTree.importConflictTypeMismatch' => '文件和文件夹不能互相替换。',
-			'l10n.fileTree.importDropCopy' => '复制',
-			'l10n.fileTree.importDropMove' => '移动',
-			'l10n.fileTree.importOverwrite' => '覆盖',
-			'l10n.fileTree.importProgressCancel' => '取消',
-			'l10n.fileTree.importProgressCurrent' => ({required String name}) => '${name}',
+			'fileTree.fileTree' => '文件树',
+			'fileTree.copy' => '复制',
+			'fileTree.copyPath' => '复制路径',
+			'fileTree.copyRelativePath' => '复制相对路径',
+			'fileTree.createNameHint' => '名称',
+			'fileTree.cut' => '剪切',
+			'fileTree.deleteDone' => '已删除',
+			'fileTree.deleteItemConfirm' => ({required String name}) => '删除「${name}」？',
+			'fileTree.deleteItemTitle' => '删除',
+			'fileTree.fileCreated' => '已创建文件',
+			'fileTree.folderCreated' => '已创建文件夹',
+			'fileTree.hideFilter' => '隐藏筛选',
+			'fileTree.importApplyRemaining' => '应用于剩余冲突',
+			'fileTree.importCancelAll' => '全部取消',
+			'fileTree.importConflictBody' => ({required String name}) => '目标位置已存在「${name}」。',
+			'fileTree.importConflictRemaining' => ({required int count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, other: '之后还有 ${count} 个冲突。', ), 
+			'fileTree.importConflictRemainingZero' => '没有更多冲突。',
+			'fileTree.importConflictTitle' => '项目已存在',
+			'fileTree.importConflictTypeMismatch' => '文件和文件夹不能互相替换。',
+			'fileTree.importDropCopy' => '复制',
+			'fileTree.importDropMove' => '移动',
+			'fileTree.importOverwrite' => '覆盖',
+			'fileTree.importProgressCancel' => '取消',
+			'fileTree.importProgressCurrent' => ({required String name}) => '${name}',
 			_ => null,
 		} ?? switch (path) {
-			'l10n.fileTree.importProgressItems' => ({required int completed, required int total}) => '${completed} / ${total}',
-			'l10n.fileTree.importProgressTitle' => '正在导入…',
-			'l10n.fileTree.importRejectSelf' => '无法将项目移动到自身或其子目录中。',
-			'l10n.fileTree.importSkip' => '跳过',
-			'l10n.fileTree.importSummary' => ({required int succeeded, required int skipped, required int failed}) => '成功 ${succeeded}，跳过 ${skipped}，失败 ${failed}',
-			'l10n.fileTree.importSummaryCancelledSuffix' => ' — 已取消',
-			'l10n.fileTree.invalidName' => '名称无效',
-			'l10n.fileTree.invalidPasteTarget' => '无法粘贴到此处',
-			'l10n.fileTree.itemExists' => '同名项目已存在',
-			'l10n.fileTree.newFile' => '新建文件',
-			'l10n.fileTree.newFolder' => '新建文件夹',
-			'l10n.fileTree.openInFileManager' => '在文件管理器中打开',
-			'l10n.fileTree.openInTerminal' => '在终端中打开',
-			'l10n.fileTree.openInTerminalFailed' => '无法打开终端',
-			'l10n.fileTree.openWithSystemApp' => '用系统应用打开',
-			'l10n.fileTree.paste' => '粘贴',
-			'l10n.fileTree.pasteDone' => '已粘贴',
-			'l10n.fileTree.refresh' => '刷新',
-			'l10n.fileTree.rename' => '重命名',
-			'l10n.fileTree.renameDone' => '已重命名',
-			'l10n.fileTree.renameTitle' => '重命名',
-			'l10n.fileTree.revealActiveFile' => '定位当前文件',
-			'l10n.fileTree.revealFailed' => '无法在文件树中定位该文件',
-			'l10n.fileTree.showFilter' => '显示筛选',
-			'l10n.fileTree.sourceMissing' => '源文件不存在',
+			'fileTree.importProgressItems' => ({required int completed, required int total}) => '${completed} / ${total}',
+			'fileTree.importProgressTitle' => '正在导入…',
+			'fileTree.importRejectSelf' => '无法将项目移动到自身或其子目录中。',
+			'fileTree.importSkip' => '跳过',
+			'fileTree.importSummary' => ({required int succeeded, required int skipped, required int failed}) => '成功 ${succeeded}，跳过 ${skipped}，失败 ${failed}',
+			'fileTree.importSummaryCancelledSuffix' => ' — 已取消',
+			'fileTree.invalidName' => '名称无效',
+			'fileTree.invalidPasteTarget' => '无法粘贴到此处',
+			'fileTree.itemExists' => '同名项目已存在',
+			'fileTree.newFile' => '新建文件',
+			'fileTree.newFolder' => '新建文件夹',
+			'fileTree.openInFileManager' => '在文件管理器中打开',
+			'fileTree.openInTerminal' => '在终端中打开',
+			'fileTree.openInTerminalFailed' => '无法打开终端',
+			'fileTree.openWithSystemApp' => '用系统应用打开',
+			'fileTree.paste' => '粘贴',
+			'fileTree.pasteDone' => '已粘贴',
+			'fileTree.refresh' => '刷新',
+			'fileTree.rename' => '重命名',
+			'fileTree.renameDone' => '已重命名',
+			'fileTree.renameTitle' => '重命名',
+			'fileTree.revealActiveFile' => '定位当前文件',
+			'fileTree.revealFailed' => '无法在文件树中定位该文件',
+			'fileTree.showFilter' => '显示筛选',
+			'fileTree.sourceMissing' => '源文件不存在',
 			'floating.previewTabsDescription' => '文件与 diff 预览在浮动面板中共享一个可替换的标签页，固定后保留。',
 			'floating.previewTabsTitle' => '单个预览标签页',
 			'floating.workspaceAddTooltip' => '在浮动工作区打开',
@@ -5245,7 +5247,6 @@ extension on AppLocalizationsZh {
 			'homeWorkspace.teamConfig' => '团队配置',
 			'homeWorkspace.teamWorkspaces' => '团队工作区',
 			'homeWorkspace.unfavoriteWorkspace' => '取消收藏',
-			'homeWorkspace.workspaceAdditionalDirsCount' => ({required int count}) => '${count} 个附加目录',
 			'homeWorkspace.workspaceAgent' => '智能体',
 			'homeWorkspace.workspaceExtensions' => '扩展',
 			'homeWorkspace.workspaceFilterEmpty' => '没有匹配的工作区',
@@ -5269,6 +5270,7 @@ extension on AppLocalizationsZh {
 			'homeWorkspace.workspaceSortNameDesc' => '名称（Z–A）',
 			'homeWorkspace.workspaceSortRecentlyUpdated' => '最近更新',
 			'homeWorkspace.workspaceSortSessionCountDesc' => '会话数量',
+			'homeWorkspace.workspaceAdditionalDirsCount' => ({required int count}) => '${count} 个附加目录',
 			'hook.actionCommand' => '命令',
 			'hook.actionScript' => '脚本',
 			'hook.capabilityMatrix' => '能力矩阵',
@@ -5278,7 +5280,6 @@ extension on AppLocalizationsZh {
 			'hook.event' => '事件',
 			'hook.import' => '导入',
 			'hook.importCli' => 'CLI',
-			'hook.importDone' => ({required int count}) => '导入 ${count} 条',
 			'hook.importDoneToast' => '已导入 hooks',
 			'hook.importInvalidJson' => 'Hook JSON 无效',
 			'hook.importJson' => 'Hook JSON',
@@ -5297,6 +5298,7 @@ extension on AppLocalizationsZh {
 			'hook.saveFailed' => '保存 Hook 失败。',
 			'hook.supportMatrix' => '查看受支持程度',
 			'hook.timeoutSec' => '超时（秒）',
+			'hook.importDone' => ({required int count}) => '导入 ${count} 条',
 			'hub.publishAuthHint' => '使用 GitHub 登录并授权，以向 Hub 仓库发起基于 fork 的拉取请求。',
 			'hub.publishAuthorLabel' => '作者',
 			'hub.publishBadgePrOpen' => 'PR 已开',
@@ -5511,6 +5513,8 @@ extension on AppLocalizationsZh {
 			'managedProviders.quickPresetCodexHint' => '登录或导入，或手填相同字段。',
 			'managedProviders.quickPresetCursor' => 'Cursor',
 			'managedProviders.quickPresetCursorHint' => '登录或导入，或手填相同字段。',
+			'managedProviders.quickPresetGrokX' => 'Grok / Cursor / X',
+			'managedProviders.quickPresetGrokXHint' => '使用 Cursor 登录态查询 grok.com 合一后的周额度和预付费。',
 			'managedProviders.quickPresetCustom' => '自定义',
 			'managedProviders.quickPresetCustomHint' => '从零配置接口、凭据与显示格式。',
 			'managedProviders.quickPresetDeepSeek' => 'DeepSeek',
@@ -5989,10 +5993,10 @@ extension on AppLocalizationsZh {
 			'run.debug' => '调试',
 			'run.debugUnavailable' => '调试功能尚未提供',
 			'run.deleteConfiguration' => '删除',
-			'run.deleteConfigurationConfirm' => ({required String name}) => '删除配置“${name}”？',
-			'run.discard' => '放弃',
 			_ => null,
 		} ?? switch (path) {
+			'run.deleteConfigurationConfirm' => ({required String name}) => '删除配置“${name}”？',
+			'run.discard' => '放弃',
 			'run.discardChangesMessage' => '此配置有未保存的更改。应用、放弃，还是取消？',
 			'run.discardChangesTitle' => '放弃更改？',
 			'run.editConfigurations' => '编辑配置',
@@ -6458,7 +6462,6 @@ extension on AppLocalizationsZh {
 			'ssh.hostsOpenTerminalNoWorkspace' => '请先打开一个工作区再启动终端。',
 			'ssh.hostsPanelTitle' => '远程主机',
 			'ssh.hostsPillConnecting' => '连接中…',
-			'ssh.hostsPillCount' => ({required int count}) => '${count} 台主机',
 			'ssh.hostsRowKind' => 'SSH 主机',
 			'ssh.migrateToVault' => '迁移到保险库',
 			'ssh.penaltyRefused' => '服务器暂时拒绝了连接（触发了防暴力破解保护），请等待约一分钟后重试。',
@@ -6468,6 +6471,7 @@ extension on AppLocalizationsZh {
 			'ssh.serversNotConnected' => '未连接远程主机。',
 			'ssh.serversTitle' => 'SSH 服务器',
 			'ssh.vaultBadge' => '保险库',
+			'ssh.hostsPillCount' => ({required int count}) => '${count} 台主机',
 			'sshProfile.connect' => '连接',
 			'sshProfile.connectSuccess' => ({required String host}) => '已连接到 ${host}',
 			'sshProfile.delete' => '删除',
@@ -6503,10 +6507,10 @@ extension on AppLocalizationsZh {
 			'sshProfile.statusAuthFailed' => '认证失败',
 			'sshProfile.statusConnected' => '已连接',
 			'sshProfile.statusConnecting' => '连接中…',
-			'sshProfile.statusDisconnected' => '未连接',
-			'sshProfile.statusError' => '错误',
 			_ => null,
 		} ?? switch (path) {
+			'sshProfile.statusDisconnected' => '未连接',
+			'sshProfile.statusError' => '错误',
 			'sshProfile.statusReconnecting' => '重连中…',
 			'sshProfile.test' => '测试',
 			'sshProfile.testFailed' => '连接测试失败',
@@ -7017,10 +7021,10 @@ extension on AppLocalizationsZh {
 			'worktree.deleteFailed' => ({required Object error}) => '删除 worktree 失败：${error}',
 			'worktree.deleteForce' => '即使有未提交改动也强制删除',
 			'worktree.deleteSessionsToo' => ({required Object count}) => '同时删除该 worktree 下的 ${count} 个会话',
-			'worktree.deleteTitle' => '删除 worktree',
-			'worktree.menuCopyPath' => '复制路径',
 			_ => null,
 		} ?? switch (path) {
+			'worktree.deleteTitle' => '删除 worktree',
+			'worktree.menuCopyPath' => '复制路径',
 			'worktree.menuRemove' => '删除 worktree',
 			'worktree.more' => '更多',
 			'worktree.newConversationHere' => '在此新建会话',
