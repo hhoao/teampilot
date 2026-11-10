@@ -428,6 +428,32 @@ void main() {
       isNull,
     );
   });
+
+  test('editing keeps the stored secret even when the keychain has a stale value', () async {
+    final vault = await _vault();
+    final repository = SshProfileRepository(storage: fakeHomeStorage());
+    final credentials = InMemorySshCredentialStore();
+    await credentials.savePassword('p1', 'legacy');
+    final capture = VaultCredentialCapture(vault: vault);
+    final gate = VaultUnlockGate(vault: vault, prompt: () async => true);
+
+    // Seed the owner entry directly, so no saveSshProfileWithVault call clears
+    // the keychain via deleteAll before the edit under test.
+    final stored = await capture.captureSsh(profile, password: 'secret');
+
+    await saveSshProfileWithVault(
+      profile: profile,
+      password: null,
+      privateKey: null,
+      passphrase: null,
+      capture: capture,
+      unlockGate: gate,
+      repository: repository,
+      credentialStore: credentials,
+    );
+
+    expect(await vault.readField(stored.entryId, 'password'), 'secret');
+  });
 }
 
 class _ThrowingSshProfileRepository implements SshProfileRepository {
