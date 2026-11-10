@@ -3,6 +3,7 @@ import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../vault/credential_capture.dart';
 import '../vault/vault_capture_guard.dart';
+import '../vault/vault_service.dart';
 import '../vault/vault_unlock_gate.dart';
 
 class SshProfileVaultWriteResult {
@@ -174,3 +175,26 @@ Future<SshEditorSecretInputs> resolveSshEditorTestSecrets({
 
 String? _nonEmpty(String? value) =>
     value == null || value.isEmpty ? null : value;
+
+/// Reads a stored credential field for an SSH profile.
+///
+/// Home-plane rows carry no `vaultEntryId`; fall back to the owner pair the
+/// vault itself keeps. This is a functional read — explicit reveals go through
+/// `revealVault*` instead, which re-authenticates before showing a secret.
+SshVaultFieldReader resolveSshVaultFieldReader(
+  VaultService vault,
+  SshProfile profile,
+) {
+  return (field) async {
+    final linked = profile.vaultEntryId?.trim() ?? '';
+    final entry = linked.isNotEmpty
+        ? await vault.get(linked)
+        : await findVaultOwnerEntry(
+            vault,
+            ownerKind: vaultOwnerKindSshProfile,
+            ownerId: profile.id,
+          );
+    final value = entry?.fields[field];
+    return (value == null || value.isEmpty) ? null : value;
+  };
+}

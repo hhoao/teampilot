@@ -199,6 +199,39 @@ void main() {
     },
   );
 
+  group('resolveSshVaultFieldReader', () {
+    test('reads the field by linked entry id', () async {
+      final vault = await _vault();
+      final capture = VaultCredentialCapture(vault: vault);
+      final result = await capture.captureSsh(profile, password: 'secret');
+      final linked = profile.copyWith(vaultEntryId: result.entryId);
+
+      expect(await resolveSshVaultFieldReader(vault, linked)('password'), 'secret');
+    });
+
+    test('falls back to the owner pair when the row has no vault link', () async {
+      final vault = await _vault();
+      await VaultCredentialCapture(vault: vault).captureSsh(
+        profile,
+        password: 'secret',
+      );
+
+      expect(await resolveSshVaultFieldReader(vault, profile)('password'), 'secret');
+    });
+
+    test('returns null with no entry and for an absent field', () async {
+      final vault = await _vault();
+      await VaultCredentialCapture(vault: vault).captureSsh(
+        profile,
+        password: 'secret',
+      );
+      final reader = resolveSshVaultFieldReader(vault, profile);
+
+      expect(await reader('passphrase'), isNull);
+      expect(await resolveSshVaultFieldReader(await _vault(), profile)('password'), isNull);
+    });
+  });
+
   group('editor test credentials', () {
     late InMemorySshCredentialStore credentials;
 
