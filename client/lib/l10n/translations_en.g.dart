@@ -8367,6 +8367,12 @@ class AppLocalizations$sshProfile$en {
 	/// en: 'Edit'
 	String get edit => 'Edit';
 
+	/// en: 'Private key'
+	String get formAuthPrivateKey => 'Private key';
+
+	/// en: 'Authentication'
+	String get formAuthType => 'Authentication';
+
 	/// en: 'Provide a private key or password.'
 	String get formCredentialRequired => 'Provide a private key or password.';
 
@@ -8412,11 +8418,8 @@ class AppLocalizations$sshProfile$en {
 	/// en: 'Password'
 	String get formPassword => 'Password';
 
-	/// en: 'Optional if a private key is provided.'
-	String get formPasswordHelper => 'Optional if a private key is provided.';
-
-	/// en: 'Use when no private key is set'
-	String get formPasswordHint => 'Use when no private key is set';
+	/// en: 'Login password'
+	String get formPasswordHint => 'Login password';
 
 	/// en: 'Leave empty to keep saved password'
 	String get formPasswordHintEdit => 'Leave empty to keep saved password';
@@ -12673,6 +12676,8 @@ extension on AppLocalizations {
 			'sshProfile.delete' => 'Delete',
 			'sshProfile.disconnect' => 'Disconnect',
 			'sshProfile.edit' => 'Edit',
+			'sshProfile.formAuthPrivateKey' => 'Private key',
+			'sshProfile.formAuthType' => 'Authentication',
 			'sshProfile.formCredentialRequired' => 'Provide a private key or password.',
 			'sshProfile.formCredentialSaveFailed' => 'Target saved, but credentials could not be stored. Unlock the system keyring and edit the target to re-enter them.',
 			'sshProfile.formFieldRequired' => 'Required',
@@ -12688,8 +12693,7 @@ extension on AppLocalizations {
 			'sshProfile.formPassphrase' => 'Key passphrase',
 			'sshProfile.formPassphraseHint' => 'Optional',
 			'sshProfile.formPassword' => 'Password',
-			'sshProfile.formPasswordHelper' => 'Optional if a private key is provided.',
-			'sshProfile.formPasswordHint' => 'Use when no private key is set',
+			'sshProfile.formPasswordHint' => 'Login password',
 			'sshProfile.formPasswordHintEdit' => 'Leave empty to keep saved password',
 			'sshProfile.formPort' => 'Port',
 			'sshProfile.formPortInvalid' => 'Port must be between 1 and 65535',
@@ -12697,9 +12701,9 @@ extension on AppLocalizations {
 			'sshProfile.formTitleNew' => 'New SSH target',
 			'sshProfile.formUsername' => 'Username',
 			'sshProfile.formUsernameHint' => 'deploy',
-			'sshProfile.refresh' => 'Refresh',
 			_ => null,
 		} ?? switch (path) {
+			'sshProfile.refresh' => 'Refresh',
 			'sshProfile.selectorManage' => 'Manage SSH servers…',
 			'sshProfile.selectorTooltip' => 'Switch SSH server',
 			'sshProfile.statusAuthFailed' => 'Authentication failed',
@@ -13211,9 +13215,9 @@ extension on AppLocalizations {
 			'worktree.createTitle' => 'New worktree',
 			'worktree.creating' => 'Creating…',
 			'worktree.deleteAction' => 'Remove',
-			'worktree.deleteBody' => ({required Object branch}) => 'Remove the worktree for ${branch}?',
 			_ => null,
 		} ?? switch (path) {
+			'worktree.deleteBody' => ({required Object branch}) => 'Remove the worktree for ${branch}?',
 			'worktree.deleteBranchToo' => 'Also delete the branch',
 			'worktree.deleteBusyWarning' => 'Stop the running conversations in this worktree before removing it.',
 			'worktree.deleteFailed' => ({required Object error}) => 'Failed to remove worktree: ${error}',

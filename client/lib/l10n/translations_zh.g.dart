@@ -3287,6 +3287,8 @@ class _AppLocalizations$sshProfile$zh extends AppLocalizations$sshProfile$en {
 	@override String get delete => '删除';
 	@override String get disconnect => '断开';
 	@override String get edit => '编辑';
+	@override String get formAuthPrivateKey => '私钥';
+	@override String get formAuthType => '认证方式';
 	@override String get formCredentialRequired => '请提供私钥或密码。';
 	@override String get formCredentialSaveFailed => '目标已保存，但无法写入凭据。请解锁系统钥匙环后编辑该目标并重新填写。';
 	@override String get formFieldRequired => '必填';
@@ -3302,8 +3304,7 @@ class _AppLocalizations$sshProfile$zh extends AppLocalizations$sshProfile$en {
 	@override String get formPassphrase => '密钥口令';
 	@override String get formPassphraseHint => '可选';
 	@override String get formPassword => '密码';
-	@override String get formPasswordHelper => '若已提供私钥则可不填。';
-	@override String get formPasswordHint => '未填写私钥时使用';
+	@override String get formPasswordHint => '登录密码';
 	@override String get formPasswordHintEdit => '留空则保留已保存密码';
 	@override String get formPort => '端口';
 	@override String get formPortInvalid => '端口须在 1–65535 之间';
@@ -6487,6 +6488,8 @@ extension on AppLocalizationsZh {
 			'sshProfile.delete' => '删除',
 			'sshProfile.disconnect' => '断开',
 			'sshProfile.edit' => '编辑',
+			'sshProfile.formAuthPrivateKey' => '私钥',
+			'sshProfile.formAuthType' => '认证方式',
 			'sshProfile.formCredentialRequired' => '请提供私钥或密码。',
 			'sshProfile.formCredentialSaveFailed' => '目标已保存，但无法写入凭据。请解锁系统钥匙环后编辑该目标并重新填写。',
 			'sshProfile.formFieldRequired' => '必填',
@@ -6502,8 +6505,7 @@ extension on AppLocalizationsZh {
 			'sshProfile.formPassphrase' => '密钥口令',
 			'sshProfile.formPassphraseHint' => '可选',
 			'sshProfile.formPassword' => '密码',
-			'sshProfile.formPasswordHelper' => '若已提供私钥则可不填。',
-			'sshProfile.formPasswordHint' => '未填写私钥时使用',
+			'sshProfile.formPasswordHint' => '登录密码',
 			'sshProfile.formPasswordHintEdit' => '留空则保留已保存密码',
 			'sshProfile.formPort' => '端口',
 			'sshProfile.formPortInvalid' => '端口须在 1–65535 之间',
@@ -6511,9 +6513,9 @@ extension on AppLocalizationsZh {
 			'sshProfile.formTitleNew' => '新的 SSH 目标',
 			'sshProfile.formUsername' => '用户名',
 			'sshProfile.formUsernameHint' => 'deploy',
-			'sshProfile.refresh' => '刷新',
 			_ => null,
 		} ?? switch (path) {
+			'sshProfile.refresh' => '刷新',
 			'sshProfile.selectorManage' => '管理 SSH 服务器…',
 			'sshProfile.selectorTooltip' => '切换 SSH 服务器',
 			'sshProfile.statusAuthFailed' => '认证失败',
@@ -7025,9 +7027,9 @@ extension on AppLocalizationsZh {
 			'worktree.createTitle' => '新建 worktree',
 			'worktree.creating' => '正在创建…',
 			'worktree.deleteAction' => '删除',
-			'worktree.deleteBody' => ({required Object branch}) => '删除 ${branch} 的 worktree？',
 			_ => null,
 		} ?? switch (path) {
+			'worktree.deleteBody' => ({required Object branch}) => '删除 ${branch} 的 worktree？',
 			'worktree.deleteBranchToo' => '同时删除分支',
 			'worktree.deleteBusyWarning' => '请先停止该 worktree 下正在运行的会话，再删除。',
 			'worktree.deleteFailed' => ({required Object error}) => '删除 worktree 失败：${error}',

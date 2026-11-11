@@ -72,6 +72,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
   late final TextEditingController _privateKeyController;
   late final TextEditingController _passphraseController;
   late final TextEditingController _passwordController;
+  late SshAuthType _authType;
   var _saving = false;
   var _testing = false;
 
@@ -88,6 +89,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     _privateKeyController = TextEditingController();
     _passphraseController = TextEditingController();
     _passwordController = TextEditingController();
+    _authType = widget.initialProfile?.authType ?? SshAuthType.password;
   }
 
   @override
@@ -116,21 +118,13 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       host: host,
       port: int.tryParse(_portController.text.trim()) ?? 22,
       username: username,
-      authType: _usesPasswordAuth
-          ? SshAuthType.password
-          : SshAuthType.privateKey,
+      authType: _authType,
       vaultEntryId: widget.initialProfile?.vaultEntryId,
       createdAt: existing == null || existing.createdAt == 0
           ? now
           : existing.createdAt,
       updatedAt: now,
     );
-  }
-
-  bool get _usesPasswordAuth {
-    if (_privateKeyController.text.isNotEmpty) return false;
-    if (_passwordController.text.isNotEmpty) return true;
-    return widget.initialProfile?.authType == SshAuthType.password;
   }
 
   Future<void> _importPrivateKey() async {
@@ -174,7 +168,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     if (_formKey.currentState?.validate() != true) return null;
     final profile = _buildProfile();
     if (!_isEditing &&
-        !_usesPasswordAuth &&
+        _authType == SshAuthType.privateKey &&
         _privateKeyController.text.trim().isEmpty) {
       AppToast.show(
         context,
@@ -189,7 +183,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       final unlockGate = context.read<VaultUnlockGate>();
       final repository = widget.repository;
       final credentialStore = context.read<SshCredentialStore>();
-      final usesPassword = _usesPasswordAuth;
+      final usesPassword = _authType == SshAuthType.password;
       final privateKeyPem = usesPassword ? '' : _privateKeyController.text;
       final inputs = sshEditorSecretInputs(
         authType: usesPassword ? SshAuthType.password : SshAuthType.privateKey,
@@ -265,7 +259,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
         .sshClientFactory;
     try {
       final profile = _buildProfile();
-      final usesPassword = _usesPasswordAuth;
+      final usesPassword = _authType == SshAuthType.password;
       final vault = context.read<VaultService>();
       final secrets = await resolveSshEditorTestSecrets(
         authType: usesPassword ? SshAuthType.password : SshAuthType.privateKey,
@@ -369,28 +363,30 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           ),
         ),
         const SizedBox(height: 16),
-        _privateKeyField(),
+        _authTypeField(),
         const SizedBox(height: 12),
-        _field(
-          id: 'passphrase',
-          controller: _passphraseController,
-          label: l10n.sshProfile.formPassphrase,
-          hint: l10n.sshProfile.formPassphraseHint,
-          obscure: true,
-        ),
-        const SizedBox(height: 12),
-        _field(
-          id: 'password',
-          controller: _passwordController,
-          label: l10n.sshProfile.formPassword,
-          hint: _isEditing
-              ? l10n.sshProfile.formPasswordHintEdit
-              : l10n.sshProfile.formPasswordHint,
-          helper: l10n.sshProfile.formPasswordHelper,
-          obscure: true,
-          onChanged: () => setState(() {}),
-          onReveal: _revealPassword,
-        ),
+        if (_authType == SshAuthType.password)
+          _field(
+            id: 'password',
+            controller: _passwordController,
+            label: l10n.sshProfile.formPassword,
+            hint: _isEditing
+                ? l10n.sshProfile.formPasswordHintEdit
+                : l10n.sshProfile.formPasswordHint,
+            obscure: true,
+            onReveal: _revealPassword,
+          )
+        else ...[
+          _privateKeyField(),
+          const SizedBox(height: 12),
+          _field(
+            id: 'passphrase',
+            controller: _passphraseController,
+            label: l10n.sshProfile.formPassphrase,
+            hint: l10n.sshProfile.formPassphraseHint,
+            obscure: true,
+          ),
+        ],
       ],
     );
 
@@ -517,6 +513,29 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           decoration: decoration,
         );
       },
+    );
+  }
+
+  Widget _authTypeField() {
+    final l10n = context.l10n;
+    return TpFormFieldLayout(
+      label: Text(l10n.sshProfile.formAuthType),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TpSegmentedControl(
+          key: const ValueKey('ssh-auth-type'),
+          totalSwitches: 2,
+          initialLabelIndex: _authType.index,
+          labels: [
+            l10n.sshProfile.formPassword,
+            l10n.sshProfile.formAuthPrivateKey,
+          ],
+          onToggle: (index) {
+            if (index == null || index < 0 || index > 1) return;
+            setState(() => _authType = SshAuthType.values[index]);
+          },
+        ),
+      ),
     );
   }
 

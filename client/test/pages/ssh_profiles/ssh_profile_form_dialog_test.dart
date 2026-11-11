@@ -201,9 +201,8 @@ void main() {
       'calling page', (tester) async {
     final h = await pumpEditor(tester, profile: _target);
 
-    // Fields in build order: label, host, username, port, private key,
-    // passphrase, password.
-    await tester.enterText(find.byType(TextField).at(6), 'new-password');
+    // Fields in build order: label, host, username, port, password.
+    await tester.enterText(find.byType(TextField).at(4), 'new-password');
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
@@ -229,6 +228,13 @@ void main() {
         '-----END OPENSSH PRIVATE KEY-----';
 
     await tester.enterText(find.byType(TextField).at(1), 'example.com');
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('ssh-auth-type')),
+        matching: find.text('Private key'),
+      ),
+    );
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(4), pem);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Add target'));
@@ -254,14 +260,13 @@ void main() {
       password: 's3cret',
     );
 
-    // The dialog has two TpPasswordInput fields (passphrase, then password)
-    // and both toggles share the same key. The password field is second.
+    // The dialog has a single TpPasswordInput in password mode: the password
+    // field. Its reveal toggle is the one to tap.
     final toggles = find.byKey(const ValueKey('password-visibility-toggle'));
-    expect(toggles, findsNWidgets(2));
-    // The password field is last of seven; keep it in view before tapping.
-    await tester.ensureVisible(toggles.at(1));
+    expect(toggles, findsOneWidget);
+    await tester.ensureVisible(toggles);
     await tester.pumpAndSettle();
-    await tester.tap(toggles.at(1));
+    await tester.tap(toggles);
     await tester.pumpAndSettle();
 
     expect(find.text('s3cret'), findsOneWidget);
@@ -270,12 +275,68 @@ void main() {
   testWidgets('private key field stays multiline under the app single-line '
       'input theme', (tester) async {
     await pumpEditor(tester, appInputTheme: true);
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('ssh-auth-type')),
+        matching: find.text('Private key'),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-    // Build order: label, host, username, port, private key, passphrase,
-    // password. The global outline theme pins every TextField to a 32dp
-    // single-line track; the private key field must opt out so a pasted PEM
-    // is actually visible.
+    // Build order: label, host, username, port, private key, passphrase.
+    // The global outline theme pins every TextField to a 32dp single-line
+    // track; the private key field must opt out so a pasted PEM is actually
+    // visible.
     final privateKey = find.byType(TextField).at(4);
     expect(tester.getSize(privateKey).height, greaterThan(48));
+  });
+
+  testWidgets('defaults to password mode and hides the key fields', (
+    tester,
+  ) async {
+    await pumpEditor(tester);
+
+    expect(find.text('-----BEGIN OPENSSH PRIVATE KEY-----'), findsNothing);
+    expect(find.text('Key passphrase'), findsNothing);
+    expect(find.text('Login password'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('ssh-auth-type')),
+        matching: find.text('Private key'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('-----BEGIN OPENSSH PRIVATE KEY-----'), findsOneWidget);
+    expect(find.text('Key passphrase'), findsOneWidget);
+    expect(find.text('Login password'), findsNothing);
+  });
+
+  testWidgets('edit initializes the mode from the profile auth type', (
+    tester,
+  ) async {
+    const keyed = SshProfile(
+      id: 'p2',
+      name: 'keyed',
+      host: 'example.com',
+      username: 'alice',
+      authType: SshAuthType.privateKey,
+    );
+    await pumpEditor(tester, profile: keyed);
+
+    expect(find.text('-----BEGIN OPENSSH PRIVATE KEY-----'), findsOneWidget);
+    expect(find.text('Key passphrase'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('ssh-auth-type')),
+        matching: find.text('Password'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Leave empty to keep saved password'), findsOneWidget);
+    expect(find.text('-----BEGIN OPENSSH PRIVATE KEY-----'), findsNothing);
   });
 }
