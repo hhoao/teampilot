@@ -94,11 +94,15 @@ class SshProfileCubit extends Cubit<SshProfileState> {
   /// and applying paths that belong to a superseded host/selection.
   int _discoveryGeneration = 0;
 
-  Future<void> load() => _loadFuture ??= _doLoad().whenComplete(() {
-    _loadFuture = null;
-  });
+  /// [discoverRemoteCli] is false for the boot-time device-local read taken
+  /// while the home is unreachable: the catalog must load, but probing the
+  /// dead host would start remote I/O the deferred boot is avoiding.
+  Future<void> load({bool discoverRemoteCli = true}) => _loadFuture ??=
+      _doLoad(discoverRemoteCli: discoverRemoteCli).whenComplete(() {
+        _loadFuture = null;
+      });
 
-  Future<void> _doLoad() async {
+  Future<void> _doLoad({required bool discoverRemoteCli}) async {
     emit(state.copyWith(isLoading: true));
     final profiles = await _profileRepository.loadAll();
     final persistedSelectedId = await _profileRepository
@@ -122,7 +126,7 @@ class SshProfileCubit extends Cubit<SshProfileState> {
       ),
     );
     final selected = state.selectedProfile;
-    if (selected != null) {
+    if (selected != null && discoverRemoteCli) {
       // Discovery probes several shells per CLI over SSH; it must not block
       // the load (and thus boot). Cached paths apply immediately below, the
       // refresh keeps running in the background.

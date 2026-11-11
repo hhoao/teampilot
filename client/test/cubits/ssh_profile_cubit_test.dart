@@ -196,6 +196,30 @@ void main() {
     expect(cubit.state.profiles, hasLength(1));
   });
 
+  test('load(discoverRemoteCli: false) skips the remote CLI probe', () async {
+    final repo = _SlowFakeSshProfileRepository();
+    var locateCalls = 0;
+    final cubit = SshProfileCubit(
+      profileRepository: repo,
+      credentialStore: InMemorySshCredentialStore(),
+      locateRemoteCliPaths: (_) async {
+        locateCalls++;
+        return const {CliTool.claude: '/remote/bin/claude'};
+      },
+      onRemoteCliLocated: (_, _) async {},
+      enableRemoteCliDiscovery: () => true,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.load(discoverRemoteCli: false);
+    await flushDiscovery();
+
+    // Boot while the home is unreachable must still populate the catalog, but
+    // must not open a probe against the dead transport.
+    expect(cubit.state.profiles, hasLength(1));
+    expect(locateCalls, 0);
+  });
+
   test('cached remote CLI paths apply without calling the locator', () async {
     final repo = _SlowFakeSshProfileRepository();
     final fs = InMemoryFilesystem();

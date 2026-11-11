@@ -415,6 +415,33 @@ void main() {
       );
     });
 
+    test('an unreachable home still loads the device-local SSH catalog', () {
+      final gate = src.indexOf('if (!deferRemoteBoot) {');
+      final deferredLog = src.indexOf(
+        "boot('bootstrapAppData deferred: home unreachable');",
+        gate,
+      );
+      final load = src.indexOf(
+        'await sshProfileCubit.load(discoverRemoteCli: false);',
+        gate,
+      );
+      expect(
+        load,
+        greaterThan(gate),
+        reason:
+            '「切换连接」 must list the device-local targets even when the '
+            'home is unreachable at cold start; the catalog lives on this '
+            'device and does not ride the home plane',
+      );
+      expect(
+        load,
+        lessThan(deferredLog),
+        reason:
+            'the catalog load must finish before the deferred branch completes '
+            'boot so StartupGate paints a populated connection page',
+      );
+    });
+
     test('a successful home connection runs hot recovery', () {
       final onConnected = src.indexOf('onConnected: () {');
       final bootCall = src.indexOf(

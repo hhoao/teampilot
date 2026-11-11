@@ -357,6 +357,7 @@ import '../services/github/github_credentials_store.dart';
 import '../services/github/github_device_flow_auth.dart';
 import '../services/hub_publish/http_github_api_client.dart';
 import '../services/ssh/ssh_client_factory.dart';
+import '../services/ssh/ssh_connection_gate.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 
@@ -1025,6 +1026,15 @@ Future<AppShell> buildAppShell({
         run: RemoteCliLocator.runnerForStorage(sshClientFactory, profile),
       );
     } on Object catch (error, stackTrace) {
+      if (isSshProfileDown(error)) {
+        appLogger.d(
+          '[remote-cli] locate waiting for home transport '
+          'for ${profile.hostIdentifier}',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return const {};
+      }
       appLogger.w(
         '[remote-cli] locate failed for ${profile.hostIdentifier}: $error',
         error: error,
@@ -1679,6 +1689,14 @@ Future<AppShell> buildAppShell({
       final entries = await resolvedManagedProviderRepository.load();
       await managedProviderCliRowJanitor.sweep(entries: entries);
     } on Object catch (error, stackTrace) {
+      if (isSshProfileDown(error)) {
+        appLogger.d(
+          '[managed-provider] cli row sweep waiting for home transport',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return;
+      }
       appLogger.w(
         '[managed-provider] cli row sweep failed: $error',
         error: error,
@@ -2056,6 +2074,14 @@ Future<AppShell> buildAppShell({
           identityRepository.loadAll(),
         ]);
       } on Object catch (error, stackTrace) {
+        if (isSshProfileDown(error)) {
+          appLogger.d(
+            '[boot] home index prefetch waiting for home transport',
+            error: error,
+            stackTrace: stackTrace,
+          );
+          return;
+        }
         appLogger.w(
           '[boot] home index prefetch failed',
           error: error,
@@ -3428,6 +3454,7 @@ Future<AppShell> buildAppShell({
       deviceId: SharedStateIdentity.deviceId,
       remoteCubit: sessionRemoteActivityCubit,
       authority: sessionAuthority,
+      isExpectedFailure: isSshProfileDown,
       onContentInvalidated: (invalidation) {
         SessionContentInvalidationBus.publish(
           sessionId: invalidation.sessionId,
@@ -4006,6 +4033,22 @@ Future<AppShell> buildAppShell({
           showOnboarding = await warmShellAndPrepareInteractive();
         }
       } else {
+        // The device-local SSH catalog is the one boot read that must survive
+        // an unreachable home: the connection page lists it to switch/recover,
+        // and it never lives on the home plane. Deferring it together with the
+        // remote boot left 「切换连接」 empty even though remote-targets.json
+        // held every saved target. It is a local file read, so awaiting it
+        // cannot stall on the dead transport.
+        try {
+          await sshProfileCubit.load(discoverRemoteCli: false);
+        } on Object catch (error, stackTrace) {
+          appLogger.w(
+            '[boot] device-local SSH catalog load failed while the home was '
+            'unreachable',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
         boot('bootstrapAppData deferred: home unreachable');
       }
       // Unconditional: both the connected and the deferred (unreachable) path
@@ -4705,6 +4748,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
                   SessionLifecycleTransportCodec(),
                 ],
                 open: open,
+                isExpectedFailure: isSshProfileDown,
                 onError: (error, stackTrace) {
                   appLogger.w(
                     '[event-transport] client',
