@@ -276,6 +276,125 @@ dart run tool/run_tests.dart --tags integration \
   test/integration/embedded_shell_pty_integration_test.dart
 ```
 
+#### dartssh2 native crypto shim
+
+The SSH packet ciphers `chacha20-poly1305@openssh.com` and AES-128/256-GCM run
+on libcrypto through an FFI shim in the dartssh2 fork
+(`client/packages/dartssh2/native/tp_sshd_crypto.c`) — a hard dependency with
+no pure-Dart fallback for those three. Anything that exercises them — the
+fork's own `dart test`, `tp_sshd`'s `dart test`, and the tp_sshd examples
+(`demo_sshd`, `bench_cipher`) — needs the shim built once first:
+
+```bash
+cd client/packages/dartssh2 && ./native/build.sh
+```
+
+Requires a C compiler plus OpenSSL/LibreSSL **dev headers** (Debian/Ubuntu:
+`apt install build-essential libssl-dev`; on macOS the headers ship with the OS
+toolchain — LibreSSL covers every EVP API the shim uses).
+
+The loader tries three things, in this order:
+
+1. the bare library name (`libtp_sshd_crypto.so` / `.dylib` / `.dll`) through
+   the OS loader — the packaged layout (Android jniLibs, iOS Frameworks, a
+   desktop bundle's lib directory on the loader's search path);
+2. `native/libtp_sshd_crypto.so`, the `build.sh` output, by walking up from the
+   working directory or the script and via the package config of the package
+   being run, so a stale local build always wins — rebuild it after pulling
+   changes to the shim;
+3. the shipped prebuilt at `native/prebuilt/<platform>/<arch>/`
+   (`libtp_sshd_crypto.dylib` under `macos/universal/`, `tp_sshd_crypto.dll`
+   under `windows/x64/`). That tree is produced by `native/ci-build-all.sh`,
+   which builds and validates each lane (the C selftest where the host can
+   execute the artifact, else size + format + exported-symbol checks; lane
+   prerequisites in the script header). The artifacts are committed —
+   `linux/x64` is in git today, the other lanes are CI outputs collected per
+   `native/prebuilt/README.md`. The committed `linux/x64` artifact has
+   `DT_NEEDED libcrypto.so.3`, so that lane needs **OpenSSL 3** at load time.
+
+**Packaging is wired for the desktop targets and still missing for
+android/ios.** The `tp_sshd_crypto_flutter` package
+(`client/packages/tp_sshd_crypto_flutter/`) is a Flutter FFI plugin whose
+platform lanes compile this shim into the app's library directory, so a
+**linux / windows / macos** app build bundles `libtp_sshd_crypto.so` and the
+loader's bare-name lookup finds it. Verify it on Linux with:
+
+```bash
+cd client && flutter build linux --release
+ls build/linux/x64/release/bundle/lib/libtp_sshd_crypto.so
+```
+
+(To prove the *bundled* copy is what loads rather than a source-tree build,
+move `client/packages/dartssh2/native/libtp_sshd_crypto.so` aside and run
+anything that encrypts with `LD_LIBRARY_PATH=<bundle>/lib` from a directory
+with no `native/` in reach — the package README has the exact smoke.)
+
+**Android and iOS must not ship yet.** The Android lane needs a vendored
+libcrypto first — the NDK ships neither OpenSSL headers nor a linkable
+`libcrypto.so` (the plugin's README records the finding and what the lane
+needs) — and this repository has no `ios/` directory at all. On those two
+platforms a packaged build still fails on the first packet, so the fork's
+gitlink must not reach an android/ios app release build until their lanes
+land. macOS is wired but unverified here (no macOS toolchain on this host) —
+treat its first CI/macOS build as the verification. `dart test` / `dart run` /
+the examples are unaffected: they are unpackaged trees and resolve the local
+build.
+
+##### Acceptance measurements
+
+Reference machine: x64 Linux, OpenSSL 3.5.5, Dart JIT, 2026-09-17. Both
+figures are conditional on the negotiated cipher being one the shim
+implements — `aes256-gcm`, `aes128-gcm` and `chacha20-poly1305@openssh.com`
+are the first three entries of the default client cipher list (in that order),
+and the SFTP run below negotiated `chacha20-poly1305`. `aes256-ctr` and
+`aes128-ctr` are still PointyCastle and sit behind them in the same list as
+fallbacks, so a server that forces one of those gets the old pure-Dart speed.
+No pure-Dart AEAD path is left (`aes*-cbc` survives only as the private-key
+file encryption mode).
+
+Cipher path, isolated from sockets and SFTP:
+
+```bash
+cd client/packages/dartssh2 && ./native/build.sh
+cd client/packages/tp_sshd && dart run example/bench_cipher.dart
+```
+
+`bench_cipher` warms up 100 packets per size and then times 3000 packets, so
+the figure is steady-state. Runs recorded so far at 32 KiB packets, on hosts of
+different load: **585.4 MB/s** (implementer, T5), **574 MB/s** (controller
+re-run, T5), **913–1140 MB/s** (this branch head, idle host, 4 runs). The
+spread is host load, not a different code path — the acceptance bar is
+≥500 MB/s and every run clears it. The pre-swap pure-Dart baseline, same
+machine, 2026-09-10: 40 MB/s at 4 KiB, 58 MB/s at 32 KiB; the FFI path at
+4 KiB measured 180.1 MB/s (T5) and 281.7 MB/s (branch head).
+
+End-to-end SFTP through the embedded server, real OpenSSH `sftp` client:
+
+```bash
+# terminal 1 — demo server (the banner prints the exact ssh/sftp commands)
+cd client/packages/tp_sshd && dart run example/demo_sshd.dart --port 2222
+
+# terminal 2 — 50 MB into the sandbox the banner names, then 9 downloads.
+dd if=/dev/urandom of="$HOME/.tp_sshd_demo/sftp-root/big.bin" bs=1M count=50
+for i in $(seq 1 9); do
+  /usr/bin/time -f "%e s" sftp -P 2222 -b - \
+    -i "$HOME/.tp_sshd_demo/device_key" \
+    -o UserKnownHostsFile="$HOME/.tp_sshd_demo/known_hosts" \
+    -o IdentitiesOnly=yes "$USER@127.0.0.1" <<< "get /big.bin /tmp/big.bin"
+done
+```
+
+Cold is the **first** `get` after the server starts (fresh process: JIT warm-up
+plus handshake); warm is the **median of the 8** that follow, each a fresh
+`sftp` process and so a fresh connection. Measured on this branch head:
+cold **0.84 s → ~60 MB/s**, warm **0.39–0.47 s, median 0.45 s → ~111 MB/s**.
+T5 recorded 1.047 s → 47.8 MB/s cold and 0.51 s → ~98 MB/s warm on a busier
+host, so the same procedure reproduces within host-load noise. The bar is ≥80
+MB/s **warm**, which both sessions clear; cold does not, by design — the gap is
+JIT warm-up, not protocol. Verify the transfer with `cmp` against the sandbox
+file, and the negotiated cipher with `sftp -v` (expect
+`chacha20-poly1305@openssh.com`).
+
 ### Mock model gateway + CLI message matrix
 
 All mock model traffic for matrix / mixed-bus integration goes through
