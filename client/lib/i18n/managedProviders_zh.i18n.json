@@ -117,7 +117,7 @@
   "quickPresetCursor": "Cursor",
   "quickPresetCursorHint": "登录或导入，或手填相同字段。",
   "quickPresetGrokX": "Grok / Cursor / X",
-  "quickPresetGrokXHint": "使用 Cursor 登录态查询 grok.com 合一后的周额度和预付费。",
+  "quickPresetGrokXHint": "使用 Cursor 登录态查询合一后的周额度和预付费。",
   "quickPresetCustom": "自定义",
   "quickPresetCustomHint": "从零配置接口、凭据与显示格式。",
   "quickPresetDeepSeek": "DeepSeek",

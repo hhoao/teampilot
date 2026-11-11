@@ -36,7 +36,7 @@
   字段：`billingMode == PREPAID_BILLING_MODE_PREPAID`、`eligible == true`、`availableCents`（分，可省略表示 0）。美元 = `availableCents / 100`。
 - `http-json` 不能做除法。把 `usedCents` 配成 `unit: '%'` 会把分显示成百分比。因此需要专用适配器。
 - `cli:cursor` 是 intent source，编辑器会扩成该条目自己的 `cli:cursor-mp-<id>`。
-- grok.com 可能有 Cloudflare。不伪装浏览器、不带 `cf_clearance`、不发 `WorkosCursorXaiOrigin`。usage-status 的 401/403 走 `authenticationFailed`。预付费请求失败则省略 Prepaid，不让 Weekly 一起失败。
+- grok.com 的 dashboard API 有 Cloudflare：无 `cf_clearance` 时返回 403 HTML（`Just a moment...`），Cursor CLI 的 `WorkosCursorSessionToken` 到不了接口。cursor.com 同源 dashboard（`/api/dashboard/v2/usage-status`）对无会话返回 401 JSON，接受 Cursor 登录态。适配器把预设里的 grok.com URL 改写到 cursor.com，Cookie 按 Cursor 用量页编成 `accountId%3A%3AaccessToken`。不伪装浏览器、不带 `cf_clearance`、不发 `WorkosCursorXaiOrigin`。usage-status 的 401/403 走 `authenticationFailed`。预付费或 sand 周额度失败则省略该 measure，不让另一项一起失败。
 
 ## 需求（已确认）
 
@@ -68,13 +68,13 @@
 | windows | 空（适配器固定映射） |
 | displayConfig | 不设 `currency`、`decimalPlaces`、`showPercent` |
 
-Cookie 由适配器从 CLI scope 组装：`WorkosCursorSessionToken={accountId}::{accessToken}`，`accountId` 缺失时用 `fillAccountIdFromJwt`。
+Cookie 由适配器从 CLI scope 组装：`WorkosCursorSessionToken={accountId}%3A%3A{accessToken}`（与 Cursor 用量页相同），`accountId` 缺失时用 `fillAccountIdFromJwt`，仍缺则不加 `::`。
 
 `l10n_extensions.dart`：`quickPresetGrokX` / `quickPresetGrokXHint`。
 
 - EN label / ZH label：`Grok / Cursor / X`
-- EN hint：`Query the unified weekly pool and prepaid balance on grok.com with your Cursor sign-in.`
-- ZH hint：`使用 Cursor 登录态查询 grok.com 合一后的周额度和预付费。`
+- EN hint：`Query the unified weekly pool and prepaid balance with your Cursor sign-in.`
+- ZH hint：`使用 Cursor 登录态查询合一后的周额度和预付费。`
 
 ### 适配器
 
@@ -83,20 +83,20 @@ Cookie 由适配器从 CLI scope 组装：`WorkosCursorSessionToken={accountId}:
 `fetch`：
 
 1. `cliCredentials` 为空，或 `credentialSource` 读不到 `accessToken` → `missingCredential`。
-2. 校验 `endpointConfig.url`：https、host 精确 `grok.com`、path 精确 `/dashboard/api/dashboard/v2/usage-status`、query 只能是 `scope=user`、无 userInfo、无 fragment、无非 443 端口。否则 `unsupported`，不发请求。
-3. GET 该 URL。401/403 → `authenticationFailed`。其他非 2xx → `httpFailed`。非法 JSON 对象 → `responseParseFailed`。
-4. 映射 Weekly（见下）。
-5. 同源拼 `https://grok.com/dashboard/api/dashboard/get-user-prepaid-billing`，POST `{}`。预付费的网络/HTTP/解析失败只省略 Prepaid，不抛。
+2. 校验 `endpointConfig.url`：https；host 为 `grok.com`（path `/dashboard/api/dashboard/v2/usage-status`）或 `cursor.com`（path `/api/dashboard/v2/usage-status`）；query 只能是 `scope=user`；无 userInfo、无 fragment、无非 443 端口。否则 `unsupported`，不发请求。
+3. 实际 GET `https://cursor.com/api/dashboard/v2/usage-status?scope=user`。401/403 → `authenticationFailed`。其他非 2xx → `httpFailed`。非法 JSON 对象 → `responseParseFailed`。
+4. 映射 Weekly（见下）。usage-status 没有周池时，再 POST `https://cursor.com/api/dashboard/get-sand-usage-status`（`{}`），用 `usagePercent` / `nextResetTimestampUtc`。sand 失败则省略 Weekly。
+5. POST `https://cursor.com/api/dashboard/get-user-prepaid-billing`（`{}`）。预付费的网络/HTTP/解析失败只省略 Prepaid，不抛。
 6. 没有任何 measure → `responseParseFailed`。
 7. 返回 `ProviderUsageSnapshot(status: ready, fetchedAt: now, measures: …)`。
 
-两个请求都带：`Accept: application/json`、`Origin: https://grok.com`、`Referer: https://grok.com/dashboard`、`x-cursor-dashboard-surface: v2`、`Cookie: WorkosCursorSessionToken=…`。POST 另加 `content-type: application/json`。
+请求都带：`Accept: application/json`、`Origin: https://cursor.com`、`Referer: https://cursor.com/dashboard`、`User-Agent: TeamPilot`、`x-cursor-dashboard-surface: v2`、`Cookie: WorkosCursorSessionToken=…`。POST 另加 `content-type: application/json`。
 
 ### 数据映射
 
 Weekly（`kind: quota`，`unit: %`）：
 
-- 条件：顶层 `availability == "available"`，`weeklyIncludedUsage` 为对象，`usedCents` 为有限且 ≥ 0 的数（或十进制字符串），`budgetCents` 为有限且 > 0 的数（或十进制字符串）。
+- 条件：顶层 `availability == "available"`，`weeklyIncludedUsage` 为对象，`usedCents` 为有限且 ≥ 0 的数（或十进制字符串），`budgetCents` 为有限且 > 0 的数（或十进制字符串）。否则回退 sand：`includedLimitZero != true`、`hasNonZeroIncludedLimit != false`，`usagePercent` 为有限且 ≥ 0 的数。
 - `used` = `formatOfficialPercent(clamp(usedCents / budgetCents * 100, 0, 100))`
 - `total` = `100`
 - `remaining` = `formatOfficialPercent(clamp(100 - percent, 0, 100))`
@@ -146,7 +146,7 @@ Prepaid（`kind: balance`，`unit: USD`）：
 
 无真实网络。夹具用公开捕获的键，数值消毒。
 
-适配器：Weekly 42% + Prepaid 12.50；无预付费/预付费 401 只有 Weekly；usage 401 → `authenticationFailed` 且错误不含 token；非白名单 URL → `unsupported` 且无请求；budgetCents 0 且无预付费 → `responseParseFailed`；Cookie 为 `WorkosCursorSessionToken=user::jwt-token`。
+适配器：Weekly 42% + Prepaid 12.50；请求打 cursor.com；grok.com 配置 URL 被改写；Cookie 为 `WorkosCursorSessionToken=user%3A%3Ajwt-token`；无预付费/预付费 401 只有 Weekly；usage 401 → `authenticationFailed` 且错误不含 token；非白名单 URL → `unsupported` 且无请求；budgetCents 0 且 sand/prepaid 皆空 → `responseParseFailed`；usage-status 无周池时回退 sand `usagePercent`。
 
 预设：`grok-x` 紧跟 `cursor`，`adapterId == grok-dashboard-usage`，Cursor URL 不变。
 
@@ -168,7 +168,7 @@ Prepaid（`kind: balance`，`unit: USD`）：
 
 ## 风险
 
-- grok.com 对非浏览器客户端 403 时只能显示鉴权失败。
-- `usage-status` / prepaid 未文档化，字段变更表现为解析失败或省略 Prepaid。
+- grok.com Cloudflare 403 通过改写到 cursor.com 规避；不过盾、不带 `cf_clearance`。
+- `usage-status` / sand / prepaid 未文档化，字段变更表现为解析失败或省略对应 measure。
 - 用户若继续只用旧 Cursor 预设，合一账号仍可能看到假的 0% 月度池。
 - Cookie 按 Cursor web 会话过期。

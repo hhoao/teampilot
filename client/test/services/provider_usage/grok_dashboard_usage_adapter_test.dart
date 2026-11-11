@@ -73,16 +73,17 @@ void main() {
       expect(usage.method, 'GET');
       expect(
         usage.uri.toString(),
-        'https://grok.com/dashboard/api/dashboard/v2/usage-status?scope=user',
+        'https://cursor.com/api/dashboard/v2/usage-status?scope=user',
       );
       expect(usage.body, isNull);
       expect(usage.headers['Accept'], 'application/json');
-      expect(usage.headers['Origin'], 'https://grok.com');
-      expect(usage.headers['Referer'], 'https://grok.com/dashboard');
+      expect(usage.headers['Origin'], 'https://cursor.com');
+      expect(usage.headers['Referer'], 'https://cursor.com/dashboard');
+      expect(usage.headers['User-Agent'], 'TeamPilot');
       expect(usage.headers['x-cursor-dashboard-surface'], 'v2');
       expect(
         usage.headers['Cookie'],
-        'WorkosCursorSessionToken=user::jwt-token',
+        'WorkosCursorSessionToken=user%3A%3Ajwt-token',
       );
       expect(usage.headers['Cookie'], isNot(contains('cf_clearance')));
       expect(usage.headers.containsKey('WorkosCursorXaiOrigin'), isFalse);
@@ -91,17 +92,17 @@ void main() {
       expect(prepaid.method, 'POST');
       expect(
         prepaid.uri.toString(),
-        'https://grok.com/dashboard/api/dashboard/get-user-prepaid-billing',
+        'https://cursor.com/api/dashboard/get-user-prepaid-billing',
       );
       expect(jsonDecode(prepaid.body!), <String, Object?>{});
       expect(prepaid.headers['content-type'], 'application/json');
       expect(prepaid.headers['Accept'], 'application/json');
-      expect(prepaid.headers['Origin'], 'https://grok.com');
-      expect(prepaid.headers['Referer'], 'https://grok.com/dashboard');
+      expect(prepaid.headers['Origin'], 'https://cursor.com');
+      expect(prepaid.headers['Referer'], 'https://cursor.com/dashboard');
       expect(prepaid.headers['x-cursor-dashboard-surface'], 'v2');
       expect(
         prepaid.headers['Cookie'],
-        'WorkosCursorSessionToken=user::jwt-token',
+        'WorkosCursorSessionToken=user%3A%3Ajwt-token',
       );
 
       expect(snapshot.providerId, 'p1');
@@ -177,6 +178,8 @@ void main() {
       'https://grok.com:8443/dashboard/api/dashboard/v2/usage-status?scope=user',
       'https://grok.com/dashboard/api/dashboard/v2/usage-status?scope=user#frag',
       'https://user@grok.com/dashboard/api/dashboard/v2/usage-status?scope=user',
+      'https://cursor.com/dashboard/api/dashboard/v2/usage-status?scope=user',
+      'https://cursor.com/api/dashboard/v2/usage-status',
     ];
     for (final url in urls) {
       final http = _QueueHttp([_usageOk, _prepaidOk]);
@@ -198,6 +201,7 @@ void main() {
           body:
               '{"availability":"available","weeklyIncludedUsage":{"usedCents":10,"budgetCents":0}}',
         ),
+        const ProviderUsageHttpResponse(statusCode: 401, body: '{}'),
         const ProviderUsageHttpResponse(statusCode: 200, body: '{}'),
       ]);
 
@@ -207,7 +211,7 @@ void main() {
           queryError(ManagedProviderUsageQueryErrorCode.responseParseFailed),
         ),
       );
-      expect(http.requests, hasLength(2));
+      expect(http.requests, hasLength(3));
     },
   );
 
@@ -238,14 +242,11 @@ void main() {
     final jwt = 'eyJhbGciOiJub25lIn0.$payload.sig';
     final http = _QueueHttp([_usageOk, _prepaidOk]);
 
-    await fetch(
-      http,
-      reader: _CursorReader(_Scope({'accessToken': jwt})),
-    );
+    await fetch(http, reader: _CursorReader(_Scope({'accessToken': jwt})));
 
     expect(
       http.requests.first.headers['Cookie'],
-      'WorkosCursorSessionToken=user_01ABC::$jwt',
+      'WorkosCursorSessionToken=user_01ABC%3A%3A$jwt',
     );
   });
 
@@ -263,23 +264,26 @@ void main() {
     );
   });
 
-  test('usage-status 403 is authenticationFailed and hides the token', () async {
-    final http = _QueueHttp([
-      const ProviderUsageHttpResponse(statusCode: 403, body: 'jwt-token'),
-    ]);
+  test(
+    'usage-status 403 is authenticationFailed and hides the token',
+    () async {
+      final http = _QueueHttp([
+        const ProviderUsageHttpResponse(statusCode: 403, body: 'jwt-token'),
+      ]);
 
-    try {
-      await fetch(http);
-      fail('expected the fetch to fail');
-    } on ManagedProviderUsageQueryError catch (error) {
-      expect(
-        error.code,
-        ManagedProviderUsageQueryErrorCode.authenticationFailed,
-      );
-      expect(error.toString(), isNot(contains('jwt-token')));
-    }
-    expect(http.requests, hasLength(1));
-  });
+      try {
+        await fetch(http);
+        fail('expected the fetch to fail');
+      } on ManagedProviderUsageQueryError catch (error) {
+        expect(
+          error.code,
+          ManagedProviderUsageQueryErrorCode.authenticationFailed,
+        );
+        expect(error.toString(), isNot(contains('jwt-token')));
+      }
+      expect(http.requests, hasLength(1));
+    },
+  );
 
   test('usage-status 500 maps to httpFailed', () async {
     final http = _QueueHttp([
@@ -381,6 +385,7 @@ void main() {
           body:
               '{"availability":"unavailable","weeklyIncludedUsage":{"usedCents":4200,"budgetCents":10000}}',
         ),
+        const ProviderUsageHttpResponse(statusCode: 401, body: '{}'),
         const ProviderUsageHttpResponse(
           statusCode: 200,
           body:
@@ -393,10 +398,15 @@ void main() {
       expect(snapshot.measures.map((measure) => measure.label), ['Prepaid']);
       expect(snapshot.measures.single.remaining, '0');
       expect(snapshot.measures.single.resetsAt, isNull);
+      expect(http.requests.map((request) => request.uri.path), [
+        '/api/dashboard/v2/usage-status',
+        '/api/dashboard/get-sand-usage-status',
+        '/api/dashboard/get-user-prepaid-billing',
+      ]);
     },
   );
 
-  test('accepts a case-insensitive grok.com host', () async {
+  test('rewrites grok.com config URLs onto cursor.com', () async {
     final http = _QueueHttp([_usageOk, _prepaidOk]);
 
     await fetch(
@@ -405,15 +415,66 @@ void main() {
           'https://GROK.COM/dashboard/api/dashboard/v2/usage-status?scope=user',
     );
 
-    expect(http.requests.map((request) => request.uri.host.toLowerCase()), [
-      'grok.com',
-      'grok.com',
+    expect(http.requests.map((request) => request.uri.toString()), [
+      'https://cursor.com/api/dashboard/v2/usage-status?scope=user',
+      'https://cursor.com/api/dashboard/get-user-prepaid-billing',
     ]);
-    expect(
-      http.requests.last.uri.path,
-      '/dashboard/api/dashboard/get-user-prepaid-billing',
-    );
   });
+
+  test(
+    'accepts the cursor.com usage-status URL without rewriting host',
+    () async {
+      final http = _QueueHttp([_usageOk, _prepaidOk]);
+
+      await fetch(
+        http,
+        url: 'https://cursor.com/api/dashboard/v2/usage-status?scope=user',
+      );
+
+      expect(
+        http.requests.first.uri.toString(),
+        'https://cursor.com/api/dashboard/v2/usage-status?scope=user',
+      );
+    },
+  );
+
+  test(
+    'falls back to sand weekly usage when usage-status has no weekly pool',
+    () async {
+      final http = _QueueHttp([
+        const ProviderUsageHttpResponse(
+          statusCode: 200,
+          body: '{"availability":"unavailable"}',
+        ),
+        const ProviderUsageHttpResponse(
+          statusCode: 200,
+          body:
+              '{"usagePercent":42,"nextResetTimestampUtc":"2026-11-17T00:00:00.000Z","hasNonZeroIncludedLimit":true,"isUnified":true}',
+        ),
+        _prepaidOk,
+      ]);
+
+      final snapshot = await fetch(http);
+
+      expect(http.requests.map((request) => request.uri.toString()), [
+        'https://cursor.com/api/dashboard/v2/usage-status?scope=user',
+        'https://cursor.com/api/dashboard/get-sand-usage-status',
+        'https://cursor.com/api/dashboard/get-user-prepaid-billing',
+      ]);
+      expect(http.requests[1].method, 'POST');
+      expect(jsonDecode(http.requests[1].body!), <String, Object?>{});
+      expect(snapshot.measures.map((measure) => measure.label), [
+        'Weekly',
+        'Prepaid',
+      ]);
+      expect(snapshot.measures[0].used, '42');
+      expect(snapshot.measures[0].remaining, '58');
+      expect(
+        snapshot.measures[0].resetsAt,
+        DateTime.parse('2026-11-17T00:00:00.000Z').millisecondsSinceEpoch,
+      );
+    },
+  );
 }
 
 const _usageOk = ProviderUsageHttpResponse(

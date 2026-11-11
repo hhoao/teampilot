@@ -2128,7 +2128,7 @@ class _AppLocalizations$managedProviders$zh extends AppLocalizations$managedProv
 	@override String get quickPresetCursor => 'Cursor';
 	@override String get quickPresetCursorHint => '登录或导入，或手填相同字段。';
 	@override String get quickPresetGrokX => 'Grok / Cursor / X';
-	@override String get quickPresetGrokXHint => '使用 Cursor 登录态查询 grok.com 合一后的周额度和预付费。';
+	@override String get quickPresetGrokXHint => '使用 Cursor 登录态查询合一后的周额度和预付费。';
 	@override String get quickPresetCustom => '自定义';
 	@override String get quickPresetCustomHint => '从零配置接口、凭据与显示格式。';
 	@override String get quickPresetDeepSeek => 'DeepSeek';
@@ -5520,7 +5520,7 @@ extension on AppLocalizationsZh {
 			'managedProviders.quickPresetCursor' => 'Cursor',
 			'managedProviders.quickPresetCursorHint' => '登录或导入，或手填相同字段。',
 			'managedProviders.quickPresetGrokX' => 'Grok / Cursor / X',
-			'managedProviders.quickPresetGrokXHint' => '使用 Cursor 登录态查询 grok.com 合一后的周额度和预付费。',
+			'managedProviders.quickPresetGrokXHint' => '使用 Cursor 登录态查询合一后的周额度和预付费。',
 			'managedProviders.quickPresetCustom' => '自定义',
 			'managedProviders.quickPresetCustomHint' => '从零配置接口、凭据与显示格式。',
 			'managedProviders.quickPresetDeepSeek' => 'DeepSeek',

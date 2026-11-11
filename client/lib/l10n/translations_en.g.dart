@@ -5275,8 +5275,8 @@ class AppLocalizations$managedProviders$en {
 	/// en: 'Grok / Cursor / X'
 	String get quickPresetGrokX => 'Grok / Cursor / X';
 
-	/// en: 'Query the unified weekly pool and prepaid balance on grok.com with your Cursor sign-in.'
-	String get quickPresetGrokXHint => 'Query the unified weekly pool and prepaid balance on grok.com with your Cursor sign-in.';
+	/// en: 'Query the unified weekly pool and prepaid balance with your Cursor sign-in.'
+	String get quickPresetGrokXHint => 'Query the unified weekly pool and prepaid balance with your Cursor sign-in.';
 
 	/// en: 'Custom'
 	String get quickPresetCustom => 'Custom';
@@ -11706,7 +11706,7 @@ extension on AppLocalizations {
 			'managedProviders.quickPresetCursor' => 'Cursor',
 			'managedProviders.quickPresetCursorHint' => 'Sign in or import credentials below, or fill the same fields manually.',
 			'managedProviders.quickPresetGrokX' => 'Grok / Cursor / X',
-			'managedProviders.quickPresetGrokXHint' => 'Query the unified weekly pool and prepaid balance on grok.com with your Cursor sign-in.',
+			'managedProviders.quickPresetGrokXHint' => 'Query the unified weekly pool and prepaid balance with your Cursor sign-in.',
 			'managedProviders.quickPresetCustom' => 'Custom',
 			'managedProviders.quickPresetCustomHint' => 'Configure endpoint, credentials, and display from scratch.',
 			'managedProviders.quickPresetDeepSeek' => 'DeepSeek',

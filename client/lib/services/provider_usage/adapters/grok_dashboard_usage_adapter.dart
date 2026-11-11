@@ -7,18 +7,21 @@ import '../http_json_template.dart';
 import '../managed_provider_usage_adapter.dart';
 import 'official_subscription_parse.dart';
 
-/// Weekly quota and prepaid balance from the Grok dashboard.
+/// Weekly quota and prepaid balance for The X Subscription.
 ///
-/// The session cookie comes from the entry's Cursor CLI credential. The usage
-/// URL is allowlisted; prepaid failures leave the weekly measure in place.
+/// grok.com's dashboard API is behind Cloudflare, so Cursor CLI cookies never
+/// reach it. The same dashboard lives on cursor.com and accepts the Cursor
+/// session cookie. Saved grok.com preset URLs are rewritten onto that host.
 class GrokDashboardUsageAdapter implements ManagedProviderUsageAdapter {
   GrokDashboardUsageAdapter({this.cliCredentials});
 
   static const adapterId = 'grok-dashboard-usage';
-  static const _host = 'grok.com';
-  static const _usagePath = '/dashboard/api/dashboard/v2/usage-status';
-  static const _prepaidPath =
-      '/dashboard/api/dashboard/get-user-prepaid-billing';
+  static const _cursorHost = 'cursor.com';
+  static const _grokHost = 'grok.com';
+  static const _cursorUsagePath = '/api/dashboard/v2/usage-status';
+  static const _grokUsagePath = '/dashboard/api/dashboard/v2/usage-status';
+  static const _prepaidPath = '/api/dashboard/get-user-prepaid-billing';
+  static const _sandPath = '/api/dashboard/get-sand-usage-status';
 
   final CliCredentialSourceResolver? cliCredentials;
 
@@ -33,11 +36,11 @@ class GrokDashboardUsageAdapter implements ManagedProviderUsageAdapter {
     required DateTime now,
   }) async {
     final cookie = await _sessionCookie(provider);
-    final usageUri = _validatedUsageUri(provider.endpointConfig);
-    final usage = await _fetchUsage(http, usageUri, cookie);
+    _validatedUsageUri(provider.endpointConfig);
+    final usage = await _fetchUsage(http, cookie);
     final measures = <ProviderUsageMeasure>[
-      ?_weeklyMeasure(usage),
-      ?await _fetchPrepaid(http, usageUri, cookie),
+      ?_weeklyMeasure(usage) ?? await _fetchSandWeekly(http, cookie),
+      ?await _fetchPrepaid(http, cookie),
     ];
     if (measures.isEmpty) {
       throw const ManagedProviderUsageQueryError(
@@ -76,10 +79,11 @@ class GrokDashboardUsageAdapter implements ManagedProviderUsageAdapter {
         ManagedProviderUsageQueryErrorCode.missingCredential,
       );
     }
-    return expandHttpJsonTemplate(
-      'WorkosCursorSessionToken={accountId}::{accessToken}',
-      values,
-    );
+    final accountId = values['accountId'] ?? '';
+    if (accountId.isEmpty) {
+      return 'WorkosCursorSessionToken=$accessToken';
+    }
+    return 'WorkosCursorSessionToken=$accountId%3A%3A$accessToken';
   }
 
   static Map<String, String> _scopeToValues(ProviderCredentialScope scope) {
@@ -93,7 +97,14 @@ class GrokDashboardUsageAdapter implements ManagedProviderUsageAdapter {
     return values;
   }
 
-  static Uri _validatedUsageUri(ManagedProviderEndpointConfig endpoint) {
+  static Uri _cursorUri(String path, {Map<String, String>? query}) => Uri(
+    scheme: 'https',
+    host: _cursorHost,
+    path: path,
+    queryParameters: query,
+  );
+
+  static void _validatedUsageUri(ManagedProviderEndpointConfig endpoint) {
     if (endpoint.hadUnsafeUrl) {
       throw const ManagedProviderUsageQueryError(
         ManagedProviderUsageQueryErrorCode.unsupported,
@@ -106,10 +117,13 @@ class GrokDashboardUsageAdapter implements ManagedProviderUsageAdapter {
         uri.queryParametersAll.length == 1 &&
         scope?.length == 1 &&
         scope?.single == 'user';
+    final host = uri?.host.toLowerCase();
+    final pathOk =
+        (host == _grokHost && uri?.path == _grokUsagePath) ||
+        (host == _cursorHost && uri?.path == _cursorUsagePath);
     if (uri == null ||
         uri.scheme != 'https' ||
-        uri.host.toLowerCase() != _host ||
-        uri.path != _usagePath ||
+        !pathOk ||
         uri.hasPort && uri.port != 443 ||
         uri.userInfo.isNotEmpty ||
         uri.fragment.isNotEmpty ||
@@ -118,19 +132,17 @@ class GrokDashboardUsageAdapter implements ManagedProviderUsageAdapter {
         ManagedProviderUsageQueryErrorCode.unsupported,
       );
     }
-    return uri;
   }
 
   Future<Map<String, Object?>> _fetchUsage(
     ProviderUsageHttpClient http,
-    Uri usageUri,
     String cookie,
   ) async {
     final response = await _send(
       http,
       ProviderUsageHttpRequest(
         method: 'GET',
-        uri: usageUri,
+        uri: _cursorUri(_cursorUsagePath, query: const {'scope': 'user'}),
         headers: _headers(cookie),
       ),
     );
@@ -138,20 +150,35 @@ class GrokDashboardUsageAdapter implements ManagedProviderUsageAdapter {
     return decodeOfficialJsonObject(response.body);
   }
 
-  Future<ProviderUsageMeasure?> _fetchPrepaid(
+  Future<ProviderUsageMeasure?> _fetchSandWeekly(
     ProviderUsageHttpClient http,
-    Uri usageUri,
     String cookie,
   ) async {
     try {
       final response = await http.send(
         ProviderUsageHttpRequest(
           method: 'POST',
-          uri: Uri(
-            scheme: usageUri.scheme,
-            host: usageUri.host,
-            path: _prepaidPath,
-          ),
+          uri: _cursorUri(_sandPath),
+          headers: _headers(cookie, post: true),
+          body: jsonEncode(const <String, Object?>{}),
+        ),
+      );
+      throwOfficialHttpStatus(response.statusCode);
+      return _sandWeeklyMeasure(decodeOfficialJsonObject(response.body));
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<ProviderUsageMeasure?> _fetchPrepaid(
+    ProviderUsageHttpClient http,
+    String cookie,
+  ) async {
+    try {
+      final response = await http.send(
+        ProviderUsageHttpRequest(
+          method: 'POST',
+          uri: _cursorUri(_prepaidPath),
           headers: _headers(cookie, post: true),
           body: jsonEncode(const <String, Object?>{}),
         ),
@@ -180,8 +207,9 @@ class GrokDashboardUsageAdapter implements ManagedProviderUsageAdapter {
 
   static Map<String, String> _headers(String cookie, {bool post = false}) => {
     'Accept': 'application/json',
-    'Origin': 'https://grok.com',
-    'Referer': 'https://grok.com/dashboard',
+    'Origin': 'https://cursor.com',
+    'Referer': 'https://cursor.com/dashboard',
+    'User-Agent': 'TeamPilot',
     'x-cursor-dashboard-surface': 'v2',
     'Cookie': cookie,
     if (post) 'content-type': 'application/json',
@@ -208,6 +236,23 @@ class GrokDashboardUsageAdapter implements ManagedProviderUsageAdapter {
       remaining: formatOfficialPercent((100 - percent).clamp(0, 100)),
       unit: '%',
       resetsAt: parseOfficialResetAt(weekly['resetsAt']),
+    );
+  }
+
+  static ProviderUsageMeasure? _sandWeeklyMeasure(Map<String, Object?> json) {
+    if (json['includedLimitZero'] == true) return null;
+    if (json['hasNonZeroIncludedLimit'] == false) return null;
+    final percent = _readCents(json['usagePercent']);
+    if (percent == null || percent < 0) return null;
+    final clamped = percent.clamp(0, 100);
+    return ProviderUsageMeasure(
+      label: 'Weekly',
+      kind: ProviderUsageMeasureKind.quota,
+      used: formatOfficialPercent(clamped),
+      total: '100',
+      remaining: formatOfficialPercent((100 - clamped).clamp(0, 100)),
+      unit: '%',
+      resetsAt: parseOfficialResetAt(json['nextResetTimestampUtc']),
     );
   }
 

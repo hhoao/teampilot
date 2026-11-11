@@ -117,7 +117,7 @@
   "quickPresetCursor": "Cursor",
   "quickPresetCursorHint": "Sign in or import credentials below, or fill the same fields manually.",
   "quickPresetGrokX": "Grok / Cursor / X",
-  "quickPresetGrokXHint": "Query the unified weekly pool and prepaid balance on grok.com with your Cursor sign-in.",
+  "quickPresetGrokXHint": "Query the unified weekly pool and prepaid balance with your Cursor sign-in.",
   "quickPresetCustom": "Custom",
   "quickPresetCustomHint": "Configure endpoint, credentials, and display from scratch.",
   "quickPresetDeepSeek": "DeepSeek",
