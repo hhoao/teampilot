@@ -339,4 +339,43 @@ void main() {
     expect(find.text('Leave empty to keep saved password'), findsOneWidget);
     expect(find.text('-----BEGIN OPENSSH PRIVATE KEY-----'), findsNothing);
   });
+
+  testWidgets('creating a password target requires a password', (tester) async {
+    final h = await pumpEditor(tester);
+    await tester.enterText(find.byType(TextField).at(1), 'example.com');
+
+    await tester.tap(find.text('Add target'));
+    await tester.pumpAndSettle();
+
+    expect(h.planeRepository.saves, isEmpty);
+
+    // Dismiss the warning toast so its auto-close timer does not outlive the
+    // widget tree (same pattern as app_toast_recorder_test.dart).
+    TpToast.dismiss();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+  });
+
+  testWidgets('creating a private-key target requires a key', (tester) async {
+    final h = await pumpEditor(tester);
+    await tester.enterText(find.byType(TextField).at(1), 'example.com');
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('ssh-auth-type')),
+        matching: find.text('Private key'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Add target'));
+    await tester.pumpAndSettle();
+
+    expect(h.planeRepository.saves, isEmpty);
+
+    // Dismiss the warning toast so its auto-close timer does not outlive the
+    // widget tree (same pattern as app_toast_recorder_test.dart).
+    TpToast.dismiss();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+  });
 }

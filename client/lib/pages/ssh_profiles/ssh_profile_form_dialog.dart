@@ -167,15 +167,18 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
   Future<SshProfile?> _save({required bool notify}) async {
     if (_formKey.currentState?.validate() != true) return null;
     final profile = _buildProfile();
-    if (!_isEditing &&
-        _authType == SshAuthType.privateKey &&
-        _privateKeyController.text.trim().isEmpty) {
-      AppToast.show(
-        context,
-        message: context.l10n.sshProfile.formCredentialRequired,
-        variant: TpToastVariant.warning,
-      );
-      return null;
+    if (!_isEditing) {
+      final missingCredential = _authType == SshAuthType.password
+          ? _passwordController.text.isEmpty
+          : _privateKeyController.text.trim().isEmpty;
+      if (missingCredential) {
+        AppToast.show(
+          context,
+          message: context.l10n.sshProfile.formCredentialRequired,
+          variant: TpToastVariant.warning,
+        );
+        return null;
+      }
     }
     try {
       final linked = (widget.initialProfile?.vaultEntryId ?? '').isNotEmpty;
