@@ -34,6 +34,7 @@ Widget _harness({
   bool isLoadingOlder = false,
   SessionHistoryLiveChrome liveChrome = SessionHistoryLiveChrome.none,
   String? backgroundLabel,
+  String? provisioningLabel,
   Future<void> Function()? onLoadOlder,
   ValueNotifier<String?>? visibleOwnerId,
   bool? mobilePerformanceMode,
@@ -58,6 +59,7 @@ Widget _harness({
           isLoadingOlder: isLoadingOlder,
           liveChrome: liveChrome,
           backgroundLabel: backgroundLabel,
+          provisioningLabel: provisioningLabel,
           onLoadOlder: onLoadOlder,
           visibleOwnerId: visibleOwnerId,
           mobilePerformanceMode: mobilePerformanceMode,
@@ -876,6 +878,44 @@ void main() {
       _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.starting),
     );
     await tester.pump();
+
+    expect(find.byKey(kSessionHistoryRunningFooterKey), findsOneWidget);
+    expect(find.text('Starting…'), findsOneWidget);
+  });
+
+  testWidgets('provisioningLabel replaces the starting footer text', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(5));
+
+    await tester.pumpWidget(
+      _harness(
+        runtime: store,
+        liveChrome: SessionHistoryLiveChrome.starting,
+        provisioningLabel: 'Preparing remote environment…',
+      ),
+    );
+    await _pumpLive(tester);
+
+    expect(find.byKey(kSessionHistoryRunningFooterKey), findsOneWidget);
+    expect(find.text('Preparing remote environment…'), findsOneWidget);
+    expect(find.text('Starting…'), findsNothing);
+  });
+
+  testWidgets('footer keeps its existing label when provisioningLabel is null', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(5));
+
+    await tester.pumpWidget(
+      _harness(
+        runtime: store,
+        liveChrome: SessionHistoryLiveChrome.starting,
+      ),
+    );
+    await _pumpLive(tester);
 
     expect(find.byKey(kSessionHistoryRunningFooterKey), findsOneWidget);
     expect(find.text('Starting…'), findsOneWidget);
