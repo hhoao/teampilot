@@ -15,6 +15,7 @@ import '../../cubits/layout_cubit.dart';
 import '../../cubits/seat_lease_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
+import '../../models/member_remote_provision_progress.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
@@ -321,6 +322,24 @@ class SessionChatMessageArea extends StatelessWidget {
                                                   .pendingLandingPrompts[sid] ??
                                               '',
                                         );
+                                    // Live remote-provision status for this
+                                    // seat. Read independently of
+                                    // chat_workbench.dart:429 — both Chat body
+                                    // paths mount this widget, so the footer
+                                    // works whether or not a shell exists yet.
+                                    final remoteProvision =
+                                        seatSelect<ChatCubit,
+                                            MemberRemoteProvisionProgress?>(
+                                      context,
+                                      (c) => c.tabStore
+                                          .getOpenTabBySessionId(sid)
+                                          ?.memberRemoteProvision[shellMemberId],
+                                    );
+                                    final provisioningLabel =
+                                        remoteProvisionFooterLabel(
+                                      remoteProvision,
+                                      l10n.session.remoteProvisionPreparing,
+                                    );
                                     Widget buildChrome(
                                       bool sessionHasLeases, [
                                       String? backgroundLabel,
@@ -345,6 +364,25 @@ class SessionChatMessageArea extends StatelessWidget {
                                             isAttention: activity.isAttention,
                                             sessionHasLeases: sessionHasLeases,
                                           );
+                                      // Background work keeps its own label;
+                                      // provisioning only labels the send/wait
+                                      // window. If no footer would otherwise
+                                      // show, force `starting` so the label is
+                                      // actually visible.
+                                      final labelForChrome =
+                                          liveChrome ==
+                                                  SessionHistoryLiveChrome
+                                                      .background
+                                              ? null
+                                              : provisioningLabel;
+                                      final effectiveLiveChrome =
+                                          labelForChrome != null &&
+                                                  liveChrome ==
+                                                      SessionHistoryLiveChrome
+                                                          .none
+                                              ? SessionHistoryLiveChrome
+                                                  .starting
+                                              : liveChrome;
                                       return MarkdownDisplayModeScope(
                                         userMessageMode: prefs.userMessageMode,
                                         codeBlockMode: prefs.chatCodeBlockMode,
@@ -361,8 +399,9 @@ class SessionChatMessageArea extends StatelessWidget {
                                               onRetry: onRetry,
                                               onLoadOlder:
                                                   historySeat.loadOlder,
-                                              liveChrome: liveChrome,
+                                              liveChrome: effectiveLiveChrome,
                                               backgroundLabel: backgroundLabel,
+                                              provisioningLabel: labelForChrome,
                                               pendingDeliveryStatuses:
                                                   historySeat
                                                       .pendingDeliveryStatuses,
