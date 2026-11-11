@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/member_remote_provision_progress.dart';
 import 'package:teampilot/pages/chat/session_history_live_chrome.dart';
+import 'package:teampilot/services/cli/installer_types.dart';
 
 void main() {
   group('historyTurnInFlight', () {
@@ -180,6 +182,33 @@ void main() {
           sessionHasLeases: true,
         ),
         SessionHistoryLiveChrome.running,
+      );
+    });
+  });
+
+  group('remoteProvisionFooterLabel', () {
+    const preparing = 'Preparing remote environment…';
+
+    MemberRemoteProvisionProgress progress({String? error}) =>
+        MemberRemoteProvisionProgress(
+          memberId: 'm1',
+          phase: CliInstallPhase.syncingRemoteWorkspace,
+          hostLabel: 'dev-box',
+          error: error,
+        );
+
+    test('null when no provision is in flight', () {
+      expect(remoteProvisionFooterLabel(null, preparing), isNull);
+    });
+
+    test('returns the fixed label while provisioning', () {
+      expect(remoteProvisionFooterLabel(progress(), preparing), preparing);
+    });
+
+    test('null when provision failed', () {
+      expect(
+        remoteProvisionFooterLabel(progress(error: 'boom'), preparing),
+        isNull,
       );
     });
   });

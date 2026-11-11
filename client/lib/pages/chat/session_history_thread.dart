@@ -74,6 +74,7 @@ class SessionHistoryThread extends StatefulWidget {
     this.onLoadOlder,
     this.liveChrome = SessionHistoryLiveChrome.none,
     this.backgroundLabel,
+    this.provisioningLabel,
     this.pendingDeliveryStatuses = const {},
     this.onRetryFailedMessage,
     this.highlightMessageId,
@@ -107,6 +108,11 @@ class SessionHistoryThread extends StatefulWidget {
   /// task's description). Appended to the background footer so the row says
   /// what is still running, not just that something is.
   final String? backgroundLabel;
+
+  /// Fixed status text while an SSH member's remote environment provisions.
+  /// Overrides the [liveChrome] label; the spinner is still chosen by
+  /// [liveChrome]. Null keeps the existing Starting… / Running… copy.
+  final String? provisioningLabel;
 
   /// Transient first prompt of a landing create+send, painted as a user bubble
   /// until the runtime owns that turn (ACP `sendPrompt` / PTY pending).
@@ -1065,7 +1071,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     final isBackground =
         widget.liveChrome == SessionHistoryLiveChrome.background;
     final backgroundLabel = widget.backgroundLabel?.trim() ?? '';
-    final label = switch (widget.liveChrome) {
+    final label = widget.provisioningLabel ?? switch (widget.liveChrome) {
       SessionHistoryLiveChrome.starting => context.l10n.session.historyStarting,
       SessionHistoryLiveChrome.background =>
         backgroundLabel.isEmpty

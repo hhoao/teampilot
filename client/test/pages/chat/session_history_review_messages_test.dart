@@ -21,6 +21,7 @@ Widget _harness({
   bool suppressEmptyPane = false,
   SessionHistoryLiveChrome liveChrome = SessionHistoryLiveChrome.none,
   String pendingUserText = '',
+  String? provisioningLabel,
 }) {
   return MaterialApp(
     localizationsDelegates: appLocalizationsDelegates,
@@ -41,6 +42,7 @@ Widget _harness({
           suppressEmptyPane: suppressEmptyPane,
           liveChrome: liveChrome,
           pendingUserText: pendingUserText,
+          provisioningLabel: provisioningLabel,
         ),
       ),
     ),
@@ -178,6 +180,34 @@ void main() {
       expect(find.text('Loading conversation history…'), findsNothing);
     },
   );
+
+  testWidgets('forwards provisioningLabel to the running footer', (
+    tester,
+  ) async {
+    final runtime = ExternalStoreAiThreadRuntime()..setEmpty();
+
+    await tester.pumpWidget(
+      _harness(
+        state: const AiHistoryState(status: AiHistoryViewStatus.empty),
+        runtime: runtime,
+        suppressEmptyPane: true,
+        liveChrome: SessionHistoryLiveChrome.starting,
+        // A synthetic user bubble is what mounts the thread (and its running
+        // footer); matches the landing-prompt harness above and the spec's
+        // "bubble + status row" case.
+        pendingUserText: 'landing hello',
+        provisioningLabel: 'Preparing remote environment…',
+      ),
+    );
+    // The Starting footer spins forever; settle on fixed frames.
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(find.byKey(kSessionHistoryRunningFooterKey), findsOneWidget);
+    expect(find.text('Preparing remote environment…'), findsOneWidget);
+    expect(find.text('Starting…'), findsNothing);
+  });
 
   testWidgets('runtime user turn replaces the synthetic landing bubble', (
     tester,

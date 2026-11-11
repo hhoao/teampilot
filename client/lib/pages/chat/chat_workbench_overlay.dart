@@ -26,14 +26,19 @@ ChatWorkbenchOverlay resolveChatWorkbenchOverlay({
   required bool sessionConnectInProgress,
   required bool showRemoteProvision,
 }) {
-  if (showRemoteProvision) return ChatWorkbenchOverlay.remoteProvision;
-  return resolveWorkbenchOverlay(
+  final base = resolveWorkbenchOverlay(
     phase: sessionConnectInProgress
         ? SessionPhase.connecting
         : SessionPhase.running,
     historyStatus: AiHistoryViewStatus.ready,
     view: workbenchView,
   );
+  // Chat already renders an in-thread provisioning footer; never cover it with
+  // the full-pane overlay. Other views keep the provision pane.
+  if (showRemoteProvision && base != ChatWorkbenchOverlay.chat) {
+    return ChatWorkbenchOverlay.remoteProvision;
+  }
+  return base;
 }
 
 /// Whether the live terminal surface should stay in the workbench tree.

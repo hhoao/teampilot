@@ -1,3 +1,5 @@
+import '../../models/member_remote_provision_progress.dart';
+
 /// In-thread tip chrome under History while a turn is in flight.
 enum SessionHistoryLiveChrome {
   /// No footer.
@@ -64,4 +66,17 @@ extension SessionHistoryLiveChromeX on SessionHistoryLiveChrome {
     }
     return SessionHistoryLiveChrome.running;
   }
+}
+
+/// Fixed footer label while an SSH member's remote environment is provisioning.
+///
+/// Returns null when there is no provision in flight or when it failed, so the
+/// existing [SessionHistoryLiveChrome] label (Starting… / Running…) is used.
+/// Takes a plain [String] so this file needs no BuildContext or l10n lookup.
+String? remoteProvisionFooterLabel(
+  MemberRemoteProvisionProgress? progress,
+  String preparingLabel,
+) {
+  if (progress == null || progress.hasFailed) return null;
+  return preparingLabel;
 }
