@@ -166,7 +166,7 @@ void main() {
       writeClipboard: (text) async {},
       onFeedback: (_) {},
     );
-    expect(specs, hasLength(8));
+    expect(specs, hasLength(9));
     expect(specs[0].label, 'Retry');
     expect(specs[1].label, 'copy');
     expect(specs[2].isDivider, isTrue);
@@ -174,14 +174,15 @@ void main() {
     expect(specs[4].label, 'Fork from here');
     expect(specs[5].label, 'Previous version');
     expect(specs[6].label, 'Next version');
-    expect(specs[7].label, 'Export Markdown');
+    expect(specs[7].isDivider, isTrue);
+    expect(specs[8].label, 'Export Markdown');
     // Only the rewind group is disabled; retry / clipboard stay enabled.
     for (final index in [3, 4, 5, 6]) {
       expect(specs[index].enabled, isFalse, reason: 'index $index');
     }
     expect(specs[0].enabled, isTrue);
     expect(specs[1].enabled, isTrue);
-    expect(specs[7].enabled, isTrue);
+    expect(specs[8].enabled, isTrue);
   });
 
   testWidgets('menu actions invoke handlers and copy both text forms', (tester) async {
@@ -851,9 +852,8 @@ Expected: FAIL —— `Expected: exactly one matching candidate, Actual: _KeyFin
 
 ```dart
 import 'chat_message_action_menu.dart';
-import 'chat_message_edit_panel.dart';
 ```
-（此任务只用到前者；后者 Task 4 用，先一并加入以免重复改 import。）
+（`chat_message_edit_panel.dart` 由 Task 4 加入；本任务不要提前 import，避免 `unused_import`。）
 
 **(b)** 把 `_bodyCacheKeyForTurn`（`:259-273`）替换为：
 
@@ -880,91 +880,7 @@ import 'chat_message_edit_panel.dart';
   }
 ```
 
-**(c)** 在 `messageBuilder` 尾部：保留现有 `var result = tightenForRunning ? Theme(...) : messageChild;` 与 highlight ring 块，把最后的 `return result;` 替换为：
-
-```dart
-                          final mobileEditingId = mobile
-                              ? _edit.editingMessageId
-                              : null;
-                          if (mobileEditingId != null) {
-                            if (mobileEditingId != ai.id) {
-                              result = IgnorePointer(
-                                key: ValueKey('chat-message-dim:${ai.id}'),
-                                ignoring: true,
-                                child: Opacity(
-                                  opacity: 0.28,
-                                  child: result,
-                                ),
-                              );
-                            }
-                            return result;
-                          }
-                          if (!mobile) return result;
-
-                          final canEdit =
-                              ai.role == AiRole.user &&
-                              _isPureText(ai) &&
-                              version != null &&
-                              widget.onEditUserMessage != null;
-                          final handlers = ChatMessageActionHandlers(
-                            onRetry:
-                                deliveryFailed &&
-                                    widget.onRetryFailedMessage != null
-                                ? () => widget.onRetryFailedMessage!(ai.id)
-                                : null,
-                            onEdit: canEdit
-                                ? () => unawaited(_openMobileEdit(context, ai))
-                                : null,
-                            onFork:
-                                version != null && widget.onForkFrom != null
-                                ? () => widget.onForkFrom!(version.commit)
-                                : null,
-                            onPreviousVersion:
-                                showsVersion &&
-                                    previous != null &&
-                                    widget.onSwitchVersion != null
-                                ? () => widget.onSwitchVersion!(previous)
-                                : null,
-                            onNextVersion:
-                                showsVersion &&
-                                    next != null &&
-                                    widget.onSwitchVersion != null
-                                ? () => widget.onSwitchVersion!(next)
-                                : null,
-                          );
-                          result = SelectionContainer.disabled(
-                            child: GestureDetector(
-                              key: ValueKey('chat-message-gestures:${ai.id}'),
-                              behavior: HitTestBehavior.translucent,
-                              onLongPressStart: (details) {
-                                unawaited(
-                                  showChatMessageActionMenu(
-                                    context,
-                                    globalPosition: details.globalPosition,
-                                    message: ai,
-                                    deliveryFailed: deliveryFailed,
-                                    showsVersion: showsVersion,
-                                    rewindEnabled:
-                                        AiMessageInteractionScope.maybeRewindEnabled(
-                                          context,
-                                        ) ??
-                                        !widget.turnInFlight,
-                                    handlers: handlers,
-                                  ),
-                                );
-                              },
-                              child: result,
-                            ),
-                          );
-                          return result;
-```
-
-注意：此步骤里 `onEdit`/`onTap` 与 `_openMobileEdit` 尚未接入（Task 4），所以 `canEdit` 只用于构造 `handlers.onEdit`；此时 `onEdit` 传 `null`，`GestureDetector` 没有 `onTap`。把上面 `onEdit:` 一行暂时写成：
-
-```dart
-                            onEdit: null,
-```
-并把 `canEdit` 变量整段删除（Task 4 会重新加入）。即本步骤 (c) 的最终代码为：
+**(c)** 在 `messageBuilder` 尾部：保留现有 `var result = tightenForRunning ? Theme(...) : messageChild;` 与 highlight ring 块，把最后的 `return result;` 替换为下面这段（**这是 Task 3 的最终代码**；`canEdit` / `handlers.onEdit` / `GestureDetector.onTap` / `_openMobileEdit` 由 Task 4 增量加入，本任务不要提前引用它们，否则编译不过）：
 
 ```dart
                           final mobileEditingId = mobile
@@ -1208,7 +1124,13 @@ Expected: FAIL —— `Expected: exactly one matching candidate, Actual: _KeyFin
 
 - [ ] **Step 3: Write minimal implementation**
 
-**(a)** 在 `SessionHistoryThreadState` 方法区（紧接 `_bodyCacheKeyForTurn` 之后，约 `:274`）加入两个方法：
+**(a)** 在 `client/lib/pages/chat/session_history_thread.dart` 的本地 import 区加入（与 `chat_message_action_menu.dart` 并列，保持字母序）：
+
+```dart
+import 'chat_message_edit_panel.dart';
+```
+
+**(b)** 在 `SessionHistoryThreadState` 方法区（紧接 `_bodyCacheKeyForTurn` 之后，约 `:274`）加入两个方法：
 
 ```dart
   Future<bool> _submitEdit(AiMessage message, String text) async {
@@ -1250,7 +1172,7 @@ Expected: FAIL —— `Expected: exactly one matching candidate, Actual: _KeyFin
   }
 ```
 
-**(b)** 在 `AiMessageView(...)` 构造中（`:1323-1351`）把三处改为：
+**(c)** 在 `AiMessageView(...)` 构造中（`:1323-1351`）把三处改为：
 
 ```dart
                             editing: !mobile && editing,
@@ -1268,7 +1190,7 @@ Expected: FAIL —— `Expected: exactly one matching candidate, Actual: _KeyFin
 
 把原来 `:1331-1351` 的 `onSubmitEdit: (text) async { ... }` 整块替换为上面的单行 `onSubmitEdit: (text) => _submitEdit(ai, text),`。
 
-**(c)** 在 `messageBuilder` 尾部（Task 3 写入的代码）里：
+**(d)** 在 `messageBuilder` 尾部（Task 3 写入的代码）里：
 
 - 把 `final handlers = ChatMessageActionHandlers(` 之前插入 `canEdit` 计算：
 ```dart
@@ -1341,7 +1263,7 @@ Run:
 ```bash
 cd /home/hhoa/git/hhoa/teampilot && git log --oneline -5 && git status --short
 ```
-Expected: 最近 5 条包含 Task 1-4 的 4 个 commit + 2 个 spec commit；`git status --short` 里仍保留原先那 39 个未提交/未跟踪改动，**且本计划的 6 个文件都不再出现在未提交列表里**。
+Expected: 能在 `git log` 里找到本计划 Task 1-4 的 4 个 commit；`git status --short` 里仍保留其它并行工作留下的未提交/未跟踪改动，**且本计划的 6 个文件都不再出现在未提交列表里**。注意：仓库中可能有其它 agent 并行提交，最近几条 commit 不一定全是本计划的。
 
 - [ ] **Step 5: 设备/模拟器目视检查（人工）**
 
