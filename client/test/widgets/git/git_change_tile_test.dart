@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/git_status.dart';
+import 'package:teampilot/widgets/light_hover_row.dart';
 import 'package:teampilot/widgets/git/git_change_tile.dart';
 
 void main() {
@@ -281,13 +282,15 @@ void main() {
         await tester.pump();
         await gesture.moveTo(tester.getCenter(find.byType(GitChangeTile)));
         await tester.pumpAndSettle();
-        final box = tester.widget<AnimatedContainer>(
-          find.descendant(
-            of: find.byType(GitChangeTile),
-            matching: find.byType(AnimatedContainer),
-          ),
+        final box = tester.widget<DecoratedBox>(
+          find
+              .descendant(
+                of: find.byType(LightHoverRow),
+                matching: find.byType(DecoratedBox),
+              )
+              .first,
         );
-        final hovered = (box.decoration! as BoxDecoration).color!;
+        final hovered = (box.decoration as BoxDecoration).color!;
         expect(
           hovered,
           Color.alphaBlend(

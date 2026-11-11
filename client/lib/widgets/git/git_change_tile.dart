@@ -8,6 +8,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_changes_visible_rows.dart';
 import '../file_icon_widget.dart';
+import '../light_hover_row.dart';
 import 'git_context_menu.dart';
 
 /// One changed file row in the source control changes tree.
@@ -63,7 +64,7 @@ class GitChangeTile extends StatelessWidget {
     final name = p.basename(change.path);
 
     // Row content is hoisted so a hover flip (scroll start/end) rebuilds only
-    // the TpHover surface below, never this subtree.
+    // the hover surface below, never this subtree.
     final rowContent = SizedBox(
       width: double.infinity,
       height: kGitChangesNodeHeight,
@@ -112,7 +113,7 @@ class GitChangeTile extends StatelessWidget {
       child: ValueListenableBuilder<bool>(
         valueListenable: hoverEnabled ?? _hoverAlwaysOn,
         child: rowContent,
-        builder: (context, hoverOn, child) => TpHover(
+        builder: (context, hoverOn, child) => LightHoverRow(
           onTap: onSelect,
           onDoubleTap: onOpenFile,
           onSecondaryTapDown: (details) => unawaited(
@@ -131,8 +132,6 @@ class GitChangeTile extends StatelessWidget {
           hoverColor: hoverOn ? null : Colors.transparent,
           backgroundColor: selected ? cs.secondaryContainer : null,
           borderRadius: BorderRadius.circular(6),
-          width: double.infinity,
-          height: double.infinity,
           padding: EdgeInsets.fromLTRB(
             depth * kGitChangesIndentWidth +
                 kGitChangesChevronWidth +

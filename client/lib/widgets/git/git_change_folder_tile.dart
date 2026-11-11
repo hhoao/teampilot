@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/git_cubit.dart';
 import '../../services/git/git_changes_visible_rows.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../light_hover_row.dart';
 import 'git_context_menu.dart';
 
 /// Folder row in the git changes tree view. IDEA-style: a tri-state stage
@@ -60,7 +61,7 @@ class GitChangeFolderTile extends StatelessWidget {
     );
 
     // Row content is hoisted so a hover flip (scroll start/end) rebuilds only
-    // the TpHover surface below, never this subtree.
+    // the hover surface below, never this subtree.
     final rowContent = SizedBox(
       width: double.infinity,
       height: kGitChangesNodeHeight,
@@ -122,7 +123,7 @@ class GitChangeFolderTile extends StatelessWidget {
       child: ValueListenableBuilder<bool>(
         valueListenable: hoverEnabled ?? _hoverAlwaysOn,
         child: rowContent,
-        builder: (context, hoverOn, child) => TpHover(
+        builder: (context, hoverOn, child) => LightHoverRow(
           onTap: () => cubit.toggleFolderExpanded(folderPath),
           onSecondaryTapDown: (details) => unawaited(
             GitFolderContextMenu.show(
@@ -136,8 +137,6 @@ class GitChangeFolderTile extends StatelessWidget {
           ),
           hoverColor: hoverOn ? null : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
-          width: double.infinity,
-          height: double.infinity,
           padding: EdgeInsets.fromLTRB(
             depth * kGitChangesIndentWidth +
                 kGitChangesNodePaddingLeft +

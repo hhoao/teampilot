@@ -22,6 +22,7 @@ import '../services/workbench/workbench_editor_opener.dart';
 import '../services/workspace_dnd/path_namespace.dart';
 import '../services/workspace_dnd/workspace_file_ref.dart';
 import 'file_icon_widget.dart';
+import 'light_hover_row.dart';
 import 'file_tree/file_tree_context_menu.dart';
 import 'file_tree/file_tree_drop_region.dart';
 import 'file_tree/file_tree_import_dialogs.dart';
@@ -186,7 +187,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
     final activeFill = isActive ? cs.secondaryContainer : null;
 
     // Row content is hoisted so a hover flip (scroll start/end) rebuilds only
-    // the TpHover surface below, never this subtree.
+    // the hover surface below, never this subtree.
     final rowContent = OverflowBox(
       maxWidth: double.infinity,
       alignment: Alignment.centerLeft,
@@ -256,7 +257,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
       child: ValueListenableBuilder<bool>(
         valueListenable: widget.hoverEnabled,
         child: rowContent,
-        builder: (ctx, hoverEnabled, child) => TpHover(
+        builder: (ctx, hoverEnabled, child) => LightHoverRow(
           onTap: () {
             if (isDir) {
               widget.cubit.toggleExpand(widget.path);
@@ -292,8 +293,6 @@ class _FileTreeNodeState extends State<FileTreeNode> {
           backgroundColor: activeFill,
           hoverColor: hoverEnabled ? activeFill : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
-          width: double.infinity,
-          height: double.infinity,
           padding: EdgeInsets.fromLTRB(
             widget.depth * kFileTreeIndentWidth +
                 kFileTreeNodePaddingLeft +
