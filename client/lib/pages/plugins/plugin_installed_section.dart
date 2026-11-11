@@ -12,7 +12,6 @@ import '../../models/plugin.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/github/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
-import '../../widgets/plugins/plugin_cli_support_disclosure.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'plugin_management_cards.dart';
 
@@ -345,7 +344,6 @@ class PluginInstalledRow extends StatelessWidget {
                     context,
                   ).xsColored(textBase.withValues(alpha: 0.5)),
                 ),
-                PluginCliSupportDisclosure(capabilities: plugin.capabilities),
                 if (plugin.description.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(

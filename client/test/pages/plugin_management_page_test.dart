@@ -61,7 +61,7 @@ void main() {
     expect(find.text('No plugins installed'), findsOneWidget);
   });
 
-  testWidgets('Installed row shows per-CLI support disclosure', (tester) async {
+  testWidgets('Installed row omits per-CLI support disclosure', (tester) async {
     tester.view.physicalSize = const Size(2400, 1800);
     tester.view.devicePixelRatio = 1.0;
     final now = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
@@ -89,8 +89,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('Fully supported'), findsWidgets);
-    expect(find.textContaining('Not applicable'), findsWidgets);
+    expect(find.textContaining('Fully supported'), findsNothing);
+    expect(find.textContaining('Not applicable'), findsNothing);
+    expect(find.text('test plugin'), findsOneWidget);
   });
 
   testWidgets('Marketplaces section lists default marketplace', (tester) async {
