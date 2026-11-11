@@ -16,6 +16,7 @@ import 'package:teampilot/services/vault/keychain_vault_backend.dart';
 import 'package:teampilot/services/vault/vault_crypto.dart';
 import 'package:teampilot/services/vault/vault_service.dart';
 import 'package:teampilot/services/vault/vault_unlock_gate.dart';
+import 'package:teampilot/theme/app_outline_input_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -103,6 +104,7 @@ class EditorHarness {
 Future<EditorHarness> pumpEditor(
   WidgetTester tester, {
   SshProfile? profile,
+  bool appInputTheme = false,
 }) async {
   final deviceRepository = RecordingRepository();
   final planeRepository = RecordingRepository();
@@ -119,7 +121,21 @@ Future<EditorHarness> pumpEditor(
   addTearDown(deviceCubit.close);
   addTearDown(planeCubit.close);
 
-  final theme = ThemeData(useMaterial3: true);
+  final baseTheme = ThemeData(useMaterial3: true);
+  final tpThemeData = TpThemeData.fromColorScheme(
+    baseTheme.colorScheme,
+    scale: 1.0,
+    controlScale: AppTypographyScale.standard.multiplier,
+  );
+  final theme = appInputTheme
+      ? baseTheme.copyWith(
+          inputDecorationTheme: buildAppOutlineInputDecorationTheme(
+            colorScheme: baseTheme.colorScheme,
+            textTheme: baseTheme.textTheme,
+            control: tpThemeData.control,
+          ),
+        )
+      : baseTheme;
   await tester.pumpWidget(
     MultiRepositoryProvider(
       providers: [
@@ -143,11 +159,7 @@ Future<EditorHarness> pumpEditor(
           locale: const Locale('en'),
           theme: theme,
           home: TpTheme(
-            data: TpThemeData.fromColorScheme(
-              theme.colorScheme,
-              scale: 1.0,
-              controlScale: AppTypographyScale.standard.multiplier,
-            ),
+            data: tpThemeData,
             child: MultiRepositoryProvider(
               providers: [
                 RepositoryProvider<SshProfileRepository>.value(
@@ -253,5 +265,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('s3cret'), findsOneWidget);
+  });
+
+  testWidgets('private key field stays multiline under the app single-line '
+      'input theme', (tester) async {
+    await pumpEditor(tester, appInputTheme: true);
+
+    // Build order: label, host, username, port, private key, passphrase,
+    // password. The global outline theme pins every TextField to a 32dp
+    // single-line track; the private key field must opt out so a pasted PEM
+    // is actually visible.
+    final privateKey = find.byType(TextField).at(4);
+    expect(tester.getSize(privateKey).height, greaterThan(48));
   });
 }

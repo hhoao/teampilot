@@ -530,16 +530,20 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
         controller: _privateKeyController,
         minLines: 4,
         maxLines: 4,
-        decoration: InputDecoration(
-          hintText: l10n.sshProfile.formIdentityFileHint,
-          helperText: l10n.sshProfile.formIdentityFileHelper,
-          suffixIcon: IconButton(
-            tooltip: l10n.sshProfile.formIdentityFileImport,
-            onPressed: _importPrivateKey,
-            icon: const Icon(Icons.upload_file_outlined),
+        decoration: tpMultilineInputDecoration(
+          context,
+          hasError: state.hasError,
+          decoration: InputDecoration(
+            hintText: l10n.sshProfile.formIdentityFileHint,
+            helperText: l10n.sshProfile.formIdentityFileHelper,
+            suffixIcon: IconButton(
+              tooltip: l10n.sshProfile.formIdentityFileImport,
+              onPressed: _importPrivateKey,
+              icon: const Icon(Icons.upload_file_outlined),
+            ),
+            errorText: state.hasError ? '' : null,
+            errorStyle: const TextStyle(height: 0, fontSize: 0),
           ),
-          errorText: state.hasError ? '' : null,
-          errorStyle: const TextStyle(height: 0, fontSize: 0),
         ),
         onChanged: state.didChange,
       ),
