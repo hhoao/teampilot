@@ -5,7 +5,9 @@ import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/failed_message_record.dart';
 import 'package:teampilot/pages/chat/history_scroll_cursor_lock.dart';
 import 'package:teampilot/pages/chat/session_history_live_chrome.dart';
 import 'package:teampilot/pages/chat/session_history_scroll_to_bottom_button.dart';
@@ -37,6 +39,7 @@ Widget _harness({
   Future<void> Function()? onLoadOlder,
   ValueNotifier<String?>? visibleOwnerId,
   bool? mobilePerformanceMode,
+  Map<String, FailedMessageStatus> pendingDeliveryStatuses = const {},
   bool expandLatest = true,
   double width = 600,
   double height = 400,
@@ -61,6 +64,7 @@ Widget _harness({
           onLoadOlder: onLoadOlder,
           visibleOwnerId: visibleOwnerId,
           mobilePerformanceMode: mobilePerformanceMode,
+          pendingDeliveryStatuses: pendingDeliveryStatuses,
         ),
       ),
     ),
@@ -1255,6 +1259,87 @@ void main() {
       expect(find.textContaining('Thinking process'), findsOneWidget);
       expect(find.textContaining('active thought'), findsNothing);
       expect(find.textContaining('finished thought'), findsNothing);
+    },
+  );
+
+  testWidgets('mobile thread attaches a long-press gesture to messages', (tester) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(3));
+
+    await tester.pumpWidget(
+      _harness(runtime: store, mobilePerformanceMode: true),
+    );
+    await pumpUntilSettled(tester);
+
+    final finder = find.byKey(const ValueKey('chat-message-gestures:m0'));
+    expect(finder, findsOneWidget);
+    expect(
+      tester.widget<GestureDetector>(finder).onLongPressStart,
+      isNotNull,
+    );
+  });
+
+  testWidgets('desktop thread attaches no message gesture wrapper', (tester) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(3));
+
+    await tester.pumpWidget(
+      _harness(runtime: store, mobilePerformanceMode: false),
+    );
+    await pumpUntilSettled(tester);
+
+    expect(
+      find.byKey(const ValueKey('chat-message-gestures:m0')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('long press opens the action menu, not the text selection toolbar', (tester) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(3));
+
+    await tester.pumpWidget(
+      _harness(runtime: store, mobilePerformanceMode: true),
+    );
+    await pumpUntilSettled(tester);
+
+    await tester.longPress(find.text('msg 0'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byType(TpActionMenuItem), findsWidgets);
+    expect(find.text('Select all'), findsNothing);
+  });
+
+  // The per-turn body cache must invalidate when a message flips to a failed
+  // delivery status, otherwise the cached body keeps a stale "Retry" menu
+  // item. Controller-mandated coverage; the brief's three integration tests
+  // do not exercise _bodyCacheKeyForTurn's delivery-status key.
+  testWidgets(
+    'body cache key changes when a message delivery status flips',
+    (tester) async {
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages(_soloUserMessages(3));
+      const turn = ThreadTurn(id: 'm0', messageIds: ['m0']);
+
+      Object? keyForTurn() => tester
+          .widget<VirtualThreadViewport>(find.byType(VirtualThreadViewport))
+          .bodyCacheKeyForTurn!(turn);
+
+      await tester.pumpWidget(_harness(runtime: store));
+      await pumpUntilSettled(tester);
+      final before = keyForTurn();
+
+      await tester.pumpWidget(
+        _harness(
+          runtime: store,
+          pendingDeliveryStatuses: const {'m0': FailedMessageStatus.failed},
+        ),
+      );
+      await pumpUntilSettled(tester);
+      final after = keyForTurn();
+
+      expect(before, isNot(after));
     },
   );
 }

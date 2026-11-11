@@ -16,6 +16,7 @@ import '../../models/pending_branch_edit.dart';
 import '../../services/chat/rewind/seat_branches.dart';
 import '../../utils/chat/chat_timestamp_format.dart';
 import '../../widgets/session_working_spinner.dart';
+import 'chat_message_action_menu.dart';
 import 'chat_outline.dart';
 import 'chat_reveal_controller.dart';
 import 'history_scroll_cursor_lock.dart';
@@ -258,12 +259,17 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   Object? _bodyCacheKeyForTurn(ThreadTurn turn) {
     final keys = <Object?>[
+      // Editing dims every turn, so all cached bodies must rebuild when the
+      // edit state starts / stops — not just the turn owning the message.
+      _edit.editingMessageId,
       widget.onSwitchVersion != null,
       widget.onForkFrom != null,
       widget.onEditUserMessage != null,
     ];
     for (final id in turn.messageIds) {
       if (id == _edit.editingMessageId) keys.add('editing:$id');
+      // A failed-delivery flip must refresh the "Retry" menu item.
+      keys.add(widget.pendingDeliveryStatuses[id]);
       final version = widget.branches.turnOf(id);
       if (version != null) {
         keys.add(Object.hash(version.commit, version.index, version.count));
@@ -1403,6 +1409,68 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                               child: result,
                             );
                           }
+                          final mobileEditingId = mobile
+                              ? _edit.editingMessageId
+                              : null;
+                          if (mobileEditingId != null) {
+                            if (mobileEditingId != ai.id) {
+                              result = IgnorePointer(
+                                key: ValueKey('chat-message-dim:${ai.id}'),
+                                ignoring: true,
+                                child: Opacity(opacity: 0.28, child: result),
+                              );
+                            }
+                            return result;
+                          }
+                          if (!mobile) return result;
+
+                          final handlers = ChatMessageActionHandlers(
+                            onRetry:
+                                deliveryFailed &&
+                                    widget.onRetryFailedMessage != null
+                                ? () => widget.onRetryFailedMessage!(ai.id)
+                                : null,
+                            onFork:
+                                version != null && widget.onForkFrom != null
+                                ? () => widget.onForkFrom!(version.commit)
+                                : null,
+                            onPreviousVersion:
+                                showsVersion &&
+                                    previous != null &&
+                                    widget.onSwitchVersion != null
+                                ? () => widget.onSwitchVersion!(previous)
+                                : null,
+                            onNextVersion:
+                                showsVersion &&
+                                    next != null &&
+                                    widget.onSwitchVersion != null
+                                ? () => widget.onSwitchVersion!(next)
+                                : null,
+                          );
+                          result = SelectionContainer.disabled(
+                            child: GestureDetector(
+                              key: ValueKey('chat-message-gestures:${ai.id}'),
+                              behavior: HitTestBehavior.translucent,
+                              onLongPressStart: (details) {
+                                unawaited(
+                                  showChatMessageActionMenu(
+                                    context,
+                                    globalPosition: details.globalPosition,
+                                    message: ai,
+                                    deliveryFailed: deliveryFailed,
+                                    showsVersion: showsVersion,
+                                    rewindEnabled:
+                                        AiMessageInteractionScope.maybeRewindEnabled(
+                                          context,
+                                        ) ??
+                                        !widget.turnInFlight,
+                                    handlers: handlers,
+                                  ),
+                                );
+                              },
+                              child: result,
+                            ),
+                          );
                           return result;
                         },
                       ),
