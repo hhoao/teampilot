@@ -55,7 +55,7 @@ Once the root cause is fixed, remove any intermediate defensive changes so futur
 
 ### 7. ACP protocol frames
 
-ACP frame logs (`ACP →` / `ACP ←` / `ACP !`, from `AcpFrameLogger`) are **off by default** because high-volume protocol frames (`session/update`, `available_commands_update`, …) drown out app logs. To turn them on, open **Settings → About → View logs** and use the ACP toggle in the log viewer toolbar (persisted across restarts). For builds where the toggle is not reachable (or for CI runs), `--dart-define=ACP_FRAME_LOG=true` also enables mirroring into the console and `{appDataRoot}/logs/`.
+ACP frame logs (`ACP →` / `ACP ←` / `ACP !`, from `AcpFrameLogger`) are **off by default** because high-volume protocol frames (`session/update`, `available_commands_update`, …) drown out app logs. To turn them on, open **Settings → About → View logs** and use the ACP toggle in the log viewer toolbar (persisted across restarts). For builds where the toggle is not reachable (or for CI runs), `--dart-define=ACP_FRAME_LOG=true` also enables mirroring into the console and `{appDataRoot}/logs/{level}/latest.log`.
 
 ## Common pitfalls
 

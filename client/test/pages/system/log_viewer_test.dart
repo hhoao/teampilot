@@ -1,9 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/system/log_viewer_content.dart';
+import 'package:teampilot/pages/system/log_viewer_panel.dart';
 import 'package:teampilot/pages/system/log_viewer_toolbar.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/utils/logging/logger_utils.dart';
+
+import '../../support/post_frame_test_harness.dart';
 
 Widget _host(Widget child) {
   return MaterialApp(
@@ -155,4 +163,85 @@ void main() {
       const BorderRadius.all(Radius.circular(tpSearchPillRadius)),
     );
   });
+
+  testWidgets('level dropdown lists files from that directory', (tester) async {
+    setUpTestAppStorage();
+    addTearDown(() async {
+      await tester.runAsync(AppLogger.instance.resetForTest);
+      tearDownTestAppStorage();
+    });
+
+    final root = AppPathsBootstrapper.current.basePath;
+    await tester.runAsync(() async {
+      await AppLogger.instance.initFileLogging(root);
+      AppLogger.instance.i('info only line');
+      AppLogger.instance.e('error only line', recordError: false);
+      await AppLogger.instance.flushFileLogging();
+      await File(p.join(root, 'logs', 'errors.jsonl')).writeAsString('{}\n');
+    });
+
+    await tester.pumpWidget(_host(const LogViewerPanel(useSurfaceCard: false)));
+    await _pumpLogViewerIo(tester);
+
+    final fileSelect = tester.widget<TpSelect<String>>(
+      find.byKey(const Key('log-viewer-file')),
+    );
+    expect(
+      fileSelect.items.every((path) => !path.endsWith('errors.jsonl')),
+      isTrue,
+    );
+    expect(p.basename(fileSelect.initialItem ?? ''), 'latest.log');
+
+    tester
+        .widget<TpSelect<String>>(find.byKey(const Key('log-viewer-level')))
+        .onChanged
+        .call('ERROR');
+    await _pumpLogViewerIo(tester);
+
+    final errorSelect = tester.widget<TpSelect<String>>(
+      find.byKey(const Key('log-viewer-file')),
+    );
+    expect(
+      errorSelect.items.every(
+        (path) => path.contains('${p.separator}error${p.separator}'),
+      ),
+      isTrue,
+    );
+    expect(p.basename(errorSelect.initialItem ?? ''), 'latest.log');
+
+    tester
+        .widget<TpSelect<String>>(find.byKey(const Key('log-viewer-level')))
+        .onChanged
+        .call('INFO');
+    await _pumpLogViewerIo(tester);
+
+    final infoSelect = tester.widget<TpSelect<String>>(
+      find.byKey(const Key('log-viewer-file')),
+    );
+    expect(
+      infoSelect.items.every(
+        (path) => path.contains('${p.separator}info${p.separator}'),
+      ),
+      isTrue,
+    );
+  });
+}
+
+/// File listing/reading in [LogViewerPanel] is real dart:io; FakeAsync
+/// [pumpAndSettle] cannot complete those futures (and a loading
+/// [LinearProgressIndicator] would spin forever).
+Future<void> _pumpLogViewerIo(WidgetTester tester) async {
+  for (var i = 0; i < 20; i++) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 20)),
+    );
+    await tester.pump();
+    final fileReady = find
+        .byKey(const Key('log-viewer-file'))
+        .evaluate()
+        .isNotEmpty;
+    final loading = find.byType(LinearProgressIndicator).evaluate().isNotEmpty;
+    if (fileReady && !loading) return;
+  }
+  fail('Log viewer IO did not settle');
 }

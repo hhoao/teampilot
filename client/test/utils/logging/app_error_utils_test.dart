@@ -36,5 +36,27 @@ void main() {
       expect(decision.kind, AppErrorKind.network);
       expect(decision.shouldReport, isFalse);
     });
+
+    test('log path IO failures are storage errors', () {
+      for (final path in [
+        '/logs/error/latest.log',
+        '/logs/warn/app_2026-11-11.log',
+        '/logs/info/latest.log',
+        '/logs/debug/latest.log',
+        '/logs/latest.log',
+        '/logs/errors.jsonl',
+      ]) {
+        final decision = AppErrorUtils.classify(Exception('failed $path'));
+        expect(decision.kind, AppErrorKind.storage, reason: path);
+        expect(decision.shouldReport, isFalse, reason: path);
+      }
+
+      // Typed-branch regression: FileSystemException with 'cannot open file'.
+      final typed = AppErrorUtils.classify(
+        FileSystemException('cannot open file', '/logs/error/latest.log'),
+      );
+      expect(typed.kind, AppErrorKind.storage);
+      expect(typed.shouldReport, isFalse);
+    });
   });
 }
