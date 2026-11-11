@@ -23,8 +23,8 @@ All app code lives under `client/lib/` (cubits, pages, repositories, services, m
 ## Hard rules
 
 - **Never invoke `flutter test` directly** — always `cd client && dart run tool/run_tests.dart <paths/options>`; concurrent direct runs corrupt the shared build cache (details: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#tests)).
-- **Test loop: fast inner, slow outer.** Inner loop is `flutter analyze`; verify with one test file (`--plain-name` to narrow); full suite only once before claiming done, in the background (details: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#test-loop-fast-inner-slow-outer-do-not-invert-it)).
-- Before claiming done: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && dart run tool/run_tests.dart`.
+- **Test loop: fast inner, slow outer.** Inner loop is `flutter analyze`; verify with the test file(s) covering your change (see the change→verification table in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#which-changes-need-the-full-suite)). Do **not** run the full suite for a local change.
+- **Full suite is the exception.** Run `cd client && dart run tool/run_tests.dart` (full, background) only for the cross-cutting changes in that table and once before delivery; CI runs it on every `client/**` push/PR. `dart run tool/test_status.dart` lists in-progress/completed runs and `--tail` follows a log without taking the suite lock; `--reuse` skips a full run already green for the current clean HEAD.
 - **Member placement:** always `sessionRosterMembers(session, team)` (native writers: `cliTeamRosterMembers` / `runtimeRosterMembers`) — never raw `team.members` or stale `replicas` (details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#member-placement-machines)).
 - **`services/chat/` directories:** only lifecycle **stages** or named **features**; keep `team_bus` / `team_generation` names; ports live in the owning feature (details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#serviceschat--team-session-product-line)).
 - **Paths:** injected `HomeStorage` / `RuntimeContextRegistry` — never `Directory.current` for workspace or app data roots.

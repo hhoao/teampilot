@@ -84,4 +84,28 @@ void main() {
     });
     expect(events, ['acquired-after-failure']);
   });
+
+  test('throws instead of waiting when wait is false and the lock is held',
+      () async {
+    final lockPath = '${tempDir.path}/run_tests.lock';
+    final release = Completer<void>();
+
+    final holder = withTestSuiteLock(lockPath, () => release.future);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    await expectLater(
+      withTestSuiteLock<void>(lockPath, () async {}, wait: false),
+      throwsA(isA<TestSuiteLockUnavailable>()),
+    );
+
+    release.complete();
+    await holder;
+
+    // Once released, a non-waiting call acquires normally.
+    var ran = false;
+    await withTestSuiteLock(lockPath, () async {
+      ran = true;
+    }, wait: false);
+    expect(ran, isTrue);
+  });
 }

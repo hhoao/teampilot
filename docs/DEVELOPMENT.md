@@ -138,6 +138,42 @@ before claiming done**, and launch it in the background so you keep working
 holds the lock — a queued full-suite run blocks every other agent's small
 verification behind it.
 
+#### Which changes need the full suite?
+
+Pick the smallest check that still gives real confidence. The full suite
+(`dart run tool/run_tests.dart` with no paths) is ~2k non-integration tests and
+serializes every other agent behind the suite lock, so treat it as the
+exception:
+
+| Change | Verify with |
+|--------|-------------|
+| Any change | `flutter analyze --no-fatal-infos --no-fatal-warnings` (seconds) |
+| Behavior inside one top-level directory / feature (`lib/services/<x>/`, `lib/pages/<x>/`, `lib/cubits/<x>/`, a single widget) | `dart run tool/run_tests.dart test/<mirrored dir>/` plus any test that directly imports the changed symbol |
+| Docs, comments, formatting; i18n JSON only | analyze (run `dart run slang` first for i18n, then the affected page tests) |
+| Shared base used across modules (`lib/models/`, `lib/utils/`, `lib/repositories/`, `lib/app/`, `lib/router/`, `lib/theme/`, `lib/main.dart`, shared `lib/services/` base such as storage/runtime context/logging/CLI registry/member placement) | full suite |
+| Dependencies or build/generated inputs (`pubspec.yaml`/upgrade, `analysis_options.yaml`, `dart_test.yaml`, slang output, `*.g.dart`, build_runner) | full suite |
+| A change spanning ≥2 top-level directories, or after a merge/rebase that pulled in others' work | full suite |
+| Final delivery / opening a PR | full suite once (background); CI also runs it |
+
+If you cannot tell whether a change is cross-cutting, run the module subset
+first and save the full suite for the delivery checkpoint — do not default to
+the whole suite on every edit.
+
+**Observing shared runs (no lock needed).** Run records and logs live under
+`client/.dart_tool/test_runs/` (gitignored, shared by every agent in the
+checkout). `dart run tool/test_status.dart` lists recent runs (scope, status,
+duration, HEAD, dirty); `--tail [id]` follows a running log; `--wait-for <id>`
+waits for a run and returns its exit code. None of these take the suite lock,
+so you can see that a full suite is already running and follow it instead of
+queueing a duplicate:
+
+- `dart run tool/run_tests.dart --reuse` skips a full run when a green full run
+  already exists for the current **clean** HEAD with the same `pubspec.lock`
+  (default freshness 30 min; `RUN_TESTS_REUSE_MAX_AGE_MINUTES` overrides).
+  Dirty worktrees are never reused.
+- `dart run tool/run_tests.dart --no-wait` exits `75` instead of blocking when
+  another run holds the lock, after printing what is in progress.
+
 ### Profile-scoped SSH worker
 
 Production SSH protocol ownership is exercised through the profile-worker
