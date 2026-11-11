@@ -76,27 +76,39 @@ String _readPackageVersion(Directory pkgDir) {
   return (data['version'] ?? 'unknown').toString();
 }
 
-/// Collects the set of icon names referenced by the mapping (from iconDefinitions
-/// plus every extension/fileName/languageId value), preserving order by insertion.
-Set<String> _collectReferencedIconNames(Map<String, dynamic> json) {
+/// Maps every icon name the generated mapping can reference to its source SVG.
+///
+/// Names are collected from the icon maps at the top level and under `light`:
+/// the runtime appends `_light` to a base icon on light themes, so those
+/// definitions must be bundled as well. A definition's [iconPath] is
+/// authoritative — some point at `<name>.clone.svg`, so the file is not always
+/// named after the icon. Exits when any name has no source file.
+Map<String, String> _resolveIconSources(
+  Map<String, dynamic> json,
+  Directory pkgDir,
+) {
+  final defs = json['iconDefinitions'];
   final names = <String>{};
-  void addFromMap(Object? map) {
-    if (map is Map) {
+
+  void addFromMaps(Object? section) {
+    if (section is! Map) return;
+    for (final key in const [
+      'fileExtensions',
+      'fileNames',
+      'languageIds',
+      'folderNames',
+      'folderNamesExpanded',
+    ]) {
+      final map = section[key];
+      if (map is! Map) continue;
       for (final v in map.values) {
         if (v is String) names.add(v);
       }
     }
   }
 
-  // iconDefinitions keys are the icon names themselves.
-  final defs = json['iconDefinitions'];
-  if (defs is Map) {
-    names.addAll(defs.keys.cast<String>());
-  }
-  addFromMap(json['fileExtensions']);
-  addFromMap(json['fileNames']);
-  addFromMap(json['languageIds']);
-  // Default folder/file icons referenced at top level.
+  addFromMaps(json);
+  addFromMaps(json['light']);
   for (final k in const [
     'file',
     'folder',
@@ -107,49 +119,61 @@ Set<String> _collectReferencedIconNames(Map<String, dynamic> json) {
     final v = json[k];
     if (v is String) names.add(v);
   }
-  return names;
-}
 
-/// Copies referenced SVGs from `pkg/icons` into the target dir.
-/// Returns (copiedCount, missingNames) where missingNames are referenced but
-/// absent in the source (treated as non-fatal warnings).
-({int copied, List<String> missing}) _copySvgs({
-  required Directory pkgDir,
-  required Directory targetDir,
-  required Set<String> referencedNames,
-}) {
-  final srcIcons = Directory('${pkgDir.path}/icons');
-  if (!srcIcons.existsSync()) {
-    stderr.writeln('Source icons/ dir not found at ${srcIcons.path}');
+  if (defs is! Map) {
+    stderr.writeln('material-icons.json has no iconDefinitions.');
     exit(1);
   }
+  final distDir = Directory('${pkgDir.path}/dist');
+  final sources = <String, String>{};
+  final unresolved = <String>[];
+  for (final name in names) {
+    final def = defs[name];
+    final iconPath = def is Map ? def['iconPath'] : null;
+    if (iconPath is! String) {
+      unresolved.add(name);
+      continue;
+    }
+    final src = File.fromUri(distDir.uri.resolve(iconPath));
+    if (!src.existsSync()) {
+      unresolved.add(name);
+      continue;
+    }
+    sources[name] = src.path;
+  }
+  if (unresolved.isNotEmpty) {
+    stderr.writeln(
+      'FATAL: ${unresolved.length} icons referenced by '
+      'material-icons.json have no source SVG: '
+      '${unresolved.take(20).toList()}',
+    );
+    exit(1);
+  }
+  return sources;
+}
+
+/// Copies each resolved source SVG into [targetDir] as `<name>.svg`.
+int _copySvgs({
+  required Directory targetDir,
+  required Map<String, String> sources,
+}) {
   // Wipe target so removed icons don't linger.
   if (targetDir.existsSync()) {
     targetDir.deleteSync(recursive: true);
   }
   targetDir.createSync(recursive: true);
 
-  var copied = 0;
-  final missing = <String>[];
-  final sortedNames = referencedNames.toList()..sort();
-  for (final name in sortedNames) {
-    final src = File('${srcIcons.path}/$name.svg');
-    if (src.existsSync()) {
-      final dst = File('${targetDir.path}/$name.svg');
-      dst.writeAsBytesSync(src.readAsBytesSync());
-      copied++;
-    } else {
-      missing.add(name);
-    }
+  final names = sources.keys.toList()..sort();
+  for (final name in names) {
+    File(sources[name]!).copySync('${targetDir.path}/$name.svg');
   }
-  return (copied: copied, missing: missing);
+  return names.length;
 }
 
 /// Writes lib/utils/ui/file_icon_mapping.g.dart with sorted const maps.
 void _writeMappingFile({
   required String version,
   required Map<String, dynamic> json,
-  required Set<String> copiedIconNames,
 }) {
   String dartStringLiteral(String s) {
     // Escape backslash and single quote.
@@ -230,41 +254,15 @@ Future<void> main(List<String> args) async {
   final json =
       jsonDecode(mappingFile.readAsStringSync()) as Map<String, dynamic>;
 
-  final referenced = _collectReferencedIconNames(json);
-  print('Referenced icon names: ${referenced.length}');
+  final sources = _resolveIconSources(json, pkgDir);
+  print('Referenced icon names: ${sources.length}');
 
   final targetDir = Directory(_targetSvgDir);
-  final (:copied, :missing) = _copySvgs(
-    pkgDir: pkgDir,
-    targetDir: targetDir,
-    referencedNames: referenced,
-  );
+  final copied = _copySvgs(targetDir: targetDir, sources: sources);
   print('Copied $copied SVGs into $_targetSvgDir/.');
-  if (missing.isNotEmpty) {
-    print(
-      'WARNING: ${missing.length} referenced icons missing in source: $missing',
-    );
-  }
   if (force) print('(force: version cache check skipped)');
 
-  _writeMappingFile(version: version, json: json, copiedIconNames: {});
-
-  // Asset integrity assertion: every icon name referenced by the generated
-  // mapping must have a copied SVG on disk.
-  final allReferencedInMapping = <String>{..._collectReferencedIconNames(json)};
-  final missingOnDisk = allReferencedInMapping
-      .where((n) => !File('$_targetSvgDir/$n.svg').existsSync())
-      .where(
-        (n) => !missing.contains(n),
-      ) // exclude icons known-missing from source
-      .toList();
-  if (missingOnDisk.isNotEmpty) {
-    stderr.writeln(
-      'FATAL: ${missingOnDisk.length} mapping icons have no SVG on disk: '
-      '${missingOnDisk.take(20).toList()}',
-    );
-    exit(1);
-  }
+  _writeMappingFile(version: version, json: json);
 
   print('Done. material-icon-theme@$version synced.');
 }
