@@ -52,7 +52,8 @@
 - `formPasswordHint`（现「未填写私钥时使用」）改为「登录密码」/「Login password」。
 - 移除密码字段的 `helper`（现 `formPasswordHelper`「若已提供私钥则可不填。」）；
   该 key 仅此处使用，连同两个 i18n json 一并删除。
-- `formPasswordHintEdit`（「留空则保留已保存密码」）保持不变。
+- `formPasswordHintEdit`（「留空则保留已保存密码」）保持不变，但仅在“编辑且未切换认证方式”时显示；
+  切换到密码模式时显示 `formPasswordHint`（避免暗示存在一个并不存在的已存密码）。
 
 ### 分段控件
 
@@ -77,7 +78,9 @@
 - 新建 + 任一模式凭据为空：提示 `formCredentialRequired` 并中止保存：
   密码模式看 `_passwordController.text.isEmpty`，私钥模式看
   `_privateKeyController.text.trim().isEmpty`。
-- 编辑 + 私钥模式且私钥为空：沿用现有语义（`null` = 保留已存私钥）。
+- 编辑且**切换了**认证方式：新模式凭据也不能为空（同样提示
+  `formCredentialRequired`），否则目标会失去唯一可用凭据。
+- 编辑且**未切换**认证方式：沿用现有语义（当前模式的空字段 = 保留已存凭据，`null`）。
 - 切换模式不主动清空控制器；写入器在保存时按模式丢弃另一侧值。
 
 ### 编辑态切换确认
@@ -91,6 +94,7 @@
   按钮：取消（`l10n.cancel`）/「切换并保存」。
 - 取消 → `_save()` 返回 `null`，不写入、不关闭编辑对话框。
 - 确认 → 正常保存；写入器按新模式删除另一侧凭据（现有行为）。
+- 新模式凭据为空时先提示 `formCredentialRequired`，不进入确认弹窗。
 - `await` 确认结果后必须检查 `mounted` 再继续写入。
 - 只在保存时确认；「测试连接」不触发。
 
