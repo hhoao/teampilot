@@ -44,6 +44,7 @@ class LogViewerPanelState extends State<LogViewerPanel> {
   String _searchText = '';
   String _selectedLevel = 'ALL';
   int _filteredLineCount = 0;
+  int _loadGeneration = 0;
 
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
@@ -111,41 +112,46 @@ class LogViewerPanelState extends State<LogViewerPanel> {
   }
 
   Future<void> _loadLogFiles() async {
+    final generation = ++_loadGeneration;
     if (!mounted) return;
     setState(() => _loading = true);
     final l10n = context.l10n;
     try {
       final root = AppPathsBootstrapper.current.basePath;
-      final files = await AppLogger.instance.getLogFiles(appDataRoot: root);
-      if (!mounted) return;
+      final files = await AppLogger.instance.getLogFiles(
+        appDataRoot: root,
+        level: appLogLevelFromViewerLabel(_selectedLevel),
+      );
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _logFiles = files;
       });
       if (files.isNotEmpty) {
         await _loadLogContent(files.first);
-      } else if (mounted) {
+        if (!mounted || generation != _loadGeneration) return;
+      } else {
         setState(() {
           _rawLines = [];
           _displayedLines = [];
           _selectedFile = null;
-          _loading = false;
         });
       }
     } on Object catch (e) {
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
-        _loading = false;
         _rawLines = [l10n.log.viewerLoadFilesFailed(error: '$e')];
         _displayedLines = _rawLines;
       });
     } finally {
-      if (mounted && _logFiles.isEmpty) {
+      if (generation == _loadGeneration && mounted) {
         setState(() => _loading = false);
       }
     }
   }
 
   Future<void> _loadLogContent(String filePath) async {
+    final generation = ++_loadGeneration;
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _selectedFile = filePath;
@@ -157,19 +163,19 @@ class LogViewerPanelState extends State<LogViewerPanel> {
     final l10n = context.l10n;
     try {
       final lines = await AppLogger.instance.readLogFileLines(filePath);
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _rawLines = _reverseOrder ? lines.reversed.toList() : lines;
       });
       _applyFilters();
     } on Object catch (e) {
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _rawLines = [l10n.log.viewerReadFailed(error: '$e')];
         _displayedLines = _rawLines;
       });
     } finally {
-      if (mounted) {
+      if (generation == _loadGeneration && mounted) {
         setState(() => _loading = false);
       }
     }
@@ -180,7 +186,6 @@ class LogViewerPanelState extends State<LogViewerPanel> {
       rawLines: _rawLines,
       compactView: _compactView,
       searchText: _searchText,
-      selectedLevel: _selectedLevel,
     );
   }
 
@@ -291,8 +296,16 @@ class LogViewerPanelState extends State<LogViewerPanel> {
             onFileSelected: (path) => unawaited(_loadLogContent(path)),
             onSearchChanged: _onSearchChanged,
             onLevelChanged: (level) {
-              setState(() => _selectedLevel = level);
-              _applyFilters();
+              setState(() {
+                _selectedLevel = level;
+                _logFiles = [];
+                _displayedLines = [];
+                _rawLines = [];
+                _selectedFile = null;
+                _filteredLinesCache = [];
+                _filteredLineCount = 0;
+              });
+              unawaited(_loadLogFiles());
             },
             onCompactViewChanged: (value) {
               setState(() => _compactView = value);

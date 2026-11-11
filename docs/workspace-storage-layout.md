@@ -48,6 +48,12 @@ Typical `<teampilotRoot>` paths:
   notifications.json
   event-transport.json           # loopback Event Transport advertisement (desktop server)
   session-protocol.json          # loopback session protocol advertisement (desktop authority)
+  logs/
+    errors.jsonl                 # ErrorLogService structured errors
+    error/latest.log             # AppLogger error lines
+    warn/latest.log              # warn + error
+    info/latest.log              # info + warn + error
+    debug/latest.log             # full timeline (debug builds only)
 ```
 
 Credentials are **split by ownership**:

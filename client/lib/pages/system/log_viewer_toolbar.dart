@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:path/path.dart' as p;
@@ -87,6 +88,7 @@ class LogViewerToolbar extends StatelessWidget {
             if (fileValue != null) ...[
               _dropdown<String>(
                 context: context,
+                key: const Key('log-viewer-file'),
                 width: 168,
                 items: logFiles,
                 value: fileValue,
@@ -123,8 +125,9 @@ class LogViewerToolbar extends StatelessWidget {
                   children: [
                     _dropdown<String>(
                       context: context,
+                      key: const Key('log-viewer-level'),
                       width: 108,
-                      items: kLogViewerLevels,
+                      items: logViewerLevels(includeDebug: kDebugMode),
                       value: selectedLevel,
                       itemLabel: (l) => l,
                       onChanged: (v) {
@@ -272,12 +275,13 @@ class LogViewerToolbar extends StatelessWidget {
     required T value,
     required String Function(T) itemLabel,
     required ValueChanged<T?> onChanged,
+    Key? key,
   }) {
     return SizedBox(
       width: width,
       height: context.tpControl.height,
       child: TpSelect<T>(
-        key: ValueKey<T>(value),
+        key: key ?? ValueKey<T>(value),
         items: items,
         initialItem: value,
         decoration: TpSelectDecorations.themed(context),

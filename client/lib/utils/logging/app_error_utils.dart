@@ -151,7 +151,12 @@ class AppErrorUtils {
         raw.contains('readonly database') ||
         raw.contains('permission denied') ||
         raw.contains('/logs/app_') ||
-        raw.contains('/logs/errors');
+        raw.contains('/logs/errors') ||
+        raw.contains('/logs/error/') ||
+        raw.contains('/logs/warn/') ||
+        raw.contains('/logs/info/') ||
+        raw.contains('/logs/debug/') ||
+        raw.contains('/logs/latest.log');
   }
 
   static bool _isPluginRaceError(Object error) {

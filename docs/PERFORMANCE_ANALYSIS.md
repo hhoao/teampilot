@@ -85,14 +85,16 @@ each run.
 
    ```bash
    cd client
-   log_dir="${XDG_DATA_HOME:-$HOME/.local/share}/com.hhoa.teampilot/logs"
+   log_dir="${XDG_DATA_HOME:-$HOME/.local/share}/com.hhoa.teampilot/logs/info"
    mkdir -p "$log_dir"
-   log_file="$log_dir/app_$(date +%F).log"
+   log_file="$log_dir/latest.log"
    touch "$log_file"
    tail -n 0 -F "$log_file" \
      | rg --line-buffered 'SSH worker metrics' \
      | tee build/ssh-worker-capture/direct-metrics.log
    ```
+
+   查 DEBUG 用 `logs/debug/latest.log`（仅 debug 构建）。
 
 3. In a third terminal, collect one direct-mode dump while exercising a named
    remote workload. This example records the PTY scenario for 30 seconds and

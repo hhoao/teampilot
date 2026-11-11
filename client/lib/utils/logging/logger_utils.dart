@@ -8,8 +8,10 @@ import 'package:path/path.dart' as p;
 
 import '../../services/app/error_log_service.dart';
 import 'app_error_utils.dart';
+import 'app_log_level.dart';
+import 'log_file_sink.dart';
 
-enum AppLogLevel { debug, info, warning, error }
+export 'app_log_level.dart';
 
 class _LogStyle {
   const _LogStyle(this.line);
@@ -194,14 +196,22 @@ class AppLogger {
 
   static final AppLogger instance = AppLogger._();
 
-  static const int _maxLogFileSize = 5 * 1024 * 1024;
   static const int _maxLogFiles = 5;
   static const int _maxLogAgeDays = 7;
 
+  @visibleForTesting
+  DateTime Function() clock = DateTime.now;
+
+  @visibleForTesting
+  int maxLogFileSize = 5 * 1024 * 1024;
+
+  @visibleForTesting
+  bool? writeDebugFilesForTest;
+
   Logger? _consoleLogger;
   Logger? _fileLogger;
-  _FlushingFileOutput? _fileLogOutput;
-  File? _logFile;
+  LevelFanoutOutput? _fanout;
+  List<LogFileSink> _sinks = [];
   String? _logDirPath;
 
   bool _fileLoggerInitialized = false;
@@ -233,7 +243,7 @@ class AppLogger {
     }
   }
 
-  /// Initializes file logging at `{appDataRoot}/logs/app_YYYY-MM-DD.log`.
+  /// Initializes cascade file logging at `{appDataRoot}/logs/{level}/latest.log`.
   Future<void> initFileLogging(String appDataRoot) async {
     _ensureConsoleLogger();
 
@@ -250,23 +260,37 @@ class AppLogger {
         await logDir.create(recursive: true);
       }
       _logDirPath = logDir.path;
-
       await _cleanOldLogs(logDir);
-      _logFile = await _resolveLogFile(logDir);
 
-      _fileLogOutput = _FlushingFileOutput(
-        file: _logFile!,
-        onWriteError: _handleFileWriteError,
-      );
-      await _fileLogOutput!.init();
+      final includeDebug = writeDebugFilesForTest ?? kDebugMode;
+      final levels = <AppLogLevel>[
+        if (includeDebug) AppLogLevel.debug,
+        AppLogLevel.info,
+        AppLogLevel.warning,
+        AppLogLevel.error,
+      ];
+      _sinks = [
+        for (final level in levels)
+          LogFileSink(
+            logsRoot: logDir.path,
+            level: level,
+            clock: () => clock(),
+            maxLogFileSize: maxLogFileSize,
+            onWriteError: _handleFileWriteError,
+          ),
+      ];
+      for (final sink in _sinks) {
+        await sink.init();
+      }
+      _fanout = LevelFanoutOutput(_sinks);
       _fileLogger = Logger(
         printer: _printer(colors: false),
-        output: _fileLogOutput!,
+        output: _fanout!,
         filter: _FileLogFilter(),
       );
 
       _fileLoggerInitialized = true;
-      _consoleLogger!.d('[AppLogger] file logging → ${_logFile!.path}');
+      _consoleLogger!.d('[AppLogger] file logging → $currentLogFilePath');
       await _flushPendingFileLogs();
     } on Object catch (e) {
       if (AppErrorUtils.isStorageError(e)) {
@@ -429,16 +453,6 @@ class AppLogger {
     }
   }
 
-  Future<File> _resolveLogFile(Directory logDir) async {
-    final today = DateTime.now().toIso8601String().split('T').first;
-    var file = File(p.join(logDir.path, 'app_$today.log'));
-    if (await file.exists() && await file.length() > _maxLogFileSize) {
-      final stamp = DateTime.now().millisecondsSinceEpoch;
-      file = File(p.join(logDir.path, 'app_${today}_$stamp.log'));
-    }
-    return file;
-  }
-
   /// Size-checks the log file at most once per [_rotateCheckInterval] — every
   /// buffered line used to trigger a stat pair, which is pure overhead while a
   /// chatty agent streams.
@@ -454,28 +468,16 @@ class AppLogger {
   }
 
   Future<void> _rotateIfNeeded() async {
-    final file = _logFile;
-    final logDirPath = _logDirPath;
-    if (file == null || logDirPath == null || _fileLoggingDisabled) return;
-
+    if (_fileLoggingDisabled) return;
     try {
-      if (!await file.exists() || await file.length() <= _maxLogFileSize) {
-        return;
+      for (final sink in _sinks) {
+        final ok = await sink.rotateIfNeeded();
+        if (!ok) {
+          _consoleLogger?.w(
+            '[AppLogger] failed to archive ${sink.latestFile.path}; keeping latest.log',
+          );
+        }
       }
-
-      final logDir = Directory(logDirPath);
-      await _fileLogOutput?.destroy();
-      _logFile = await _resolveLogFile(logDir);
-      _fileLogOutput = _FlushingFileOutput(
-        file: _logFile!,
-        onWriteError: _handleFileWriteError,
-      );
-      await _fileLogOutput!.init();
-      _fileLogger = Logger(
-        printer: _printer(colors: false),
-        output: _fileLogOutput!,
-        filter: _FileLogFilter(),
-      );
     } on Object catch (e) {
       if (AppErrorUtils.isStorageError(e)) {
         _disableFileLogging('File logging disabled after rotation: $e');
@@ -483,32 +485,61 @@ class AppLogger {
     }
   }
 
+  @visibleForTesting
+  Future<void> checkRotationForTest() async {
+    _lastRotateCheck = null;
+    await _rotateIfNeeded();
+  }
+
   Future<void> _cleanOldLogs(Directory logDir) async {
     try {
-      final files = <File>[];
-      await for (final entity in logDir.list()) {
-        if (entity is File &&
-            (entity.path.endsWith('.log') || entity.path.endsWith('.jsonl'))) {
-          files.add(entity);
-        }
+      final includeDebug = writeDebugFilesForTest ?? kDebugMode;
+      final dirs = <Directory>[
+        for (final level in [
+          if (includeDebug) AppLogLevel.debug,
+          AppLogLevel.info,
+          AppLogLevel.warning,
+          AppLogLevel.error,
+        ])
+          Directory(p.join(logDir.path, level.directoryName)),
+      ];
+      for (final dir in dirs) {
+        await _cleanDirectory(dir, dropByAgeAndCount: true);
       }
-
-      files.sort(
-        (a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()),
-      );
-
-      final now = DateTime.now();
-      var deleted = 0;
-
-      for (final file in files) {
-        final age = now.difference(file.lastModifiedSync()).inDays;
-        if (deleted >= _maxLogFiles || age > _maxLogAgeDays) {
-          await file.delete();
-          deleted++;
-        }
-      }
+      await _cleanDirectory(logDir, dropByAgeAndCount: false, recursive: false);
     } on Object catch (e) {
       _consoleLogger?.w('[AppLogger] failed to clean old logs: $e');
+    }
+  }
+
+  Future<void> _cleanDirectory(
+    Directory dir, {
+    required bool dropByAgeAndCount,
+    bool recursive = true,
+  }) async {
+    if (!await dir.exists()) return;
+    final files = <File>[];
+    await for (final entity in dir.list(recursive: recursive)) {
+      if (entity is! File) continue;
+      final name = p.basename(entity.path);
+      if (name == 'latest.log' || name == 'errors.jsonl') continue;
+      if (!name.endsWith('.log')) continue;
+      files.add(entity);
+    }
+    files.sort(
+      (a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()),
+    );
+    final now = clock();
+    var kept = 0;
+    for (final file in files) {
+      final age = now.difference(file.lastModifiedSync()).inDays;
+      final dropAge = age > _maxLogAgeDays;
+      final dropCount = dropByAgeAndCount && kept >= _maxLogFiles;
+      if (dropAge || dropCount) {
+        await file.delete();
+      } else {
+        kept++;
+      }
     }
   }
 
@@ -525,11 +556,11 @@ class AppLogger {
     _fileLoggingDisabled = true;
     _fileLoggerInitialized = false;
     _fileLogger = null;
-    _logFile = null;
-    final output = _fileLogOutput;
-    _fileLogOutput = null;
-    if (output != null) {
-      unawaited(output.destroy());
+    _sinks = [];
+    final fanout = _fanout;
+    _fanout = null;
+    if (fanout != null) {
+      unawaited(fanout.destroy());
     }
     _consoleLogger?.w(reason);
   }
@@ -537,7 +568,7 @@ class AppLogger {
   /// Ensures buffered file log lines are visible on disk (tests / log viewer).
   @visibleForTesting
   Future<void> flushFileLogging() async {
-    await _fileLogOutput?.flush();
+    await _fanout?.flush();
   }
 
   /// Reads log text (tail of large files) with a timeout.
@@ -580,37 +611,60 @@ class AppLogger {
     );
   }
 
-  /// Sorted newest-first paths under `{appDataRoot}/logs/*.log`.
-  Future<List<String>> listLogFiles({String? appDataRoot}) async {
+  /// Sorted paths under one `{appDataRoot}/logs/{level}/` directory.
+  ///
+  /// Omit [level] to list the full-timeline directory (`debug` in debug
+  /// builds, `info` otherwise). `latest.log` is first when present.
+  Future<List<String>> listLogFiles({
+    String? appDataRoot,
+    AppLogLevel? level,
+  }) async {
     final dirPath =
         _logDirPath ??
         (appDataRoot != null ? p.join(appDataRoot, 'logs') : null);
     if (dirPath == null) return [];
-
-    final logDir = Directory(dirPath);
-    if (!await logDir.exists()) return [];
-
-    final files = <String>[];
-    await for (final entity in logDir.list()) {
-      if (entity is File &&
-          (entity.path.endsWith('.log') || entity.path.endsWith('.jsonl'))) {
-        files.add(entity.path);
-      }
-    }
-
-    files.sort((a, b) {
-      return File(b).lastModifiedSync().compareTo(File(a).lastModifiedSync());
-    });
-    return files;
+    final includeDebug = writeDebugFilesForTest ?? kDebugMode;
+    final resolved = level ?? fullTimelineLogLevel(includeDebug: includeDebug);
+    return listLogFilesIn(Directory(p.join(dirPath, resolved.directoryName)));
   }
 
-  String? get currentLogFilePath => _logFile?.path;
+  String? get currentLogFilePath {
+    final includeDebug = writeDebugFilesForTest ?? kDebugMode;
+    final wanted = fullTimelineLogLevel(includeDebug: includeDebug);
+    for (final sink in _sinks) {
+      if (sink.level == wanted) return sink.latestFile.path;
+    }
+    return _sinks.isEmpty ? null : _sinks.first.latestFile.path;
+  }
 
   bool getFileLoggerInitialized() => _fileLoggerInitialized;
 
-  /// Alias for [listLogFiles] (includes `app_*.log` and `errors.jsonl`).
-  Future<List<String>> getLogFiles({String? appDataRoot}) =>
-      listLogFiles(appDataRoot: appDataRoot);
+  /// Alias for [listLogFiles].
+  Future<List<String>> getLogFiles({
+    String? appDataRoot,
+    AppLogLevel? level,
+  }) => listLogFiles(appDataRoot: appDataRoot, level: level);
+
+  @visibleForTesting
+  Future<void> resetForTest() async {
+    _fileLoggingDisabled = false;
+    _fileLoggerInitialized = false;
+    _fileLoggerInitializing = false;
+    _pendingFileLogs.clear();
+    _fileLogger = null;
+    _consoleLogger = null;
+    _logDirPath = null;
+    _lastRotateCheck = null;
+    clock = DateTime.now;
+    maxLogFileSize = 5 * 1024 * 1024;
+    writeDebugFilesForTest = null;
+    final fanout = _fanout;
+    _fanout = null;
+    _sinks = [];
+    if (fanout != null) {
+      await fanout.destroy();
+    }
+  }
 
   Future<void> clearOldLogs() async {
     final dirPath = _logDirPath;
@@ -656,66 +710,6 @@ class AppLogger {
         )
         .join('\n');
   }
-}
-
-/// Append-only file output that buffers lines and writes them off the caller's
-/// isolate.
-///
-/// High-volume diagnostics (ACP frame mirroring emits several lines per model
-/// token) must not do a synchronous write-with-flush on the UI isolate: at tens
-/// of lines per second the fsyncs starve the frame loop. Lines are batched for
-/// [_flushDelay] and written asynchronously; [flush] forces a write (tests, log
-/// viewer, rotation, shutdown).
-class _FlushingFileOutput extends LogOutput {
-  _FlushingFileOutput({required this.file, this.onWriteError});
-
-  final File file;
-
-  /// Called when an asynchronous write fails (the logger disables file
-  /// logging on storage errors).
-  final void Function(Object error)? onWriteError;
-
-  static const Duration _flushDelay = Duration(milliseconds: 200);
-
-  final StringBuffer _buffer = StringBuffer();
-  Timer? _flushTimer;
-  Future<void> _pendingWrite = Future<void>.value();
-
-  @override
-  Future<void> init() async {}
-
-  @override
-  void output(OutputEvent event) {
-    if (event.lines.isEmpty) return;
-    for (final line in event.lines) {
-      _buffer.writeln(line);
-    }
-    _flushTimer ??= Timer(_flushDelay, () {
-      _flushTimer = null;
-      unawaited(flush());
-    });
-  }
-
-  Future<void> flush() {
-    _flushTimer?.cancel();
-    _flushTimer = null;
-    final text = _buffer.toString();
-    _buffer.clear();
-    if (text.isEmpty) return _pendingWrite;
-    _pendingWrite = _pendingWrite.then((_) => _append(text));
-    return _pendingWrite;
-  }
-
-  Future<void> _append(String text) async {
-    try {
-      await file.writeAsString(text, mode: FileMode.append, flush: true);
-    } on Object catch (error) {
-      onWriteError?.call(error);
-    }
-  }
-
-  @override
-  Future<void> destroy() => flush();
 }
 
 class _ConsoleLogFilter extends LogFilter {
