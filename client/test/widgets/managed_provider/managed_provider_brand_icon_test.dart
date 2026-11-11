@@ -106,6 +106,37 @@ void main() {
     );
   });
 
+  test('Qoder host or name uses bundled qoder', () {
+    // Preset endpoints resolve by host even when the provider is renamed.
+    expect(
+      resolveManagedProviderBrandIcon(
+        _provider(
+          name: 'Custom',
+          url: 'https://openapi.qoder.sh/api/v2/quota/usage',
+        ),
+      ),
+      const ManagedProviderBrandIconSpec.bundled('qoder'),
+    );
+    expect(
+      resolveManagedProviderBrandIcon(
+        _provider(
+          name: 'Custom',
+          url: 'https://openapi.qoder.com.cn/api/v2/quota/usage',
+        ),
+      ),
+      const ManagedProviderBrandIconSpec.bundled('qoder'),
+    );
+    // Name fallback for non-preset endpoints.
+    expect(
+      resolveManagedProviderBrandIcon(_provider(name: 'Qoder')),
+      const ManagedProviderBrandIconSpec.bundled('qoder'),
+    );
+    expect(
+      resolveManagedProviderBrandIcon(_provider(name: 'Qoder CN')),
+      const ManagedProviderBrandIconSpec.bundled('qoder'),
+    );
+  });
+
   test('https brand.iconUrl wins after host maps', () {
     expect(
       resolveManagedProviderBrandIcon(

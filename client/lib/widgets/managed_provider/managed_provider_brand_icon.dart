@@ -86,6 +86,12 @@ ManagedProviderBrandIconSpec resolveManagedProviderBrandIcon(
   if (host == 'opencode.ai' || name == 'opencode' || name == 'opencode go') {
     return const ManagedProviderBrandIconSpec.bundled('opencode');
   }
+  if (host == 'openapi.qoder.sh' ||
+      host == 'openapi.qoder.com.cn' ||
+      name == 'qoder' ||
+      name == 'qoder cn') {
+    return const ManagedProviderBrandIconSpec.bundled('qoder');
+  }
   final iconUrl = provider.brand.iconUrl?.trim() ?? '';
   if (iconUrl.startsWith('https://')) {
     return ManagedProviderBrandIconSpec.remote(iconUrl);
