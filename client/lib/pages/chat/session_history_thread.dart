@@ -303,16 +303,31 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         !widget.turnInFlight;
     if (!rewindEnabled || _edit.editingMessageId == message.id) return;
     _edit.openEditor(message.id);
+    Future<bool>? inFlight;
     final accepted = await showChatMessageEditSheet(
       context,
       initialText: _edit.draft ?? plainTextForCopy(message),
       title: context.l10n.edit.userMessage,
       cancelLabel: context.l10n.edit.cancel,
       sendLabel: context.l10n.edit.send,
-      onSubmit: (text) => _submitEdit(message, text),
+      onSubmit: (text) => inFlight = _submitEdit(message, text),
     );
     if (!mounted) return;
-    if (!accepted && _edit.editingMessageId == message.id) {
+    if (accepted) return;
+    // The sheet may be dismissed while a submit is still running; a failed
+    // submit re-latches `editingMessageId`, which would leave the mobile
+    // transcript dimmed with no editor open. Wait for the in-flight submit and
+    // clear that latched state.
+    var lateAccepted = false;
+    if (inFlight != null) {
+      try {
+        lateAccepted = await inFlight!;
+      } catch (_) {
+        _edit.clearPending();
+      }
+      if (!mounted) return;
+    }
+    if (!lateAccepted && _edit.editingMessageId == message.id) {
       _edit.cancelEdit();
     }
   }

@@ -1448,4 +1448,140 @@ void main() {
     );
     expect(find.byKey(const ValueKey('chat-message-dim:u1')), findsNothing);
   });
+
+  testWidgets(
+    'mobile edit submit calls onEditUserMessage and leaves the transcript undimmed',
+    (tester) async {
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages(const [
+          AiMessage(
+            id: 'u1',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'first')],
+          ),
+          AiMessage(
+            id: 'a1',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: 'answer')],
+          ),
+        ]);
+      final submitted = <String>[];
+      final gate = Completer<bool>();
+
+      await tester.pumpWidget(
+        _harness(
+          runtime: store,
+          mobilePerformanceMode: true,
+          branches: _singleVersionBranches('u1'),
+          onEditUserMessage: (id, text) {
+            submitted.add('$id:$text');
+            return gate.future;
+          },
+        ),
+      );
+      await pumpUntilSettled(tester);
+
+      await tester.tap(find.text('first'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      await tester.enterText(
+        find.byKey(const ValueKey('chat-edit-sheet-field')),
+        'edited',
+      );
+      await tester.tap(find.byKey(const ValueKey('chat-edit-sheet-send')));
+      await tester.pump();
+
+      gate.complete(true);
+      await tester.pumpAndSettle();
+
+      expect(submitted, ['u1:edited']);
+      expect(find.byKey(const ValueKey('chat-edit-sheet-field')), findsNothing);
+      expect(find.byKey(const ValueKey('chat-message-dim:a1')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('chat-message-gestures:u1')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'dismissing the edit sheet mid-submit does not soft-lock the transcript on failure',
+    (tester) async {
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages(const [
+          AiMessage(
+            id: 'u1',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'first')],
+          ),
+          AiMessage(
+            id: 'a1',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: 'answer')],
+          ),
+        ]);
+      final submitted = <String>[];
+      final gate = Completer<bool>();
+
+      await tester.pumpWidget(
+        _harness(
+          runtime: store,
+          mobilePerformanceMode: true,
+          branches: _singleVersionBranches('u1'),
+          onEditUserMessage: (id, text) {
+            submitted.add('$id:$text');
+            return gate.future;
+          },
+        ),
+      );
+      await pumpUntilSettled(tester);
+
+      await tester.tap(find.text('first'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      await tester.enterText(
+        find.byKey(const ValueKey('chat-edit-sheet-field')),
+        'edited',
+      );
+      await tester.tap(find.byKey(const ValueKey('chat-edit-sheet-send')));
+      await tester.pump();
+
+      // Dismiss the sheet while the submit is still held open.
+      await tester.tap(find.byKey(const ValueKey('chat-edit-sheet-close')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const ValueKey('chat-edit-sheet-field')), findsNothing);
+
+      // The failed submit re-latches `editingMessageId`; the thread must
+      // reconcile it instead of leaving every other message dimmed and inert.
+      gate.complete(false);
+      await tester.pumpAndSettle();
+
+      expect(submitted, ['u1:edited']);
+      expect(find.byKey(const ValueKey('chat-message-dim:a1')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('chat-message-gestures:a1')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('chat-message-gestures:u1')),
+        findsOneWidget,
+      );
+    },
+  );
+}
+
+SeatBranches _singleVersionBranches(String messageId) {
+  return SeatBranches(
+    turns: {
+      messageId: const SeatBranchVersion(
+        index: 1,
+        count: 1,
+        commit: 'c1',
+        siblings: ['c1'],
+      ),
+    },
+  );
 }

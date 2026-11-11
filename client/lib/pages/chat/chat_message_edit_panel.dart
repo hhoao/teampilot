@@ -77,13 +77,16 @@ class _MobileMessageEditPanelState extends State<_MobileMessageEditPanel> {
     if (_submitting) return;
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    final route = ModalRoute.of(context);
     setState(() => _submitting = true);
     final accepted = await widget.onSubmit(text);
     if (!mounted) return;
-    if (accepted) {
-      Navigator.of(context).pop(true);
-    } else {
+    if (!accepted) {
       setState(() => _submitting = false);
+    } else if (route?.isCurrent ?? false) {
+      // The sheet can be dismissed while the submit is in flight; never pop a
+      // route that is no longer on top of the navigator.
+      Navigator.of(context).pop(true);
     }
   }
 
