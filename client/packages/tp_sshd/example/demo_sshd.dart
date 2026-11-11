@@ -232,7 +232,10 @@ Try it with a real OpenSSH client:
   ssh -t $common $user@127.0.0.1
 
   # SFTP: ls/get/put/mkdir, rooted at the sandbox above
-  sftp $common $user@127.0.0.1
+  # (sftp takes -P for the port, not -p like ssh)
+  sftp -P $port -i $keys/device_key \\
+      -o UserKnownHostsFile=$keys/known_hosts -o IdentitiesOnly=yes \\
+      $user@127.0.0.1
 
   # remote port forwarding: serve a local port back over the SSH connection
   python3 -m http.server 18080 &
