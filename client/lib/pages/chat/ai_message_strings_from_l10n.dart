@@ -1,17 +1,126 @@
 import 'package:ai_message_ui/ai_message_ui.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../l10n/app_localizations.dart';
+
+/// Debug-only counters for the [aiMessageStringsFromL10n] memo.
+///
+/// `AiMessageStringsScope` notifies descendants by identity, so a memo miss on
+/// the transcript path dirties every chain-of-thought header. When a profile
+/// snapshot shows unexplained rebuilds, run a debug `flutter run` and read the
+/// `[perf]` line: misses climbing while the app sits on one locale means the
+/// memo key is not matching.
+class AiMessageStringsCacheStats {
+  int hits = 0;
+  int misses = 0;
+  int evictions = 0;
+
+  @override
+  String toString() =>
+      'strings-memo hits=$hits misses=$misses evictions=$evictions';
+}
+
+final AiMessageStringsCacheStats aiMessageStringsCacheStats =
+    AiMessageStringsCacheStats();
+
+/// Throttles the `[perf]` line so a streaming session prints ~once per 3 s.
+DateTime _lastStringsStatsReport = DateTime.fromMillisecondsSinceEpoch(0);
+
+void _reportStringsStats() {
+  final now = DateTime.now();
+  if (now.difference(_lastStringsStatsReport).inSeconds < 3) return;
+  _lastStringsStatsReport = now;
+  debugPrint('[perf] $aiMessageStringsCacheStats');
+}
 
 /// Maps app l10n into package [AiMessageStrings] (history chrome + live cards).
 ///
 /// [permissionCliName] is the seat CLI label for permission-card chrome.
 /// Omit it for transcript-only scopes that never show a permission card.
+///
+/// The result is memoized: the transcript host rebuilds on every streamed
+/// chunk, and `AiMessageStringsScope` notifies descendants by identity, so
+/// returning a fresh instance each build would mark every chain-of-thought
+/// block, tool card and markdown view dirty on every frame.
 AiMessageStrings aiMessageStringsFromL10n(
   AppLocalizations l10n, {
   String? permissionCliName,
   bool thinkingProcessToolCalls = false,
 }) {
   final cliName = permissionCliName?.trim() ?? '';
+  // Keyed by locale, not by the [AppLocalizations] instance: hosts resolve l10n
+  // through different paths (Localizations lookup vs slang's provider) and can
+  // hand back a fresh instance per build. Instance identity would then miss on
+  // every frame and defeat the whole point of the cache.
+  final key = _AiMessageStringsKey(
+    l10n.localeName,
+    cliName,
+    thinkingProcessToolCalls,
+  );
+  final cached = _aiMessageStringsCache[key];
+  if (cached != null) {
+    assert(() {
+      aiMessageStringsCacheStats.hits++;
+      _reportStringsStats();
+      return true;
+    }());
+    return cached;
+  }
+  assert(() {
+    aiMessageStringsCacheStats.misses++;
+    _reportStringsStats();
+    return true;
+  }());
+  final strings = _buildAiMessageStrings(
+    l10n,
+    cliName: cliName,
+    thinkingProcessToolCalls: thinkingProcessToolCalls,
+  );
+  if (_aiMessageStringsCache.length >= _aiMessageStringsCacheLimit) {
+    _aiMessageStringsCache.remove(_aiMessageStringsCache.keys.first);
+    assert(() {
+      aiMessageStringsCacheStats.evictions++;
+      return true;
+    }());
+  }
+  _aiMessageStringsCache[key] = strings;
+  return strings;
+}
+
+/// Small bound: one entry per (locale, CLI label, stats flag) is normally
+/// enough, and a stale entry only costs memory after a locale switch.
+const int _aiMessageStringsCacheLimit = 8;
+
+final Map<_AiMessageStringsKey, AiMessageStrings> _aiMessageStringsCache = {};
+
+class _AiMessageStringsKey {
+  const _AiMessageStringsKey(
+    this.localeName,
+    this.cliName,
+    this.thinkingProcessToolCalls,
+  );
+
+  final String localeName;
+  final String cliName;
+  final bool thinkingProcessToolCalls;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _AiMessageStringsKey &&
+      other.localeName == localeName &&
+      other.cliName == cliName &&
+      other.thinkingProcessToolCalls == thinkingProcessToolCalls;
+
+  @override
+  int get hashCode =>
+      Object.hash(localeName, cliName, thinkingProcessToolCalls);
+}
+
+AiMessageStrings _buildAiMessageStrings(
+  AppLocalizations l10n, {
+  required String cliName,
+  required bool thinkingProcessToolCalls,
+}) {
   return AiMessageStrings(
     usedTool: l10n.ai.messageUsedTool,
     cancelledTool: l10n.ai.messageCancelledTool,

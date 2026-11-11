@@ -39,6 +39,15 @@ String messageContentIdentity(AiMessage m) {
   return buf.toString();
 }
 
+/// Content fingerprint for a single part.
+///
+/// Hosts re-parse a turn on every streamed chunk, so an unchanged part can come
+/// back as a *new* instance. Renderers that cache per part must key on content,
+/// not on instance identity, or they rebuild the whole turn each chunk.
+///
+/// Cached per instance: repeated calls for the same part are a map lookup.
+String messagePartIdentity(AiMessagePart part) => _partDigest(part);
+
 String _partDigest(AiMessagePart part) {
   final cached = _partDigestCache[part];
   if (cached != null) return cached;

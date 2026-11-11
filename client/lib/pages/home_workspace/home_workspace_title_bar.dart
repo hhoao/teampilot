@@ -26,6 +26,7 @@ import '../../widgets/notification/notification_bell_button.dart';
 import '../../widgets/android_work_environment_selector.dart';
 import '../../widgets/team_pilot_brand_logo.dart';
 import '../../widgets/window_chrome_controls.dart';
+import '../../widgets/light_hover_row.dart';
 import '../../widgets/window_drag_area.dart';
 import '../config/config_workspace.dart';
 import '../workspace_shell/workspace_shell_tabs.dart';
@@ -730,7 +731,8 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
     return Tooltip(
       message: widget.tooltip,
       waitDuration: const Duration(milliseconds: 500),
-      child: TpHover(
+      child: LightHoverRow(
+        addButtonSemantics: true,
         onTap: widget.onTap,
         onSecondaryTapDown: widget.closable && widget.onClose != null
             ? _showTabContextMenuFromTap

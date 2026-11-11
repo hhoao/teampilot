@@ -192,12 +192,18 @@ class FileTreeCubit extends Cubit<FileTreeState> {
 
   void _publish(FileTreeState next, {bool recomputeRows = true}) {
     if (recomputeRows) {
+      final rows = visibleFileTreeRows(
+        state: next,
+        pathContextFor: (path) => fsFor(path).pathContext,
+      );
+      // Reuse the previous list instance when the rows are unchanged. The panel
+      // selects `visibleRows` with a `BlocSelector`, and a List compares by
+      // identity, so handing back a fresh but equal list rebuilds every visible
+      // row for a state change that does not touch them (clipboard, revealPath).
+      final previousRows = state.visibleRows;
       emit(
         next.copyWith(
-          visibleRows: visibleFileTreeRows(
-            state: next,
-            pathContextFor: (path) => fsFor(path).pathContext,
-          ),
+          visibleRows: listEquals(rows, previousRows) ? previousRows : rows,
         ),
       );
       return;

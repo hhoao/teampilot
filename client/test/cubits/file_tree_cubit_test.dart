@@ -195,9 +195,51 @@ void main() {
     await cubit.close();
   });
 
+  test('state changes that do not touch rows reuse the rows instance', () async {
+    // 面板用 BlocSelector 选 visibleRows，List 按身份比较；revealPath 只改
+    // revealPath（行不变），若这里发新列表，整棵可见行会被无谓重建。
+    final root = p.normalize('/proj');
+    final src = p.join(root, 'src');
+    final cubit = FileTreeCubit(
+      fs: _FakeFilesystem({
+        root: [const FsDirEntry(name: 'src', isDirectory: true)],
+        src: [const FsDirEntry(name: 'main.dart', isDirectory: false)],
+      }),
+    );
+
+    await cubit.setRoot(root);
+    cubit.toggleExpand(src);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    final rowsBefore = cubit.state.visibleRows;
+    expect(rowsBefore, isNotEmpty);
+
+    final revealed = await cubit.revealPath(
+      p.join(src, 'main.dart'),
+      clearFilter: false,
+    );
+    expect(revealed, isTrue);
+    expect(cubit.state.revealPath, p.normalize(p.join(src, 'main.dart')));
+    expect(
+      identical(cubit.state.visibleRows, rowsBefore),
+      isTrue,
+      reason: 'revealing a file must not publish a new rows list',
+    );
+
+    // 真正的行变化必须发布新列表，不能被上面的复用吞掉。
+    cubit.toggleExpand(src);
+    expect(
+      identical(cubit.state.visibleRows, rowsBefore),
+      isFalse,
+      reason: 'collapsing a folder must publish new rows',
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    await cubit.close();
+  });
+
   test(
-    'concurrent refreshPaths calls coalesce instead of overlapping IO',
-    () async {
+    'concurrent refreshPaths calls coalesce instead of overlapping IO',    () async {
       // 慢后端：reload 进行中时后续变更并入补跑轮，不并发堆叠
       // Future.wait；且最终状态包含第二轮的目录更新。
       final root = p.normalize('/proj');

@@ -170,9 +170,32 @@ class _AiTextPartViewState extends State<AiTextPartView> {
     if (mounted) setState(() {});
   }
 
+  /// Cached link handler plus the source it wraps.
+  ///
+  /// `AiMarkdownLinkActions.of(context).onLinkTap` can be a fresh closure each
+  /// build; rebuilding the wrapper every frame would invalidate
+  /// [_ChatMarkdownView]'s memoization. Cache by source identity instead.
+  Object? _tapLinkSource;
+  MarkdownTapLinkCallback? _cachedTapLink;
+
+  MarkdownTapLinkCallback? _effectiveTapLink(BuildContext context) {
+    final direct = widget.onTapLink;
+    if (direct != null) return direct;
+    final source = AiMarkdownLinkActions.of(context).onLinkTap;
+    if (!identical(source, _tapLinkSource)) {
+      _tapLinkSource = source;
+      _cachedTapLink = source == null
+          ? null
+          : (_, href, __) {
+              if (href != null && href.isNotEmpty) unawaited(source(href));
+            };
+    }
+    return _cachedTapLink;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final onTapLink = widget.onTapLink ?? _scopedTapLink(context);
+    final onTapLink = _effectiveTapLink(context);
     final scope = AiHistoryRenderScope.maybeOf(context);
     if (scope == null) {
       return _ChatMarkdownView(document: _document, onTapLink: onTapLink);
@@ -186,14 +209,6 @@ class _AiTextPartViewState extends State<AiTextPartView> {
       streaming: AiMessageStreamingScope.of(context),
     );
   }
-}
-
-MarkdownTapLinkCallback? _scopedTapLink(BuildContext context) {
-  final tap = AiMarkdownLinkActions.of(context).onLinkTap;
-  if (tap == null) return null;
-  return (_, href, __) {
-    if (href != null && href.isNotEmpty) unawaited(tap(href));
-  };
 }
 
 MarkdownResolvers _chatResolvers(MarkdownTapLinkCallback? onTapLink) {
@@ -212,21 +227,52 @@ MarkdownStrings _chatMarkdownStrings(BuildContext context) {
   );
 }
 
-class _ChatMarkdownView extends StatelessWidget {
+class _ChatMarkdownView extends StatefulWidget {
   const _ChatMarkdownView({required this.document, this.onTapLink});
 
   final MarkdownDocument document;
   final MarkdownTapLinkCallback? onTapLink;
 
   @override
+  State<_ChatMarkdownView> createState() => _ChatMarkdownViewState();
+}
+
+class _ChatMarkdownViewState extends State<_ChatMarkdownView> {
+  MarkdownView? _cached;
+  MarkdownDocument? _cachedDocument;
+  MarkdownTokens? _cachedTokens;
+  MarkdownStrings? _cachedStrings;
+  MarkdownTapLinkCallback? _cachedOnTapLink;
+
+  @override
   Widget build(BuildContext context) {
     final theme = AiMessageTheme.of(context);
-    return MarkdownView(
-      document: document,
-      tokens: theme.markdown,
-      resolvers: _chatResolvers(onTapLink),
-      strings: _chatMarkdownStrings(context),
+    final tokens = theme.markdown;
+    final strings = _chatMarkdownStrings(context);
+    final cached = _cached;
+    // Memoize the built [MarkdownView]: a transcript rebuild otherwise
+    // reconstructs every block of every already-finished message. Returning
+    // the same widget instance makes `updateChild` short-circuit, so only the
+    // message whose document actually changed re-renders.
+    if (cached != null &&
+        identical(_cachedDocument, widget.document) &&
+        identical(_cachedTokens, tokens) &&
+        _cachedStrings == strings &&
+        identical(_cachedOnTapLink, widget.onTapLink)) {
+      return cached;
+    }
+    final view = MarkdownView(
+      document: widget.document,
+      tokens: tokens,
+      resolvers: _chatResolvers(widget.onTapLink),
+      strings: strings,
     );
+    _cached = view;
+    _cachedDocument = widget.document;
+    _cachedTokens = tokens;
+    _cachedStrings = strings;
+    _cachedOnTapLink = widget.onTapLink;
+    return view;
   }
 }
 

@@ -27,6 +27,7 @@ import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/agent_status/seat_lease.dart';
 import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
+import 'package:teampilot/widgets/light_hover_row.dart';
 import 'package:teampilot/widgets/session_working_spinner.dart';
 import 'package:teampilot/widgets/sidebar_session_tile.dart';
 
@@ -231,7 +232,7 @@ Future<void> _openHoverOverflowMenu(WidgetTester tester) async {
   await mouse.addPointer(location: Offset.zero);
   addTearDown(mouse.removePointer);
   await tester.pump();
-  await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+  await mouse.moveTo(tester.getCenter(find.byType(LightHoverRow)));
   await tester.pumpAndSettle();
   await tester.tap(find.byIcon(Icons.more_horiz));
   await tester.pumpAndSettle();
@@ -303,7 +304,7 @@ void main() {
     await mouse.addPointer(location: Offset.zero);
     addTearDown(mouse.removePointer);
     await tester.pump();
-    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await mouse.moveTo(tester.getCenter(find.byType(LightHoverRow)));
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.close), findsOneWidget);
@@ -464,7 +465,7 @@ void main() {
     await mouse.addPointer(location: Offset.zero);
     addTearDown(mouse.removePointer);
     await tester.pump();
-    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await mouse.moveTo(tester.getCenter(find.byType(LightHoverRow)));
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.close), findsOneWidget);
@@ -514,7 +515,7 @@ void main() {
     await mouse.addPointer(location: Offset.zero);
     addTearDown(mouse.removePointer);
     await tester.pump();
-    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await mouse.moveTo(tester.getCenter(find.byType(LightHoverRow)));
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.close), findsOneWidget);
@@ -654,7 +655,7 @@ void main() {
     await mouse.addPointer(location: Offset.zero);
     addTearDown(mouse.removePointer);
     await tester.pump();
-    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await mouse.moveTo(tester.getCenter(find.byType(LightHoverRow)));
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.archive_outlined), findsOneWidget);
@@ -695,7 +696,7 @@ void main() {
     await mouse.addPointer(location: Offset.zero);
     addTearDown(mouse.removePointer);
     await tester.pump();
-    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await mouse.moveTo(tester.getCenter(find.byType(LightHoverRow)));
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.unarchive_outlined), findsOneWidget);
@@ -925,7 +926,7 @@ void main() {
     await mouse.addPointer(location: Offset.zero);
     addTearDown(mouse.removePointer);
     await tester.pump();
-    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await mouse.moveTo(tester.getCenter(find.byType(LightHoverRow)));
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.more_horiz));
     await tester.pumpAndSettle();
@@ -974,7 +975,7 @@ void main() {
     await mouse.addPointer(location: Offset.zero);
     addTearDown(mouse.removePointer);
     await tester.pump();
-    await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+    await mouse.moveTo(tester.getCenter(find.byType(LightHoverRow)));
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.more_horiz));
     await tester.pumpAndSettle();

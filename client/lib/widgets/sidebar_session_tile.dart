@@ -29,6 +29,7 @@ import '../utils/session/session_row_content.dart';
 import '../utils/ui/coarse_relative_time.dart';
 import '../utils/debounce/debounce.dart';
 import 'app_toast/app_toast.dart';
+import 'light_hover_row.dart';
 import 'session_working_spinner.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -866,10 +867,13 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
 
     final Widget tile = Padding(
       padding: const EdgeInsets.only(bottom: kWorkspaceSidebarRowGap),
-      child: TpHoverRow(
+      child: LightHoverRow(
+        expandWidth: true,
+        addButtonSemantics: true,
         forceShowTrailing: _menuOpen,
         forceHover: _menuOpen,
         showTrailingOnMobile: true,
+        borderRadius: BorderRadius.circular(8),
         padding: EdgeInsets.fromLTRB(8 + widget.contentLeftInset, 6, 8, 6),
         backgroundColor: idleFill,
         hoverColor: hoverFill,

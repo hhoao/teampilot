@@ -7,6 +7,7 @@ import 'part_registry.dart';
 import 'parts/chain_of_thought_view.dart';
 import 'theme.dart';
 import 'tool_call_fold_scope.dart';
+import 'tool_file_actions.dart';
 
 /// Dispatches grouped parts through [AiPartRegistry].
 ///
@@ -34,8 +35,57 @@ class AiMessageParts extends StatefulWidget {
   State<AiMessageParts> createState() => _AiMessagePartsState();
 }
 
+/// Debug-only counters for the per-node widget cache.
+///
+/// `states` climbing means the element subtree is being remounted (the cache is
+/// thrown away every time, so nothing can be reused); `misses` climbing with
+/// `states` steady means part content really changed. Assert-guarded callers
+/// keep profile/release free of the cost.
+class AiMessagePartsCacheStats {
+  int builds = 0;
+  int hits = 0;
+  int misses = 0;
+  int clears = 0;
+  int states = 0;
+
+  @override
+  String toString() =>
+      'parts-cache builds=$builds hits=$hits misses=$misses '
+      'clears=$clears states=$states';
+}
+
+final AiMessagePartsCacheStats aiMessagePartsCacheStats =
+    AiMessagePartsCacheStats();
+
+/// Throttles the `[perf]` line so a streaming session prints ~once per 3 s.
+DateTime _lastPartsStatsReport = DateTime.fromMillisecondsSinceEpoch(0);
+
+void _reportPartsStats() {
+  final now = DateTime.now();
+  if (now.difference(_lastPartsStatsReport).inSeconds < 3) return;
+  _lastPartsStatsReport = now;
+  debugPrint(
+    '[perf] $aiMessagePartsCacheStats '
+    'cotBuilds=${AiChainOfThoughtView.debugBuildCount} '
+    'cotMounts=${AiChainOfThoughtView.debugMounts} '
+    'cotDirty=${AiChainOfThoughtView.debugDirtyCount} '
+    'cotBody=${AiChainOfThoughtView.debugBodyBuilds} '
+    'cotMiss=${AiChainOfThoughtView.debugMissReasons} '
+    '$aiToolFileActionsScopeStats',
+  );
+}
+
 class _AiMessagePartsState extends State<AiMessageParts> {
   final Map<_NodeKey, Widget> _nodeWidgets = {};
+
+  @override
+  void initState() {
+    super.initState();
+    assert(() {
+      aiMessagePartsCacheStats.states++;
+      return true;
+    }());
+  }
 
   @override
   void didUpdateWidget(covariant AiMessageParts oldWidget) {
@@ -43,11 +93,20 @@ class _AiMessagePartsState extends State<AiMessageParts> {
     // A different registry may render the same node differently.
     if (!identical(oldWidget.registry, widget.registry)) {
       _nodeWidgets.clear();
+      assert(() {
+        aiMessagePartsCacheStats.clears++;
+        return true;
+      }());
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    assert(() {
+      aiMessagePartsCacheStats.builds++;
+      _reportPartsStats();
+      return true;
+    }());
     if (widget.parts.isEmpty) {
       _nodeWidgets.clear();
       return const SizedBox.shrink();
@@ -71,8 +130,17 @@ class _AiMessagePartsState extends State<AiMessageParts> {
       liveKeys.add(key);
       var child = _nodeWidgets[key];
       if (child == null) {
+        assert(() {
+          aiMessagePartsCacheStats.misses++;
+          return true;
+        }());
         child = _buildNode(context, node, autoExpand: autoExpand);
         _nodeWidgets[key] = child;
+      } else {
+        assert(() {
+          aiMessagePartsCacheStats.hits++;
+          return true;
+        }());
       }
       children.add(child);
     }
@@ -110,29 +178,44 @@ class _AiMessagePartsState extends State<AiMessageParts> {
   }
 }
 
-/// Cache key for one rendered node: its parts (by instance — parts are
-/// immutable value objects) plus the auto-expand mode the chrome depends on.
+/// Cache key for one rendered node: its parts by *content* plus the
+/// auto-expand mode the chrome depends on.
+///
+/// Instance identity is not a usable key here: hosts re-parse the live turn on
+/// every streamed chunk, so unchanged parts come back as new instances and the
+/// cache would miss for the whole turn (measured: hundreds of chain-of-thought
+/// rebuilds per chunk). [messagePartIdentity] is cached per instance, so an
+/// unchanged part costs one map lookup.
 class _NodeKey {
-  _NodeKey(AiRenderNode node, {required this.autoExpand})
-    : parts = switch (node) {
-        AiRenderPart(:final part) => <AiMessagePart>[part],
-        AiRenderChainOfThought(:final parts) => parts,
-        AiRenderToolGroup(:final tools) => tools,
-        AiRenderReasoningGroup(:final parts) => parts,
-      };
+  factory _NodeKey(AiRenderNode node, {required bool autoExpand}) {
+    final parts = switch (node) {
+      AiRenderPart(:final part) => <AiMessagePart>[part],
+      AiRenderChainOfThought(:final parts) => parts,
+      AiRenderToolGroup(:final tools) => tools,
+      AiRenderReasoningGroup(:final parts) => parts,
+    };
+    return _NodeKey._(
+      parts,
+      [for (final part in parts) messagePartIdentity(part)],
+      autoExpand,
+    );
+  }
+
+  const _NodeKey._(this.parts, this.digests, this.autoExpand);
 
   final List<AiMessagePart> parts;
+  final List<String> digests;
   final bool autoExpand;
 
   @override
   bool operator ==(Object other) {
     if (other is! _NodeKey ||
         other.autoExpand != autoExpand ||
-        other.parts.length != parts.length) {
+        other.digests.length != digests.length) {
       return false;
     }
-    for (var i = 0; i < parts.length; i++) {
-      if (!identical(other.parts[i], parts[i])) return false;
+    for (var i = 0; i < digests.length; i++) {
+      if (other.digests[i] != digests[i]) return false;
     }
     return true;
   }
@@ -140,8 +223,8 @@ class _NodeKey {
   @override
   int get hashCode => Object.hash(
     autoExpand,
-    parts.length,
-    parts.isEmpty ? null : identityHashCode(parts.first),
-    parts.isEmpty ? null : identityHashCode(parts.last),
+    digests.length,
+    digests.isEmpty ? null : digests.first,
+    digests.isEmpty ? null : digests.last,
   );
 }

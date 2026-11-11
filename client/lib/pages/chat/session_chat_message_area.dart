@@ -182,6 +182,7 @@ class SessionChatMessageArea extends StatelessWidget {
                   selectedMemberId: selectedMemberId,
                   hrefRoots: hrefRoots,
                   child: AiToolFileActionsScope(
+                    scopeId: session.sessionId,
                     actions: AiToolFileActions(
                       fileResolver:
                           toolResolvers?.fileResolver ?? _noopFileResolver,
