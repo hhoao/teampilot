@@ -49,17 +49,21 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
 
   Future<void> _syncExpanded() async {
     final expanded = await isDesktopWindowExpanded();
-    if (!mounted) return;
+    if (!mounted || _isMaximized == expanded) return;
     setState(() => _isMaximized = expanded);
   }
 
   Future<void> _toggleMaximize({bool optionPressed = false}) async {
+    // Flip the glyph now: the native transition (macOS fullscreen animation,
+    // Linux WM maximize) only reports back once it has finished, and a
+    // mid-transition [isDesktopWindowExpanded] read returns the old value.
+    // The window listeners below stay the source of truth and correct it.
+    setState(() => _isMaximized = !_isMaximized);
     if (Platform.isMacOS) {
       await handleMacGreenButton(optionPressed: optionPressed);
     } else {
       await toggleDesktopWindowExpand();
     }
-    await _syncExpanded();
   }
 
   @override

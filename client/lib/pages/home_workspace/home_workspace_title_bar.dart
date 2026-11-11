@@ -269,7 +269,7 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
 
   Future<void> _syncExpanded() async {
     final expanded = await isDesktopWindowExpanded();
-    if (!mounted) return;
+    if (!mounted || _isMaximized == expanded) return;
     setState(() => _isMaximized = expanded);
   }
 
@@ -286,12 +286,14 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
   void onWindowLeaveFullScreen() => unawaited(_syncExpanded());
 
   Future<void> _toggleMaximize({bool optionPressed = false}) async {
+    // Flip the glyph now; the native event below arrives only after the OS
+    // transition finishes (macOS fullscreen animation / Linux WM maximize).
+    setState(() => _isMaximized = !_isMaximized);
     if (Platform.isMacOS) {
       await handleMacGreenButton(optionPressed: optionPressed);
     } else {
       await toggleDesktopWindowExpand();
     }
-    await _syncExpanded();
   }
 
   Widget _buildWindowControls() {

@@ -548,4 +548,38 @@ void main() {
 
     expect(closeAllRequested, isTrue);
   });
+
+  testWidgets('maximize glyph flips on tap without native window events', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appLocalizationsSupportedLocales,
+        home: _wrapTitleBar(
+          chatCubit: chatCubit,
+          child: const HomeTitleBar(
+            tabs: [HomeWorkspaceTab(id: 'ws-a', name: 'Solo')],
+            activeTabKey: 'ws-a',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.crop_square_outlined), findsOneWidget);
+
+    // No platform reply arrives in a widget test: the control must still show
+    // the restored state immediately instead of waiting for the OS event.
+    await tester.tap(find.byIcon(Icons.crop_square_outlined));
+    await tester.pump();
+
+    expect(find.byIcon(Icons.filter_none), findsOneWidget);
+    expect(find.byIcon(Icons.crop_square_outlined), findsNothing);
+  });
 }
