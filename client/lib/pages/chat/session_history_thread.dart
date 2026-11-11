@@ -17,6 +17,7 @@ import '../../services/chat/rewind/seat_branches.dart';
 import '../../utils/chat/chat_timestamp_format.dart';
 import '../../widgets/session_working_spinner.dart';
 import 'chat_message_action_menu.dart';
+import 'chat_message_edit_panel.dart';
 import 'chat_outline.dart';
 import 'chat_reveal_controller.dart';
 import 'history_scroll_cursor_lock.dart';
@@ -276,6 +277,44 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       }
     }
     return Object.hashAll(keys);
+  }
+
+  Future<bool> _submitEdit(AiMessage message, String text) async {
+    _edit.begin(
+      messageId: message.id,
+      text: text,
+      visibleMessageIds: _messages.map((m) => m.id),
+    );
+    final accepted =
+        await (widget.onEditUserMessage?.call(message.id, text) ??
+            Future<bool>.value(true));
+    if (!mounted) return accepted;
+    _edit.finish(accepted: accepted, messageId: message.id);
+    return accepted;
+  }
+
+  Future<void> _openMobileEdit(
+    BuildContext context,
+    AiMessage message,
+  ) async {
+    if (!mounted) return;
+    final rewindEnabled =
+        AiMessageInteractionScope.maybeRewindEnabled(context) ??
+        !widget.turnInFlight;
+    if (!rewindEnabled || _edit.editingMessageId == message.id) return;
+    _edit.openEditor(message.id);
+    final accepted = await showChatMessageEditSheet(
+      context,
+      initialText: _edit.draft ?? plainTextForCopy(message),
+      title: context.l10n.edit.userMessage,
+      cancelLabel: context.l10n.edit.cancel,
+      sendLabel: context.l10n.edit.send,
+      onSubmit: (text) => _submitEdit(message, text),
+    );
+    if (!mounted) return;
+    if (!accepted && _edit.editingMessageId == message.id) {
+      _edit.cancelEdit();
+    }
   }
 
   PendingBranchEdit? get _pendingEdit => _edit.pending;
@@ -1326,35 +1365,17 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                 ? null
                                 : () => widget.onForkFrom!(version.commit),
                             forkLabel: forkLabel,
-                            editing: editing,
+                            editing: !mobile && editing,
                             onEdit:
                                 version == null ||
                                     widget.onEditUserMessage == null ||
                                     !_isPureText(ai)
                                 ? null
+                                : mobile
+                                ? () => unawaited(_openMobileEdit(context, ai))
                                 : () => _edit.openEditor(ai.id),
                             editLabel: editLabel,
-                            onSubmitEdit: (text) async {
-                              _edit.begin(
-                                messageId: ai.id,
-                                text: text,
-                                visibleMessageIds: _messages.map(
-                                  (message) => message.id,
-                                ),
-                              );
-                              final accepted =
-                                  await (widget.onEditUserMessage?.call(
-                                        ai.id,
-                                        text,
-                                      ) ??
-                                      Future.value(true));
-                              if (!mounted) return accepted;
-                              _edit.finish(
-                                accepted: accepted,
-                                messageId: ai.id,
-                              );
-                              return accepted;
-                            },
+                            onSubmitEdit: (text) => _submitEdit(ai, text),
                             onCancelEdit: _edit.cancelEdit,
                             onPickEditAttachments: widget.onPickEditAttachments,
                             editSendLabel: editSendLabel,
@@ -1424,11 +1445,19 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                           }
                           if (!mobile) return result;
 
+                          final canEdit =
+                              ai.role == AiRole.user &&
+                              _isPureText(ai) &&
+                              version != null &&
+                              widget.onEditUserMessage != null;
                           final handlers = ChatMessageActionHandlers(
                             onRetry:
                                 deliveryFailed &&
                                     widget.onRetryFailedMessage != null
                                 ? () => widget.onRetryFailedMessage!(ai.id)
+                                : null,
+                            onEdit: canEdit
+                                ? () => unawaited(_openMobileEdit(context, ai))
                                 : null,
                             onFork:
                                 version != null && widget.onForkFrom != null
@@ -1468,6 +1497,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                   ),
                                 );
                               },
+                              onTap: canEdit
+                                  ? () => unawaited(_openMobileEdit(context, ai))
+                                  : null,
                               child: result,
                             ),
                           );

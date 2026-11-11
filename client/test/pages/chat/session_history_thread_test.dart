@@ -12,6 +12,7 @@ import 'package:teampilot/pages/chat/history_scroll_cursor_lock.dart';
 import 'package:teampilot/pages/chat/session_history_live_chrome.dart';
 import 'package:teampilot/pages/chat/session_history_scroll_to_bottom_button.dart';
 import 'package:teampilot/pages/chat/session_history_thread.dart';
+import 'package:teampilot/services/chat/rewind/seat_branches.dart';
 import 'package:teampilot/widgets/scroll_cursor_lock.dart';
 import 'package:teampilot/widgets/session_working_spinner.dart';
 import 'package:tp_markdown/tp_markdown.dart'
@@ -43,6 +44,8 @@ Widget _harness({
   bool expandLatest = true,
   double width = 600,
   double height = 400,
+  SeatBranches? branches,
+  Future<bool> Function(String messageId, String text)? onEditUserMessage,
 }) {
   return MaterialApp(
     localizationsDelegates: appLocalizationsDelegates,
@@ -65,6 +68,8 @@ Widget _harness({
           visibleOwnerId: visibleOwnerId,
           mobilePerformanceMode: mobilePerformanceMode,
           pendingDeliveryStatuses: pendingDeliveryStatuses,
+          branches: branches ?? const SeatBranches.empty(),
+          onEditUserMessage: onEditUserMessage,
         ),
       ),
     ),
@@ -1342,4 +1347,105 @@ void main() {
       expect(before, isNot(after));
     },
   );
+
+  testWidgets('tapping a user bubble opens the edit sheet and dims other messages', (tester) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(const [
+        AiMessage(
+          id: 'u1',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'first')],
+        ),
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'answer')],
+        ),
+      ]);
+
+    await tester.pumpWidget(
+      _harness(
+        runtime: store,
+        mobilePerformanceMode: true,
+        branches: const SeatBranches(
+          turns: {
+            'u1': SeatBranchVersion(
+              index: 1,
+              count: 1,
+              commit: 'c1',
+              siblings: ['c1'],
+            ),
+          },
+        ),
+        onEditUserMessage: (_, __) async => true,
+      ),
+    );
+    await pumpUntilSettled(tester);
+
+    await tester.tap(find.text('first'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(
+      find.byKey(const ValueKey('chat-edit-sheet-field')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('chat-edit-sheet-field')))
+          .controller!
+          .text,
+      'first',
+    );
+    // Only the sheet owns a TextField: the inline editor stays off on mobile.
+    expect(find.byType(TextField), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('chat-message-dim:a1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('chat-message-dim:u1')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('desktop keeps the inline editor instead of the bottom sheet', (tester) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(const [
+        AiMessage(
+          id: 'u1',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'first')],
+        ),
+      ]);
+
+    await tester.pumpWidget(
+      _harness(
+        runtime: store,
+        mobilePerformanceMode: false,
+        branches: const SeatBranches(
+          turns: {
+            'u1': SeatBranchVersion(
+              index: 1,
+              count: 1,
+              commit: 'c1',
+              siblings: ['c1'],
+            ),
+          },
+        ),
+        onEditUserMessage: (_, __) async => true,
+      ),
+    );
+    await pumpUntilSettled(tester);
+
+    await tester.tap(find.byTooltip('Edit message'));
+    await tester.pump();
+
+    expect(find.byType(TextField), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('chat-edit-sheet-field')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('chat-message-dim:u1')), findsNothing);
+  });
 }
