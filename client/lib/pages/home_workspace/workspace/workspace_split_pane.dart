@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -55,6 +56,11 @@ class WorkspaceSplitPane extends StatefulWidget {
   final bool showManage;
   final Widget? manageOverlay;
 
+  /// Debug-only build counter keyed by workspace id, for rebuild-isolation
+  /// tests. Populated inside an `assert` so release/profile pay nothing.
+  @visibleForTesting
+  static final Map<String, int> debugBuildCounts = <String, int>{};
+
   @override
   State<WorkspaceSplitPane> createState() => _WorkspaceSplitPaneState();
 }
@@ -74,12 +80,30 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
   /// workspace tabs keep the pending-focus channel across pane remounts.
   final ValueNotifier<int> _searchFocusRequest = ValueNotifier<int>(0);
 
+  /// Activation signal for this tab. Subscribed instead of registering an
+  /// inherited dependency so a background tab is not rebuilt on tab switches.
+  ValueListenable<bool>? _activeListenable;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _runCommandHost = context.read<RunCommandHost>();
     _workspaceSearchHost = context.read<WorkspaceSearchHost>();
     _contentSearchHost = context.read<WorkspaceContentSearchHost>();
+    _bindActiveListenable();
+    _syncHostBindings();
+  }
+
+  void _bindActiveListenable() {
+    final next = WorkspaceRouteActiveScope.peekActiveListenableOf(context);
+    if (identical(next, _activeListenable)) return;
+    _activeListenable?.removeListener(_syncHostBindings);
+    _activeListenable = next;
+    _activeListenable?.addListener(_syncHostBindings);
+  }
+
+  void _syncHostBindings() {
+    if (!mounted) return;
     _syncRunCommandHost();
     _syncWorkspaceSearchHost();
     _syncContentSearchHost();
@@ -87,6 +111,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
 
   @override
   void dispose() {
+    _activeListenable?.removeListener(_syncHostBindings);
     final cubit = _boundRunCubit;
     final host = _runCommandHost;
     if (cubit != null && host != null) {
@@ -126,7 +151,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
   void _syncWorkspaceSearchHost() {
     final host = _workspaceSearchHost;
     if (host == null) return;
-    final routeActive = WorkspaceRouteActiveScope.routeActiveOf(context);
+    final routeActive = WorkspaceRouteActiveScope.peekRouteActiveOf(context);
     if (routeActive) {
       host.bind(_openWorkspaceSearch);
     } else {
@@ -137,7 +162,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
   void _syncContentSearchHost() {
     final host = _contentSearchHost;
     if (host == null) return;
-    final routeActive = WorkspaceRouteActiveScope.routeActiveOf(context);
+    final routeActive = WorkspaceRouteActiveScope.peekRouteActiveOf(context);
     if (routeActive) {
       host.bind(_openContentSearch);
     } else {
@@ -191,7 +216,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
   void _syncRunCommandHost() {
     final host = _runCommandHost;
     if (host == null) return;
-    final routeActive = WorkspaceRouteActiveScope.routeActiveOf(context);
+    final routeActive = WorkspaceRouteActiveScope.peekRouteActiveOf(context);
     final runCubit = context.read<WorkspaceRunRegistry>().cubitFor(
       tabScopeId: widget.tabScopeId,
       workspaceId: widget.workspace.workspaceId,
@@ -208,6 +233,14 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
 
   @override
   Widget build(BuildContext context) {
+    assert(() {
+      WorkspaceSplitPane.debugBuildCounts.update(
+        widget.workspace.workspaceId,
+        (v) => v + 1,
+        ifAbsent: () => 1,
+      );
+      return true;
+    }());
     final chatLifecycle = context.read<ChatCubit>().lifecycle;
     final scopeCubit = context.read<WorkspaceToolsScopeRegistry>().cubitFor(
       tabScopeId: widget.tabScopeId,

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:panes/panes.dart';
@@ -162,16 +163,36 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     }
   }
 
+  /// Activation signal for this tab, subscribed instead of registering an
+  /// inherited dependency.
+  ValueListenable<bool>? _activeListenable;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Seed from MediaQuery before first paint so narrow pumps never dock left
     // for one frame while waiting on PaneSizeReporter.
     _syncViewportSize(MediaQuery.sizeOf(context), notifyRebuild: false);
+    _bindActiveListenable();
+  }
+
+  void _bindActiveListenable() {
+    final next = WorkspaceRouteActiveScope.peekActiveListenableOf(context);
+    if (identical(next, _activeListenable)) return;
+    _activeListenable?.removeListener(_onActiveChanged);
+    _activeListenable = next;
+    _activeListenable?.addListener(_onActiveChanged);
+  }
+
+  void _onActiveChanged() {
+    if (!mounted) return;
+    if (!WorkspaceRouteActiveScope.peekRouteActiveOf(context)) return;
+    _publishMaximizeInsets(routeActive: true);
   }
 
   @override
   void dispose() {
+    _activeListenable?.removeListener(_onActiveChanged);
     _rowController.removeListener(_onRowChanged);
     _rowController.dispose();
     super.dispose();
@@ -609,14 +630,12 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
             a.landingRightToolsOverride != b.landingRightToolsOverride ||
             a.narrowLeftSuppressed != b.narrowLeftSuppressed,
         builder: (context, layoutState) {
-          // Depend so tab foreground switches re-publish maximize insets.
-          final routeActive =
-              context
-                  .dependOnInheritedWidgetOfExactType<
-                    WorkspaceRouteActiveScope
-                  >()
-                  ?.routeActive ??
-              true;
+          // Non-registering read: foreground switches are delivered through
+          // [_activeListenable] instead, so a background tab is not rebuilt on
+          // tab switches.
+          final routeActive = WorkspaceRouteActiveScope.peekRouteActiveOf(
+            context,
+          );
           final effective = WorkspacePanePolicy.effective(
             preferences: layoutState.preferences,
             viewportWidth: _viewportWidth,

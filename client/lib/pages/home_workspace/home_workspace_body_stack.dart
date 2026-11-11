@@ -12,6 +12,7 @@ import 'home_workspace_global_section.dart';
 import 'home_workspace_route.dart';
 import 'home_workspace_page.dart';
 import 'workspace/workspace_page.dart';
+import 'workspace/workspace_config_section.dart';
 import 'workspace/workspace_route_active_scope.dart';
 import 'workspace/workspace_tab_deferred_mount.dart';
 
@@ -126,7 +127,12 @@ class _HomeBodyLayer extends StatelessWidget {
 /// One kept-alive workspace tab. Heavy [WorkspacePage] mounts one frame after
 /// the tab becomes active via [WorkspaceTabDeferredMount] (empty card chrome
 /// first). Inactive tabs stay under [TpKeepAliveLayer] with [TickerMode] off.
-class _WorkspaceTabSlot extends StatelessWidget {
+///
+/// The built page widget is cached by workspace value: a route change (tab
+/// switch) rebuilds this slot with a new location, but returning the same
+/// widget instance lets Flutter skip rebuilding the whole kept-alive
+/// [WorkspacePage] subtree. Mirrors [_HomePageLayer].
+class _WorkspaceTabSlot extends StatefulWidget {
   const _WorkspaceTabSlot({
     required this.tab,
     required this.activeTabKey,
@@ -139,25 +145,125 @@ class _WorkspaceTabSlot extends StatelessWidget {
   final String location;
 
   @override
+  State<_WorkspaceTabSlot> createState() => _WorkspaceTabSlotState();
+}
+
+/// Route-derived inputs that determine what the tab slot renders. Background
+/// slots force [view] / [configSection] to null so their inputs stay stable
+/// across sibling-tab navigation.
+typedef _RouteInputs = ({
+  bool active,
+  String? view,
+  WorkspaceConfigSection? configSection,
+});
+
+class _WorkspaceTabSlotState extends State<_WorkspaceTabSlot> {
+  Workspace? _pageWorkspace;
+  Widget? _page;
+
+  /// Stable activation signal for this tab. Consumers listen to it instead of
+  /// registering an inherited dependency, so a background tab is never marked
+  /// dirty when a sibling tab activates.
+  late final ValueNotifier<bool> _active;
+
+  /// Route-resync signal: activation plus `view` / `configSection` changes for
+  /// the foreground slot. Background slots keep stable inputs.
+  late final ValueNotifier<int> _routeRevision;
+
+  _RouteInputs? _publishedInputs;
+  bool _publicationScheduled = false;
+
+  bool get _isActive => widget.activeTabKey == widget.tab.tabKey;
+
+  _RouteInputs _routeInputs() {
+    final active = _isActive;
+    return (
+      active: active,
+      view: active ? HomeWorkspaceRoute.view(widget.location) : null,
+      configSection: active
+          ? HomeWorkspaceRoute.workspaceConfigSection(widget.location)
+          : null,
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _active = ValueNotifier<bool>(_isActive);
+    _routeRevision = ValueNotifier<int>(0);
+    _publishedInputs = _routeInputs();
+  }
+
+  @override
+  void didUpdateWidget(covariant _WorkspaceTabSlot oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_routeInputs() != _publishedInputs) _schedulePublication();
+  }
+
+  /// Defer the notification: [didUpdateWidget] runs inside the build phase and
+  /// listeners call setState. Publishing post-frame also guarantees descendants
+  /// read the freshly mounted [WorkspaceRouteActiveScope] via a snapshot read.
+  void _schedulePublication() {
+    if (_publicationScheduled) return;
+    _publicationScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _publicationScheduled = false;
+      if (!mounted) return;
+      final inputs = _routeInputs();
+      if (inputs == _publishedInputs) return;
+      _publishedInputs = inputs;
+      if (_active.value != inputs.active) _active.value = inputs.active;
+      _routeRevision.value++;
+    });
+  }
+
+  @override
+  void dispose() {
+    _active.dispose();
+    _routeRevision.dispose();
+    super.dispose();
+  }
+
+  Widget _pageFor(Workspace workspace) {
+    final cached = _page;
+    if (cached != null && _pageWorkspace == workspace) return cached;
+    final page = BlocProvider(
+      create: (_) => WorkspaceLandingContextCubit(
+        workspaceId: widget.tab.workspaceId,
+      )..initialize(workspace),
+      child: WorkspacePage(
+        key: ValueKey('workspace-body-${widget.tab.tabKey}'),
+        workspaceId: widget.tab.workspaceId,
+      ),
+    );
+    _pageWorkspace = workspace;
+    _page = page;
+    return page;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final workspace = context.select<ChatCubit, Workspace?>((c) {
       for (final candidate in c.state.workspaces) {
-        if (candidate.workspaceId == tab.workspaceId) return candidate;
+        if (candidate.workspaceId == widget.tab.workspaceId) return candidate;
       }
       return null;
     });
     if (workspace == null) return const SizedBox.shrink();
 
-    final isActive = activeTabKey == tab.tabKey;
-    final view = isActive ? HomeWorkspaceRoute.view(location) : null;
+    final isActive = widget.activeTabKey == widget.tab.tabKey;
+    final view = isActive ? HomeWorkspaceRoute.view(widget.location) : null;
     final configSection = isActive
-        ? HomeWorkspaceRoute.workspaceConfigSection(location)
+        ? HomeWorkspaceRoute.workspaceConfigSection(widget.location)
         : null;
+    final page = _pageFor(workspace);
 
     return WorkspaceRouteActiveScope(
       routeActive: isActive,
       view: view,
       configSection: configSection,
+      activeListenable: _active,
+      routeRevisionListenable: _routeRevision,
       child: RepaintBoundary(
         child: TpKeepAliveLayer(
           active: isActive,
@@ -169,15 +275,7 @@ class _WorkspaceTabSlot extends StatelessWidget {
                 ignoring: !isActive,
                 child: WorkspaceTabDeferredMount(
                   active: isActive,
-                  builder: (_) => BlocProvider(
-                    create: (_) => WorkspaceLandingContextCubit(
-                      workspaceId: tab.workspaceId,
-                    )..initialize(workspace),
-                    child: WorkspacePage(
-                      key: ValueKey('workspace-body-${tab.tabKey}'),
-                      workspaceId: tab.workspaceId,
-                    ),
-                  ),
+                  builder: (_) => page,
                 ),
               ),
             ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -184,15 +185,38 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
     _scheduleSync();
   }
 
+  /// Activation signal for this tab. Subscribed instead of registering an
+  /// inherited dependency so a background tab is not rebuilt on tab switches.
+  ValueListenable<bool>? _activeListenable;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Registering read so tab (de)activation re-runs this method.
-    final active = WorkspaceRouteActiveScope.routeActiveOf(context);
+    _bindActiveListenable();
+    _handleActiveEdge();
+  }
+
+  void _bindActiveListenable() {
+    final next = WorkspaceRouteActiveScope.peekActiveListenableOf(context);
+    if (identical(next, _activeListenable)) return;
+    _activeListenable?.removeListener(_handleActiveEdge);
+    _activeListenable = next;
+    _activeListenable?.addListener(_handleActiveEdge);
+  }
+
+  void _handleActiveEdge() {
+    if (!mounted) return;
+    final active = WorkspaceRouteActiveScope.peekRouteActiveOf(context);
     if (active && !_wasRouteActive) {
       _scheduleSync();
     }
     _wasRouteActive = active;
+  }
+
+  @override
+  void dispose() {
+    _activeListenable?.removeListener(_handleActiveEdge);
+    super.dispose();
   }
 
   @override

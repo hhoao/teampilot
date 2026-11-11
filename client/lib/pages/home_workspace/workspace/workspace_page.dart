@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:shared_ui/shared_ui.dart';
 
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -42,6 +43,12 @@ class WorkspacePage extends StatefulWidget {
 
   String get tabKey => workspaceId;
 
+  /// Debug-only build counter keyed by workspace id, for rebuild-isolation
+  /// tests. Populated inside an `assert`, so release/profile builds pay
+  /// nothing.
+  @visibleForTesting
+  static final Map<String, int> debugBuildCounts = <String, int>{};
+
   @override
   State<WorkspacePage> createState() => _WorkspacePageState();
 }
@@ -52,25 +59,68 @@ class _WorkspacePageState extends State<WorkspacePage> {
   Widget? _frozenPage;
   bool _wasRouteActive = false;
   String? _lastScopeView;
+  WorkspaceConfigSection? _lastScopeConfigSection;
   bool _activationScheduled = false;
   String? _lastSyncedRouteExpert;
   bool _expertSyncScheduled = false;
   String? _lastSyncedRouteSession;
   bool _sessionSyncScheduled = false;
+  ValueListenable<int>? _routeRevisionListenable;
 
   WorkspaceRouteActiveScope? _readScope(BuildContext context) {
     return context.getInheritedWidgetOfExactType<WorkspaceRouteActiveScope>();
   }
 
-  WorkspaceConfigSection _configSection(BuildContext context) =>
-      _readScope(context)?.configSection ?? WorkspaceConfigSection.settings;
+  /// Route location without registering an inherited dependency.
+  ///
+  /// `GoRouterState.of` depends on `GoRouterStateRegistryScope`, so calling it
+  /// from `build`/`didChangeDependencies` would let a sibling tab's navigation
+  /// mark this page dirty. This page resyncs from route state on activation
+  /// instead (see [_syncRouteState]), so a snapshot read is enough here.
+  String _currentLocation(BuildContext context) {
+    final router = GoRouter.maybeOf(context);
+    if (router == null) return '';
+    return router.routerDelegate.currentConfiguration.uri.toString();
+  }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+  /// Subscribes to the slot's route-resync signal.
+  ///
+  /// Deliberately does NOT register an inherited dependency on
+  /// [WorkspaceRouteActiveScope]: that would let `notifyClients` mark this whole
+  /// (heavy) page dirty on every tab switch, including for background tabs.
+  /// The signal fires on activation and on the foreground tab's `view` /
+  /// `configSection` changes, so query-only navigation such as `view=manage`
+  /// still resyncs.
+  void _bindRouteRevision() {
+    final next = _readScope(context)?.routeRevisionListenable;
+    if (identical(next, _routeRevisionListenable)) return;
+    _routeRevisionListenable?.removeListener(_onRouteChanged);
+    _routeRevisionListenable = next;
+    _routeRevisionListenable?.addListener(_onRouteChanged);
+  }
+
+  void _onRouteChanged() {
+    if (!mounted) return;
+    _resyncFromRoute();
+  }
+
+  void _resyncFromRoute() {
     final scope = _readScope(context);
-    final active = scope?.routeActive ?? true;
-    final view = scope?.view;
+    _syncRouteState(
+      scope?.routeActive ?? true,
+      scope?.view,
+      scope?.configSection,
+    );
+    _syncProfileFromRoute();
+    _syncExpertFromRoute();
+    _syncSessionFromRoute();
+  }
+
+  void _syncRouteState(
+    bool active,
+    String? view,
+    WorkspaceConfigSection? configSection,
+  ) {
     if (active && !_wasRouteActive) {
       _scheduleActivation();
     }
@@ -80,7 +130,10 @@ class _WorkspacePageState extends State<WorkspacePage> {
       // the scope, and selecting a bare workspace route must not leave a stale
       // manage section with a broken back affordance.
       final shouldSync =
-          !_wasRouteActive || view != _lastScopeView || nextSection != _section;
+          !_wasRouteActive ||
+          view != _lastScopeView ||
+          nextSection != _section ||
+          configSection != _lastScopeConfigSection;
       if (shouldSync) {
         setState(() {
           _section = nextSection;
@@ -88,15 +141,29 @@ class _WorkspacePageState extends State<WorkspacePage> {
         });
       }
       _lastScopeView = view;
+      _lastScopeConfigSection = configSection;
     }
     _wasRouteActive = active;
-    _syncProfileFromRoute();
-    _syncExpertFromRoute();
-    _syncSessionFromRoute();
+  }
+
+  @override
+  void dispose() {
+    _routeRevisionListenable?.removeListener(_onRouteChanged);
+    super.dispose();
+  }
+
+  WorkspaceConfigSection _configSection(BuildContext context) =>
+      _readScope(context)?.configSection ?? WorkspaceConfigSection.settings;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _bindRouteRevision();
+    _resyncFromRoute();
   }
 
   void _syncProfileFromRoute() {
-    final location = GoRouterState.of(context).uri.toString();
+    final location = _currentLocation(context);
     final routeProfile = HomeWorkspaceRoute.profile(location)?.trim() ?? '';
     if (routeProfile.isEmpty) return;
     final cubit = context.read<WorkspaceLandingContextCubit>();
@@ -111,7 +178,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
   }
 
   void _syncExpertFromRoute() {
-    final location = GoRouterState.of(context).uri.toString();
+    final location = _currentLocation(context);
     final expert = HomeWorkspaceRoute.expert(location);
     if (expert == _lastSyncedRouteExpert) return;
     _lastSyncedRouteExpert = expert;
@@ -134,7 +201,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
         .firstOrNull;
     if (workspace == null) return;
 
-    final location = GoRouterState.of(context).uri.toString();
+    final location = _currentLocation(context);
     final routeProfile = HomeWorkspaceRoute.profile(location);
     final launchProfiles = context.read<LaunchProfileCubit>();
     final profile = routeProfile == null
@@ -217,7 +284,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
   }
 
   void _syncSessionFromRoute() {
-    final location = GoRouterState.of(context).uri.toString();
+    final location = _currentLocation(context);
     final sessionId = HomeWorkspaceRoute.session(location);
     if (sessionId == _lastSyncedRouteSession) return;
     _lastSyncedRouteSession = sessionId;
@@ -295,12 +362,12 @@ class _WorkspacePageState extends State<WorkspacePage> {
   }
 
   void _clearSessionQuery() {
-    final current = GoRouterState.of(context).uri.toString();
+    final current = _currentLocation(context);
     final next = HomeWorkspaceRoute.locationWithoutSession(current);
     if (current == next) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (GoRouterState.of(context).uri.toString() != current) return;
+      if (_currentLocation(context) != current) return;
       context.go(next);
     });
   }
@@ -389,8 +456,18 @@ class _WorkspacePageState extends State<WorkspacePage> {
 
   @override
   Widget build(BuildContext context) {
-    final scope = context
-        .dependOnInheritedWidgetOfExactType<WorkspaceRouteActiveScope>();
+    assert(() {
+      WorkspacePage.debugBuildCounts.update(
+        widget.workspaceId,
+        (v) => v + 1,
+        ifAbsent: () => 1,
+      );
+      return true;
+    }());
+    // Non-registering read: activation and route-input changes are delivered
+    // through [_routeRevisionListenable] instead, so a sibling tab's switch
+    // does not mark this page dirty via `notifyClients`.
+    final scope = _readScope(context);
     final routeActive = scope?.routeActive ?? true;
     final body = routeActive
         ? _buildAndCacheLivePage(context)

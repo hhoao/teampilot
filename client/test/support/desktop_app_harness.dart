@@ -313,6 +313,11 @@ Widget buildTestApp({
       RepositoryProvider<HomeWorkspaceUiCache>.value(
         value: desktopHarnessHomeWorkspaceUiCache,
       ),
+      RepositoryProvider<WorkspaceProjectConfigRepository>(
+        create: (_) => WorkspaceProjectConfigRepository(
+          storage: fakeHomeStorage(filesystem: InMemoryFilesystem()),
+        ),
+      ),
       RepositoryProvider<ConnectionModeService>.value(
         value: connectionModeService,
       ),
