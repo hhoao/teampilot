@@ -55,9 +55,14 @@ final class _SshWorkerStoragePool {
       return pending.future;
     }
     if (pending != null) {
+      // The pending dial targets a stale hostIdentifier because the user
+      // edited the profile. This is a local re-target, not a server host-key
+      // change: it must stay retryable (the coordinator redials the current
+      // profile) instead of latching/suspending the home as
+      // `hostIdentityChanged` would.
       disconnectProfile(
         profile.id,
-        reason: SshTransportCloseReason.hostIdentityChanged,
+        reason: SshTransportCloseReason.profileInvalidated,
       );
     }
 
@@ -122,10 +127,14 @@ final class _SshWorkerStoragePool {
           reason: SshTransportCloseReason.transportError,
         );
       } else {
+        // Same local re-target as above: the cached lease belongs to the old
+        // hostIdentifier. Never report it as `hostIdentityChanged` — that
+        // non-retryable reason makes the coordinator mark the home
+        // unreachable and suspend every later storage read.
         _retireConnection(
           profile.id,
           cached,
-          reason: SshTransportCloseReason.hostIdentityChanged,
+          reason: SshTransportCloseReason.profileInvalidated,
           shutdownWorker: true,
         );
       }

@@ -195,6 +195,65 @@ void main() {
     },
   );
 
+  test(
+    'editing the host retires the old storage plane as a local profile edit',
+    () async {
+      // Regression: a user-edited host changes hostIdentifier, and the stale
+      // connection used to be retired as `hostIdentityChanged`. That reason is
+      // the "server host key changed, never retry" signal, so the coordinator
+      // latched the profile, marked the home unreachable (the retry page came
+      // back after a successful reconnect), and suspended every later storage
+      // read. Retiring a locally edited target is a local profile invalidation.
+      final launcher = _StorageWorkerLauncher();
+      final events = SshConnectionEvents();
+      final closes = <SshTransportClosed>[];
+      events.onTransportClosed = (_, error, _) {
+        if (error is SshTransportClosed) closes.add(error);
+      };
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        events: events,
+        workerManager: SshProfileWorkerManager(launcher: launcher),
+      );
+      const original = SshProfile(
+        id: 'p1',
+        name: 'test',
+        host: 'example.test',
+        username: 'tester',
+      );
+
+      await factory.storageFor(original);
+      closes.clear();
+
+      const edited = SshProfile(
+        id: 'p1',
+        name: 'test',
+        host: 'other.test',
+        username: 'tester',
+      );
+      await factory.storageFor(edited);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(closes, hasLength(1));
+      expect(
+        closes.single.reason,
+        SshTransportCloseReason.profileInvalidated,
+        reason:
+            'an edited host is a local re-target, not a server host-key '
+            'change; hostIdentityChanged stops retries and suspends the '
+            'profile',
+      );
+      expect(
+        isNonRetryableTransportClose(closes.single),
+        isFalse,
+        reason: 'the edited profile must stay retryable',
+      );
+      expect(factory.hasLiveStorageClient(edited.id), isTrue);
+      await factory.close();
+    },
+  );
+
   test('one slow storage probe must not retire the connection', () async {
     final launcher = _StorageWorkerLauncher(realpathFailures: 1);
     final events = SshConnectionEvents();

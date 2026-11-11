@@ -57,10 +57,12 @@ extension SshClientFactoryLegacyStorage on SshClientFactory {
           reason: SshTransportCloseReason.transportError,
         );
       } else {
+        // The user edited the host: a local re-target, not a server host-key
+        // change. Keep it retryable instead of latching the profile.
         _evictLegacyProfile(
           profile.id,
           closePooled: true,
-          reason: SshTransportCloseReason.hostIdentityChanged,
+          reason: SshTransportCloseReason.profileInvalidated,
         );
       }
     }

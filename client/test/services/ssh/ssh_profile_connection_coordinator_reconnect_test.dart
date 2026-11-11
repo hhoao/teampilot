@@ -172,6 +172,40 @@ void main() {
     expect(stopped, [_profile.id]);
   });
 
+  test(
+    'a local profile edit close keeps the profile retryable',
+    () async {
+      // Regression: editing a profile host retired the stale lease as
+      // `hostIdentityChanged`, so this callback fired, the coordinator
+      // latched the profile, and the home page went back to `unreachable`
+      // even though the new host had already reconnected.
+      final stopped = <String>[];
+      final harness = _ReconnectHarness(
+        maxAttempts: 3,
+        persistRetry: (_) => true,
+        onNonRetryableClose: (profileId, _) => stopped.add(profileId),
+      );
+      addTearDown(harness.dispose);
+
+      await harness.startDown();
+      await waitUntil(() => harness.attempts.isNotEmpty);
+
+      harness.emitStorageClose(SshTransportCloseReason.profileInvalidated);
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+
+      expect(
+        stopped,
+        isEmpty,
+        reason: 'a local re-target must not be a permanent failure',
+      );
+      expect(
+        harness.coordinator.isUserDisconnectLatched(_profile.id),
+        isFalse,
+        reason: 'an edited profile must not be latched into suspension',
+      );
+    },
+  );
+
   test('home switch cancellation stops the abandoned profile loop', () async {
     final harness = _ReconnectHarness(
       maxAttempts: 3,
@@ -400,13 +434,14 @@ class _ReconnectHarness {
 
   /// Emits a permanent host-identity change on the storage plane (the signal
   /// that used to spawn an endless reconnect loop).
-  void emitHostIdentityChanged() {
+  void emitHostIdentityChanged() =>
+      emitStorageClose(SshTransportCloseReason.hostIdentityChanged);
+
+  /// Emits a storage-plane close with [reason].
+  void emitStorageClose(SshTransportCloseReason reason) {
     events.onTransportClosed?.call(
       _profile.id,
-      const SshTransportClosed(
-        reason: SshTransportCloseReason.hostIdentityChanged,
-        plane: SshTransportPlane.storage,
-      ),
+      SshTransportClosed(reason: reason, plane: SshTransportPlane.storage),
       StackTrace.empty,
     );
   }
