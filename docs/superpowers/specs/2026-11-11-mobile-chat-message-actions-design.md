@@ -7,7 +7,7 @@
 移动端（Android / iOS）聊天界面目前无法显示消息气泡下方的功能按钮，导致相应功能不可用。补充两个移动端手势交互，让这些功能重新可达，并提供移动端更好用的编辑入口：
 
 1. **长按消息气泡** → 弹出功能菜单，包含桌面端按钮行里的同款功能。
-2. **点击用户消息气泡** → 底部弹出「修改输入」编辑面板，聊天记录中其它消息压暗、被点气泡保持高亮（形态参考用户提供的移动端截图）。
+2. **点击用户消息气泡** → 底部弹出编辑面板（预填原文，标题沿用现有 `edit.userMessage` 文案，不新增 l10n 键），聊天记录中其它消息压暗、被点气泡保持高亮（形态参考用户提供的移动端截图）。
 
 桌面端（hover 显示按钮行 + 行内编辑器）行为完全不变。
 
@@ -68,16 +68,16 @@ SelectionContainer.disabled
        └─ result (AiMessageView + highlight ring)
 ```
 
-- 手势竞技场按命中路径由深到浅注册识别器；我们的 `GestureDetector` 是 `SelectionArea` 的后代，先加入竞技场、先到 500ms deadline，稳定胜出。`SelectionContainer.disabled` 兜底，避免系统文字选择工具栏同时出现。
-- `GestureDetector` 只提供 `onLongPressStart`（不注册 tap 识别器），消息内部链接/工具卡的点击不受影响。
+- 手势竞技场按命中路径由深到浅注册识别器；我们的 `GestureDetector` 是 `SelectionArea` 的后代，先加入竞技场、先到 500ms deadline，因此长按识别器胜出，系统文字选择工具栏不会弹出；`SelectionContainer.disabled` 兜底，避免任何残留选择态。此结论由 widget 测试（`tester.longPress`）验证；若实测出现竞争失败，再改为 `Listener` + 计时器的确定性实现（当前不做）。
+- 阶段一该 `GestureDetector` 只注册 `onLongPressStart`；阶段二在**同一实例**上补 `onTap`（仅用户消息）。消息内部链接/工具卡自身也注册 tap 识别器，按竞技场规则由更深的 child 胜出，链接点击不受影响。
 - 菜单项顺序与 `AiMessageActionBar` 一致：
 
   | 项 | 图标 | 出现条件 | 启用条件 | 动作 |
   |----|------|----------|----------|------|
-  | 重试 | `Icons.refresh_rounded` | `deliveryFailed` | 始终 | `widget.onRetryFailedMessage!(ai.id)` |
+  | 重试 | `Icons.refresh_rounded` | `deliveryFailed && onRetryFailedMessage != null` | 始终 | `widget.onRetryFailedMessage!(ai.id)` |
   | 复制 | `Icons.copy_rounded` | 始终 | `plainTextForCopy(ai).isNotEmpty` | `Clipboard.setData` + `AppToast`(`ai.messageCopied`) |
-  | 编辑 | `Icons.edit_outlined` | 纯文本用户消息且可编辑 | `rewindEnabled` | `_openMobileEdit(ai)` |
-  | 从此 fork | `Icons.call_split` | `onFork != null` | `rewindEnabled` | `widget.onForkFrom(version.commit)` |
+  | 编辑 | `Icons.edit_outlined` | `role == user && _isPureText(ai) && version != null && onEditUserMessage != null` | `rewindEnabled` | `_openMobileEdit(ai)` |
+  | 从此 fork | `Icons.call_split` | `version != null && onForkFrom != null` | `rewindEnabled` | `widget.onForkFrom(version.commit)` |
   | 上一版本 / 下一版本 | `Icons.chevron_left/right` | `showsVersion` | `rewindEnabled` | `widget.onSwitchVersion(previous/next)` |
   | 导出 Markdown | `Icons.description_outlined` | 始终 | `markdownForExport(ai).isNotEmpty` | `Clipboard.setData` + `AppToast`(`ai.messageCopied`) |
 
@@ -89,17 +89,18 @@ SelectionContainer.disabled
 
 ### 阶段二：点击编辑 + 遮罩
 
-**触发**：仅 `ai.role == AiRole.user`、纯文本、`version != null`、`widget.onEditUserMessage != null` 且 `rewindEnabled` 时，给同一个 `GestureDetector` 加 `onTap: () => unawaited(_openMobileEdit(ai))`。长按与点击由两个识别器处理，长按胜出时 tap 被拒，不会误触。
+**触发**：仅 `ai.role == AiRole.user`、`_isPureText(ai)`、`version != null`、`widget.onEditUserMessage != null` 时，给同一个 `GestureDetector` 加 `onTap: () => unawaited(_openMobileEdit(ai))`；`rewindEnabled` 在点击发生时读 `AiMessageInteractionScope.maybeRewindEnabled(context)`，为 false 时忽略点击（与按钮行的禁用一致）。长按与点击由两个识别器处理，长按胜出时 tap 被拒，不会误触。
 
-三个编辑入口统一走 `_openMobileEdit(ai)`：点击气泡、长按菜单的「编辑」项、以及移动端可见的 action bar 编辑图标（`AiMessageView.onEdit` 在 mobile 下改为调用 `_openMobileEdit`）。
+三个移动端编辑入口统一走 `_openMobileEdit(ai)`：点击气泡、长按菜单的「编辑」项、以及移动端可见的 action bar 编辑图标。为此 `AiMessageView.onEdit` 改为 `mobile ? () => unawaited(_openMobileEdit(ai)) : () => _edit.openEditor(ai.id)`；桌面端仍走原来的行内编辑器。
 
 **流程**：
 
+0. 若 `_edit.editingMessageId == ai.id`（已处于该消息编辑态）直接返回 —— action bar 编辑图标与气泡 tap 可能同帧触发，避免重复弹面板。
 1. `_edit.openEditor(ai.id)` → 置 `editingMessageId`，驱动遮罩
 2. `await showChatMessageEditSheet(...)`
 3. 返回非 `true` 且 `_edit.editingMessageId == ai.id` → `_edit.cancelEdit()`
 
-**面板**：`showModalBottomSheet<bool>`，`isScrollControlled: true`、`barrierColor: Colors.transparent`（barrier 仍拦截点击，遮罩由逐消息 `Opacity` 承担）；面板自身不透明背景覆盖底部输入框位置，因此**不需要**改 `SessionChatView` 去隐藏 composer。
+**面板**：`showModalBottomSheet<bool>`，`isScrollControlled: true`、`barrierColor: Colors.transparent`（barrier 仍拦截点击，遮罩由逐消息 `Opacity` 承担）、`backgroundColor` 显式取主题 surface 保证不透明。面板不透明背景覆盖底部输入框位置，因此**不需要**改 `SessionChatView` 去隐藏 composer；若实测面板高度不足仍有露出，再在 `SessionChatView` 用 `ListenableBuilder` 监听 `branchEditFor(sessionId)` 隐藏 composer（当前不做）。
 
 `_MobileMessageEditPanel` 内容：
 
@@ -108,7 +109,7 @@ SelectionContainer.disabled
 - 底行：取消（`l10n.edit.cancel`）/ 发送（`l10n.edit.send`）
 - 发送 → `await onSubmit(text.trim())`；成功 `Navigator.pop(context, true)`；失败保持面板并保留草稿
 - X / 取消 / barrier / 下拉关闭 → `Navigator.pop(context, false)`
-- 面板底部 `Padding` 取 `MediaQuery.viewInsetsOf(context).bottom`，保证键盘弹起时面板贴在键盘上方
+- 键盘弹起时面板随之上移由 `isScrollControlled: true` 的 viewInsets 处理（必要时在面板内补 `MediaQuery.viewInsetsOf(context).bottom` padding），保证面板贴在键盘上方
 
 **提交**：把现有 `session_history_thread.dart:1331-1350` 抽为 `Future<bool> _submitEdit(AiMessage message, String text)`，供桌面端 `AiMessageView.onSubmitEdit` 与移动端面板共用。逻辑不变：`_edit.begin(messageId, text, visibleMessageIds)` → `widget.onEditUserMessage(message.id, text)` → `_edit.finish(accepted, messageId)`。
 
@@ -148,7 +149,7 @@ SelectionContainer.disabled
    - `TextField` 预填原文；发送成功返回 true 并关闭；发送失败保持打开且草稿不变。
    - 取消 / X 返回 false。
 3. `client/test/pages/chat/session_history_thread_test.dart`（扩充，harness 已支持 `mobilePerformanceMode`）：
-   - `mobilePerformanceMode: true` 下长按气泡弹出菜单。
+   - `mobilePerformanceMode: true` 下长按气泡弹出菜单，且系统文字选择工具栏不出现。
    - `mobilePerformanceMode: true` 下点击用户气泡弹出编辑面板，且其它消息带 `Opacity`、被点消息不带。
    - `mobilePerformanceMode: false` 下不附加 `GestureDetector`（`SelectionContainer.disabled` 包装不存在）。
 4. 完成前按 `AGENTS.md`：`cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && dart run tool/run_tests.dart`（全量在后台跑一次）。内环用 `flutter analyze` + 单文件 `--plain-name` 验证，外环全量一次。
