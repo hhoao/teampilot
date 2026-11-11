@@ -28,6 +28,22 @@ class MarkdownStrings {
         .dependOnInheritedWidgetOfExactType<MarkdownStringsScope>()!
         .strings;
   }
+
+  /// Value equality so callers that rebuild the string bundle every frame can
+  /// still reuse cached markdown subtrees.
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is MarkdownStrings &&
+        other.copy == copy &&
+        other.copied == copied &&
+        other.code == code &&
+        other.showMore == showMore &&
+        other.showLess == showLess;
+  }
+
+  @override
+  int get hashCode => Object.hash(copy, copied, code, showMore, showLess);
 }
 
 /// Provides [MarkdownStrings] to descendant markdown chrome (e.g. code copy).

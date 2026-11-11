@@ -165,6 +165,80 @@ void main() {
     expect(find.text('c19-a'), findsOneWidget); // full table visible
   });
 
+  testWidgets(
+    'unchanged message reuses its markdown subtree across parent rebuilds',
+    (tester) async {
+      final message = AiMessage(
+        id: 'memo-1',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'hello **world**\n\nsecond paragraph')],
+      );
+      final hostKey = GlobalKey<_RebuildHostState>();
+
+      await tester.pumpWidget(
+        wrap(
+          _RebuildHost(
+            key: hostKey,
+            builder: (_) => AiMessageView(message: message, showActionBar: false),
+          ),
+          history: false,
+        ),
+      );
+
+      final first = tester.widget<MarkdownView>(find.byType(MarkdownView));
+
+      // Force a full parent rebuild while every input stays identical.
+      hostKey.currentState!.rebuild();
+      await tester.pump();
+
+      final second = tester.widget<MarkdownView>(find.byType(MarkdownView));
+      expect(
+        identical(first, second),
+        isTrue,
+        reason:
+            'unchanged message must reuse its MarkdownView instance so the '
+            'whole block subtree short-circuits',
+      );
+    },
+  );
+
+  testWidgets('changed text still rebuilds the markdown subtree', (
+    tester,
+  ) async {
+    var text = 'first version';
+    final hostKey = GlobalKey<_RebuildHostState>();
+
+    await tester.pumpWidget(
+      wrap(
+        _RebuildHost(
+          key: hostKey,
+          builder: (_) => AiMessageView(
+            message: AiMessage(
+              id: 'memo-2',
+              role: AiRole.assistant,
+              parts: [AiTextPart(text: text)],
+            ),
+            showActionBar: false,
+          ),
+        ),
+        history: false,
+      ),
+    );
+
+    final first = tester.widget<MarkdownView>(find.byType(MarkdownView));
+
+    text = 'second version';
+    hostKey.currentState!.rebuild();
+    await tester.pump();
+
+    final second = tester.widget<MarkdownView>(find.byType(MarkdownView));
+    expect(
+      identical(first, second),
+      isFalse,
+      reason: 'memoization must not survive a document change',
+    );
+  });
+
   testWidgets('without history scope content is fully expanded', (tester) async {
     final message = AiMessage(
       id: 'a1',
@@ -182,4 +256,21 @@ void main() {
     expect(find.byIcon(Icons.expand_more), findsNothing);
     expect(find.text('c11-a'), findsOneWidget);
   });
+}
+
+/// Host that can force a rebuild of its subtree while keeping inputs stable.
+class _RebuildHost extends StatefulWidget {
+  const _RebuildHost({required this.builder, super.key});
+
+  final WidgetBuilder builder;
+
+  @override
+  State<_RebuildHost> createState() => _RebuildHostState();
+}
+
+class _RebuildHostState extends State<_RebuildHost> {
+  void rebuild() => setState(() {});
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context);
 }
