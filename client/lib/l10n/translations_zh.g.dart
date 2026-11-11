@@ -3287,6 +3287,9 @@ class _AppLocalizations$sshProfile$zh extends AppLocalizations$sshProfile$en {
 	@override String get delete => '删除';
 	@override String get disconnect => '断开';
 	@override String get edit => '编辑';
+	@override String get formAuthChangeBody => '保存后会清除该目标另一种认证方式已保存的凭据。';
+	@override String get formAuthChangeConfirm => '切换并保存';
+	@override String get formAuthChangeTitle => '切换认证方式？';
 	@override String get formAuthPrivateKey => '私钥';
 	@override String get formAuthType => '认证方式';
 	@override String get formCredentialRequired => '请提供私钥或密码。';
@@ -6488,6 +6491,9 @@ extension on AppLocalizationsZh {
 			'sshProfile.delete' => '删除',
 			'sshProfile.disconnect' => '断开',
 			'sshProfile.edit' => '编辑',
+			'sshProfile.formAuthChangeBody' => '保存后会清除该目标另一种认证方式已保存的凭据。',
+			'sshProfile.formAuthChangeConfirm' => '切换并保存',
+			'sshProfile.formAuthChangeTitle' => '切换认证方式？',
 			'sshProfile.formAuthPrivateKey' => '私钥',
 			'sshProfile.formAuthType' => '认证方式',
 			'sshProfile.formCredentialRequired' => '请提供私钥或密码。',
@@ -6510,11 +6516,11 @@ extension on AppLocalizationsZh {
 			'sshProfile.formPort' => '端口',
 			'sshProfile.formPortInvalid' => '端口须在 1–65535 之间',
 			'sshProfile.formTitleEdit' => '编辑 SSH 目标',
+			_ => null,
+		} ?? switch (path) {
 			'sshProfile.formTitleNew' => '新的 SSH 目标',
 			'sshProfile.formUsername' => '用户名',
 			'sshProfile.formUsernameHint' => 'deploy',
-			_ => null,
-		} ?? switch (path) {
 			'sshProfile.refresh' => '刷新',
 			'sshProfile.selectorManage' => '管理 SSH 服务器…',
 			'sshProfile.selectorTooltip' => '切换 SSH 服务器',
@@ -7024,11 +7030,11 @@ extension on AppLocalizationsZh {
 			'worktree.branchLabel' => '分支名',
 			'worktree.createAction' => '创建',
 			'worktree.createFailed' => ({required Object error}) => '创建 worktree 失败：${error}',
+			_ => null,
+		} ?? switch (path) {
 			'worktree.createTitle' => '新建 worktree',
 			'worktree.creating' => '正在创建…',
 			'worktree.deleteAction' => '删除',
-			_ => null,
-		} ?? switch (path) {
 			'worktree.deleteBody' => ({required Object branch}) => '删除 ${branch} 的 worktree？',
 			'worktree.deleteBranchToo' => '同时删除分支',
 			'worktree.deleteBusyWarning' => '请先停止该 worktree 下正在运行的会话，再删除。',

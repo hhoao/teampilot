@@ -164,8 +164,52 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     _formKey.currentState?.setFieldValue('privateKey', text);
   }
 
+  Future<bool> _confirmAuthTypeChange() async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => TpDialog(
+        maxWidth: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TpDialogHeader(title: l10n.sshProfile.formAuthChangeTitle),
+            const SizedBox(height: 12),
+            Text(l10n.sshProfile.formAuthChangeBody),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  key: const ValueKey('ssh-auth-change-cancel'),
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(l10n.cancel),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  key: const ValueKey('ssh-auth-change-confirm'),
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: Text(l10n.sshProfile.formAuthChangeConfirm),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    return confirmed ?? false;
+  }
+
   Future<SshProfile?> _save({required bool notify}) async {
     if (_formKey.currentState?.validate() != true) return null;
+    if (_isEditing && _authType != widget.initialProfile!.authType) {
+      final confirmed = await _confirmAuthTypeChange();
+      if (!confirmed || !mounted) return null;
+    }
+    // The confirmation runs while this dialog is still idle: the save spinner
+    // animates forever otherwise, so it starts only once the write begins.
+    setState(() => _saving = true);
     final profile = _buildProfile();
     if (!_isEditing) {
       final missingCredential = _authType == SshAuthType.password
@@ -298,7 +342,6 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
   }
 
   Future<void> _submit() async {
-    setState(() => _saving = true);
     try {
       await _save(notify: true);
     } on Object catch (error) {

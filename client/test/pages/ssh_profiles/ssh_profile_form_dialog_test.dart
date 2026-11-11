@@ -378,4 +378,45 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
   });
+
+  testWidgets('switching auth mode on edit requires confirmation', (
+    tester,
+  ) async {
+    final h = await pumpEditor(tester, profile: _target);
+    await VaultCredentialCapture(vault: h.vault).captureSsh(
+      _target,
+      password: 'old-pass',
+    );
+    const pem =
+        '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n'
+        '-----END OPENSSH PRIVATE KEY-----';
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('ssh-auth-type')),
+        matching: find.text('Private key'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(4), pem);
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Switch authentication?'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('ssh-auth-change-cancel')));
+    await tester.pumpAndSettle();
+    expect(h.planeRepository.saves, isEmpty);
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('ssh-auth-change-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(h.planeRepository.saves, hasLength(1));
+    expect(h.planeRepository.saves.single.authType, SshAuthType.privateKey);
+    final entryId = h.planeRepository.saves.single.vaultEntryId!;
+    expect(await h.vault.readField(entryId, 'privateKey'), pem);
+    expect(await h.vault.readField(entryId, 'password'), isNull);
+  });
 }

@@ -8367,6 +8367,15 @@ class AppLocalizations$sshProfile$en {
 	/// en: 'Edit'
 	String get edit => 'Edit';
 
+	/// en: 'Saving will remove the credential stored for the other authentication method.'
+	String get formAuthChangeBody => 'Saving will remove the credential stored for the other authentication method.';
+
+	/// en: 'Switch and save'
+	String get formAuthChangeConfirm => 'Switch and save';
+
+	/// en: 'Switch authentication?'
+	String get formAuthChangeTitle => 'Switch authentication?';
+
 	/// en: 'Private key'
 	String get formAuthPrivateKey => 'Private key';
 
@@ -12676,6 +12685,9 @@ extension on AppLocalizations {
 			'sshProfile.delete' => 'Delete',
 			'sshProfile.disconnect' => 'Disconnect',
 			'sshProfile.edit' => 'Edit',
+			'sshProfile.formAuthChangeBody' => 'Saving will remove the credential stored for the other authentication method.',
+			'sshProfile.formAuthChangeConfirm' => 'Switch and save',
+			'sshProfile.formAuthChangeTitle' => 'Switch authentication?',
 			'sshProfile.formAuthPrivateKey' => 'Private key',
 			'sshProfile.formAuthType' => 'Authentication',
 			'sshProfile.formCredentialRequired' => 'Provide a private key or password.',
@@ -12698,11 +12710,11 @@ extension on AppLocalizations {
 			'sshProfile.formPort' => 'Port',
 			'sshProfile.formPortInvalid' => 'Port must be between 1 and 65535',
 			'sshProfile.formTitleEdit' => 'Edit SSH target',
+			_ => null,
+		} ?? switch (path) {
 			'sshProfile.formTitleNew' => 'New SSH target',
 			'sshProfile.formUsername' => 'Username',
 			'sshProfile.formUsernameHint' => 'deploy',
-			_ => null,
-		} ?? switch (path) {
 			'sshProfile.refresh' => 'Refresh',
 			'sshProfile.selectorManage' => 'Manage SSH servers…',
 			'sshProfile.selectorTooltip' => 'Switch SSH server',
@@ -13212,11 +13224,11 @@ extension on AppLocalizations {
 			'worktree.branchLabel' => 'Branch name',
 			'worktree.createAction' => 'Create',
 			'worktree.createFailed' => ({required Object error}) => 'Failed to create worktree: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'worktree.createTitle' => 'New worktree',
 			'worktree.creating' => 'Creating…',
 			'worktree.deleteAction' => 'Remove',
-			_ => null,
-		} ?? switch (path) {
 			'worktree.deleteBody' => ({required Object branch}) => 'Remove the worktree for ${branch}?',
 			'worktree.deleteBranchToo' => 'Also delete the branch',
 			'worktree.deleteBusyWarning' => 'Stop the running conversations in this worktree before removing it.',
