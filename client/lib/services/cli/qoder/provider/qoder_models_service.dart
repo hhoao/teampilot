@@ -131,11 +131,12 @@ class QoderModelsService {
     this.probeTimeout = const Duration(seconds: 20),
     this.machineHome,
     this.namespace = 'qoder',
+    this.configDirEnvKey = 'QODER_CONFIG_DIR',
     this.useMachineAuthFallback = true,
   }) : _storage = storage,
        _fsOverride = fs,
        _basePathOverride = basePath?.trim(),
-       _opener = opener ?? _defaultOpener;
+       _opener = opener;
 
   static const _globalCacheKey = '_global';
 
@@ -143,7 +144,7 @@ class QoderModelsService {
   final Filesystem? _fsOverride;
   final String? _basePathOverride;
   final String executable;
-  final QoderAcpModelsOpener _opener;
+  final QoderAcpModelsOpener? _opener;
   final Duration cacheTtl;
   final Duration probeTimeout;
 
@@ -152,6 +153,10 @@ class QoderModelsService {
 
   /// Auth/temp/cache segment for this build (`qoder` vs `qoder-cn`).
   final String namespace;
+
+  /// Env var the binary reads for its config dir (`QODER_CONFIG_DIR` or
+  /// `QODERCN_CONFIG_DIR`).
+  final String configDirEnvKey;
 
   /// Whether an unconfigured provider may probe from `~/.qoder/.auth`.
   final bool useMachineAuthFallback;
@@ -272,7 +277,8 @@ class QoderModelsService {
         : (this.executable.trim().isEmpty
               ? 'qodercli'
               : this.executable.trim());
-    final snapshot = await _opener(
+    final open = _opener ?? _defaultOpener;
+    final snapshot = await open(
       executable: resolved,
       configDir: configDir,
       timeout: probeTimeout,
@@ -352,7 +358,14 @@ class QoderModelsService {
     await roots.fs.writeString(path, jsonEncode(entry.toJson()));
   }
 
-  static Future<QoderModelsSnapshot?> _defaultOpener({
+  @visibleForTesting
+  static Map<String, String> probeEnvironment({
+    required Map<String, String> base,
+    required String configDir,
+    required String configDirEnvKey,
+  }) => {...base, configDirEnvKey: configDir};
+
+  Future<QoderModelsSnapshot?> _defaultOpener({
     required String executable,
     required String configDir,
     required Duration timeout,
@@ -363,7 +376,11 @@ class QoderModelsService {
       process = await Process.start(
         executable,
         const ['--acp'],
-        environment: {...Platform.environment, 'QODER_CONFIG_DIR': configDir},
+        environment: probeEnvironment(
+          base: Platform.environment,
+          configDir: configDir,
+          configDirEnvKey: configDirEnvKey,
+        ),
         workingDirectory: configDir,
       );
       process.stderr.drain<void>();

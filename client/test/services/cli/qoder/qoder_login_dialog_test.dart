@@ -7,6 +7,7 @@ void main() {
       final env = qoderLoginEnvironment(
         home: '/data/cli-login/qoder/work/home',
         configDir: '/data/cli-login/qoder/work/config',
+        configDirEnvKey: 'QODER_CONFIG_DIR',
         base: const {'PATH': '/usr/bin', 'HOME': '/home/user'},
       );
       expect(env['PATH'], '/usr/bin');
@@ -17,10 +18,23 @@ void main() {
       expect(env.containsKey('USERPROFILE'), isFalse);
     });
 
+    test('CN isolates HOME and QODERCN_CONFIG_DIR, not the global key', () {
+      final env = qoderLoginEnvironment(
+        home: '/data/cli-login/qoder-cn/work/home',
+        configDir: '/data/cli-login/qoder-cn/work/config',
+        configDirEnvKey: 'QODERCN_CONFIG_DIR',
+        base: const {'HOME': '/home/user'},
+      );
+      expect(env['HOME'], '/data/cli-login/qoder-cn/work/home');
+      expect(env['QODERCN_CONFIG_DIR'], '/data/cli-login/qoder-cn/work/config');
+      expect(env.containsKey('QODER_CONFIG_DIR'), isFalse);
+    });
+
     test('also isolates USERPROFILE on Windows', () {
       final env = qoderLoginEnvironment(
         home: 'C:/data/cli-login/qoder/work/home',
         configDir: 'C:/data/cli-login/qoder/work/config',
+        configDirEnvKey: 'QODER_CONFIG_DIR',
         base: const {'USERPROFILE': r'C:\Users\user'},
         isWindows: true,
       );
@@ -31,6 +45,7 @@ void main() {
       final env = qoderLoginEnvironment(
         home: '/data/cli-login/qoder/work/home',
         configDir: '/data/cli-login/qoder/work/config',
+        configDirEnvKey: 'QODER_CONFIG_DIR',
         base: const {'HOME': '/home/user'},
       );
       expect(env.values.where((value) => value.contains('.qoder')), isEmpty);

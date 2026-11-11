@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/qoder/provider/qoder_auth_store.dart';
 import 'package:teampilot/services/cli/qoder/provider/qoder_models_service.dart';
+import 'package:teampilot/services/cli/qoder/qoder_flavor.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 
@@ -24,6 +25,16 @@ void main() {
       p.join(dir, QoderAuthStore.machineIdFileName),
       'MACHINE',
     );
+  });
+
+  test('CN probe uses QODERCN_CONFIG_DIR', () {
+    final env = QoderModelsService.probeEnvironment(
+      base: const {'PATH': '/usr/bin'},
+      configDir: '/tmp/cn-models',
+      configDirEnvKey: QoderFlavor.cn.configDirEnvKey,
+    );
+    expect(env['QODERCN_CONFIG_DIR'], '/tmp/cn-models');
+    expect(env.containsKey('QODER_CONFIG_DIR'), isFalse);
   });
 
   test('fetches, caches and exposes the account models', () async {

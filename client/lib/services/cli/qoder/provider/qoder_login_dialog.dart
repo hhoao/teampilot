@@ -17,13 +17,14 @@ import 'qoder_auth_store.dart';
 Map<String, String> qoderLoginEnvironment({
   required String home,
   required String configDir,
+  required String configDirEnvKey,
   Map<String, String>? base,
   bool isWindows = false,
 }) => {
   ...?base,
   'HOME': home,
   if (isWindows) 'USERPROFILE': home,
-  'QODER_CONFIG_DIR': configDir,
+  configDirEnvKey: configDir,
   'TERM': 'xterm-256color',
   'COLORTERM': 'truecolor',
 };
@@ -33,15 +34,15 @@ Map<String, String> qoderLoginEnvironment({
 /// Unlike the CodeBuddy TUI there is no slash command to drive: `login` is a
 /// real subcommand that starts the browser flow on its own, so the dialog only
 /// shows the PTY. The CLI runs with a **per-provider isolated `HOME` and
-/// `QODER_CONFIG_DIR`** so credentials land in TeamPilot's login store rather
-/// than the user's global `~/.qoder`. "Done" reports success back to the
-/// provider action bar, which copies `<QODER_CONFIG_DIR>/.auth` into the
-/// provider store.
+/// config dir** so credentials land in TeamPilot's login store rather than
+/// the user's global store. "Done" reports success back to the provider
+/// action bar, which copies `<configDir>/.auth` into the provider store.
 class QoderLoginDialog extends StatefulWidget {
   const QoderLoginDialog({
     required this.executable,
     required this.store,
     required this.providerId,
+    required this.configDirEnvKey,
     this.arguments = const [],
     super.key,
   });
@@ -49,6 +50,7 @@ class QoderLoginDialog extends StatefulWidget {
   final String executable;
   final QoderAuthStore store;
   final String providerId;
+  final String configDirEnvKey;
   final List<String> arguments;
 
   @override
@@ -101,6 +103,7 @@ class _QoderLoginDialogState extends State<QoderLoginDialog> {
         environment: qoderLoginEnvironment(
           home: home,
           configDir: configDir,
+          configDirEnvKey: widget.configDirEnvKey,
           base: Platform.environment,
           isWindows: Platform.isWindows,
         ),

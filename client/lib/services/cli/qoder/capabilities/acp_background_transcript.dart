@@ -6,7 +6,7 @@ import '../../claude/capabilities/history/compatible_jsonl.dart';
 /// Incremental reader for a Qoder CLI session transcript.
 ///
 /// Qoder writes the same `projects/<bucket>/<id>.jsonl` shape as the Claude
-/// Code family, under `QODER_CONFIG_DIR` (the ACP session's isolated
+/// Code family, under the ACP session's isolated config dir (
 /// `sessionToolDir`). The ACP wire goes silent after `end_turn`, so this is
 /// the only way the app notices that a background task finished and the agent
 /// resumed the conversation on its own.

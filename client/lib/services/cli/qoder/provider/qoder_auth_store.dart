@@ -8,7 +8,7 @@ import '../../../io/filesystem.dart';
 
 /// Qoder credential isolation.
 ///
-/// `qodercli` keeps its login inside `<QODER_CONFIG_DIR>/.auth`
+/// `qodercli` keeps its login inside `<configDir>/.auth`
 /// (`user` + `machine_id`), so a fresh session config dir cannot
 /// authenticate. TeamPilot runs the login with an isolated HOME/config and
 /// copies both files into a per-provider store; each session config dir is

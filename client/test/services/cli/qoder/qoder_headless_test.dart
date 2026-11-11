@@ -60,13 +60,16 @@ void main() {
     test('pins QODER_CONFIG_DIR and nothing else', () {
       const cap = QoderHeadlessCapability();
       expect(cap.buildEnvironment(_run()), {
-        QoderHeadlessCapability.configDirEnvKey: _configDir,
+        QoderFlavor.global.configDirEnvKey: _configDir,
       });
     });
 
-    test('CN headless runs qoderclicn', () {
+    test('CN headless runs qoderclicn and pins QODERCN_CONFIG_DIR', () {
       const cap = QoderHeadlessCapability(flavor: QoderFlavor.cn);
       expect(cap.executable, 'qoderclicn');
+      expect(cap.buildEnvironment(_run()), {
+        QoderFlavor.cn.configDirEnvKey: _configDir,
+      });
     });
   });
 

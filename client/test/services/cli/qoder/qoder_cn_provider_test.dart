@@ -78,9 +78,13 @@ void main() {
       ),
     );
 
-    final configDir =
-        contribution.environment[QoderProviderCapability.configDirEnvKey]!;
+    final configDir = contribution.environment[QoderFlavor.cn.configDirEnvKey]!;
     expect(configDir, contains('/runtime/qoder-cn'));
+    expect(
+      contribution.environment.containsKey('QODER_CONFIG_DIR'),
+      isFalse,
+      reason: 'the CN build ignores the global config-dir env key',
+    );
     expect(
       await fs.readString(p.posix.join(configDir, '.auth', 'user')),
       'CNUSER',

@@ -10,6 +10,7 @@ import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/chat/launch/staging/manifest/launch_manifest.dart';
 import 'package:teampilot/services/chat/launch/staging/manifest/manifest_filesystem.dart';
 import 'package:teampilot/services/cli/qoder/capabilities/provider.dart';
+import 'package:teampilot/services/cli/qoder/qoder_flavor.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -63,7 +64,7 @@ void main() {
     );
 
     final configDir =
-        contribution.environment[QoderProviderCapability.configDirEnvKey]!;
+        contribution.environment[QoderFlavor.global.configDirEnvKey]!;
     expect(
       await fs.readString(p.posix.join(configDir, '.auth', 'user')),
       'USER',
@@ -139,7 +140,7 @@ void main() {
     );
 
     final configDir =
-        contribution.environment[QoderProviderCapability.configDirEnvKey]!;
+        contribution.environment[QoderFlavor.global.configDirEnvKey]!;
     expect(configDir, startsWith('/remote/tp/'));
 
     final copies = manifest.entries.whereType<ManifestCopyFile>().toList();
@@ -249,7 +250,7 @@ void main() {
       'qoder',
     );
     expect(
-      contribution.environment[QoderProviderCapability.configDirEnvKey],
+      contribution.environment[QoderFlavor.global.configDirEnvKey],
       expectedDir,
     );
     final settings = await fs.readString(p.join(expectedDir, 'settings.json'));
@@ -333,7 +334,7 @@ void main() {
     );
 
     expect(
-      contribution.environment[QoderProviderCapability.configDirEnvKey],
+      contribution.environment[QoderFlavor.global.configDirEnvKey],
       configDir,
     );
     final settings =
@@ -420,7 +421,7 @@ void main() {
       );
 
       final configDir =
-          contribution.environment[QoderProviderCapability.configDirEnvKey]!;
+          contribution.environment[QoderFlavor.global.configDirEnvKey]!;
       expect(
         await homeFs.readString(p.posix.join(configDir, '.auth', 'user')),
         'WORK',

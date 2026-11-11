@@ -7,7 +7,7 @@ import '../../qoder_flavor.dart';
 
 /// Qoder native usage.
 ///
-/// `QODER_CONFIG_DIR` isolates the CLI's config dir for ACP launches, and the
+/// The flavor's config-dir env key isolates the CLI config for ACP launches, and the
 /// CLI writes its native transcripts to `<configDir>/projects/**/*.jsonl`.
 /// Each assistant response carries `message.usage` (input/output tokens plus
 /// cache read/creation) and the model it actually used. The same usage may be
@@ -23,7 +23,7 @@ final class QoderSessionUsageCapability implements SessionUsageCapability {
     UsageScanContext ctx,
   ) async {
     final path = ctx.fs.pathContext;
-    final configDir = ctx.env['QODER_CONFIG_DIR']?.trim() ?? '';
+    final configDir = ctx.env[flavor.configDirEnvKey]?.trim() ?? '';
     final roots = <String>{
       if (configDir.isNotEmpty) configDir,
       if (configDir.isEmpty) ...ctx.transcriptRoots,

@@ -61,7 +61,7 @@ final class QoderAiHistoryCapability implements AiHistoryCapability {
   @override
   Map<String, String> sessionEnv({String? toolRoot}) {
     if (toolRoot == null || toolRoot.isEmpty) return const {};
-    return {'QODER_CONFIG_DIR': toolRoot};
+    return {flavor.configDirEnvKey: toolRoot};
   }
 
   @override

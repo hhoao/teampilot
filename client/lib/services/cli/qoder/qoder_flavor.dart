@@ -15,6 +15,7 @@ final class QoderFlavor {
     required this.websiteUrl,
     required this.installUrl,
     required this.authNamespace,
+    required this.configDirEnvKey,
     required this.allowMachineAuthFallback,
   });
 
@@ -26,6 +27,11 @@ final class QoderFlavor {
   final String websiteUrl;
   final String installUrl;
   final String authNamespace;
+
+  /// Env var the binary reads for its config dir (and `.auth`). The CN build
+  /// ignores the global key.
+  final String configDirEnvKey;
+
   final bool allowMachineAuthFallback;
 
   static const global = QoderFlavor(
@@ -37,6 +43,7 @@ final class QoderFlavor {
     websiteUrl: 'https://qoder.com',
     installUrl: 'https://download.qoder.com/qodercli/install.sh',
     authNamespace: 'qoder',
+    configDirEnvKey: 'QODER_CONFIG_DIR',
     allowMachineAuthFallback: true,
   );
 
@@ -49,6 +56,7 @@ final class QoderFlavor {
     websiteUrl: 'https://qoder.com.cn',
     installUrl: 'https://qoder.com.cn/install',
     authNamespace: 'qoder-cn',
+    configDirEnvKey: 'QODERCN_CONFIG_DIR',
     allowMachineAuthFallback: false,
   );
 

@@ -16,7 +16,7 @@ import '../qoder_flavor.dart';
 
 /// Qoder one-shot via `qodercli -p`.
 ///
-/// `QODER_CONFIG_DIR` points at the one-shot temp config dir. Qoder is
+/// The flavor's config-dir env key points at the one-shot temp config dir. Qoder is
 /// account-only (no API key / base URL), so provisioning writes the model
 /// selection to `settings.json` and seeds `.auth` from the provider store or
 /// the machine login — a fresh config dir cannot authenticate on its own.
@@ -33,7 +33,6 @@ final class QoderHeadlessCapability
 
   final QoderFlavor flavor;
 
-  static const configDirEnvKey = 'QODER_CONFIG_DIR';
   static const credentialsMissingWarning = 'qoder_credentials_missing';
 
   @override
@@ -50,7 +49,7 @@ final class QoderHeadlessCapability
 
   @override
   Map<String, String> buildEnvironment(HeadlessLaunchContext context) => {
-    configDirEnvKey: context.configDir,
+    flavor.configDirEnvKey: context.configDir,
   };
 
   @override

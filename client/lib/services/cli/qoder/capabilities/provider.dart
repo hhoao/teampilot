@@ -129,7 +129,7 @@ final class _QoderCatalogSource implements ModelCatalogSource {
   );
 }
 
-/// Qoder provider stack: `settings.json` in the isolated `QODER_CONFIG_DIR`.
+/// Qoder provider stack: `settings.json` in the isolated config dir.
 /// v1 is account-only — no API key, no OpenAI-compatible endpoint.
 final class QoderProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
@@ -167,8 +167,6 @@ final class QoderProviderCapability extends CatalogModelCapability
       useMachineFallback: flavor.allowMachineAuthFallback,
     );
   }
-
-  static const configDirEnvKey = 'QODER_CONFIG_DIR';
 
   @override
   CliTool get catalogCli => flavor.cli;
@@ -409,6 +407,7 @@ final class QoderProviderCapability extends CatalogModelCapability
       arguments: loginArguments,
       store: store,
       providerId: provider.id,
+      configDirEnvKey: flavor.configDirEnvKey,
     );
   }
 
@@ -511,7 +510,7 @@ final class QoderProviderCapability extends CatalogModelCapability
         );
       }
     }
-    final environment = <String, String>{configDirEnvKey: configDir};
+    final environment = <String, String>{flavor.configDirEnvKey: configDir};
 
     final settingsPath = delegate.joinWork(configDir, 'settings.json');
     final settings = await delegate.readSettingsFile(settingsPath);

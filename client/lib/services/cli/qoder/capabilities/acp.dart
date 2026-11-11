@@ -70,16 +70,19 @@ final class QoderAcpTranslator extends AcpAgentTranslator {
 
 /// Qoder launch/env declaration.
 ///
-/// `QODER_CONFIG_DIR` isolates settings **and** `.auth`. The provider
-/// capability seeds `.auth` into `sessionToolDir`; without it `session/new`
-/// fails with auth-required, which is why no `authenticate` call is made.
+/// The flavor's config-dir env key isolates settings **and** `.auth`. The
+/// provider capability seeds `.auth` into `sessionToolDir`; without it
+/// `session/new` fails with auth-required, which is why no `authenticate`
+/// call is made.
 final class QoderAcpCapability
     implements AcpCapability, AcpBackgroundTranscriptCapability {
-  const QoderAcpCapability({this.transcriptFallbackPrefix = 'qoder'});
-
-  static const configDirEnvKey = 'QODER_CONFIG_DIR';
+  const QoderAcpCapability({
+    this.transcriptFallbackPrefix = 'qoder',
+    this.configDirEnvKey = 'QODER_CONFIG_DIR',
+  });
 
   final String transcriptFallbackPrefix;
+  final String configDirEnvKey;
 
   @override
   String agentExecutable(String cliExecutable) => cliExecutable;
@@ -129,7 +132,7 @@ final class QoderAcpCapability
     return env;
   }
 
-  /// Qoder writes `<QODER_CONFIG_DIR>/projects/<bucket>/<id>.jsonl`, the same
+  /// Qoder writes `<configDir>/projects/<bucket>/<id>.jsonl`, the same
   /// layout the Claude family uses (Qoder's CLI is Claude-compatible). The
   /// ACP session cannot replay history in place, so tailing this file is the
   /// only way to see out-of-turn work finish.

@@ -7,7 +7,7 @@ import '../../registry/member_role_provision.dart';
 import '../qoder_flavor.dart';
 
 /// Qoder reads a hierarchical `AGENTS.md` memory file (user-level one lives in
-/// `QODER_CONFIG_DIR`); the member role prompt is materialized there.
+/// the flavor's config-dir env); the member role prompt is materialized there.
 final class QoderPromptCapability
     implements PromptCapability, PromptContributionProvider {
   const QoderPromptCapability({this.flavor = QoderFlavor.global});

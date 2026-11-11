@@ -179,6 +179,7 @@ void registerBuiltInCliTools(
                 storage: storage,
                 namespace: QoderFlavor.global.authNamespace,
                 executable: QoderFlavor.global.executableName,
+                configDirEnvKey: QoderFlavor.global.configDirEnvKey,
                 useMachineAuthFallback:
                     QoderFlavor.global.allowMachineAuthFallback,
               ),
@@ -201,6 +202,7 @@ void registerBuiltInCliTools(
                 storage: storage,
                 namespace: QoderFlavor.cn.authNamespace,
                 executable: QoderFlavor.cn.executableName,
+                configDirEnvKey: QoderFlavor.cn.configDirEnvKey,
                 useMachineAuthFallback: QoderFlavor.cn.allowMachineAuthFallback,
               ),
       ),

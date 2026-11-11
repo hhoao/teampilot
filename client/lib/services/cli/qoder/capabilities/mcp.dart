@@ -4,7 +4,7 @@ import '../../registry/capabilities/mcp_capability.dart';
 import '../../registry/mcp_writers/metadata_mcp_merge.dart';
 import '../../claude/capabilities/mcp_project_cleanup.dart' as project_mcp;
 
-/// Qoder global MCP config: `<QODER_CONFIG_DIR>/mcp.json`
+/// Qoder global MCP config: `<configDir>/mcp.json`
 /// (`{"mcpServers": {…}}`), the same shape as the project `.mcp.json`.
 final class QoderMcpCapability implements McpCapability {
   const QoderMcpCapability();

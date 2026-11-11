@@ -12,10 +12,13 @@ import '../../../../../support/in_memory_filesystem.dart';
 
 const _root = '/tp/cli-defaults/qoder';
 
-UsageScanContext _ctx() => UsageScanContext(
+UsageScanContext _ctx({
+  CliTool cli = CliTool.qoder,
+  Map<String, String> env = const {'QODER_CONFIG_DIR': _root},
+}) => UsageScanContext(
   fs: InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix)),
-  cli: CliTool.qoder,
-  env: const {'QODER_CONFIG_DIR': _root},
+  cli: cli,
+  env: env,
   transcriptRoots: const [],
   taskId: 'task-1',
   nativeSessionId: 'native-1',
@@ -67,6 +70,34 @@ void main() {
     expect(sources.single.id, startsWith('qoder-jsonl:'));
     expect(sources.single.kind, UsageSourceKind.jsonl);
     expect(sources.single.path, p.join(_root, 'projects', 'proj', 's1.jsonl'));
+  });
+
+  test('CN reads the config dir from QODERCN_CONFIG_DIR', () async {
+    const root = '/tp/cli-cn';
+    final ctx = UsageScanContext(
+      fs: InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix)),
+      cli: CliTool.qoderCn,
+      env: const {'QODERCN_CONFIG_DIR': root},
+      transcriptRoots: const [],
+      taskId: 'task-1',
+      nativeSessionId: 'native-1',
+      sessionId: 's1',
+      memberId: 'dev',
+      teamId: 'team1',
+      workingDirectory: '/home/me/proj',
+      appDataRoot: '/tp',
+    );
+    await ctx.fs.writeString(
+      p.join(root, 'projects', 'proj', 's1.jsonl'),
+      '${_assistantLine()}\n',
+    );
+
+    final sources = await const QoderSessionUsageCapability(
+      flavor: QoderFlavor.cn,
+    ).discoverUsageSources(ctx);
+
+    expect(sources, hasLength(1));
+    expect(sources.single.id, startsWith('qoder-cn-jsonl:'));
   });
 
   test('ignores non-JSONL files and a missing projects dir', () async {
@@ -229,7 +260,10 @@ void main() {
   });
 
   test('tags CN scans with the CN cli and request prefix', () async {
-    final ctx = _ctx();
+    final ctx = _ctx(
+      cli: CliTool.qoderCn,
+      env: const {'QODERCN_CONFIG_DIR': _root},
+    );
     const capability = QoderSessionUsageCapability(flavor: QoderFlavor.cn);
     final path = p.join(_root, 'projects', 'proj', 'cn.jsonl');
     await ctx.fs.writeString(path, '${_assistantLine()}\n');

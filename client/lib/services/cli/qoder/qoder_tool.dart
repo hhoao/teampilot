@@ -96,7 +96,10 @@ final class QoderCliTool implements CliToolDefinition {
        headless = headless ?? QoderHeadlessCapability(flavor: flavor),
        acp =
            acp ??
-           QoderAcpCapability(transcriptFallbackPrefix: flavor.cli.value),
+           QoderAcpCapability(
+             transcriptFallbackPrefix: flavor.cli.value,
+             configDirEnvKey: flavor.configDirEnvKey,
+           ),
        acpSettings = acpSettings,
        transport = transport;
 
@@ -161,5 +164,5 @@ final class QoderCliTool implements CliToolDefinition {
 
 CliExecutableCapability qoderExecutableForFlavor(QoderFlavor flavor) =>
     flavor.isCn
-        ? const QoderCnExecutableCapability()
-        : const QoderExecutableCapability();
+    ? const QoderCnExecutableCapability()
+    : const QoderExecutableCapability();
