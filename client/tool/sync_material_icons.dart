@@ -165,7 +165,10 @@ int _copySvgs({
 
   final names = sources.keys.toList()..sort();
   for (final name in names) {
-    File(sources[name]!).copySync('${targetDir.path}/$name.svg');
+    // Write bytes rather than copying the file so the source package's
+    // permission bits don't leak into the repo.
+    final dst = File('${targetDir.path}/$name.svg');
+    dst.writeAsBytesSync(File(sources[name]!).readAsBytesSync());
   }
   return names.length;
 }
