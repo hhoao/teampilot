@@ -26,7 +26,8 @@
 ## 非目标
 
 - 不改 `SshProfile` / `SshAuthType` 模型、JSON 格式或保险库写入契约。
-- 不改新建目标时“密码模式可留空密码”的现有行为。
+- 新建目标必须提供密码或私钥：密码模式空密码、私钥模式空私钥都提示
+  `formCredentialRequired`（沿用改造前的实际约束；原表述“密码可留空”有误，按此更正）。
 - 不新增「高级」折叠；B 方案的按模式条件渲染已经达到“默认不显示私钥/口令”的效果。
 - 不做跳板服务器（另立 spec）。
 - 不改 SSH 列表页的认证方式展示（`ssh_profiles_page.dart`）。
@@ -73,7 +74,9 @@
   - `_save()` 的 `usesPassword`
   - `_testConnection()` 的 `usesPassword`
 - 密码字段不再需要 `onChanged: () => setState(() {})`，移除。
-- 新建 + 私钥模式且私钥为空：保留现有 `formCredentialRequired` 提示。
+- 新建 + 任一模式凭据为空：提示 `formCredentialRequired` 并中止保存：
+  密码模式看 `_passwordController.text.isEmpty`，私钥模式看
+  `_privateKeyController.text.trim().isEmpty`。
 - 编辑 + 私钥模式且私钥为空：沿用现有语义（`null` = 保留已存私钥）。
 - 切换模式不主动清空控制器；写入器在保存时按模式丢弃另一侧值。
 
@@ -147,6 +150,7 @@
 2. 编辑密码认证目标时「密码」段选中；编辑私钥认证目标时「私钥」段选中。
 3. 编辑态切换认证方式后点保存 → 出现确认弹窗；取消不写库；
    确认写入新 `authType` 且旧凭据被清除（读 vault 断言）。
+4. 新建目标：密码模式空密码、私钥模式空私钥都保存失败（不写库）。
 
 ## 风险
 

@@ -15,7 +15,7 @@
 - 工作区可能有其它会话的并发改动：每个任务只用 `git commit -- <本任务文件>` 提交，禁止 `git add -A` / `git commit -a`。
 - `dart run slang` 会重写整个 `translations_*.g.dart`；提交前必须 `git diff` 确认 diff 只含本次 sshProfile 的键，若混入其它命名空间说明有并发改动，先停下核对。
 - 不改 `SshProfile` / `SshAuthType` 模型、JSON 或保险库写入契约。
-- 新建目标时密码可留空的现有行为保持不变。
+- 新建目标必须提供密码或私钥：任一模式凭据为空都提示 `formCredentialRequired` 并中止保存。
 
 ---
 
@@ -33,7 +33,7 @@
   分段控件 key `const ValueKey('ssh-auth-type')`；l10n `sshProfile.formAuthType` / `sshProfile.formAuthPrivateKey`。
 - Consumes: `SshAuthType`（`models/ssh_profile.dart` 已导出）、`TpSegmentedControl` / `TpFormFieldLayout`（`package:shared_ui/shared_ui.dart`，文件已 import）。
 
-- [ ] **Step 1: 写失败测试（新增 2 个 + 改造现有 4 个）**
+- [ ] **Step 1: 写失败测试（新增 4 个 + 改造现有 4 个）**
 
 在 `client/test/pages/ssh_profiles/ssh_profile_form_dialog_test.dart` 的 `main()` 末尾、最后一个用例之后加入：
 
@@ -85,6 +85,33 @@
 
     expect(find.text('Leave empty to keep saved password'), findsOneWidget);
     expect(find.text('-----BEGIN OPENSSH PRIVATE KEY-----'), findsNothing);
+  });
+
+  testWidgets('creating a password target requires a password', (tester) async {
+    final h = await pumpEditor(tester);
+    await tester.enterText(find.byType(TextField).at(1), 'example.com');
+
+    await tester.tap(find.text('Add target'));
+    await tester.pumpAndSettle();
+
+    expect(h.planeRepository.saves, isEmpty);
+  });
+
+  testWidgets('creating a private-key target requires a key', (tester) async {
+    final h = await pumpEditor(tester);
+    await tester.enterText(find.byType(TextField).at(1), 'example.com');
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('ssh-auth-type')),
+        matching: find.text('Private key'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Add target'));
+    await tester.pumpAndSettle();
+
+    expect(h.planeRepository.saves, isEmpty);
   });
 ```
 
@@ -219,6 +246,24 @@ Expected: `translations_en.g.dart` / `translations_zh.g.dart` 重新生成，新
 
 ```dart
       final usesPassword = _authType == SshAuthType.password;
+```
+
+`_save()` 的新建目标凭据守卫也引用了 `_usesPasswordAuth`，一并改为按模式判断：
+
+```dart
+    if (!_isEditing) {
+      final missingCredential = _authType == SshAuthType.password
+          ? _passwordController.text.isEmpty
+          : _privateKeyController.text.trim().isEmpty;
+      if (missingCredential) {
+        AppToast.show(
+          context,
+          message: context.l10n.sshProfile.formCredentialRequired,
+          variant: TpToastVariant.warning,
+        );
+        return null;
+      }
+    }
 ```
 
 - [ ] **Step 5: 改 build 的凭据区**
