@@ -336,7 +336,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Leave empty to keep saved password'), findsOneWidget);
+    // Switching modes means no stored password applies, so the hint is the
+    // plain one rather than "leave empty to keep saved password".
+    expect(find.text('Login password'), findsOneWidget);
+    expect(find.text('Leave empty to keep saved password'), findsNothing);
     expect(find.text('-----BEGIN OPENSSH PRIVATE KEY-----'), findsNothing);
   });
 
@@ -403,6 +406,12 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.text('Switch authentication?'), findsOneWidget);
+    expect(
+      find.text(
+        'Saving will remove the credential stored for the other authentication method.',
+      ),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const ValueKey('ssh-auth-change-cancel')));
     await tester.pumpAndSettle();
@@ -418,5 +427,54 @@ void main() {
     final entryId = h.planeRepository.saves.single.vaultEntryId!;
     expect(await h.vault.readField(entryId, 'privateKey'), pem);
     expect(await h.vault.readField(entryId, 'password'), isNull);
+  });
+
+  testWidgets('switching to password on edit requires a password', (
+    tester,
+  ) async {
+    const keyed = SshProfile(
+      id: 'p3',
+      name: 'keyed',
+      host: 'example.com',
+      username: 'alice',
+      authType: SshAuthType.privateKey,
+    );
+    final h = await pumpEditor(tester, profile: keyed);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('ssh-auth-type')),
+        matching: find.text('Password'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Switch authentication?'), findsNothing);
+    expect(h.planeRepository.saves, isEmpty);
+    // Dismiss the warning toast so its auto-close timer does not outlive the
+    // widget tree (same pattern as app_toast_recorder_test.dart).
+    TpToast.dismiss();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+  });
+
+  testWidgets('typed credentials survive a mode round-trip', (tester) async {
+    await pumpEditor(tester, profile: _target);
+    await tester.enterText(find.byType(TextField).at(4), 'typed-pass');
+
+    final control = find.byKey(const ValueKey('ssh-auth-type'));
+    await tester.tap(
+      find.descendant(of: control, matching: find.text('Private key')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: control, matching: find.text('Password')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('typed-pass'), findsOneWidget);
   });
 }

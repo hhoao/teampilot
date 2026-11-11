@@ -203,15 +203,10 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
 
   Future<SshProfile?> _save({required bool notify}) async {
     if (_formKey.currentState?.validate() != true) return null;
-    if (_isEditing && _authType != widget.initialProfile!.authType) {
-      final confirmed = await _confirmAuthTypeChange();
-      if (!confirmed || !mounted) return null;
-    }
-    // The confirmation runs while this dialog is still idle: the save spinner
-    // animates forever otherwise, so it starts only once the write begins.
-    setState(() => _saving = true);
-    final profile = _buildProfile();
-    if (!_isEditing) {
+
+    final switchingAuthType =
+        _isEditing && _authType != widget.initialProfile!.authType;
+    if (!_isEditing || switchingAuthType) {
       final missingCredential = _authType == SshAuthType.password
           ? _passwordController.text.isEmpty
           : _privateKeyController.text.trim().isEmpty;
@@ -224,6 +219,16 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
         return null;
       }
     }
+
+    if (switchingAuthType) {
+      final confirmed = await _confirmAuthTypeChange();
+      if (!confirmed || !mounted) return null;
+    }
+    // The confirmation runs while this dialog is idle. An unbounded
+    // CircularProgressIndicator behind the modal never settles, so busy state
+    // starts only once the write begins.
+    setState(() => _saving = true);
+    final profile = _buildProfile();
     try {
       final linked = (widget.initialProfile?.vaultEntryId ?? '').isNotEmpty;
       final capture = context.read<VaultCredentialCapture>();
@@ -416,7 +421,8 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
             id: 'password',
             controller: _passwordController,
             label: l10n.sshProfile.formPassword,
-            hint: _isEditing
+            hint: _isEditing &&
+                    _authType == widget.initialProfile!.authType
                 ? l10n.sshProfile.formPasswordHintEdit
                 : l10n.sshProfile.formPasswordHint,
             obscure: true,
@@ -510,27 +516,20 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     required TextEditingController controller,
     required String label,
     String? hint,
-    String? helper,
-    IconData? prefixIcon,
-    Widget? suffix,
     bool required = false,
     bool obscure = false,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
-    VoidCallback? onChanged,
     Future<String?> Function()? onReveal,
   }) {
     return TpFormField<String>(
       id: id,
       initialValue: controller.text,
       label: Text(required ? '$label *' : label),
-      description: helper == null ? null : Text(helper),
       validator: validator,
       builder: (state) {
         final decoration = InputDecoration(
           hintText: hint,
-          prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
-          suffixIcon: suffix,
           // Border reflects error; message is shown by TpFormFieldLayout.
           errorText: state.hasError ? '' : null,
           errorStyle: const TextStyle(height: 0, fontSize: 0),
@@ -541,10 +540,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
             focusNode: state.focusNode,
             keyboardType: keyboardType,
             onReveal: onReveal,
-            onChanged: (value) {
-              state.didChange(value);
-              onChanged?.call();
-            },
+            onChanged: (value) => state.didChange(value),
             decoration: decoration,
           );
         }
@@ -552,10 +548,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           controller: controller,
           focusNode: state.focusNode,
           keyboardType: keyboardType,
-          onChanged: (value) {
-            state.didChange(value);
-            onChanged?.call();
-          },
+          onChanged: (value) => state.didChange(value),
           decoration: decoration,
         );
       },
