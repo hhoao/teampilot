@@ -1,0 +1,39 @@
+name: tp_sshd_crypto_flutter
+description: Bundles the tp_sshd crypto shim (dartssh2/native) into Flutter app builds.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Build-time sibling only: the platform build files below compile
+  # ../dartssh2/native/tp_sshd_crypto.c, and the loader that binds it
+  # (lib/src/utils/native_crypto.dart) lives in this same package. Nothing
+  # here imports it — declaring the path dependency pins which checkout the
+  # relative source path resolves into.
+  dartssh2:
+    path: ../dartssh2
+
+# This package is a Flutter FFI plugin and nothing else: the `flutter: plugin:`
+# block is what makes `flutter build <platform>` compile the shim into the app
+# bundle. `ffiPlugin: true` with no `pluginClass`/`dartPluginClass` is the
+# FFI-only shape — there is no method channel and no Dart API to register.
+flutter:
+  plugin:
+    platforms:
+      linux:
+        ffiPlugin: true
+      windows:
+        ffiPlugin: true
+      macos:
+        ffiPlugin: true
+      android:
+        # The NDK ships neither OpenSSL headers nor a linkable libcrypto, so
+        # this lane compiles the shim against the static libcrypto vendored
+        # under android/vendor/<abi>/ — see README.md ("Android").
+        ffiPlugin: true

@@ -53,3 +53,8 @@ config-profiles/
 google_fonts/*.ttf
 google_fonts/*.otf
 assets/fonts/terminal/*.ttf
+
+# Nested native build trees (Flutter/AGP CMake output)
+**/android/.cxx/
+**/android/.gradle/
+**/android/build/

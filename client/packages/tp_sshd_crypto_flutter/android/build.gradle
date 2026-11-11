@@ -1,0 +1,58 @@
+// The Android Gradle Plugin builds the shim with the NDK. This lane exists
+// because the NDK ships neither OpenSSL headers nor a linkable libcrypto, so
+// the plugin vendors a static libcrypto per ABI under android/vendor/ (see
+// README.md for the build recipe and the version).
+
+group = "com.hhoa.teampilot.tp_sshd_crypto_flutter"
+version = "1.0"
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.1.0")
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: "com.android.library"
+
+android {
+    namespace = "com.hhoa.teampilot.tp_sshd_crypto_flutter"
+
+    // Match the host app's SDK/NDK choices rather than pinning our own: the
+    // shim has no platform-version requirements beyond what the vendored
+    // libcrypto was built for (API 28).
+    compileSdk = 35
+    ndkVersion = android.ndkVersion
+
+    externalNativeBuild {
+        cmake {
+            path = "../src/CMakeLists.txt"
+        }
+    }
+
+    defaultConfig {
+        minSdk = 24
+
+        // Only the ABIs with a vendored libcrypto are buildable. armeabi-v7a
+        // is deliberately absent (32-bit ARM is legacy for this app, and each
+        // vendored copy costs ~11 MB in the repository): add its directory
+        // under android/vendor/ before adding it here — see README.md for the
+        // build recipe. Without this filter the plugin configures a CMake
+        // build for every ABI the app might want and fails on the ones with
+        // no vendored libcrypto.
+        ndk {
+            abiFilters.addAll(["arm64-v8a", "x86_64"])
+        }
+    }
+}
