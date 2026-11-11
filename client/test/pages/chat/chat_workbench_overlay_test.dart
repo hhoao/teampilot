@@ -37,11 +37,44 @@ void main() {
       );
     });
 
-    test('remote provision wins over Chat and connect spinner', () {
+    test('Chat stays visible while remote provision is in progress', () {
       expect(
         resolveChatWorkbenchOverlay(
           workbenchView: SessionWorkbenchView.chat,
           sessionConnectInProgress: true,
+          showRemoteProvision: true,
+        ),
+        ChatWorkbenchOverlay.chat,
+      );
+    });
+
+    test('Chat stays visible while provision is in progress and idle', () {
+      expect(
+        resolveChatWorkbenchOverlay(
+          workbenchView: SessionWorkbenchView.chat,
+          sessionConnectInProgress: false,
+          showRemoteProvision: true,
+        ),
+        ChatWorkbenchOverlay.chat,
+      );
+    });
+
+    test('Terminal shows remote provision over connect spinner', () {
+      expect(
+        resolveChatWorkbenchOverlay(
+          workbenchView: SessionWorkbenchView.terminal,
+          sessionConnectInProgress: true,
+          showRemoteProvision: true,
+        ),
+        ChatWorkbenchOverlay.remoteProvision,
+      );
+    });
+
+    test('Terminal shows remote provision even when connect flag is false', () {
+      expect(
+        resolveChatWorkbenchOverlay(
+          workbenchView: SessionWorkbenchView.terminal,
+          sessionConnectInProgress: false,
           showRemoteProvision: true,
         ),
         ChatWorkbenchOverlay.remoteProvision,
