@@ -23,10 +23,18 @@ void main() {
     expect(exe.supportsInstaller, !Platform.isWindows);
 
     expect(registry.capability<AcpCapability>(CliTool.qoderCn), isNotNull);
+    final acp = registry.capability<AcpCapability>(CliTool.qoderCn)!;
     expect(
-      registry.capability<ProviderCapability>(CliTool.qoderCn),
-      isNotNull,
+      acp.buildEnvironment(
+        sessionToolDir: '/runtime/qoder-cn',
+        workingDirectory: '/work',
+      ),
+      {
+        'QODERCN_CONFIG_DIR': '/runtime/qoder-cn',
+        'QODERCN_EXPOSE_TOKEN_USAGE': '1',
+      },
     );
+    expect(registry.capability<ProviderCapability>(CliTool.qoderCn), isNotNull);
     expect(
       registry.capability<CliTransportCapability>(CliTool.qoderCn)!.supported,
       {CliTransport.acp},

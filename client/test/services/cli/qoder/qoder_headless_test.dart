@@ -57,10 +57,11 @@ void main() {
       expect(cap.configFiles(_run()), isEmpty);
     });
 
-    test('pins QODER_CONFIG_DIR and nothing else', () {
+    test('pins QODER_CONFIG_DIR and exposes token usage', () {
       const cap = QoderHeadlessCapability();
       expect(cap.buildEnvironment(_run()), {
         QoderFlavor.global.configDirEnvKey: _configDir,
+        QoderFlavor.global.tokenUsageEnvKey: '1',
       });
     });
 
@@ -69,6 +70,7 @@ void main() {
       expect(cap.executable, 'qoderclicn');
       expect(cap.buildEnvironment(_run()), {
         QoderFlavor.cn.configDirEnvKey: _configDir,
+        QoderFlavor.cn.tokenUsageEnvKey: '1',
       });
     });
   });

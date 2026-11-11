@@ -99,6 +99,7 @@ final class QoderCliTool implements CliToolDefinition {
            QoderAcpCapability(
              transcriptFallbackPrefix: flavor.cli.value,
              configDirEnvKey: flavor.configDirEnvKey,
+             tokenUsageEnvKey: flavor.tokenUsageEnvKey,
            ),
        acpSettings = acpSettings,
        transport = transport;

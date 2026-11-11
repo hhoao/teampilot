@@ -8,13 +8,18 @@ import 'package:teampilot/services/cli/qoder/qoder_flavor.dart';
 
 void main() {
   test('CN ACP points the config dir at the CN env key', () {
-    const cap = QoderAcpCapability(configDirEnvKey: 'QODERCN_CONFIG_DIR');
+    const cap = QoderAcpCapability(
+      configDirEnvKey: 'QODERCN_CONFIG_DIR',
+      tokenUsageEnvKey: 'QODERCN_EXPOSE_TOKEN_USAGE',
+    );
     final env = cap.buildEnvironment(
       sessionToolDir: '/runtime/s1/qoder-cn',
       workingDirectory: '/workspace/workspace',
     );
     expect(env['QODERCN_CONFIG_DIR'], '/runtime/s1/qoder-cn');
+    expect(env['QODERCN_EXPOSE_TOKEN_USAGE'], '1');
     expect(env.containsKey('QODER_CONFIG_DIR'), isFalse);
+    expect(env.containsKey('QODER_EXPOSE_TOKEN_USAGE'), isFalse);
   });
 
   test('CN history seeds the session env with the CN config key', () {

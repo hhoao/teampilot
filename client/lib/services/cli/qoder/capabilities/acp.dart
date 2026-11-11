@@ -79,10 +79,12 @@ final class QoderAcpCapability
   const QoderAcpCapability({
     this.transcriptFallbackPrefix = 'qoder',
     this.configDirEnvKey = 'QODER_CONFIG_DIR',
+    this.tokenUsageEnvKey = 'QODER_EXPOSE_TOKEN_USAGE',
   });
 
   final String transcriptFallbackPrefix;
   final String configDirEnvKey;
+  final String tokenUsageEnvKey;
 
   @override
   String agentExecutable(String cliExecutable) => cliExecutable;
@@ -129,6 +131,9 @@ final class QoderAcpCapability
   }) {
     final env = Map<String, String>.of(baseEnv);
     env[configDirEnvKey] = sessionToolDir;
+    // Qoder zeroes token fields in its transcripts unless this is set; the
+    // usage collector reads those files, so the counts must survive.
+    env[tokenUsageEnvKey] = '1';
     return env;
   }
 

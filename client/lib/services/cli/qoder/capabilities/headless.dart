@@ -50,6 +50,8 @@ final class QoderHeadlessCapability
   @override
   Map<String, String> buildEnvironment(HeadlessLaunchContext context) => {
     flavor.configDirEnvKey: context.configDir,
+    // Same reason as the ACP launch: keep real token counts in the transcript.
+    flavor.tokenUsageEnvKey: '1',
   };
 
   @override

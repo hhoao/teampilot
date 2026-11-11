@@ -19,6 +19,7 @@ void main() {
       baseEnv: const {'HOME': '/home/me'},
     );
     expect(env['QODER_CONFIG_DIR'], '/runtime/sessions/s1/qoder');
+    expect(env['QODER_EXPOSE_TOKEN_USAGE'], '1');
     expect(env['HOME'], '/home/me');
   });
 

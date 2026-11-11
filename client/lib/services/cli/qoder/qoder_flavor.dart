@@ -16,6 +16,7 @@ final class QoderFlavor {
     required this.installUrl,
     required this.authNamespace,
     required this.configDirEnvKey,
+    required this.tokenUsageEnvKey,
     required this.allowMachineAuthFallback,
   });
 
@@ -32,6 +33,14 @@ final class QoderFlavor {
   /// ignores the global key.
   final String configDirEnvKey;
 
+  /// Env var that opts the binary into writing real token counts.
+  ///
+  /// Both builds zero `input_tokens`/`output_tokens`/cache counts in their
+  /// transcripts and SDK output by default; only `credits` and
+  /// `context_usage_ratio` stay populated. TeamPilot's usage collector reads
+  /// those transcripts, so every launch sets this to `1`.
+  final String tokenUsageEnvKey;
+
   final bool allowMachineAuthFallback;
 
   static const global = QoderFlavor(
@@ -44,6 +53,7 @@ final class QoderFlavor {
     installUrl: 'https://download.qoder.com/qodercli/install.sh',
     authNamespace: 'qoder',
     configDirEnvKey: 'QODER_CONFIG_DIR',
+    tokenUsageEnvKey: 'QODER_EXPOSE_TOKEN_USAGE',
     allowMachineAuthFallback: true,
   );
 
@@ -57,6 +67,7 @@ final class QoderFlavor {
     installUrl: 'https://qoder.com.cn/install',
     authNamespace: 'qoder-cn',
     configDirEnvKey: 'QODERCN_CONFIG_DIR',
+    tokenUsageEnvKey: 'QODERCN_EXPOSE_TOKEN_USAGE',
     allowMachineAuthFallback: false,
   );
 

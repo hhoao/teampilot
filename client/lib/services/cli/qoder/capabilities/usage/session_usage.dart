@@ -13,6 +13,12 @@ import '../../qoder_flavor.dart';
 /// cache read/creation) and the model it actually used. The same usage may be
 /// attached to more than one JSONL record, so requests are deduped by
 /// `message.id` (falling back to the record `uuid`).
+///
+/// Qoder zeroes the token fields unless it is launched with
+/// `QODER_EXPOSE_TOKEN_USAGE=1` (the CN flavor uses its own env key); both
+/// launch capabilities set it, so records from TeamPilot sessions carry real
+/// counts. Earlier records only have `credits`, which this token model cannot
+/// represent, and are skipped.
 final class QoderSessionUsageCapability implements SessionUsageCapability {
   const QoderSessionUsageCapability({this.flavor = QoderFlavor.global});
 
