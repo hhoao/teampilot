@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/qoder/capabilities/headless.dart';
+import 'package:teampilot/services/cli/qoder/qoder_flavor.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_assembler.dart';
@@ -61,6 +62,11 @@ void main() {
       expect(cap.buildEnvironment(_run()), {
         QoderHeadlessCapability.configDirEnvKey: _configDir,
       });
+    });
+
+    test('CN headless runs qoderclicn', () {
+      const cap = QoderHeadlessCapability(flavor: QoderFlavor.cn);
+      expect(cap.executable, 'qoderclicn');
     });
   });
 

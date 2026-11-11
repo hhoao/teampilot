@@ -13,16 +13,22 @@ final class QoderProviderSettingsResolver {
     required HomeStorage storage,
     Filesystem? fs,
     AppProviderRepository? repository,
-  }) : _repository =
+    CliTool cli = CliTool.qoder,
+    String? toolKey,
+  }) : _cli = cli,
+       _toolKey = toolKey ?? cli.value,
+       _repository =
            repository ??
            AppProviderRepository(basePath: basePath, fs: fs, storage: storage);
 
   final AppProviderRepository _repository;
+  final CliTool _cli;
+  final String _toolKey;
 
   Future<AppProviderConfig?> findById(String? providerId) async {
     final trimmed = providerId?.trim() ?? '';
     if (trimmed.isEmpty) return null;
-    return _repository.findById(CliTool.qoder, trimmed);
+    return _repository.findById(_cli, trimmed);
   }
 
   Future<AppProviderConfig?> resolveForLaunch({
@@ -34,7 +40,7 @@ final class QoderProviderSettingsResolver {
       final fromMember = await findById(selected.provider);
       if (fromMember != null) return fromMember;
     }
-    final fromTeam = team.providerIdsByTool['qoder']?.trim() ?? '';
+    final fromTeam = team.providerIdsByTool[_toolKey]?.trim() ?? '';
     if (fromTeam.isNotEmpty) {
       final byId = await findById(fromTeam);
       if (byId != null) return byId;
@@ -45,7 +51,7 @@ final class QoderProviderSettingsResolver {
   /// The single catalogued provider, if exactly one exists (standalone
   /// default).
   Future<AppProviderConfig?> resolveSole() async {
-    final providers = await _repository.loadProviders(CliTool.qoder);
+    final providers = await _repository.loadProviders(_cli);
     return providers.length == 1 ? providers.first : null;
   }
 }

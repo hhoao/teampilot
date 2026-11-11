@@ -63,6 +63,7 @@ void main() {
       CliTool.codebuddy => 'codebuddy',
       CliTool.antigravity => 'antigravity',
       CliTool.qoder => 'qoder',
+      CliTool.qoderCn => 'qoder-cn',
     };
     expect(
       SimpleLaunchIdentity.resolve(

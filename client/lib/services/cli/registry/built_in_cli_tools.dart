@@ -53,6 +53,7 @@ import '../opencode/opencode_tool.dart';
 import '../qoder/capabilities/headless.dart';
 import '../qoder/capabilities/provider.dart';
 import '../qoder/provider/qoder_models_service.dart';
+import '../qoder/qoder_flavor.dart';
 import '../qoder/qoder_tool.dart';
 
 void registerBuiltInCliTools(
@@ -168,13 +169,45 @@ void registerBuiltInCliTools(
   );
   registry.register(
     QoderCliTool(
+      flavor: QoderFlavor.global,
       provider: QoderProviderCapability(
+        flavor: QoderFlavor.global,
         storage: storage,
         modelsService: storage == null
             ? null
-            : QoderModelsService(storage: storage),
+            : QoderModelsService(
+                storage: storage,
+                namespace: QoderFlavor.global.authNamespace,
+                executable: QoderFlavor.global.executableName,
+                useMachineAuthFallback:
+                    QoderFlavor.global.allowMachineAuthFallback,
+              ),
       ),
-      headless: QoderHeadlessCapability(storage: storage),
+      headless: QoderHeadlessCapability(
+        flavor: QoderFlavor.global,
+        storage: storage,
+      ),
+    ),
+  );
+  registry.register(
+    QoderCliTool(
+      flavor: QoderFlavor.cn,
+      provider: QoderProviderCapability(
+        flavor: QoderFlavor.cn,
+        storage: storage,
+        modelsService: storage == null
+            ? null
+            : QoderModelsService(
+                storage: storage,
+                namespace: QoderFlavor.cn.authNamespace,
+                executable: QoderFlavor.cn.executableName,
+                useMachineAuthFallback: QoderFlavor.cn.allowMachineAuthFallback,
+              ),
+      ),
+      headless: QoderHeadlessCapability(
+        flavor: QoderFlavor.cn,
+        storage: storage,
+      ),
     ),
   );
 

@@ -48,7 +48,7 @@ void main() {
       File(p.join(auth, name)).copySync(p.join(temp.path, '.auth', name));
     }
 
-    final registry = CliToolRegistry()..register(const QoderCliTool());
+    final registry = CliToolRegistry()..register(QoderCliTool());
     final logger = AcpFrameLogger(mirrorToLog: false);
     final runtime = AcpSessionRuntime(
       spawner: productionAcpSpawner(

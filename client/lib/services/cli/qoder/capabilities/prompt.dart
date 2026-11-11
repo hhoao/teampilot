@@ -4,15 +4,19 @@ import '../../../chat/launch/staging/manifest/work_plane_paths.dart';
 import '../../../resource/contribution/resource_origin.dart';
 import '../../registry/capabilities/prompt_capability.dart';
 import '../../registry/member_role_provision.dart';
+import '../qoder_flavor.dart';
 
 /// Qoder reads a hierarchical `AGENTS.md` memory file (user-level one lives in
 /// `QODER_CONFIG_DIR`); the member role prompt is materialized there.
 final class QoderPromptCapability
     implements PromptCapability, PromptContributionProvider {
-  const QoderPromptCapability();
+  const QoderPromptCapability({this.flavor = QoderFlavor.global});
 
-  static const toolId = 'qoder';
+  final QoderFlavor flavor;
+
   static const contextFileName = 'AGENTS.md';
+
+  String get toolId => flavor.cli.value;
 
   @override
   String get providerId => toolId;
@@ -21,9 +25,10 @@ final class QoderPromptCapability
   FutureOr<Iterable<PromptContribution>> provide(PromptProviderContext ctx) {
     final member = ctx.member;
     if (member == null || !member.isValid) return const [];
+    final roleId = '$toolId-member-role';
     return [
       PromptContribution(
-        id: 'qoder-member-role',
+        id: roleId,
         title: 'Member role',
         scope: PromptScope.member,
         content: MemberRoleProvision.composeRolePrompt(
@@ -31,10 +36,10 @@ final class QoderPromptCapability
           forceTeamLeadDelegateMode: ctx.forceTeamLeadDelegateMode,
           mixed: ctx.mixed,
         ).trim(),
-        origin: const ContributionOrigin(
+        origin: ContributionOrigin(
           providerId: toolId,
           kind: ResourceOriginKind.cliBuiltIn,
-          sourceId: 'qoder-member-role',
+          sourceId: roleId,
         ),
       ),
     ];

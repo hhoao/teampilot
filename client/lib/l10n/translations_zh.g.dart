@@ -639,6 +639,7 @@ class _AppLocalizations$appProvider$zh extends AppLocalizations$appProvider$en {
 	@override String get toolGemini => 'Gemini CLI';
 	@override String get toolOpencode => 'OpenCode';
 	@override String get toolQoder => 'Qoder';
+	@override String get toolQoderCn => 'Qoder 国内版';
 	@override String get website => '官网';
 }
 
@@ -4395,6 +4396,7 @@ extension on AppLocalizationsZh {
 			'appProvider.toolGemini' => 'Gemini CLI',
 			'appProvider.toolOpencode' => 'OpenCode',
 			'appProvider.toolQoder' => 'Qoder',
+			'appProvider.toolQoderCn' => 'Qoder 国内版',
 			'appProvider.website' => '官网',
 			'automations.boundSession' => '绑定会话',
 			'automations.boundSessionPending' => '首次运行后自动绑定会话',
@@ -4454,9 +4456,9 @@ extension on AppLocalizationsZh {
 			'automations.maxRunCountHint' => '留空表示无限制',
 			'automations.message' => '消息',
 			'automations.name' => '名称',
-			'automations.kNew' => '新建自动化',
 			_ => null,
 		} ?? switch (path) {
+			'automations.kNew' => '新建自动化',
 			'automations.nextRun' => ({required String time}) => '下次运行：${time}',
 			'automations.nextRunNone' => '暂无计划运行',
 			'automations.presetCliMismatch' => '所选预设与绑定会话的 CLI 不一致。',
@@ -4968,9 +4970,9 @@ extension on AppLocalizationsZh {
 			'fileTree.importDropMove' => '移动',
 			'fileTree.importOverwrite' => '覆盖',
 			'fileTree.importProgressCancel' => '取消',
-			'fileTree.importProgressCurrent' => ({required String name}) => '${name}',
 			_ => null,
 		} ?? switch (path) {
+			'fileTree.importProgressCurrent' => ({required String name}) => '${name}',
 			'fileTree.importProgressItems' => ({required int completed, required int total}) => '${completed} / ${total}',
 			'fileTree.importProgressTitle' => '正在导入…',
 			'fileTree.importRejectSelf' => '无法将项目移动到自身或其子目录中。',
@@ -5482,9 +5484,9 @@ extension on AppLocalizationsZh {
 			'managedProviders.kind' => '类型',
 			'managedProviders.kindApiBalance' => 'API 余额',
 			'managedProviders.kindCustomHttp' => '自定义 HTTP',
-			'managedProviders.kindPresetLockedHelper' => '当前预设或模板已锁定类型。',
 			_ => null,
 		} ?? switch (path) {
+			'managedProviders.kindPresetLockedHelper' => '当前预设或模板已锁定类型。',
 			'managedProviders.kindSubscriptionQuota' => '订阅额度',
 			'managedProviders.lastQueryFailed' => '上次查询失败',
 			'managedProviders.loadFailed' => '无法加载管理 Provider。',
@@ -5996,9 +5998,9 @@ extension on AppLocalizationsZh {
 			'run.configurationName' => '名称',
 			'run.configurationTooltip' => '运行配置',
 			'run.configurationType' => '类型',
-			'run.configurationsEmpty' => '暂无启动配置',
 			_ => null,
 		} ?? switch (path) {
+			'run.configurationsEmpty' => '暂无启动配置',
 			'run.configureLaunchItems' => '配置启动项',
 			'run.debug' => '调试',
 			'run.debugUnavailable' => '调试功能尚未提供',
@@ -6510,9 +6512,9 @@ extension on AppLocalizationsZh {
 			'sshProfile.formUsername' => '用户名',
 			'sshProfile.formUsernameHint' => 'deploy',
 			'sshProfile.refresh' => '刷新',
-			'sshProfile.selectorManage' => '管理 SSH 服务器…',
 			_ => null,
 		} ?? switch (path) {
+			'sshProfile.selectorManage' => '管理 SSH 服务器…',
 			'sshProfile.selectorTooltip' => '切换 SSH 服务器',
 			'sshProfile.statusAuthFailed' => '认证失败',
 			'sshProfile.statusConnected' => '已连接',
@@ -7024,9 +7026,9 @@ extension on AppLocalizationsZh {
 			'worktree.creating' => '正在创建…',
 			'worktree.deleteAction' => '删除',
 			'worktree.deleteBody' => ({required Object branch}) => '删除 ${branch} 的 worktree？',
-			'worktree.deleteBranchToo' => '同时删除分支',
 			_ => null,
 		} ?? switch (path) {
+			'worktree.deleteBranchToo' => '同时删除分支',
 			'worktree.deleteBusyWarning' => '请先停止该 worktree 下正在运行的会话，再删除。',
 			'worktree.deleteFailed' => ({required Object error}) => '删除 worktree 失败：${error}',
 			'worktree.deleteForce' => '即使有未提交改动也强制删除',

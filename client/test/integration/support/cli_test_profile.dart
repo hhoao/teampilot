@@ -160,6 +160,7 @@ abstract final class CliTestProfiles {
       CliTool.codebuddy => _codebuddy,
       CliTool.antigravity => _antigravity,
       CliTool.qoder => _qoder,
+      CliTool.qoderCn => _qoderCn,
     };
   }
 
@@ -335,6 +336,20 @@ abstract final class CliTestProfiles {
     dismissBootGates: dismissBootGatesStub,
     gatewayRedirectNotes:
         'N/A: qoder targets ACP (`qodercli --acp`), not the '
+        'mock-gateway matrix.',
+  );
+
+  static final CliTestProfile _qoderCn = CliTestProfile(
+    tool: CliTool.qoderCn,
+    wire: CliTestWire.openaiChat,
+    binaryName: 'qoderclicn',
+    resolveBinary: () => whichOnPath('qoderclicn'),
+    toolName: mapShortMcpToolRef,
+    assistantVisibleMarkers: const [markA1, markA2, markA3],
+    bootToPrompt: bootToPromptStub,
+    dismissBootGates: dismissBootGatesStub,
+    gatewayRedirectNotes:
+        'N/A: qoder-cn targets ACP (`qoderclicn --acp`), not the '
         'mock-gateway matrix.',
   );
 }

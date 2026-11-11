@@ -180,4 +180,66 @@ void main() {
       expect(service.modelIdsFor(providerId: 'machine'), ['auto', 'smodel']);
     },
   );
+
+  test('namespace drives the probe dir, auth source and disk cache', () async {
+    await fs.ensureDir('/app/providers/qoder-cn/work');
+    await fs.atomicWrite('/app/providers/qoder-cn/work/user', 'CNUSER');
+    await fs.atomicWrite('/app/providers/qoder-cn/work/machine_id', 'CNMID');
+    var calls = 0;
+    final service = QoderModelsService(
+      fs: fs,
+      basePath: '/app',
+      machineHome: '/home/me',
+      namespace: 'qoder-cn',
+      executable: 'qoderclicn',
+      useMachineAuthFallback: false,
+      opener:
+          ({required executable, required configDir, required timeout}) async {
+            calls++;
+            expect(executable, 'qoderclicn');
+            expect(configDir, '/app/tmp/qoder-cn-models/work');
+            expect(
+              await fs.readString(p.join(configDir, '.auth', 'user')),
+              'CNUSER',
+            );
+            return const QoderModelsSnapshot(
+              modelIds: ['auto'],
+              names: {'auto': 'Auto'},
+            );
+          },
+    );
+
+    await service.ensureLoaded(providerId: 'work');
+
+    expect(calls, 1);
+    expect(
+      await fs.readString('/app/cache/qoder-cn_models/work.json'),
+      isNotNull,
+    );
+  });
+
+  test('CN-style storage never probes from the machine login', () async {
+    await fs.ensureDir('/home/me/.qoder/.auth');
+    await fs.atomicWrite('/home/me/.qoder/.auth/user', 'MACHINE');
+    await fs.atomicWrite('/home/me/.qoder/.auth/machine_id', 'MID');
+    var calls = 0;
+    final service = QoderModelsService(
+      fs: fs,
+      basePath: '/app',
+      machineHome: '/home/me',
+      namespace: 'qoder-cn',
+      executable: 'qoderclicn',
+      useMachineAuthFallback: false,
+      opener:
+          ({required executable, required configDir, required timeout}) async {
+            calls++;
+            return const QoderModelsSnapshot(modelIds: ['auto']);
+          },
+    );
+
+    await service.ensureLoaded(providerId: 'missing');
+
+    expect(calls, 0);
+    expect(service.modelIdsFor(providerId: 'missing'), isEmpty);
+  });
 }

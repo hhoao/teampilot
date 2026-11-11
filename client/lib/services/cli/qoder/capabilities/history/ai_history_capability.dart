@@ -5,6 +5,7 @@ import '../../../registry/capabilities/ai_history_capability.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 import '../../../registry/capabilities/shared_tool_call_resolvers.dart';
+import '../../qoder_flavor.dart';
 
 /// Qoder history: ACP sessions own their transcript
 /// (`acp-transcript.jsonl`), so this adapter never locates or parses the
@@ -15,7 +16,9 @@ import '../../../registry/capabilities/shared_tool_call_resolvers.dart';
 /// (`QoderAcpBackgroundTranscriptSource`), which only needs appended records
 /// to notice that out-of-turn work finished.
 final class QoderAiHistoryCapability implements AiHistoryCapability {
-  const QoderAiHistoryCapability();
+  const QoderAiHistoryCapability({this.flavor = QoderFlavor.global});
+
+  final QoderFlavor flavor;
 
   static const _resolvers = SharedToolCallResolvers();
 
@@ -23,7 +26,8 @@ final class QoderAiHistoryCapability implements AiHistoryCapability {
   Future<AiTranscriptBundle?> locate(SessionHistoryContext ctx) async => null;
 
   @override
-  AiTranscriptAdapter get adapter => const QoderAiTranscriptAdapter();
+  AiTranscriptAdapter get adapter =>
+      QoderAiTranscriptAdapter(id: flavor.cli.value);
 
   @override
   AiTranscriptLineAppend? get lineAppend => null;
@@ -42,7 +46,7 @@ final class QoderAiHistoryCapability implements AiHistoryCapability {
   AiTranscriptIncrementalRefresher? get incrementalRefresher => null;
 
   @override
-  String get tailFallbackPrefix => 'qoder';
+  String get tailFallbackPrefix => flavor.cli.value;
 
   @override
   Set<String> get subagentToolNames => const {};
@@ -82,10 +86,10 @@ final class QoderAiHistoryCapability implements AiHistoryCapability {
 
 /// Parses nothing: Qoder transcripts are surfaced via ACP, not JSONL.
 final class QoderAiTranscriptAdapter implements AiTranscriptAdapter {
-  const QoderAiTranscriptAdapter();
+  const QoderAiTranscriptAdapter({this.id = 'qoder'});
 
   @override
-  String get id => 'qoder';
+  final String id;
 
   @override
   Future<List<AiMessage>> parse(AiTranscriptBundle bundle) async => const [];

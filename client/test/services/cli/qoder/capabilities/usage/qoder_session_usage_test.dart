@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/session_usage.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/qoder/capabilities/usage/session_usage.dart';
+import 'package:teampilot/services/cli/qoder/qoder_flavor.dart';
 import 'package:teampilot/services/cli/registry/capabilities/session_usage_capability.dart';
 
 import '../../../../../support/in_memory_filesystem.dart';
@@ -225,5 +226,23 @@ void main() {
     expect(result.events, hasLength(1));
     expect(result.events.single.requestId, 'qoder:fallback-uuid');
     expect(result.skippedLines, 3);
+  });
+
+  test('tags CN scans with the CN cli and request prefix', () async {
+    final ctx = _ctx();
+    const capability = QoderSessionUsageCapability(flavor: QoderFlavor.cn);
+    final path = p.join(_root, 'projects', 'proj', 'cn.jsonl');
+    await ctx.fs.writeString(path, '${_assistantLine()}\n');
+
+    final source = (await capability.discoverUsageSources(ctx)).single;
+    expect(source.id, startsWith('qoder-cn-jsonl:'));
+
+    final result = await capability.scanUsageSource(
+      ctx: ctx,
+      source: source,
+      cursor: null,
+    );
+    expect(result.events.single.cli, CliTool.qoderCn);
+    expect(result.events.single.requestId, 'qoder-cn:m1');
   });
 }

@@ -1553,6 +1553,9 @@ class AppLocalizations$appProvider$en {
 	/// en: 'Qoder'
 	String get toolQoder => 'Qoder';
 
+	/// en: 'Qoder CN'
+	String get toolQoderCn => 'Qoder CN';
+
 	/// en: 'Website'
 	String get website => 'Website';
 }
@@ -10579,6 +10582,7 @@ extension on AppLocalizations {
 			'appProvider.toolGemini' => 'Gemini CLI',
 			'appProvider.toolOpencode' => 'OpenCode',
 			'appProvider.toolQoder' => 'Qoder',
+			'appProvider.toolQoderCn' => 'Qoder CN',
 			'appProvider.website' => 'Website',
 			'automations.boundSession' => 'Bound session',
 			'automations.boundSessionPending' => 'A session is bound after the first run',
@@ -10638,9 +10642,9 @@ extension on AppLocalizations {
 			'automations.maxRunCountHint' => 'Leave empty for unlimited',
 			'automations.message' => 'Message',
 			'automations.name' => 'Name',
-			'automations.kNew' => 'New automation',
 			_ => null,
 		} ?? switch (path) {
+			'automations.kNew' => 'New automation',
 			'automations.nextRun' => ({required String time}) => 'Next run: ${time}',
 			'automations.nextRunNone' => 'No upcoming run',
 			'automations.presetCliMismatch' => 'The selected preset does not match the bound session\'s CLI.',
@@ -11152,9 +11156,9 @@ extension on AppLocalizations {
 			'fileTree.importDropMove' => 'Move',
 			'fileTree.importOverwrite' => 'Overwrite',
 			'fileTree.importProgressCancel' => 'Cancel',
-			'fileTree.importProgressCurrent' => ({required String name}) => '${name}',
 			_ => null,
 		} ?? switch (path) {
+			'fileTree.importProgressCurrent' => ({required String name}) => '${name}',
 			'fileTree.importProgressItems' => ({required int completed, required int total}) => '${completed} / ${total}',
 			'fileTree.importProgressTitle' => 'Importing…',
 			'fileTree.importRejectSelf' => 'Cannot move or copy an item into itself or its children.',
@@ -11666,9 +11670,9 @@ extension on AppLocalizations {
 			'managedProviders.kind' => 'Kind',
 			'managedProviders.kindApiBalance' => 'API balance',
 			'managedProviders.kindCustomHttp' => 'Custom HTTP',
-			'managedProviders.kindPresetLockedHelper' => 'Locked by the selected preset or provider template.',
 			_ => null,
 		} ?? switch (path) {
+			'managedProviders.kindPresetLockedHelper' => 'Locked by the selected preset or provider template.',
 			'managedProviders.kindSubscriptionQuota' => 'Subscription quota',
 			'managedProviders.lastQueryFailed' => 'Last query failed',
 			'managedProviders.loadFailed' => 'Unable to load managed providers.',
@@ -12180,9 +12184,9 @@ extension on AppLocalizations {
 			'run.configurationName' => 'Name',
 			'run.configurationTooltip' => 'Run configuration',
 			'run.configurationType' => 'Type',
-			'run.configurationsEmpty' => 'No launch configurations yet',
 			_ => null,
 		} ?? switch (path) {
+			'run.configurationsEmpty' => 'No launch configurations yet',
 			'run.configureLaunchItems' => 'Configure launch configurations',
 			'run.debug' => 'Debug',
 			'run.debugUnavailable' => 'Debug is not available yet',
@@ -12694,9 +12698,9 @@ extension on AppLocalizations {
 			'sshProfile.formUsername' => 'Username',
 			'sshProfile.formUsernameHint' => 'deploy',
 			'sshProfile.refresh' => 'Refresh',
-			'sshProfile.selectorManage' => 'Manage SSH servers…',
 			_ => null,
 		} ?? switch (path) {
+			'sshProfile.selectorManage' => 'Manage SSH servers…',
 			'sshProfile.selectorTooltip' => 'Switch SSH server',
 			'sshProfile.statusAuthFailed' => 'Authentication failed',
 			'sshProfile.statusConnected' => 'Connected',
@@ -13208,9 +13212,9 @@ extension on AppLocalizations {
 			'worktree.creating' => 'Creating…',
 			'worktree.deleteAction' => 'Remove',
 			'worktree.deleteBody' => ({required Object branch}) => 'Remove the worktree for ${branch}?',
-			'worktree.deleteBranchToo' => 'Also delete the branch',
 			_ => null,
 		} ?? switch (path) {
+			'worktree.deleteBranchToo' => 'Also delete the branch',
 			'worktree.deleteBusyWarning' => 'Stop the running conversations in this worktree before removing it.',
 			'worktree.deleteFailed' => ({required Object error}) => 'Failed to remove worktree: ${error}',
 			'worktree.deleteForce' => 'Force-remove even if it has uncommitted changes',
