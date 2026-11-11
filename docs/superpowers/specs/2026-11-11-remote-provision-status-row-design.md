@@ -130,9 +130,10 @@ String? remoteProvisionFooterLabel(
 }
 ```
 
-传 `String` 而非 `AppLocalizations`，使该文件保持零 UI 依赖；文案仍由
-`context.l10n.session.remoteProvisionPreparing` 提供（`session_chat_message_area.dart`
-已有 `context.l10n` 用法）。
+传 `String` 而非 `AppLocalizations`，使该文件不需要 `BuildContext` / l10n 查找，
+只依赖纯数据模型；文案仍由 `context.l10n.session.remoteProvisionPreparing` 提供
+（`session_chat_message_area.dart` 已有 `context.l10n` 用法）。注：该模型会间接引入
+`package:flutter/foundation.dart`，这对本项目无影响，不影响单测。
 
 `liveChrome == background` 时 `buildChrome` 直接传 `null`：后台任务文案（可能带具体任务描述）
 优先，因为此时并不处在"发送消息后的等待"中。纯函数本身只判断 `progress`。
