@@ -575,6 +575,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
     );
     final showChat = overlay == ChatWorkbenchOverlay.chat;
     final showSessionStarting = overlay == ChatWorkbenchOverlay.sessionStarting;
+    final showRemoteProvisionOverlay =
+        overlay == ChatWorkbenchOverlay.remoteProvision;
     final failure = presentSessionLaunchFailure(launchError);
     final showTerminalLaunchError = shouldShowTerminalSessionLaunchErrorBanner(
       overlay: overlay,
@@ -600,7 +602,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     // the tab is in the background. Also keep it mounted while Chat is shown
     // over a running PTY.
     final chatOverlayHidesTerminal =
-        showSessionStarting || showChat || showRemoteProvision;
+        showSessionStarting || showChat || showRemoteProvisionOverlay;
     return TpDeferredForegroundMount(
       active: terminalVisible,
       retainWhenInactive: true,
@@ -631,7 +633,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
                       ),
                     ),
                   ),
-                if (showRemoteProvision)
+                if (showRemoteProvisionOverlay && remoteProvision != null)
                   ChatWorkbenchRemoteProvisionView(
                     progress: remoteProvision,
                     memberLabel: _memberDisplayLabel(
