@@ -145,6 +145,20 @@ class AgentAttentionState extends Equatable {
   AgentAttentionState copyWith({Map<String, AgentSeatAttentionEntry>? seats}) =>
       AgentAttentionState(seats: seats ?? this.seats, clock: _clock);
 
+  /// True when both maps have the same seats in the same
+  /// [AgentSeatAttention]. Ignores [AgentSeatAttentionEntry.updatedAt] and
+  /// lastEvent so hook refreshes are not treated as turn edges.
+  bool sameSeatAttentionAs(AgentAttentionState other) {
+    if (identical(this, other)) return true;
+    if (seats.length != other.seats.length) return false;
+    for (final entry in seats.entries) {
+      if (other.seats[entry.key]?.attention != entry.value.attention) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /// Drop entries older than [agentAttentionStaleAfter].
   AgentAttentionState pruned([DateTime? now]) {
     final at = now ?? _now;

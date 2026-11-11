@@ -571,4 +571,87 @@ void main() {
       await deleteTempDirBestEffort(tmp);
     },
   );
+
+  test(
+    'repeated working hooks do not enqueue attention work per refresh',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('cubit_turn_rewind_');
+      final storage = fakeHomeStorage();
+      final repo = SessionRepository(rootDir: tmp.path, storage: storage);
+      final attention = AgentAttentionCubit(pruneInterval: null);
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+        agentAttentionCubit: attention,
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                RunningConnectedFakeShell(executable: executable),
+        storage: storage,
+      );
+
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
+      final session = (await repo.createSession(
+        workspace.workspaceId,
+        cli: CliTool.claude,
+      )).session;
+      await cubit.loadWorkspaceData(repo);
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          repo: repo,
+          connectImmediately: false,
+        ),
+      );
+      await drainPendingAsyncWork();
+      final memberId = cubit.activeTab!.memberShells.keys.single;
+
+      cubit.debugCommitPtyTurn =
+          ({
+            required gitDir,
+            required workTree,
+            required target,
+            required messageId,
+            required userMessageId,
+            nativeSessionId,
+          }) async {
+            return RewindCheckpoint(
+              commit: 'c-$messageId',
+              parentCommit: '',
+              messageId: messageId,
+              userMessageId: userMessageId,
+              turnAt: 0,
+              nativeSessionId: nativeSessionId,
+            );
+          };
+
+      void stamp(AgentSeatAttention state, String hook) {
+        attention.applyEvent(
+          sessionId: session.sessionId,
+          memberId: memberId,
+          event: AgentStatusEvent(state: state, hookEventName: hook),
+          skipPermissions: false,
+        );
+      }
+
+      stamp(AgentSeatAttention.working, 'UserPromptSubmit');
+      for (var i = 0; i < 50; i++) {
+        stamp(AgentSeatAttention.working, 'PostToolUse');
+      }
+      stamp(AgentSeatAttention.done, 'Stop');
+      await drainPendingAsyncWork();
+
+      expect(cubit.debugAttentionJobsEnqueued, 2);
+
+      await cubit.close();
+      await attention.close();
+      await postFrame.flush();
+      await deleteTempDirBestEffort(tmp);
+    },
+  );
 }

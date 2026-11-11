@@ -203,6 +203,43 @@ void main() {
       expect(c.state.sessionHasWaiting('s1'), isFalse);
     });
 
+    test('sameSeatAttentionAs ignores timestamp-only hook refreshes', () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.working,
+          hookEventName: 'PreToolUse',
+        ),
+        skipPermissions: false,
+      );
+      final first = c.state;
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.working,
+          hookEventName: 'PostToolUse',
+        ),
+        skipPermissions: false,
+      );
+      final second = c.state;
+      expect(first.sameSeatAttentionAs(second), isTrue);
+      expect(first, isNot(equals(second)));
+
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.done,
+          hookEventName: 'Stop',
+        ),
+        skipPermissions: false,
+      );
+      expect(second.sameSeatAttentionAs(c.state), isFalse);
+    });
+
     test('done clears waiting', () {
       final c = _cubit();
       c.applyEvent(

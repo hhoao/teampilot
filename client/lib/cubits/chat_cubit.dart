@@ -245,15 +245,23 @@ class ChatCubit extends Cubit<ChatState>
         final prior = previous;
         previous = next;
         if (isClosed) return;
+        // Same-attention hook refreshes still emit (updatedAt). A .then per
+        // emit grows Flutter's async stack for the cubit's lifetime.
+        if (prior.sameSeatAttentionAs(next)) return;
         _capturePtyTurnBaselines(prior, next);
+        _attentionJobsEnqueued++;
         final run = _attentionChain ?? Future<void>.value();
-        _attentionChain = run.catchError((Object _, StackTrace _) {}).then((
-          _,
-        ) async {
+        late final Future<void> job;
+        job = run.catchError((Object _, StackTrace _) {}).then((_) async {
           if (isClosed) return;
           await _endMemberTurnsForNewlyDoneSeats(prior, next);
           if (!isClosed) _updateSessionActivities();
+        }).whenComplete(() {
+          if (identical(_attentionChain, job)) {
+            _attentionChain = null;
+          }
         });
+        _attentionChain = job;
       });
     }
   }
@@ -474,6 +482,12 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   Future<void>? _attentionChain;
+  int _attentionJobsEnqueued = 0;
+
+  /// How many attention-turn jobs were queued. Hook refreshes that do not
+  /// change seat attention must not increment this.
+  @visibleForTesting
+  int get debugAttentionJobsEnqueued => _attentionJobsEnqueued;
 
   static const _continueOverridesController =
       SessionContinueOverridesController();
