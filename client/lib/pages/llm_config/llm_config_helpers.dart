@@ -19,12 +19,12 @@ Future<String?> saveNewAppProvider(
       : AppProviderCubit.slugifyId(draft.name);
   final sameId = existing.where((p) => p.id == baseId).firstOrNull;
   // Keep a form-assigned id (also the row a form-side login already created
-  // with its credentials); bump only when baseId belongs to another identity.
+  // with its credentials). The display name stays editable, so it must not be
+  // part of the identity check: renaming after login has to update that row,
+  // not bump to a fresh id whose credentials were never written.
   final id =
       sameId == null ||
-          (sameId.cli == draft.cli &&
-              sameId.category == draft.category &&
-              sameId.name == draft.name)
+          (sameId.cli == draft.cli && sameId.category == draft.category)
       ? baseId
       : AppProviderCubit.uniqueId(baseId, existing.map((p) => p.id));
   final provider = draft.copyWith(id: id, name: draft.name.trim());

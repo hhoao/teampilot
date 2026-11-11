@@ -76,6 +76,11 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   String? _prospectiveIdName;
   String? _prospectivePresetId;
 
+  /// Id of the row a form-side credential action already persisted. Once set,
+  /// the draft keeps targeting that row: recomputing the id after a rename or
+  /// preset change would save a second, credential-less provider.
+  String? _persistedProviderId;
+
   bool get _isEditing => widget.existing != null;
 
   CliToolRegistry _registry([BuildContext? context]) =>
@@ -228,9 +233,12 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     return _prospectiveId!;
   }
 
+  String _resolvedId() =>
+      widget.existing?.id ?? _persistedProviderId ?? _prospectiveIdForNewRow();
+
   AppProviderConfig _buildNormalDraft() {
     final name = _nameCtl.text.trim();
-    final baseId = widget.existing?.id ?? _prospectiveIdForNewRow();
+    final baseId = _resolvedId();
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
     final config = _formCap().buildConfig(_formInput());
     final draft = AppProviderConfig(
@@ -413,11 +421,15 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                           if (next.name.trim().isEmpty) return null;
                           final cubit = context.read<AppProviderCubit>();
                           await cubit.upsertProvider(next);
-                          return cubit.state
-                                  .providersFor(widget.cli)
-                                  .where((p) => p.id == next.id)
-                                  .firstOrNull ??
-                              next;
+                          final saved = cubit.state
+                              .providersFor(widget.cli)
+                              .where((p) => p.id == next.id)
+                              .firstOrNull;
+                          // Credential IO just persisted this row. Pin its id
+                          // so a later Save updates it instead of recomputing
+                          // a fresh id whose credentials were never written.
+                          _persistedProviderId = saved?.id ?? next.id;
+                          return saved ?? next;
                         },
                       );
                     },
@@ -473,9 +485,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   if (!_isEditing) ...[
                     const SizedBox(height: 8),
                     Text(
-                      l10n.appProvider.internalIdPreview(
-                        id: _prospectiveIdForNewRow(),
-                      ),
+                      l10n.appProvider.internalIdPreview(id: _resolvedId()),
                       style: TpTextStyles.of(context).mutedSm,
                     ),
                   ],

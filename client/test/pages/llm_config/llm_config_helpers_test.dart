@@ -102,6 +102,33 @@ void main() {
     },
   );
 
+  testWidgets(
+    'keeps the login-created id when the display name was edited before save',
+    (tester) async {
+      // Row a form-side login already created, with probed credentials.
+      const placeholder = AppProviderConfig(
+        id: 'openai-official-2',
+        cli: CliTool.codex,
+        name: 'OpenAI Official',
+        category: AppProviderCategory.official,
+        isOfficial: true,
+        credentialStatus: 'ready',
+        credentialUpdatedAt: 1700000000000,
+      );
+      await tester.runAsync(() => seed(extra: [placeholder]));
+
+      final savedId = await saveDraft(
+        tester,
+        placeholder.copyWith(name: 'My Work Account'),
+      );
+      expect(savedId, 'openai-official-2');
+      expect(
+        cubit.state.providersFor(CliTool.codex).map((p) => p.id),
+        isNot(contains('openai-official-3')),
+      );
+    },
+  );
+
   testWidgets('bumps id when base id belongs to a different identity', (
     tester,
   ) async {
