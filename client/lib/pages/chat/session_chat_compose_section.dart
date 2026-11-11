@@ -42,6 +42,7 @@ import '../../services/chat/conversation/compose/compose_text_controller.dart';
 import '../../services/chat/conversation/compose/compose_file_drop_ingestor.dart';
 import '../../services/chat/conversation/compose/compose_landing_bundle.dart';
 import '../../services/chat/conversation/compose/compose_voice_input.dart';
+import '../../services/expert_hub/builtin_member_templates.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../services/chat/conversation/follow_up/follow_up_queue.dart';
 import '../../services/chat/conversation/history/history_seat_key.dart';
@@ -273,7 +274,7 @@ class SessionChatComposeSection extends StatelessWidget {
                   ? acpModelState.options.first.name
                   : acpModelState.currentId));
     final modelChipLabel = acpModelLabel ?? modelLabel;
-    final identityLabel = _identityLabel(
+    final identityLabel = resolveIdentityLabel(
       session: session,
       team: team,
       hubState: hubState,
@@ -906,7 +907,7 @@ class SessionChatComposeSection extends StatelessWidget {
 
   // -- Identity label ------------------------------------------------------
 
-  static String? _identityLabel({
+  static String? resolveIdentityLabel({
     required AppSession session,
     required TeamProfile? team,
     required ExpertHubState? hubState,
@@ -918,6 +919,9 @@ class SessionChatComposeSection extends StatelessWidget {
     }
     final key = session.expertKey.trim();
     if (key.isEmpty) return null;
+    // The built-in "default" expert means no expert was selected; showing its
+    // name in the compose identity chip is just noise, so hide the chip.
+    if (key == kBuiltinDefaultExpertKey) return null;
     return ExpertMemberResolver.labelForKey(
       key: key,
       fallbackLabel: expertFallback,
