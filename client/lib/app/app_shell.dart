@@ -18,6 +18,7 @@ import 'bootstrap/session_state_wiring.dart';
 import 'bootstrap/session_usage_wiring.dart';
 import 'bootstrap/workspace_wiring.dart';
 import 'bootstrap/connect_wiring.dart';
+import 'bootstrap/command_wiring.dart';
 import 'team_generation_graph.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../services/cli/antigravity/antigravity_bootstrap_entry.dart';
@@ -218,7 +219,6 @@ import '../services/commands/layout_command_registrar.dart';
 import '../services/commands/run_command_registrar.dart';
 import '../services/commands/session_command_registrar.dart';
 import '../services/commands/split_command_registrar.dart';
-import '../services/commands/shortcuts_ui_commands.dart';
 import '../services/commands/workspace_search_command_registrar.dart';
 import '../services/commands/workspace_content_search_command_registrar.dart';
 import '../services/floating_workspace/floating_maximize_insets.dart';
@@ -2047,40 +2047,27 @@ Future<AppShell> buildAppShell({
     ConnectSshBackend? embeddedSshServer = connect.embeddedSshServer;
     ConnectSshBackend? systemSshdBackend = connect.systemSshdBackend;
     PairedDeviceStore? connectDeviceStore = connect.connectDeviceStore;
-    final commandBus = CommandBus();
-    final shortcutCubit = ShortcutCubit(storage: homeStorage);
-    final workspaceChromeCommands = WorkspaceChromeCommands();
-    final runCommandHost = RunCommandHost();
-    final workspaceSearchHost = WorkspaceSearchHost();
-    final workspaceContentSearchHost = WorkspaceContentSearchHost();
-    final uiZoomBaseline = UiZoomBaseline();
-    registerShortcutsUiCommands(commandBus);
-    registerRunCommands(commandBus, runCommandHost);
-    registerWorkspaceSearchCommands(commandBus, workspaceSearchHost);
-    registerWorkspaceContentSearchCommands(
-      commandBus,
-      workspaceContentSearchHost,
-    );
-
-    final transportFactory = TerminalTransportFactory(
-      sshProfileRepository: sshProfileRepo,
+    final commands = wireCommands(
+      storage: homeStorage,
+      sshProfileRepo: sshProfileRepo,
       sshCredentialStore: sshCredentialStore,
-      sshKnownHostRepository: sshKnownHostRepo,
+      sshKnownHostRepo: sshKnownHostRepo,
       sshClientFactory: sshClientFactory,
-    );
-
-    final workspaceShellConnector = WorkspaceShellConnector(
-      transportFactory: transportFactory,
-      sshProfileRepository: sshProfileRepo,
-      sshUseLoginShell: () =>
-          sessionPreferencesCubit.state.preferences.sshUseLoginShell,
+      sessionPreferencesCubit: sessionPreferencesCubit,
       homeTarget: defaultTargetResolver,
-      profileById: sshProfileById,
-      fs: homeStorage.fs,
+      sshProfileById: sshProfileById,
     );
-    // Terminal inject deps after connector: registry was created earlier.
-    final workspaceTerminalSessionOps = WorkspaceTerminalSessionOps();
-    final workspaceTerminalRunService = WorkspaceTerminalRunService();
+    final commandBus = commands.commandBus;
+    final shortcutCubit = commands.shortcutCubit;
+    final workspaceChromeCommands = commands.workspaceChromeCommands;
+    final runCommandHost = commands.runCommandHost;
+    final workspaceSearchHost = commands.workspaceSearchHost;
+    final workspaceContentSearchHost = commands.workspaceContentSearchHost;
+    final uiZoomBaseline = commands.uiZoomBaseline;
+    final transportFactory = commands.transportFactory;
+    final workspaceShellConnector = commands.workspaceShellConnector;
+    final workspaceTerminalSessionOps = commands.workspaceTerminalSessionOps;
+    final workspaceTerminalRunService = commands.workspaceTerminalRunService;
     workspaceRunRegistry.setTerminalRunDeps(
       TerminalRunDeps(
         registry: workspaceTerminalRegistry,
