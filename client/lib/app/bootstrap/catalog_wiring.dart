@@ -26,8 +26,10 @@ typedef SkillCatalogWiring = ({
 typedef ExtensionCatalogWiring = ({
   ExtensionRepository extensionRepository,
   WorkspaceProjectConfigRepository workspaceProjectConfigRepository,
-  CliPresetsRepository cliPresetsRepository,
 });
+
+/// CLI presets repository bound to one home plane.
+typedef CliPresetsWiring = ({CliPresetsRepository cliPresetsRepository});
 
 /// Plugin and MCP repositories bound to one home plane.
 typedef PluginMcpWiring = ({
@@ -92,15 +94,19 @@ ExtensionCatalogWiring wireExtensionCatalog({required HomeStorage storage}) {
     storage: storage,
     fs: storage.fs,
   );
-  final cliPresetsRepo = CliPresetsRepository(
-    fs: storage.fs,
-    presetsPath: storage.paths.cliPresetsJson,
-  );
   return (
     extensionRepository: extensionRepository,
     workspaceProjectConfigRepository: workspaceProjectConfigRepository,
-    cliPresetsRepository: cliPresetsRepo,
   );
+}
+
+/// Builds the CLI presets repository for [storage].
+CliPresetsWiring wireCliPresets({required HomeStorage storage}) {
+  final cliPresetsRepository = CliPresetsRepository(
+    fs: storage.fs,
+    presetsPath: storage.paths.cliPresetsJson,
+  );
+  return (cliPresetsRepository: cliPresetsRepository);
 }
 
 /// Builds the plugin and MCP repositories for [storage].

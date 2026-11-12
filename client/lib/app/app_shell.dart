@@ -1893,9 +1893,11 @@ Future<AppShell> buildAppShell({
     final extensionRepository = extensionCatalog.extensionRepository;
     final workspaceProjectConfigRepository =
         extensionCatalog.workspaceProjectConfigRepository;
-    final cliPresetsRepo = extensionCatalog.cliPresetsRepository;
 
     identityRepository = LaunchProfileRepository(storage: homeStorage);
+
+    final cliPresetsRepo = wireCliPresets(storage: homeStorage)
+        .cliPresetsRepository;
 
     sessionLifecycleService = SessionLifecycleService(
       storage: homeStorage,
