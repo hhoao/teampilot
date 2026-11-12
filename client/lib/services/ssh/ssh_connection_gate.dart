@@ -30,6 +30,11 @@ final class SshProfileDownException implements Exception {
 /// Whether [error] is the gate's "profile is down" signal.
 bool isSshProfileDown(Object? error) => error is SshProfileDownException;
 
+/// Read-only I/O permission check. The supervisor implements it from its
+/// private gate and injects it into the pure storage pool; the pool holds no
+/// gate state but still surfaces SshProfileDownException to repositories.
+typedef SshIoGuard = void Function(String profileId);
+
 /// Tracks one shared SSH transport per profile and decides who may dial it.
 ///
 /// The gate is deliberately *not* a retry loop. It only records state and
