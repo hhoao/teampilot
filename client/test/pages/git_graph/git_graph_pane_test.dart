@@ -183,6 +183,44 @@ void main() {
     await cubit.close();
   });
 
+  testWidgets('uncommitted row label ellipsizes in a narrow pane', (
+    tester,
+  ) async {
+    // 回归：未提交伪行描述列是非弹性 Row(Text + badge)，窄面板下文本
+    // 无法省略，RenderFlex 右侧溢出（曾报 42px）。
+    final history = FakeHistoryForGraph(rows: [graphCommitRow('c1')]);
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(dirtyStatus()),
+    );
+    await cubit.setRepoRoot('/repo');
+    addTearDown(cubit.close);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        home: MultiProvider(
+          providers: [
+            BlocProvider.value(value: cubit),
+            BlocProvider.value(value: LayoutCubit()),
+          ],
+          child: const Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 460,
+                child: GitGraphPane(workspaceId: 'ws', repoRoot: '/repo'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Uncommitted'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('tapping uncommitted row opens workspace changes diff', (
     tester,
   ) async {

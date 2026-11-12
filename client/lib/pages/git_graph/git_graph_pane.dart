@@ -516,11 +516,15 @@ class _UncommittedTileState extends State<_UncommittedTile> {
                   ),
                   description: Row(
                     children: [
-                      Text(
-                        context.l10n.gitGraph.uncommittedChanges,
-                        style: TpTextStyles.of(
-                          context,
-                        ).mdColored(cs.onSurfaceVariant),
+                      Flexible(
+                        child: Text(
+                          context.l10n.gitGraph.uncommittedChanges,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TpTextStyles.of(
+                            context,
+                          ).mdColored(cs.onSurfaceVariant),
+                        ),
                       ),
                       const SizedBox(width: 6),
                       Container(
