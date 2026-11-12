@@ -11,6 +11,8 @@ import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/utils/logging/logger.dart';
 
+import '../../storage/remote_file_store.dart';
+
 String _personalize(SeatRewindTarget source, String path) {
   final member = source.memberId?.trim() ?? '';
   if (member.isEmpty) return path;
@@ -131,6 +133,8 @@ final class SeatRewindStore {
   /// Path joins use the injected filesystem's context so remote (posix) planes
   /// build their paths with the right style. The local default is [p.context].
   p.Context get paths => fs.pathContext;
+
+  bool get isRemote => fs.isRemote;
 
   /// Upper bound for one git process. A checkpoint runs before the seat is
   /// published idle, so a stuck git process must never latch the turn forever.
@@ -520,6 +524,7 @@ final class SeatRewindStore {
   /// Drops index entries for this seat that are no longer a regular work-tree
   /// file. Leaves other seats, excluded paths, and never-added symlinks alone.
   Future<void> _dropStaleSeatIndexEntries() async {
+    if (isRemote) return; // remote: avoid N round-trips; git add covers deletions
     final listed = await _runGit([
       ..._repoArgs,
       'ls-files',
@@ -774,6 +779,23 @@ final class SeatRewindStore {
   /// or cannot be listed mid-walk (a marketplace refresh pruning a plugin
   /// tree) is skipped instead of failing the whole checkpoint.
   Future<List<String>> _includedRuntimeFiles() async {
+    if (isRemote) {
+      final excludes = rewindExcludeNames
+          .map(
+            (name) => '-not -path '
+                '${RemoteFileStore.shellSingleQuote('*/$name/*')} ',
+          )
+          .join();
+      final result = await git.runScript(
+        'find . -type f $excludes-print',
+        workingDirectory: workTree,
+      );
+      return [
+        for (final line in const LineSplitter().convert(result.stdout))
+          if (line.trim().isNotEmpty)
+            line.trim().replaceFirst(RegExp(r'^\./'), ''),
+      ].where((p) => target.includes(p) && !target.isExcluded(p)).toList();
+    }
     final found = <String>[];
     if (!(await fs.stat(workTree)).exists) return found;
 

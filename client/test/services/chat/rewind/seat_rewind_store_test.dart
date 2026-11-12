@@ -517,6 +517,26 @@ exec "$realGit" "\$@"
     expect(runner.calls, isNotEmpty);
     expect(fs.calls, isNotEmpty);
   });
+
+  test('remote store lists included files with one find and skips stale check', () async {
+    if (Platform.isWindows) return; // runScript is POSIX-only
+    final tmp = tmpDir.path;
+    final runner = _RecordingGitRunner(LocalGitCommandRunner());
+    final store = SeatRewindStore(
+      gitDir: '$tmp/repo.git',
+      workTree: '$tmp/work',
+      target: const SeatRewindTarget(
+        kind: SeatRewindKind.personalAcp,
+        tool: 'claude',
+      ),
+      git: runner,
+      fs: _RemoteDelegatingFs(),
+    );
+    expect(store.isRemote, isTrue);
+    await store.commitTurn(messageId: 'm1');
+    expect(runner.scripts.where((s) => s.contains('find')), hasLength(1));
+    expect(runner.calls.any((c) => c.contains('ls-files')), isFalse);
+  });
 }
 
 Future<List<String>> _lsTree(SeatRewindStore store, String commit) async {
@@ -538,6 +558,7 @@ final class _RecordingGitRunner implements GitCommandRunner {
   _RecordingGitRunner(this._inner);
   final GitCommandRunner _inner;
   final calls = <List<String>>[];
+  final scripts = <String>[];
 
   @override
   Future<bool> get isAvailable => _inner.isAvailable;
@@ -559,8 +580,10 @@ final class _RecordingGitRunner implements GitCommandRunner {
   }
 
   @override
-  Future<GitCommandResult> runScript(String script, {String? workingDirectory, Map<String, String>? environment, String? stdinText, Duration? timeout}) =>
-      _inner.runScript(script, workingDirectory: workingDirectory, environment: environment, stdinText: stdinText, timeout: timeout);
+  Future<GitCommandResult> runScript(String script, {String? workingDirectory, Map<String, String>? environment, String? stdinText, Duration? timeout}) {
+    scripts.add(script);
+    return _inner.runScript(script, workingDirectory: workingDirectory, environment: environment, stdinText: stdinText, timeout: timeout);
+  }
 
   @override
   Future<GitCapability> probe() => _inner.probe();
@@ -574,4 +597,9 @@ final class _RecordingFs extends LocalFilesystem {
     calls.add(path);
     return super.stat(path);
   }
+}
+
+final class _RemoteDelegatingFs extends LocalFilesystem {
+  @override
+  bool get isRemote => true;
 }
