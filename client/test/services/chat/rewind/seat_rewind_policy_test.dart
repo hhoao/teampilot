@@ -2,24 +2,32 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/chat/rewind/rewind_capability.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_policy.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 
 import '../../../support/post_frame_test_harness.dart';
+import '../../../support/test_runtime_context.dart';
 
 void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
+  /// Builds a policy with fully injected work-plane seams. The default is a
+  /// local target, a resolved native context, and an available git capability.
   SeatRewindPolicy policy({
-    bool mobile = false,
-    bool git = true,
     RuntimeTarget? target,
+    RuntimeContext? Function(RuntimeTarget)? contextFor,
+    RewindCapability? capability,
   }) {
+    final workTarget = target ?? RuntimeTarget.local();
+    final resolvedContext =
+        contextFor ?? (_) => testRuntimeContext(testHomeStorage.appDataRoot);
+    final cap = capability ?? const RewindCapability(available: true);
     return SeatRewindPolicy(
-      isMobile: () => mobile,
-      gitAvailable: () => git,
-      layout: () => testHomeStorage.context.layout,
-      launchTargetFor: (_, _) => target ?? RuntimeTarget.local(),
+      workTargetFor: (_, _) => workTarget,
+      contextFor: resolvedContext,
+      capabilityFor: (_) => cap,
     );
   }
 
@@ -30,7 +38,7 @@ void main() {
     sessionTeam: mixed ? 'team-1' : '',
   );
 
-  test('personal local seat with git is eligible', () {
+  test('personal + local target + git available is allowed', () {
     final result = policy().evaluate(
       session: session(),
       memberId: null,
@@ -43,7 +51,7 @@ void main() {
     expect(result.store!.gitDir, contains('/rewind/personal'));
   });
 
-  test('mixed seat is denied while the mixed switch is off', () {
+  test('mixed seat is denied (mixedSeatsDisabled)', () {
     final result = policy().evaluate(
       session: session(mixed: true),
       memberId: 'm1',
@@ -55,8 +63,8 @@ void main() {
     expect(result.denial, RewindDenial.mixedSeatsDisabled);
   });
 
-  test('mobile is denied before touching git', () {
-    final result = policy(mobile: true).evaluate(
+  test('unresolved work context is denied (workPlaneNotReady)', () {
+    final result = policy(contextFor: (_) => null).evaluate(
       session: session(),
       memberId: null,
       cli: CliTool.claude,
@@ -64,24 +72,11 @@ void main() {
     );
 
     expect(result.allowed, isFalse);
-    expect(result.denial, RewindDenial.mobilePlatform);
+    expect(result.denial, RewindDenial.workPlaneNotReady);
   });
 
-  test('remote runtime is denied', () {
-    final result = policy(target: RuntimeTarget.ssh('profile', label: 'SSH'))
-        .evaluate(
-          session: session(),
-          memberId: null,
-          cli: CliTool.claude,
-          acp: false,
-        );
-
-    expect(result.allowed, isFalse);
-    expect(result.denial, RewindDenial.remoteRuntime);
-  });
-
-  test('missing git is denied', () {
-    final result = policy(git: false).evaluate(
+  test('unavailable capability is denied (gitMissing)', () {
+    final result = policy(capability: RewindCapability.unavailable).evaluate(
       session: session(),
       memberId: null,
       cli: CliTool.claude,
@@ -90,5 +85,35 @@ void main() {
 
     expect(result.allowed, isFalse);
     expect(result.denial, RewindDenial.gitMissing);
+  });
+
+  test('ssh windows remote is denied (unsupportedBackend)', () {
+    final windows = RuntimeTarget.ssh('profile', label: 'SSH').copyWith(
+      remoteOs: RemoteOs.windows,
+    );
+    final result = policy(target: windows).evaluate(
+      session: session(),
+      memberId: null,
+      cli: CliTool.claude,
+      acp: false,
+    );
+
+    expect(result.allowed, isFalse);
+    expect(result.denial, RewindDenial.unsupportedBackend);
+  });
+
+  test('ssh posix remote with git available is allowed', () {
+    final posix = RuntimeTarget.ssh('profile', label: 'SSH').copyWith(
+      remoteOs: RemoteOs.posix,
+    );
+    final result = policy(target: posix).evaluate(
+      session: session(),
+      memberId: null,
+      cli: CliTool.claude,
+      acp: false,
+    );
+
+    expect(result.allowed, isTrue);
+    expect(result.store!.target.seatKey, 'personal');
   });
 }

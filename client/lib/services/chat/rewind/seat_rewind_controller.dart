@@ -278,8 +278,12 @@ final class SeatRewindController {
       acp: acp,
       tool: cli.value,
     );
-    final dest = SeatRewindStore.forSession(
-      layout: policy.layout(),
+    final ctx = policy.contextForSession(source, memberId);
+    if (ctx == null) {
+      throw StateError('work-plane context not resolved for fork');
+    }
+    final dest = SeatRewindStore.forContext(
+      context: ctx,
       workspaceId: source.workspaceId,
       sessionId: newId,
       target: destTarget,

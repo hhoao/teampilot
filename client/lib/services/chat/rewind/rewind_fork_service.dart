@@ -46,9 +46,6 @@ final class RewindForkService {
     if (!allowTurnInFlight && seat.turnInFlight) {
       throw StateError('Cannot rewind while a turn is in flight');
     }
-    if (!seat.localRuntime) {
-      throw StateError('Cannot rewind a remote runtime');
-    }
     await gate.waitForSnapshot(store.gitDir);
     if (!gate.begin(store.gitDir)) {
       throw StateError('Cannot rewind while another rewind is running');

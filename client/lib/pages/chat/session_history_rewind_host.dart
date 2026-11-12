@@ -158,6 +158,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
     final cubit = _cubit;
     if (cubit == null || !mounted) return;
     final serial = ++_reloadSerial;
+    await cubit.prepareRewindFor(widget.session, widget.memberId);
     final allowed = cubit.rewindActionsAllowed(widget.session, widget.memberId);
     var branches = const SeatBranches.empty();
     if (allowed) {

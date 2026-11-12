@@ -58,15 +58,25 @@ void main() {
     expect(seat.events, isEmpty);
   });
 
-  test('rewind refuses a remote runtime', () async {
+  test('rewind allows a remote runtime seat', () async {
     final store = await _personalStore(tmpDir.path);
+    final first = await store.commitTurn(messageId: 'm1');
     final seat = _FakeSeatProcess(localRuntime: false);
 
-    await expectLater(
-      RewindForkService().rewind(store: store, seat: seat, commit: 'unused'),
-      throwsA(isA<StateError>()),
+    // Remote runtimes are no longer refused: the seat is stopped, restored,
+    // and relaunched exactly like a local one (work-plane contexts carry the
+    // remote git runner now).
+    await RewindForkService().rewind(
+      store: store,
+      seat: seat,
+      commit: first.commit,
     );
-    expect(seat.events, isEmpty);
+
+    expect(seat.events, [
+      'stopAndWait',
+      'recordNativeSessionId:',
+      'relaunch',
+    ]);
   });
 
   test('restore failure does not relaunch', () async {
