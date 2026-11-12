@@ -98,6 +98,76 @@ void main() {
     },
   );
 
+  test(
+    'simple session seeds auth into the session tool dir ACP launches with',
+    () async {
+      final fs = InMemoryFilesystem();
+      final storage = fakeHomeStorage(filesystem: fs);
+      final service = ConfigProfileService(
+        basePath: '/tp',
+        fs: fs,
+        layout: RuntimeLayout(teampilotRoot: '/tp', fs: fs),
+        storage: storage,
+      );
+      final capability = GrokProviderCapability(storage: storage);
+
+      await fs.ensureDir('/tp/providers/grok/xai');
+      await fs.atomicWrite(
+        '/tp/providers/grok/xai/auth.json',
+        '{"access_token":"provider"}',
+      );
+
+      // Personal/Simple launches synthesize a member whose id is the session
+      // id and leave scope.memberId empty; ACP launches with the non-member
+      // session tool dir as GROK_HOME.
+      const sessionId = 'session-1';
+      const member = TeamMemberConfig(
+        id: sessionId,
+        name: sessionId,
+        provider: 'xai',
+        model: 'grok-4.5',
+      );
+      final scope = resolveLaunchProfileScope(
+        workspaceId: 'workspace-1',
+        teamId: 'workspace-1',
+        appSessionId: sessionId,
+        cliTeamName: sessionId,
+      );
+
+      final contribution = await capability.materializeSessionHome(
+        sessionHomeContextFromLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: '',
+            sessionId: sessionId,
+            scope: scope,
+            member: member,
+            members: const [member],
+            workingDirectory: '/workspace/workspace',
+            paths: service,
+            catalog: service,
+          ),
+          CliTool.grok,
+        ),
+      );
+
+      final expectedDir = service.sessionToolDir(
+        'workspace-1',
+        sessionId,
+        CliTool.grok.value,
+      );
+      expect(
+        contribution.environment[GrokConstants.homeEnvKey],
+        expectedDir,
+        reason: 'GROK_HOME must match the ACP launch session tool dir',
+      );
+      expect(
+        await fs.readString(p.posix.join(expectedDir, 'auth.json')),
+        '{"access_token":"provider"}',
+      );
+    },
+  );
+
   test('an API key is injected and stale session auth is removed', () async {
     final fs = InMemoryFilesystem();
     final storage = fakeHomeStorage(filesystem: fs);
@@ -142,7 +212,6 @@ void main() {
       'workspace-1',
       scope.sessionId,
       CliTool.grok.value,
-      memberId: 'm1',
     );
     await fs.ensureDir(configDir);
     await fs.atomicWrite(p.posix.join(configDir, 'auth.json'), 'stale');

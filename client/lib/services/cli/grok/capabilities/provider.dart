@@ -328,7 +328,7 @@ final class GrokProviderCapability extends CatalogModelCapability
       ctx.scope.workspaceId,
       ctx.scope.sessionId,
       CliTool.grok.value,
-      memberId: ctx.memberId ?? ctx.member?.id ?? ctx.scope.memberId,
+      memberId: ctx.scope.memberId,
     );
     await delegate.fs.ensureDir(configDir);
 
