@@ -12,6 +12,7 @@ import 'app_data_bootstrap.dart';
 import 'bootstrap/managed_provider_control_plane.dart';
 import 'bootstrap/provider_usage_http_client.dart';
 import 'bootstrap/catalog_wiring.dart';
+import 'bootstrap/install_wiring.dart';
 import 'bootstrap/session_state_wiring.dart';
 import 'bootstrap/session_usage_wiring.dart';
 import 'team_generation_graph.dart';
@@ -100,15 +101,9 @@ import '../services/install/runners/hub_clone_install_job_runner.dart';
 import '../services/remote_download/remote_download_http.dart';
 import '../services/remote_download/remote_download_resolver.dart';
 import '../services/remote_download/remote_downloader.dart';
-import '../services/cli/cli_installer_service.dart';
 import '../services/file_tree_import/workspace_import_service.dart';
 import '../services/install/install_job_registry.dart';
-import '../services/install/install_job_runner_registry.dart';
 import '../services/install/runners/app_update_install_job_runner.dart';
-import '../services/install/runners/cli_install_job_runner.dart';
-import '../services/install/runners/file_tree_import_install_job_runner.dart';
-import '../services/install/runners/pack_acquire_install_job_runner.dart';
-import '../services/install/runners/toolchain_install_job_runner.dart';
 import '../cubits/ai_history_cubit.dart';
 import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
@@ -139,7 +134,6 @@ import '../cubits/managed_provider_cubit.dart';
 import '../cubits/managed_provider_usage_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../models/session_preferences.dart';
-import '../models/skill_registry_source.dart';
 import '../cubits/extension_cubit.dart';
 import '../cubits/hook_cubit.dart';
 import '../cubits/mcp_cubit.dart';
@@ -266,7 +260,6 @@ import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
-import '../services/cli/registry/capabilities/acp_settings_capability.dart';
 import '../services/cli/claude/claude_bootstrap_entry.dart';
 import '../services/cli/codex/codex_bootstrap_entry.dart';
 import '../services/cli/cursor/cursor_bootstrap_entry.dart';
@@ -274,7 +267,6 @@ import '../services/cli/registry/installer/binary_archive_installer.dart';
 import '../services/cli/opencode/opencode_bootstrap_entry.dart';
 import '../services/host/host_one_shot_runner_for_context.dart';
 import '../services/host/host_process_starter_for_context.dart';
-import '../services/host/process_run_handle.dart';
 import '../services/host/host_shell_path_resolver.dart';
 import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
 import '../services/cli/codex/provider/codex_provider_credentials_service.dart';
@@ -315,7 +307,6 @@ import '../services/ssh/ssh_profile_connection_tester.dart';
 import '../services/chat/session/session_lifecycle_service.dart';
 import '../services/plugin/marketplace_shared_store.dart';
 import '../services/plugin/plugin_repo_disk_cache_service.dart';
-import '../services/skill/registry/skill_registry_config_service.dart';
 import '../services/skill/registry/skill_registry_factory.dart';
 import '../services/storage/runtime_context.dart';
 import '../services/github/github_credentials_store.dart';
@@ -343,7 +334,6 @@ import '../services/terminal/terminal_transport_factory.dart';
 import '../services/file_tree/workspace_file_tree_store.dart';
 import '../services/git/git_command_runner.dart';
 import '../services/git/git_repo_store.dart';
-import '../services/workspace/repo_clone_service.dart';
 import '../services/workspace/workspace_tools_scope_registry.dart';
 import '../services/workspace/workspace_run_registry.dart';
 import '../services/run/process_run_executor.dart';
@@ -1971,79 +1961,26 @@ Future<AppShell> buildAppShell({
     final notificationBootstrap = sessionUsage.notificationBootstrap;
     final progressActivityCubit = sessionUsage.progressActivityCubit;
 
-    // Repo clone executor: one shared SSH exec spawner for both the clone
-    // process (ProcessRunExecutor) and the host runner's context resolution
-    // (mirrors WorkspaceRunPlatformFactory's spawner).
-    Future<ProcessRunHandle> repoCloneSshSpawner({
-      required String sshProfileId,
-      required String shellCommand,
-    }) async {
-      final SshProfile? profile = await sshProfileRepo.findById(sshProfileId);
-      if (profile == null) {
-        throw StateError('SSH profile not found for this run target');
-      }
-      return sshClientFactory.startProcess(profile, shellCommand);
-    }
-
-    final repoCloneHostRunner = DefaultRepoCloneHostRunner(
-      contextFor: runtimeContextRegistry.forTarget,
-      resolver: RunTargetResolver(homeTarget: defaultTargetResolver),
-    );
-    final repoCloneService = RepoCloneService(
-      resolver: RunTargetResolver(homeTarget: defaultTargetResolver),
-      executor: ProcessRunExecutor(sshSpawner: repoCloneSshSpawner),
-      hostRunner: repoCloneHostRunner,
-    );
-    final repoCloneCubit = RepoCloneCubit(
-      progressActivityCubit: progressActivityCubit,
-      service: repoCloneService,
-      cleanupFs: repoCloneHostRunner.filesystemFor,
-    );
-    final installJobRunnerRegistry = InstallJobRunnerRegistry(
-      runners: [
-        CliInstallJobRunner(
-          installerFactory: () => CliInstallerService(
-            sshClientFactory: sshClientFactory,
-            cliToolRegistry: cliToolRegistry,
-            preferredNodePath: () => sessionPreferencesCubit.toolchainPath(
-              SessionPreferences.toolchainNode,
-            ),
-          ),
-          sshProfileById: sshProfileById,
-          adapterResolver: (target) {
-            for (final def in cliToolRegistry.launchable) {
-              final installer = cliToolRegistry
-                  .capability<AcpSettingsCapability>(def.id)
-                  ?.adapterInstaller;
-              if (installer != null && installer.adapterJobTarget == target) {
-                return installer;
-              }
-            }
-            return null;
-          },
-        ),
-        ToolchainInstallJobRunner(),
-        PackAcquireInstallJobRunner(),
-        HubCloneInstallJobRunner(),
-        FileTreeImportInstallJobRunner(importService: workspaceImportService),
-        AppUpdateInstallJobRunner(service: appUpdateService),
-      ],
-    );
-    final installJobRegistry = InstallJobRegistry(
-      progressCubit: progressActivityCubit,
-      runnerRegistry: installJobRunnerRegistry,
-    );
-
-    final skillRegistryConfigService = SkillRegistryConfigService(
+    final installWiring = await wireInstallJobs(
       storage: homeStorage,
-      legacySkillsMpKeyReader: () => appSettings.loadSkillsMpApiKey(),
+      sshProfiles: sshProfileRepo,
+      sshClientFactory: sshClientFactory,
+      runtimeContexts: runtimeContextRegistry,
+      homeTarget: defaultTargetResolver,
+      progressActivity: progressActivityCubit,
+      cliToolRegistry: cliToolRegistry,
+      sessionPreferences: sessionPreferencesCubit,
+      importService: workspaceImportService,
+      appUpdateService: appUpdateService,
+      appSettings: appSettings,
+      deferHomePlaneLoads: deferHomePlaneLoads,
+      sshProfileById: sshProfileById,
     );
-    // Unreachable SSH home: skip the home-plane read; defaults keep the cubit
-    // constructible and `SkillCubit.loadAll()` reloads the real config when
-    // the deferred chain runs after connect.
-    final skillRegistryConfig = deferHomePlaneLoads
-        ? SkillRegistriesConfig.defaults()
-        : await skillRegistryConfigService.load();
+    final repoCloneSshSpawner = installWiring.repoCloneSshSpawner;
+    final repoCloneCubit = installWiring.repoCloneCubit;
+    final installJobRegistry = installWiring.installJobRegistry;
+    final skillRegistryConfigService = installWiring.skillRegistryConfigService;
+    final skillRegistryConfig = installWiring.skillRegistryConfig;
     skillCubit = SkillCubit(
       skillRepo,
       storage: homeStorage,
