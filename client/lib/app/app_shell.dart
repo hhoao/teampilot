@@ -15,6 +15,7 @@ import 'bootstrap/managed_provider_wiring.dart';
 import 'bootstrap/catalog_runtime_wiring.dart';
 import 'bootstrap/catalog_wiring.dart';
 import 'bootstrap/chat_session_wiring.dart';
+import 'bootstrap/home_plane_switch.dart';
 import 'bootstrap/home_plane_wiring.dart';
 import 'bootstrap/hub_wiring.dart';
 import 'bootstrap/install_wiring.dart';
@@ -232,7 +233,6 @@ import '../services/ssh/mcp/session_ssh_mcp_http.dart';
 import '../services/ssh/mcp/session_ssh_mcp_operations.dart';
 import '../services/ssh/mcp/session_ssh_mcp_resolver.dart';
 import '../services/ssh/ssh_transport_close.dart';
-import '../services/ssh/ssh_connection_failure.dart';
 import '../services/ssh/android_ssh_connect_home.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../services/file_tree/workspace_file_tree_store.dart';
@@ -730,6 +730,7 @@ Future<AppShell> buildAppShell({
   late final SshProfileCubit sshProfileCubit;
   late final VaultCubit vaultCubit;
   late final HomeTargetController homeTargetController;
+  late final HomePlaneSwitchController homePlaneSwitch;
   late final HomeWorkspaceUiCache homeWorkspaceUiCache;
   sshProfileCubit = SshProfileCubit(
     profileRepository: sshProfileRepo,
@@ -935,49 +936,6 @@ Future<AppShell> buildAppShell({
   String? watchedHomeProfileConnectivityKey;
 
   try {
-    Future<void> persistSshHomePathCacheIfLive() async {
-      final home = defaultTargetResolver();
-      if (home.kind != RuntimeKind.ssh) return;
-      final pid = home.sshProfileId;
-      if (pid == null || pid.isEmpty) return;
-      final ctx = runtimeContextRegistry.home();
-      if (ctx.pathsFromCache) return;
-      if (!sshProfileCubit.state.profiles.any((p) => p.id == pid)) {
-        await sshProfileCubit.load();
-      }
-      await sshProfileCubit.updatePathCache(
-        pid,
-        home: ctx.home,
-        appDataRoot: ctx.appDataRoot,
-      );
-    }
-
-    // Persists the chosen home id, rebinds the registry home, and republishes it
-    // through homeStorage.
-    Future<void> setHomeTarget(String id) async {
-      await managedProviderControlPlane.invalidateForStorageContextChange();
-      await homeTargetStore.save(id);
-      final previousHomeId = defaultTargetResolver().id;
-      final nextHomeTarget = homeTargetFromId(id);
-      // Drop any cached wrapper for the destination target so rebindHome
-      // materializes a fresh context (unchanged from the pre-swap sequence).
-      if (id != previousHomeId) await runtimeContextRegistry.dispose(id);
-      await runtimeContextRegistry.rebindHome(nextHomeTarget);
-      homeTarget = nextHomeTarget;
-      final nextProfileId = nextHomeTarget.sshProfileId;
-      activeHomeProfileId =
-          nextHomeTarget.kind == RuntimeKind.ssh &&
-              nextProfileId != null &&
-              nextProfileId.isNotEmpty
-          ? nextProfileId
-          : null;
-      // Publish the new home plane synchronously, then retire the outgoing
-      // context — its registry entry is evicted and the SSH transport closed
-      // only after in-flight ops drain (Task 5 deferred close).
-      await homeStorage.swap(runtimeContextRegistry.home());
-      await persistSshHomePathCacheIfLive();
-    }
-
     connectionModeService = ConnectionModeService(
       defaultTargetResolver: defaultTargetResolver,
       hasSshProfiles: () => sshProfileCubit.state.hasProfiles,
@@ -992,7 +950,7 @@ Future<AppShell> buildAppShell({
       // stale wrapper, but the retire is a no-op in the registry (the cached
       // instance is already the fresh one) so the SSH pool stays connected.
       await homeStorage.swap(runtimeContextRegistry.home());
-      await persistSshHomePathCacheIfLive();
+      await homePlaneSwitch.persistSshHomePathCacheIfLive();
     };
 
     void onCredentialLoginHint(CredentialLoginProgress progress) {
@@ -1976,7 +1934,7 @@ Future<AppShell> buildAppShell({
                 expertHubCatalog: expertHubCatalog,
               );
           }
-          await persistSshHomePathCacheIfLive();
+          await homePlaneSwitch.persistSshHomePathCacheIfLive();
         };
 
     Future<void> reconnectHomeSshIfNeeded() async {
@@ -2020,33 +1978,6 @@ Future<AppShell> buildAppShell({
     bool homeRecoveredOntoNativeFallback() =>
         defaultTargetResolver().kind == RuntimeKind.ssh &&
         homeStorage.context.mode != StorageBackendMode.ssh;
-
-    /// Publishes the live SSH home plane after recovery. `reinstallStorageContext`
-    /// re-resolves the target with the transport now live, so a successful swap
-    /// means the whole app object graph can keep running on the SSH plane — no
-    /// restart needed. Returns null on success, or the error kind to surface on
-    /// the connection page when the swap failed (or still left a native plane).
-    Future<HomeErrorKind?> rebindHomeStoragePlane() async {
-      try {
-        await homeInvalidationService.runSelfInitiatedSwap(
-          reinstallStorageContext,
-        );
-      } on Object catch (error, stackTrace) {
-        appLogger.w(
-          '[boot] home storage plane rebind failed',
-          error: error,
-          stackTrace: stackTrace,
-        );
-        return isSshHostKeyFailure(error)
-            ? HomeErrorKind.hostIdentityChanged
-            : isSshAuthFailure(error)
-            ? HomeErrorKind.authFailed
-            : HomeErrorKind.transportError;
-      }
-      return homeStorage.context.mode == StorageBackendMode.ssh
-          ? null
-          : HomeErrorKind.transportError;
-    }
 
     /// Warm the shell-hosted config + auxiliary data and resolve onboarding.
     /// Shared by the native path and the remote (post-connect) boot so both
@@ -2187,7 +2118,7 @@ Future<AppShell> buildAppShell({
             home: defaultTargetResolver(),
             expertHubCatalog: expertHubCatalog,
           );
-          await persistSshHomePathCacheIfLive();
+          await homePlaneSwitch.persistSshHomePathCacheIfLive();
           remoteIndexBootstrapped = true;
           bootstrapCubit?.markHomeIndexReady();
         } on Object catch (error, stackTrace) {
@@ -2271,7 +2202,7 @@ Future<AppShell> buildAppShell({
         unawaited(() async {
           try {
             if (needsPlaneRebind) {
-              final failure = await rebindHomeStoragePlane();
+              final failure = await homePlaneSwitch.rebindHomeStoragePlane();
               if (failure != null) {
                 cubit?.markUnreachable(failure);
                 return;
@@ -2662,63 +2593,32 @@ Future<AppShell> buildAppShell({
       );
     }
 
-    Future<void> switchHomeTarget(String id) async {
-      final previousSshProfileId = activeHomeProfileId;
-      // Prime the edit-watch baseline before the switch publishes anything, so
-      // the path-cache write inside setHomeTarget is not mistaken for a user
-      // edit of the new target.
-      final pendingTarget = homeTargetFromId(id);
-      final pendingProfileId =
-          pendingTarget.kind == RuntimeKind.ssh &&
-              (pendingTarget.sshProfileId ?? '').isNotEmpty
-          ? pendingTarget.sshProfileId
-          : null;
-      final pendingProfile = pendingProfileId == null
-          ? null
-          : sshProfileById(pendingProfileId);
-      watchedHomeProfileConnectivityKey = pendingProfile == null
-          ? null
-          : sshProfileConnectivityKey(pendingProfile);
-      await setHomeTarget(
-        id,
-      ); // persists + rebinds home + republishes HomeStorage
-      final nextSshProfileId = activeHomeProfileId;
-      if (previousSshProfileId != nextSshProfileId) {
-        // Latch the abandoned profile (in-flight attempts back out, timer is
-        // dropped) and move the persistent retry loop to the new home — in one
-        // supervisor command instead of two independent coordinator calls.
-        sshHomeConnectivity.activateHome(nextSshProfileId);
-      }
-      // Reseed the connection cubit onto the new target. Its callbacks read
-      // `activeHomeProfileId`, so without this the gate would keep showing the
-      // connection page and 「继续重试」 would retry the abandoned home.
-      final nextProfile = nextSshProfileId == null
-          ? null
-          : sshProfileById(nextSshProfileId);
-      watchedHomeProfileConnectivityKey = nextProfile == null
-          ? null
-          : sshProfileConnectivityKey(nextProfile);
-      final cubit = homeConnectionCubit;
-      if (cubit != null && !cubit.isClosed) {
-        cubit.rebind(
-          profileId: nextSshProfileId,
-          host: nextProfile?.host,
-          port: nextProfile?.port,
-        );
-        if (nextSshProfileId == null) {
-          // setHomeTarget already resolved and published the new non-SSH plane;
-          // seed connected without replaying hot recovery.
-          cubit.markInitial(
-            HomeConnectResult.connected(runtimeContextRegistry.home()),
-          );
-        } else {
-          // One bounded attempt against the replacement target: this is what
-          // lets the gate leave the connection page once the new home connects.
-          unawaited(cubit.retryNow());
-        }
-      }
-      await applyHomeEventTransport(restart: true);
-    }
+    // Home-plane switching. Constructed here — after `applyHomeEventTransport`,
+    // `sshHomeConnectivity`, and `homeConnectionCubit` exist by value — because
+    // every later caller (`reinstallStorageContext`, the remote-index and
+    // recovery closures) may reach it only once the shell graph is wired.
+    homePlaneSwitch = HomePlaneSwitchController(
+      runtimeContexts: runtimeContextRegistry,
+      sshProfiles: sshProfileCubit,
+      storage: homeStorage,
+      managedProviders: managedProviderControlPlane,
+      homeTargetStore: homeTargetStore,
+      homeTargetFromId: homeTargetFromId,
+      sshProfileById: sshProfileById,
+      sshProfileConnectivityKey: sshProfileConnectivityKey,
+      sshHomeConnectivity: sshHomeConnectivity,
+      homeConnectionCubit: homeConnectionCubit,
+      applyHomeEventTransport: applyHomeEventTransport,
+      reinstallStorageContext: reinstallStorageContext,
+      readHomeTarget: () => homeTarget,
+      writeHomeTarget: (target) => homeTarget = target,
+      readActiveHomeProfileId: () => activeHomeProfileId,
+      writeActiveHomeProfileId: (id) => activeHomeProfileId = id,
+      readWatchedConnectivityKey: () => watchedHomeProfileConnectivityKey,
+      writeWatchedConnectivityKey: (key) =>
+          watchedHomeProfileConnectivityKey = key,
+      homeInvalidationService: () => homeInvalidationService,
+    );
 
     // Bootstrap-owned invalidation: replaces the HomeSshProfileBinder widget
     // (a pending invalidation can no longer be dropped by `!mounted`). Starts
@@ -2730,7 +2630,7 @@ Future<AppShell> buildAppShell({
       storageChanges: homeStorage.changes,
       homeTargetId: () => defaultTargetResolver().id,
       reload: (level) => reloadAllAppData(level: level),
-      switchHome: switchHomeTarget,
+      switchHome: homePlaneSwitch.switchHomeTarget,
       initialProfiles: sshProfileCubit.state.profiles,
       // Seed the generation token with swaps published before this
       // subscription existed so they are not mistaken for fresh planes.
@@ -2744,7 +2644,7 @@ Future<AppShell> buildAppShell({
     homeTargetController = HomeTargetController(
       registry: runtimeTargetRegistry,
       current: defaultTargetResolver,
-      switchTo: switchHomeTarget,
+      switchTo: homePlaneSwitch.switchHomeTarget,
     );
 
     void refreshTermuxConfigCache(TermuxConfig? config) {
