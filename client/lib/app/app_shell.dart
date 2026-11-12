@@ -14,6 +14,7 @@ import 'bootstrap/managed_provider_control_plane.dart';
 import 'bootstrap/managed_provider_wiring.dart';
 import 'bootstrap/catalog_runtime_wiring.dart';
 import 'bootstrap/catalog_wiring.dart';
+import 'bootstrap/chat_session_wiring.dart';
 import 'bootstrap/hub_wiring.dart';
 import 'bootstrap/install_wiring.dart';
 import 'bootstrap/session_state_wiring.dart';
@@ -62,12 +63,8 @@ import '../models/app_session.dart';
 import '../models/session_list_entry.dart';
 import '../services/catalog/catalog_runtime.dart';
 import '../services/catalog/catalog_mutation_bus.dart';
-import '../services/chat/team_bus/remote/remote_bus_binding_resolver.dart';
-import '../services/chat/team_bus/remote/remote_member_bus_setup.dart';
-import '../services/remote/local_credential_exporter.dart';
 import '../services/remote/remote_cli_readiness.dart';
 import '../services/editor_platform/editor_platform.dart';
-import '../services/chat/launch/launch_factory.dart';
 import '../services/launch_profile/team/launch_profile_selectors.dart';
 import '../services/ssh/worker/ssh_worker_entry.dart';
 import '../services/ssh/worker/ssh_worker_metrics.dart';
@@ -1902,8 +1899,15 @@ Future<AppShell> buildAppShell({
     // tab store; the lazy getter below is resolved when the session runtime is
     // first touched, which only happens after bootstrap completes.
     PromptDeliveryCoordinator? appScopedPromptDeliveries;
-    chatCubit = ChatCubit(
+    chatCubit = wireChatSession(
       storage: homeStorage,
+      sessions: () => sessionRepo,
+      lifecycle: () => sessionLifecycleService,
+      runtimeContexts: runtimeContextRegistry,
+      cliToolRegistry: cliToolRegistry,
+      sessionPreferences: sessionPreferencesCubit,
+      identities: () => identityRepository,
+      sshProfiles: () => sshProfileCubit,
       promptDeliveries: () => appScopedPromptDeliveries,
       teammateBusMcpGateway: teammateBusMcpGateway,
       agentStatusSeatLookup: agentStatusSeatLookup,
@@ -1911,70 +1915,19 @@ Future<AppShell> buildAppShell({
       seatLeaseCubit: seatLeaseCubit,
       askUserAnswerPendingStore: askUserAnswerPendingStore,
       askUserQuestionAnswerService: askUserQuestionAnswerService,
-      generalPermissionGate: generalPermissionRequestGate,
-      exitPlanApprovalService: exitPlanModeApprovalService,
-      sessionRepository: sessionRepo,
-      lifecycleService: sessionLifecycleService,
+      generalPermissionRequestGate: generalPermissionRequestGate,
+      exitPlanModeApprovalService: exitPlanModeApprovalService,
       automationRepository: automationRepo,
       layoutCubit: layoutCubit,
-      autoLaunchAllMembersOnConnect: () => sessionPreferencesCubit
-          .state
-          .preferences
-          .autoLaunchAllMembersOnConnect,
-      discoveredAcpAdapterPath: sessionPreferencesCubit.resolveAcpAdapterPath,
-      acpAdapterPathOverride: targetsRepo.acpAdapterPathOverride,
-      reclaimIdleTerminalsEnabled: () =>
-          sessionPreferencesCubit.state.preferences.reclaimIdleTerminals,
-      reclaimIdleTerminalAfterSeconds: () => sessionPreferencesCubit
-          .state
-          .preferences
-          .reclaimIdleTerminalAfterSeconds,
-      executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
-      cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
+      targets: targetsRepo,
       transportFactory: transportFactory,
-      sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
       sshProfileById: sshProfileById,
-      teamById: (teamId) async {
-        for (final team in await identityRepository.loadTeamProfiles()) {
-          if (team.id == teamId) return team;
-        }
-        return null;
-      },
-      sshDefaultWorkingDirectoryResolver: () =>
-          sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
-      sshUseLoginShellResolver: () =>
-          sessionPreferencesCubit.state.preferences.sshUseLoginShell,
       defaultTargetResolver: defaultTargetResolver,
-      terminalScrollbackLinesResolver: () =>
-          sessionPreferencesCubit.state.preferences.terminalScrollbackLines,
-      // P3b (#1): connect remote (ssh) mixed-team members back to the in-process
-      // bus over a reverse tunnel. Local members resolve to null (unchanged).
-      remoteBusSetup: RemoteMemberBusSetup(
-        resolver: RemoteBusBindingResolver(registry: cliToolRegistry),
-      ),
-      sessionConnect: buildSessionConnectOrchestrator(
-        lifecycle: sessionLifecycleService,
-        registry: cliToolRegistry,
-        sshClientFactory: sshClientFactory,
-        profileById: sshProfileById,
-        contextForTarget: runtimeContextRegistry.forTarget,
-        homeContext: runtimeContextRegistry.home,
-        homeTarget: defaultTargetResolver,
-        isCredentialOptIn: targetsRepo.isCredentialOptIn,
-        cliPathOverride: targetsRepo.cliPathOverride,
-        setCliPathOverride: targetsRepo.setCliPathOverride,
-        loadLocalCredentials: (cli) =>
-            LocalCredentialExporter(storage: homeStorage).export(cli),
-        localCliPath: (cli) async =>
-            sessionPreferencesCubit.resolveExecutable(cli),
-        runtimePlanBuilder: sessionRuntimePlanBuilder,
-      ),
+      sshClientFactory: sshClientFactory,
+      runtimePlanBuilder: sessionRuntimePlanBuilder,
       remoteCliReadiness: remoteCliReadiness,
       installJobRegistry: installJobRegistry,
-      termuxConnectedResolver: () => termuxGateCubit?.state.connected ?? true,
-      termuxDisconnectedWorkOpsMessageResolver:
-          TermuxWorkOpsMessage.disconnectedBlocked,
-      termuxGateHomeResolver: defaultTargetResolver,
+      termuxGate: () => termuxGateCubit,
     );
     // Terminal-less ACP chat copy: l10n is resolved per-call from the
     // platform locale (the launch service reads it at session connect).
