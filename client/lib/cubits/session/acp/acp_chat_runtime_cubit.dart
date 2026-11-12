@@ -394,6 +394,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   Timer? _streamPublishTimer;
   List<AiMessage> _lastStreamedMessages = const [];
   List<AiMessage>? _pendingStreamSnapshot;
+  DateTime? _lastStreamPublishAt;
 
   /// Activity implied by the turn trackers. Callers must have already updated
   /// the trackers for the event in hand.
@@ -2343,9 +2344,20 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     final transcript = _transcript;
     if (transcript == null) return;
     final snapshot = _messagesForDisk();
+    // Publish before waiting for disk: transcript compaction / slow media must
+    // not freeze the live remote stream. The final invalidation/snapshot reload
+    // reconciles if the write fails.
+    _queueStreamSnapshot(snapshot);
+    final sw = Stopwatch()..start();
     try {
       await transcript.saveMessages(snapshot);
-      _queueStreamSnapshot(snapshot);
+      final elapsed = sw.elapsedMilliseconds;
+      if (elapsed >= 250) {
+        appLogger.w(
+          '[acp-chat] slow persist session=$sessionId '
+          'messages=${snapshot.length} ms=$elapsed',
+        );
+      }
     } on Object catch (error, stackTrace) {
       appLogger.e(
         '[acp-chat] persist failed session=$sessionId: $error',
@@ -2366,6 +2378,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     final snapshot = _pendingStreamSnapshot;
     _pendingStreamSnapshot = null;
     if (snapshot == null || isClosed) return;
+    final sw = Stopwatch()..start();
     final delta = buildAcpChatTranscriptDelta(
       previous: _lastStreamedMessages,
       next: snapshot,
@@ -2385,6 +2398,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         payload: payload,
         replace: true,
       );
+      _logStreamPublish(payload, sw, snapshot.length);
       return;
     }
     if (delta.isEmpty) return;
@@ -2393,6 +2407,21 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       sessionId: sessionId,
       memberId: seatMemberId == acpMemberId ? '' : seatMemberId,
       payload: payload,
+    );
+    _logStreamPublish(payload, sw, snapshot.length);
+  }
+
+  void _logStreamPublish(String payload, Stopwatch sw, int messageCount) {
+    final now = DateTime.now();
+    final gapMs = _lastStreamPublishAt == null
+        ? 0
+        : now.difference(_lastStreamPublishAt!).inMilliseconds;
+    _lastStreamPublishAt = now;
+    final elapsed = sw.elapsedMilliseconds;
+    if (gapMs < 1000 && payload.length < 4096 && elapsed < 50) return;
+    appLogger.d(
+      '[acp-stream] flush session=$sessionId bytes=${payload.length} '
+      'ms=$elapsed gapMs=$gapMs messages=$messageCount',
     );
   }
 
