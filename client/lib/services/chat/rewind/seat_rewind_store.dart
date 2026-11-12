@@ -8,7 +8,6 @@ import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
-import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/utils/logging/logger.dart';
 
 import '../../storage/remote_file_store.dart';
@@ -76,33 +75,12 @@ final class SeatRewindStore {
         git = git ?? LocalGitCommandRunner(gitExecutable: gitExecutable),
         fs = fs ?? LocalFilesystem();
 
-  /// Resolves the one canonical repository location for a seat.
+  /// Resolves the one canonical repository location for a seat. Checkpoint
+  /// writers and the history/UI path must share this factory; a second copy of
+  /// the path rule silently splits one seat into two repos.
   ///
-  /// Checkpoint writers and the history/UI path must share this factory; a
-  /// second copy of the path rule silently splits one seat into two repos.
-  factory SeatRewindStore.forSession({
-    required RuntimeLayout layout,
-    required String workspaceId,
-    required String sessionId,
-    required SeatRewindTarget target,
-    String gitExecutable = 'git',
-    Duration commandTimeout = const Duration(seconds: 30),
-  }) {
-    return SeatRewindStore(
-      gitDir: layout.pathContext.join(
-        layout.workspace.sessionDir(workspaceId, sessionId),
-        'rewind',
-        target.seatKey,
-      ),
-      workTree: layout.workspace.sessionRuntimeDir(workspaceId, sessionId),
-      target: target,
-      gitExecutable: gitExecutable,
-      commandTimeout: commandTimeout,
-    );
-  }
-
-  /// Resolves the canonical repository for the active [RuntimeContext], wiring
-  /// the context's [Filesystem] and the backend-matched [GitCommandRunner].
+  /// Wires the active [RuntimeContext]'s [Filesystem] and the backend-matched
+  /// [GitCommandRunner].
   factory SeatRewindStore.forContext({
     required RuntimeContext context,
     required String workspaceId,

@@ -158,8 +158,22 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
     final cubit = _cubit;
     if (cubit == null || !mounted) return;
     final serial = ++_reloadSerial;
-    await cubit.prepareRewindFor(widget.session, widget.memberId);
-    final allowed = cubit.rewindActionsAllowed(widget.session, widget.memberId);
+    var primed = false;
+    try {
+      await cubit.prepareRewindFor(widget.session, widget.memberId);
+      primed = true;
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        '[rewind] prepareRewindFor failed '
+        'session=${widget.session.sessionId}: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+    // A failed prime keeps the allowed=false path: no branches, but setState
+    // still runs so the host never shows stale actions or skips the rebuild.
+    final allowed =
+        primed && cubit.rewindActionsAllowed(widget.session, widget.memberId);
     var branches = const SeatBranches.empty();
     if (allowed) {
       try {

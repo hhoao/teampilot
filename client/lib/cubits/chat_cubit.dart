@@ -226,6 +226,9 @@ class ChatCubit extends Cubit<ChatState>
            termuxDisconnectedWorkOpsMessageResolver,
        _termuxGateHomeResolver = termuxGateHomeResolver,
        super(const ChatState()) {
+    // Install the home-swap eviction listener eagerly (a lazy `late final`
+    // initializer would only run at first read, i.e. close()).
+    _rewindPlaneSub = _storage.changes.listen((_) => clearRewindCaches());
     _exitPlanApproval =
         exitPlanApprovalService ?? ExitPlanModeApprovalService();
     _askUserAnswer =
@@ -516,9 +519,15 @@ class ChatCubit extends Cubit<ChatState>
     }
   }
 
-  /// Home-swap / reconnect cache eviction seam. Wiring to `HomeStorage.changes`
-  /// is deferred (see task report); callers clear the cached contexts and
-  /// capabilities when the work plane changes.
+  /// Listens for home-plane swaps and evicts the per-plane rewind caches so a
+  /// reconnect never reuses a work context or git capability resolved against
+  /// the previous plane. Installed in the constructor body (so it is live for
+  /// the whole life of this cubit, not lazily on first read) and canceled in
+  /// [close].
+  late final StreamSubscription<StoragePlaneChange> _rewindPlaneSub;
+
+  /// Clears the cached work-plane contexts and git capabilities. Called by the
+  /// home-plane swap subscription and exposed for tests.
   @visibleForTesting
   void clearRewindCaches() {
     _seatRuntimeResolver.clear();
@@ -3822,6 +3831,7 @@ class ChatCubit extends Cubit<ChatState>
     _tabStore.clear();
     _podRegistry.dispose();
     await _operatorMailboxQueued.close();
+    await _rewindPlaneSub.cancel();
     await super.close();
   }
 }

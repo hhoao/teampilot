@@ -1,8 +1,5 @@
 import 'dart:io';
 
-/// Mobile never has a usable local git work tree for rewind.
-bool isMobilePlatform() => Platform.isAndroid || Platform.isIOS;
-
 /// Whether a `git` executable is on `PATH`.
 ///
 /// Mobile never counts as present. Uses [File.existsSync] so widget tests

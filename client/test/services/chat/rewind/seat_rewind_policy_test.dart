@@ -7,22 +7,37 @@ import 'package:teampilot/services/chat/rewind/seat_rewind_policy.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
 import '../../../support/post_frame_test_harness.dart';
-import '../../../support/test_runtime_context.dart';
 
 void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
+  /// A resolved work-plane context carrying [target] (Task 5 `ctx(target, dir)`
+  /// shape). Reuses the installed test home's filesystem/paths but keeps the
+  /// passed target so an ssh work plane is exercised end-to-end.
+  RuntimeContext ctx(RuntimeTarget target) {
+    final home = testHomeStorage.context;
+    return RuntimeContext(
+      target: target,
+      filesystem: home.filesystem,
+      home: home.home,
+      cwd: home.cwd,
+      appDataRoot: home.appDataRoot,
+      paths: home.paths,
+    );
+  }
+
   /// Builds a policy with fully injected work-plane seams. The default is a
-  /// local target, a resolved native context, and an available git capability.
+  /// local target, a resolved native context for that target, and an available
+  /// git capability.
   SeatRewindPolicy policy({
     RuntimeTarget? target,
     RuntimeContext? Function(RuntimeTarget)? contextFor,
     RewindCapability? capability,
   }) {
     final workTarget = target ?? RuntimeTarget.local();
-    final resolvedContext =
-        contextFor ?? (_) => testRuntimeContext(testHomeStorage.appDataRoot);
+    final RuntimeContext? Function(RuntimeTarget) resolvedContext =
+        contextFor ?? ctx;
     final cap = capability ?? const RewindCapability(available: true);
     return SeatRewindPolicy(
       workTargetFor: (_, _) => workTarget,
@@ -115,5 +130,29 @@ void main() {
 
     expect(result.allowed, isTrue);
     expect(result.store!.target.seatKey, 'personal');
+  });
+
+  // Regression guard for mobile enablement: on Android the work plane is an
+  // ssh plane, so an ssh target with git must be eligible. Task 6 removed the
+  // old mobile/remote denials; this keeps them from coming back.
+  test('ssh work plane with git is eligible (mobile enablement)', () {
+    final result = policy(
+      target: const RuntimeTarget(
+        id: 'ssh:phone',
+        label: 'Phone',
+        kind: RuntimeKind.ssh,
+      ),
+      capability: const RewindCapability(
+        available: true,
+        version: '2.43',
+        pathspecFromFile: true,
+      ),
+    ).evaluate(
+      session: session(),
+      memberId: null,
+      cli: CliTool.claude,
+      acp: false,
+    );
+    expect(result.allowed, isTrue);
   });
 }
