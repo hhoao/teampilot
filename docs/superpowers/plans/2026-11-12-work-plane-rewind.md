@@ -531,7 +531,7 @@ Expected: 编译失败（缺 `execShellWithStdin` 参数与实现）。
   }) async {
     final prefix = HostShellArgv.command(
       executable: 'sh',
-      arguments: ['-lc', script],
+      arguments: ['-c', script],
       workingDirectory: workingDirectory,
       environment: environment,
     );
