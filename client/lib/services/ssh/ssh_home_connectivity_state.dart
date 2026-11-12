@@ -124,10 +124,13 @@ class SshHomeConnectivityState {
       'rebind=$planeRebinding)';
 }
 
-/// Narrow read port consumed by cubits. Implemented by
-/// SshHomeConnectivitySupervisor in production and by a test double in tests,
-/// so cubit tests never need a real factory/coordinator to drive UI state.
+/// Port consumed by cubits. Implemented by SshHomeConnectivitySupervisor in
+/// production and by a test double in tests, so cubit tests never need a real
+/// factory/coordinator to drive UI state. [publish] lets command entry points
+/// (connect/disconnect) surface an optimistic transition without depending on
+/// the concrete supervisor.
 abstract class SshConnectivitySource {
   Stream<SshHomeConnectivityState> get changes;
   SshHomeConnectivityState stateFor(String profileId);
+  void publish(SshHomeConnectivityState state);
 }

@@ -6,6 +6,7 @@ import '../remote/remote_connection_monitor.dart';
 import 'ssh_client_factory.dart';
 import 'ssh_connection_events.dart';
 import 'ssh_connection_failure.dart';
+import 'ssh_connection_gate.dart';
 import 'ssh_profile_reconnect_policy.dart';
 import 'ssh_transport_close.dart';
 import 'ssh_transport_close_policy.dart';
@@ -46,6 +47,8 @@ class SshProfileConnectionCoordinator {
     required SshClientFactory factory,
     required SshConnectionEvents events,
     required SshProfileResolver profileResolver,
+    SshConnectionGate? gate,
+    Future<void> Function(SshProfile profile)? dial,
     this.onDisconnect,
     this.onReconnectSessionPlane,
     this.onReconnectAttempt,
@@ -54,17 +57,25 @@ class SshProfileConnectionCoordinator {
     this.persistRetry,
     this.policy = const SshProfileReconnectPolicy(),
   }) : _factory = factory,
+       _gate = gate ?? factory.connectionGate,
+       _dial = dial ??
+           ((profile) => factory.ensureStorageConnected(
+             profile,
+             allowDialWhenDown: true,
+           )),
        _profileResolver = profileResolver {
     events.onTransportClosed = _onTransportClosed;
     events.onKeepAliveFailed = _onKeepAliveFailed;
-    _factory.connectionGate.onWaiter = _onGateWaiter;
-    _factory.connectionGate.onDown = _onGateDown;
+    _gate.onWaiter = _onGateWaiter;
+    _gate.onDown = _onGateDown;
     _poolChangesSubscription = _factory.storagePoolChanges.listen(
       _onStoragePoolChanged,
     );
   }
 
   final SshClientFactory _factory;
+  final SshConnectionGate _gate;
+  final Future<void> Function(SshProfile profile) _dial;
   final SshProfileResolver _profileResolver;
   final SshProfileReconnectPolicy policy;
   final SshProfileDisconnectHandler? onDisconnect;
@@ -115,24 +126,18 @@ class SshProfileConnectionCoordinator {
       _userDisconnectLatched.contains(profileId);
 
   /// User-initiated durable connect: opens the storage pool and tracks liveness.
-  Future<void> userConnect(
-    SshProfile profile, {
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
+  /// The dial itself is owned by the supervisor (single-flight, invariant 1).
+  Future<void> userConnect(SshProfile profile) async {
     _userDisconnectLatched.remove(profile.id);
-    _factory.connectionGate.resume(profile.id);
-    await _factory.ensureStorageConnected(
-      profile,
-      timeout: timeout,
-      allowDialWhenDown: true,
-    );
+    _gate.resume(profile.id);
+    await _dial(profile);
     monitorFor(profile.id);
   }
 
   /// User-initiated disconnect: suppress auto-reconnect until the pool is live again.
   Future<void> userDisconnect(String profileId) async {
     _userDisconnectLatched.add(profileId);
-    _factory.connectionGate.suspend(profileId);
+    _gate.suspend(profileId);
     monitorFor(profileId).markDown();
     _disconnectCoalesceTimers[profileId]?.cancel();
     _disconnectCoalesceTimers.remove(profileId);
@@ -171,14 +176,14 @@ class SshProfileConnectionCoordinator {
   /// Clears the user-disconnect latch and retries [profileId] immediately.
   ///
   /// The connection page's 「继续重试」 hands off here so the coordinator stays
-  /// the single retry driver. `reconnectStorage` is single-flight per profile,
-  /// so this cannot race a concurrent `ensureStorageConnected` (the old path
-  /// called `userConnect` in parallel and produced
+  /// the single retry driver. The supervisor's dial is single-flight per
+  /// profile, so this cannot race a concurrent `ensureStorageConnected`
+  /// (the old path called `userConnect` in parallel and produced
   /// `Duplicate SSH worker request id`).
   void resumeRetries(String profileId) {
     if (_disposed) return;
     _userDisconnectLatched.remove(profileId);
-    _factory.connectionGate.resume(profileId);
+    _gate.resume(profileId);
     resetReconnectAttempts(profileId);
     final profile = _profileResolver(profileId);
     if (profile == null) return;
@@ -199,8 +204,8 @@ class SshProfileConnectionCoordinator {
       return;
     }
     _userDisconnectLatched.remove(profileId);
-    _factory.connectionGate.resume(profileId);
-    _factory.connectionGate.markUp(profileId);
+    _gate.resume(profileId);
+    _gate.markUp(profileId);
     final monitor = monitorFor(profileId);
     if (monitor.state.status == RemoteConnectionStatus.down) {
       monitor.reconnected();
@@ -229,7 +234,7 @@ class SshProfileConnectionCoordinator {
       appLogger.d('[ssh] profile $profileId storage plane retired: $error');
       return;
     }
-    _factory.connectionGate.markDown(profileId);
+    _gate.markDown(profileId);
     _enqueueDisconnect(
       profileId,
       error,
@@ -323,7 +328,7 @@ class SshProfileConnectionCoordinator {
         // surface. Only an explicit resume clears the latch.
         resetReconnectAttempts(profileId);
         _userDisconnectLatched.add(profileId);
-        _factory.connectionGate.suspend(profileId);
+        _gate.suspend(profileId);
         try {
           onNonRetryableClose?.call(profileId, error);
         } on Object catch (hookError, stackTrace) {
@@ -389,7 +394,7 @@ class SshProfileConnectionCoordinator {
     final persist =
         exhausted &&
         (_persistRetry(profileId) ||
-            _factory.connectionGate.hasWaiters(profileId));
+            _gate.hasWaiters(profileId));
     if (exhausted && !persist) {
       appLogger.w(
         '[ssh] profile $profileId reconnect gave up after $attempts attempts',
@@ -413,7 +418,7 @@ class SshProfileConnectionCoordinator {
     final profileId = profile.id;
     if (_reconnectInFlight[profileId] == true) return;
     if (_userDisconnectLatched.contains(profileId)) return;
-    if (_factory.connectionGate.isUp(profileId)) return;
+    if (_gate.isUp(profileId)) return;
 
     _reconnectInFlight[profileId] = true;
     _reconnectAttempts[profileId] = (_reconnectAttempts[profileId] ?? 0) + 1;
@@ -436,7 +441,7 @@ class SshProfileConnectionCoordinator {
         '$attempt${persistent ? '' : '/${policy.maxAttempts}'}',
       );
 
-      await reconnectStorage(profile);
+      await _dial(profile);
       if (_userDisconnectLatched.contains(profileId)) {
         _factory.disconnectProfile(
           profileId,
@@ -534,7 +539,8 @@ class SshProfileConnectionCoordinator {
   }
 
   /// Re-establish the pooled storage client for [profile]. Concurrent callers
-  /// share one in-flight attempt.
+  /// share one in-flight attempt. This is the test/compat surface; the retry
+  /// loop itself dials through the injected [_dial] (single-flight supervisor).
   Future<void> reconnectStorage(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
@@ -557,7 +563,7 @@ class SshProfileConnectionCoordinator {
 
   Future<void> dispose() async {
     _disposed = true;
-    _factory.connectionGate.onWaiter = null;
+    _gate.onWaiter = null;
     await _poolChangesSubscription?.cancel();
     _poolChangesSubscription = null;
     for (final timer in _disconnectCoalesceTimers.values) {
@@ -568,11 +574,11 @@ class SshProfileConnectionCoordinator {
     }
     _disconnectCoalesceTimers.clear();
     _reconnectTimers.clear();
+    _storageReconnects.clear();
     _pendingDisconnectErrors.clear();
     _pendingDisconnectStacks.clear();
     _pendingScheduleStorageReconnect.clear();
     _pendingEmitDisconnectNotification.clear();
-    _storageReconnects.clear();
     if (!_sessionReconnectSignals.isClosed) {
       await _sessionReconnectSignals.close();
     }

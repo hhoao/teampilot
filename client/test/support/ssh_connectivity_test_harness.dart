@@ -15,10 +15,13 @@ final class TestSshConnectivity implements SshConnectivitySource {
   SshHomeConnectivityState stateFor(String profileId) =>
       _states[profileId] ?? SshHomeConnectivityState(profileId: profileId);
 
-  void emit(SshHomeConnectivityState state) {
+  @override
+  void publish(SshHomeConnectivityState state) {
     _states[state.profileId] = state;
     if (!_controller.isClosed) _controller.add(state);
   }
+
+  void emit(SshHomeConnectivityState state) => publish(state);
 
   Future<void> dispose() => _controller.close();
 }

@@ -15,6 +15,11 @@ export 'ssh_home_connectivity_state.dart'
 
 /// App-level single owner of SSH home connectivity. Pure Dart: no
 /// flutter_bloc import. Publishes one state stream and drives the gate.
+///
+/// State priority mirrors the connection cubit's former _resolveStatus:
+/// a live storage lease (up) > an in-flight dial (connecting) > a monitor
+/// reconnecting > a sticky connect failure > unreachable. A live lease wins
+/// over monitor noise, so heartbeat churn never blanks a healthy home.
 class SshHomeConnectivitySupervisor implements SshConnectivitySource {
   SshHomeConnectivitySupervisor({
     required SshClientFactory factory,
@@ -33,6 +38,8 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
       factory: factory,
       events: events,
       profileResolver: profileResolver,
+      gate: gate,
+      dial: dial,
       policy: policy,
       onDisconnect: onDisconnect,
       onReconnectSessionPlane: onReconnectSessionPlane,
@@ -81,16 +88,37 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
   bool shouldPersistRetry(String id) =>
       id == _activeHomeId && !stateFor(id).isUp;
 
-  // --- coordinator hook surface (all state writes funnel through _publish) ---
+  /// The single write path. Command entry points (cubit connect/disconnect)
+  /// and internal signals all funnel through here; dedup keeps the stream
+  /// quiet and makes the `up` transition atomic (invariant 3).
+  @override
+  void publish(SshHomeConnectivityState state) {
+    if (_disposed || _changes.isClosed) return;
+    final id = state.profileId;
+    // Lazily observe this profile's monitor so direct monitorFor(...) changes
+    // from the retry driver re-derive and publish.
+    _monitorSubs.putIfAbsent(
+      id,
+      () => _coordinator.changesFor(id).listen((_) => _onMonitorChanged(id)),
+    );
+    if (_states[id] == state) return;
+    _states[id] = state;
+    _changes.add(state);
+  }
 
-  void noteReconnectAttempt(String id, int attempt) => _publish(
-    id,
-    stateFor(id).copyWith(phase: SshPhase.reconnecting, attempt: attempt),
+  // --- coordinator hook surface ---
+
+  void noteReconnectAttempt(String id, int attempt) => publish(
+    stateFor(id).copyWith(
+      phase: SshPhase.reconnecting,
+      attempt: attempt,
+      storageLive: false,
+    ),
   );
 
   void noteReconnected(String id) {
     _gate.markUp(id);
-    _emit(id);
+    publish(SshHomeConnectivityState.up(id));
   }
 
   void noteNonRetryableClose(String id, Object error) {
@@ -99,8 +127,7 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
         : isSshAuthFailure(error)
         ? SshFailureKind.authFailed
         : SshFailureKind.transportError;
-    _publish(
-      id,
+    publish(
       stateFor(id).copyWith(
         phase: SshPhase.failed,
         failure: failure,
@@ -114,9 +141,8 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
   void observeProfile(String id) {
     _monitorSubs.putIfAbsent(
       id,
-      () => _coordinator.changesFor(id).listen((_) => _emit(id)),
+      () => _coordinator.changesFor(id).listen((_) => _onMonitorChanged(id)),
     );
-    // Always re-derive: gate has no onUp callback (D3).
     _emit(id);
   }
 
@@ -130,17 +156,17 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
     if (id != null) observeProfile(id);
   }
 
+  /// A local re-target (edited host) starts a fresh dial. Publish an explicit
+  /// `connecting` (never `failed`, invariant 5) and clear any stale failure so
+  /// the edit stays retryable — the 9c82e0c45 behaviour.
   void profileEdited(String id) {
     _gate.resume(id);
     _coordinator.resetReconnectAttempts(id);
-    // A local re-target starts a fresh dial. Publish an explicit `connecting`
-    // (never `failed`, invariant 5) and clear any stale failure so the edit
-    // stays retryable — the 9c82e0c45 behaviour.
-    _publish(
-      id,
+    publish(
       stateFor(id).copyWith(
         phase: SshPhase.connecting,
         attempt: 0,
+        storageLive: false,
         clearFailure: true,
         clearErrorDetail: true,
       ),
@@ -159,65 +185,97 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
     if (id != null) _emit(id);
   }
 
-  Future<void> userConnect(SshProfile profile) =>
-      _coordinator.userConnect(profile);
-  Future<void> userDisconnect(String id) => _coordinator.userDisconnect(id);
+  Future<void> userConnect(SshProfile profile) {
+    // Optimistic connecting so the progress surface appears before the dial.
+    publish(
+      stateFor(profile.id).copyWith(
+        phase: SshPhase.connecting,
+        attempt: 0,
+        storageLive: false,
+        clearFailure: true,
+        clearErrorDetail: true,
+      ),
+    );
+    return _coordinator.userConnect(profile);
+  }
+
+  Future<void> userDisconnect(String id) {
+    publish(
+      stateFor(id).copyWith(
+        phase: SshPhase.suspended,
+        attempt: 0,
+        storageLive: false,
+      ),
+    );
+    return _coordinator.userDisconnect(id);
+  }
+
   void resumeRetries(String id) => _coordinator.resumeRetries(id);
   void resetReconnectAttempts(String id) =>
       _coordinator.resetReconnectAttempts(id);
   void restartReconnect(String id) => _coordinator.restartReconnect(id);
 
+  // --- internal derivation ---
+
   void _onPoolChanged(String id) {
     final live = _factory.hasLiveStorageClient(id);
-    if (live) _gate.markUp(id);
-    _emit(id);
+    if (live) {
+      _gate.markUp(id);
+      publish(SshHomeConnectivityState.up(id).copyWith(
+        planeRebinding: _planeRebinding && id == _activeHomeId,
+      ));
+    } else {
+      _emit(id);
+    }
   }
 
-  void _emit(String id) => _publish(id, _derive(id));
+  void _onMonitorChanged(String id) => _emit(id);
 
-  void _publish(String id, SshHomeConnectivityState next) {
-    if (_disposed || _changes.isClosed || _states[id] == next) return;
-    _states[id] = next;
-    _changes.add(next);
-  }
+  void _emit(String id) => publish(_derive(id));
 
   SshHomeConnectivityState _derive(String id) {
     final previous = stateFor(id);
-    final gateState = _gate.stateOf(id);
-    final monitor = _coordinator.monitorFor(id).state.status;
     final live = _factory.hasLiveStorageClient(id);
-    final isActiveHome = id == _activeHomeId;
+    final monitor = _coordinator.monitorFor(id).state.status;
 
-    final phase = switch (gateState) {
-      SshConnectionGateState.suspended => SshPhase.suspended,
-      SshConnectionGateState.down =>
-        monitor == RemoteConnectionStatus.reconnecting
-            ? SshPhase.reconnecting
-            : SshPhase.unreachable,
-      SshConnectionGateState.connecting => SshPhase.connecting,
-      SshConnectionGateState.up => SshPhase.up,
-      SshConnectionGateState.idle =>
-        monitor == RemoteConnectionStatus.reconnecting
-            ? SshPhase.reconnecting
-            : SshPhase.idle,
-    };
-
-    if (phase == SshPhase.up) {
-      // Single atomic value: never carries a stale failure (invariant 3).
+    // A live lease or an `up` gate means a dial succeeded: both beat a
+    // connecting dial, monitor noise, and any sticky failure, and the `up`
+    // value clears them atomically (invariant 3).
+    if (live || _gate.stateOf(id) == SshConnectionGateState.up) {
       return SshHomeConnectivityState.up(id).copyWith(
-        planeRebinding: _planeRebinding && isActiveHome,
+        planeRebinding: _planeRebinding && id == _activeHomeId,
+      );
+    }
+    // An in-flight dial keeps the connecting surface until success/failure.
+    if (previous.phase == SshPhase.connecting) {
+      return previous.copyWith(storageLive: false);
+    }
+    if (monitor == RemoteConnectionStatus.reconnecting) {
+      return previous.copyWith(
+        phase: SshPhase.reconnecting,
+        storageLive: false,
+      );
+    }
+    // Sticky connect failure survives cold-pool events until a real `up`.
+    if (previous.phase == SshPhase.failed) {
+      return previous.copyWith(storageLive: false);
+    }
+    if (_gate.stateOf(id) == SshConnectionGateState.suspended) {
+      return previous.copyWith(
+        phase: SshPhase.suspended,
+        storageLive: false,
       );
     }
     return previous.copyWith(
-      phase: phase,
-      storageLive: live || gateState == SshConnectionGateState.up,
-      planeRebinding: _planeRebinding && isActiveHome,
-      clearFailure: phase == SshPhase.connecting,
+      phase: SshPhase.unreachable,
+      storageLive: false,
     );
   }
 
-  /// Single-flight dial. Task 4 routes coordinator's userConnect/reconnect
-  /// through this so only one clientFor exists at a time (invariant 1).
+  /// Single-flight dial. The coordinator's userConnect and reconnect routes
+  /// both call this, so only one clientFor exists at a time (invariant 1).
+  /// It does not publish `connecting`: userConnect already did, and a retry
+  /// dial must keep the `reconnecting` surface from noteReconnectAttempt.
   Future<void> dial(SshProfile profile) {
     final existing = _dialInFlight[profile.id];
     if (existing != null) return existing;
