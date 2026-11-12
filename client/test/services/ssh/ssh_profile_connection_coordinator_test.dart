@@ -104,8 +104,11 @@ void main() {
       );
 
       await Future<void>.delayed(const Duration(milliseconds: 50));
+      // Plane-scoped: no home disconnect notification / no plane teardown.
       expect(notifications, isEmpty);
-      expect(coordinator.gate.isDown(profile.id), isFalse);
+      // But the I/O breaker MUST trip so consumers fail fast instead of all
+      // reopening the dead storage plane at once (the retire/reopen storm).
+      expect(coordinator.gate.isDown(profile.id), isTrue);
       await coordinator.dispose();
     },
   );

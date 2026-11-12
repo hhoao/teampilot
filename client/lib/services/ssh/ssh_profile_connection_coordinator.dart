@@ -243,12 +243,17 @@ class SshProfileConnectionCoordinator {
     }
     // A storage lease can retire on its own (probe failure / request timeout)
     // while the shared SSH client and the forward planes stay healthy. That is
-    // plane-scoped: the next storageFor reopens it, and a failed reopen trips
-    // the gate. Do not take the whole home down for it.
+    // plane-scoped: do not tear the home down. But it MUST trip the I/O breaker
+    // and hand recovery to the single retry driver — otherwise every consumer
+    // (acp-history, shared-state, automations, marketplace…) reopens the dead
+    // plane at once, which is the retire/reopen storm. Before the pure-pool
+    // cutover this tripped implicitly via `storageFor`'s catch; the pool is now
+    // read-only, so the coordinator owns the breaker.
     if (error is SshTransportClosed &&
         error.plane == SshTransportPlane.storage &&
         !isNonRetryableTransportClose(error)) {
       appLogger.d('[ssh] profile $profileId storage plane retired: $error');
+      _gate.markDown(profileId);
       return;
     }
     _gate.markDown(profileId);
