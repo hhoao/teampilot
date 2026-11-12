@@ -136,20 +136,16 @@ void main() {
       expect((await fs.stat(legacyFile)).exists, isFalse);
       expect((await fs.stat(relocated)).isFile, isTrue);
 
-      // The projection catalog (ssh_profiles/profiles.json) is gone, so no
-      // ghost "server profile" is parsed from the full SshProfile JSON.
-      // loadAll() still surfaces the migrated RemoteTarget from
-      // remote-targets.json: SshServerProfileRepository intentionally merges
-      // servers configured on this plane, so the single visible entry is the
-      // migrated target (not a leftover parsed from the relocated file).
+      // The server catalog reads only ssh_profiles/profiles.json, which the
+      // migration just moved aside, so the full-SshProfile JSON is never
+      // parsed as a ghost "server profile".
       final servers = SshServerProfileRepository(
         storage: fakeHomeStorage(filesystem: fs, appDataRoot: root),
       );
-      final catalog = await servers.loadAll();
-      expect(catalog, hasLength(1));
-      expect(catalog.single.id, 'p1');
-      expect(catalog.single.name, 'dev');
-      expect(await servers.findById('p1'), isNotNull);
+      expect(await servers.loadAll(), isEmpty);
+
+      // The migrated target lives in the device-local catalog instead.
+      expect((await targetRepo.findById('p1'))?.name, 'dev');
     },
   );
 

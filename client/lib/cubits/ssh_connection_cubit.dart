@@ -7,7 +7,6 @@ import '../models/ssh_profile.dart';
 import '../models/ssh_reachability.dart';
 import '../services/connect/endpoint_dial_planner.dart';
 import '../services/connect/paired_relay_tunnel_registry.dart';
-import '../services/ssh/remote_target_sync.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import '../services/ssh/ssh_connection_failure.dart';
 import '../services/ssh/ssh_home_connectivity_state.dart';
@@ -120,14 +119,12 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
     Future<void> Function(String id)? selectProfileOnConnect,
     PairedConnectAttempt? pairedConnectAttempt,
     PairedRelayTunnelRegistry? relayTunnels,
-    RemoteTargetSync? sync,
   }) : _factory = factory,
        _coordinator = coordinator,
        _connectivity = connectivity,
        _selectProfileOnConnect = selectProfileOnConnect,
        _pairedConnectAttempt = pairedConnectAttempt,
        _relayTunnels = relayTunnels,
-       _sync = sync,
        super(const SshConnectionState()) {
     _connectivitySub = _connectivity.changes.listen((_) => emit(_buildState()));
   }
@@ -138,7 +135,6 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
   final Future<void> Function(String id)? _selectProfileOnConnect;
   final PairedConnectAttempt? _pairedConnectAttempt;
   final PairedRelayTunnelRegistry? _relayTunnels;
-  final RemoteTargetSync? _sync;
 
   final Map<String, SshProfile> _profilesById = {};
   StreamSubscription<SshHomeConnectivityState>? _connectivitySub;
@@ -195,33 +191,6 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
       if (!_profilesById.containsKey(profileId)) {
         await _coordinator.userDisconnect(profileId);
         return;
-      }
-      // Post-connect target sync runs AFTER select() has rebound the home
-      // plane (Android Connect rebinds home onto the SSH host), so the remote
-      // SshServerProfile lands on the connected host rather than the previous
-      // local/catalog plane. A sync failure must never fail the connection, so
-      // it lives in its own try/catch: leave pendingSync untouched and let the
-      // next connect retry. sync is optional, so guard the whole block.
-      final sync = _sync;
-      if (sync != null) {
-        try {
-          final target = await sync.targets.findById(profileId);
-          if (target != null) {
-            final server = await sync.servers.findById(target.id);
-            if (server == null) {
-              // First connect: seed the remote profile from the local target.
-              await sync.push(target);
-            } else {
-              final merged = await sync.pull(target);
-              if (merged.pendingSync) await sync.push(merged);
-            }
-          }
-        } on Object {
-          appLogger.w(
-            '[ssh] profile $profileId target sync failed; '
-            'will retry on next connect',
-          );
-        }
       }
       // A dial that succeeded means a lease is cached: publish `up`, which
       // atomically clears any prior failure (invariant 2 + 3). This works

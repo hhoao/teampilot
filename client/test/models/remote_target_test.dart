@@ -18,7 +18,6 @@ void main() {
       relayUrl: 'wss://relay',
       pairedDesktopId: 'd1',
       updatedAt: 42,
-      pendingSync: true,
     );
     final restored = RemoteTarget.fromJson(target.toJson());
     expect(restored, target);
@@ -29,6 +28,5 @@ void main() {
     final target = RemoteTarget.fromJson({'id': 't1', 'host': 'h'});
     expect(target.port, 22);
     expect(target.authType, SshAuthType.password);
-    expect(target.pendingSync, isFalse);
   });
 }

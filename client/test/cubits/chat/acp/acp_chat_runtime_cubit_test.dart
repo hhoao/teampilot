@@ -2867,77 +2867,143 @@ void main() {
     },
   );
 
-  test(
-    'syncHistory reuses local ids when the replay has no matching anchor',
-    () async {
-      final fs = InMemoryFilesystem();
-      const path = '/tp/acp-transcript.jsonl';
-      final transcript = AcpChatTranscriptWriter(fs: fs, path: path);
-      await transcript.saveMessages([
-        AiMessage(
-          id: 'u1',
-          role: AiRole.user,
-          parts: [AiTextPart(text: 'hi')],
-        ),
-        AiMessage(
-          id: 'a1',
-          role: AiRole.assistant,
-          parts: [AiTextPart(text: 'hello')],
-        ),
-        AiMessage(
-          id: 'u2',
-          role: AiRole.user,
-          parts: [AiTextPart(text: 'next')],
-        ),
-        AiMessage(
-          id: 'a2',
-          role: AiRole.assistant,
-          parts: [AiTextPart(text: 'working')],
-        ),
-      ]);
-      final cubit = bootCubit(transcript: transcript);
-      await cubit.start(
-        executable: 'gemini',
-        sessionToolDir: '/tmp/tool',
-        workingDirectory: '/w',
-      );
-      await pumpEventQueue();
-      expect(cubit.state.messages.map((message) => message.id), [
-        'u1',
-        'a1',
-        'u2',
-        'a2',
-      ]);
+  test('syncHistory keeps local rows when the replay has no anchor', () async {
+    final fs = InMemoryFilesystem();
+    const path = '/tp/acp-transcript.jsonl';
+    final transcript = AcpChatTranscriptWriter(fs: fs, path: path);
+    await transcript.saveMessages([
+      AiMessage(id: 'u1', role: AiRole.user, parts: [AiTextPart(text: 'hi')]),
+      AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'hello')],
+      ),
+      AiMessage(id: 'u2', role: AiRole.user, parts: [AiTextPart(text: 'next')]),
+      AiMessage(
+        id: 'a2',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'working')],
+      ),
+    ]);
+    final cubit = bootCubit(transcript: transcript);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+    expect(cubit.state.messages.map((message) => message.id), [
+      'u1',
+      'a1',
+      'u2',
+      'a2',
+    ]);
 
-      // The agent rewrote the final answer, so the local tail (a2) is not an
-      // anchor. The overlapping turns must still keep their ids — a wholesale
-      // replacement rebuilds every bubble in the virtualized thread.
-      runtime.historyUpdates = const [
-        AcpMessageChunk(role: AcpRole.user, content: 'hi', isThought: false),
-        AcpMessageChunk(
-          role: AcpRole.assistant,
-          content: 'hello',
-          isThought: false,
-        ),
-        AcpMessageChunk(role: AcpRole.user, content: 'next', isThought: false),
-        AcpMessageChunk(
-          role: AcpRole.assistant,
-          content: 'done',
-          isThought: false,
-        ),
-      ];
-      await cubit.syncHistory();
+    // The agent rewrote the final answer, so the local tail (a2) is not an
+    // anchor. The local transcript is the UI source of truth: every local row
+    // survives with its id, and only the replayed content it lacks is appended.
+    runtime.historyUpdates = const [
+      AcpMessageChunk(role: AcpRole.user, content: 'hi', isThought: false),
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'hello',
+        isThought: false,
+      ),
+      AcpMessageChunk(role: AcpRole.user, content: 'next', isThought: false),
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'done',
+        isThought: false,
+      ),
+    ];
+    await cubit.syncHistory();
+    await pumpEventQueue();
 
-      expect(cubit.state.messages.take(3).map((message) => message.id), [
-        'u1',
-        'a1',
-        'u2',
-      ]);
-      expect(_textOf(cubit.state.messages.last), 'done');
-      expect(cubit.state.messages.last.id, isNot('a2'));
-      await cubit.close();
-    },
-  );
+    expect(cubit.state.messages, hasLength(5));
+    expect(cubit.state.messages.take(4).map((message) => message.id), [
+      'u1',
+      'a1',
+      'u2',
+      'a2',
+    ]);
+    expect(_textOf(cubit.state.messages[3]), 'working');
+    expect(_textOf(cubit.state.messages.last), 'done');
+    expect(await _dropRecords(fs, path), isEmpty);
+    await cubit.close();
+  });
+
+  test('syncHistory never drops local history on a compacted replay', () async {
+    final fs = InMemoryFilesystem();
+    const path = '/tp/acp-transcript.jsonl';
+    final transcript = AcpChatTranscriptWriter(fs: fs, path: path);
+    await transcript.saveMessages([
+      AiMessage(id: 'u1', role: AiRole.user, parts: [AiTextPart(text: 'hi')]),
+      AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'hello')],
+      ),
+      AiMessage(
+        id: 'u2',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'next')],
+      ),
+      AiMessage(
+        id: 'a2',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'working')],
+      ),
+    ]);
+    final cubit = bootCubit(transcript: transcript);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+
+    // CodeBuddy auto-compacts at ~92% of its window; the next `session/load`
+    // replays only the compaction summary plus the continuation turn. That
+    // shrunk view must not be mistaken for a correction of the transcript.
+    runtime.historyUpdates = const [
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content:
+            '<conversation_history_summary>Earlier turns were compacted.'
+            '</conversation_history_summary>',
+        isThought: false,
+      ),
+      AcpMessageChunk(role: AcpRole.user, content: 'next', isThought: false),
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'finished',
+        isThought: false,
+      ),
+    ];
+    await cubit.syncHistory();
+    await pumpEventQueue();
+
+    expect(cubit.state.messages.take(4).map((message) => message.id), [
+      'u1',
+      'a1',
+      'u2',
+      'a2',
+    ]);
+    expect(cubit.state.messages, hasLength(6));
+    expect(
+      cubit.state.messages[4].parts.whereType<AiTextPart>().single.text,
+      contains('<conversation_history_summary>'),
+    );
+    expect(_textOf(cubit.state.messages.last), 'finished');
+    expect(await _dropRecords(fs, path), isEmpty);
+
+    // A second reconcile sees the same summary; it must not duplicate it.
+    await cubit.syncHistory();
+    await pumpEventQueue();
+    expect(cubit.state.messages, hasLength(6));
+    expect(await _dropRecords(fs, path), isEmpty);
+    await cubit.close();
+  });
 
   test('history replay never re-appends usage samples', () async {
     final fs = InMemoryFilesystem();
@@ -4128,3 +4194,20 @@ String _textOf(AiMessage message) => [
   for (final part in message.parts)
     if (part is AiTextPart) part.text,
 ].join();
+
+/// Tombstone records written to an append-only transcript, i.e. the persists
+/// that told the next replay a previously recorded message must disappear.
+Future<List<Map<String, Object?>>> _dropRecords(
+  InMemoryFilesystem fs,
+  String path,
+) async {
+  final raw = await fs.readString(path);
+  if (raw == null || raw.trim().isEmpty) return const [];
+  return [
+    for (final line in const LineSplitter().convert(raw))
+      if (line.trim().isNotEmpty)
+        if (jsonDecode(line) case final Map<String, Object?> record
+            when record['type'] == 'drop')
+          record,
+  ];
+}

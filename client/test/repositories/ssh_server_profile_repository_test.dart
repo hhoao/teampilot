@@ -34,46 +34,19 @@ void main() {
     expect((await testHomeStorage.fs.stat(path)).isFile, isTrue);
   });
 
-  test(
-    'lists servers configured on the home plane with no projection',
-    () async {
-      // The machine behind the home plane configured these itself; the sync
-      // projection has never been written. The page must still show them.
-      await _writePlaneTargets([
-        _target(id: 't1', name: 'dev', host: 'h1', updatedAt: 10),
-        _target(id: 't2', name: 'prod', host: 'h2', updatedAt: 20),
-      ]);
-
-      final repo = SshServerProfileRepository(storage: testHomeStorage);
-      final all = await repo.loadAll();
-
-      expect(all.map((p) => p.id), ['t1', 't2']);
-      expect(all.map((p) => p.host), ['h1', 'h2']);
-    },
-  );
-
-  test('a newer projection entry wins over the plane catalog', () async {
+  test('ignores remote-targets.json on the home plane', () async {
+    // The device-local catalog that backs "Remote connections" must never
+    // leak into this page: only profiles.json is read.
     await _writePlaneTargets([
-      _target(id: 't1', name: 'stale', host: 'h1', updatedAt: 10),
+      _target(id: 't1', name: 'dev', host: 'h1', updatedAt: 10),
     ]);
+
     final repo = SshServerProfileRepository(storage: testHomeStorage);
-    await repo.save(
-      const SshServerProfile(
-        id: 't1',
-        name: 'fresh',
-        host: 'h1',
-        username: 'u',
-        updatedAt: 20,
-      ),
-    );
 
-    final all = await repo.loadAll();
-
-    expect(all, hasLength(1));
-    expect(all.single.name, 'fresh');
+    expect(await repo.loadAll(), isEmpty);
   });
 
-  test('saving a projection entry does not copy the plane catalog', () async {
+  test('saving writes only profiles.json', () async {
     await _writePlaneTargets([
       _target(id: 't1', name: 'dev', host: 'h1', updatedAt: 10),
     ]);
@@ -116,7 +89,6 @@ Map<String, Object?> _target({
   'username': 'u',
   'authType': 'password',
   'updatedAt': updatedAt,
-  'pendingSync': false,
 };
 
 Future<void> _writePlaneTargets(List<Map<String, Object?>> targets) async {

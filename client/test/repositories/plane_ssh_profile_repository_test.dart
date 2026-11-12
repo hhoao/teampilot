@@ -209,5 +209,4 @@ Map<String, Object?> _json({
   'authType': 'password',
   if (vaultEntryId != null) 'vaultEntryId': vaultEntryId,
   'updatedAt': 10,
-  'pendingSync': false,
 };

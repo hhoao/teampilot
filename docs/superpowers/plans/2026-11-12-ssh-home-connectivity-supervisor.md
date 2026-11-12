@@ -619,7 +619,19 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
   void profileEdited(String id) {
     _gate.resume(id);
     _coordinator.resetReconnectAttempts(id);
-    _emit(id); // reconnecting/idle — never `failed` (invariant 5)
+    // Publish an explicit `connecting` (never `failed`, invariant 5) and
+    // clear any stale failure so the local re-target stays retryable.
+    // Must NOT be `_emit(id)`: after activateHome the derived idle state is
+    // identical to the stored one, so _publish would dedupe it to silence.
+    _publish(
+      id,
+      stateFor(id).copyWith(
+        phase: SshPhase.connecting,
+        attempt: 0,
+        clearFailure: true,
+        clearErrorDetail: true,
+      ),
+    );
   }
 
   void holdPlaneRebind() {
@@ -1360,3 +1372,36 @@ git commit -m "docs(ssh): mark the connectivity supervisor design as implemented
 - **占位符扫描**：无 TBD/TODO；所有新文件给出完整代码；修改类步骤给出确切行号与替换内容；测试给出完整用例代码。唯一「按 `git status` 列出文件」是提交纪律（Global Constraints 要求并发改动下显式列出），不是实现占位。
 - **已修正的草稿缺陷**：①Task 2 测试原本靠 `gate.markUp()` 触发，但 gate 无 `onUp` 回调且 supervisor 不订阅它 → 改为显式 `observeProfile` 触发（D3）；②草稿曾让 supervisor 在 Task 5 改构造签名 → 改为全程稳定（D1）；③草稿的 `_FakeClient` 未定义 → 改用构造注入的 `dialProfile` 计数 lambda；④草稿低估了 ~16 个 cubit 测试的迁移 → 引入 `SshConnectivitySource` + `TestSshConnectivity`（D4）并点名必须改的 monitor 操纵位点；⑤发现 factory 无 gate 后无人抛 `SshProfileDownException` → 用 `SshIoGuard` 保留契约（D2，已同步进 spec）。
 - **已知环境风险**：全量套件可能受 `sqlite3` 原生库下载阻塞（非本改动引入），Task 5 已给出定向回退与如实报告要求。
+
+---
+
+## 实施状态（2026-11-12，分支 `feat/ssh-home-connectivity-supervisor`）
+
+隔离 worktree：`.worktrees/ssh-home-connectivity-supervisor`，基于 `50af716f5`。已提交 5 个可独立验证的增量：
+
+| 提交 | 内容 |
+|---|---|
+| `4df150fad` | Task 1：`SshHomeConnectivityState` / `SshPhase` / `SshFailureKind` / `SshConnectivitySource` / `SshIoGuard` |
+| `b22f37ea0` | Task 2：supervisor 镜像骨架 + `TestSshConnectivity` |
+| `d72e6cb90` | supervisor 接管 publish 状态机 + 单飞 dial；coordinator 的 `gate`/`dial` 改为可注入（保留 factory 默认） |
+| `b23bd1fdc` | Task 3+4 合并 cutover：cubit 变纯投影、app_shell 单一订阅取代 4 hook、`activateHome`/`profileEdited` 收敛、~16 个 harness 接入 `SshConnectivitySource` |
+| `1df022aa3` | Task 4 后半：`SshClientFactory` 退化为纯 pool（只读 `SshIoGuard`），gate 归 supervisor 独占；详见下方「纯池化已完成」 |
+
+**Task 3 与 Task 4 按用户选定的 A 方案合并为一次 cutover**（原计划的「~16 个 harness 只是加一个参数」不成立：`ssh_connection_cubit_test.dart` 整份通过真实 factory/coordinator 驱动 UI）。该 harness 改用真实 supervisor，其余用 `TestSshConnectivity`。
+
+**验证（cutover 时点）**：`flutter analyze` 0 error（11 个 warning / 78 个 info 均为未触碰文件的既有项）；`test/services/ssh` 全目录 354/354、`ssh_connection_cubit_test.dart` 26/26、`app_shell_smoke_test.dart` 6/6、desktop harness 全部 9 个消费文件 50/50、合计定向回归 390/390 通过。新增 3 个针对本 bug 的回归测试（单飞 dial 收敛 `up`、失败后重拨不再出现 down 相位、并发拨号共享一次 `clientFor`）。纯池化后的最终验证见文末。
+
+**实施中定位并修复的真实缺陷**（原计划未覆盖）：
+1. `dial()` 的 `whenComplete(() => _dialInFlight.remove(id))` 是表达式体，`Map.remove` 返回被移除的 `Future<void>`；`whenComplete` 会等待回调返回的 Future → 等待的正是它要完成的那个 Future → **自死锁**，`userConnect` 永久挂起。改为块体 `void` 回调。这是「connect 后 30s 超时」的根因，也是本 bug 的最后一条链路。
+2. `stateFor` 对「池已 live 但尚未被观察」的 profile 返回 `idle` → 冷启动 seed 被误判 disconnected。改为读时按 `hasLiveStorageClient` 派生。
+3. `_derive` 把「gate 仍是 `up`」当成已连接；lease 被驱逐后 gate 残留 `up` 会误报 connected。改为**只认 live lease**（符合 spec 的 storageLive 定义）。
+4. `observeProfile` 在 boot 主动 `_emit` 一个派生的 `unreachable`，会覆盖 `markInitial(connected)` 把已连接 home 打回重试页。改为只建立订阅、不发推测状态。
+5. `supervisor.userConnect` 并发第二次调用会把 `connecting` 盖在第一次的 `up` 上。加 in-flight 判定。
+
+**纯池化已完成**（`1df022aa3 refactor(ssh): make SshClientFactory a pure pool`，13 文件）：`SshClientFactory` 删除 `connectionGate` 字段与构造参数，改为 `SshIoGuard ioGuard`（默认 `_noopIoGuard`）；4 个 factory 文件里 20+ 处 `markConnecting` / `markUp` / `markDown` / `allowNextDial` / `suspend` / `dispose` 全部删除，`allowDialWhenDown` 参数移除（含 3 个生产懒拨号点与 coordinator 的 `reconnectStorage`）。`app_shell` 造一个 `SshConnectionGate`，把它的 `beforeIo` 注入 pool、把 gate 本身交给 supervisor；`waitForSshProfileRecovery` 等同一个 gate。dial 成败的 gate 状态由 owner 写：`supervisor._runDial` 失败 `markDown`、`_onPoolChanged` 成功 `markUp`；独立 coordinator 的 `_defaultDial` / `reconnectStorage` 同样处理自己的 gate。`ssh_connection_gate_factory_test.dart` 改写为验证纯池化契约（pool 不写 gate；注入的 guard 仍在 down/suspended 时拒绝 I/O），不再断言「factory 会 trip gate」。
+
+> 曾一度把这一步判为「刻意推迟、单独开 PR」，理由是怕动 `SshProfileDownException` 的 down-signal 契约。复核后该理由不成立：契约由注入的只读 `beforeIo` 保住，`SshProfileDownException` / `isSshProfileDown` 的纯值与纯判定从未改动，约 10 个消费方无需改；而「三方写同一个 gate」本身正是要消除的分歧。已在同一分支补完，不留尾巴。
+
+**纯池化后的补充验证**：`flutter analyze` 0 error（触碰文件 0 warning）；`test/services/ssh` 全目录 357/357；定向大批量 489 通过（2 个已知既有失败）；down-signal 消费方 `event_transport_client` / `storage_failure` / `ssh_connection_gate{,_factory}` 34/34；三个懒拨号页面与 mock 型 storage 测试 82/82。
+
+**已知既有失败（非本改动引入，已在未改动的 main 上复现）**：`startup_gate_test.dart: save does not clear gate` 与 `work_home_step_test.dart: saving SSH profile alone does not call onBound` —— 二者都是 `enterText(find.byType(TextField).at(6))`，而 SSH 编辑弹窗当前只渲染 5 个输入框，抛 `RangeError(index should be less than 5: 6)`。

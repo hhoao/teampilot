@@ -5,7 +5,6 @@ import '../services/io/filesystem.dart';
 import '../services/storage/home_storage.dart';
 import '../services/storage/storage_failure.dart';
 import '../utils/logging/logger.dart';
-import 'remote_target_repository.dart';
 
 /// Remote-side catalog of SSH server configurations.
 ///
@@ -14,16 +13,13 @@ import 'remote_target_repository.dart';
 /// the same home makes every server configuration available there. Credentials
 /// are never part of a profile — see [SshServerProfile].
 ///
-/// A home plane stores its configured servers in *two* files:
+/// The catalog of SSH servers configured on the home plane, stored in a single
+/// file: `<home>/ssh_profiles/profiles.json`.
 ///
-/// * `<home>/remote-targets.json` — the catalog written by the TeamPilot app
-///   running on that machine (the servers a person configured there), and
-/// * `<home>/ssh_profiles/profiles.json` — the sync projection this repository
-///   writes when a device connects to a target.
-///
-/// [loadAll] merges both, so a freshly paired home shows the servers that were
-/// configured on it instead of an empty list that only waits for a push.
-/// Writes stay on the projection file.
+/// It is fully independent of the device-local `remote-targets.json` that
+/// backs "Remote connections": nothing is copied between the two, and servers
+/// here are created and edited on this page. Keeping the catalogs separate is
+/// what lets each page own its own entries instead of mirroring the other.
 ///
 /// Production `SshProfileRepository` is now the single facade over the
 /// device-local `remote-targets.json`; it no longer writes this file. Boot
@@ -43,53 +39,11 @@ class SshServerProfileRepository {
 
   String get _file => _fs.pathContext.join(_root, 'profiles.json');
 
-  /// The catalog the machine running this home plane configured for itself.
-  RemoteTargetRepository get _planeTargets =>
-      RemoteTargetRepository(rootDir: _storage.appDataRoot, fs: _fs);
-
   Future<List<SshServerProfile>> loadAll() async {
-    final projected = await _loadProjected();
-    final configured = await _loadConfiguredOnPlane();
-    return _merge(projected: projected, configured: configured);
-  }
-
-  /// Builds the visible catalog: servers configured on this plane, overlaid by
-  /// a newer synced projection entry with the same id.
-  List<SshServerProfile> _merge({
-    required List<SshServerProfile> projected,
-    required List<SshServerProfile> configured,
-  }) {
-    final byId = <String, SshServerProfile>{
-      for (final profile in configured) profile.id: profile,
-    };
-    for (final profile in projected) {
-      final existing = byId[profile.id];
-      if (existing == null || profile.updatedAt >= existing.updatedAt) {
-        byId[profile.id] = profile;
-      }
-    }
-    final merged = byId.values.toList()
+    final profiles = await _loadProjected();
+    final sorted = profiles.toList()
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    return List.unmodifiable(merged);
-  }
-
-  Future<List<SshServerProfile>> _loadConfiguredOnPlane() async {
-    final targets = await _planeTargets.loadAll();
-    return [
-      for (final target in targets)
-        SshServerProfile(
-          id: target.id,
-          name: target.name,
-          host: target.host,
-          port: target.port,
-          username: target.username,
-          authType: target.authType,
-          embeddedTarget: target.embeddedTarget,
-          relayUrl: target.relayUrl,
-          pairedDesktopId: target.pairedDesktopId,
-          updatedAt: target.updatedAt,
-        ),
-    ];
+    return List.unmodifiable(sorted);
   }
 
   Future<List<SshServerProfile>> _loadProjected() async {
