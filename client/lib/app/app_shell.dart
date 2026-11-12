@@ -12,6 +12,7 @@ import 'app_data_bootstrap.dart';
 import 'bootstrap/managed_provider_control_plane.dart';
 import 'bootstrap/provider_usage_http_client.dart';
 import 'bootstrap/catalog_wiring.dart';
+import 'bootstrap/hub_wiring.dart';
 import 'bootstrap/install_wiring.dart';
 import 'bootstrap/session_state_wiring.dart';
 import 'bootstrap/session_usage_wiring.dart';
@@ -69,7 +70,6 @@ import '../models/session_list_entry.dart';
 import '../services/catalog/catalog_runtime.dart';
 import '../services/catalog/catalog_mutation_bus.dart';
 import '../services/catalog/catalog_production.dart';
-import '../services/catalog/catalog_workspace_binder.dart';
 import '../services/catalog/modules/automation_catalog_module.dart';
 import '../services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/chat/team_bus/remote/remote_bus_binding_resolver.dart';
@@ -94,10 +94,6 @@ import '../services/notification/desktop_system_notifier.dart';
 import '../cubits/progress_activity_cubit.dart';
 import '../cubits/repo_clone_cubit.dart';
 import '../services/app/app_update_service.dart';
-import '../models/install_job/install_cancel_policy.dart';
-import '../models/install_job/install_job_spec.dart';
-import '../services/install/install_job_keys.dart';
-import '../services/install/runners/hub_clone_install_job_runner.dart';
 import '../services/remote_download/remote_download_http.dart';
 import '../services/remote_download/remote_download_resolver.dart';
 import '../services/remote_download/remote_downloader.dart';
@@ -147,8 +143,6 @@ import '../models/cli_preset.dart';
 import '../cubits/skill_cubit.dart';
 import '../services/hook/hook_repository.dart';
 import '../services/hook/import/hook_import_service.dart';
-import '../services/mcp/mcp_dart_probe_handshake.dart';
-import '../services/mcp/mcp_server_probe_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_connection_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
@@ -218,20 +212,9 @@ import '../services/automation/automation_dispatcher.dart';
 import '../services/automation/automation_run_accounting.dart';
 import '../services/automation/automation_schedule_calculator.dart';
 import '../services/automation/automation_scheduler.dart';
-import '../services/chat/launch/staging/session_runtime_plan_builder.dart';
 import '../services/home_workspace/home_workspace_ui_cache.dart';
-import '../services/team_config/team_clone_service.dart';
-import '../services/team_hub/composite_team_hub_source.dart';
-import '../services/team_hub/git_registry_team_hub_source.dart';
-import '../services/team_hub/team_hub_favorites_store.dart';
-import '../services/expert_hub/composite_expert_hub_source.dart';
 import '../services/expert_hub/expert_capability_resolver.dart';
-import '../services/expert_hub/expert_clone_service.dart';
 import '../services/expert_hub/expert_hub_catalog.dart';
-import '../services/expert_hub/local_expert_store.dart';
-import '../services/expert_hub/expert_hub_favorites_store.dart';
-import '../services/expert_hub/git_registry_expert_hub_source.dart';
-import '../services/expert_hub/member_roster_service.dart';
 import '../services/cli/acp_adapter_discovery.dart';
 import '../services/cli/cli_executable_discovery.dart';
 import '../services/cli/cli_local_discovery_bootstrap.dart';
@@ -2016,172 +1999,28 @@ Future<AppShell> buildAppShell({
       installJobRegistry: installJobRegistry,
     );
     cliPresetsCubit = CliPresetsCubit(repository: cliPresetsRepo);
-    final catalogWorkspaceBinder = CatalogWorkspaceBinder(
-      repo: workspaceProjectConfigRepository,
-    );
-    Future<void> unbindMcpEverywhere(String mcpId) async {
-      await teamCubit.removeMcpFromAllTeams(mcpId);
-      final changed = await catalogWorkspaceBinder.unbindMcpFromAllWorkspaces(
-        mcpId,
-      );
-      for (final workspaceId in changed) {
-        await WorkspaceProjectConfigCubit.reloadLive(workspaceId);
-      }
-    }
-
-    mcpCubit = McpCubit(
-      mcpRepository,
+    final hubs = await wireHubs(
+      nativeAppDataPath: nativeAppDataPath,
       storage: homeStorage,
-      onMcpUnbound: unbindMcpEverywhere,
-      probeService: McpServerProbeService(
-        handshake: McpDartProbeHandshake(storage: homeStorage),
-      ),
-    );
-    hookCubit = HookCubit(repository: hookRepository)..load();
-
-    // Catalog caches are device-local: on Android the home root is remote
-    // (SFTP), so a cache under it costs a network round trip per read.
-    final catalogCacheRoot = deviceLocalCatalogCacheRoot(nativeAppDataPath);
-    final catalogCacheFs = deviceLocalCatalogCacheFilesystem(nativeAppDataPath);
-    final teamHubSource = CompositeTeamHubSource.withDefaults(
-      GitRegistryTeamHubSource(
-        storage: homeStorage,
-        fs: catalogCacheFs,
-        cacheDirOverride: '$catalogCacheRoot/team-hub',
-      ),
-    );
-    final teamHubFavorites = TeamHubFavoritesStore(storage: homeStorage);
-    final localExpertStore = LocalExpertStore(
-      fs: homeStorage.fs,
-      dirOverride: homeStorage.paths.memberHubLocalTemplatesDir,
-    );
-    // Unreachable SSH home: defer these home-plane reads to the post-connect
-    // chain (the catalog warm below is already background and tolerates an
-    // empty local store meanwhile).
-    if (!deferHomePlaneLoads) {
-      await localExpertStore.migrateLegacyLayout();
-      await localExpertStore.ensureIndexLoaded();
-    }
-    final compositeExpertHubSource = CompositeExpertHubSource.withDefaults(
-      registry: GitRegistryExpertHubSource(
-        storage: homeStorage,
-        fs: catalogCacheFs,
-        cacheDirOverride: '$catalogCacheRoot/member-hub',
-      ),
-      teamIndex: teamHubSource.fetchTeams,
-      localStore: localExpertStore,
-    );
-    final expertHubCatalog = ExpertHubCatalog(source: compositeExpertHubSource);
-    // The home-index load materializes every team roster, which blocks on this
-    // catalog's first snapshot (registry fetch on a cold cache). Warm it now so
-    // that read overlaps the rest of shell wiring instead of the splash.
-    unawaited(() async {
-      try {
-        await expertHubCatalog.snapshot();
-      } on Object catch (error, stackTrace) {
-        appLogger.w(
-          '[boot] expert catalog warm failed',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
-    }());
-    final expertCloneService = ExpertCloneService(
-      source: compositeExpertHubSource,
-      store: localExpertStore,
-      catalog: expertHubCatalog,
-    );
-    final teamCloneService = TeamCloneService(
-      installSkill: skillCubit.installTeamDependency,
-      installPlugin: pluginCubit.installTeamDependency,
-      installMcp: mcpCubit.installTeamDependency,
-      expertCloner: expertCloneService.clone,
-      createTeam:
-          ({
-            required name,
-            required cli,
-            required teamMode,
-            required roster,
-            required skillIds,
-            required pluginIds,
-            required mcpServerIds,
-            required description,
-            required extraArgs,
-            hubSourceKey,
-          }) => teamCubit.addClonedTeam(
-            name: name,
-            cli: cli,
-            teamMode: teamMode,
-            roster: roster,
-            skillIds: skillIds,
-            pluginIds: pluginIds,
-            mcpServerIds: mcpServerIds,
-            description: description,
-            extraArgs: extraArgs,
-            hubSourceKey: hubSourceKey,
-          ),
-    );
-    teamHubCubit = TeamHubCubit(
-      source: teamHubSource,
-      loadFavorites: teamHubFavorites.load,
-      saveFavoriteToggle: teamHubFavorites.toggle,
-      cloneTeam: (team, {teamMode, cli}) => installJobRegistry.enqueue(
-        InstallJobSpec(
-          key: InstallJobKeys.hubTeam(team.key),
-          title: 'Clone ${team.name}',
-          cancelPolicy: InstallCancelPolicy.cooperative,
-          historyMessageFor: (result) => result.hasFailures
-              ? 'Cloned ${team.name} with ${result.failedDeps.length} dependency failures'
-              : 'Cloned ${team.name}',
-          run: (ctx) => teamCloneService.clone(
-            team,
-            teamMode: teamMode,
-            cli: cli,
-            onProgress: (progress) => reportHubCloneProgress(ctx, progress),
-          ),
-        ),
-      ),
-      loadInstalledDepIds: () async {
-        final skills = await skillRepo.loadInstalled();
-        final plugins = await pluginRepository.loadAll();
-        final mcps = await mcpRepository.loadAll();
-        return <String>{
-          ...skills.map((s) => s.id),
-          ...plugins.map((p) => p.id),
-          ...mcps.map((m) => m.id),
-        };
-      },
-    );
-
-    final expertHubFavorites = ExpertHubFavoritesStore(storage: homeStorage);
-    teamCubit.attachCatalog(expertHubCatalog);
-    final expertCapabilityResolver = ExpertCapabilityResolver(
-      installSkill: skillCubit.installTeamDependency,
-      installPlugin: pluginCubit.installTeamDependency,
-      installMcp: mcpCubit.installTeamDependency,
-      localStore: localExpertStore,
-      source: compositeExpertHubSource,
-    );
-    final memberRosterService = MemberRosterService(
-      resolver: expertCapabilityResolver,
-    );
-    expertHubCubit = ExpertHubCubit(
-      source: compositeExpertHubSource,
-      loadFavorites: expertHubFavorites.load,
-      saveFavoriteToggle: expertHubFavorites.toggle,
-      memberRosterService: memberRosterService,
-      launchProfiles: () => teamCubit,
+      teamCubit: teamCubit,
+      workspaceConfig: workspaceProjectConfigRepository,
+      mcpRepository: mcpRepository,
+      hookRepository: hookRepository,
+      skillCubit: skillCubit,
+      pluginCubit: pluginCubit,
+      skillRepository: skillRepo,
+      pluginRepository: pluginRepository,
       installJobRegistry: installJobRegistry,
-      loadInstalledDepIds: () async {
-        final skills = await skillRepo.loadInstalled();
-        return skills.map((s) => s.id).toSet();
-      },
+      deferHomePlaneLoads: deferHomePlaneLoads,
     );
-    expertCapabilityResolver.attachHubCubit(expertHubCubit);
-    final sessionRuntimePlanBuilder = SessionRuntimePlanBuilder(
-      expertResolver: expertCapabilityResolver,
-      workspaceProjectConfig: workspaceProjectConfigRepository,
-    );
+    mcpCubit = hubs.mcpCubit;
+    hookCubit = hubs.hookCubit;
+    teamHubCubit = hubs.teamHubCubit;
+    expertHubCubit = hubs.expertHubCubit;
+    final expertHubCatalog = hubs.expertHubCatalog;
+    final expertCapabilityResolver = hubs.expertCapabilityResolver;
+    final localExpertStore = hubs.localExpertStore;
+    final sessionRuntimePlanBuilder = hubs.sessionRuntimePlanBuilder;
     sessionLifecycleService.attachRuntimePlanBuilder(sessionRuntimePlanBuilder);
 
     final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
