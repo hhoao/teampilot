@@ -11,6 +11,7 @@ import '../cubits/app_bootstrap_cubit.dart';
 import 'app_data_bootstrap.dart';
 import 'bootstrap/managed_provider_control_plane.dart';
 import 'bootstrap/provider_usage_http_client.dart';
+import 'bootstrap/catalog_wiring.dart';
 import 'bootstrap/session_usage_wiring.dart';
 import 'home_index_prefetch.dart';
 import 'team_generation_graph.dart';
@@ -149,9 +150,7 @@ import '../repositories/launch_profile_repository.dart';
 import '../services/storage/launch_profile_provisioner.dart';
 import '../cubits/cli_presets_cubit.dart';
 import '../models/cli_preset.dart';
-import '../repositories/cli_presets_repository.dart';
 import '../cubits/skill_cubit.dart';
-import '../repositories/mcp_repository.dart';
 import '../services/hook/hook_repository.dart';
 import '../services/hook/import/hook_import_service.dart';
 import '../services/mcp/mcp_dart_probe_handshake.dart';
@@ -180,12 +179,9 @@ import '../repositories/layout_repository.dart';
 import '../repositories/session_preferences_repository.dart';
 import '../repositories/session_repository.dart';
 import '../repositories/automation_repository.dart';
-import '../repositories/plugin_repository.dart';
-import '../repositories/skill_repository.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
-import '../repositories/extension_repository.dart';
 import '../repositories/workspace_project_config_repository.dart';
 import '../repositories/managed_provider_repository.dart';
 import '../repositories/managed_provider_usage_repository.dart';
@@ -317,14 +313,8 @@ import '../services/termux/termux_transport_profile.dart';
 import '../services/termux/termux_work_ops_message.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
 import '../services/chat/session/session_lifecycle_service.dart';
-import '../services/skill/skill_acquisition_engine.dart';
-import '../services/skill/skill_fetch_service.dart';
 import '../services/plugin/marketplace_shared_store.dart';
 import '../services/plugin/plugin_repo_disk_cache_service.dart';
-import '../services/skill/skill_install_service.dart';
-import '../services/skill/skill_manifest_service.dart';
-import '../services/skill/skill_repo_disk_cache_service.dart';
-import '../services/skill/skill_repo_git_service.dart';
 import '../services/skill/registry/skill_registry_config_service.dart';
 import '../services/skill/registry/skill_registry_factory.dart';
 import '../services/storage/runtime_context.dart';
@@ -1875,43 +1865,10 @@ Future<AppShell> buildAppShell({
       refreshGrokCredential();
     }, onDone: () {});
 
-    final skillManifest = SkillManifestService(storage: homeStorage);
-    final skillGit = SkillRepoGitService();
-    final skillFetch = SkillFetchService(git: skillGit);
-    final skillRepoCache = SkillRepoDiskCacheService(
-      storage: homeStorage,
-      fetch: skillFetch,
-    );
-    final skillInstallService = SkillInstallService(
-      storage: homeStorage,
-      manifest: skillManifest,
-      fetch: skillFetch,
-      repoCache: skillRepoCache,
-    );
-    final skillRepo = SkillRepository(
-      storage: homeStorage,
-      manifest: skillManifest,
-      fetch: skillFetch,
-      repoCache: skillRepoCache,
-      install: skillInstallService,
-    );
-    final skillAcquisitionEngine = SkillAcquisitionEngine(
-      storage: homeStorage,
-      installGitDir: (d, {bool overwrite = false, String? idOverride}) =>
-          skillInstallService.installFromDiscovery(
-            d,
-            overwrite: overwrite,
-            idOverride: idOverride,
-          ),
-      registerDirectory: ({required String id, required String directory}) =>
-          skillInstallService.registerInstalledDirectory(
-            id: id,
-            directory: directory,
-          ),
-      isLocalAcquireSupported: () =>
-          homeStorage.context.mode == StorageBackendMode.native,
-      repoCache: skillRepoCache,
-    );
+    final skillCatalog = wireSkillCatalog(storage: homeStorage);
+    final skillRepo = skillCatalog.skillRepository;
+    final skillInstallService = skillCatalog.skillInstallService;
+    final skillAcquisitionEngine = skillCatalog.skillAcquisitionEngine;
 
     llmConfigCubit = LlmConfigCubit(
       appSettings: appSettings,
@@ -1932,22 +1889,14 @@ Future<AppShell> buildAppShell({
       return s.isUsingCustomPath ? path : null;
     }
 
-    final extensionRepository = ExtensionRepository(
-      fs: homeStorage.fs,
-      stateFilePath: homeStorage.paths.extensionsStateJson,
-      manifests: builtInExtensionManifests(),
-    );
-    final workspaceProjectConfigRepository = WorkspaceProjectConfigRepository(
-      storage: homeStorage,
-      fs: homeStorage.fs,
-    );
+    final extensionCatalog = wireExtensionCatalog(storage: homeStorage);
+    final extensionRepository = extensionCatalog.extensionRepository;
+    final workspaceProjectConfigRepository =
+        extensionCatalog.workspaceProjectConfigRepository;
+    final cliPresetsRepo = extensionCatalog.cliPresetsRepository;
 
     identityRepository = LaunchProfileRepository(storage: homeStorage);
 
-    final cliPresetsRepo = CliPresetsRepository(
-      fs: homeStorage.fs,
-      presetsPath: homeStorage.paths.cliPresetsJson,
-    );
     sessionLifecycleService = SessionLifecycleService(
       storage: homeStorage,
       storageRootsResolver: () async => homeStorage.context,
@@ -2027,8 +1976,9 @@ Future<AppShell> buildAppShell({
       nativePathPrefetch: homeIndexPrefetchFuture,
       boundHomePrefetch: prefetchHomeIndex,
     );
-    final pluginRepository = PluginRepository(storage: homeStorage);
-    final mcpRepository = McpRepository(storage: homeStorage);
+    final pluginMcp = wirePluginMcp(storage: homeStorage);
+    final pluginRepository = pluginMcp.pluginRepository;
+    final mcpRepository = pluginMcp.mcpRepository;
     hookRepository = HookRepository(
       fs: homeStorage.fs,
       teampilotRoot: homeStorage.paths.basePath,
