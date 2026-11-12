@@ -448,29 +448,24 @@ final class SeatRewindStore {
   /// `git show <commit>:<path>` bytes decoded as UTF-8, or null when missing
   /// or not valid UTF-8 (binary CLI files such as `opencode.db`).
   Future<String?> showFile(String commit, String path) async {
-    try {
-      final result = await git.runRaw(
-        [..._repoArgs, 'show', '$commit:$path'],
-        workingDirectory: workTree,
-        allowFailure: true,
-        timeout: commandTimeout,
-      );
-      if (result.exitCode == 0) return _utf8OrNull(result.stdout);
-      if (target.seatKey != 'personal') return null;
-      final sourcePath = await _personalizedSourcePath(commit, path);
-      if (sourcePath == null) return null;
-      final mapped = await git.runRaw(
-        [..._repoArgs, 'show', '$commit:$sourcePath'],
-        workingDirectory: workTree,
-        allowFailure: true,
-        timeout: commandTimeout,
-      );
-      if (mapped.exitCode != 0) return null;
-      return _utf8OrNull(mapped.stdout);
-    } on Object {
-      // A timed-out git process must not break history rendering.
-      return null;
-    }
+    final result = await git.runRaw(
+      [..._repoArgs, 'show', '$commit:$path'],
+      workingDirectory: workTree,
+      allowFailure: true,
+      timeout: commandTimeout,
+    );
+    if (result.exitCode == 0) return _utf8OrNull(result.stdout);
+    if (target.seatKey != 'personal') return null;
+    final sourcePath = await _personalizedSourcePath(commit, path);
+    if (sourcePath == null) return null;
+    final mapped = await git.runRaw(
+      [..._repoArgs, 'show', '$commit:$sourcePath'],
+      workingDirectory: workTree,
+      allowFailure: true,
+      timeout: commandTimeout,
+    );
+    if (mapped.exitCode != 0) return null;
+    return _utf8OrNull(mapped.stdout);
   }
 
   String? _utf8OrNull(List<int> stdout) {
@@ -787,8 +782,13 @@ final class SeatRewindStore {
       try {
         entries = await fs.listDir(dirPath);
       } on Object catch (error) {
+        if (error is TypeError ||
+            error is NoSuchMethodError ||
+            error is ArgumentError) {
+          rethrow;
+        }
         AppLogger.instance.w(
-          '[rewind] skipped unreadable runtime directory $dirPath: $error',
+          '[rewind] skipped runtime directory $dirPath: $error',
         );
         return;
       }

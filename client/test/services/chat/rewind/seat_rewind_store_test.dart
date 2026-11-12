@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_paths.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_store.dart';
 import 'package:teampilot/services/git/git_command_runner.dart';
+import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
 void main() {
@@ -501,6 +502,7 @@ exec "$realGit" "\$@"
   test('store uses the injected GitCommandRunner and Filesystem', () async {
     final tmp = tmpDir.path;
     final runner = _RecordingGitRunner(LocalGitCommandRunner());
+    final fs = _RecordingFs();
     final store = SeatRewindStore(
       gitDir: '$tmp/repo.git',
       workTree: '$tmp/work',
@@ -509,13 +511,11 @@ exec "$realGit" "\$@"
         tool: 'claude',
       ),
       git: runner,
-      fs: LocalFilesystem(),
+      fs: fs,
     );
-    await store.repoExists();
-    // repoExists() only reads the filesystem per the refactor; ensureRepo()
-    // drives git.runRaw so the injected GitCommandRunner is actually observed.
     await store.ensureRepo();
     expect(runner.calls, isNotEmpty);
+    expect(fs.calls, isNotEmpty);
   });
 }
 
@@ -564,4 +564,14 @@ final class _RecordingGitRunner implements GitCommandRunner {
 
   @override
   Future<GitCapability> probe() => _inner.probe();
+}
+
+final class _RecordingFs extends LocalFilesystem {
+  final calls = <String>[];
+
+  @override
+  Future<FsStat> stat(String path) async {
+    calls.add(path);
+    return super.stat(path);
+  }
 }
