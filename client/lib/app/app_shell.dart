@@ -16,6 +16,7 @@ import 'bootstrap/hub_wiring.dart';
 import 'bootstrap/install_wiring.dart';
 import 'bootstrap/session_state_wiring.dart';
 import 'bootstrap/session_usage_wiring.dart';
+import 'bootstrap/workspace_wiring.dart';
 import 'team_generation_graph.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../services/cli/antigravity/antigravity_bootstrap_entry.dart';
@@ -39,7 +40,6 @@ import '../services/session_sync/session_content_stream_bus.dart';
 import '../services/session_sync/session_protocol_controller.dart';
 import 'session_protocol_home.dart';
 import '../cubits/chat_cubit.dart';
-import '../cubits/session_groups_cubit.dart';
 import '../cubits/session_usage_cubit.dart';
 import '../services/cursor_usage/cursor_usage_api_client.dart';
 import '../services/agent_runtime/agent_event_gateway.dart';
@@ -163,7 +163,6 @@ import '../services/acp/acp_frame_logger.dart';
 import '../pages/vault/vault_status_section.dart'
     show promptVaultUnlockFromRouter;
 import '../repositories/app_settings_repository.dart';
-import '../repositories/layout_repository.dart';
 import '../repositories/session_preferences_repository.dart';
 import '../repositories/session_repository.dart';
 import '../repositories/automation_repository.dart';
@@ -232,7 +231,6 @@ import '../services/floating_workspace/floating_maximize_insets.dart';
 import '../services/floating_workspace/floating_surface_registry.dart';
 import '../services/floating_workspace/floating_workspace_commands.dart';
 import '../services/floating_workspace/floating_workspace_open_file.dart';
-import '../services/floating_workspace/floating_workspace_persistence.dart';
 import '../services/floating_workspace/surfaces/diff_preview_floating_surface.dart';
 import '../services/floating_workspace/surfaces/file_preview_floating_surface.dart';
 import '../services/floating_workspace/surfaces/git_compare_floating_surface.dart';
@@ -321,7 +319,6 @@ import '../services/workspace/workspace_tools_scope_registry.dart';
 import '../services/workspace/workspace_run_registry.dart';
 import '../services/run/process_run_executor.dart';
 import '../services/run/run_target_resolver.dart';
-import '../services/run/workspace_run_platform_factory.dart';
 import '../services/search/workspace_search_indexes.dart';
 import '../services/workspace/workspace_worktree_registry.dart';
 import '../services/workspace/workspace_session_groups_registry.dart';
@@ -2023,49 +2020,32 @@ Future<AppShell> buildAppShell({
     final sessionRuntimePlanBuilder = hubs.sessionRuntimePlanBuilder;
     sessionLifecycleService.attachRuntimePlanBuilder(sessionRuntimePlanBuilder);
 
-    final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
-    final floatingWorkspaceCubit = FloatingWorkspaceCubit();
-    final floatingWorkspacePersistence = FloatingWorkspacePersistence(
-      layout: layoutCubit,
-      floating: floatingWorkspaceCubit,
-    );
-    final workspaceToolsCubit = WorkspaceToolsCubit(
-      persist: (set) {
-        unawaited(layoutCubit.setRightToolOpenSet(set));
-      },
-    );
-    final workspaceTerminalRegistry = WorkspaceTerminalRegistry();
-    final gitRepoStore = GitRepoStore(storage: homeStorage);
-    final workspaceFileTreeStore = WorkspaceFileTreeStore();
-    final workspaceSearchIndexes = WorkspaceSearchIndexes(storage: homeStorage);
-    final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry(
+    final workspaces = wireWorkspaces(
+      preferences: preferences,
       storage: homeStorage,
-      gitMutationSignals: gitRepoStore.headChanged,
+      extensionRepository: extensionRepository,
+      workspaceConfig: workspaceProjectConfigRepository,
+      sessionLifecycleService: sessionLifecycleService,
+      sshProfiles: sshProfileRepo,
+      sshClientFactory: sshClientFactory,
+      homeTarget: defaultTargetResolver,
+      chatCubit: () => chatCubit,
     );
-    final workspaceSessionGroupsRegistry = WorkspaceSessionGroupsRegistry(
-      storage: homeStorage,
-      cubitFactory: () => SessionGroupsCubit(
-        storage: homeStorage,
-        knownSessionIds: () => {
-          for (final s in chatCubit.state.sessions) s.sessionId,
-        },
-      ),
-    );
-    final workspaceToolsScopeRegistry = WorkspaceToolsScopeRegistry();
-    final workspaceRunRegistry = WorkspaceRunRegistry(
-      storage: homeStorage,
-      platformFactory: WorkspaceRunPlatformFactory(
-        storage: homeStorage,
-        extensionRepository: extensionRepository,
-        projectConfigRepository: workspaceProjectConfigRepository,
-        resolveWorkContext:
-            sessionLifecycleService.resolveWorkContextForTargetId,
-        sshProfileRepository: sshProfileRepo,
-        sshClientFactory: sshClientFactory,
-        homeTarget: defaultTargetResolver,
-      ),
-    );
-    final configCubit = ConfigCubit();
+    final layoutCubit = workspaces.layoutCubit;
+    final floatingWorkspaceCubit = workspaces.floatingWorkspaceCubit;
+    final floatingWorkspacePersistence =
+        workspaces.floatingWorkspacePersistence;
+    final workspaceToolsCubit = workspaces.workspaceToolsCubit;
+    final workspaceTerminalRegistry = workspaces.workspaceTerminalRegistry;
+    final gitRepoStore = workspaces.gitRepoStore;
+    final workspaceFileTreeStore = workspaces.workspaceFileTreeStore;
+    final workspaceSearchIndexes = workspaces.workspaceSearchIndexes;
+    final workspaceWorktreeRegistry = workspaces.workspaceWorktreeRegistry;
+    final workspaceSessionGroupsRegistry =
+        workspaces.workspaceSessionGroupsRegistry;
+    final workspaceToolsScopeRegistry = workspaces.workspaceToolsScopeRegistry;
+    final workspaceRunRegistry = workspaces.workspaceRunRegistry;
+    final configCubit = workspaces.configCubit;
     ConnectCubit? connectCubit;
     ConnectSshBackend? embeddedSshServer;
     ConnectSshBackend? systemSshdBackend;
