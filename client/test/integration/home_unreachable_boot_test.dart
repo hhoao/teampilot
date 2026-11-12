@@ -443,14 +443,14 @@ void main() {
     test('a successful home connection runs hot recovery', () {
       final onConnected = src.indexOf('onConnected: () {');
       final bootCall = src.indexOf(
-        'await runRemoteBootAfterConnect();',
+        'await shellBoot.runRemoteBootAfterConnect();',
         onConnected,
       );
       // Bound the window to the onConnected block: the same call also appears
       // later in bootstrapAppData (`showOnboarding = await ...`), so without
       // this upper bound deleting the hot-recovery call would still match.
       final afterBoot = src.indexOf(
-        'await reconnectHomeSshIfNeeded();',
+        'await shellBoot.reconnectHomeSshIfNeeded();',
         onConnected,
       );
       expect(onConnected, greaterThanOrEqualTo(0));

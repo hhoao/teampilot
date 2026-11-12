@@ -23,6 +23,7 @@ import 'bootstrap/platform_wiring.dart';
 import 'bootstrap/session_runtime_wiring.dart';
 import 'bootstrap/session_state_wiring.dart';
 import 'bootstrap/session_usage_wiring.dart';
+import 'bootstrap/shell_boot.dart';
 import 'bootstrap/ssh_plane_wiring.dart';
 import 'bootstrap/vault_wiring.dart';
 import 'bootstrap/workspace_wiring.dart';
@@ -130,7 +131,6 @@ import '../cubits/expert_hub_cubit.dart';
 import '../models/runtime_target.dart';
 import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
-import '../utils/ui/yield_ui_frame.dart';
 import '../l10n/l10n_extensions.dart';
 import '../services/acp/acp_chat_strings.dart';
 import '../repositories/app_settings_repository.dart';
@@ -156,7 +156,6 @@ import '../services/vault/vault_service.dart';
 import '../services/vault/vault_unlock_gate.dart';
 import '../services/io/local_filesystem.dart';
 import '../services/connect/connect_ssh_backend.dart';
-import '../services/perf/live_perf_driver.dart';
 import '../services/automation/automation_schedule_calculator.dart';
 import '../services/automation/automation_scheduler.dart';
 import '../services/home_workspace/home_workspace_ui_cache.dart';
@@ -218,7 +217,6 @@ import '../services/termux/termux_transport_profile.dart';
 import '../services/termux/termux_work_ops_message.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
 import '../services/chat/session/session_lifecycle_service.dart';
-import '../services/plugin/marketplace_shared_store.dart';
 import '../services/plugin/plugin_repo_disk_cache_service.dart';
 import '../services/skill/registry/skill_registry_factory.dart';
 import '../services/storage/runtime_context.dart';
@@ -731,6 +729,7 @@ Future<AppShell> buildAppShell({
   late final VaultCubit vaultCubit;
   late final HomeTargetController homeTargetController;
   late final HomePlaneSwitchController homePlaneSwitch;
+  late final ShellBootController shellBoot;
   late final HomeWorkspaceUiCache homeWorkspaceUiCache;
   sshProfileCubit = SshProfileCubit(
     profileRepository: sshProfileRepo,
@@ -1937,36 +1936,6 @@ Future<AppShell> buildAppShell({
           await homePlaneSwitch.persistSshHomePathCacheIfLive();
         };
 
-    Future<void> reconnectHomeSshIfNeeded() async {
-      final home = defaultTargetResolver();
-      final pid = home.sshProfileId;
-      if (home.kind != RuntimeKind.ssh || pid == null || pid.isEmpty) return;
-      await sshConnectionCubit.syncProfiles(sshProfileCubit.state.profiles);
-      unawaited(sshConnectionCubit.connect(pid));
-    }
-
-    /// Background one-time migration: replace stale per-session marketplace
-    /// clones with a symlink to the shared flavor dir (see
-    /// [MarketplaceSharedStore]). Skips currently-open sessions; non-fatal.
-    Future<void> sweepStaleMarketplaceClones() async {
-      try {
-        await MarketplaceSharedStore(
-          fs: homeStorage.fs,
-          teampilotRoot: homeStorage.paths.basePath,
-        ).sweepAll(
-          workspaceIds: [
-            for (final workspace in chatCubit.state.workspaces)
-              workspace.workspaceId,
-          ],
-          activeSessionKeys: {
-            for (final tab in chatCubit.tabStore.openTabs) tab.sessionId,
-          },
-        );
-      } on Object catch (e, st) {
-        appLogger.w('[boot] marketplaceCloneSweep failed: $e\n$st');
-      }
-    }
-
     // Assigned once the shell graph is wired. bootstrapAppData only runs after
     // buildAppShell returns, so the reference below is safe at call time.
     late final HomeInvalidationService homeInvalidationService;
@@ -1978,177 +1947,6 @@ Future<AppShell> buildAppShell({
     bool homeRecoveredOntoNativeFallback() =>
         defaultTargetResolver().kind == RuntimeKind.ssh &&
         homeStorage.context.mode != StorageBackendMode.ssh;
-
-    /// Warm the shell-hosted config + auxiliary data and resolve onboarding.
-    /// Shared by the native path and the remote (post-connect) boot so both
-    /// stay identical; returns `showOnboardingWizard`.
-    Future<bool> warmShellAndPrepareInteractive() async {
-      await yieldUiFrame();
-      // Managed Provider cache hydration is deliberately background work. The
-      // shell can paint while the global Cubits transition from initial to
-      // ready, and the Cubit load methods keep repeated bootstrap calls single-
-      // flight.
-      unawaited(hydrateManagedProviderData());
-      boot(
-        'bootstrapAppData index ready '
-        'workspaces=${chatCubit.state.workspaces.length} '
-        '(sessions load on demand)',
-      );
-      unawaited(sweepStaleMarketplaceClones());
-      bootstrapCubit?.beginWarmAuxiliary();
-      // Only host config the home shell renders stays on the splash path.
-      // Model catalogs are composer-only, and the rest (plugins, skills, MCP,
-      // extensions, team resource syncs, llmConfig) loads in the background
-      // behind its own loading states.
-      await AppDataBootstrap.warmShellConfig(
-        boot: boot,
-        appProviderCubit: appProviderCubit,
-      );
-      unawaited(() async {
-        try {
-          await AppDataBootstrap.warmAuxiliaryData(
-            boot: boot,
-            llmConfigCubit: llmConfigCubit,
-            appProviderCubit: appProviderCubit,
-            teamCubit: teamCubit,
-            pluginCubit: pluginCubit,
-            skillCubit: skillCubit,
-            mcpCubit: mcpCubit,
-            extensionCubit: extensionCubit,
-          );
-        } on Object catch (error, stackTrace) {
-          appLogger.w(
-            '[boot] auxiliary warm-up failed',
-            error: error,
-            stackTrace: stackTrace,
-          );
-        }
-      }());
-      return AppDataBootstrap.prepareInteractiveShell(
-        boot: boot,
-        appSettings: appSettings,
-        sshProfileCubit: sshProfileCubit,
-        cliPresetsCubit: cliPresetsCubit,
-        aiFeatureSettingsCubit: aiFeatureSettingsCubit,
-        discoverySettingsCubit: discoverySettingsCubit,
-        homeWorkspaceUiCache: homeWorkspaceUiCache,
-        storage: homeStorage,
-        workspaces: chatCubit.state.workspaces,
-      );
-    }
-
-    // Remote (home-storage) boot steps, deferred until the SSH home is known
-    // reachable. A completed chain retires the retry surface; an in-flight
-    // guard coalesces concurrent callers, and a failed chain leaves the flags
-    // unset so the next reconnect retries it.
-    var remoteBootCompleted = false;
-    var remoteIndexBootstrapped = false;
-    var deferredHomePlaneLoadsDone = false;
-    var remoteShowOnboarding = false;
-    Future<bool>? remoteBootInFlight;
-
-    Future<bool> runRemoteBootAfterConnectOnce() async {
-      // A first-ever-unreachable SSH home has no persisted `lastHome`, so boot
-      // fell back to the native control plane (see `resolveCached`). Never
-      // write the remote index/config into that plane: it would silently
-      // diverge from the home the user believes they are on. The mismatch
-      // self-heals on the next launch, when the live home resolves before boot.
-      if (defaultTargetResolver().kind == RuntimeKind.ssh &&
-          homeStorage.context.mode != StorageBackendMode.ssh) {
-        appLogger.w(
-          '[boot] home storage plane mismatch; skipping remote boot until restart',
-        );
-        return remoteShowOnboarding;
-      }
-      // Home-plane reads skipped during an unreachable splash (they are not
-      // shown while the connection page is up). Run them now that the
-      // transport is live.
-      if (deferHomePlaneLoads) {
-        try {
-          await notificationBootstrap();
-        } on Object catch (error, stackTrace) {
-          // Notifications are off the shell's critical path. Keep warming the
-          // rest; `retryableMemo` clears the failed attempt, so the next
-          // reconnect tries it again.
-          appLogger.w(
-            '[boot] notification bootstrap failed after reconnect',
-            error: error,
-            stackTrace: stackTrace,
-          );
-        }
-        if (!deferredHomePlaneLoadsDone) {
-          await shortcutCubit.load();
-          await localExpertStore.migrateLegacyLayout();
-          await localExpertStore.ensureIndexLoaded();
-          // The boot-time catalog warm cached a snapshot without the local
-          // templates; invalidate so the next read includes them.
-          expertHubCatalog.invalidate();
-          deferredHomePlaneLoadsDone = true;
-        }
-      }
-      // Deliberately not `bootstrapCubit.state.homeIndexReady`: that getter is
-      // also true once the phase is `ready`, which is exactly the state a
-      // deferred boot leaves behind, and hot recovery must still load the
-      // index it skipped.
-      if (!remoteIndexBootstrapped) {
-        boot('awaiting remote home index snapshots');
-        try {
-          await homeIndexPrefetch;
-          await AppDataBootstrap.bootstrapHomeIndex(
-            boot: boot,
-            sshProfileCubit: sshProfileCubit,
-            teamCubit: teamCubit,
-            chatCubit: chatCubit,
-            sessionRepo: sessionRepo,
-            layoutCubit: layoutCubit,
-            isSshMode: connectionModeService.isRemoteWorkPlane,
-            homeSshProfileId: defaultTargetResolver().sshProfileId,
-            sshProfileExists: (id) => sshProfileById(id) != null,
-            // buildAppShell just materialized the home context from the same
-            // on-disk profiles this bootstrap reloads, so a rebind here would
-            // only repeat the path probe (~0.7s over SSH) with no new input.
-            reinstallSshHome: false,
-            // Not invoked while the flag above is false. Kept bracketed:
-            // a reinstall outside the invalidation service's reload would
-            // publish a swap that echoes back as an external home switch and
-            // schedules a duplicate full bootstrap.
-            reinstallStorageContext: () => homeInvalidationService
-                .runSelfInitiatedSwap(reinstallStorageContext),
-            storage: homeStorage,
-            home: defaultTargetResolver(),
-            expertHubCatalog: expertHubCatalog,
-          );
-          await homePlaneSwitch.persistSshHomePathCacheIfLive();
-          remoteIndexBootstrapped = true;
-          bootstrapCubit?.markHomeIndexReady();
-        } on Object catch (error, stackTrace) {
-          appLogger.w(
-            '[boot] remote home index bootstrap failed',
-            error: error,
-            stackTrace: stackTrace,
-          );
-        }
-      }
-      remoteShowOnboarding = await warmShellAndPrepareInteractive();
-      // Completed only once the whole chain succeeded: a transient failure
-      // after a flaky reconnect must remain retryable by the next onConnected
-      // (the status is `connected`, so the user has no manual retry surface).
-      remoteBootCompleted = remoteIndexBootstrapped;
-      return remoteShowOnboarding;
-    }
-
-    Future<bool> runRemoteBootAfterConnect() {
-      if (remoteBootCompleted) return Future.value(remoteShowOnboarding);
-      final inFlight = remoteBootInFlight;
-      if (inFlight != null) return inFlight;
-      final future = runRemoteBootAfterConnectOnce();
-      remoteBootInFlight = future;
-      return future.whenComplete(() {
-        if (identical(remoteBootInFlight, future)) {
-          remoteBootInFlight = null;
-        }
-      });
-    }
 
     // Seeded from the first bounded attempt so StartupGate can render the
     // connection page without re-probing. Local/wsl/termux homes are seeded
@@ -2209,8 +2007,8 @@ Future<AppShell> buildAppShell({
               }
               cubit?.markPlaneReady();
             }
-            await runRemoteBootAfterConnect();
-            await reconnectHomeSshIfNeeded();
+            await shellBoot.runRemoteBootAfterConnect();
+            await shellBoot.reconnectHomeSshIfNeeded();
           } on Object catch (error, stackTrace) {
             appLogger.w(
               '[boot] remote boot after reconnect failed',
@@ -2319,86 +2117,48 @@ Future<AppShell> buildAppShell({
       unawaited(cubit.retryNow());
     });
 
-    Future<void> bootstrapAppData() async {
-      final connected =
-          homeConnectionCubit?.state.status == HomeConnectionStatus.connected;
-      final remoteWorkPlane = connectionModeService.isRemoteWorkPlane;
-      // An unreachable SSH home defers every home-storage read: the shell must
-      // paint the connection page without waiting on a dead transport. The
-      // deferred chain runs once on the first successful (re)connect.
-      final deferRemoteBoot = remoteWorkPlane && !connected;
-      var showOnboarding = false;
-      if (!deferRemoteBoot) {
-        await notificationBootstrap();
-        final indexReady = bootstrapCubit?.state.homeIndexReady ?? false;
-        if (!indexReady) {
-          bootstrapCubit?.beginHomeIndex();
-        }
-        boot('bootstrapAppData start');
-        if (remoteWorkPlane) {
-          showOnboarding = await runRemoteBootAfterConnect();
-        } else {
-          if (!indexReady) {
-            boot('awaiting home index snapshots');
-            await homeIndexPrefetch;
-            await AppDataBootstrap.hydrateNativeHomeIndex(
-              boot: boot,
-              teamCubit: teamCubit,
-              chatCubit: chatCubit,
-              sessionRepo: sessionRepo,
-              layoutCubit: layoutCubit,
-              storage: homeStorage,
-              home: defaultTargetResolver(),
-              expertHubCatalog: expertHubCatalog,
-            );
-            bootstrapCubit?.markHomeIndexReady();
-          }
-          showOnboarding = await warmShellAndPrepareInteractive();
-        }
-      } else {
-        // The device-local SSH catalog is the one boot read that must survive
-        // an unreachable home: the connection page lists it to switch/recover,
-        // and it never lives on the home plane. Deferring it together with the
-        // remote boot left 「切换连接」 empty even though remote-targets.json
-        // held every saved target. It is a local file read, so awaiting it
-        // cannot stall on the dead transport.
-        try {
-          await sshProfileCubit.load(discoverRemoteCli: false);
-        } on Object catch (error, stackTrace) {
-          appLogger.w(
-            '[boot] device-local SSH catalog load failed while the home was '
-            'unreachable',
-            error: error,
-            stackTrace: stackTrace,
-          );
-        }
-        boot('bootstrapAppData deferred: home unreachable');
-      }
-      // Unconditional: both the connected and the deferred (unreachable) path
-      // must finish boot so StartupGate can render the connection page.
-      bootstrapCubit?.markAppReady(showOnboardingWizard: showOnboarding);
-      LivePerfDriver.instance?.markAppReady();
-      boot('bootstrapAppData complete');
-      if (connected) {
-        // Team-generation jobs are not auto-resumed at cold start. Incomplete
-        // builder/destination sessions reconnect only when the user opens them.
-        // Never on the splash path: the shell is already marked ready, so a
-        // failure here is logged rather than surfaced as a boot error.
-        unawaited(
-          reconnectHomeSshIfNeeded().catchError((
-            Object error,
-            StackTrace stackTrace,
-          ) {
-            appLogger.w(
-              '[boot] home ssh resume failed',
-              error: error,
-              stackTrace: stackTrace,
-            );
-          }),
-        );
-      }
-      automationScheduler.start();
-    }
+    // The app-data boot chain. Constructed here — after `homeConnectionCubit`
+    // exists by value and before `editorCubit` — because `onConnected` may
+    // reach it only once the shell graph is wired: `homePlaneSwitch` and
+    // `homeInvalidationService` are forward references resolved at call time,
+    // never copied.
+    shellBoot = ShellBootController(
+      homeStorage: homeStorage,
+      sshProfileCubit: sshProfileCubit,
+      chatCubit: chatCubit,
+      sessionRepo: sessionRepo,
+      layoutCubit: layoutCubit,
+      teamCubit: teamCubit,
+      connectionModeService: connectionModeService,
+      defaultTargetResolver: defaultTargetResolver,
+      sshProfileById: sshProfileById,
+      bootstrapCubit: bootstrapCubit,
+      homeIndexPrefetch: homeIndexPrefetch,
+      notificationBootstrap: notificationBootstrap,
+      shortcutCubit: shortcutCubit,
+      localExpertStore: localExpertStore,
+      expertHubCatalog: expertHubCatalog,
+      automationScheduler: automationScheduler,
+      sshConnectionCubit: sshConnectionCubit,
+      homeConnectionCubit: homeConnectionCubit,
+      deferHomePlaneLoads: deferHomePlaneLoads,
+      boot: boot,
+      appSettings: appSettings,
+      appProviderCubit: appProviderCubit,
+      cliPresetsCubit: cliPresetsCubit,
+      aiFeatureSettingsCubit: aiFeatureSettingsCubit,
+      discoverySettingsCubit: discoverySettingsCubit,
+      homeWorkspaceUiCache: homeWorkspaceUiCache,
+      llmConfigCubit: llmConfigCubit,
+      pluginCubit: pluginCubit,
+      skillCubit: skillCubit,
+      mcpCubit: mcpCubit,
+      extensionCubit: extensionCubit,
+      hydrateManagedProviderData: hydrateManagedProviderData,
+      reinstallStorageContext: reinstallStorageContext,
+      homePlaneSwitch: () => homePlaneSwitch,
+      homeInvalidationService: () => homeInvalidationService,
+    );
 
     editorCubit = EditorCubit(storage: homeStorage);
     // Fire-and-forget: warm the common tree-sitter grammars so the first file
@@ -2814,7 +2574,7 @@ Future<AppShell> buildAppShell({
       aiFeatureSettingsCubit: aiFeatureSettingsCubit,
       discoverySettingsCubit: discoverySettingsCubit,
       reinstallStorageContext: reinstallStorageContext,
-      bootstrapAppData: bootstrapAppData,
+      bootstrapAppData: shellBoot.bootstrapAppData,
       warmStartupCaches: warmStartupCaches,
       catalogRuntime: catalogRuntime,
       homeWorkspaceUiCache: homeWorkspaceUiCache,
