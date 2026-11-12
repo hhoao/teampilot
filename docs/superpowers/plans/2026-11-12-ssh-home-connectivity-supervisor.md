@@ -619,7 +619,19 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
   void profileEdited(String id) {
     _gate.resume(id);
     _coordinator.resetReconnectAttempts(id);
-    _emit(id); // reconnecting/idle — never `failed` (invariant 5)
+    // Publish an explicit `connecting` (never `failed`, invariant 5) and
+    // clear any stale failure so the local re-target stays retryable.
+    // Must NOT be `_emit(id)`: after activateHome the derived idle state is
+    // identical to the stored one, so _publish would dedupe it to silence.
+    _publish(
+      id,
+      stateFor(id).copyWith(
+        phase: SshPhase.connecting,
+        attempt: 0,
+        clearFailure: true,
+        clearErrorDetail: true,
+      ),
+    );
   }
 
   void holdPlaneRebind() {
