@@ -157,6 +157,20 @@ class GitCapability {
   final bool pathspecFromFile;
   static const unavailable = GitCapability(available: false);
 }
+
+/// Parses `git --version` output into a [GitCapability]. Shared by all runners.
+GitCapability gitCapabilityFromVersion(GitRawResult result) {
+  if (result.exitCode != 0) return GitCapability.unavailable;
+  final text = utf8.decode(result.stdout, allowMalformed: true).trim();
+  final match = RegExp(r'git version (\d+)\.(\d+)').firstMatch(text);
+  final major = int.tryParse(match?.group(1) ?? '') ?? 0;
+  final minor = int.tryParse(match?.group(2) ?? '') ?? 0;
+  return GitCapability(
+    available: true,
+    version: match == null ? text : '${match.group(1)}.${match.group(2)}',
+    pathspecFromFile: major > 2 || (major == 2 && minor >= 25),
+  );
+}
 ```
 
 接口新增（`GitCommandRunner` 内）：
@@ -294,7 +308,7 @@ class GitCapability {
     }
     final process = await Process.start(
       'sh',
-      ['-lc', script],
+      ['-c', script],
       workingDirectory: workingDirectory,
       environment: environment,
     );
@@ -318,25 +332,18 @@ class GitCapability {
     final stdout = await outFuture;
     final stderr = await errFuture;
     if (timedOut || exit != 0) {
-      throw StateError('sh -lc failed ($exit): $stderr');
+      throw StateError('sh -c failed ($exit): $stderr');
     }
     return GitCommandResult(exitCode: exit, stdout: stdout, stderr: stderr);
   }
 
+  // NOTE: use `sh -c`, not `sh -lc`. A login shell sources profiles that can
+  // abort (dash + a broken profile.d exits 2) or pollute stdout; the exec
+  // channel's PATH already finds git/find.
+
   @override
-  Future<GitCapability> probe() async {
-    final result = await runRaw(['--version'], allowFailure: true);
-    if (result.exitCode != 0) return GitCapability.unavailable;
-    final text = utf8.decode(result.stdout, allowMalformed: true).trim();
-    final match = RegExp(r'git version (\d+)\.(\d+)').firstMatch(text);
-    final major = int.tryParse(match?.group(1) ?? '') ?? 0;
-    final minor = int.tryParse(match?.group(2) ?? '') ?? 0;
-    return GitCapability(
-      available: true,
-      version: match == null ? text : '${match.group(1)}.${match.group(2)}',
-      pathspecFromFile: major > 2 || (major == 2 && minor >= 25),
-    );
-  }
+  Future<GitCapability> probe() async =>
+      gitCapabilityFromVersion(await runRaw(['--version'], allowFailure: true));
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -524,41 +531,37 @@ Expected: 编译失败（缺 `execShellWithStdin` 参数与实现）。
   }) async {
     final prefix = HostShellArgv.command(
       executable: 'sh',
-      arguments: ['-lc', script],
+      arguments: ['-c', script],
       workingDirectory: workingDirectory,
       environment: environment,
     );
     final result = stdinText == null
         ? await _execShell(prefix)
         : await _execShellWithStdin!(prefix, utf8.encode(stdinText));
-    return GitCommandResult(
+    final out = GitCommandResult(
       exitCode: result.exitCode ?? (sshRunSucceeded(result) ? 0 : 1),
       stdout: utf8.decode(result.stdout, allowMalformed: true),
       stderr: utf8.decode(result.stderr, allowMalformed: true),
     );
+    // Same non-zero contract as LocalGitCommandRunner.runScript: silently
+    // returning an empty stdout on a failed script would make Task 4's `find`
+    // look like an empty runtime directory.
+    if (out.exitCode != 0) {
+      throw StateError('sh -c failed (${out.exitCode}): ${out.stderr}');
+    }
+    return out;
   }
 
   @override
-  Future<GitCapability> probe() async {
-    final result = await runRaw(['--version'], allowFailure: true);
-    if (result.exitCode != 0) return GitCapability.unavailable;
-    final text = utf8.decode(result.stdout, allowMalformed: true).trim();
-    final match = RegExp(r'git version (\d+)\.(\d+)').firstMatch(text);
-    final major = int.tryParse(match?.group(1) ?? '') ?? 0;
-    final minor = int.tryParse(match?.group(2) ?? '') ?? 0;
-    return GitCapability(
-      available: true,
-      version: match == null ? text : '${match.group(1)}.${match.group(2)}',
-      pathspecFromFile: major > 2 || (major == 2 && minor >= 25),
-    );
-  }
+  Future<GitCapability> probe() async =>
+      gitCapabilityFromVersion(await runRaw(['--version'], allowFailure: true));
 ```
 
 `WslGitCommandRunner` 用同样思路，基于 `wsl.exe`：
 - `runRaw`：`Process.start('wsl.exe', HostWslArgv.processInvocation(...), ...)`，stdout 收集 bytes。
-- `runToFile`：`sh -lc '<git argv> > <quoted dest>'`。
-- `runScript`：`wsl.exe sh -lc script`。
-- `probe`：`runRaw(['--version'])`。
+- `runToFile`：`sh -c '<git argv> > <quoted dest>'`。
+- `runScript`：`wsl.exe sh -c script`。**必须与 Local / Remote 一样在非零退出或超时时抛 `StateError`**，不要返回带非零 exitCode 的结果（否则 Task 4 的 `find` 失败会被当成空目录）。
+- `probe`：`gitCapabilityFromVersion(await runRaw(['--version'], allowFailure: true))`（与 Local/Remote 共用解析）。
 
 > 实现 WSL 时复用 `HostWslArgv.processInvocation`（已有），不要手拼 `wsl.exe` 参数。
 
@@ -594,6 +597,17 @@ cd /home/hhoa/git/hhoa/teampilot && git add client/lib/services/git/git_command_
     required SeatRewindTarget target,
     GitCommandRunner? git,
     Filesystem? fs,
+    String gitExecutable = 'git',
+    Duration commandTimeout = const Duration(seconds: 30),
+  });
+  // Retained: existing production callers + the fake-git-script baseline test.
+  // Task 6 switches them to forContext.
+  factory SeatRewindStore.forSession({
+    required RuntimeLayout layout,
+    required String workspaceId,
+    required String sessionId,
+    required SeatRewindTarget target,
+    String gitExecutable = 'git',
     Duration commandTimeout = const Duration(seconds: 30),
   });
   factory SeatRewindStore.forContext({
@@ -605,7 +619,9 @@ cd /home/hhoa/git/hhoa/teampilot && git add client/lib/services/git/git_command_
     Duration commandTimeout = const Duration(seconds: 30),
   });
   ```
-  默认 `git = LocalGitCommandRunner()`、`fs = LocalFilesystem()`，因此现有测试的 `SeatRewindStore(gitDir:…, workTree:…, target:…)` 不用改。
+  默认 `git = LocalGitCommandRunner(gitExecutable: gitExecutable)`、`fs = LocalFilesystem()`，因此现有测试的 `SeatRewindStore(gitDir:…, workTree:…, target:…)` 不用改。
+
+  **`gitExecutable` 与 `forSession` 必须保留**：`seat_rewind_store_test.dart:219` 用 `gitExecutable: scriptPath` 注入假 git 脚本，并且 `seat_rewind_policy.dart` / `seat_rewind_controller.dart` 仍调用 `forSession`。删掉会破坏「现有 513 行基线原样通过」这一更高优先级约束。Task 6 才把它们切到 `forContext`。
 
 - [ ] **Step 1: Write the failing test**
 
@@ -615,6 +631,7 @@ cd /home/hhoa/git/hhoa/teampilot && git add client/lib/services/git/git_command_
   test('store uses the injected GitCommandRunner and Filesystem', () async {
     final tmp = tmpDir.path;
     final runner = _RecordingGitRunner(LocalGitCommandRunner());
+    final fs = _RecordingFs();
     final store = SeatRewindStore(
       gitDir: '$tmp/repo.git',
       workTree: '$tmp/work',
@@ -623,14 +640,29 @@ cd /home/hhoa/git/hhoa/teampilot && git add client/lib/services/git/git_command_
         tool: 'claude',
       ),
       git: runner,
-      fs: LocalFilesystem(),
+      fs: fs,
     );
-    await store.repoExists();
+    await store.ensureRepo();
     expect(runner.calls, isNotEmpty);
+    expect(fs.calls, isNotEmpty);
   });
 ```
 
-并在文件底部新增：
+并在文件底部新增（`repoExists()` 是纯 fs 操作，不能用来断言 git 注入，所以用 `ensureRepo()`；同时注入一个记录调用的 `Filesystem` 来真正验证 fs 接线）：
+
+```dart
+final class _RecordingFs extends LocalFilesystem {
+  final calls = <String>[];
+
+  @override
+  Future<FsStat> stat(String path) async {
+    calls.add(path);
+    return super.stat(path);
+  }
+}
+```
+
+以及：
 
 ```dart
 final class _RecordingGitRunner implements GitCommandRunner {
@@ -737,25 +769,41 @@ Expected: 编译失败（`SeatRewindStore` 无 `git:` / `fs:` 参数）。
 
 ```dart
   Future<String?> showFile(String commit, String path) async {
-    try {
-      final result = await git.runRaw(
-        [..._repoArgs, 'show', '$commit:$path'],
-        allowFailure: true,
-      );
-      if (result.exitCode == 0) return _utf8OrNull(result.stdout);
-      if (target.seatKey != 'personal') return null;
-      final sourcePath = await _personalizedSourcePath(commit, path);
-      if (sourcePath == null) return null;
-      final mapped = await git.runRaw(
-        [..._repoArgs, 'show', '$commit:$sourcePath'],
-        allowFailure: true,
-      );
-      if (mapped.exitCode != 0) return null;
-      return _utf8OrNull(mapped.stdout);
-    } on Object {
-      return null;
-    }
+    final result = await git.runRaw(
+      [..._repoArgs, 'show', '$commit:$path'],
+      workingDirectory: workTree,
+      allowFailure: true,
+      timeout: commandTimeout,
+    );
+    if (result.exitCode == 0) return _utf8OrNull(result.stdout);
+    if (target.seatKey != 'personal') return null;
+    final sourcePath = await _personalizedSourcePath(commit, path);
+    if (sourcePath == null) return null;
+    final mapped = await git.runRaw(
+      [..._repoArgs, 'show', '$commit:$sourcePath'],
+      workingDirectory: workTree,
+      allowFailure: true,
+      timeout: commandTimeout,
+    );
+    if (mapped.exitCode != 0) return null;
+    return _utf8OrNull(mapped.stdout);
   }
+```
+
+`runRaw(allowFailure: true)` 在 git 失败/超时时返回非零 `exitCode` 而不抛异常，所以这里**不要** `try/catch`，更不要用 `on Object` 吞掉 `TypeError` / `NoSuchMethodError` 等编程错误。
+
+同理 `_includedRuntimeFiles` 里 `Directory.list` 的 `on FileSystemException` 换成 `fs.listDir` 后若必须用 `on Object` 才能去掉 `dart:io`，则必须重新抛出编程错误并让日志如实描述：
+
+```dart
+      } on Object catch (error) {
+        if (error is TypeError ||
+            error is NoSuchMethodError ||
+            error is ArgumentError) {
+          rethrow;
+        }
+        AppLogger.instance.w('[rewind] skipped runtime directory $dirPath: $error');
+        return;
+      }
 ```
 
 删除 `dart:io` import；保留 `p` import（路径拼接）。
@@ -1244,45 +1292,71 @@ cd /home/hhoa/git/hhoa/teampilot && git add client/lib/services/chat/rewind/seat
 
 ---
 
-## Task 7: 移动端放开 + 全量验证
+## Task 7: 移动端放开 + 收尾修复 + 全量验证
 
 **Files:**
-- Modify: `client/lib/services/cli/git_on_path.dart`（仅注释/保留；不再用于 rewind 判断）
+- Modify: `client/lib/cubits/chat_cubit.dart`
+- Modify: `client/lib/pages/chat/session_history_rewind_host.dart`
+- Modify: `client/lib/services/chat/rewind/seat_rewind_store.dart`
+- Modify: `client/lib/services/cli/git_on_path.dart`
 - Test: `client/test/services/chat/rewind/seat_rewind_policy_test.dart`
 - Manual: Android 真机
 
 **Interfaces:**
-- Consumes: Task 6 的 capability policy。
+- Consumes: Task 6 的 capability policy、Task 5 `SeatRuntimeResolver`/`RewindCapabilityCache`、Task 3 `SeatRewindStore.forContext`。
+
+> Task 6 已把 `isMobile` / `RewindDenial.mobilePlatform` / `RewindDenial.remoteRuntime` 全部删除（全仓 grep 为空），所以原「删除 mobile 拒绝」这一步已完成。本任务 Step 3 改为 Task 6 遗留的三项修复（详见 ledger）。
 
 - [ ] **Step 1: Write the failing test**
 
-在 `seat_rewind_policy_test.dart` 新增：
+在 `seat_rewind_policy_test.dart` 新增一个真实回归测试，沿用该文件现有的 `policy(...)` 与 `session()` helper：
 
 ```dart
-test('mobile platform is allowed when the work plane has git', () async {
-  // isMobile no longer participates; capability decides.
-  final result = await evaluateOn(
-    kind: RuntimeKind.ssh,
-    capability: const RewindCapability(available: true, version: '2.43'),
+test('ssh work plane with git is eligible (mobile enablement)', () {
+  final result = policy(
+    target: const RuntimeTarget(
+      id: 'ssh:phone',
+      label: 'Phone',
+      kind: RuntimeKind.ssh,
+    ),
+    capability: const RewindCapability(
+      available: true,
+      version: '2.43',
+      pathspecFromFile: true,
+    ),
+  ).evaluate(
+    session: session(),
+    memberId: null,
+    cli: CliTool.claude,
+    acp: false,
   );
   expect(result.allowed, isTrue);
 });
 ```
 
+`policy(...)` helper 的 `contextFor` 必须对该 ssh target 返回一个 `RuntimeContext`（用 Task 5 测试里的 `ctx(target, dir)` 形状构造；`RuntimeTarget.id` 要与传入的一致）。若 helper 已有 `capability` 参数则复用，否则补上。
+
 - [ ] **Step 2: Run test to verify it fails**
 
 Run:
 ```bash
-cd /home/hhoa/git/hhoa/teampilot/client && dart run tool/run_tests.dart test/services/chat/rewind/seat_rewind_policy_test.dart --plain-name "mobile platform"
+cd /home/hhoa/git/hhoa/teampilot/client && dart run tool/run_tests.dart test/services/chat/rewind/seat_rewind_policy_test.dart --plain-name "ssh work plane"
 ```
-Expected: FAIL（旧 `mobilePlatform` 拒绝仍存在，或 `isMobile` 注入）。
+Expected: FAIL 或编译失败（helper 尚不支持 ssh context / capability 注入）；记录真实 RED 输出。
 
-- [ ] **Step 3: Implement**
+- [ ] **Step 3: Implement the three Task 6 carry-over fixes + mobile cleanup**
 
-- 从 `SeatRewindPolicy` 删除 `isMobile` 字段与 `mobilePlatform` 分支。
-- `RewindDenial` 删除 `mobilePlatform` / `remoteRuntime`，保留 `workPlaneNotReady` / `unsupportedBackend`。
-- 全仓 `grep -rn "RewindDenial.mobilePlatform\|RewindDenial.remoteRuntime" client` 必须为空。
-- `git_on_path.dart` 的 `isMobilePlatform()` 若不再被引用则删除；被其它功能引用则保留。
+1. **Home-swap cache eviction（M1，真实的错平面风险）。** `HomeStorage.changes` 是 public broadcast stream（`home_storage.dart:64`），`ChatCubit` 持有 `_storage`。在 `ChatCubit` 里订阅并在 `close()` 中取消：
+   ```dart
+   late final StreamSubscription<StoragePlaneChange> _rewindPlaneSub =
+       _storage.changes.listen((_) => clearRewindCaches());
+   ```
+   `close()` 里加 `await _rewindPlaneSub.cancel();`（若已有 `close()` 只加这一行）。备选更省的做法：在 `prepareRewindFor` 里比对已缓存 context 的 `appDataRoot` 与当前 `_storage.context.appDataRoot`，不同则 invalidate 两个缓存。**二选一，不要都做。**
+2. **`_reload` guard（M2）。** `session_history_rewind_host.dart` 的 `_reload()` 是 fire-and-forget；给 `await cubit.prepareRewindFor(...)` 包 try/catch，失败时记日志并让 `allowed=false` 分支继续（保留 `mounted` / `serial` 检查），避免 unhandled zone error 与跳过 `setState`。
+3. **删除 dead `SeatRewindStore.forSession`（M3）。** 先 `grep -rn "SeatRewindStore.forSession" client` 确认为空；若仍有调用者，先迁到 `forContext` 再删。删掉后路径规则只剩 `forContext` 一份。
+4. `git_on_path.dart`：`grep -rn "isMobilePlatform" client` 若为空则删除该函数（保留 `gitOnPath()`，R2 的本地回退仍用）；非空则保留。
+
+> 不要再改 `SeatRewindPolicy` 的 denial 枚举或删 `isMobile` —— Task 6 已完成。
 
 - [ ] **Step 4: Run focused + full verification**
 
@@ -1310,7 +1384,7 @@ Expected: 全绿（若出现 `Failed to load` transport 错误，按既有环境
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /home/hhoa/git/hhoa/teampilot && git add client/lib/services/chat/rewind/seat_rewind_policy.dart client/lib/services/cli/git_on_path.dart client/test/services/chat/rewind/seat_rewind_policy_test.dart && git commit -m "feat(rewind): enable rewind on mobile when the work plane has git"
+cd /home/hhoa/git/hhoa/teampilot && git add <只列出本次实际修改的文件> && git commit -m "feat(rewind): enable mobile rewind and close work-plane cache lifecycle"
 ```
 
 ---

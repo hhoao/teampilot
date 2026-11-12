@@ -713,6 +713,12 @@ class _BranchCubit extends ChatCubit {
   @override
   bool rewindActionsAllowed(AppSession session, String memberId) => true;
 
+  // The real prime resolves a work-plane context and probes git via a real
+  // subprocess, which never settles inside the widget test's fake-async zone.
+  // These fakes already bypass the policy, so priming is a no-op here.
+  @override
+  Future<void> prepareRewindFor(AppSession session, String memberId) async {}
+
   @override
   Future<void> editSeatTurn({
     required String sessionId,

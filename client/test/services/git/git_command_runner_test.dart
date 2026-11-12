@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/git/git_service.dart';
 import 'package:teampilot/services/host/host_one_shot_runner.dart';
@@ -160,6 +161,64 @@ void main() {
     });
   });
 
+  group('RemoteGitCommandRunner raw/script/probe', () {
+    test('runRaw uses argv-safe exec and returns bytes', () async {
+      final commands = <String>[];
+      final runner = RemoteGitCommandRunner(
+        execShell: (cmd) async {
+          commands.add(cmd);
+          return _sshOk('abc');
+        },
+        execShellWithStdin: (cmd, stdin) async {
+          commands.add('$cmd|${utf8.decode(stdin)}');
+          return _sshOk('ok');
+        },
+      );
+      final raw = await runner.runRaw(['--git-dir', '/r', 'show', 'HEAD:a']);
+      expect(raw.exitCode, 0);
+      expect(utf8.decode(raw.stdout), 'abc');
+      final withStdin = await runner.runRaw(
+        ['--git-dir', '/r', 'update-ref', '--stdin'],
+        stdinText: 'update refs/x y\n',
+      );
+      expect(withStdin.stdout, isNotEmpty);
+      expect(commands.last, contains('update refs/x y'));
+    });
+
+    test('runToFile redirects on the host', () async {
+      final commands = <String>[];
+      final runner = RemoteGitCommandRunner(
+        execShell: (cmd) async {
+          commands.add(cmd);
+          return _sshOk('');
+        },
+      );
+      await runner.runToFile(['--git-dir', '/r', 'show', 'HEAD:a'], '/tmp/x y');
+      expect(commands.single, contains('>'));
+      expect(commands.single, contains("'/tmp/x y'"));
+    });
+
+    test('probe parses version via runRaw', () async {
+      final runner = RemoteGitCommandRunner(
+        execShell: (cmd) async => _sshOk('git version 2.43.0'),
+      );
+      final cap = await runner.probe();
+      expect(cap.available, isTrue);
+      expect(cap.version, '2.43');
+      expect(cap.pathspecFromFile, isTrue);
+    });
+
+    test('runScript throws StateError on non-zero exit', () async {
+      final runner = RemoteGitCommandRunner(
+        execShell: (cmd) async => _sshOk('', exitCode: 3),
+      );
+      await expectLater(
+        runner.runScript('false'),
+        throwsA(isA<StateError>()),
+      );
+    });
+  });
+
   group('WslGitCommandRunner', () {
     test(
       'isAvailable true when git exists in the distro (real shell semantics)',
@@ -199,6 +258,67 @@ void main() {
       expect(result.exitCode, 0);
       expect(calls.single, containsAll(['-d', 'Ubuntu', 'git', '-C']));
       expect(calls.single, contains('/home/user/repo'));
+    });
+  });
+
+  group('WslGitCommandRunner raw/script/probe', () {
+    test('probe parses version via runRaw', () async {
+      final runner = WslGitCommandRunner(
+        distro: 'Ubuntu',
+        wslProcessStarter: _fakeWslStart,
+      );
+      final cap = await runner.probe();
+      expect(cap.available, isTrue);
+      expect(cap.version, isNotNull);
+    });
+
+    test('runRaw returns bytes and forwards stdin', () async {
+      final runner = WslGitCommandRunner(
+        distro: 'Ubuntu',
+        wslProcessStarter: _fakeWslStart,
+      );
+      final ver = await runner.runRaw(['--version']);
+      expect(utf8.decode(ver.stdout), contains('git version'));
+      final hashed = await runner.runRaw(
+        ['hash-object', '--stdin'],
+        stdinText: 'abc',
+      );
+      expect(utf8.decode(hashed.stdout).trim(), isNotEmpty);
+    });
+
+    test('runScript runs a shell script inside the distro', () async {
+      final runner = WslGitCommandRunner(
+        distro: 'Ubuntu',
+        wslProcessStarter: _fakeWslStart,
+      );
+      final result = await runner.runScript('printf "ok"');
+      expect(result.stdout, 'ok');
+      expect(result.exitCode, 0);
+    });
+
+    test('runScript throws StateError on non-zero exit', () async {
+      final runner = WslGitCommandRunner(
+        distro: 'Ubuntu',
+        wslProcessStarter: _fakeWslStart,
+      );
+      await expectLater(
+        runner.runScript('exit 3'),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('runToFile redirects git output into a WSL path', () async {
+      final tmp = await Directory.systemTemp.createTemp('wsl-runner-');
+      addTearDown(() {
+        if (tmp.existsSync()) tmp.deleteSync(recursive: true);
+      });
+      final runner = WslGitCommandRunner(
+        distro: 'Ubuntu',
+        wslProcessStarter: _fakeWslStart,
+      );
+      final dest = '${tmp.path}/blob.txt';
+      await runner.runToFile(['--version'], dest);
+      expect(await File(dest).readAsString(), contains('git version'));
     });
   });
 
@@ -305,6 +425,64 @@ void main() {
     });
   });
 
+  group('LocalGitCommandRunner raw/script/probe', () {
+    late Directory tmp;
+    setUp(() async {
+      tmp = await Directory.systemTemp.createTemp('git-runner-');
+    });
+    tearDown(() async {
+      if (tmp.existsSync()) await tmp.delete(recursive: true);
+    });
+
+    test('probe reports available and version', () async {
+      final runner = LocalGitCommandRunner();
+      final cap = await runner.probe();
+      expect(cap.available, isTrue);
+      expect(cap.version, isNotNull);
+    });
+
+    test('runRaw returns bytes and honors stdin', () async {
+      final runner = LocalGitCommandRunner();
+      final init = await runner.runRaw(['init', '--bare', tmp.path]);
+      expect(init.exitCode, 0);
+      final ver = await runner.runRaw(['--version']);
+      expect(utf8.decode(ver.stdout), contains('git version'));
+      final bad = await runner.runRaw(['no-such-command'], allowFailure: true);
+      expect(bad.exitCode, isNot(0));
+      expect(bad.stderr, isNotEmpty);
+    });
+
+    test('runToFile streams stdout to a file', () async {
+      final runner = LocalGitCommandRunner();
+      final repo = p.join(tmp.path, 'r');
+      await Directory(repo).create();
+      await runner.runRaw(['init', repo]);
+      await File(p.join(repo, 'a.txt')).writeAsString('hello');
+      await runner.runRaw(['-C', repo, 'add', 'a.txt']);
+      await runner.runRaw([
+        '-C',
+        repo,
+        '-c',
+        'user.email=a@b',
+        '-c',
+        'user.name=a',
+        'commit',
+        '-m',
+        'x',
+      ]);
+      final dest = p.join(tmp.path, 'blob.txt');
+      await runner.runToFile(['-C', repo, 'show', 'HEAD:a.txt'], dest);
+      expect(await File(dest).readAsString(), 'hello');
+    });
+
+    test('runScript runs a POSIX shell script', () async {
+      final runner = LocalGitCommandRunner();
+      final result = await runner.runScript('printf "ok"');
+      expect(result.stdout, 'ok');
+      expect(result.exitCode, 0);
+    });
+  });
+
   group('gitCommandRunnerForContext', () {
     test('picks local runner for native storage', () {
       installTestHomeStorage(
@@ -371,4 +549,15 @@ class _CapturingHostRunner implements HostOneShotRunner {
     seenExe = request.executable;
     return const HostRunResult(exitCode: 0, stdout: 'ok\n', stderr: '');
   }
+}
+
+/// Emulates `wsl.exe` on non-Windows hosts: drops the wsl-only `-d`/`--cd`
+/// prefix and runs the inner Linux command locally, so WSL runner tests can
+/// exercise real byte streams, stdin and exit codes without wsl.exe.
+Future<Process> _fakeWslStart(String executable, List<String> arguments) {
+  final inner = <String>[...arguments];
+  while (inner.isNotEmpty && (inner.first == '-d' || inner.first == '--cd')) {
+    inner.removeRange(0, 2);
+  }
+  return Process.start(inner.first, inner.sublist(1));
 }

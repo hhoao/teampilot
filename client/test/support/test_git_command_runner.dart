@@ -22,4 +22,44 @@ class TestGitCommandRunner implements GitCommandRunner {
       stderr: 'not a git repository',
     );
   }
+
+  @override
+  Future<GitRawResult> runRaw(
+    List<String> args, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    String? stdinText,
+    bool allowFailure = false,
+    Duration? timeout,
+  }) async => const GitRawResult(
+    exitCode: 128,
+    stdout: [],
+    stderr: 'not a git repository',
+  );
+
+  @override
+  Future<void> runToFile(
+    List<String> args,
+    String destPath, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration? timeout,
+  }) async =>
+      throw UnsupportedError('runToFile is not supported by test runner');
+
+  @override
+  Future<GitCommandResult> runScript(
+    String script, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    String? stdinText,
+    Duration? timeout,
+  }) async => const GitCommandResult(
+    exitCode: 128,
+    stdout: '',
+    stderr: 'not a git repository',
+  );
+
+  @override
+  Future<GitCapability> probe() async => GitCapability.unavailable;
 }

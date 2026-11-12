@@ -31,6 +31,7 @@ import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/home_storage.dart';
 import '../services/chat/conversation/history/ai_history_loader.dart';
+import '../services/chat/rewind/rewind_capability.dart';
 import '../services/chat/rewind/rewind_fork_service.dart';
 import '../services/chat/rewind/seat_branches.dart';
 import '../services/chat/rewind/rewind_work_gate.dart';
@@ -39,6 +40,8 @@ import '../services/chat/rewind/seat_rewind_policy.dart';
 import '../services/chat/rewind/seat_rewind_controller.dart';
 import '../services/chat/rewind/seat_pty_checkpoint_tracker.dart';
 import '../services/chat/rewind/seat_rewind_store.dart';
+import '../services/chat/rewind/seat_runtime_resolver.dart';
+import '../services/git/git_command_runner.dart';
 import '../services/cli/git_on_path.dart';
 import '../services/chat/runtime/session_activity_reduce.dart';
 import '../services/chat/conversation/history/failed_message_store.dart';
@@ -223,6 +226,9 @@ class ChatCubit extends Cubit<ChatState>
            termuxDisconnectedWorkOpsMessageResolver,
        _termuxGateHomeResolver = termuxGateHomeResolver,
        super(const ChatState()) {
+    // Install the home-swap eviction listener eagerly (a lazy `late final`
+    // initializer would only run at first read, i.e. close()).
+    _rewindPlaneSub = _storage.changes.listen((_) => clearRewindCaches());
     _exitPlanApproval =
         exitPlanApprovalService ?? ExitPlanModeApprovalService();
     _askUserAnswer =
@@ -445,11 +451,34 @@ class ChatCubit extends Cubit<ChatState>
   );
   bool? _gitOnPath;
 
+  late final SeatRuntimeResolver _seatRuntimeResolver = SeatRuntimeResolver(
+    resolve: (target) => _lifecycle.resolveWorkContextForTargetId(target.id),
+  );
+
+  late final RewindCapabilityCache _rewindCapability = RewindCapabilityCache(
+    runnerFor: (ctx) => gitCommandRunnerForContext(
+      ctx,
+      gitExecutable: configuredGitExecutable?.call(),
+    ),
+  );
+
+  RuntimeTarget _workTargetForRewind(AppSession session, String? memberId) =>
+      _lifecycle.launchWorkTarget(
+        _launchService.launchContextFor(session),
+        memberId: session.isSimple ? null : memberId,
+      );
+
+  /// Synchronous local fallback keeps checkpoints and existing tests working:
+  /// `evaluate` can run before [SessionHistoryRewindHost] primes the async
+  /// caches, so a local seat reads the home context + `gitOnPath` directly.
   late final SeatRewindPolicy _rewindPolicy = SeatRewindPolicy(
-    isMobile: isMobilePlatform,
-    gitAvailable: _gitAvailableForRewind,
-    layout: () => _storage.context.layout,
-    launchTargetFor: _launchTargetForRewind,
+    workTargetFor: _workTargetForRewind,
+    contextFor: (target) => _seatRuntimeResolver.peek(target.id) ??
+        (target.kind == RuntimeKind.local ? _storage.context : null),
+    capabilityFor: (target) => _rewindCapability.peek(target.id) ??
+        (target.kind == RuntimeKind.local
+            ? RewindCapability(available: _gitAvailableForRewind())
+            : RewindCapability.unavailable),
   );
 
   late final SeatRewindController _rewindController = SeatRewindController(
@@ -474,11 +503,35 @@ class ChatCubit extends Cubit<ChatState>
   bool _gitAvailableForRewind() =>
       debugGitOnPath ?? (_gitOnPath ??= gitOnPath());
 
-  RuntimeTarget _launchTargetForRewind(AppSession session, String? memberId) {
-    return _lifecycle.launchWorkTarget(
-      _launchService.launchContextFor(session),
-      memberId: session.isSimple ? null : memberId,
-    );
+  /// Pre-resolves the work context + git capability so the synchronous policy
+  /// can read them. Call from the rewind host before `rewindActionsAllowed`.
+  Future<void> prepareRewindFor(AppSession session, String memberId) async {
+    final target = _workTargetForRewind(session, memberId);
+    try {
+      final ctx = await _seatRuntimeResolver.forTarget(target);
+      await _rewindCapability.forContext(ctx);
+    } catch (_) {
+      // A transient git/SSH failure must not leave a sticky failed future in
+      // the caches: invalidate so the next prime retries the probe.
+      _seatRuntimeResolver.invalidate(target.id);
+      _rewindCapability.invalidate(target.id);
+      rethrow;
+    }
+  }
+
+  /// Listens for home-plane swaps and evicts the per-plane rewind caches so a
+  /// reconnect never reuses a work context or git capability resolved against
+  /// the previous plane. Installed in the constructor body (so it is live for
+  /// the whole life of this cubit, not lazily on first read) and canceled in
+  /// [close].
+  late final StreamSubscription<StoragePlaneChange> _rewindPlaneSub;
+
+  /// Clears the cached work-plane contexts and git capabilities. Called by the
+  /// home-plane swap subscription and exposed for tests.
+  @visibleForTesting
+  void clearRewindCaches() {
+    _seatRuntimeResolver.clear();
+    _rewindCapability.clear();
   }
 
   Future<void>? _attentionChain;
@@ -2588,6 +2641,7 @@ class ChatCubit extends Cubit<ChatState>
   /// placement saves) — [loadWorkspaceData] rescans every workspace and
   /// session on disk. Sessions are unaffected by manifest-only edits, so a
   /// full reload buys nothing here.
+  @override
   void patchWorkspace(Workspace updated) {
     _emitSnapshot(_dataStore.snapshotWithWorkspace(stateSnapshot(), updated));
   }
@@ -3777,6 +3831,7 @@ class ChatCubit extends Cubit<ChatState>
     _tabStore.clear();
     _podRegistry.dispose();
     await _operatorMailboxQueued.close();
+    await _rewindPlaneSub.cancel();
     await super.close();
   }
 }

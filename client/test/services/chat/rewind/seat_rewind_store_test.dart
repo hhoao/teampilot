@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_paths.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_store.dart';
+import 'package:teampilot/services/git/git_command_runner.dart';
+import 'package:teampilot/services/io/filesystem.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 
 void main() {
   late Directory tmpDir;
@@ -495,6 +498,45 @@ exec "$realGit" "\$@"
       expect(parsed.turnAt, 0);
     },
   );
+
+  test('store uses the injected GitCommandRunner and Filesystem', () async {
+    final tmp = tmpDir.path;
+    final runner = _RecordingGitRunner(LocalGitCommandRunner());
+    final fs = _RecordingFs();
+    final store = SeatRewindStore(
+      gitDir: '$tmp/repo.git',
+      workTree: '$tmp/work',
+      target: const SeatRewindTarget(
+        kind: SeatRewindKind.personalAcp,
+        tool: 'claude',
+      ),
+      git: runner,
+      fs: fs,
+    );
+    await store.ensureRepo();
+    expect(runner.calls, isNotEmpty);
+    expect(fs.calls, isNotEmpty);
+  });
+
+  test('remote store lists included files with one find and skips stale check', () async {
+    if (Platform.isWindows) return; // runScript is POSIX-only
+    final tmp = tmpDir.path;
+    final runner = _RecordingGitRunner(LocalGitCommandRunner());
+    final store = SeatRewindStore(
+      gitDir: '$tmp/repo.git',
+      workTree: '$tmp/work',
+      target: const SeatRewindTarget(
+        kind: SeatRewindKind.personalAcp,
+        tool: 'claude',
+      ),
+      git: runner,
+      fs: _RemoteDelegatingFs(),
+    );
+    expect(store.isRemote, isTrue);
+    await store.commitTurn(messageId: 'm1');
+    expect(runner.scripts.where((s) => s.contains('find')), hasLength(1));
+    expect(runner.calls.any((c) => c.contains('ls-files')), isFalse);
+  });
 }
 
 Future<List<String>> _lsTree(SeatRewindStore store, String commit) async {
@@ -510,4 +552,54 @@ Future<List<String>> _lsTree(SeatRewindStore store, String commit) async {
       .convert(result.stdout as String)
       .where((line) => line.isNotEmpty)
       .toList();
+}
+
+final class _RecordingGitRunner implements GitCommandRunner {
+  _RecordingGitRunner(this._inner);
+  final GitCommandRunner _inner;
+  final calls = <List<String>>[];
+  final scripts = <String>[];
+
+  @override
+  Future<bool> get isAvailable => _inner.isAvailable;
+
+  @override
+  Future<GitCommandResult> runInDirectory(String dir, List<String> args, {Map<String, String>? environment}) =>
+      _inner.runInDirectory(dir, args, environment: environment);
+
+  @override
+  Future<GitRawResult> runRaw(List<String> args, {String? workingDirectory, Map<String, String>? environment, String? stdinText, bool allowFailure = false, Duration? timeout}) {
+    calls.add(args);
+    return _inner.runRaw(args, workingDirectory: workingDirectory, environment: environment, stdinText: stdinText, allowFailure: allowFailure, timeout: timeout);
+  }
+
+  @override
+  Future<void> runToFile(List<String> args, String destPath, {String? workingDirectory, Map<String, String>? environment, Duration? timeout}) {
+    calls.add(args);
+    return _inner.runToFile(args, destPath, workingDirectory: workingDirectory, environment: environment, timeout: timeout);
+  }
+
+  @override
+  Future<GitCommandResult> runScript(String script, {String? workingDirectory, Map<String, String>? environment, String? stdinText, Duration? timeout}) {
+    scripts.add(script);
+    return _inner.runScript(script, workingDirectory: workingDirectory, environment: environment, stdinText: stdinText, timeout: timeout);
+  }
+
+  @override
+  Future<GitCapability> probe() => _inner.probe();
+}
+
+final class _RecordingFs extends LocalFilesystem {
+  final calls = <String>[];
+
+  @override
+  Future<FsStat> stat(String path) async {
+    calls.add(path);
+    return super.stat(path);
+  }
+}
+
+final class _RemoteDelegatingFs extends LocalFilesystem {
+  @override
+  bool get isRemote => true;
 }
