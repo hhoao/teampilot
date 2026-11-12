@@ -12,6 +12,7 @@ import 'app_data_bootstrap.dart';
 import 'bootstrap/agent_runtime_wiring.dart';
 import 'bootstrap/managed_provider_control_plane.dart';
 import 'bootstrap/managed_provider_wiring.dart';
+import 'bootstrap/catalog_runtime_wiring.dart';
 import 'bootstrap/catalog_wiring.dart';
 import 'bootstrap/hub_wiring.dart';
 import 'bootstrap/install_wiring.dart';
@@ -61,7 +62,6 @@ import '../models/app_session.dart';
 import '../models/session_list_entry.dart';
 import '../services/catalog/catalog_runtime.dart';
 import '../services/catalog/catalog_mutation_bus.dart';
-import '../services/catalog/catalog_production.dart';
 import '../services/chat/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/chat/team_bus/remote/remote_member_bus_setup.dart';
 import '../services/remote/local_credential_exporter.dart';
@@ -1838,43 +1838,18 @@ Future<AppShell> buildAppShell({
     final seatLeaseCubit = agentEventPlane.seatLeaseCubit;
     final agentStatusSeatLookup = agentEventPlane.agentStatusSeatLookup;
 
-    catalogRuntime = CatalogRuntime.assemble(
+    catalogRuntime = wireCatalogRuntime(
       storage: homeStorage,
-      sessions: sessionRepo,
+      sessions: () => sessionRepo,
       runtimeContexts: runtimeContextRegistry,
       skillRepository: skillRepo,
       skillInstall: skillInstallService,
       skillEngine: skillAcquisitionEngine,
       pluginRepository: pluginRepository,
-      pluginInstall: pluginRepository.install,
       mcpRepository: mcpRepository,
       workspaceConfig: workspaceProjectConfigRepository,
-      searchSkills: (query) => CatalogProduction.searchSkills(
-        query,
-        registryConfig: skillRegistryConfigService,
-        repository: skillRepo,
-      ),
-      searchPlugins: (query) => CatalogProduction.searchPlugins(
-        query,
-        repos: pluginRepository.repos,
-        diskCache: PluginRepoDiskCacheService(
-          filesystem: homeStorage.fs,
-          teampilotRoot: homeStorage.paths.basePath,
-        ),
-      ),
-      searchMcp: (query) =>
-          CatalogProduction.searchMcp(query, storage: homeStorage),
-      draftFromListing: (listingId) =>
-          CatalogProduction.draftFromListing(listingId, storage: homeStorage),
-      installPluginFromDiscovery: (args) =>
-          CatalogProduction.installPluginFromDiscovery(
-            args,
-            storage: homeStorage,
-            repository: pluginRepository,
-          ),
-      removeSkillFromAllTeams: teamCubit.removeSkillFromAllTeams,
-      removePluginFromAllTeams: teamCubit.removePluginFromAllTeams,
-      removeMcpFromAllTeams: teamCubit.removeMcpFromAllTeams,
+      skillRegistryConfig: skillRegistryConfigService,
+      launchProfiles: () => teamCubit,
     );
     teammateBusMcpGateway.attachCatalogHandler(
       catalogRuntime.handler,
