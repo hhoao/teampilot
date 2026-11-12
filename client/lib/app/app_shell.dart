@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import '../cubits/app_bootstrap_cubit.dart';
 import 'app_data_bootstrap.dart';
 import 'bootstrap/agent_runtime_wiring.dart';
+import 'bootstrap/app_settings_wiring.dart';
 import 'bootstrap/managed_provider_control_plane.dart';
 import 'bootstrap/managed_provider_wiring.dart';
 import 'bootstrap/catalog_runtime_wiring.dart';
@@ -139,11 +140,9 @@ import '../models/team_config.dart';
 import '../utils/ui/yield_ui_frame.dart';
 import '../l10n/l10n_extensions.dart';
 import '../services/acp/acp_chat_strings.dart';
-import '../services/acp/acp_frame_logger.dart';
 import '../pages/vault/vault_status_section.dart'
     show promptVaultUnlockFromRouter;
 import '../repositories/app_settings_repository.dart';
-import '../repositories/session_preferences_repository.dart';
 import '../repositories/session_repository.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
@@ -177,11 +176,6 @@ import '../services/automation/automation_scheduler.dart';
 import '../services/home_workspace/home_workspace_ui_cache.dart';
 import '../services/expert_hub/expert_capability_resolver.dart';
 import '../services/expert_hub/expert_hub_catalog.dart';
-import '../services/cli/acp_adapter_discovery.dart';
-import '../services/cli/cli_executable_discovery.dart';
-import '../services/cli/cli_local_discovery_bootstrap.dart';
-import '../services/cli/cli_version_probe.dart';
-import '../services/cli/toolchain_executable_discovery.dart';
 import '../services/commands/command_bus.dart';
 import '../services/commands/layout_command_registrar.dart';
 import '../services/commands/run_command_registrar.dart';
@@ -614,61 +608,18 @@ Future<AppShell> buildAppShell({
   // Capture the user's real login-shell PATH early (POSIX desktops) so local
   // PTY children see Homebrew/nvm/~/.local/bin despite sparse GUI PATH.
   unawaited(HostShellPathResolver.warmup());
-  final documentsFuture =
-      defaultWorkspaceDirectoryFuture ??
-      DefaultWorkspaceDirectory.resolve(preferences: preferences);
-  final cliToolRegistry = CliToolRegistry.builtIn();
-  final cliExecutableDiscovery = CliExecutableDiscovery(
-    registry: cliToolRegistry,
+  final settings = await wireAppSettings(
+    preferences: preferences,
+    defaultWorkspaceDirectoryFuture: defaultWorkspaceDirectoryFuture,
+    boot: boot,
   );
-
-  final appSettings = SharedPrefsAppSettingsRepository(preferences);
-  // Apply the persisted ACP frame-log choice before any ACP session starts so
-  // the log viewer toggle keeps working across restarts.
-  AcpFrameLogger.mirrorEnabled = AcpFrameLogger.resolveEnabled(
-    await appSettings.loadAcpFrameLogEnabled(),
-  );
-  final aiFeatureSettingsCubit = AiFeatureSettingsCubit(
-    repository: appSettings,
-  );
-  final discoverySettingsCubit = DiscoverySettingsCubit(
-    repository: appSettings,
-  );
-  final sessionPreferencesCubit = SessionPreferencesCubit(
-    repository: SessionPreferencesRepository(preferences),
-    cliToolRegistry: cliToolRegistry,
-  );
-  if (!Platform.isAndroid) {
-    boot('scheduling CLI tool discovery (background)');
-    unawaited(() async {
-      final counts = await runLocalCliDiscovery(
-        cubit: sessionPreferencesCubit,
-        locateCli: () => cliExecutableDiscovery.locateLocal(),
-        locateAdapters: () =>
-            AcpAdapterDiscovery(registry: cliToolRegistry).locateLocal(),
-        locateToolchains: () => ToolchainExecutableDiscovery().locateLocal(),
-        probeInstalled: CliVersionProbe().installed,
-      );
-      appLogger.i(
-        '[boot] CLI/toolchain discovery complete '
-        '(${counts.cliCount} CLI, ${counts.adapterCount} adapter, '
-        '${counts.toolchainCount} toolchain, background)',
-      );
-    }());
-  }
-  boot('loading session preferences and workspace directory');
-  final parallel = await Future.wait<Object?>([
-    sessionPreferencesCubit.load(),
-    documentsFuture,
-  ]);
-  // Native cwd must be TeamPilot's own subtree, never the OS documents root —
-  // otherwise terminals/agents spill files directly into the user's Documents.
-  final defaultWorkspaceDirectory =
-      DefaultWorkspaceDirectory.teamPilotDirFromDocuments(
-        parallel[1]! as String,
-      );
-  await Directory(defaultWorkspaceDirectory).create(recursive: true);
-  boot('session preferences and workspace directory ready');
+  final appSettings = settings.appSettings;
+  final aiFeatureSettingsCubit = settings.aiFeatureSettingsCubit;
+  final discoverySettingsCubit = settings.discoverySettingsCubit;
+  final sessionPreferencesCubit = settings.sessionPreferencesCubit;
+  final defaultWorkspaceDirectory = settings.defaultWorkspaceDirectory;
+  final cliExecutableDiscovery = settings.cliExecutableDiscovery;
+  final cliToolRegistry = settings.cliToolRegistry;
 
   configuredGitExecutable = () {
     final path = sessionPreferencesCubit.toolchainPath(
