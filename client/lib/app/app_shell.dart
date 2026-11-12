@@ -17,6 +17,7 @@ import 'bootstrap/install_wiring.dart';
 import 'bootstrap/session_state_wiring.dart';
 import 'bootstrap/session_usage_wiring.dart';
 import 'bootstrap/workspace_wiring.dart';
+import 'bootstrap/connect_wiring.dart';
 import 'team_generation_graph.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../services/cli/antigravity/antigravity_bootstrap_entry.dart';
@@ -194,14 +195,7 @@ import '../services/vault/vault_reference_indexer.dart';
 import '../services/vault/vault_service.dart';
 import '../services/vault/vault_unlock_gate.dart';
 import '../services/io/local_filesystem.dart';
-import '../services/connect/connect_agent.dart';
-import '../services/connect/authorized_keys_file.dart';
-import '../services/connect/connect_backend_host.dart';
-import '../services/connect/connect_settings_store.dart';
 import '../services/connect/connect_ssh_backend.dart';
-import '../services/connect/embedded_ssh_server.dart' show EmbeddedSshServer;
-import '../services/connect/sshd_presence.dart';
-import '../services/connect/system_sshd_backend.dart';
 import '../services/perf/live_perf_driver.dart';
 import '../services/storage/workspace_layout.dart';
 import '../services/automation/automation_bus_gateway.dart';
@@ -2046,144 +2040,13 @@ Future<AppShell> buildAppShell({
     final workspaceToolsScopeRegistry = workspaces.workspaceToolsScopeRegistry;
     final workspaceRunRegistry = workspaces.workspaceRunRegistry;
     final configCubit = workspaces.configCubit;
-    ConnectCubit? connectCubit;
-    ConnectSshBackend? embeddedSshServer;
-    ConnectSshBackend? systemSshdBackend;
-    PairedDeviceStore? connectDeviceStore;
-    if (!Platform.isAndroid) {
-      final localFs = LocalFilesystem(
-        pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
-      );
-      final nativeHome =
-          (Platform.environment['HOME'] ??
-                  Platform.environment['USERPROFILE'] ??
-                  '')
-              .trim();
-      if (nativeHome.isEmpty) {
-        throw StateError('Could not resolve the local user home for Connect');
-      }
-      final username =
-          (Platform.environment['USER'] ??
-                  Platform.environment['USERNAME'] ??
-                  localFs.pathContext.basename(nativeHome))
-              .trim();
-      final settingsStore = ConnectSettingsStore(
-        fs: localFs,
-        appDataRoot: nativeAppDataPath,
-      );
-      final settings = await settingsStore.load();
-      final pairedDeviceStore = PairedDeviceStore(
-        fs: localFs,
-        appDataRoot: nativeAppDataPath,
-      );
-      connectDeviceStore = pairedDeviceStore;
-      final server = EmbeddedSshServer(
-        fs: localFs,
-        appDataRoot: nativeAppDataPath,
-        deviceStore: pairedDeviceStore,
-        username: username,
-        homePath: nativeHome,
-      );
-      final systemSshdSelectable = Platform.isLinux || Platform.isMacOS;
-      final systemBackend = systemSshdSelectable
-          ? SystemSshdBackend(
-              presence: SshdPresence(
-                probe: loopbackSshdProbe(),
-                scan: sshKeyScanRunner(
-                  run: (exe, args) async {
-                    final result = await Process.run(exe, args);
-                    return (
-                      exitCode: result.exitCode,
-                      stdout: result.stdout.toString(),
-                      stderr: result.stderr.toString(),
-                    );
-                  },
-                ),
-              ),
-              authorizedKeys: AuthorizedKeysFile(
-                fs: localFs,
-                homePath: nativeHome,
-                chmod600: (path) async {
-                  await Process.run('chmod', ['600', path]);
-                },
-              ),
-            )
-          : null;
-      final backendHost = ConnectBackendHost(
-        embedded: server,
-        system: systemBackend,
-        settings: settingsStore,
-        systemSshdSelectable: systemSshdSelectable,
-      );
-      try {
-        await backendHost.startSelected();
-      } on Object catch (error, stackTrace) {
-        // Non-blocking: the app continues; the Connect UI shows the failed
-        // state with a retry affordance. Broad on purpose — anything from a
-        // typed [EmbeddedSshServerStartException] (bind conflicts) to a
-        // host-key persistence failure must not crash app boot.
-        appLogger.e(
-          '[connect] ssh backend failed to start',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
-      embeddedSshServer = server;
-      systemSshdBackend = systemBackend;
-      final connectAgent = ConnectAgent.production(
-        sshBackend: backendHost.current,
-        fs: localFs,
-        extraEndpoints: settings.extraEndpoints,
-        deviceStore: pairedDeviceStore,
-      );
-      // App-lifetime relay registration: keeps off-LAN SSH reachable via
-      // device grants even when no QR is on screen.
-      final relayUrl = settings.relayUrl.trim();
-      if (relayUrl.isNotEmpty) {
-        try {
-          final uri = Uri.parse(relayUrl);
-          if (uri.scheme == 'ws' || uri.scheme == 'wss') {
-            await connectAgent.enableRelay(
-              appDataRoot: nativeAppDataPath,
-              registration: _relayRegistrationFor(uri),
-            );
-          }
-        } on Object catch (error, stackTrace) {
-          appLogger.w(
-            '[connect-relay] startup registration failed',
-            error: error,
-            stackTrace: stackTrace,
-          );
-        }
-      }
-      connectCubit = ConnectCubit(
-        agent: ConnectAgentController.fromAgent(connectAgent),
-        backends: backendHost,
-        systemSshdHint: Platform.isMacOS
-            ? ConnectSystemSshdHint.macos
-            : (Platform.isLinux
-                  ? ConnectSystemSshdHint.linux
-                  : ConnectSystemSshdHint.none),
-        deviceStore: pairedDeviceStore,
-        settingsStore: settingsStore,
-        listNetworkAddresses: () async {
-          final interfaces = await NetworkInterface.list(includeLoopback: true);
-          return [
-            for (final interface in interfaces)
-              for (final address in interface.addresses)
-                ConnectNetworkAddress(
-                  name: interface.name,
-                  address: address.address,
-                  isLoopback: address.isLoopback,
-                  isIpv4: address.type == InternetAddressType.IPv4,
-                ),
-          ];
-        },
-        username: username,
-        displayName: Platform.localHostname,
-        appDataRoot: nativeAppDataPath,
-      );
-    }
+    final connect = await wireConnectBackend(
+      nativeAppDataPath: nativeAppDataPath,
+    );
+    ConnectCubit? connectCubit = connect.connectCubit;
+    ConnectSshBackend? embeddedSshServer = connect.embeddedSshServer;
+    ConnectSshBackend? systemSshdBackend = connect.systemSshdBackend;
+    PairedDeviceStore? connectDeviceStore = connect.connectDeviceStore;
     final commandBus = CommandBus();
     final shortcutCubit = ShortcutCubit(storage: homeStorage);
     final workspaceChromeCommands = WorkspaceChromeCommands();
@@ -4092,14 +3955,6 @@ Future<AppShell> buildAppShell({
     await managedProviderControlPlaneLease.closeIfOwned();
     rethrow;
   }
-}
-
-ConnectRelayRegistration _relayRegistrationFor(Uri uri) {
-  return ConnectRelayRegistration(
-    url: uri.toString(),
-    endpointHost: uri.host,
-    endpointPort: uri.port == 0 ? (uri.scheme == 'wss' ? 443 : 80) : uri.port,
-  );
 }
 
 /// Mobile-side consumer of the desktop's `sessionLifecycle` family.
