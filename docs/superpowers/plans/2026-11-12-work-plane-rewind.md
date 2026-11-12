@@ -597,6 +597,17 @@ cd /home/hhoa/git/hhoa/teampilot && git add client/lib/services/git/git_command_
     required SeatRewindTarget target,
     GitCommandRunner? git,
     Filesystem? fs,
+    String gitExecutable = 'git',
+    Duration commandTimeout = const Duration(seconds: 30),
+  });
+  // Retained: existing production callers + the fake-git-script baseline test.
+  // Task 6 switches them to forContext.
+  factory SeatRewindStore.forSession({
+    required RuntimeLayout layout,
+    required String workspaceId,
+    required String sessionId,
+    required SeatRewindTarget target,
+    String gitExecutable = 'git',
     Duration commandTimeout = const Duration(seconds: 30),
   });
   factory SeatRewindStore.forContext({
@@ -608,7 +619,9 @@ cd /home/hhoa/git/hhoa/teampilot && git add client/lib/services/git/git_command_
     Duration commandTimeout = const Duration(seconds: 30),
   });
   ```
-  默认 `git = LocalGitCommandRunner()`、`fs = LocalFilesystem()`，因此现有测试的 `SeatRewindStore(gitDir:…, workTree:…, target:…)` 不用改。
+  默认 `git = LocalGitCommandRunner(gitExecutable: gitExecutable)`、`fs = LocalFilesystem()`，因此现有测试的 `SeatRewindStore(gitDir:…, workTree:…, target:…)` 不用改。
+
+  **`gitExecutable` 与 `forSession` 必须保留**：`seat_rewind_store_test.dart:219` 用 `gitExecutable: scriptPath` 注入假 git 脚本，并且 `seat_rewind_policy.dart` / `seat_rewind_controller.dart` 仍调用 `forSession`。删掉会破坏「现有 513 行基线原样通过」这一更高优先级约束。Task 6 才把它们切到 `forContext`。
 
 - [ ] **Step 1: Write the failing test**
 
@@ -618,6 +631,7 @@ cd /home/hhoa/git/hhoa/teampilot && git add client/lib/services/git/git_command_
   test('store uses the injected GitCommandRunner and Filesystem', () async {
     final tmp = tmpDir.path;
     final runner = _RecordingGitRunner(LocalGitCommandRunner());
+    final fs = _RecordingFs();
     final store = SeatRewindStore(
       gitDir: '$tmp/repo.git',
       workTree: '$tmp/work',
@@ -626,14 +640,29 @@ cd /home/hhoa/git/hhoa/teampilot && git add client/lib/services/git/git_command_
         tool: 'claude',
       ),
       git: runner,
-      fs: LocalFilesystem(),
+      fs: fs,
     );
-    await store.repoExists();
+    await store.ensureRepo();
     expect(runner.calls, isNotEmpty);
+    expect(fs.calls, isNotEmpty);
   });
 ```
 
-并在文件底部新增：
+并在文件底部新增（`repoExists()` 是纯 fs 操作，不能用来断言 git 注入，所以用 `ensureRepo()`；同时注入一个记录调用的 `Filesystem` 来真正验证 fs 接线）：
+
+```dart
+final class _RecordingFs extends LocalFilesystem {
+  final calls = <String>[];
+
+  @override
+  Future<FsStat> stat(String path) async {
+    calls.add(path);
+    return super.stat(path);
+  }
+}
+```
+
+以及：
 
 ```dart
 final class _RecordingGitRunner implements GitCommandRunner {
@@ -740,25 +769,41 @@ Expected: 编译失败（`SeatRewindStore` 无 `git:` / `fs:` 参数）。
 
 ```dart
   Future<String?> showFile(String commit, String path) async {
-    try {
-      final result = await git.runRaw(
-        [..._repoArgs, 'show', '$commit:$path'],
-        allowFailure: true,
-      );
-      if (result.exitCode == 0) return _utf8OrNull(result.stdout);
-      if (target.seatKey != 'personal') return null;
-      final sourcePath = await _personalizedSourcePath(commit, path);
-      if (sourcePath == null) return null;
-      final mapped = await git.runRaw(
-        [..._repoArgs, 'show', '$commit:$sourcePath'],
-        allowFailure: true,
-      );
-      if (mapped.exitCode != 0) return null;
-      return _utf8OrNull(mapped.stdout);
-    } on Object {
-      return null;
-    }
+    final result = await git.runRaw(
+      [..._repoArgs, 'show', '$commit:$path'],
+      workingDirectory: workTree,
+      allowFailure: true,
+      timeout: commandTimeout,
+    );
+    if (result.exitCode == 0) return _utf8OrNull(result.stdout);
+    if (target.seatKey != 'personal') return null;
+    final sourcePath = await _personalizedSourcePath(commit, path);
+    if (sourcePath == null) return null;
+    final mapped = await git.runRaw(
+      [..._repoArgs, 'show', '$commit:$sourcePath'],
+      workingDirectory: workTree,
+      allowFailure: true,
+      timeout: commandTimeout,
+    );
+    if (mapped.exitCode != 0) return null;
+    return _utf8OrNull(mapped.stdout);
   }
+```
+
+`runRaw(allowFailure: true)` 在 git 失败/超时时返回非零 `exitCode` 而不抛异常，所以这里**不要** `try/catch`，更不要用 `on Object` 吞掉 `TypeError` / `NoSuchMethodError` 等编程错误。
+
+同理 `_includedRuntimeFiles` 里 `Directory.list` 的 `on FileSystemException` 换成 `fs.listDir` 后若必须用 `on Object` 才能去掉 `dart:io`，则必须重新抛出编程错误并让日志如实描述：
+
+```dart
+      } on Object catch (error) {
+        if (error is TypeError ||
+            error is NoSuchMethodError ||
+            error is ArgumentError) {
+          rethrow;
+        }
+        AppLogger.instance.w('[rewind] skipped runtime directory $dirPath: $error');
+        return;
+      }
 ```
 
 删除 `dart:io` import；保留 `p` import（路径拼接）。
