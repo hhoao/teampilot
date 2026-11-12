@@ -308,7 +308,7 @@ GitCapability gitCapabilityFromVersion(GitRawResult result) {
     }
     final process = await Process.start(
       'sh',
-      ['-lc', script],
+      ['-c', script],
       workingDirectory: workingDirectory,
       environment: environment,
     );
@@ -332,10 +332,14 @@ GitCapability gitCapabilityFromVersion(GitRawResult result) {
     final stdout = await outFuture;
     final stderr = await errFuture;
     if (timedOut || exit != 0) {
-      throw StateError('sh -lc failed ($exit): $stderr');
+      throw StateError('sh -c failed ($exit): $stderr');
     }
     return GitCommandResult(exitCode: exit, stdout: stdout, stderr: stderr);
   }
+
+  // NOTE: use `sh -c`, not `sh -lc`. A login shell sources profiles that can
+  // abort (dash + a broken profile.d exits 2) or pollute stdout; the exec
+  // channel's PATH already finds git/find.
 
   @override
   Future<GitCapability> probe() async =>
@@ -548,8 +552,8 @@ Expected: 编译失败（缺 `execShellWithStdin` 参数与实现）。
 
 `WslGitCommandRunner` 用同样思路，基于 `wsl.exe`：
 - `runRaw`：`Process.start('wsl.exe', HostWslArgv.processInvocation(...), ...)`，stdout 收集 bytes。
-- `runToFile`：`sh -lc '<git argv> > <quoted dest>'`。
-- `runScript`：`wsl.exe sh -lc script`。
+- `runToFile`：`sh -c '<git argv> > <quoted dest>'`。
+- `runScript`：`wsl.exe sh -c script`。
 - `probe`：`gitCapabilityFromVersion(await runRaw(['--version'], allowFailure: true))`（与 Local/Remote 共用解析）。
 
 > 实现 WSL 时复用 `HostWslArgv.processInvocation`（已有），不要手拼 `wsl.exe` 参数。
