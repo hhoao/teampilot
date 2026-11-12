@@ -538,11 +538,18 @@ Expected: 编译失败（缺 `execShellWithStdin` 参数与实现）。
     final result = stdinText == null
         ? await _execShell(prefix)
         : await _execShellWithStdin!(prefix, utf8.encode(stdinText));
-    return GitCommandResult(
+    final out = GitCommandResult(
       exitCode: result.exitCode ?? (sshRunSucceeded(result) ? 0 : 1),
       stdout: utf8.decode(result.stdout, allowMalformed: true),
       stderr: utf8.decode(result.stderr, allowMalformed: true),
     );
+    // Same non-zero contract as LocalGitCommandRunner.runScript: silently
+    // returning an empty stdout on a failed script would make Task 4's `find`
+    // look like an empty runtime directory.
+    if (out.exitCode != 0) {
+      throw StateError('sh -c failed (${out.exitCode}): ${out.stderr}');
+    }
+    return out;
   }
 
   @override
@@ -553,7 +560,7 @@ Expected: 编译失败（缺 `execShellWithStdin` 参数与实现）。
 `WslGitCommandRunner` 用同样思路，基于 `wsl.exe`：
 - `runRaw`：`Process.start('wsl.exe', HostWslArgv.processInvocation(...), ...)`，stdout 收集 bytes。
 - `runToFile`：`sh -c '<git argv> > <quoted dest>'`。
-- `runScript`：`wsl.exe sh -c script`。
+- `runScript`：`wsl.exe sh -c script`。**必须与 Local / Remote 一样在非零退出或超时时抛 `StateError`**，不要返回带非零 exitCode 的结果（否则 Task 4 的 `find` 失败会被当成空目录）。
 - `probe`：`gitCapabilityFromVersion(await runRaw(['--version'], allowFailure: true))`（与 Local/Remote 共用解析）。
 
 > 实现 WSL 时复用 `HostWslArgv.processInvocation`（已有），不要手拼 `wsl.exe` 参数。
