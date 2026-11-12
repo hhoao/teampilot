@@ -14,10 +14,6 @@ import 'bootstrap/managed_provider_control_plane.dart';
 import 'bootstrap/provider_usage_http_client.dart';
 import 'home_index_prefetch.dart';
 import 'team_generation_graph.dart';
-
-// The control-plane types moved to `bootstrap/`; keep resolving them for
-// importers that still reach them through this library.
-export 'bootstrap/managed_provider_control_plane.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../services/cli/antigravity/antigravity_bootstrap_entry.dart';
 import '../services/cli/antigravity/capabilities/acp_adapter_installer.dart';
