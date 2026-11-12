@@ -75,6 +75,15 @@ GitCommandResult _gitResultFromHost(HostRunResult result) {
   );
 }
 
+/// Decodes child output that may contain bytes which are not valid UTF-8
+/// (git echoes raw paths, for instance).
+const Utf8Codec _lenientUtf8 = Utf8Codec(allowMalformed: true);
+
+/// How long to keep draining the output pipes after a timed-out child is
+/// killed. The child's own children can inherit the pipes and outlive it, so
+/// this wait must be bounded or a timeout would not bound the call.
+const Duration _killGrace = Duration(milliseconds: 500);
+
 /// Executes git against a working directory on local disk, WSL, or SSH.
 abstract interface class GitCommandRunner {
   Future<bool> get isAvailable;
@@ -265,7 +274,7 @@ class LocalGitCommandRunner implements GitCommandRunner {
       <int>[],
       (buffer, chunk) => buffer..addAll(chunk),
     );
-    final errFuture = process.stderr.transform(utf8.decoder).join();
+    final errFuture = process.stderr.transform(_lenientUtf8.decoder).join();
     if (stdinText != null) process.stdin.write(stdinText);
     try {
       await process.stdin.close();
@@ -281,8 +290,12 @@ class LocalGitCommandRunner implements GitCommandRunner {
         return -1;
       },
     );
-    final stdout = await outFuture;
-    final stderr = await errFuture;
+    final stdout = await (timedOut
+        ? outFuture.timeout(_killGrace, onTimeout: () => <int>[])
+        : outFuture);
+    final stderr = await (timedOut
+        ? errFuture.timeout(_killGrace, onTimeout: () => '')
+        : errFuture);
     if (!allowFailure && (timedOut || exit != 0)) {
       throw StateError('git ${args.join(' ')} failed ($exit): $stderr');
     }
@@ -310,17 +323,26 @@ class LocalGitCommandRunner implements GitCommandRunner {
     final dest = File(destPath);
     await dest.parent.create(recursive: true);
     final sink = dest.openWrite();
-    final errFuture = process.stderr.transform(utf8.decoder).join();
-    await process.stdout.pipe(sink);
+    final pipeFuture = process.stdout.pipe(sink);
+    final errFuture = process.stderr.transform(_lenientUtf8.decoder).join();
+    var timedOut = false;
     final exit = await process.exitCode.timeout(
       timeout ?? const Duration(seconds: 30),
       onTimeout: () {
+        timedOut = true;
         process.kill();
         return -1;
       },
     );
-    final stderr = await errFuture;
-    if (exit != 0) {
+    if (timedOut) {
+      await pipeFuture.timeout(_killGrace, onTimeout: () => null);
+    } else {
+      await pipeFuture;
+    }
+    final stderr = await (timedOut
+        ? errFuture.timeout(_killGrace, onTimeout: () => '')
+        : errFuture);
+    if (timedOut || exit != 0) {
       if (await dest.exists()) await dest.delete();
       throw StateError('git ${args.join(' ')} failed ($exit): $stderr');
     }
@@ -345,8 +367,8 @@ class LocalGitCommandRunner implements GitCommandRunner {
       workingDirectory: workingDirectory,
       environment: environment,
     );
-    final outFuture = process.stdout.transform(utf8.decoder).join();
-    final errFuture = process.stderr.transform(utf8.decoder).join();
+    final outFuture = process.stdout.transform(_lenientUtf8.decoder).join();
+    final errFuture = process.stderr.transform(_lenientUtf8.decoder).join();
     if (stdinText != null) process.stdin.write(stdinText);
     try {
       await process.stdin.close();
@@ -362,8 +384,12 @@ class LocalGitCommandRunner implements GitCommandRunner {
         return -1;
       },
     );
-    final stdout = await outFuture;
-    final stderr = await errFuture;
+    final stdout = await (timedOut
+        ? outFuture.timeout(_killGrace, onTimeout: () => '')
+        : outFuture);
+    final stderr = await (timedOut
+        ? errFuture.timeout(_killGrace, onTimeout: () => '')
+        : errFuture);
     if (timedOut || exit != 0) {
       throw StateError('sh -lc failed ($exit): $stderr');
     }
