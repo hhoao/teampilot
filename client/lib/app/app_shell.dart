@@ -22,6 +22,7 @@ import 'bootstrap/session_runtime_wiring.dart';
 import 'bootstrap/session_state_wiring.dart';
 import 'bootstrap/session_usage_wiring.dart';
 import 'bootstrap/ssh_plane_wiring.dart';
+import 'bootstrap/vault_wiring.dart';
 import 'bootstrap/workspace_wiring.dart';
 import 'bootstrap/connect_wiring.dart';
 import 'bootstrap/command_wiring.dart';
@@ -114,7 +115,6 @@ import '../cubits/hook_cubit.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../cubits/workspace_project_config_cubit.dart';
-import '../repositories/app_provider_repository.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../services/storage/launch_profile_provisioner.dart';
 import '../cubits/cli_presets_cubit.dart';
@@ -138,8 +138,6 @@ import '../models/team_config.dart';
 import '../utils/ui/yield_ui_frame.dart';
 import '../l10n/l10n_extensions.dart';
 import '../services/acp/acp_chat_strings.dart';
-import '../pages/vault/vault_status_section.dart'
-    show promptVaultUnlockFromRouter;
 import '../repositories/app_settings_repository.dart';
 import '../repositories/session_repository.dart';
 import '../repositories/ssh_credential_store.dart';
@@ -158,10 +156,7 @@ import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
 import '../services/storage/remote_target_migration.dart';
 import '../services/vault/credential_capture.dart';
-import '../services/vault/encrypted_vault_backend.dart';
 import '../services/vault/home_vault_service.dart';
-import '../services/vault/vault_access.dart';
-import '../services/vault/keychain_vault_backend.dart';
 import '../services/vault/legacy_import.dart';
 import '../services/vault/vault_split_migration.dart';
 import '../services/vault/vault_service.dart';
@@ -622,44 +617,20 @@ Future<AppShell> buildAppShell({
     return path.isEmpty ? null : path;
   };
 
-  final sshCredentialStore = const SecureSshCredentialStore(
-    FlutterSecureKeyValueStore(),
-  );
   // Business credentials live on the current home plane (the remote host);
   // SSH login credentials stay on the device vault so reconnection works while
   // the host is down. The scope is assigned once `homeStorage` exists below;
   // the resolver keeps routing correct across home-plane swaps.
   HomeVaultScope? homeVaultScope;
-  final vaultService = VaultService(
-    keychainBackend: KeychainVaultBackend(const FlutterSecureKeyValueStore()),
-    encryptedBackend: EncryptedVaultBackend(
-      repository: deviceLocalVaultRepository(nativeAppDataPath),
-    ),
-    masterKeyStore: const FlutterSecureKeyValueStore(),
-    // Resolved lazily: before assignment, boot-time reads skip the home plane.
-    homeVault: () => homeVaultScope?.service,
+  final vaultCore = await wireVaultCore(
+    nativeAppDataPath: nativeAppDataPath,
+    homeVaultScope: () => homeVaultScope,
   );
-  final vaultAccess = VaultAccess(vaultService);
-  try {
-    await vaultService.initialize();
-    // Functional reads (SSH, providers, usage, GitHub) unlock silently with
-    // the remembered master password; only an explicit reveal prompts.
-    await vaultAccess.tryAutoUnlock();
-  } on Object catch (error, stackTrace) {
-    appLogger.w(
-      '[vault] initialize failed: $error',
-      error: error,
-      stackTrace: stackTrace,
-    );
-  }
-  // Shared vault-first capture path + unlock gate: every credential writer
-  // (GitHub, app providers, SSH setup) goes through these so a locked vault
-  // prompts exactly once per action instead of per call site.
-  final vaultCredentialCapture = VaultCredentialCapture(vault: vaultService);
-  final vaultUnlockGate = VaultUnlockGate(
-    vault: vaultService,
-    prompt: promptVaultUnlockFromRouter,
-  );
+  final sshCredentialStore = vaultCore.sshCredentialStore;
+  final vaultService = vaultCore.service;
+  final vaultAccess = vaultCore.access;
+  final vaultCredentialCapture = vaultCore.credentialCapture;
+  final vaultUnlockGate = vaultCore.unlockGate;
   final sshTransport = wireSshTransport(
     sshCredentialStore: sshCredentialStore,
     preferences: preferences,
@@ -773,9 +744,6 @@ Future<AppShell> buildAppShell({
   reloadAllAppData;
 
   late final SshProfileCubit sshProfileCubit;
-  // Declared before the VaultCubit closure that captures it: the closure only
-  // runs on a later unlock/encrypt, after the importer is assigned below.
-  late final VaultLegacyImportService legacyImporter;
   late final VaultCubit vaultCubit;
   late final HomeTargetController homeTargetController;
   late final HomeWorkspaceUiCache homeWorkspaceUiCache;
@@ -1034,32 +1002,15 @@ Future<AppShell> buildAppShell({
     migrateBusinessVaultEntries(device: vaultService, home: scope.service),
   );
 
-  vaultCubit = VaultCubit(
-    service: vaultService,
-    sshProfiles: sshProfileRepo,
-    appProviders: AppProviderRepository(storage: homeStorage),
-    onUnlocked: () async {
-      // Import first: GitHub hydration reads the store, and a token that only
-      // lives in the vault must be captured before the pointer is consulted.
-      // Hydration is NOT awaited: it may hit api.github.com, and unlock/save
-      // must stay responsive while it runs.
-      await legacyImporter.runOnce();
-      // The vault page may already be mounted (the user just unlocked it):
-      // re-read rows only; changing status during the unlock transition can
-      // re-enter the page rebuild while a dialog is closing.
-      await vaultCubit.reloadEntries();
-      unawaited(
-        githubAccountCubit.hydrate().catchError((
-          Object error,
-          StackTrace stack,
-        ) {
-          appLogger.w(
-            '[vault] post-unlock GitHub hydrate failed: ${error.runtimeType}',
-            stackTrace: stack,
-          );
-        }),
-      );
-    },
+  // Declared before the VaultCubit closure that captures it: the closure only
+  // runs on a later unlock/encrypt, after the importer is assigned below.
+  late final VaultLegacyImportService legacyImporter;
+  vaultCubit = wireVaultCubit(
+    homeStorage: homeStorage,
+    sshProfileRepo: sshProfileRepo,
+    githubAccountCubit: githubAccountCubit,
+    vaultService: vaultService,
+    legacyImporter: () => legacyImporter,
   );
 
   // Managed Providers belong to the home/control plane. Construct this graph
@@ -1107,69 +1058,22 @@ Future<AppShell> buildAppShell({
   final resolvedManagedProviderUsageCoordinator =
       managedProviderControlPlane.usageCoordinator;
 
-  // Vault-first migration of every legacy secret. Constructed after the
-  // managed-provider graph and the GitHub store so the closure above always
-  // sees a fully-assigned importer. `runOnce` is a no-op while the vault is
-  // locked and after a clean pass, so it is safe at every boot.
-  legacyImporter = VaultLegacyImportService(
-    vault: vaultService,
-    capture: vaultCredentialCapture,
-    importKey: nativeAppDataPath,
-    sshProfiles: sshProfileRepo,
-    sshCredentials: sshCredentialStore,
-    appProviders: AppProviderRepository(storage: homeStorage),
-    managedProviders: resolvedManagedProviderRepository,
-    managedSecrets: resolvedManagedProviderSecretStore,
-    github: githubCredentialsStore,
+  final vaultState = wireVaultState(
+    homeStorage: homeStorage,
+    sshProfileRepo: sshProfileRepo,
+    githubAccountCubit: githubAccountCubit,
+    githubCredentialsStore: githubCredentialsStore,
+    vaultService: vaultService,
+    sshCredentialStore: sshCredentialStore,
+    vaultCredentialCapture: vaultCredentialCapture,
+    nativeAppDataPath: nativeAppDataPath,
+    resolvedManagedProviderRepository: resolvedManagedProviderRepository,
+    resolvedManagedProviderSecretStore: resolvedManagedProviderSecretStore,
+    vaultCubit: vaultCubit,
+    homeVaultScope: () => homeVaultScope,
   );
-  // One background sequence, not two: hydration reads the GitHub store that
-  // the import writes, so running them independently can duplicate the vault
-  // entry. Failure-tolerant and off the boot critical path.
-  unawaited(() async {
-    try {
-      await githubAccountCubit.hydrate();
-      await legacyImporter.runOnce();
-      // Repair pass: imports only rows that still carry a plaintext secret and
-      // no vault reference, so a provider key added after the one-shot marker
-      // (or captured while the plane was down) still reaches the vault.
-      await legacyImporter.runRepair();
-      // Boot import runs in the background; refresh rows on a possibly-open page.
-      await vaultCubit.reloadEntries();
-    } on Object catch (error, stackTrace) {
-      appLogger.w(
-        '[vault] boot hydrate/import failed: ${error.runtimeType}',
-        stackTrace: stackTrace,
-      );
-    }
-  }());
-
-  // A home switch changes which plane holds the business vault. Both passes are
-  // idempotent: copy this device's business entries onto the new plane, then
-  // re-run the owner imports so credentials captured while the plane was down
-  // (or written before the split) reach it. SSH login credentials stay on the
-  // device — the migration skips them.
-  final vaultPlaneSyncSub = homeStorage.changes.listen((change) {
-    if (!change.newContext.filesystem.isRemote) return;
-    final scope = homeVaultScope;
-    if (scope == null) return;
-    unawaited(() async {
-      try {
-        await scope.prepare();
-        await migrateBusinessVaultEntries(
-          device: vaultService,
-          home: scope.service,
-        );
-        await legacyImporter.runRepair();
-        await vaultCubit.reloadEntries();
-      } on Object catch (error, stackTrace) {
-        appLogger.w(
-          '[vault] home-plane vault sync failed: $error',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
-    }());
-  });
+  legacyImporter = vaultState.importer;
+  final vaultPlaneSyncSub = vaultState.planeSyncSubscription;
 
   // Retried-bootstrap teardown seam: when wiring below fails after the
   // catalog runtime is assembled, its mutation bus must unregister its relay
