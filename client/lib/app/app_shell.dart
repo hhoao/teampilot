@@ -6,12 +6,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/app_bootstrap_cubit.dart';
 import 'app_data_bootstrap.dart';
+import 'bootstrap/cursor_usage_stack.dart';
+import 'bootstrap/managed_provider_control_plane.dart';
+import 'bootstrap/provider_usage_http_client.dart';
 import 'home_index_prefetch.dart';
 import 'team_generation_graph.dart';
+
+// The control-plane types moved to `bootstrap/`; keep resolving them for
+// importers that still reach them through this library.
+export 'bootstrap/managed_provider_control_plane.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../services/cli/antigravity/antigravity_bootstrap_entry.dart';
 import '../services/cli/antigravity/capabilities/acp_adapter_installer.dart';
@@ -37,15 +43,8 @@ import '../cubits/chat_cubit.dart';
 import '../cubits/session_groups_cubit.dart';
 import '../cubits/session_usage_cubit.dart';
 import 'session_usage_services.dart';
-import '../models/cursor_usage_account.dart';
 import '../models/cursor_usage_range.dart';
-import '../models/cursor_usage_report.dart';
-import '../services/cli/cursor/provider/cursor_usage_auth_resolver.dart';
-import '../services/cursor_usage/cursor_account_registry.dart';
-import '../services/cli/cursor/provider/cursor_provider_settings_resolver.dart';
 import '../services/cursor_usage/cursor_usage_api_client.dart';
-import '../services/cursor_usage/cursor_usage_cache_store.dart';
-import '../services/cursor_usage/cursor_usage_coordinator.dart';
 import '../services/cursor_usage/cursor_usage_event_source.dart';
 import '../services/agent_runtime/agent_event_gateway.dart';
 import '../services/agent_runtime/agent_runtime.dart';
@@ -54,17 +53,10 @@ import '../services/agent_runtime/runtime_event_projection.dart';
 import '../services/agent_runtime/seat_event_stream.dart';
 import '../services/agent_runtime/seat_lease_projection.dart';
 import '../services/editor/markdown_network_image_store.dart';
-import '../services/event/agent_presence_event.dart';
 import '../services/event/agent_presence_projection.dart';
 import '../services/event/agent_presence_sink.dart';
-import '../services/event/agent_presence_transport_codec.dart';
-import '../services/event/async_dispatcher.dart';
-import '../services/event/event_publisher.dart';
-import '../services/event/event_transport_client.dart';
 import '../services/event/event_transport_controller.dart';
-import '../services/event/event_transport_server.dart';
 import '../services/event/presence_event_bridge.dart';
-import '../services/event/session_lifecycle_transport_codec.dart';
 import 'event_transport_home.dart';
 import '../services/chat/conversation/prompt_delivery/prompt_delivery_coordinator.dart';
 import '../services/chat/conversation/prompt_delivery/prompt_delivery_store.dart';
@@ -184,13 +176,10 @@ import '../cubits/expert_hub_cubit.dart';
 import '../models/runtime_target.dart';
 import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
-import '../services/app/boot_splash.dart';
 import '../utils/ui/yield_ui_frame.dart';
 import '../l10n/l10n_extensions.dart';
 import '../services/acp/acp_chat_strings.dart';
 import '../services/acp/acp_frame_logger.dart';
-import '../pages/system/app_bootstrap_loading_page.dart';
-import '../pages/system/bootstrap_startup_error_page.dart';
 import '../pages/vault/vault_status_section.dart'
     show promptVaultUnlockFromRouter;
 import '../repositories/app_settings_repository.dart';
@@ -310,17 +299,11 @@ import '../services/provider_usage/managed_provider_secret_store.dart';
 import '../services/provider_usage/managed_provider_cli_row_janitor.dart';
 import '../services/provider_usage/managed_provider_link_janitor.dart';
 import '../services/provider_usage/managed_provider_usage_adapter.dart';
-import '../services/provider_usage/managed_provider_usage_auto_refresh.dart';
 import '../services/provider_usage/managed_provider_usage_coordinator.dart';
 import '../services/provider_usage/managed_provider_usage_registry.dart';
-import '../services/io/filesystem.dart';
 import '../services/provider_usage/adapters/claude_official_subscription_auth.dart';
-import '../services/provider_usage/adapters/codebuddy_credits_adapter.dart';
 import '../services/provider_usage/adapters/codex_official_subscription_auth.dart';
 import '../services/provider_usage/adapters/cursor_official_subscription_auth.dart';
-import '../services/provider_usage/adapters/grok_dashboard_usage_adapter.dart';
-import '../services/provider_usage/adapters/http_json_mapping_adapter.dart';
-import '../services/provider_usage/adapters/qoder_usage_adapter.dart';
 import '../services/provider_usage/cli_credential_source.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/remote_cli_locator.dart';
@@ -396,110 +379,6 @@ import '../services/terminal/workspace_terminal_session_ops.dart';
 import '../utils/logging/logger.dart';
 import '../utils/retryable_memo.dart';
 import 'ui_zoom_baseline.dart';
-
-/// This is the control-plane owner for Managed Provider state. It is created
-/// once by [buildAppShell] and deliberately contains no workspace identity.
-class ManagedProviderControlPlane {
-  ManagedProviderControlPlane({
-    required this.providerRepository,
-    required this.usageRepository,
-    required this.secretStore,
-    required this.usageRegistry,
-    required this.usageCoordinator,
-    required this.providerCubit,
-    required this.usageCubit,
-    this.ownsProviderCubit = false,
-    this.ownsUsageCubit = false,
-    this.ownsUsageCoordinator = false,
-    this.closeOwnedHttpClient,
-  });
-
-  final ManagedProviderRepository providerRepository;
-  final ManagedProviderUsageRepository usageRepository;
-  final ManagedProviderSecretStore secretStore;
-  final ManagedProviderUsageRegistry usageRegistry;
-  final ManagedProviderUsageCoordinator usageCoordinator;
-  final ManagedProviderCubit providerCubit;
-  final ManagedProviderUsageCubit usageCubit;
-  final bool ownsProviderCubit;
-  final bool ownsUsageCubit;
-  final bool ownsUsageCoordinator;
-  final Future<void> Function()? closeOwnedHttpClient;
-  Future<void>? _hydration;
-  bool _closed = false;
-
-  Future<void> hydrate({required BootLog boot}) {
-    final existing = _hydration;
-    if (existing != null) return existing;
-    final future = AppDataBootstrap.hydrateManagedProviderData(
-      boot: boot,
-      managedProviderCubit: providerCubit,
-      managedProviderUsageCubit: usageCubit,
-    );
-    _hydration = future;
-    return future;
-  }
-
-  Future<void> reload({required BootLog boot}) =>
-      AppDataBootstrap.reloadManagedProviderData(
-        boot: boot,
-        managedProviderCubit: providerCubit,
-        managedProviderUsageCubit: usageCubit,
-      );
-
-  Future<void> invalidateForStorageContextChange() =>
-      usageCubit.invalidateForStorageContextChange();
-
-  Future<void> close() async {
-    if (_closed) return;
-    _closed = true;
-    if (ownsUsageCoordinator) await usageCoordinator.close();
-    if (ownsUsageCubit) await usageCubit.close();
-    if (ownsProviderCubit) await providerCubit.close();
-    final closeHttpClient = closeOwnedHttpClient;
-    if (closeHttpClient != null) await closeHttpClient();
-  }
-}
-
-/// Holds the control-plane resources while [buildAppShell] finishes wiring
-/// the shell. On success ownership is transferred to [AppShell]'s caller;
-/// otherwise the lease closes the resources exactly once.
-class ManagedProviderControlPlaneLease {
-  ManagedProviderControlPlaneLease(this.controlPlane);
-
-  final ManagedProviderControlPlane controlPlane;
-  bool _ownershipReleased = false;
-
-  void transferOwnership() {
-    _ownershipReleased = true;
-  }
-
-  Future<void> closeIfOwned() async {
-    if (_ownershipReleased) return;
-    _ownershipReleased = true;
-    await controlPlane.close();
-  }
-}
-
-/// Builds the CLI-independent adapter catalog used by the AppShell control
-/// plane. Official adapters receive application-owned boundaries only.
-///
-/// Callers that omit the Claude/Codex boundaries keep the fail-closed
-/// `unsupported` stubs. Production `buildAppShell` injects file-backed auth
-/// readers and the official usage HTTP clients.
-ManagedProviderUsageRegistry buildDefaultManagedProviderUsageRegistry({
-  CliCredentialSourceResolver? cliCredentials,
-  Filesystem? fs,
-  String? basePath,
-}) {
-  return ManagedProviderUsageRegistry([
-    HttpJsonMappingAdapter(cliCredentials: cliCredentials),
-    GrokDashboardUsageAdapter(cliCredentials: cliCredentials),
-    if (fs != null && basePath != null)
-      CodebuddyCreditsUsageAdapter(fs: fs, basePath: basePath),
-    QoderUsageAdapter(),
-  ]);
-}
 
 /// Fully wired app dependencies produced after async bootstrap.
 class AppShell {
@@ -774,6 +653,22 @@ class AppShell {
   StreamSubscription<SessionRemoteActivityState>? _sessionRemoteRefreshSub;
   StreamSubscription<SessionContentInvalidation>? _contentInvalidationSub;
   StreamSubscription<SessionContentStreamChunk>? _contentStreamSub;
+
+  /// Cancels the subscriptions [buildAppShell] attached to this shell.
+  ///
+  /// The bootstrap widget owns the shell's lifetime; it calls this when the
+  /// shell is discarded. Each cancel stays fire-and-forget, as it was inline,
+  /// because `dispose` is synchronous.
+  void cancelShellSubscriptions() {
+    _automationCatalogSub?.cancel();
+    _homeProfileWatchSub?.cancel();
+    _homeConnectivitySub?.cancel();
+    _vaultPlaneSyncSub?.cancel();
+    unawaited(_sessionRemoteRefreshSub?.cancel());
+    unawaited(_contentInvalidationSub?.cancel());
+    unawaited(_contentStreamSub?.cancel());
+  }
+
   final CommandBus commandBus;
   final ShortcutCubit shortcutCubit;
   final WorkspaceChromeCommands workspaceChromeCommands;
@@ -1462,7 +1357,7 @@ Future<AppShell> buildAppShell({
   final ProviderUsageHttpClient? resolvedManagedProviderHttpClient =
       managedProviderUsageHttpClient ??
       (managedProviderUsageCoordinator == null
-          ? _DefaultProviderUsageHttpClient()
+          ? DefaultProviderUsageHttpClient()
           : null);
   final resolvedManagedProviderUsageRegistry =
       managedProviderUsageRegistry ??
@@ -1626,7 +1521,7 @@ Future<AppShell> buildAppShell({
     closeOwnedHttpClient: ownsManagedProviderHttpClient
         ? () =>
               (resolvedManagedProviderHttpClient!
-                      as _DefaultProviderUsageHttpClient)
+                      as DefaultProviderUsageHttpClient)
                   .close()
         : null,
   );
@@ -2186,12 +2081,12 @@ Future<AppShell> buildAppShell({
     // plane, so it is rebuilt whenever that plane changes instead of pinning
     // the first one for the whole app lifetime.
     var cursorStackGeneration = -1;
-    _CursorUsageStack? cachedCursorStack;
-    _CursorUsageStack cursorStack() {
+    CursorUsageStack? cachedCursorStack;
+    CursorUsageStack cursorStack() {
       if (cachedCursorStack == null ||
           cursorStackGeneration != homeStorage.generation) {
         cursorStackGeneration = homeStorage.generation;
-        cachedCursorStack = _CursorUsageStack(
+        cachedCursorStack = CursorUsageStack(
           storage: homeStorage,
           api: cursorUsageApiClient,
         );
@@ -2239,7 +2134,7 @@ Future<AppShell> buildAppShell({
     // Usage events are loaded on demand by the usage page. Loading them here
     // would pull the whole event store through the home plane before the
     // first frame — tens of MB over SSH, decrypted on the UI isolate.
-    Future<void> warmStartupCaches() => _warmCursorUsage(
+    Future<void> warmStartupCaches() => warmCursorUsage(
       accounts: () => cursorStack().registry.list(),
       load: (accountId) => cursorStack().coordinator.load(
         accountId: accountId,
@@ -4624,458 +4519,12 @@ Future<AppShell> buildAppShell({
   }
 }
 
-/// Production transport for the provider-usage adapter boundary. Keeping the
-/// `http` package behind this interface means adapters and tests never depend
-/// on a concrete client, and no UI layer can accidentally perform I/O.
-class _DefaultProviderUsageHttpClient implements ProviderUsageHttpClient {
-  _DefaultProviderUsageHttpClient({http.Client? client})
-    : _client = client ?? http.Client();
-
-  final http.Client _client;
-
-  Future<void> close() async => _client.close();
-
-  @override
-  Future<ProviderUsageHttpResponse> send(
-    ProviderUsageHttpRequest request,
-  ) async {
-    final outgoing = http.Request(request.method.toUpperCase(), request.uri)
-      ..headers.addAll(request.headers);
-    if (request.body != null) outgoing.body = request.body!;
-    final response = await _client
-        .send(outgoing)
-        .timeout(ManagedProviderUsageCoordinator.queryTimeout);
-    return ProviderUsageHttpResponse(
-      statusCode: response.statusCode,
-      body: await response.stream.bytesToString(),
-      headers: response.headers,
-    );
-  }
-}
-
-/// The Cursor usage objects bound to one home storage plane.
-///
-/// `CursorUsageCacheStore` pairs a filesystem with paths resolved from the same
-/// plane, so a plane swap has to rebuild the whole group, not just the paths.
-class _CursorUsageStack {
-  _CursorUsageStack({
-    required HomeStorage storage,
-    required CursorUsageApiClient api,
-  }) : registry = CursorAccountRegistry(
-         fs: storage.fs,
-         accountsPath: storage.paths.cursorUsageAccountsFile,
-         resolveAuths: () => CursorUsageAuthResolver(
-           fs: storage.fs,
-           basePath: storage.paths.basePath,
-           home: storage.home,
-           // Expired tokens are included so the usage page can show the account
-           // as "expired, sign in again"; credentialFor filters them for sync.
-         ).resolveAll(includeExpired: true),
-         providerNameFor: (providerId) => CursorProviderSettingsResolver(
-           basePath: storage.paths.basePath,
-           storage: storage,
-         ).findById(providerId).then((provider) => provider?.name),
-       ),
-       cacheStore = CursorUsageCacheStore(
-         fs: storage.fs,
-         pathFor: storage.paths.cursorUsageCacheFile,
-       ) {
-    coordinator = CursorUsageCoordinator(
-      registry: registry,
-      cacheStore: cacheStore,
-      api: api,
-    );
-  }
-
-  final CursorAccountRegistry registry;
-  final CursorUsageCacheStore cacheStore;
-  late final CursorUsageCoordinator coordinator;
-}
-
-/// Fills each enabled account's cache so the session usage dashboard has
-/// account rows even if the Cursor page is never opened. Best effort.
-Future<void> _warmCursorUsage({
-  required Future<List<CursorUsageAccount>> Function() accounts,
-  required Future<CursorUsageReport> Function(String accountId) load,
-}) async {
-  final List<CursorUsageAccount> rows;
-  try {
-    rows = await accounts();
-  } on Object {
-    return;
-  }
-  for (final row in rows) {
-    // Disabled rows are out by choice; expired rows have no live token, so a
-    // warm load would only log a warning per boot.
-    if (!row.enabled || row.isExpired(DateTime.now().millisecondsSinceEpoch)) {
-      continue;
-    }
-    try {
-      await load(row.accountId);
-    } on Object catch (error) {
-      AppLogger.instance.w(
-        'cursor usage warm failed for ${row.accountId}: $error',
-      );
-    }
-  }
-}
-
-class TeamPilotBootstrap extends StatefulWidget {
-  const TeamPilotBootstrap({
-    super.key,
-    required this.preferences,
-    required this.nativeAppDataPath,
-    required this.defaultWorkspaceDirectoryFuture,
-    required this.homeIndexPrefetchFuture,
-    required this.bootstrapCubit,
-    required this.childBuilder,
-  });
-
-  final SharedPreferences preferences;
-  final String nativeAppDataPath;
-  final Future<String> defaultWorkspaceDirectoryFuture;
-  final Future<void> homeIndexPrefetchFuture;
-  final AppBootstrapCubit bootstrapCubit;
-  final Widget Function(
-    AppShell shell,
-    Future<void> Function() stopEventTransport,
-  )
-  childBuilder;
-
-  @override
-  State<TeamPilotBootstrap> createState() => _TeamPilotBootstrapState();
-}
-
-class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
-  AppShell? _shell;
-  Object? _error;
-  var _retrying = false;
-  ManagedProviderUsageAutoRefresh? _usageAutoRefresh;
-
-  // Central event dispatcher: created once for the whole app lifecycle (not
-  // per bootstrap retry), attached to the publisher so all publishes route
-  // through it; stopped (drained) when the shell goes away.
-  final AsyncDispatcher _eventDispatcher = AsyncDispatcher();
-
-  // Pushed presence events: ONE projection per app lifecycle, exactly like the
-  // dispatcher above — never per bootstrap retry (a retry must not leak a
-  // second projection, nor a second family registration). Registered on the
-  // dispatcher below and closed only after the dispatcher drains, in dispose.
-  final AgentPresenceProjection _presenceProjection = AgentPresenceProjection();
-
-  // Narrow per-shell publish edge onto the same dispatcher; buildAppShell
-  // wraps it in a fresh PresenceEventBridge owned by that shell's cubit.
-  late final AgentPresenceSink _presenceSink = DispatcherAgentPresenceSink(
-    _eventDispatcher,
-  );
-
-  HomeStorage? _eventTransportHome;
-  Future<void>? _eventTransportStopFuture;
-
-  late final EventTransportController _eventTransportController =
-      EventTransportController(
-        createServer: () {
-          final home = _eventTransportHome;
-          if (home == null) {
-            throw StateError('event-transport home storage not bound');
-          }
-          final server = EventTransportServer(
-            dispatcher: _eventDispatcher,
-            presence: _presenceProjection,
-            fs: home.fs,
-            advertisementPath: home.paths.eventTransportJson,
-            codecs: [
-              AgentPresenceTransportCodec(),
-              SessionLifecycleTransportCodec(),
-            ],
-          );
-          return CallbackEventTransportEndpoint(
-            start: server.start,
-            stop: server.stop,
-          );
-        },
-        createClient:
-            ({
-              required Future<EventTransportByteChannel> Function() open,
-              Future<bool> Function(Object error)? waitForRecovery,
-            }) {
-              final client = EventTransportClient(
-                dispatcher: _eventDispatcher,
-                presence: _presenceProjection,
-                codecs: [
-                  AgentPresenceTransportCodec(),
-                  SessionLifecycleTransportCodec(),
-                ],
-                open: open,
-                isExpectedFailure: isSshProfileDown,
-                waitForRecovery: waitForRecovery,
-                onError: (error, stackTrace) {
-                  appLogger.w(
-                    '[event-transport] client',
-                    error: error,
-                    stackTrace: stackTrace,
-                  );
-                },
-              );
-              return CallbackEventTransportEndpoint(
-                start: client.start,
-                stop: client.stop,
-              );
-            },
-      );
-
-  Future<void> _stopEventTransport() => _eventTransportStopFuture ??=
-      _eventTransportController.apply(EventTransportRole.none);
-
-  @override
-  void initState() {
-    super.initState();
-    // Register before start(): routing keys on `event.eventKind.runtimeType`,
-    // and every AgentPresenceKind value shares that runtimeType, so ONE
-    // registration covers booting / working / idle (pinned by
-    // test/services/event/agent_presence_family_registration_test.dart).
-    _eventDispatcher.registerFamily<AgentPresenceKind>(
-      AgentPresenceKind.working.runtimeType,
-      _presenceProjection,
-    );
-    unawaited(_eventDispatcher.start());
-    EventPublisher.instance.attach(_eventDispatcher);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_start());
-    });
-  }
-
-  Future<void> _start() async {
-    final bootSw = Stopwatch()..start();
-    AppShell? builtShell;
-    try {
-      appLogger.i('[boot] +0ms TeamPilotBootstrap starting buildAppShell');
-      builtShell = await buildAppShell(
-        preferences: widget.preferences,
-        nativeAppDataPath: widget.nativeAppDataPath,
-        eventDispatcher: _eventDispatcher,
-        defaultWorkspaceDirectoryFuture: widget.defaultWorkspaceDirectoryFuture,
-        homeIndexPrefetchFuture: widget.homeIndexPrefetchFuture,
-        bootstrapCubit: widget.bootstrapCubit,
-        presenceProjection: _presenceProjection,
-        presenceSink: _presenceSink,
-        eventTransportController: _eventTransportController,
-        bindEventTransportHome: (home) {
-          _eventTransportHome = home;
-        },
-      );
-      final shell = builtShell;
-      if (!mounted) {
-        await _eventTransportController.apply(EventTransportRole.none);
-        await shell.memberPresenceCubit.close();
-        await shell.homeConnectionCubit.close();
-        await _teardownConnect(shell);
-        await shell.managedProviderControlPlane.close();
-        shell.cursorUsageApiClient.close();
-        return;
-      }
-      final frameSw = Stopwatch()..start();
-      await yieldUiFrame();
-      appLogger.i(
-        '[boot] +${bootSw.elapsedMilliseconds}ms shell built, '
-        'bootstrap frame yielded +${frameSw.elapsedMilliseconds}ms',
-      );
-      await shell.bootstrapAppData();
-      if (!mounted) {
-        await _eventTransportController.apply(EventTransportRole.none);
-        await shell.memberPresenceCubit.close();
-        await shell.homeConnectionCubit.close();
-        await _teardownConnect(shell);
-        await shell.managedProviderControlPlane.close();
-        shell.cursorUsageApiClient.close();
-        return;
-      }
-      appLogger.i(
-        '[boot] +${bootSw.elapsedMilliseconds}ms bootstrap complete '
-        'workspaces=${shell.chatCubit.state.workspaces.length}',
-      );
-      // Build the app UI first so it paints underneath the splash overlay.
-      // Yield across SplashDeferredShell mount before fading the splash away.
-      setState(() {
-        _shell = shell;
-        _error = null;
-        _retrying = false;
-      });
-      _usageAutoRefresh?.dispose();
-      _usageAutoRefresh = ManagedProviderUsageAutoRefresh(
-        usage: shell.managedProviderUsageCubit,
-        providers: shell.managedProviderCubit,
-      )..start();
-      await yieldUiFrame();
-      await yieldUiFrame();
-      await yieldUiFrame();
-      await yieldUiFrame();
-      if (!mounted) return;
-      await completeBootSplashTransition();
-      // Cache warm-ups yield to the first painted frame: on SSH homes the
-      // reads are decrypted on the UI isolate, so starting them alongside
-      // bootstrap would stretch the splash for every extra byte.
-      unawaited(shell.warmStartupCaches());
-    } on Object catch (error, stackTrace) {
-      await _teardownConnect(builtShell);
-      await builtShell?.managedProviderControlPlane.close();
-      await builtShell?.homeConnectionCubit.close();
-      // The failed shell is discarded: stop its catalog mutation bus before a
-      // bootstrap retry constructs a new one, so the app-lifetime dispatcher
-      // no longer relays mutations into the dead shell's cubits (same seam as
-      // the buildAppShell failure path). The presence cubit is closed for the
-      // same reason: it subscribes to the app-lifetime presence projection.
-      await builtShell?.memberPresenceCubit.close();
-      builtShell?.cursorUsageApiClient.close();
-      await builtShell?.catalogRuntime?.bus.close();
-      await _eventTransportController.apply(EventTransportRole.none);
-      appLogger.e(
-        '[boot] buildAppShell failed',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      if (!mounted) return;
-      await completeBootSplashTransition();
-      if (!mounted) return;
-      setState(() {
-        _error = error;
-        _retrying = false;
-      });
-    }
-  }
-
-  Future<void> _retryBootstrap() async {
-    if (_retrying) return;
-    setState(() => _retrying = true);
-    await _start();
-  }
-
-  Future<void> _chooseWorkEnvironmentAndRetry() async {
-    if (_retrying) return;
-    setState(() => _retrying = true);
-    await HomeTargetStore(widget.preferences).save(RuntimeTarget.localId);
-    await _start();
-  }
-
-  Future<void> _switchToNativeStorageAndRetry() async {
-    if (_retrying) return;
-    setState(() => _retrying = true);
-    // Home target failed to install (e.g. WSL unavailable) — fall back to the
-    // local device as home and retry bootstrap.
-    await HomeTargetStore(widget.preferences).save(RuntimeTarget.localId);
-    await _start();
-  }
-
-  @override
-  void dispose() {
-    _usageAutoRefresh?.dispose();
-    final shell = _shell;
-    if (shell != null) {
-      shell._automationCatalogSub?.cancel();
-      shell._homeProfileWatchSub?.cancel();
-      shell._homeConnectivitySub?.cancel();
-      shell._vaultPlaneSyncSub?.cancel();
-      unawaited(shell._sessionRemoteRefreshSub?.cancel());
-      unawaited(shell._contentInvalidationSub?.cancel());
-      unawaited(shell._contentStreamSub?.cancel());
-      final lifecycleHandler = shell.sessionLifecycleHandler;
-      if (lifecycleHandler != null) {
-        _eventDispatcher.unregister(lifecycleHandler);
-      }
-      unawaited(shell.homeVaultScope.dispose());
-      shell.homeInvalidationService.stop();
-      unawaited(_teardownConnect(shell));
-      unawaited(shell.managedProviderControlPlane.close());
-      unawaited(shell.sessionUsageCubit.close());
-      unawaited(shell.homeConnectionCubit.close());
-      shell.sessionActivitySource.dispose();
-      unawaited(shell.sessionProtocolController.applyNone());
-      unawaited(shell.sessionAuthority.dispose());
-      unawaited(shell.sessionRemoteActivityCubit.close());
-      shell.cursorUsageApiClient.close();
-    }
-    // Drain queued events; dispose() is synchronous, so stop() is
-    // fire-and-forget like the cubit closes above.
-    //
-    // Ordering (LOAD-BEARING): the projection must close only AFTER the
-    // dispatcher has stopped delivering. We cannot `await` in a sync dispose,
-    // so we chain instead: stop()'s future completes once the consume loop has
-    // drained the queue and exited, so the continuation — and the projection
-    // close — runs strictly after the last delivery. The projection also
-    // guards its own broadcast add (`if (!_changes.isClosed)`), so even a late
-    // event would be dropped rather than throw; the chain is belt-and-braces.
-    unawaited(_stopEventTransport());
-    unawaited(_eventDispatcher.stop().then((_) => _presenceProjection.close()));
-    super.dispose();
-  }
-
-  bool get _canFallbackToNativeStorage {
-    if (!Platform.isWindows || _error == null) return false;
-    return runtimeKindOfId(HomeTargetStore(widget.preferences).load()) ==
-        RuntimeKind.wsl;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_error != null) {
-      return MaterialApp(
-        localizationsDelegates: appLocalizationsDelegates,
-        supportedLocales: appLocalizationsSupportedLocales,
-        home: BootstrapStartupErrorPage(
-          error: _error!,
-          showChooseWorkEnvironment: Platform.isAndroid,
-          showNativeStorageFallback: _canFallbackToNativeStorage,
-          retrying: _retrying,
-          onRetry: _retryBootstrap,
-          onChooseWorkEnvironment: _chooseWorkEnvironmentAndRetry,
-          onNativeStorageFallback: _switchToNativeStorageAndRetry,
-        ),
-      );
-    }
-    final shell = _shell;
-    if (shell == null) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        localizationsDelegates: appLocalizationsDelegates,
-        supportedLocales: appLocalizationsSupportedLocales,
-        home: const AppBootstrapLoadingPage(),
-      );
-    }
-    return MultiBlocProvider(
-      providers: [
-        // Above the router so StartupGate / RemoteConnectionsPage can read it.
-        // `buildAppShell` created the cubit before this subtree was built, so
-        // `.value` (no ownership transfer) is correct.
-        BlocProvider<HomeConnectionCubit>.value(
-          value: shell.homeConnectionCubit,
-        ),
-        BlocProvider.value(value: shell.managedProviderCubit),
-        BlocProvider.value(value: shell.managedProviderUsageCubit),
-        BlocProvider.value(value: shell.sessionUsageCubit),
-        if (shell.connectCubit != null)
-          BlocProvider<ConnectCubit>.value(value: shell.connectCubit!),
-      ],
-      child: widget.childBuilder(shell, _stopEventTransport),
-    );
-  }
-}
-
 ConnectRelayRegistration _relayRegistrationFor(Uri uri) {
   return ConnectRelayRegistration(
     url: uri.toString(),
     endpointHost: uri.host,
     endpointPort: uri.port == 0 ? (uri.scheme == 'wss' ? 443 : 80) : uri.port,
   );
-}
-
-/// Tears down the Connect stack: the QR-session cubit, both SSH backends,
-/// and the shared paired-device registry. Safe to call with a null shell
-/// (Android) and on partially-built shells.
-Future<void> _teardownConnect(AppShell? shell) async {
-  await shell?.connectCubit?.close();
-  await shell?.embeddedSshServer?.stop();
-  await shell?.systemSshdBackend?.stop();
-  shell?.connectDeviceStore?.dispose();
 }
 
 /// Mobile-side consumer of the desktop's `sessionLifecycle` family.

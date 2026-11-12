@@ -29,7 +29,6 @@
 library;
 
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
@@ -48,6 +47,7 @@ import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_connect_attempt.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
+import '../support/app_shell_source.dart';
 import '../support/in_memory_filesystem.dart';
 import '../support/post_frame_test_harness.dart';
 
@@ -378,9 +378,7 @@ void main() {
     late final String src;
 
     setUpAll(() {
-      src = File(
-        'lib/app/app_shell.dart',
-      ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
+      src = readAppBootstrapSource().replaceAll(RegExp(r'\s+'), ' ');
     });
 
     test('an unreachable home defers the remote boot', () {
