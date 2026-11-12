@@ -87,7 +87,8 @@ SessionUsageWiring wireSessionUsage({
 | 新文件 | 内容 | 量级 |
 |---|---|---|
 | `bootstrap/session_usage_wiring.dart` | Cursor 栈消费、`SessionUsageCubit`、`warmStartupCaches`、notification/progress | ~80 |
-| `bootstrap/catalog_wiring.dart` | skill/plugin/mcp/extension/cliPresets 仓库、skill 安装引擎、home index prefetch | ~170 |
+| `bootstrap/catalog_wiring.dart` | skill/plugin/mcp/extension/cliPresets 仓库、skill 安装引擎 | ~140 |
+| `bootstrap/session_state_wiring.dart` | `LlmConfigCubit`、`identityRepository`、`sessionLifecycleService`、`sessionRepo`、home index prefetch | ~130 |
 | `bootstrap/install_wiring.dart` | repo clone、install job registry | ~65 |
 | `bootstrap/hub_wiring.dart` | team hub、expert hub、favorites、clone 服务、capability resolver、roster | ~200 |
 | `bootstrap/workspace_wiring.dart` | workbench、floating、git/filetree/search/worktree/sessionGroups/tools/run 注册表、`configCubit` | ~60 |
@@ -96,6 +97,8 @@ SessionUsageWiring wireSessionUsage({
 | `bootstrap/managed_provider_wiring.dart` | managed-provider 图与延迟 hydration | ~200 |
 | `bootstrap/automation_wiring.dart` | automation repo/scheduler/dispatcher/runner/catalog module | ~150 |
 | `bootstrap/agent_runtime_wiring.dart` | ask-user/exit-plan/permission gate、projections、gateway、`AgentRuntime`、prompt delivery | ~250 |
+| `bootstrap/catalog_runtime_wiring.dart` | `CatalogRuntime.assemble` 的参数装配 | ~90 |
+| `bootstrap/chat_session_wiring.dart` | `ChatCubit` 构造 | ~110 |
 
 选块标准：只依赖已构造值或延迟 getter，不参与 teardown，不承载启动流程控制。
 
@@ -138,7 +141,7 @@ controller 持有可变状态（`homeTarget`、remote boot flags），对外暴�
 | PR-9~10 | 阶段 3：`HomePlaneSwitchController`、`ShellBootController` |
 | PR-11 | 阶段 4 编排器收尾 |
 
-每个 PR 独立可回滚，行为零变化。
+每个 PR 独立可回滚，行为零变化。实现计划把上表细化为约 22 个可独立验证的任务；可按任务两两合并回这张表的 PR 粒度。
 
 ## 验证策略
 
