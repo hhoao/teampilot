@@ -71,10 +71,24 @@
 | `activateHome(id)` / `profileEdited(id)` / `dispose` | 命令 | 新增，取代 hook 分发 |
 | `holdPlaneRebind()` / `releasePlaneRebind()` | 命令 | 取代 `markPlaneRebinding` / `markPlaneReady`（`home_connection_cubit.dart:187-203`）的 UI hold |
 | `awaitAvailable(id)` | 读 | 取代 `sshClientFactory.connectionGate.waitUntilUp`（`app_shell.dart:985`），供消费者等待恢复 |
+| `SshIoGuard get ioGuard` | 读 | 只读 I/O 许可判定，注入纯 pool（见下） |
 
-**`SshClientFactory` 退化为纯 pool**：删 `connectionGate` 字段（`ssh_client_factory.dart:145`）与构造参数（`:85`、`:108`）、`storageFor` / `openMemberTransport` / `_GatedMemberTransport.open` 里全部 `beforeIo` / `markConnecting` / `markUp` / `markDown`（`:231-251`、`:262-301`、`:785-801`）、两个 `part` 文件里的同类调用（`ssh_client_factory_narrow_operations.dart:57-104`、`ssh_client_factory_legacy_storage.dart:49-100`）、`allowDialWhenDown` 参数、`disconnectProfile` 里的 `suspend`（`:483-485`）、`_close()` 里的 `connectionGate.dispose()`（`:611`）。gate 实例、它的 `onWaiter` / `onDown` 回调、以及 `dispose` 全部搬进 supervisor。保留 `storagePoolChanges` 但只发**原始** pool 变化，不解释语义。pool 只回答「有没有 lease」，不回答「该不该拨号」。
+**`SshClientFactory` 退化为纯 pool**：删 `connectionGate` 字段（`ssh_client_factory.dart:145`）与构造参数（`:85`、`:108`）、`storageFor` / `openMemberTransport` / `_GatedMemberTransport.open` 里全部 `markConnecting` / `markUp` / `markDown`（`:231-251`、`:262-301`、`:785-801`）、两个 `part` 文件里的同类调用（`ssh_client_factory_narrow_operations.dart:57-104`、`ssh_client_factory_legacy_storage.dart:49-100`）、`allowDialWhenDown` 参数、`disconnectProfile` 里的 `suspend`（`:483-485`）、`_close()` 里的 `connectionGate.dispose()`（`:611`）。gate 实例、它的 `onWaiter` / `onDown` 回调、以及 `dispose` 全部搬进 supervisor。保留 `storagePoolChanges` 但只发**原始** pool 变化，不解释语义。pool 只回答「有没有 lease」，不回答「该不该拨号」。
+
+**down 信号的所有权（实施计划自检补订）**：`beforeIo` **不能全删**。`SshProfileDownException` 当前唯一的抛出点是 `SshConnectionGate.beforeIo`（由 factory 的 `storageFor` / `openMemberTransport` 等调用）；若 factory 完全不查 gate，约 10 个消费者会把「传输 down」误判成「空数据」，且 `waitForSshProfileRecovery` 永不触发。因此引入一个最小只读端口：
+
+```dart
+// 放在 ssh_connection_gate.dart（SshProfileDownException 旁边）
+/// 只读 I/O 许可判定：由 supervisor 用它私有的 gate 实现，注入给纯 pool。
+/// pool 不持有 gate、不改 gate 状态，只把「当前是否允许 I/O」委托出去。
+typedef SshIoGuard = void Function(String profileId);
+```
+
+supervisor 暴露 `SshIoGuard get ioGuard => _gate.beforeIo;`（`_gate.beforeIo` 的签名正是 `void Function(String)`）。factory 构造参数改为 `SshIoGuard ioGuard`（默认 `(_) {}`），在 `storageFor` / `openMemberTransport` / 两个 `part` 文件 / `_GatedMemberTransport.open` 的入口**保留** `_ioGuard(profile.id)` 一行（原 `beforeIo`），删掉所有 `markX`。重连拨号时 supervisor 先把自己的 gate 置 `connecting`（`beforeIo` 放行）再调 pool，所以 `allowDialWhenDown` 可以彻底删除。
 
 > `SshProfileDownException` / `isSshProfileDown` 是纯值与纯判定，**保持公开且不变**：它们被 `storage_failure.dart:34`、`vault_split_migration.dart:29/46`、`legacy_import.dart:506`、`remote_cli_readiness.dart:177/239`、`session_chat_view.dart:400` 及 `app_shell.dart` 多处（`:1038`、`:1701`、`:2086`、`:3466`、`:4765`）用作「预期失败、等恢复后重抛」的契约。gate 私有化不改这些调用方；唯一要改的是 `waitForSshProfileRecovery`（`:983-987`）转而调用 `supervisor.awaitAvailable(id)`。
+
+>`SshProfileConnectionCoordinator` 的构造参数加 `required SshConnectionGate gate`（取代它内部 15 处 `_factory.connectionGate` 引用），由 supervisor 注入自己私有的 gate；协调器本身按「非目标」保留为 supervisor 的私有重试引擎，不重写。
 
 **两个 cubit 变投影**：只做 `SshHomeConnectivityState → 现有枚举` 的映射，删 `_lastFailureStatus`、`_resolveStatus` 的 pool 反推、`_connectingIds`，不再独立写状态。
 
