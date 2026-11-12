@@ -17,6 +17,10 @@ const sshWorkerErrorHandshake = 'handshake_error';
 const sshWorkerErrorTimeout = 'timeout';
 const sshWorkerErrorTransport = 'transport_error';
 
+/// Prefix for a refused channel open; suffixed with the SSH open reason code
+/// (e.g. `channel_open_2` = target connect failed). Diagnostics only.
+const sshWorkerErrorChannelOpen = 'channel_open';
+
 const _sshdPenaltyRefusalText = 'Not allowed at this time';
 const _connectionRefusedErrnos = {111, 61, 10061};
 
@@ -48,5 +52,13 @@ String sshWorkerErrorCode(Object error) {
     return sshWorkerErrorConnectionRefused;
   }
   if (cause is TimeoutException) return sshWorkerErrorTimeout;
+  // A refused `direct-tcpip` / channel open (e.g. the forwarded loopback port
+  // is not listening: SSH_OPEN_CONNECT_FAILED=2, forwarding disabled=1,
+  // resource shortage=4). Previously fell through to the opaque
+  // `transport_error`, which hid the real cause; keep the SSH reason code so
+  // forward failures are diagnosable.
+  if (cause is SSHChannelOpenError) {
+    return '${sshWorkerErrorChannelOpen}_${cause.code}';
+  }
   return sshWorkerErrorTransport;
 }
