@@ -1914,6 +1914,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// Appends only the replayed messages after that anchor; a matched anchor is
   /// replaced with the replayed parts so a truncated final message gains the
   /// text the app missed, while its local id/createdAt are preserved.
+  ///
+  /// A replay without that anchor is a shrunk agent-side view (auto-compaction,
+  /// fork), not a correction of the transcript: the app transcript is the UI
+  /// source of truth, so local rows survive and the replay only adds messages
+  /// the transcript does not already show.
   List<AiMessage> _mergeReplayedHistory({
     required List<AiMessage> current,
     required List<AiMessage> replayed,
@@ -1938,19 +1943,17 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       }
     }
     if (match < 0) {
-      // The replay does not contain the local tail (stale/foreign transcript).
-      // Keep app-only system rows, and reuse the local identity of every
-      // replayed message that still corresponds to one on screen: the replay
-      // is authoritative for content, but minting fresh ids for messages the
-      // user can already see rebuilds every bubble in the virtualized thread.
-      final system = [
-        for (final message in current)
-          if (message.role == AiRole.system) message,
+      // The replay does not contain the local tail. A compacted / forked agent
+      // history replays a shorter view, never a correction of the transcript:
+      // keep every local row and append only replayed content the transcript
+      // does not already show.
+      final additions = <AiMessage>[
+        for (final message in replayed)
+          if (!current.any((local) => _messagesOverlap(local, message)))
+            message,
       ];
-      return [
-        ...system,
-        ..._alignReplayMessages(current: current, replayed: replayed),
-      ];
+      if (additions.isEmpty) return current;
+      return [...current, ...additions];
     }
     final replacement = _mergeMatchedMessage(anchor, replayed[match]);
     return [
@@ -1961,39 +1964,26 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     ];
   }
 
-  /// Greedy forward alignment for a replay without a matching tail anchor.
-  ///
-  /// Walks both lists in order: a replayed message that matches a remaining
-  /// local message reuses that message's id/createdAt (with the fresher
-  /// replayed parts); everything else is genuinely new and keeps the replay's
-  /// id. Lookahead is bounded: a local divergence can shift the two lists by a
-  /// few rows, but scanning arbitrarily far for every replayed message turns a
-  /// long transcript into an O(n²) string comparison pass.
-  List<AiMessage> _alignReplayMessages({
-    required List<AiMessage> current,
-    required List<AiMessage> replayed,
-  }) {
-    final used = <int>{};
-    var cursor = 0;
-    final aligned = <AiMessage>[];
-    for (final message in replayed) {
-      var match = -1;
-      final limit = cursor + 24 < current.length ? cursor + 24 : current.length;
-      for (var i = cursor; i < limit; i++) {
-        if (used.contains(i)) continue;
-        if (!_messagesMatch(current[i], message)) continue;
-        match = i;
-        break;
-      }
-      if (match < 0) {
-        aligned.add(message);
-        continue;
-      }
-      used.add(match);
-      cursor = match + 1;
-      aligned.add(_mergeMatchedMessage(current[match], message));
+  /// Symmetric counterpart of [_messagesMatch], used when a replay has no
+  /// local anchor so replayed content the transcript already shows is not
+  /// appended twice.
+  bool _messagesOverlap(AiMessage a, AiMessage b) {
+    if (a.role != b.role) return false;
+    final aText = _textOf(a);
+    final bText = _textOf(b);
+    if (a.role != AiRole.assistant) return aText == bText;
+    if (aText.isNotEmpty && bText.isNotEmpty) {
+      return aText.startsWith(bText) || bText.startsWith(aText);
     }
-    return aligned;
+    final aTools = _toolIdsOf(a);
+    final bTools = _toolIdsOf(b);
+    if (aTools.isNotEmpty || bTools.isNotEmpty) {
+      return aTools.length == bTools.length && aTools.containsAll(bTools);
+    }
+    final aReasoning = _reasoningOf(a);
+    final bReasoning = _reasoningOf(b);
+    return aReasoning.startsWith(bReasoning) ||
+        bReasoning.startsWith(aReasoning);
   }
 
   bool _messagesMatch(AiMessage current, AiMessage replayed) {
