@@ -4,6 +4,9 @@ import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/services/ssh/ssh_connection_failure.dart';
+import 'package:teampilot/services/ssh/ssh_transport_close.dart';
+import 'package:teampilot/services/ssh/worker/ssh_worker_forward_proxy.dart';
+import 'package:teampilot/services/ssh/worker/ssh_worker_storage_types.dart';
 
 void main() {
   final l10n = AppLocalizationsEn();
@@ -98,5 +101,65 @@ void main() {
     );
     expect(isTcpConnectionRefused(const SocketException('LAN down')), isFalse);
     expect(isTcpConnectionRefused(SSHHostkeyError('nope')), isFalse);
+  });
+
+  test('classifies dial failures, not per-request failures', () {
+    expect(
+      isSshTransportConnectionFailure(
+        const SshWorkerTransportException(
+          'Worker storage operation failed',
+          code: 'auth_aborted',
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      isSshTransportConnectionFailure(
+        const SshWorkerTransportException(
+          'Worker storage operation failed',
+          code: 'transport_closed',
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      isSshTransportConnectionFailure(
+        const SshWorkerTransportException(
+          'Worker storage operation failed',
+          code: 'sftp_no_such_file',
+        ),
+      ),
+      isFalse,
+    );
+    expect(
+      isSshTransportConnectionFailure(
+        const SshWorkerForwardException('open_failed'),
+      ),
+      isFalse,
+    );
+    expect(
+      isSshTransportConnectionFailure(
+        const SshWorkerForwardException('auth_aborted'),
+      ),
+      isTrue,
+    );
+    expect(
+      isSshTransportConnectionFailure(
+        const SshTransportClosed(
+          reason: SshTransportCloseReason.memberSessionClosed,
+          plane: SshTransportPlane.member,
+        ),
+      ),
+      isFalse,
+    );
+    expect(
+      isSshTransportConnectionFailure(
+        const SshTransportClosed(
+          reason: SshTransportCloseReason.transportError,
+          plane: SshTransportPlane.storage,
+        ),
+      ),
+      isTrue,
+    );
   });
 }

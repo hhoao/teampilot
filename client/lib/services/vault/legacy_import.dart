@@ -9,6 +9,7 @@ import '../../repositories/ssh_profile_repository.dart';
 import '../../utils/logging/logger.dart';
 import '../github/github_credentials_store.dart';
 import '../provider_usage/managed_provider_secret_store.dart';
+import '../ssh/ssh_connection_gate.dart';
 import 'credential_capture.dart';
 import 'vault_ref.dart';
 import 'vault_service.dart';
@@ -502,6 +503,14 @@ class VaultLegacyImportService {
   }
 
   void _warn(String owner, Object error, StackTrace stackTrace) {
+    if (isSshProfileDown(error)) {
+      appLogger.d(
+        '[vault-import] $owner waiting for home transport',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return;
+    }
     appLogger.w(
       '[vault-import] $owner failed: ${error.runtimeType}',
       stackTrace: stackTrace,

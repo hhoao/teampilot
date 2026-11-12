@@ -365,8 +365,10 @@ void main() {
         cubit.syncProfiles(const [_p1]);
 
         await cubit.connect(_p1.id);
-        final client = await harness.factory.clientForStorage(_p1);
-        client.close();
+        final storage = await harness.factory.clientForStorage(_p1);
+        storage.close();
+        final member = await harness.factory.createMemberClient(_p1);
+        member.close();
         final reconnectDeadline = DateTime.now().add(
           const Duration(seconds: 2),
         );

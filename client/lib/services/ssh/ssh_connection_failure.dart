@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dartssh2/dartssh2.dart';
 
 import '../../l10n/app_localizations.dart';
+import 'ssh_transport_close.dart';
 import 'worker/ssh_worker_errors.dart';
 import 'worker/ssh_worker_protocol.dart';
 
@@ -26,6 +28,44 @@ String sshConnectionFailureLogMessage(Object error) {
 
 String? _workerErrorCode(Object error) =>
     error is SshWorkerCodedException ? error.code : null;
+
+/// Worker error codes that mean "the transport itself could not be opened",
+/// as opposed to a per-request failure (missing file, closed forward target).
+const _connectionFailureCodes = {
+  sshWorkerErrorHostKeyRejected,
+  sshWorkerErrorAuthFailed,
+  sshWorkerErrorAuthAborted,
+  sshWorkerErrorSshdPenalty,
+  sshWorkerErrorConnectionRefused,
+  sshWorkerErrorSocket,
+  sshWorkerErrorHandshake,
+  sshWorkerErrorTimeout,
+  sshWorkerErrorTransport,
+  'transport_closed',
+  'transport_timeout',
+  'storage_not_connected',
+};
+
+/// Whether [error] is a failed transport dial/auth, not a failed operation on
+/// an established connection.
+///
+/// The connection gate only trips on these: a `sftp_no_such_file` or a forward
+/// `open_failed` must not mark the whole profile unreachable.
+bool isSshTransportConnectionFailure(Object error) {
+  if (error is SshTransportClosed) {
+    return !isExpectedLocalSshTransportClose(error);
+  }
+  final code = _workerErrorCode(error);
+  if (code != null) return _connectionFailureCodes.contains(code);
+  final cause = sshConnectionFailureCause(error);
+  return cause is SSHAuthAbortError ||
+      cause is SSHAuthFailError ||
+      cause is SSHHostkeyError ||
+      cause is SSHHandshakeError ||
+      cause is SSHSocketError ||
+      cause is SocketException ||
+      cause is TimeoutException;
+}
 
 /// True when [error] is a host-key rejection (direct or worker-flattened).
 bool isSshHostKeyFailure(Object error) {

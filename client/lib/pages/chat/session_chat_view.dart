@@ -44,6 +44,7 @@ import 'acp_seat_message_sync.dart';
 import 'session_chat_voice_controller.dart';
 import '../../services/chat/conversation/follow_up/follow_up_queue.dart';
 import '../../services/chat/conversation/history/acp_seat_transcript_reader.dart';
+import '../../services/ssh/ssh_connection_gate.dart';
 import '../../services/chat/conversation/history/ai_history_live_refresh_controller.dart';
 import '../../services/chat/conversation/history/failed_message_store.dart';
 import '../../services/chat/conversation/history/chat_transcript_find_controller.dart';
@@ -396,13 +397,25 @@ class _SessionChatViewState extends State<SessionChatView> {
             personal: isAcpChatSession(source),
           );
     } on Object catch (error, stackTrace) {
-      appLogger.w(
-        '[acp-history] transcript snapshot read failed '
-        'session=${widget.session.sessionId} '
-        'member=${widget.selectedMemberId}',
-        error: error,
-        stackTrace: stackTrace,
-      );
+      if (isSshProfileDown(error)) {
+        // The poll will retry after the coordinator brings the gate up; the
+        // cached transcript stays on screen meanwhile.
+        appLogger.d(
+          '[acp-history] transcript snapshot waiting for transport '
+          'session=${widget.session.sessionId} '
+          'member=${widget.selectedMemberId}',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      } else {
+        appLogger.w(
+          '[acp-history] transcript snapshot read failed '
+          'session=${widget.session.sessionId} '
+          'member=${widget.selectedMemberId}',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
     }
     // The runtime may have attached while the read was in flight — it owns the
     // transcript from then on (and may already have newer live turns).

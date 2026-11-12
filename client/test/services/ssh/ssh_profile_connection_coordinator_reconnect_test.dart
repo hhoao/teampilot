@@ -172,39 +172,36 @@ void main() {
     expect(stopped, [_profile.id]);
   });
 
-  test(
-    'a local profile edit close keeps the profile retryable',
-    () async {
-      // Regression: editing a profile host retired the stale lease as
-      // `hostIdentityChanged`, so this callback fired, the coordinator
-      // latched the profile, and the home page went back to `unreachable`
-      // even though the new host had already reconnected.
-      final stopped = <String>[];
-      final harness = _ReconnectHarness(
-        maxAttempts: 3,
-        persistRetry: (_) => true,
-        onNonRetryableClose: (profileId, _) => stopped.add(profileId),
-      );
-      addTearDown(harness.dispose);
+  test('a local profile edit close keeps the profile retryable', () async {
+    // Regression: editing a profile host retired the stale lease as
+    // `hostIdentityChanged`, so this callback fired, the coordinator
+    // latched the profile, and the home page went back to `unreachable`
+    // even though the new host had already reconnected.
+    final stopped = <String>[];
+    final harness = _ReconnectHarness(
+      maxAttempts: 3,
+      persistRetry: (_) => true,
+      onNonRetryableClose: (profileId, _) => stopped.add(profileId),
+    );
+    addTearDown(harness.dispose);
 
-      await harness.startDown();
-      await waitUntil(() => harness.attempts.isNotEmpty);
+    await harness.startDown();
+    await waitUntil(() => harness.attempts.isNotEmpty);
 
-      harness.emitStorageClose(SshTransportCloseReason.profileInvalidated);
-      await Future<void>.delayed(const Duration(milliseconds: 60));
+    harness.emitStorageClose(SshTransportCloseReason.profileInvalidated);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
 
-      expect(
-        stopped,
-        isEmpty,
-        reason: 'a local re-target must not be a permanent failure',
-      );
-      expect(
-        harness.coordinator.isUserDisconnectLatched(_profile.id),
-        isFalse,
-        reason: 'an edited profile must not be latched into suspension',
-      );
-    },
-  );
+    expect(
+      stopped,
+      isEmpty,
+      reason: 'a local re-target must not be a permanent failure',
+    );
+    expect(
+      harness.coordinator.isUserDisconnectLatched(_profile.id),
+      isFalse,
+      reason: 'an edited profile must not be latched into suspension',
+    );
+  });
 
   test('home switch cancellation stops the abandoned profile loop', () async {
     final harness = _ReconnectHarness(
@@ -425,10 +422,10 @@ class _ReconnectHarness {
         cubit.state.status != HomeConnectionStatus.connected;
   }
 
-  /// Opens the storage plane once, then drops it so the coordinator schedules
-  /// its first reconnect.
+  /// Opens a member plane once, then drops it so the coordinator schedules its
+  /// first reconnect.
   Future<void> startDown() async {
-    final client = await factory.clientForStorage(_profile);
+    final client = await factory.createMemberClient(_profile);
     client.close();
   }
 

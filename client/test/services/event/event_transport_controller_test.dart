@@ -36,7 +36,8 @@ void main() {
     log = <String>[];
     controller = EventTransportController(
       createServer: () => _FakeEndpoint('server', log),
-      createClient: ({required open}) => _FakeEndpoint('client', log),
+      createClient: ({required open, waitForRecovery}) =>
+          _FakeEndpoint('client', log),
     );
   });
 

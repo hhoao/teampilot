@@ -37,6 +37,7 @@ final class EventTransportController {
     required EventTransportEndpoint Function() createServer,
     required EventTransportEndpoint Function({
       required Future<EventTransportByteChannel> Function() open,
+      Future<bool> Function(Object error)? waitForRecovery,
     })
     createClient,
   }) : _createServer = createServer,
@@ -45,6 +46,7 @@ final class EventTransportController {
   final EventTransportEndpoint Function() _createServer;
   final EventTransportEndpoint Function({
     required Future<EventTransportByteChannel> Function() open,
+    Future<bool> Function(Object error)? waitForRecovery,
   })
   _createClient;
 
@@ -59,6 +61,7 @@ final class EventTransportController {
   Future<void> apply(
     EventTransportRole role, {
     Future<EventTransportByteChannel> Function()? open,
+    Future<bool> Function(Object error)? waitForRecovery,
   }) async {
     if (role == _role) return;
     try {
@@ -76,7 +79,10 @@ final class EventTransportController {
             _role = EventTransportRole.none;
             return;
           }
-          final client = _createClient(open: opener);
+          final client = _createClient(
+            open: opener,
+            waitForRecovery: waitForRecovery,
+          );
           _client = client;
           await client.start();
         case EventTransportRole.none:

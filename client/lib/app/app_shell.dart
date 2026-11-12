@@ -977,6 +977,15 @@ Future<AppShell> buildAppShell({
     workerManager: sshProfileWorkerManager,
   );
 
+  /// Waits for the single connection driver to bring [SshProfileDownException]
+  /// profiles back up. Consumers use this instead of polling with their own
+  /// backoff.
+  Future<bool> waitForSshProfileRecovery(Object error) async {
+    if (error is! SshProfileDownException) return false;
+    await sshClientFactory.connectionGate.waitUntilUp(error.profileId);
+    return true;
+  }
+
   // P1: the home target (the machine the control plane runs on) is the single
   // authority, stored device-local in HomeTargetStore. distro/profile are
   // encoded in the id; there is no connectionMode/windowsStorageBackend knob.
@@ -3455,6 +3464,7 @@ Future<AppShell> buildAppShell({
       remoteCubit: sessionRemoteActivityCubit,
       authority: sessionAuthority,
       isExpectedFailure: isSshProfileDown,
+      waitForRecovery: waitForSshProfileRecovery,
       onContentInvalidated: (invalidation) {
         SessionContentInvalidationBus.publish(
           sessionId: invalidation.sessionId,
@@ -4246,6 +4256,7 @@ Future<AppShell> buildAppShell({
             if (id == null || id.isEmpty) return null;
             return sshProfileById(id);
           },
+          waitForRecovery: waitForSshProfileRecovery,
           restart: restart,
         );
       }
@@ -4739,7 +4750,10 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
           );
         },
         createClient:
-            ({required Future<EventTransportByteChannel> Function() open}) {
+            ({
+              required Future<EventTransportByteChannel> Function() open,
+              Future<bool> Function(Object error)? waitForRecovery,
+            }) {
               final client = EventTransportClient(
                 dispatcher: _eventDispatcher,
                 presence: _presenceProjection,
@@ -4749,6 +4763,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
                 ],
                 open: open,
                 isExpectedFailure: isSshProfileDown,
+                waitForRecovery: waitForRecovery,
                 onError: (error, stackTrace) {
                   appLogger.w(
                     '[event-transport] client',

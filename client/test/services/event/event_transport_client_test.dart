@@ -9,6 +9,7 @@ import 'package:teampilot/services/event/async_dispatcher.dart';
 import 'package:teampilot/services/event/event_transport_client.dart';
 import 'package:teampilot/services/event/event_transport_codec.dart';
 import 'package:teampilot/services/event/session_lifecycle_transport_codec.dart';
+import 'package:teampilot/services/ssh/ssh_connection_gate.dart';
 
 Future<void> _waitFor(bool Function() ok, {required Duration timeout}) async {
   final end = DateTime.now().add(timeout);
@@ -393,4 +394,106 @@ void main() {
       expect(h.openCount, 1);
     },
   );
+
+  test('a known-down profile does not report a transport error', () async {
+    final dispatcher = AsyncDispatcher()..start();
+    final presence = AgentPresenceProjection();
+    addTearDown(() async {
+      await dispatcher.stop();
+      await presence.close();
+    });
+    var opens = 0;
+    var errors = 0;
+    final client = EventTransportClient(
+      dispatcher: dispatcher,
+      presence: presence,
+      codecs: [AgentPresenceTransportCodec(), SessionLifecycleTransportCodec()],
+      open: () async {
+        opens++;
+        throw const SshProfileDownException('p1', SshConnectionGateState.down);
+      },
+      backoff: (_) => const Duration(milliseconds: 1),
+      onError: (_, _) => errors++,
+      isExpectedFailure: isSshProfileDown,
+    );
+
+    await client.start();
+    await _waitFor(() => opens >= 2, timeout: _timeout);
+    await client.stop();
+
+    expect(errors, 0);
+  });
+
+  test('a known-down profile waits for recovery instead of polling', () async {
+    final dispatcher = AsyncDispatcher()..start();
+    final presence = AgentPresenceProjection();
+    addTearDown(() async {
+      await dispatcher.stop();
+      await presence.close();
+    });
+    final recovery = Completer<void>();
+    var opens = 0;
+    var recoveryCalls = 0;
+    final client = EventTransportClient(
+      dispatcher: dispatcher,
+      presence: presence,
+      codecs: [AgentPresenceTransportCodec(), SessionLifecycleTransportCodec()],
+      open: () async {
+        opens++;
+        if (opens == 1) {
+          throw const SshProfileDownException(
+            'p1',
+            SshConnectionGateState.down,
+          );
+        }
+        return _FakeChannel();
+      },
+      isExpectedFailure: isSshProfileDown,
+      waitForRecovery: (error) async {
+        recoveryCalls++;
+        await recovery.future;
+        return true;
+      },
+    );
+
+    await client.start();
+    await _waitFor(() => recoveryCalls == 1, timeout: _timeout);
+    expect(opens, 1);
+
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(opens, 1, reason: 'waiting must not poll');
+
+    recovery.complete();
+    await _waitFor(() => opens >= 2, timeout: _timeout);
+    await client.stop();
+  });
+
+  test('stop wakes a pending recovery wait', () async {
+    final dispatcher = AsyncDispatcher()..start();
+    final presence = AgentPresenceProjection();
+    addTearDown(() async {
+      await dispatcher.stop();
+      await presence.close();
+    });
+    final never = Completer<void>();
+    var recoveryCalls = 0;
+    final client = EventTransportClient(
+      dispatcher: dispatcher,
+      presence: presence,
+      codecs: [AgentPresenceTransportCodec(), SessionLifecycleTransportCodec()],
+      open: () async {
+        throw const SshProfileDownException('p1', SshConnectionGateState.down);
+      },
+      isExpectedFailure: isSshProfileDown,
+      waitForRecovery: (error) async {
+        recoveryCalls++;
+        await never.future;
+        return true;
+      },
+    );
+
+    await client.start();
+    await _waitFor(() => recoveryCalls == 1, timeout: _timeout);
+    await client.stop();
+  });
 }

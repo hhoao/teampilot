@@ -26,12 +26,16 @@ final class EventTransportClient {
     required Future<EventTransportByteChannel> Function() open,
     Duration Function(int attempt)? backoff,
     void Function(Object error, StackTrace st)? onError,
+    bool Function(Object error)? isExpectedFailure,
+    Future<bool> Function(Object error)? waitForRecovery,
   }) : _dispatcher = dispatcher,
        _presence = presence,
        _codecs = {for (final c in codecs) c.family: c},
        _open = open,
        _backoff = backoff ?? _defaultBackoff,
-       _onError = onError;
+       _onError = onError,
+       _isExpectedFailure = isExpectedFailure,
+       _waitForRecovery = waitForRecovery;
 
   final Dispatcher _dispatcher;
   final AgentPresenceProjection _presence;
@@ -39,11 +43,14 @@ final class EventTransportClient {
   final Future<EventTransportByteChannel> Function() _open;
   final Duration Function(int attempt) _backoff;
   final void Function(Object error, StackTrace st)? _onError;
+  final bool Function(Object error)? _isExpectedFailure;
+  final Future<bool> Function(Object error)? _waitForRecovery;
 
   var _running = false;
   EventTransportByteChannel? _channel;
   Future<void>? _runLoop;
   Completer<void>? _backoffGate;
+  Completer<void>? _recoveryGate;
 
   /// attempt 0→1s, 1→2s, 2→4s, 3→8s, 4+→16s, then clamp 30s.
   static Duration _defaultBackoff(int attempt) {
@@ -59,6 +66,7 @@ final class EventTransportClient {
   Future<void> stop() async {
     _running = false;
     _wakeupBackoff();
+    _wakeupRecovery();
     await _channel?.close();
     await _runLoop;
     _presence.clearAll();
@@ -67,6 +75,7 @@ final class EventTransportClient {
   Future<void> _run() async {
     var attempt = 0;
     while (_running) {
+      var waitedForRecovery = false;
       try {
         final channel = await _open();
         _channel = channel;
@@ -111,15 +120,62 @@ final class EventTransportClient {
           if (oversize) break;
         }
       } catch (e, st) {
-        appLogger.w('[event-transport] client loop', error: e, stackTrace: st);
-        _onError?.call(e, st);
+        if (_isExpectedFailure?.call(e) ?? false) {
+          // A known-down profile is not a bug: wait for the coordinator to
+          // bring the shared transport back instead of polling with backoff.
+          appLogger.d(
+            '[event-transport] client waiting for transport: $e',
+            error: e,
+            stackTrace: st,
+          );
+          final wait = _waitForRecovery;
+          if (wait != null) {
+            waitedForRecovery = await _awaitRecovery(wait, e);
+          }
+        } else {
+          appLogger.w(
+            '[event-transport] client loop',
+            error: e,
+            stackTrace: st,
+          );
+          _onError?.call(e, st);
+        }
       } finally {
         await _channel?.close();
         _channel = null;
       }
       if (!_running) break;
-      await _delayBackoff(_backoff(attempt++));
+      if (waitedForRecovery) {
+        attempt = 0;
+      } else {
+        await _delayBackoff(_backoff(attempt++));
+      }
     }
+  }
+
+  Future<bool> _awaitRecovery(
+    Future<bool> Function(Object error) wait,
+    Object error,
+  ) async {
+    final gate = Completer<void>();
+    _recoveryGate = gate;
+    try {
+      return await Future.any([wait(error), gate.future.then((_) => false)]);
+    } on Object catch (waitError, waitStack) {
+      appLogger.d(
+        '[event-transport] recovery wait ended: $waitError',
+        error: waitError,
+        stackTrace: waitStack,
+      );
+      return false;
+    } finally {
+      if (identical(_recoveryGate, gate)) _recoveryGate = null;
+    }
+  }
+
+  void _wakeupRecovery() {
+    final gate = _recoveryGate;
+    if (gate != null && !gate.isCompleted) gate.complete();
   }
 
   void _wakeupBackoff() {

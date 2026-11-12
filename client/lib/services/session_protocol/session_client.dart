@@ -370,17 +370,24 @@ final class SessionClientConnection {
     required this.deviceId,
     this.callbacks = const SessionClientCallbacks(),
     Duration Function(int attempt)? backoff,
+    bool Function(Object error)? isExpectedFailure,
+    Future<bool> Function(Object error)? waitForRecovery,
   }) : _open = open,
-       _backoff = backoff ?? _defaultBackoff;
+       _backoff = backoff ?? _defaultBackoff,
+       _isExpectedFailure = isExpectedFailure,
+       _waitForRecovery = waitForRecovery;
 
   final Future<SessionByteChannel> Function() _open;
   final String deviceId;
   final SessionClientCallbacks callbacks;
   final Duration Function(int attempt) _backoff;
+  final bool Function(Object error)? _isExpectedFailure;
+  final Future<bool> Function(Object error)? _waitForRecovery;
 
   SessionClient? _client;
   Future<void>? _loop;
   Completer<void>? _backoffGate;
+  Completer<void>? _recoveryGate;
   bool _running = false;
 
   SessionClient? get client => _client;
@@ -401,6 +408,7 @@ final class SessionClientConnection {
   Future<void> stop() async {
     _running = false;
     _wakeupBackoff();
+    _wakeupRecovery();
     await _client?.close();
     await _loop;
     _loop = null;
@@ -408,6 +416,11 @@ final class SessionClientConnection {
 
   void _wakeupBackoff() {
     final gate = _backoffGate;
+    if (gate != null && !gate.isCompleted) gate.complete();
+  }
+
+  void _wakeupRecovery() {
+    final gate = _recoveryGate;
     if (gate != null && !gate.isCompleted) gate.complete();
   }
 
@@ -502,6 +515,7 @@ final class SessionClientConnection {
   Future<void> _run() async {
     var attempt = 0;
     while (_running) {
+      var waitedForRecovery = false;
       SessionClient? client;
       try {
         final channel = await _open();
@@ -531,17 +545,53 @@ final class SessionClientConnection {
         await client.start();
         await client.done;
       } on Object catch (error, stackTrace) {
-        appLogger.w(
-          '[session-client] connection failed',
-          error: error,
-          stackTrace: stackTrace,
-        );
+        if (_isExpectedFailure?.call(error) ?? false) {
+          appLogger.d(
+            '[session-client] waiting for transport: $error',
+            error: error,
+            stackTrace: stackTrace,
+          );
+          final wait = _waitForRecovery;
+          if (wait != null) {
+            waitedForRecovery = await _awaitRecovery(wait, error);
+          }
+        } else {
+          appLogger.w(
+            '[session-client] connection failed',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
       } finally {
         _client = null;
         await client?.close();
       }
       if (!_running) break;
-      await _delay(_backoff(attempt++));
+      if (waitedForRecovery) {
+        attempt = 0;
+      } else {
+        await _delay(_backoff(attempt++));
+      }
+    }
+  }
+
+  Future<bool> _awaitRecovery(
+    Future<bool> Function(Object error) wait,
+    Object error,
+  ) async {
+    final gate = Completer<void>();
+    _recoveryGate = gate;
+    try {
+      return await Future.any([wait(error), gate.future.then((_) => false)]);
+    } on Object catch (waitError, waitStack) {
+      appLogger.d(
+        '[session-client] recovery wait ended: $waitError',
+        error: waitError,
+        stackTrace: waitStack,
+      );
+      return false;
+    } finally {
+      if (identical(_recoveryGate, gate)) _recoveryGate = null;
     }
   }
 }

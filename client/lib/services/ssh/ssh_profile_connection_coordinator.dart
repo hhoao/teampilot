@@ -57,6 +57,8 @@ class SshProfileConnectionCoordinator {
        _profileResolver = profileResolver {
     events.onTransportClosed = _onTransportClosed;
     events.onKeepAliveFailed = _onKeepAliveFailed;
+    _factory.connectionGate.onWaiter = _onGateWaiter;
+    _factory.connectionGate.onDown = _onGateDown;
     _poolChangesSubscription = _factory.storagePoolChanges.listen(
       _onStoragePoolChanged,
     );
@@ -118,13 +120,20 @@ class SshProfileConnectionCoordinator {
     Duration timeout = const Duration(seconds: 10),
   }) async {
     _userDisconnectLatched.remove(profile.id);
-    await _factory.ensureStorageConnected(profile, timeout: timeout);
+    _factory.connectionGate.resume(profile.id);
+    await _factory.ensureStorageConnected(
+      profile,
+      timeout: timeout,
+      allowDialWhenDown: true,
+    );
     monitorFor(profile.id);
   }
 
   /// User-initiated disconnect: suppress auto-reconnect until the pool is live again.
   Future<void> userDisconnect(String profileId) async {
     _userDisconnectLatched.add(profileId);
+    _factory.connectionGate.suspend(profileId);
+    monitorFor(profileId).markDown();
     _disconnectCoalesceTimers[profileId]?.cancel();
     _disconnectCoalesceTimers.remove(profileId);
     _reconnectTimers[profileId]?.cancel();
@@ -150,9 +159,8 @@ class SshProfileConnectionCoordinator {
   /// or was cancelled). Used by an explicit "retry now"; the user-disconnect
   /// latch must be cleared first (see [userConnect]).
   ///
-  /// A home that never opened a transport has a healthy monitor (no close
-  /// event ever marked it down), so this marks it down first — otherwise
-  /// [_runReconnect] would treat the target as healthy and no-op.
+  /// Marks the target down for the connection UI and schedules a fresh
+  /// attempt. The gate — not the monitor — decides whether a dial is needed.
   void restartReconnect(String profileId) {
     if (_disposed) return;
     _reconnectAttempts.remove(profileId);
@@ -170,6 +178,7 @@ class SshProfileConnectionCoordinator {
   void resumeRetries(String profileId) {
     if (_disposed) return;
     _userDisconnectLatched.remove(profileId);
+    _factory.connectionGate.resume(profileId);
     resetReconnectAttempts(profileId);
     final profile = _profileResolver(profileId);
     if (profile == null) return;
@@ -190,6 +199,12 @@ class SshProfileConnectionCoordinator {
       return;
     }
     _userDisconnectLatched.remove(profileId);
+    _factory.connectionGate.resume(profileId);
+    _factory.connectionGate.markUp(profileId);
+    final monitor = monitorFor(profileId);
+    if (monitor.state.status == RemoteConnectionStatus.down) {
+      monitor.reconnected();
+    }
   }
 
   void _onTransportClosed(
@@ -204,6 +219,17 @@ class SshProfileConnectionCoordinator {
       );
       return;
     }
+    // A storage lease can retire on its own (probe failure / request timeout)
+    // while the shared SSH client and the forward planes stay healthy. That is
+    // plane-scoped: the next storageFor reopens it, and a failed reopen trips
+    // the gate. Do not take the whole home down for it.
+    if (error is SshTransportClosed &&
+        error.plane == SshTransportPlane.storage &&
+        !isNonRetryableTransportClose(error)) {
+      appLogger.d('[ssh] profile $profileId storage plane retired: $error');
+      return;
+    }
+    _factory.connectionGate.markDown(profileId);
     _enqueueDisconnect(
       profileId,
       error,
@@ -297,6 +323,7 @@ class SshProfileConnectionCoordinator {
         // surface. Only an explicit resume clears the latch.
         resetReconnectAttempts(profileId);
         _userDisconnectLatched.add(profileId);
+        _factory.connectionGate.suspend(profileId);
         try {
           onNonRetryableClose?.call(profileId, error);
         } on Object catch (hookError, stackTrace) {
@@ -329,6 +356,25 @@ class SshProfileConnectionCoordinator {
     return true;
   }
 
+  void _onGateDown(String profileId) {
+    if (_disposed || _userDisconnectLatched.contains(profileId)) return;
+    monitorFor(profileId).markDown();
+    if (_reconnectInFlight[profileId] == true ||
+        _reconnectTimers.containsKey(profileId)) {
+      return;
+    }
+    _scheduleReconnect(profileId);
+  }
+
+  void _onGateWaiter(String profileId) {
+    if (_disposed || _userDisconnectLatched.contains(profileId)) return;
+    if (_reconnectInFlight[profileId] == true ||
+        _reconnectTimers.containsKey(profileId)) {
+      return;
+    }
+    _scheduleReconnect(profileId);
+  }
+
   void _scheduleReconnect(String profileId, {bool penaltyRefusal = false}) {
     if (_disposed ||
         _reconnectInFlight[profileId] == true ||
@@ -340,7 +386,10 @@ class SshProfileConnectionCoordinator {
 
     final attempts = _reconnectAttempts[profileId] ?? 0;
     final exhausted = attempts >= policy.maxAttempts;
-    final persist = exhausted && _persistRetry(profileId);
+    final persist =
+        exhausted &&
+        (_persistRetry(profileId) ||
+            _factory.connectionGate.hasWaiters(profileId));
     if (exhausted && !persist) {
       appLogger.w(
         '[ssh] profile $profileId reconnect gave up after $attempts attempts',
@@ -364,7 +413,7 @@ class SshProfileConnectionCoordinator {
     final profileId = profile.id;
     if (_reconnectInFlight[profileId] == true) return;
     if (_userDisconnectLatched.contains(profileId)) return;
-    if (monitorFor(profileId).state.isHealthy) return;
+    if (_factory.connectionGate.isUp(profileId)) return;
 
     _reconnectInFlight[profileId] = true;
     _reconnectAttempts[profileId] = (_reconnectAttempts[profileId] ?? 0) + 1;
@@ -494,7 +543,11 @@ class SshProfileConnectionCoordinator {
     if (existing != null) return existing;
 
     final attempt = _factory
-        .ensureStorageConnected(profile, timeout: timeout)
+        .ensureStorageConnected(
+          profile,
+          timeout: timeout,
+          allowDialWhenDown: true,
+        )
         .whenComplete(() {
           _storageReconnects.remove(profile.id);
         });
@@ -504,6 +557,7 @@ class SshProfileConnectionCoordinator {
 
   Future<void> dispose() async {
     _disposed = true;
+    _factory.connectionGate.onWaiter = null;
     await _poolChangesSubscription?.cancel();
     _poolChangesSubscription = null;
     for (final timer in _disconnectCoalesceTimers.values) {

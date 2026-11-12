@@ -126,7 +126,7 @@ void main() {
         profile.id,
         const SshTransportClosed(
           reason: SshTransportCloseReason.transportError,
-          plane: SshTransportPlane.storage,
+          plane: SshTransportPlane.member,
           cause: SocketException('Connection reset by peer'),
         ),
         StackTrace.empty,
@@ -135,7 +135,7 @@ void main() {
         profile.id,
         const SshTransportClosed(
           reason: SshTransportCloseReason.remotePeerClosed,
-          plane: SshTransportPlane.storage,
+          plane: SshTransportPlane.member,
         ),
         StackTrace.empty,
       );

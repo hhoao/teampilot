@@ -9,9 +9,11 @@ import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/services/remote/remote_connection_monitor.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
+import 'package:teampilot/services/ssh/ssh_connection_gate.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
 import 'package:teampilot/services/ssh/ssh_transport_close.dart';
+import 'package:teampilot/services/ssh/worker/ssh_worker_storage_types.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -61,6 +63,49 @@ void main() {
 
       await factory.clientForStorage(profile);
       expect(notifications.length, 1);
+      await coordinator.dispose();
+    },
+  );
+
+  test(
+    'a transient storage-plane retirement does not take the home down',
+    () async {
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
+      final notifications = <String>[];
+      final events = SshConnectionEvents();
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        events: events,
+      );
+      final coordinator = SshProfileConnectionCoordinator(
+        factory: factory,
+        events: events,
+        profileResolver: (_) => profile,
+        policy: const SshProfileReconnectPolicy(
+          disconnectCoalesce: Duration(milliseconds: 20),
+          maxAttempts: 0,
+        ),
+        onDisconnect: (profileId, error, _) => notifications.add(profileId),
+      );
+
+      events.onTransportClosed?.call(
+        profile.id,
+        const SshTransportClosed(
+          reason: SshTransportCloseReason.transportError,
+          plane: SshTransportPlane.storage,
+        ),
+        StackTrace.empty,
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(notifications, isEmpty);
+      expect(factory.connectionGate.isDown(profile.id), isFalse);
       await coordinator.dispose();
     },
   );
@@ -248,6 +293,40 @@ void main() {
 
     await Future<void>.delayed(const Duration(milliseconds: 80));
     expect(createCount, 1);
+    expect(factory.connectionGate.isSuspended(profile.id), isTrue);
+    await coordinator.dispose();
+  });
+
+  test('userDisconnect suspends the gate and userConnect resumes it', () async {
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+    final events = SshConnectionEvents();
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      events: events,
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _InstantAuthClient();
+      },
+    );
+    final coordinator = SshProfileConnectionCoordinator(
+      factory: factory,
+      events: events,
+      profileResolver: (_) => profile,
+    );
+
+    await coordinator.userConnect(profile);
+    expect(factory.connectionGate.isSuspended(profile.id), isFalse);
+
+    await coordinator.userDisconnect(profile.id);
+    expect(factory.connectionGate.isSuspended(profile.id), isTrue);
+
+    await coordinator.userConnect(profile);
+    expect(factory.connectionGate.isSuspended(profile.id), isFalse);
     await coordinator.dispose();
   });
 
@@ -345,7 +424,7 @@ void main() {
       ),
     );
 
-    final client = await factory.clientForStorage(profile);
+    final client = await factory.createMemberClient(profile);
     client.close();
 
     await waitUntil(
@@ -459,8 +538,10 @@ void main() {
       coordinator.sessionReconnectSignals.listen(sessionSignals.add);
 
       await coordinator.userConnect(profile);
-      final client = await factory.clientForStorage(profile);
-      client.close();
+      final storage = await factory.clientForStorage(profile);
+      storage.close();
+      final member = await factory.createMemberClient(profile);
+      member.close();
 
       await waitUntil(
         () =>
@@ -480,6 +561,101 @@ void main() {
                 RemoteConnectionStatus.down,
         timeout: const Duration(seconds: 10),
       );
+      await coordinator.dispose();
+    },
+  );
+
+  test('a failed lazy dial starts the coordinator retry loop', () async {
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+    var attempts = 0;
+    final events = SshConnectionEvents();
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      events: events,
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        throw const SshWorkerTransportException(
+          'refused',
+          code: 'socket_error',
+        );
+      },
+    );
+    final coordinator = SshProfileConnectionCoordinator(
+      factory: factory,
+      events: events,
+      profileResolver: (_) => profile,
+      policy: const SshProfileReconnectPolicy(
+        maxAttempts: 1,
+        initialDelay: Duration(milliseconds: 10),
+        maxDelay: Duration(milliseconds: 20),
+        disconnectCoalesce: Duration.zero,
+      ),
+      onReconnectAttempt: (_, _) => attempts++,
+    );
+
+    await expectLater(
+      factory.clientForStorage(profile),
+      throwsA(isA<SshWorkerTransportException>()),
+    );
+    await waitUntil(() => attempts >= 1, timeout: const Duration(seconds: 2));
+
+    await coordinator.dispose();
+  });
+
+  test(
+    'a waiting consumer keeps the retry loop alive past maxAttempts',
+    () async {
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
+      var attempts = 0;
+      final events = SshConnectionEvents();
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        events: events,
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          throw const SshWorkerTransportException(
+            'refused',
+            code: 'socket_error',
+          );
+        },
+      );
+      final coordinator = SshProfileConnectionCoordinator(
+        factory: factory,
+        events: events,
+        profileResolver: (_) => profile,
+        policy: const SshProfileReconnectPolicy(
+          maxAttempts: 1,
+          initialDelay: Duration(milliseconds: 10),
+          maxDelay: Duration(milliseconds: 20),
+          disconnectCoalesce: Duration.zero,
+        ),
+        onReconnectAttempt: (_, _) => attempts++,
+      );
+
+      await expectLater(
+        factory.clientForStorage(profile),
+        throwsA(isA<SshWorkerTransportException>()),
+      );
+      expect(factory.connectionGate.isDown(profile.id), isTrue);
+
+      final waiter = expectLater(
+        factory.connectionGate.waitUntilUp(profile.id),
+        throwsA(isA<SshProfileDownException>()),
+      );
+      await waitUntil(() => attempts >= 2, timeout: const Duration(seconds: 2));
+
+      await coordinator.userDisconnect(profile.id);
+      await waiter;
       await coordinator.dispose();
     },
   );

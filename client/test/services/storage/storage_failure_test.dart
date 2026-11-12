@@ -1,8 +1,23 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/ssh/ssh_connection_gate.dart';
 import 'package:teampilot/services/ssh/worker/ssh_worker_storage_types.dart';
 import 'package:teampilot/services/storage/storage_failure.dart';
 
 void main() {
+  test('a down-profile signal counts as a transport failure', () {
+    expect(
+      isStorageTransportFailure(
+        const SshProfileDownException('p1', SshConnectionGateState.down),
+      ),
+      isTrue,
+    );
+    expect(
+      isSshProfileDown(
+        const SshProfileDownException('p1', SshConnectionGateState.down),
+      ),
+      isTrue,
+    );
+  });
   test('worker transport codes count as transport failures', () {
     for (final code in [
       'transport_closed',

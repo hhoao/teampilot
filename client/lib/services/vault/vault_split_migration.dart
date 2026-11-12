@@ -1,5 +1,6 @@
 import '../../models/vault_entry.dart';
 import '../../utils/logging/logger.dart';
+import '../ssh/ssh_connection_gate.dart';
 import 'vault_service.dart';
 
 /// One-shot, zero-loss migration of pre-split business credentials.
@@ -25,6 +26,14 @@ Future<int> migrateBusinessVaultEntries({
         await home.upsert(entry);
         copied += 1;
       } on Object catch (error, stackTrace) {
+        if (isSshProfileDown(error)) {
+          AppLogger.instance.d(
+            '[home-vault] migration copy waiting for home transport',
+            error: error,
+            stackTrace: stackTrace,
+          );
+          continue;
+        }
         AppLogger.instance.w(
           '[home-vault] migration copy failed for ${entry.id}: $error',
           error: error,
@@ -34,6 +43,14 @@ Future<int> migrateBusinessVaultEntries({
     }
     return copied;
   } on Object catch (error, stackTrace) {
+    if (isSshProfileDown(error)) {
+      AppLogger.instance.d(
+        '[home-vault] migration waiting for home transport',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return 0;
+    }
     AppLogger.instance.w(
       '[home-vault] migration skipped: $error',
       error: error,

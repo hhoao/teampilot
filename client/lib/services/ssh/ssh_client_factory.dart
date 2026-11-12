@@ -12,6 +12,8 @@ import '../../utils/logging/logger.dart';
 import '../host/process_run_handle.dart';
 import '../chat/team_bus/remote/reverse_tunnel.dart';
 import 'ssh_connection_events.dart';
+import 'ssh_connection_failure.dart';
+import 'ssh_connection_gate.dart';
 import 'ssh_client_factory_support.dart';
 import 'ssh_credentials_resolver.dart';
 import 'ssh_forward_channel.dart';
@@ -80,6 +82,7 @@ class SshClientFactory {
     SshVaultEntryIdResolver? vaultEntryIdFor,
     SshWorkerAuthBridge? workerAuthBridge,
     SshProfileWorkerManager? workerManager,
+    SshConnectionGate? connectionGate,
     int maxConcurrentHandshakes = 3,
     this.drainGracePeriod = const Duration(seconds: 5),
     this.storageProbeInterval = const Duration(seconds: 15),
@@ -102,6 +105,7 @@ class SshClientFactory {
            ),
        _connector = connector,
        _memberReverseTunnelFactory = memberReverseTunnelFactory,
+       connectionGate = connectionGate ?? SshConnectionGate(),
        _handshakeGate = SshHandshakeGate(maxConcurrentHandshakes) {
     final resolvedWorkerManager =
         workerManager ??
@@ -135,6 +139,10 @@ class SshClientFactory {
   /// How often a cached storage lease is probed before reuse. Overridable in
   /// tests so probe behavior can be exercised without waiting out the window.
   final Duration storageProbeInterval;
+
+  /// Per-profile dial gate shared by every plane. Normal callers must go
+  /// through it; only [SshProfileConnectionCoordinator] may bypass it.
+  final SshConnectionGate connectionGate;
 
   final SshCredentialStore _credentialStore;
   final SshKnownHostRepository _knownHostRepository;
@@ -217,11 +225,31 @@ class SshClientFactory {
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
     bool probeCached = true,
-  }) => _workerStoragePool.clientFor(
-    profile,
-    timeout: timeout,
-    probeCached: probeCached,
-  );
+    bool allowDialWhenDown = false,
+  }) async {
+    if (allowDialWhenDown) {
+      connectionGate.allowNextDial(profile.id);
+    }
+    // Always enforce suspension: `allowNextDial` deliberately does not clear a
+    // user/permanent stop, so this second check is what keeps a bypass from
+    // overriding it.
+    connectionGate.beforeIo(profile.id);
+    connectionGate.markConnecting(profile.id);
+    try {
+      final client = await _workerStoragePool.clientFor(
+        profile,
+        timeout: timeout,
+        probeCached: probeCached,
+      );
+      connectionGate.markUp(profile.id);
+      return client;
+    } on Object catch (error, stackTrace) {
+      if (isSshTransportConnectionFailure(error)) {
+        connectionGate.markDown(profile.id);
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
 
   /// Opens a primitive-only member transport backed by the profile worker.
   ///
@@ -231,24 +259,41 @@ class SshClientFactory {
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
+    connectionGate.beforeIo(profile.id);
     if (_connector != null) {
       final client = await createMemberClient(profile, timeout: timeout);
-      await client.authenticated;
-      return SshWorkerDirectMemberTransport(
-        client: client,
-        closeTransport: () async {
-          prepareClientClose(
-            client,
-            reason: SshTransportCloseReason.memberSessionClosed,
-          );
-          await _disconnectQuietly(client);
-        },
+      try {
+        await client.authenticated;
+        connectionGate.markUp(profile.id);
+      } on Object catch (error, stackTrace) {
+        if (isSshTransportConnectionFailure(error)) {
+          connectionGate.markDown(profile.id);
+        }
+        Error.throwWithStackTrace(error, stackTrace);
+      }
+      return _GatedMemberTransport(
+        gate: connectionGate,
+        profileId: profile.id,
+        inner: SshWorkerDirectMemberTransport(
+          client: client,
+          closeTransport: () async {
+            prepareClientClose(
+              client,
+              reason: SshTransportCloseReason.memberSessionClosed,
+            );
+            await _disconnectQuietly(client);
+          },
+        ),
       );
     }
     final lease = await workerManager.acquire(profile);
     try {
       final target = await resolveWorkerDialTarget(profile);
-      return SshWorkerLeaseMemberTransport(lease: lease, target: target);
+      return _GatedMemberTransport(
+        gate: connectionGate,
+        profileId: profile.id,
+        inner: SshWorkerLeaseMemberTransport(lease: lease, target: target),
+      );
     } on Object {
       await lease.release();
       rethrow;
@@ -257,10 +302,14 @@ class SshClientFactory {
 
   /// Ensures the profile worker storage plane is connected without exposing
   /// its facade to callers that only need a readiness check.
+  ///
+  /// [allowDialWhenDown] is reserved for the single reconnect driver; it lets
+  /// the coordinator dial while the gate is down instead of failing fast.
   Future<void> ensureStorageConnected(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
     bool probeCached = true,
+    bool allowDialWhenDown = false,
   }) async {
     if (_connector != null) {
       await clientForStorage(
@@ -270,7 +319,12 @@ class SshClientFactory {
       );
       return;
     }
-    await storageFor(profile, timeout: timeout, probeCached: probeCached);
+    await storageFor(
+      profile,
+      timeout: timeout,
+      probeCached: probeCached,
+      allowDialWhenDown: allowDialWhenDown,
+    );
   }
 
   /// Runs [command] on the storage-plane client with an I/O timeout.
@@ -426,6 +480,9 @@ class SshClientFactory {
     String profileId, {
     SshTransportCloseReason reason = SshTransportCloseReason.userDisconnect,
   }) {
+    if (reason == SshTransportCloseReason.userDisconnect) {
+      connectionGate.suspend(profileId);
+    }
     _workerStoragePool.disconnectProfile(profileId, reason: reason);
     _evictLegacyProfile(profileId, closePooled: true, reason: reason);
   }
@@ -551,6 +608,7 @@ class SshClientFactory {
 
   Future<void> _close() async {
     disconnectAll();
+    connectionGate.dispose();
     await _workerEventsSubscription.cancel();
     await workerManager.close();
     await _poolChanges.close();
@@ -708,4 +766,62 @@ class SshClientFactory {
         .then<void>((_) {}, onError: (_) {})
         .whenComplete(() => _handshakeGate.release(key));
   }
+}
+
+/// Wraps a member transport so the shared connection gate observes the actual
+/// dial (`open`), not just the lease acquisition.
+final class _GatedMemberTransport implements SshWorkerMemberTransport {
+  _GatedMemberTransport({
+    required this.gate,
+    required this.profileId,
+    required this.inner,
+  });
+
+  final SshConnectionGate gate;
+  final String profileId;
+  final SshWorkerMemberTransport inner;
+
+  @override
+  Future<void> open(
+    SshProfile profile, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    gate.beforeIo(profileId);
+    gate.markConnecting(profileId);
+    try {
+      await inner.open(profile, timeout: timeout);
+      gate.markUp(profileId);
+    } on Object catch (error, stackTrace) {
+      if (isSshTransportConnectionFailure(error)) {
+        gate.markDown(profileId);
+      } else {
+        gate.markUp(profileId);
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
+
+  @override
+  Future<SshWorkerRunResult> run(String command, {bool stderr = true}) =>
+      inner.run(command, stderr: stderr);
+
+  @override
+  Future<SshWorkerExecChannel> startProcess(String command) =>
+      inner.startProcess(command);
+
+  @override
+  Future<SshWorkerPtyChannel> openPty({
+    String? command,
+    required int columns,
+    required int rows,
+    Map<String, String>? environment,
+  }) => inner.openPty(
+    command: command,
+    columns: columns,
+    rows: rows,
+    environment: environment,
+  );
+
+  @override
+  Future<void> close() => inner.close();
 }

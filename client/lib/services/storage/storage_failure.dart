@@ -1,3 +1,4 @@
+import '../ssh/ssh_connection_gate.dart';
 import '../ssh/ssh_transport_close.dart';
 import '../ssh/worker/ssh_worker_protocol.dart';
 
@@ -30,6 +31,7 @@ const _workerTransportCodes = {
 };
 
 bool isStorageTransportFailure(Object error) {
+  if (error is SshProfileDownException) return true;
   if (error is SshTransportClosed) return true;
   if (error is SshWorkerCodedException &&
       _workerTransportCodes.contains(error.code)) {

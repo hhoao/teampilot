@@ -345,6 +345,24 @@ profile disconnect, removal, and application shutdown invalidate the active
 generation and close its channels before a later acquire can create a fresh
 worker.
 
+### Connection gate
+
+Each profile has one `SshConnectionGate` shared by the storage, member, exec,
+and forwarding planes. Normal I/O (`storageFor`, `openMemberTransport`,
+`openForwardChannel`, reverse-tunnel opens) must pass `beforeIo`; when the
+profile is known-down it fails fast with `SshProfileDownException` instead of
+opening another transport. Only `SshProfileConnectionCoordinator` may bypass
+the gate for its single retry driver. Consumers that need the transport wait
+through `waitUntilUp`; that waiter is the coordinator's demand signal, so the
+loop keeps retrying past `maxAttempts` while someone is waiting. An explicit
+user disconnect or a non-retryable auth/host-key failure `suspend`s the gate
+until an explicit resume.
+
+Storage-lease retirements (probe/request timeouts) are plane-scoped: the
+coordinator does not take the whole home down for them. The next `storageFor`
+reopens the SFTP plane on the shared SSH client; only a failed reopen trips the
+gate and starts the retry loop.
+
 ### Direct-mode test adapters
 
 Unit tests may inject `SshClientFactory.connector`, an injected reverse-tunnel

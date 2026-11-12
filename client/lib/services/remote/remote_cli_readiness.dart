@@ -11,6 +11,7 @@ import '../cli/registry/installer/acp_adapter_installer.dart';
 import '../cli/remote_cli_installer.dart';
 import '../cli/remote_cli_locator.dart';
 import '../ssh/ssh_client_factory.dart';
+import '../ssh/ssh_connection_gate.dart';
 import '../ssh/ssh_storage_io.dart';
 import 'remote_preflight_cli_install.dart';
 import 'remember_remote_cli_path.dart';
@@ -173,12 +174,21 @@ class RemoteCliReadinessService {
       return RemoteCliReady(targetId: target.id, cli: cli, path: path);
     } on Object catch (e, st) {
       final message = remoteCliFailureMessage(e);
-      appLogger.w(
-        '[remote-cli] probe failed target=${target.id} cli=${cli.value} '
-        'kind=${kind.name}: $message',
-        error: e,
-        stackTrace: st,
-      );
+      if (isSshProfileDown(e)) {
+        appLogger.d(
+          '[remote-cli] probe waiting for home transport '
+          'target=${target.id} cli=${cli.value} kind=${kind.name}',
+          error: e,
+          stackTrace: st,
+        );
+      } else {
+        appLogger.w(
+          '[remote-cli] probe failed target=${target.id} cli=${cli.value} '
+          'kind=${kind.name}: $message',
+          error: e,
+          stackTrace: st,
+        );
+      }
       return RemoteCliFailed(targetId: target.id, cli: cli, message: message);
     }
   }
@@ -226,12 +236,21 @@ class RemoteCliReadinessService {
       return RemoteCliReady(targetId: target.id, cli: cli, path: path);
     } on Object catch (e, st) {
       final message = remoteCliFailureMessage(e);
-      appLogger.w(
-        '[remote-cli] locate failed target=${target.id} cli=${cli.value} '
-        'kind=${kind.name}: $message',
-        error: e,
-        stackTrace: st,
-      );
+      if (isSshProfileDown(e)) {
+        appLogger.d(
+          '[remote-cli] locate waiting for home transport '
+          'target=${target.id} cli=${cli.value} kind=${kind.name}',
+          error: e,
+          stackTrace: st,
+        );
+      } else {
+        appLogger.w(
+          '[remote-cli] locate failed target=${target.id} cli=${cli.value} '
+          'kind=${kind.name}: $message',
+          error: e,
+          stackTrace: st,
+        );
+      }
       return RemoteCliFailed(targetId: target.id, cli: cli, message: message);
     }
   }

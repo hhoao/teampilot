@@ -15,6 +15,7 @@ Future<void> applyEventTransportForHome({
   required HomeStorage homeStorage,
   required SshClientFactory sshClientFactory,
   required SshProfile? Function() homeProfile,
+  Future<bool> Function(Object error)? waitForRecovery,
   bool restart = false,
 }) async {
   try {
@@ -31,6 +32,7 @@ Future<void> applyEventTransportForHome({
           sshClientFactory: sshClientFactory,
           homeProfile: homeProfile,
         ),
+        waitForRecovery: waitForRecovery,
       );
     } else {
       await controller.apply(EventTransportRole.none);

@@ -39,6 +39,8 @@ final class SessionProtocolController {
     this.onContentDelta,
     this.onSessionList,
     this.onAttention,
+    this.isExpectedFailure,
+    this.waitForRecovery,
     int Function()? pid,
   }) : _pid = pid ?? _currentPid;
 
@@ -52,6 +54,8 @@ final class SessionProtocolController {
   final void Function(SessionContentDelta delta)? onContentDelta;
   final void Function(SessionListDelta delta)? onSessionList;
   final void Function(SessionAttention attention)? onAttention;
+  final bool Function(Object error)? isExpectedFailure;
+  final Future<bool> Function(Object error)? waitForRecovery;
   final int Function() _pid;
 
   SessionProtocolRole _role = SessionProtocolRole.none;
@@ -306,6 +310,8 @@ final class SessionProtocolController {
     final client = SessionClientConnection(
       open: open,
       deviceId: deviceId,
+      isExpectedFailure: isExpectedFailure,
+      waitForRecovery: waitForRecovery,
       callbacks: SessionClientCallbacks(
         onSnapshot: (snapshots) {
           appLogger.i(
