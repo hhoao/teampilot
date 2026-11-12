@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/git/git_service.dart';
 import 'package:teampilot/services/host/host_one_shot_runner.dart';
@@ -302,6 +303,64 @@ void main() {
         host.requests.map((r) => r.environment),
         everyElement({'GIT_TERMINAL_PROMPT': '0'}),
       );
+    });
+  });
+
+  group('LocalGitCommandRunner raw/script/probe', () {
+    late Directory tmp;
+    setUp(() async {
+      tmp = await Directory.systemTemp.createTemp('git-runner-');
+    });
+    tearDown(() async {
+      if (tmp.existsSync()) await tmp.delete(recursive: true);
+    });
+
+    test('probe reports available and version', () async {
+      final runner = LocalGitCommandRunner();
+      final cap = await runner.probe();
+      expect(cap.available, isTrue);
+      expect(cap.version, isNotNull);
+    });
+
+    test('runRaw returns bytes and honors stdin', () async {
+      final runner = LocalGitCommandRunner();
+      final init = await runner.runRaw(['init', '--bare', tmp.path]);
+      expect(init.exitCode, 0);
+      final ver = await runner.runRaw(['--version']);
+      expect(utf8.decode(ver.stdout), contains('git version'));
+      final bad = await runner.runRaw(['no-such-command'], allowFailure: true);
+      expect(bad.exitCode, isNot(0));
+      expect(bad.stderr, isNotEmpty);
+    });
+
+    test('runToFile streams stdout to a file', () async {
+      final runner = LocalGitCommandRunner();
+      final repo = p.join(tmp.path, 'r');
+      await Directory(repo).create();
+      await runner.runRaw(['init', repo]);
+      await File(p.join(repo, 'a.txt')).writeAsString('hello');
+      await runner.runRaw(['-C', repo, 'add', 'a.txt']);
+      await runner.runRaw([
+        '-C',
+        repo,
+        '-c',
+        'user.email=a@b',
+        '-c',
+        'user.name=a',
+        'commit',
+        '-m',
+        'x',
+      ]);
+      final dest = p.join(tmp.path, 'blob.txt');
+      await runner.runToFile(['-C', repo, 'show', 'HEAD:a.txt'], dest);
+      expect(await File(dest).readAsString(), 'hello');
+    });
+
+    test('runScript runs a POSIX shell script', () async {
+      final runner = LocalGitCommandRunner();
+      final result = await runner.runScript('printf "ok"');
+      expect(result.stdout, 'ok');
+      expect(result.exitCode, 0);
     });
   });
 

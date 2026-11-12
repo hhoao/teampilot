@@ -22,6 +22,51 @@ class GitCommandResult {
   final String stderr;
 }
 
+/// Result of one raw git invocation; [stdout] stays undecoded because callers
+/// such as `git show` need to tell text from binary blobs.
+class GitRawResult {
+  const GitRawResult({
+    required this.exitCode,
+    required this.stdout,
+    required this.stderr,
+  });
+
+  final int exitCode;
+  final List<int> stdout;
+  final String stderr;
+
+  bool get succeeded => exitCode == 0;
+}
+
+/// What the installed git can do, derived from `git --version`.
+class GitCapability {
+  const GitCapability({
+    required this.available,
+    this.version,
+    this.pathspecFromFile = false,
+  });
+
+  final bool available;
+  final String? version;
+  final bool pathspecFromFile;
+
+  static const unavailable = GitCapability(available: false);
+}
+
+/// Parses `git --version` output into a [GitCapability]. Shared by all runners.
+GitCapability gitCapabilityFromVersion(GitRawResult result) {
+  if (result.exitCode != 0) return GitCapability.unavailable;
+  final text = utf8.decode(result.stdout, allowMalformed: true).trim();
+  final match = RegExp(r'git version (\d+)\.(\d+)').firstMatch(text);
+  final major = int.tryParse(match?.group(1) ?? '') ?? 0;
+  final minor = int.tryParse(match?.group(2) ?? '') ?? 0;
+  return GitCapability(
+    available: true,
+    version: match == null ? text : '${match.group(1)}.${match.group(2)}',
+    pathspecFromFile: major > 2 || (major == 2 && minor >= 25),
+  );
+}
+
 GitCommandResult _gitResultFromHost(HostRunResult result) {
   return GitCommandResult(
     exitCode: result.exitCode,
@@ -39,6 +84,41 @@ abstract interface class GitCommandRunner {
     List<String> args, {
     Map<String, String>? environment,
   });
+
+  /// Runs git with [args] verbatim (no `-C`/global flags added) and returns
+  /// undecoded stdout. Throws [StateError] on non-zero exit unless
+  /// [allowFailure] is set.
+  Future<GitRawResult> runRaw(
+    List<String> args, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    String? stdinText,
+    bool allowFailure = false,
+    Duration? timeout,
+  });
+
+  /// Streams git stdout straight into [destPath], so large blobs never sit in
+  /// memory. Throws [StateError] and removes the partial file on failure.
+  Future<void> runToFile(
+    List<String> args,
+    String destPath, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration? timeout,
+  });
+
+  /// Runs an arbitrary POSIX shell [script] on the host (used where one git
+  /// invocation is not enough). Throws [StateError] on non-zero exit.
+  Future<GitCommandResult> runScript(
+    String script, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    String? stdinText,
+    Duration? timeout,
+  });
+
+  /// Probes the installed git version/capabilities.
+  Future<GitCapability> probe();
 }
 
 /// Shared git flags prepended to every invocation (see [GitService]).
@@ -157,6 +237,142 @@ class LocalGitCommandRunner implements GitCommandRunner {
     );
     return _gitResultFromHost(result);
   }
+
+  @override
+  Future<GitRawResult> runRaw(
+    List<String> args, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    String? stdinText,
+    bool allowFailure = false,
+    Duration? timeout,
+  }) async {
+    final git = await _git;
+    if (git == null) {
+      return const GitRawResult(
+        exitCode: 127,
+        stdout: [],
+        stderr: 'git executable not found on PATH',
+      );
+    }
+    final process = await Process.start(
+      git,
+      args,
+      workingDirectory: workingDirectory,
+      environment: environment,
+    );
+    final outFuture = process.stdout.fold<List<int>>(
+      <int>[],
+      (buffer, chunk) => buffer..addAll(chunk),
+    );
+    final errFuture = process.stderr.transform(utf8.decoder).join();
+    if (stdinText != null) process.stdin.write(stdinText);
+    try {
+      await process.stdin.close();
+    } on Object {
+      // already closed
+    }
+    var timedOut = false;
+    final exit = await process.exitCode.timeout(
+      timeout ?? const Duration(seconds: 30),
+      onTimeout: () {
+        timedOut = true;
+        process.kill();
+        return -1;
+      },
+    );
+    final stdout = await outFuture;
+    final stderr = await errFuture;
+    if (!allowFailure && (timedOut || exit != 0)) {
+      throw StateError('git ${args.join(' ')} failed ($exit): $stderr');
+    }
+    return GitRawResult(exitCode: exit, stdout: stdout, stderr: stderr);
+  }
+
+  @override
+  Future<void> runToFile(
+    List<String> args,
+    String destPath, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration? timeout,
+  }) async {
+    final git = await _git;
+    if (git == null) {
+      throw StateError('git executable not found on PATH');
+    }
+    final process = await Process.start(
+      git,
+      args,
+      workingDirectory: workingDirectory,
+      environment: environment,
+    );
+    final dest = File(destPath);
+    await dest.parent.create(recursive: true);
+    final sink = dest.openWrite();
+    final errFuture = process.stderr.transform(utf8.decoder).join();
+    await process.stdout.pipe(sink);
+    final exit = await process.exitCode.timeout(
+      timeout ?? const Duration(seconds: 30),
+      onTimeout: () {
+        process.kill();
+        return -1;
+      },
+    );
+    final stderr = await errFuture;
+    if (exit != 0) {
+      if (await dest.exists()) await dest.delete();
+      throw StateError('git ${args.join(' ')} failed ($exit): $stderr');
+    }
+  }
+
+  @override
+  Future<GitCommandResult> runScript(
+    String script, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    String? stdinText,
+    Duration? timeout,
+  }) async {
+    if (Platform.isWindows) {
+      throw UnsupportedError('runScript is POSIX-only');
+    }
+    // Not a login shell: profile scripts can abort the shell or write to
+    // stdout, which would corrupt the script output callers parse.
+    final process = await Process.start(
+      'sh',
+      ['-c', script],
+      workingDirectory: workingDirectory,
+      environment: environment,
+    );
+    final outFuture = process.stdout.transform(utf8.decoder).join();
+    final errFuture = process.stderr.transform(utf8.decoder).join();
+    if (stdinText != null) process.stdin.write(stdinText);
+    try {
+      await process.stdin.close();
+    } on Object {
+      // already closed
+    }
+    var timedOut = false;
+    final exit = await process.exitCode.timeout(
+      timeout ?? const Duration(seconds: 30),
+      onTimeout: () {
+        timedOut = true;
+        process.kill();
+        return -1;
+      },
+    );
+    final stdout = await outFuture;
+    final stderr = await errFuture;
+    if (timedOut || exit != 0) {
+      throw StateError('sh -lc failed ($exit): $stderr');
+    }
+    return GitCommandResult(exitCode: exit, stdout: stdout, stderr: stderr);
+  }
+
+  @override
+  Future<GitCapability> probe() async =>
+      gitCapabilityFromVersion(await runRaw(['--version'], allowFailure: true));
 }
 
 class WslGitCommandRunner implements GitCommandRunner {
@@ -204,6 +420,40 @@ class WslGitCommandRunner implements GitCommandRunner {
     );
     return result.succeeded && result.stdout.trim().isNotEmpty;
   }
+
+  @override
+  Future<GitRawResult> runRaw(
+    List<String> args, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    String? stdinText,
+    bool allowFailure = false,
+    Duration? timeout,
+  }) async => throw UnsupportedError('runRaw is not implemented for WSL yet');
+
+  @override
+  Future<void> runToFile(
+    List<String> args,
+    String destPath, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration? timeout,
+  }) async =>
+      throw UnsupportedError('runToFile is not implemented for WSL yet');
+
+  @override
+  Future<GitCommandResult> runScript(
+    String script, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    String? stdinText,
+    Duration? timeout,
+  }) async =>
+      throw UnsupportedError('runScript is not implemented for WSL yet');
+
+  @override
+  Future<GitCapability> probe() async =>
+      throw UnsupportedError('probe is not implemented for WSL yet');
 
   @override
   Future<GitCommandResult> runInDirectory(
@@ -274,6 +524,41 @@ class RemoteGitCommandRunner implements GitCommandRunner {
     if (sshRunFailed(result)) return false;
     return utf8.decode(result.stdout, allowMalformed: true).trim().isNotEmpty;
   }
+
+  @override
+  Future<GitRawResult> runRaw(
+    List<String> args, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    String? stdinText,
+    bool allowFailure = false,
+    Duration? timeout,
+  }) async =>
+      throw UnsupportedError('runRaw is not implemented for remote yet');
+
+  @override
+  Future<void> runToFile(
+    List<String> args,
+    String destPath, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration? timeout,
+  }) async =>
+      throw UnsupportedError('runToFile is not implemented for remote yet');
+
+  @override
+  Future<GitCommandResult> runScript(
+    String script, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    String? stdinText,
+    Duration? timeout,
+  }) async =>
+      throw UnsupportedError('runScript is not implemented for remote yet');
+
+  @override
+  Future<GitCapability> probe() async =>
+      throw UnsupportedError('probe is not implemented for remote yet');
 
   @override
   Future<GitCommandResult> runInDirectory(
