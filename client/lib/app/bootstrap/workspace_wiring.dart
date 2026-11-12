@@ -56,12 +56,13 @@ WorkspaceWiring wireWorkspaces({
   required HomeStorage storage,
   required ExtensionRepository extensionRepository,
   required WorkspaceProjectConfigRepository workspaceConfig,
-  required SessionLifecycleService sessionLifecycleService,
+  required SessionLifecycleService Function() sessionLifecycleService,
   required SshProfileRepository sshProfiles,
   required SshClientFactory sshClientFactory,
   required RuntimeTarget Function() homeTarget,
   required ChatCubit Function() chatCubit,
 }) {
+  final lifecycle = sessionLifecycleService();
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
   final floatingWorkspaceCubit = FloatingWorkspaceCubit();
   final floatingWorkspacePersistence = FloatingWorkspacePersistence(
@@ -97,7 +98,7 @@ WorkspaceWiring wireWorkspaces({
       storage: storage,
       extensionRepository: extensionRepository,
       projectConfigRepository: workspaceConfig,
-      resolveWorkContext: sessionLifecycleService.resolveWorkContextForTargetId,
+      resolveWorkContext: lifecycle.resolveWorkContextForTargetId,
       sshProfileRepository: sshProfiles,
       sshClientFactory: sshClientFactory,
       homeTarget: homeTarget,

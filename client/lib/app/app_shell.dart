@@ -2025,7 +2025,7 @@ Future<AppShell> buildAppShell({
       storage: homeStorage,
       extensionRepository: extensionRepository,
       workspaceConfig: workspaceProjectConfigRepository,
-      sessionLifecycleService: sessionLifecycleService,
+      sessionLifecycleService: () => sessionLifecycleService,
       sshProfiles: sshProfileRepo,
       sshClientFactory: sshClientFactory,
       homeTarget: defaultTargetResolver,
