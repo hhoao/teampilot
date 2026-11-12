@@ -23,7 +23,7 @@ class _Harness {
       credentialStore: InMemorySshCredentialStore(),
       knownHostRepository: InMemorySshKnownHostRepository(),
       events: events,
-      connectionGate: gate,
+      ioGuard: gate.beforeIo,
     );
     supervisor = SshHomeConnectivitySupervisor(
       factory: factory,
@@ -53,7 +53,7 @@ class _DialHarness {
       credentialStore: InMemorySshCredentialStore(),
       knownHostRepository: InMemorySshKnownHostRepository(),
       events: events,
-      connectionGate: gate,
+      ioGuard: gate.beforeIo,
     );
     late SshHomeConnectivitySupervisor s;
     s = SshHomeConnectivitySupervisor(

@@ -46,11 +46,9 @@ extension SshClientFactoryLegacyStorage on SshClientFactory {
         final inFlight = _inFlight[profile.id] ?? 0;
         final skipProbe = !probeCached || inFlight > 0;
         if (skipProbe || await _probeStorageClient(cached.client)) {
-          connectionGate.markUp(profile.id);
           return cached.client;
         }
         if ((_inFlight[profile.id] ?? 0) > 0) {
-          connectionGate.markUp(profile.id);
           return cached.client;
         }
         _evictLegacyProfile(
@@ -69,20 +67,11 @@ extension SshClientFactoryLegacyStorage on SshClientFactory {
       }
     }
 
-    connectionGate.markConnecting(profile.id);
-    final SSHClient client;
-    try {
-      client = await _connectClient(
-        profile,
-        plane: SshTransportPlane.storage,
-        timeout: timeout,
-      );
-    } on Object catch (error, stackTrace) {
-      if (isSshTransportConnectionFailure(error)) {
-        connectionGate.markDown(profile.id);
-      }
-      Error.throwWithStackTrace(error, stackTrace);
-    }
+    final SSHClient client = await _connectClient(
+      profile,
+      plane: SshTransportPlane.storage,
+      timeout: timeout,
+    );
     final ready = client.authenticated;
     final pooled = _PooledConnection(
       client: client,
@@ -93,12 +82,8 @@ extension SshClientFactoryLegacyStorage on SshClientFactory {
     try {
       await ready;
       pooled.readyCompleted = true;
-      connectionGate.markUp(profile.id);
       _notifyPoolChange(profile.id);
     } on Object catch (error, stackTrace) {
-      if (isSshTransportConnectionFailure(error)) {
-        connectionGate.markDown(profile.id);
-      }
       _evictLegacyProfile(
         profile.id,
         closePooled: true,

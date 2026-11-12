@@ -220,7 +220,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
       final profile = _remoteSshProfile(context, connectionMode);
       if (profile == null) return null;
       final factory = context.read<SshClientFactory>();
-      await factory.ensureStorageConnected(profile, allowDialWhenDown: true);
+      await factory.ensureStorageConnected(profile);
       return ToolchainExecutableDiscovery().locateRemoteTool(
         toolId: widget.toolId,
         run: RemoteCliLocator.runnerForStorage(factory, profile),

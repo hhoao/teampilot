@@ -12,8 +12,7 @@ import '../../utils/logging/logger.dart';
 import '../host/process_run_handle.dart';
 import '../chat/team_bus/remote/reverse_tunnel.dart';
 import 'ssh_connection_events.dart';
-import 'ssh_connection_failure.dart';
-import 'ssh_connection_gate.dart';
+import 'ssh_connection_gate.dart' show SshIoGuard;
 import 'ssh_client_factory_support.dart';
 import 'ssh_credentials_resolver.dart';
 import 'ssh_forward_channel.dart';
@@ -82,7 +81,7 @@ class SshClientFactory {
     SshVaultEntryIdResolver? vaultEntryIdFor,
     SshWorkerAuthBridge? workerAuthBridge,
     SshProfileWorkerManager? workerManager,
-    SshConnectionGate? connectionGate,
+    SshIoGuard ioGuard = _noopIoGuard,
     int maxConcurrentHandshakes = 3,
     this.drainGracePeriod = const Duration(seconds: 5),
     this.storageProbeInterval = const Duration(seconds: 15),
@@ -105,7 +104,7 @@ class SshClientFactory {
            ),
        _connector = connector,
        _memberReverseTunnelFactory = memberReverseTunnelFactory,
-       connectionGate = connectionGate ?? SshConnectionGate(),
+       _ioGuard = ioGuard,
        _handshakeGate = SshHandshakeGate(maxConcurrentHandshakes) {
     final resolvedWorkerManager =
         workerManager ??
@@ -140,9 +139,9 @@ class SshClientFactory {
   /// tests so probe behavior can be exercised without waiting out the window.
   final Duration storageProbeInterval;
 
-  /// Per-profile dial gate shared by every plane. Normal callers must go
-  /// through it; only [SshProfileConnectionCoordinator] may bypass it.
-  final SshConnectionGate connectionGate;
+  /// Read-only I/O permission check owned by the supervisor. The pool never
+  /// writes dial state; it only asks whether I/O is currently allowed.
+  final SshIoGuard _ioGuard;
 
   final SshCredentialStore _credentialStore;
   final SshKnownHostRepository _knownHostRepository;
@@ -225,30 +224,13 @@ class SshClientFactory {
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
     bool probeCached = true,
-    bool allowDialWhenDown = false,
   }) async {
-    if (allowDialWhenDown) {
-      connectionGate.allowNextDial(profile.id);
-    }
-    // Always enforce suspension: `allowNextDial` deliberately does not clear a
-    // user/permanent stop, so this second check is what keeps a bypass from
-    // overriding it.
-    connectionGate.beforeIo(profile.id);
-    connectionGate.markConnecting(profile.id);
-    try {
-      final client = await _workerStoragePool.clientFor(
-        profile,
-        timeout: timeout,
-        probeCached: probeCached,
-      );
-      connectionGate.markUp(profile.id);
-      return client;
-    } on Object catch (error, stackTrace) {
-      if (isSshTransportConnectionFailure(error)) {
-        connectionGate.markDown(profile.id);
-      }
-      Error.throwWithStackTrace(error, stackTrace);
-    }
+    _ioGuard(profile.id);
+    return _workerStoragePool.clientFor(
+      profile,
+      timeout: timeout,
+      probeCached: probeCached,
+    );
   }
 
   /// Opens a primitive-only member transport backed by the profile worker.
@@ -259,21 +241,12 @@ class SshClientFactory {
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
-    connectionGate.beforeIo(profile.id);
+    _ioGuard(profile.id);
     if (_connector != null) {
       final client = await createMemberClient(profile, timeout: timeout);
-      try {
-        await client.authenticated;
-        connectionGate.markUp(profile.id);
-      } on Object catch (error, stackTrace) {
-        if (isSshTransportConnectionFailure(error)) {
-          connectionGate.markDown(profile.id);
-        }
-        Error.throwWithStackTrace(error, stackTrace);
-      }
-      return _GatedMemberTransport(
-        gate: connectionGate,
-        profileId: profile.id,
+      await client.authenticated;
+      return _GuardedMemberTransport(
+        ioGuard: _ioGuard,
         inner: SshWorkerDirectMemberTransport(
           client: client,
           closeTransport: () async {
@@ -289,9 +262,8 @@ class SshClientFactory {
     final lease = await workerManager.acquire(profile);
     try {
       final target = await resolveWorkerDialTarget(profile);
-      return _GatedMemberTransport(
-        gate: connectionGate,
-        profileId: profile.id,
+      return _GuardedMemberTransport(
+        ioGuard: _ioGuard,
         inner: SshWorkerLeaseMemberTransport(lease: lease, target: target),
       );
     } on Object {
@@ -303,13 +275,10 @@ class SshClientFactory {
   /// Ensures the profile worker storage plane is connected without exposing
   /// its facade to callers that only need a readiness check.
   ///
-  /// [allowDialWhenDown] is reserved for the single reconnect driver; it lets
-  /// the coordinator dial while the gate is down instead of failing fast.
   Future<void> ensureStorageConnected(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
     bool probeCached = true,
-    bool allowDialWhenDown = false,
   }) async {
     if (_connector != null) {
       await clientForStorage(
@@ -323,7 +292,6 @@ class SshClientFactory {
       profile,
       timeout: timeout,
       probeCached: probeCached,
-      allowDialWhenDown: allowDialWhenDown,
     );
   }
 
@@ -480,9 +448,6 @@ class SshClientFactory {
     String profileId, {
     SshTransportCloseReason reason = SshTransportCloseReason.userDisconnect,
   }) {
-    if (reason == SshTransportCloseReason.userDisconnect) {
-      connectionGate.suspend(profileId);
-    }
     _workerStoragePool.disconnectProfile(profileId, reason: reason);
     _evictLegacyProfile(profileId, closePooled: true, reason: reason);
   }
@@ -608,7 +573,6 @@ class SshClientFactory {
 
   Future<void> _close() async {
     disconnectAll();
-    connectionGate.dispose();
     await _workerEventsSubscription.cancel();
     await workerManager.close();
     await _poolChanges.close();
@@ -768,17 +732,15 @@ class SshClientFactory {
   }
 }
 
-/// Wraps a member transport so the shared connection gate observes the actual
-/// dial (`open`), not just the lease acquisition.
-final class _GatedMemberTransport implements SshWorkerMemberTransport {
-  _GatedMemberTransport({
-    required this.gate,
-    required this.profileId,
+/// Wraps a member transport so the supervisor-owned I/O guard is consulted on
+/// the actual dial (`open`), not just the lease acquisition.
+final class _GuardedMemberTransport implements SshWorkerMemberTransport {
+  _GuardedMemberTransport({
+    required this.ioGuard,
     required this.inner,
   });
 
-  final SshConnectionGate gate;
-  final String profileId;
+  final SshIoGuard ioGuard;
   final SshWorkerMemberTransport inner;
 
   @override
@@ -786,19 +748,8 @@ final class _GatedMemberTransport implements SshWorkerMemberTransport {
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
-    gate.beforeIo(profileId);
-    gate.markConnecting(profileId);
-    try {
-      await inner.open(profile, timeout: timeout);
-      gate.markUp(profileId);
-    } on Object catch (error, stackTrace) {
-      if (isSshTransportConnectionFailure(error)) {
-        gate.markDown(profileId);
-      } else {
-        gate.markUp(profileId);
-      }
-      Error.throwWithStackTrace(error, stackTrace);
-    }
+    ioGuard(profile.id);
+    await inner.open(profile, timeout: timeout);
   }
 
   @override
@@ -825,3 +776,7 @@ final class _GatedMemberTransport implements SshWorkerMemberTransport {
   @override
   Future<void> close() => inner.close();
 }
+
+/// Default for pure pool consumers that have no supervisor-owned gate (tests,
+/// one-off probes). Never blocks I/O; production injects the supervisor guard.
+void _noopIoGuard(String profileId) {}

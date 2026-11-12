@@ -57,13 +57,12 @@ class SshProfileConnectionCoordinator {
     this.persistRetry,
     this.policy = const SshProfileReconnectPolicy(),
   }) : _factory = factory,
-       _gate = gate ?? factory.connectionGate,
-       _dial = dial ??
-           ((profile) => factory.ensureStorageConnected(
-             profile,
-             allowDialWhenDown: true,
-           )),
+       _gate = gate ?? SshConnectionGate(),
        _profileResolver = profileResolver {
+    // The supervisor injects its own single-flight dial. Standalone consumers
+    // (tests, legacy wiring) arm the coordinator-owned gate before dialing so
+    // the pool's read-only guard lets the one retry driver through.
+    _dial = dial ?? _defaultDial;
     events.onTransportClosed = _onTransportClosed;
     events.onKeepAliveFailed = _onKeepAliveFailed;
     _gate.onWaiter = _onGateWaiter;
@@ -73,9 +72,27 @@ class SshProfileConnectionCoordinator {
     );
   }
 
+  /// The coordinator owns its gate; exposed for assertions and for the
+  /// supervisor's shared-gate wiring. The pool only reads `beforeIo`.
+  SshConnectionGate get gate => _gate;
+
+  /// Standalone (no supervisor) dial: arm the gate, then hand ownership of the
+  /// failure state to the gate owner instead of the pure pool.
+  Future<void> _defaultDial(SshProfile profile) async {
+    _gate.allowNextDial(profile.id);
+    try {
+      await _factory.ensureStorageConnected(profile);
+    } on Object catch (error, stackTrace) {
+      if (isSshTransportConnectionFailure(error)) {
+        _gate.markDown(profile.id);
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
+
   final SshClientFactory _factory;
   final SshConnectionGate _gate;
-  final Future<void> Function(SshProfile profile) _dial;
+  late final Future<void> Function(SshProfile profile) _dial;
   final SshProfileResolver _profileResolver;
   final SshProfileReconnectPolicy policy;
   final SshProfileDisconnectHandler? onDisconnect;
@@ -548,12 +565,15 @@ class SshProfileConnectionCoordinator {
     final existing = _storageReconnects[profile.id];
     if (existing != null) return existing;
 
+    _gate.allowNextDial(profile.id);
     final attempt = _factory
-        .ensureStorageConnected(
-          profile,
-          timeout: timeout,
-          allowDialWhenDown: true,
-        )
+        .ensureStorageConnected(profile, timeout: timeout)
+        .catchError((Object error, StackTrace stackTrace) {
+          if (isSshTransportConnectionFailure(error)) {
+            _gate.markDown(profile.id);
+          }
+          Error.throwWithStackTrace(error, stackTrace);
+        })
         .whenComplete(() {
           _storageReconnects.remove(profile.id);
         });

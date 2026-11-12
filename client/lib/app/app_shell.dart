@@ -968,6 +968,10 @@ Future<AppShell> buildAppShell({
     authChallengeHandlerFor: sshWorkerAuthBridge.handlerFor,
     metrics: sshWorkerMetrics,
   );
+  // One app-level gate, owned by the connectivity supervisor. The pure pool
+  // only receives its read-only `beforeIo` guard; every state write goes
+  // through the supervisor (or its owned coordinator).
+  final sshConnectivityGate = SshConnectionGate();
   final sshClientFactory = SshClientFactory(
     credentialStore: sshCredentialStore,
     knownHostRepository: sshKnownHostRepo,
@@ -979,6 +983,7 @@ Future<AppShell> buildAppShell({
     vaultEntryIdFor: sshVaultEntryIdFor,
     workerAuthBridge: sshWorkerAuthBridge,
     workerManager: sshProfileWorkerManager,
+    ioGuard: sshConnectivityGate.beforeIo,
   );
 
   /// Waits for the single connection driver to bring [SshProfileDownException]
@@ -986,7 +991,7 @@ Future<AppShell> buildAppShell({
   /// backoff.
   Future<bool> waitForSshProfileRecovery(Object error) async {
     if (error is! SshProfileDownException) return false;
-    await sshClientFactory.connectionGate.waitUntilUp(error.profileId);
+    await sshConnectivityGate.waitUntilUp(error.profileId);
     return true;
   }
 
@@ -3144,7 +3149,7 @@ Future<AppShell> buildAppShell({
       factory: sshClientFactory,
       events: sshConnectionEvents,
       profileResolver: sshProfileById,
-      gate: sshClientFactory.connectionGate,
+      gate: sshConnectivityGate,
       onDisconnect: (profileId, error, stackTrace) {
         final profile = sshProfileById(profileId);
         final label = profile == null

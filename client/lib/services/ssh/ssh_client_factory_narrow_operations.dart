@@ -54,12 +54,11 @@ extension SshClientFactoryNarrowOperations on SshClientFactory {
     int port, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
-    connectionGate.beforeIo(profile.id);
+    _ioGuard(profile.id);
     if (_connector != null) {
       final client = await createMemberClient(profile, timeout: timeout);
       try {
         final channel = await client.forwardLocal(host, port);
-        connectionGate.markUp(profile.id);
         return DartSshForwardByteChannel(
           client: client,
           channel: channel,
@@ -69,29 +68,14 @@ extension SshClientFactoryNarrowOperations on SshClientFactory {
           ),
         );
       } on Object catch (error, stackTrace) {
-        if (isSshTransportConnectionFailure(error)) {
-          connectionGate.markDown(profile.id);
-        } else {
-          connectionGate.markUp(profile.id);
-        }
         await _disconnectQuietly(client);
         Error.throwWithStackTrace(error, stackTrace);
       }
     }
     final session = await _openWorkerForwardSession(profile, timeout: timeout);
     try {
-      connectionGate.markConnecting(profile.id);
-      final channel = await session.openLocal(host, port);
-      connectionGate.markUp(profile.id);
-      return channel;
+      return await session.openLocal(host, port);
     } on Object catch (error, stackTrace) {
-      if (isSshTransportConnectionFailure(error)) {
-        connectionGate.markDown(profile.id);
-      } else {
-        // The transport is still up; only the target (or the remote port)
-        // failed. Do not block unrelated I/O on this profile.
-        connectionGate.markUp(profile.id);
-      }
       await session.close();
       Error.throwWithStackTrace(error, stackTrace);
     }
@@ -101,7 +85,7 @@ extension SshClientFactoryNarrowOperations on SshClientFactory {
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
-    connectionGate.beforeIo(profile.id);
+    _ioGuard(profile.id);
     final lease = await workerManager.acquire(profile);
     try {
       final target = await resolveWorkerDialTarget(profile);

@@ -14,6 +14,7 @@ import 'package:teampilot/services/remote/remote_connection_monitor.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_connection_failure.dart';
+import 'package:teampilot/services/ssh/ssh_connection_gate.dart';
 import 'package:teampilot/services/ssh/ssh_home_connectivity_supervisor.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
@@ -975,10 +976,12 @@ class _Harness {
     ),
   }) : events = SshConnectionEvents(),
        _profiles = {_p1.id: _p1, _p2.id: _p2} {
+    gate = SshConnectionGate();
     factory = SshClientFactory(
       credentialStore: InMemorySshCredentialStore(),
       knownHostRepository: InMemorySshKnownHostRepository(),
       events: events,
+      ioGuard: gate.beforeIo,
       connector:
           connector ??
           (profile, {timeout = const Duration(seconds: 10)}) async {
@@ -991,7 +994,7 @@ class _Harness {
       factory: factory,
       events: events,
       profileResolver: (id) => _profiles[id],
-      gate: factory.connectionGate,
+      gate: gate,
       policy: policy,
     );
     coordinator = supervisor.coordinator;
@@ -999,6 +1002,7 @@ class _Harness {
 
   final SshConnectionEvents events;
   final Map<String, SshProfile> _profiles;
+  late final SshConnectionGate gate;
   late final SshClientFactory factory;
   late final SshHomeConnectivitySupervisor supervisor;
   late final SshProfileConnectionCoordinator coordinator;

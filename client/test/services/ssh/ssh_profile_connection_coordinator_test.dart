@@ -105,7 +105,7 @@ void main() {
 
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(notifications, isEmpty);
-      expect(factory.connectionGate.isDown(profile.id), isFalse);
+      expect(coordinator.gate.isDown(profile.id), isFalse);
       await coordinator.dispose();
     },
   );
@@ -293,7 +293,7 @@ void main() {
 
     await Future<void>.delayed(const Duration(milliseconds: 80));
     expect(createCount, 1);
-    expect(factory.connectionGate.isSuspended(profile.id), isTrue);
+    expect(coordinator.gate.isSuspended(profile.id), isTrue);
     await coordinator.dispose();
   });
 
@@ -320,13 +320,13 @@ void main() {
     );
 
     await coordinator.userConnect(profile);
-    expect(factory.connectionGate.isSuspended(profile.id), isFalse);
+    expect(coordinator.gate.isSuspended(profile.id), isFalse);
 
     await coordinator.userDisconnect(profile.id);
-    expect(factory.connectionGate.isSuspended(profile.id), isTrue);
+    expect(coordinator.gate.isSuspended(profile.id), isTrue);
 
     await coordinator.userConnect(profile);
-    expect(factory.connectionGate.isSuspended(profile.id), isFalse);
+    expect(coordinator.gate.isSuspended(profile.id), isFalse);
     await coordinator.dispose();
   });
 
@@ -598,8 +598,10 @@ void main() {
       onReconnectAttempt: (_, _) => attempts++,
     );
 
+    // The pure pool no longer writes dial state: a lazy dial must go through
+    // the gate owner so its failure trips `onDown` and starts the retry loop.
     await expectLater(
-      factory.clientForStorage(profile),
+      coordinator.reconnectStorage(profile),
       throwsA(isA<SshWorkerTransportException>()),
     );
     await waitUntil(() => attempts >= 1, timeout: const Duration(seconds: 2));
@@ -643,13 +645,13 @@ void main() {
       );
 
       await expectLater(
-        factory.clientForStorage(profile),
+        coordinator.reconnectStorage(profile),
         throwsA(isA<SshWorkerTransportException>()),
       );
-      expect(factory.connectionGate.isDown(profile.id), isTrue);
+      expect(coordinator.gate.isDown(profile.id), isTrue);
 
       final waiter = expectLater(
-        factory.connectionGate.waitUntilUp(profile.id),
+        coordinator.gate.waitUntilUp(profile.id),
         throwsA(isA<SshProfileDownException>()),
       );
       await waitUntil(() => attempts >= 2, timeout: const Duration(seconds: 2));

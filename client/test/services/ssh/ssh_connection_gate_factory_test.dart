@@ -32,14 +32,16 @@ void main() {
 
     expect(clients.length, 8);
     expect(launcher.connectCount, 1);
-    expect(gate.isUp(_profile.id), isTrue);
+    // Pure pool: a successful dial must not write dial state. The supervisor
+    // owns the gate; the pool only reads its `beforeIo` guard.
+    expect(gate.stateOf(_profile.id), SshConnectionGateState.idle);
 
     await factory.close();
     gate.dispose();
   });
 
   test(
-    'a failed storage open trips the gate and suppresses more dials',
+    'a failed storage open leaves the gate to its owner',
     () async {
       final launcher = _ConnectLauncher(connectErrorCode: 'auth_aborted');
       final gate = SshConnectionGate();
@@ -49,9 +51,12 @@ void main() {
         factory.storageFor(_profile),
         throwsA(isA<SshWorkerTransportException>()),
       );
-      expect(gate.isDown(_profile.id), isTrue);
+      expect(gate.stateOf(_profile.id), SshConnectionGateState.idle);
       expect(launcher.connectCount, 1);
 
+      // Once the gate owner marks the profile down, the injected read-only
+      // guard rejects I/O before any dial is attempted.
+      gate.markDown(_profile.id);
       await expectLater(
         factory.storageFor(_profile),
         throwsA(isA<SshProfileDownException>()),
@@ -63,35 +68,36 @@ void main() {
     },
   );
 
-  test('the reconnect driver can bypass a down gate', () async {
-    final launcher = _ConnectLauncher(connectErrorCode: 'auth_aborted');
+  test('the pool cannot bypass a down gate on its own', () async {
+    final launcher = _ConnectLauncher();
     final gate = SshConnectionGate();
     final factory = _factory(launcher, gate);
 
+    gate.markDown(_profile.id);
     await expectLater(
-      factory.storageFor(_profile),
-      throwsA(isA<SshWorkerTransportException>()),
+      factory.ensureStorageConnected(_profile),
+      throwsA(isA<SshProfileDownException>()),
     );
-    expect(gate.isDown(_profile.id), isTrue);
+    expect(launcher.connectCount, 0);
 
-    launcher.connectErrorCode = null;
-    await factory.ensureStorageConnected(_profile, allowDialWhenDown: true);
-
-    expect(launcher.connectCount, 2);
-    expect(gate.isUp(_profile.id), isTrue);
+    // Only the gate owner can re-arm it; then the pool dials as usual.
+    gate.allowNextDial(_profile.id);
+    await factory.ensureStorageConnected(_profile);
+    expect(launcher.connectCount, 1);
+    expect(gate.stateOf(_profile.id), SshConnectionGateState.connecting);
 
     await factory.close();
     gate.dispose();
   });
 
-  test('the reconnect driver cannot bypass a suspension', () async {
+  test('a suspended gate rejects the reconnect driver', () async {
     final launcher = _ConnectLauncher();
     final gate = SshConnectionGate();
     final factory = _factory(launcher, gate);
 
     gate.suspend(_profile.id);
     await expectLater(
-      factory.ensureStorageConnected(_profile, allowDialWhenDown: true),
+      factory.ensureStorageConnected(_profile),
       throwsA(isA<SshProfileDownException>()),
     );
     expect(launcher.connectCount, 0);
@@ -101,16 +107,11 @@ void main() {
   });
 
   test('a down gate rejects forward opens without sending a dial', () async {
-    final launcher = _ConnectLauncher(connectErrorCode: 'auth_aborted');
+    final launcher = _ConnectLauncher();
     final gate = SshConnectionGate();
     final factory = _factory(launcher, gate);
 
-    await expectLater(
-      factory.storageFor(_profile),
-      throwsA(isA<SshWorkerTransportException>()),
-    );
-    expect(gate.isDown(_profile.id), isTrue);
-
+    gate.markDown(_profile.id);
     await expectLater(
       factory.openForwardChannel(_profile, '127.0.0.1', 8080),
       throwsA(isA<SshProfileDownException>()),
@@ -124,20 +125,18 @@ void main() {
     gate.dispose();
   });
 
-  test('a target-level forward failure does not trip the gate', () async {
+  test('a target-level forward failure does not touch the gate', () async {
     final launcher = _ConnectLauncher();
     final gate = SshConnectionGate();
     final factory = _factory(launcher, gate);
 
     await factory.storageFor(_profile);
-    expect(gate.isUp(_profile.id), isTrue);
-
     launcher.forwardErrorCode = 'open_failed';
     await expectLater(
       factory.openForwardChannel(_profile, '127.0.0.1', 8080),
       throwsA(isA<SshWorkerForwardException>()),
     );
-    expect(gate.isUp(_profile.id), isTrue);
+    expect(gate.stateOf(_profile.id), SshConnectionGateState.idle);
 
     await factory.close();
     gate.dispose();
@@ -149,7 +148,7 @@ SshClientFactory _factory(_ConnectLauncher launcher, SshConnectionGate gate) =>
       credentialStore: InMemorySshCredentialStore(),
       knownHostRepository: InMemorySshKnownHostRepository(),
       workerManager: SshProfileWorkerManager(launcher: launcher),
-      connectionGate: gate,
+      ioGuard: gate.beforeIo,
     );
 
 final class _ConnectLauncher implements SshWorkerLauncher {

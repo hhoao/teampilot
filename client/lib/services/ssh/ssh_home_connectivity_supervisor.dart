@@ -302,11 +302,25 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
     // `() => _dialInFlight.remove(id)` would return the removed Future, and
     // `whenComplete` waits for a returned Future — deadlocking on the very
     // future it is completing.
-    final future = _dialProfile(profile).whenComplete(() {
+    final future = _runDial(profile).whenComplete(() {
       _dialInFlight.remove(profile.id);
     });
     _dialInFlight[profile.id] = future;
     return future;
+  }
+
+  /// The supervisor — not the pool — owns dial outcome state. A failed dial
+  /// trips the gate so every read-only I/O guard rejects callers until the
+  /// retry loop brings it up; success is marked up by `_onPoolChanged`.
+  Future<void> _runDial(SshProfile profile) async {
+    try {
+      await _dialProfile(profile);
+    } on Object catch (error, stackTrace) {
+      if (isSshTransportConnectionFailure(error)) {
+        _gate.markDown(profile.id);
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
   }
 
   Future<void> dispose() async {
