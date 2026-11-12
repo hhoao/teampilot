@@ -606,6 +606,9 @@ class WslGitCommandRunner implements GitCommandRunner {
       stdinText: stdinText,
       timeout: timeout,
     );
+    if (result.timedOut || result.exitCode != 0) {
+      throw StateError('sh -c failed (${result.exitCode}): ${result.stderr}');
+    }
     return GitCommandResult(
       exitCode: result.exitCode,
       stdout: utf8.decode(result.stdout, allowMalformed: true),
@@ -767,11 +770,18 @@ class RemoteGitCommandRunner implements GitCommandRunner {
     final result = stdinText == null
         ? await _execShell(prefix)
         : await _execShellWithStdin!(prefix, utf8.encode(stdinText));
-    return GitCommandResult(
+    final out = GitCommandResult(
       exitCode: result.exitCode ?? (sshRunSucceeded(result) ? 0 : 1),
       stdout: utf8.decode(result.stdout, allowMalformed: true),
       stderr: utf8.decode(result.stderr, allowMalformed: true),
     );
+    // Same non-zero contract as LocalGitCommandRunner.runScript: silently
+    // returning an empty stdout on a failed script would make Task 4's `find`
+    // look like an empty runtime directory.
+    if (out.exitCode != 0) {
+      throw StateError('sh -c failed (${out.exitCode}): ${out.stderr}');
+    }
+    return out;
   }
 
   @override

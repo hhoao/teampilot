@@ -207,6 +207,16 @@ void main() {
       expect(cap.version, '2.43');
       expect(cap.pathspecFromFile, isTrue);
     });
+
+    test('runScript throws StateError on non-zero exit', () async {
+      final runner = RemoteGitCommandRunner(
+        execShell: (cmd) async => _sshOk('', exitCode: 3),
+      );
+      await expectLater(
+        runner.runScript('false'),
+        throwsA(isA<StateError>()),
+      );
+    });
   });
 
   group('WslGitCommandRunner', () {
@@ -284,6 +294,17 @@ void main() {
       final result = await runner.runScript('printf "ok"');
       expect(result.stdout, 'ok');
       expect(result.exitCode, 0);
+    });
+
+    test('runScript throws StateError on non-zero exit', () async {
+      final runner = WslGitCommandRunner(
+        distro: 'Ubuntu',
+        wslProcessStarter: _fakeWslStart,
+      );
+      await expectLater(
+        runner.runScript('exit 3'),
+        throwsA(isA<StateError>()),
+      );
     });
 
     test('runToFile redirects git output into a WSL path', () async {
