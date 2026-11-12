@@ -1,37 +1,45 @@
-# 远端 rewind / fork 可行性设计（work-plane rewind）
+# 远端 rewind / fork 可行性设计（work-plane rewind，复用 GitCommandRunner）
 
-- 日期：2026-11-12
-- 状态：可行性方案（未实现，待评审）
+- 日期：2026-11-12（v2，架构定稿）
+- 状态：可行性方案（待实现）
 - 关联：`2026-11-03-session-rewind-fork-design.md`、`2026-11-04-user-message-branches-design.md`、`2026-11-11-mobile-chat-message-actions-design.md`
 
 ## 1. 结论
 
-**可行。** 但正确目标不是「把 rewind 从 home 平面搬到远端」，而是「**让 rewind 跟随 work plane**」：rewind 的私有 git 仓库和 work tree（session runtime 目录）本来就应该落在 **agent 实际运行的那台机器**上，而不是固定用 home 平面的 layout。当前实现用 home 平面 layout + 本地 `dart:io` / 本地 `git`，所以只在「home == work 且本地」时成立。
+**可行，且不需要新造执行层。** 项目已有完整的「在任意机器上跑 git / 读写文件」抽象：
 
-需要做三件事：
+- `RuntimeContext` —— 一台机器的身份（`filesystem` + `layout` + `appDataRoot` + `target`）。
+- `Filesystem` —— local / WSL / SFTP 三种实现。
+- `GitCommandRunner` —— `LocalGitCommandRunner` / `WslGitCommandRunner` / `RemoteGitCommandRunner`，带 `isAvailable` 探测（远端按 host 缓存）与 `gitCommandRunnerForContext(ctx)` 工厂。
 
-1. 抽出 `RewindIo` 端口，把 `SeatRewindStore` 里所有 `dart:io` / `Process.start` 换成端口（Phase 0，纯重构，本地行为不变）。
-2. 增加远端实现：`Filesystem`（已有 `SftpFilesystem`）+ `RemoteFileStore.runHost/startShell`（已有 argv-safe 远端执行）+ 远端 `git` 能力探测。
-3. 策略从「拒绝 mobile / 非 local」改为「**目标机器支持 git 且 work-plane context 可解析**」；`RewindForkService` 去掉 `!seat.localRuntime` 硬抛。
+rewind 现在完全绕开了它们，直接用 `dart:io` + 本地 `Process.start`，所以只在「home == work 且本地」时成立。
 
-Android 的 home 与 work 都是同一台 SSH 机器，所以 Phase 1 完成后手机自动具备条件；Phase 2 只需放开 `mobilePlatform` 拒绝并做设备验证。UI 侧（长按菜单的「编辑 / fork / 版本」、点击气泡编辑）**无需再改**：它们已经由 `onEditUserMessage != null` / `version != null` 驱动，rewind 一旦可用就会亮起。
+**目标架构**：让 rewind 跟随 **work plane**，并复用 `Filesystem` + `GitCommandRunner`：
 
-最大风险：**性能**。当前 `commitTurn` 有逐文件 stat（`_dropStaleSeatIndexEntries`）和本地目录遍历（`_includedRuntimeFiles`）；直译成远端会导致 N 次 SSH round-trip。必须批处理（见 §8）。
+1. resolve 出 seat 的 work-plane `RuntimeContext`；
+2. `SeatRewindStore` 变成无 I/O 的纯域，只依赖 `GitCommandRunner` + `Filesystem` + `pathContext`；
+3. 给 `GitCommandRunner` 增加 `runRaw / runToFile / runScript / probe` 四个方法（实现三种后端）；
+4. 策略从「拒绝 mobile / 非 local」改为「work plane 有 git 且版本满足」；
+5. 删除 `RewindForkService` 的 `!seat.localRuntime` 硬抛。
+
+这样 WSL 免费获得远端能力（`WslGitCommandRunner` 已存在），未来新后端只需补 `Filesystem` + `GitCommandRunner`。
+
+UI 无需再改：长按菜单的「编辑 / fork / 版本」和点击气泡编辑已由 `onEditUserMessage != null` / `version != null` 驱动，rewind 一通就亮。
 
 ## 2. 目标 / 非目标
 
 **目标**
 
-- 在 work plane 为 SSH / Termux（Android 的 home）时，完成 checkpoint、版本切换、编辑重发、fork。
+- work plane 为 SSH / Termux（Android 的 home）时，完成 checkpoint、版本切换、编辑重发、fork。
 - 桌面端本地行为完全不变。
-- 失败可降级：目标机没有 git / 离线时保持禁用，不影响聊天主流程。
+- 目标机没有 git / 版本过旧 / 离线时保持禁用，不影响聊天主流程。
 
-**非目标（本方案不改）**
+**非目标**
 
-- 同步/对齐多人 seat 的 checkpoint（`kMixedSeatRewindEnabled` 仍为 false）。
+- 多人 seat 的 checkpoint 对齐（`kMixedSeatRewindEnabled` 仍为 false）。
 - rewind 用户项目 worktree（只动 session runtime 目录）。
-- WSL 目标的 rewind（路径与 `wsl.exe` 执行未覆盖，保持禁用）。
 - 删除旧 checkpoint、解析 CLI transcript 格式。
+- 跨客户端并发协调（v1 依赖 git ref 原子性，进程内 `RewindWorkGate`）。
 
 ## 3. 现状：为什么现在不行
 
@@ -47,13 +55,12 @@ Android 的 home 与 work 都是同一台 SSH 机器，所以 Phase 1 完成后�
      throw StateError('Cannot rewind a remote runtime');
    }
    ```
-   `localRuntime` 来自 `_CubitSeatProcess`（`client/lib/cubits/chat_rewind_adapters.dart:19-26`），同样是 `RuntimeKind.local` 判断。
 
-`isMobilePlatform()` 就是 `Platform.isAndroid || Platform.isIOS`；`gitOnPath()` 在移动端直接返回 false（`client/lib/services/cli/git_on_path.dart:4-9`）。
+`isMobilePlatform()` = `Platform.isAndroid || Platform.isIOS`；`gitOnPath()` 在移动端直接 false（`client/lib/services/cli/git_on_path.dart:4-9`）。
 
-### 3.2 store 全是本地 I/O
+### 3.2 store 绕开了所有抽象
 
-`SeatRewindStore`（`client/lib/services/chat/rewind/seat_rewind_store.dart`，909 行）没有任何 `Filesystem` 抽象，直接 `dart:io`：
+`SeatRewindStore`（`client/lib/services/chat/rewind/seat_rewind_store.dart`，909 行）直接 `dart:io` + `Process.start`：
 
 | 类别 | 位置 | 调用 |
 |---|---|---|
@@ -64,227 +71,303 @@ Android 的 home 与 work 都是同一台 SSH 机器，所以 Phase 1 完成后�
 | 写 blob 到文件 | `:708-720` `:726-763` | `File.parent.create`、`openWrite`、`Process.start` 流式 pipe |
 | 执行 git | `:829-875` | `Process.start(gitExecutable, args, workingDirectory, environment)` |
 
-## 4. 关键架构事实：runtime 在 work plane，不在 home plane
+此外 `SeatRewindStore.forSession` 用 **home** layout（`chat_cubit.dart:448-453` 的 `layout: () => _storage.context.layout`），而 session runtime 目录实际按 **work plane** 解析（`session_lifecycle_service.dart:1352-1357`、`_resolveRoots` `:1480-1504`）。
 
-- session 的 runtime 目录按 **workspace 的工作机**解析：`session_lifecycle_service.dart:1352-1357` 用 `_resolveRoots(session: session)` → `_resolveRoots`（`:1480-1504`）在 `session != null` 时走 `_workContextResolver(target)`，即 work-plane `RuntimeContext`。
-- 但 rewind 的 store 用 **home** layout：`ChatCubit` 构造策略时传 `layout: () => _storage.context.layout`（`client/lib/cubits/chat_cubit.dart:448-453`），`SeatRewindStore.forSession` 用它拼 `sessionDir(...)/rewind/...` 和 `sessionRuntimeDir(...)`（`seat_rewind_store.dart:74-93`）。
-- 当 work target ≠ home target（例如本地 home + SSH 工作区）时，store 指向错误的机器/空目录；这正是 `launchTarget.kind != local` 拒绝存在的原因。
-- 原设计文档也明确把「agent 与 runtime 在另一台机器（SSH work plane）」和 Android 列为 non-goal（`2026-11-03-session-rewind-fork-design.md:28-36`、`:132`）。
+### 3.3 原设计明确排除
 
-**结论：正确改法是让 rewind 使用 work-plane `RuntimeContext`**（它的 `layout`、`filesystem`、`remoteFileStore`、`appDataRoot`），而不是 home context。这样：
+`2026-11-03-session-rewind-fork-design.md:28-36` 把「agent/runtime 在另一台机器（SSH work plane）」和 Android 列为 non-goal；`:132` 说明 SSH seat 不显示 fork/version。
 
-- 桌面 + 本地工作区 → 本地 `dart:io` / 本地 git（与现状一致）。
-- 桌面 + SSH 工作区 → 远端 home/work 同一台 → SFTP + 远端 git。
-- Android（home 与 work 均为 SSH 同一台）→ 同远端路径。
+## 4. 已具备的能力（复用清单）
 
-## 5. 已具备的远端能力
+| 能力 | 位置 | 用途 |
+|---|---|---|
+| `RuntimeContext` | `services/storage/runtime_context.dart:17-90` | 机器身份：`filesystem`、`layout`、`appDataRoot`、`target`、`storageIsRemote`、`remoteFileStore` |
+| `Filesystem` | `services/io/filesystem.dart:74-130` | `stat`/`lstat`、`ensureDir`、`removeRecursive`（文件/目录/链接）、`writeString`、`writeBytes`、`atomicWrite`、`listDir`、`readSymlinkTarget`、`listDirRecursive` |
+| `SftpFilesystem` | `services/io/sftp_filesystem.dart:8-16` | POSIX pathContext，`isRemote == true` |
+| `HostOneShotRunner` | `services/host/host_one_shot_runner.dart:25-147` | local / WSL / SSH 一次性执行 |
+| `GitCommandRunner` | `services/git/git_command_runner.dart:33-290` | `isAvailable`（远端按 host 缓存）、`runInDirectory(dir, args, {environment})` |
+| `gitCommandRunnerForContext` | `services/git/git_command_runner.dart:99-116` | `RuntimeContext` → runner |
+| `hostOneShotRunnerForContext` | `services/host/host_one_shot_runner_for_context.dart` | `RuntimeContext` → runner |
+| `HostShellArgv` / `HostRunRequest` | `services/host/` | argv-safe 引号、env、cwd |
+| work-plane 解析 | `session_lifecycle_service.dart:1549-1557` `resolveWorkContextForTargetId` | target → `RuntimeContext` |
+| `RemoteFileStore.execShell/startShell` | `services/storage/remote_file_store.dart:490-505` | 远端 shell / 流式 exec |
 
-- `RuntimeContext` 暴露 `filesystem`、`appDataRoot`、`layout`、`storageIsRemote`、`remoteFileStore`（`client/lib/services/storage/runtime_context.dart:17-80`）。
-- `Filesystem` 接口已覆盖：`stat` / `lstat`(扩展) / `ensureDir` / `removeRecursive`(文件、目录、链接均可，`local_filesystem.dart:94-106`) / `writeString` / `writeBytes` / `atomicWrite` / `listDir` / `readSymlinkTarget` / `copyFile` / `listDirRecursive` 等（`client/lib/services/io/filesystem.dart:74-130`）。
-- `SftpFilesystem` 是 POSIX pathContext（`sftp_filesystem.dart:8-16`），`isRemote == true`。
-- 远端执行：
-  - `RemoteFileStore.runHost(HostRunRequest)` —— **argv-safe**（`RemoteHostOneShotRunner` + `HostShellArgv.command`，`remote_file_store.dart:490-497`、`host_one_shot_runner.dart:129-148`），支持 executable / arguments / workingDirectory / environment。
-  - `RemoteFileStore.execShell(String)` —— 原始 shell（`remote_file_store.dart:499-501`）。
-  - `RemoteFileStore.startShell(String)` —— 流式 exec（`:503-505`），可等 `exitCode`。
-  - `RemoteFileStore.removeRecursive` = `rm -rf --`（`:316-322`）。
+结论：**执行与文件两层已经存在，rewind 只需要接上去。**
 
-这些足以承载「在 work plane 上跑 git + 读写远端文件」，不需要新造传输层。
+## 5. 目标架构
 
-## 6. 差距清单（gap analysis）
+```
+UI（已解耦：branches / onEditUserMessage）
+        │
+SeatRewindController · RewindWorkGate · checkpoint trackers · policy
+        │
+SeatRewindStore（纯域：refs / tree / checkpoint / restore / fork；零 dart:io）
+        │
+GitCommandRunner（runRaw / runToFile / runScript / probe）
+        │
+RuntimeContext（work plane） ── Filesystem（local / WSL / SFTP）
+        │
+SeatRuntimeResolver（seat → RuntimeContext，缓存）
+RewindCapability（isAvailable + version + batch/stream，缓存）
+```
 
-| # | 差距 | 影响 | 处理 |
-|---|---|---|---|
-| G1 | store 用 home layout | 路径指向错误机器 | 用 work-plane `RuntimeContext` 构造 store |
-| G2 | store 直连 `dart:io` | 远端不可用 | 抽 `RewindIo` 端口 |
-| G3 | 同步 `Directory.existsSync` / `deleteSync` | 远端无法同步 | 端口全部 async |
-| G4 | `Process.start` 本地执行 git | 远端不可用 | 端口 `runGit` → 本地 Process / 远端 `runHost` |
-| G5 | `_runGitToFile` 本地流式落盘 | 远端不可用 | 远端用 shell 重定向 `> dest`（在宿主机流式），或 `startShell` |
-| G6 | `Uri.file(sourceGitDir)`（`:575`） | 远端 POSIX 路径不适用 | 端口提供路径规范化；POSIX 直接用原路径 |
-| G7 | 逐文件 `FileSystemEntity.type`（`:500-506`） | 远端 N 次 round-trip | 远端批处理（一次 shell 或 `find`） |
-| G8 | 目录遍历 `Directory.list`（`:781-812`） | 远端 N 次 round-trip | 远端一次 `find` 拿文件列表 |
-| G9 | 策略拒绝 mobile / 非 local | 功能不可达 | 改为能力探测（见 §7.3） |
-| G10 | `RewindForkService` 的 `localRuntime` 硬抛 | 远端 fork/switch 被拒 | 删除该判断（保留 policy 的能力判断） |
-| G11 | 同步 `gitAvailable` | 远端探测是异步 | 连接时异步探测并缓存，policy 读缓存 |
-| G12 | 测试用本地 `gitDir` 构造 store | 构造签名变化 | 保留 `SeatRewindStore.local(...)` 便捷构造 |
+四个原则：
 
-## 7. 设计
+1. **work plane 是唯一来源**：`SeatRuntimeResolver` 解析 seat → `RuntimeContext`；store 的 `layout`/`fs`/`git` 全部来自它，不读 home layout。
+2. **能力驱动**：policy 读 `RewindCapability`（`isAvailable` + `version` + 可选能力），不再判断 `Platform` 或 `RuntimeKind`。
+3. **域与 I/O 分离**：`SeatRewindStore` 不 `import 'dart:io'`，只依赖 `GitCommandRunner` + `Filesystem` + `p.Context`。
+4. **批量/流式是 runner 能力**：远端一次 exec 跑完 git 序列；大 blob 用宿主机重定向。
 
-### 7.1 `RewindIo` 端口
-
-新增 `client/lib/services/chat/rewind/rewind_io.dart`：
+## 6. `GitCommandRunner` 扩展（唯一新增接口）
 
 ```dart
-enum RewindEntityKind { file, directory, symlink, notFound }
-
-final class RewindFsEntry {
-  final String name;
-  final RewindEntityKind kind;
-}
-
-final class RewindExecResult {
-  final List<int> stdout;
-  final String stderr;
+class GitRawResult {
+  const GitRawResult({required this.exitCode, required this.stdout, required this.stderr});
   final int exitCode;
+  final List<int> stdout; // 原始字节：showFile 需要区分二进制
+  final String stderr;
 }
 
-abstract interface class RewindIo {
-  bool get isRemote;
-  p.Context get pathContext;
-  String get gitExecutable;
+class GitCapability {
+  const GitCapability({required this.available, this.version, this.pathspecFromFile = false});
+  final bool available;
+  final String? version;
+  final bool pathspecFromFile;
+}
 
-  // 文件系统
-  Future<bool> dirExists(String path);
-  Future<bool> fileExists(String path);
-  Future<RewindEntityKind> kind(String path); // lstat 语义
-  Future<void> ensureDir(String path);
-  Future<void> writeString(String path, String content);
-  Future<void> deletePath(String path); // 文件 / 链接 / 目录
-  Future<List<RewindFsEntry>> listDir(String path); // 不递归，含 kind
-  Future<List<String>> listFilesRecursive(String root,
-      {required bool Function(String relative) mayEnter}); // 供 _includedRuntimeFiles
+abstract interface class GitCommandRunner {
+  Future<bool> get isAvailable;
+  Future<GitCommandResult> runInDirectory(String dir, List<String> args, {Map<String, String>? environment});
 
-  // git
-  Future<RewindExecResult> runGit(
+  // 新增
+  Future<GitRawResult> runRaw(
     List<String> args, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    String? stdinText,
+    bool allowFailure = false,
+  });
+
+  Future<void> runToFile(
+    List<String> args,
+    String destPath, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+  });
+
+  Future<GitCommandResult> runScript(
+    String script, {
+    String? workingDirectory,
     Map<String, String>? environment,
     String? stdinText,
   });
-  Future<void> runGitToFile(List<String> args, String destPath);
+
+  Future<GitCapability> probe();
 }
 ```
 
-- `LocalRewindIo`：把现有 `dart:io` 代码原样搬进来（`Process.start`、`Directory.list`、`File.writeAsString`…），行为零变化。
-- `RemoteRewindIo`：持有 `Filesystem` + `RemoteFileStore`。
-  - `runGit` → `runHost(HostRunRequest(executable: io.gitExecutable, arguments: args, environment: env, workingDirectory: workTree))`，stdin 用 `runHostWithStdin` / `runOnStorageWithStdin`（若不足则在端口层用 `startShell` 写 stdin）。
-  - `runGitToFile` → `startShell('<git args> > <dest>')`，argv 用 `HostShellArgv.command`，`dest` 用 `shellSingleQuote`；避免把大 blob 拉回设备。
-  - `listFilesRecursive` → 一次 `find <root> -type f`（带 `-prune` 排除 `plugins/skills/node_modules/cache`），比 SFTP 递归快一个量级。
-  - `kind` → `Filesystem.stat` / `lstat`。
-- `RewindIo.forContext(RuntimeContext ctx, {String gitExecutable = 'git'})`：`ctx.storageIsRemote ? RemoteRewindIo(...) : LocalRewindIo(...)`。
+实现要点：
 
-### 7.2 `SeatRewindStore` 改造
+- `runRaw`
+  - local：`Process.run(git, args, stdoutEncoding: null)`（拿 bytes）。
+  - WSL：`Process.run('wsl.exe', [...], stdoutEncoding: null)`。
+  - remote：`execShell`（`SSHRunResult.stdout` 是 bytes）。
+  - 不使用 `-C`，由调用方传 `--git-dir/--work-tree`。
+- `runToFile`
+  - local / WSL：`Process.start`，stdout pipe 到本地文件（现有 `_runGitToFile` 逻辑）。
+  - remote：`execShell` 跑 `<git args> > <quoted dest>`，数据不出宿主。
+- `runScript`
+  - local：POSIX `sh -lc`；Windows 本地退化为「按行顺序 runRaw」（记录限制）。
+  - WSL：`wsl.exe sh -lc`。
+  - remote：`execShell`。
+- `probe`
+  - `git --version` 解析版本；探测 `--pathspec-from-file`（`git add -h` 或版本阈值）。
+  - 缓存键：host id + git executable；提供 `debugReset...`。
 
-- 构造函数：`SeatRewindStore({required this.gitDir, required this.workTree, required this.target, required RewindIo io})`；
-  - 保留 `SeatRewindStore.local({...})` 供现有测试。
+`GitCommandResult` 保持不变（Text 输出），`runRaw` 是新增字节通道。`runInDirectory` 保留给现有 Git UI 使用。
+
+## 7. `SeatRewindStore` 改造
+
+```dart
+final class SeatRewindStore {
+  SeatRewindStore({
+    required this.gitDir,
+    required this.workTree,
+    required this.target,
+    required this.git,   // GitCommandRunner
+    required this.fs,    // Filesystem
+    this.commandTimeout = const Duration(seconds: 30),
+  });
+
+  final GitCommandRunner git;
+  final Filesystem fs;
+  p.Context get paths => fs.pathContext;
+}
+```
+
 - `_repoArgs` 不变。
-- 所有 `dart:io` 调用替换为 `io.*`；所有 git 调用走 `io.runGit` / `io.runGitToFile`。
-- `SeatRewindStore.forSession` 增加 `required RuntimeContext context`，内部用 `context.layout` 与 `RewindIo.forContext(context)`。
-- `_dropStaleSeatIndexEntries`：远端实现改为一次 shell（`ls-files -z | while read ... test -f`）或接受多一次 round-trip；本地不变。
-- `_includedRuntimeFiles`：远端走 `listFilesRecursive`。
-
-### 7.3 work-plane 解析与能力探测
-
-- `SeatRewindPolicy` 构造改为：
+- 所有 `dart:io` → `fs.*`（`stat`/`lstat`/`ensureDir`/`writeString`/`removeRecursive`/`listDir`）。
+- 所有 git → `git.runRaw` / `git.runToFile` / `git.runScript`。
+- `SeatRewindStore.forSession` 增加 `required RuntimeContext context`：
   ```dart
-  SeatRewindPolicy({
-    required Future<RuntimeContext> Function(AppSession, String?) workContextFor,
-    required bool Function(RuntimeTarget) gitAvailable, // 读缓存
-    ...
-  })
+  factory SeatRewindStore.forContext({
+    required RuntimeContext context,
+    required String workspaceId,
+    required String sessionId,
+    required SeatRewindTarget target,
+    String? gitExecutable,
+    Duration commandTimeout = const Duration(seconds: 30),
+  }) => SeatRewindStore(
+    gitDir: context.layout.pathContext.join(
+      context.layout.workspace.sessionDir(workspaceId, sessionId),
+      'rewind', target.seatKey,
+    ),
+    workTree: context.layout.workspace.sessionRuntimeDir(workspaceId, sessionId),
+    target: target,
+    git: gitCommandRunnerForContext(context, gitExecutable: gitExecutable),
+    fs: context.filesystem,
+    commandTimeout: commandTimeout,
+  );
   ```
-  `evaluate` 需要 work context，但当前是同步。两条路：
-  1. **缓存优先**（推荐）：会话连接/切换时异步 `resolveWorkContextForTargetId(target.id)` 并缓存，`evaluate` 读缓存；未缓存时返回 `denied(homeNotReady)`。
-  2. 把 `rewindActionsAllowed` / `evaluate` 改成 `Future`，所有调用点（`SessionHistoryRewindHost._reload` 已是 async）适配。
-- git 能力探测：
-  - local → `gitOnPath()`。
-  - remote → 每台机器一次 `runHost(git --version)`，缓存在 home/context 代际上；`gitAvailable(target)` 只读缓存。
-- `RewindDenial` 调整：
-  - 保留 `mixedSeatsDisabled`。
-  - 删除 `mobilePlatform` / `remoteRuntime` 的语义，改为 `workPlaneUnsupported`（WSL 等）与 `gitMissing`、`homeNotReady`。
+- 保留 `SeatRewindStore.local(...)` 便捷构造（`LocalGitCommandRunner()` + `LocalFilesystem()`），现有测试最小改动。
+- 同步调用改 async：`:236` `:253` `:278-279` `:313` 的 `existsSync/deleteSync`。
+- `Uri.file(sourceGitDir)`（`:575`）→ 端口按 `paths.style` 处理：POSIX 直接用原路径。
 
-### 7.4 `RewindForkService`
+## 8. 策略、解析与能力
 
-删除 `!seat.localRuntime` 抛错（`rewind_fork_service.dart:49-51`）。理由：`_CubitSeatProcess.stopAndWait/relaunch` 本身已经按 ACP/PTY 分派，支持远端 seat（`chat_rewind_adapters.dart:37-108`）。是否可停止应由 policy 决定，而不是再判一次 `localRuntime`。
+### 8.1 `SeatRuntimeResolver`
 
-### 7.5 写入侧（自动继承）
+新增 `client/lib/services/chat/rewind/seat_runtime_resolver.dart`：
 
-- PTY：`SeatPtyCheckpointTracker.checkpointTurn` → `host.ptyCommitCheckpoint` → `store.commitTurn`（`seat_pty_checkpoint_tracker.dart:60-100`、`chat_cubit.dart:1642`）。
-- ACP：`acp_runtime_attach._turnCheckpointCallback` → `store.commitTurn`（`acp_runtime_attach.dart:655-695`）。
-- 版本列表：`readSeatBranches(store:)`（`seat_branches.dart:43`）。
+```dart
+final class SeatRuntimeResolver {
+  SeatRuntimeResolver({
+    required Future<RuntimeContext> Function(RuntimeTarget target) resolve,
+  });
 
-这三处只依赖 store，store 换 io 后自动获得远端能力；无需各自加分支。
+  Future<RuntimeContext> forSeat({
+    required AppSession session,
+    required String memberId,
+    required RuntimeTarget workTarget,
+  });
+  void invalidate(String targetId);
+}
+```
 
-## 8. 性能与批处理
+- 内部按 `target.id` 缓存 `RuntimeContext`；home 代际/重连时 `invalidate`。
+- 基于 `SessionLifecycleService.resolveWorkContextForTargetId`。
 
-每个 turn 结束都会跑一次 `commitTurn`。本地路径的代价：`ls-files` + 逐文件 stat + 目录 walk + 1 次批量 `add` + `write-tree` + `commit-tree` + 3 次 `update-ref`。
+### 8.2 `RewindCapability`
 
-远端若逐项 round-trip，单 turn 可能到数秒。必须：
+新增 `client/lib/services/chat/rewind/rewind_capability.dart`：把 `GitCommandRunner.isAvailable` + `probe()` 汇总为：
 
-1. `_includedRuntimeFiles` → 一次 `find`（远端），而不是 SFTP 递归。
-2. `_dropStaleSeatIndexEntries` → 一次 shell 批量 `test -f`；或（简化）远端跳过该检查（它是为「文件被删但 index 还在」兜底，git `add -A` 语义可覆盖）。**建议 v1 远端跳过，记为可见的权衡。**
-3. `commitTurn` 的序列（add → write-tree → commit-tree → 3×update-ref）可合并成**一个 shell 脚本**，一次 exec 完成；stdin 传 pathspec。
-4. `runGitToFile` 用远端重定向，数据不出宿主机。
+```dart
+final class RewindCapability {
+  final bool available;
+  final String? gitVersion;
+  final bool pathspecFromFile;
+  final bool batchScript;
+  final bool streamingToFile;
+}
+```
 
-目标：单 turn 远端 checkpoint ≤ 2-3 次 exec（正常 turn），而不是数十次。
+按 host 缓存；`git==null` / 版本过旧 → `available=false`。
 
-## 9. 风险与开放问题
+### 8.3 策略
+
+`SeatRewindPolicy.evaluate` 保持**同步**（UI 与宿主大量同步调用），改为读缓存：
+
+- 输入：work-plane `RuntimeContext`（若未解析 → `denied(workPlaneNotReady)`）、`RewindCapability`。
+- 拒绝项：`mixedSeatsDisabled`、`workPlaneNotReady`、`gitMissing`、`gitTooOld`、`unsupportedBackend`（Windows 远端）。
+- **删除** `mobilePlatform` / `remoteRuntime`。
+
+`SessionHistoryRewindHost._reload` 先 `await resolver.forSeat(...)` + `await capability.for(ctx)`，再 `policy.evaluate`；`build` 读已缓存值。
+
+### 8.4 `RewindForkService`
+
+删除 `!seat.localRuntime` 抛错（`rewind_fork_service.dart:49-51`）。`_CubitSeatProcess.stopAndWait/relaunch` 已按 ACP/PTY 分派并支持远端（`chat_rewind_adapters.dart:37-108`）。
+
+## 9. 性能与批处理
+
+`commitTurn` 的远端代价必须收敛：
+
+1. `_includedRuntimeFiles` → 远端用一次 `find <runtime> -type f`（`-prune` 排除 `plugins/skills/node_modules/cache`），替代 SFTP 递归。
+2. `_dropStaleSeatIndexEntries` → 远端跳过（v1 权衡，记录）；或一次 shell 批量 `test -f`。
+3. `commitTurn` 的 add → write-tree → commit-tree → 3×update-ref 合并为一个 `runScript`（一次 exec）。
+4. `showFile` / `_writeRawBlob` 用 `runRaw` / `runToFile`，大文件不出宿主。
+
+目标：正常 turn 的远端 checkpoint ≤ 2-3 次 exec。
+
+## 10. 风险与开放问题
 
 | 风险 | 说明 | 缓解 |
 |---|---|---|
-| 性能 | 每次 turn 的远端 round-trip | §8 批处理；必要时加「只在 turn 结束且 app 前台」 |
-| 网络中断 | checkpoint 失败 / 半写 | 失败仅记日志、不阻塞 turn；`RewindWorkGate` 串行；下次 checkpoint 以 `checked-out` 为父 |
-| 并发客户端 | 同一远端 home 多端连接时进程内锁无效 | v1 接受；依赖 git ref 原子性；记录为已知限制 |
-| 远端 git 版本 | 老版本无 `--pathspec-from-file` | 现有 `on StateError` 回退保留（会退化为逐文件，仅老版本） |
-| Windows 远端 home | `remoteOs == windows` 的路径/命令 | v1 保持拒绝（`workPlaneUnsupported`） |
-| WSL | `WslFilesystem` 非 remote，但 `wsl.exe` 执行未覆盖 | v1 保持拒绝 |
-| 大文件 | ACP 的 SQLite/transcript | `runGitToFile` 远端重定向，不经过设备内存 |
-| 磁盘占用 | 每个 seat 一份私有 git 仓库在 work plane | 与本地一致；不新增策略 |
-| `Uri.file` | Windows 本地路径语义 | 端口层按 `pathContext.style` 处理 |
-| 依赖 context 缓存 | `evaluate` 同步读缓存，可能短暂 `homeNotReady` | `SessionHistoryRewindHost._reload` 已能重试；UI 先禁用后亮起 |
+| 性能 | 每 turn 远端 exec | §9 批处理；必要时只在 turn 结束且前台 |
+| 网络中断 | checkpoint 失败/半写 | 失败仅日志；`RewindWorkGate` 串行；下次以 `checked-out` 为父 |
+| 并发客户端 | 进程内锁不跨端 | v1 接受；依赖 git ref 原子性；记录限制 |
+| 远端 git 版本 | 无 `--pathspec-from-file` | `probe` 探测；旧版回退逐文件 |
+| Windows 远端 home | 路径/命令差异 | v1 `unsupportedBackend` 拒绝 |
+| WSL | 已有 runner，但路径/工作区需验证 | Phase 1 顺带验证；有问题则临时拒绝 |
+| 大文件 | SQLite/transcript | `runToFile` 宿主侧重定向 |
+| context/capability 缓存 | 同步 policy 读缓存可能短暂未就绪 | `workPlaneNotReady` → UI 先禁用，`_reload` 重试 |
+| `Uri.file` | Windows 本地路径 | `paths.style` 分支 |
 
-**开放问题（实现前需确认）**
+**开放问题**
 
-1. work-plane `RuntimeContext` 是否总是能在会话连接时解析到（SSH 断线/冷启动缓存）？
-2. 远端 `git --version` 探测放在 home 连接完成时，还是首次进入会话时？缓存失效条件（home 切换、重连）？
-3. `runHost` 的 stdin 能力是否满足 `git add --pathspec-from-file=-` / `rev-list --stdin`；若不足，是否统一改走 `startShell`？
-4. 远端跳过 `_dropStaleSeatIndexEntries` 是否可接受（需要一次回归验证：文件被删除后再 checkpoint，restore 是否残留旧文件）？
-5. Android 上「home == work」是否恒成立？若存在 local home + SSH work 的组合，按 `workPlaneUnsupported` 继续拒绝即可。
+1. work-plane context 在会话连接时是否总能解析（SSH 冷启动缓存）？
+2. capability 探测放在 home 连接还是首次进入会话？失效条件？
+3. `runScript` 在 Windows 本地是否要做（还是退化为顺序执行）？
+4. 远端跳过 `_dropStaleSeatIndexEntries` 是否可接受（需回归：删文件后 checkpoint，restore 是否残留）？
+5. Android 是否恒为「home == work」？若存在 local home + SSH work，按 capability 自然拒绝。
 
-## 10. 分阶段落地
+## 11. 分阶段落地
 
 | 阶段 | 内容 | 产物 | 风险 |
 |---|---|---|---|
-| **Phase 0** | 抽 `RewindIo` + `LocalRewindIo`，store 全量改走端口；不加任何远端能力 | 纯重构，现有 rewind 测试全绿 | 低 |
-| **Phase 1** | `RemoteRewindIo` + work-plane context 解析 + git 探测 + policy 改造 + fork service 去 `localRuntime` | 桌面 + SSH work plane 可用 | 中 |
-| **Phase 2** | 放开 `mobilePlatform` 拒绝；Android 设备验证 | 移动端「编辑 / fork / 版本 / 点击气泡编辑」自动亮起 | 中（性能/网络） |
-| **Phase 3**（可选） | 移动端编辑体验打磨（面板定位、键盘、长按菜单顺序） | UI | 低 |
+| **Phase 0** | `SeatRewindStore` 改依赖 `GitCommandRunner` + `Filesystem`；本地注入现有实现；纯重构 | 现有 rewind 测试全绿 | 低 |
+| **Phase 1** | `runRaw/runToFile/runScript/probe` + `SeatRuntimeResolver` + `RewindCapability` + policy/fork 改造 | 桌面 SSH home 可用；WSL 顺带验证 | 中 |
+| **Phase 2** | 删除 mobile 拒绝；Android 真机验证 | 移动端「编辑/fork/版本/点击气泡编辑」自动亮起 | 中 |
+| **Phase 3** | 体验打磨（可选） | UI | 低 |
 
-Phase 0 单独交付可以先合并，不改变任何用户可见行为。
+Phase 0 可单独合并，行为不变。
 
-## 11. 测试计划
+## 12. 测试计划
 
-- **Phase 0**：现有 `client/test/services/chat/rewind/*`（`seat_rewind_store_test.dart` 513 行、`rewind_fork_service_test.dart`、`seat_branches_test.dart`、`seat_rewind_policy_test.dart`）全绿，证明重构无行为变化。
+- **Phase 0**：`seat_rewind_store_test.dart`（513 行）、`seat_branches_test.dart`、`rewind_fork_service_test.dart`、`seat_rewind_policy_test.dart` 全绿；`SeatRewindStore.local(...)` 保持测试构造方式。
 - **Phase 1**：
-  - `FakeRewindIo`：记录/回放 exec 与文件操作，单测 `SeatRewindStore` 在「远端」语义下的路径与参数（不需要真 SSH）。
-  - `RemoteRewindIo` 单测：用注入的 `RemoteFileStore`/`Filesystem` fake，断言 argv-safe 命令、stdin、重定向。
-  - policy 单测：local+git → allowed；remote+git → allowed；no git → denied；WSL → denied；未解析 work context → denied。
-  - 手动：桌面 + SSH home 跑一轮 checkpoint → 版本切换 → 编辑重发 → fork。
-- **Phase 2**：Android 真机（SSH home）：长按菜单出现「编辑 / 从版本」，版本 `1/2` 可切换；点击用户气泡弹面板 + 压暗；发送后旧轮次被替换。
+  - `GitCommandRunner` 新方法单测：local 用假 `Process` runner；remote 用假 `execShell`，断言 argv、env、stdin、重定向。
+  - `SeatRuntimeResolver` / `RewindCapability` 单测：缓存、失效、无 git、版本过旧。
+  - policy 单测：local+git → allowed；remote+git → allowed；no git → denied；WSL → 视验证结果；未解析 → `workPlaneNotReady`。
+  - 手动 e2e（桌面 + SSH home）：checkpoint → 版本切换 → 编辑重发 → fork。
+- **Phase 2**：Android 真机（SSH home）：长按菜单「编辑/版本」、点击气泡弹面板 + 压暗、发送后旧轮次被替换。
 - 按 `AGENTS.md`：`flutter analyze` → 单文件 `dart run tool/run_tests.dart` → 全量一次。
 
-## 12. 影响面
+## 13. 影响面
 
 新增：
-- `client/lib/services/chat/rewind/rewind_io.dart`（端口 + local/remote 实现，或拆两个文件）
+- `client/lib/services/chat/rewind/seat_runtime_resolver.dart`
+- `client/lib/services/chat/rewind/rewind_capability.dart`
+- 测试：`rewind_io` 相关改为 runner 测试；`seat_runtime_resolver_test.dart`、`rewind_capability_test.dart`
 
 修改：
-- `seat_rewind_store.dart`（全部 I/O 走端口，签名加 `RewindIo` / `RuntimeContext`）
-- `seat_rewind_policy.dart`（work-plane context、能力探测、denial 调整）
-- `rewind_fork_service.dart`（删除 `localRuntime` 抛错）
-- `chat_cubit.dart`（策略构造、work context 缓存、git 探测）
-- `seat_rewind_controller.dart`（`loadBranches` / `fork` 传 context）
-- `seat_pty_checkpoint_tracker.dart`（若 policy 改 async，需要适配）
-- `acp_runtime_attach.dart`（若 policy 改 async）
-- 测试：`seat_rewind_store_test.dart`、`seat_rewind_policy_test.dart`、`rewind_fork_service_test.dart`、`seat_branches_test.dart`、新增 `rewind_io_test.dart` / `remote_rewind_io_test.dart`
+- `services/git/git_command_runner.dart`（+4 方法 × 3 实现）
+- `seat_rewind_store.dart`（去 `dart:io`，注入 runner/fs）
+- `seat_rewind_policy.dart`（capability 驱动，denial 调整）
+- `rewind_fork_service.dart`（去 `localRuntime`）
+- `chat_cubit.dart`（resolver/capability 接线、策略构造）
+- `seat_rewind_controller.dart`（传 context）
+- `seat_pty_checkpoint_tracker.dart` / `acp_runtime_attach.dart`（policy 同步读缓存，通常不变）
+- 测试：上述 rewind 测试
 
 不动：
-- UI（长按菜单、编辑面板、`session_history_thread.dart`）——已经由 rewind 能力驱动。
-- `ai_message_ui` / `shared_ui` / vendored 包。
-- 用户项目 worktree。
+- UI（长按菜单、编辑面板、`session_history_thread.dart`）
+- `ai_message_ui` / `shared_ui` / vendored 包
+- 用户项目 worktree
 
-## 13. 待确认问题（给评审）
+## 14. 待确认
 
 1. 是否接受 Phase 0 先合入（纯重构）？
-2. 远端 git 探测与 work-context 解析放在哪个生命周期（home 连接 vs 首次进入会话）？
-3. Windows 远端 home 与 WSL 是否明确保持不支持？
-4. 远端 `_dropStaleSeatIndexEntries` 是否接受跳过（性能 vs 残留文件）？
-5. 移动端放开后，是否需要「checkpoint 期间不阻塞发送」的开关（性能保守策略）？
+2. capability 探测时机（home 连接 vs 首次进入会话）？
+3. Windows 远端 home 是否明确不支持？
+4. 远端是否接受跳过 `_dropStaleSeatIndexEntries`？
+5. Windows 本地是否实现 `runScript`，还是退化为顺序执行？
