@@ -15,6 +15,7 @@ import 'bootstrap/managed_provider_wiring.dart';
 import 'bootstrap/catalog_runtime_wiring.dart';
 import 'bootstrap/catalog_wiring.dart';
 import 'bootstrap/chat_session_wiring.dart';
+import 'bootstrap/cli_bootstrap_wiring.dart';
 import 'bootstrap/home_plane_switch.dart';
 import 'bootstrap/home_plane_wiring.dart';
 import 'bootstrap/hub_wiring.dart';
@@ -32,10 +33,6 @@ import 'bootstrap/command_wiring.dart';
 import 'bootstrap/automation_wiring.dart';
 import 'team_generation_graph.dart';
 import '../cubits/app_provider_cubit.dart';
-import '../services/cli/antigravity/antigravity_bootstrap_entry.dart';
-import '../services/cli/antigravity/capabilities/acp_adapter_installer.dart';
-import '../services/cli/gemini/gemini_bootstrap_entry.dart';
-import '../services/cli/grok/grok_bootstrap_entry.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/remote_download_catalog_cubit.dart';
 import '../cubits/automation_cubit.dart';
@@ -62,7 +59,6 @@ import 'event_transport_home.dart';
 import '../services/chat/conversation/prompt_delivery/prompt_delivery_coordinator.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/chat/team_generation/mcp/team_composer_mcp_handler.dart';
-import '../models/app_provider_config.dart';
 import '../models/app_session.dart';
 import '../models/session_list_entry.dart';
 import '../services/catalog/catalog_runtime.dart';
@@ -73,7 +69,6 @@ import '../services/launch_profile/team/launch_profile_selectors.dart';
 import '../cubits/board_cubit.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
-
 import '../cubits/notification_cubit.dart';
 import '../cubits/progress_activity_cubit.dart';
 import '../cubits/repo_clone_cubit.dart';
@@ -180,23 +175,8 @@ import '../services/floating_workspace/surfaces/html_preview_floating_surface.da
 import '../services/floating_workspace/surfaces/run_floating_surface.dart';
 import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
-import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
-import '../services/cli/claude/claude_bootstrap_entry.dart';
-import '../services/cli/codex/codex_bootstrap_entry.dart';
-import '../services/cli/cursor/cursor_bootstrap_entry.dart';
-import '../services/cli/registry/installer/binary_archive_installer.dart';
-import '../services/cli/opencode/opencode_bootstrap_entry.dart';
-import '../services/host/host_one_shot_runner_for_context.dart';
-import '../services/host/host_process_starter_for_context.dart';
 import '../services/host/host_shell_path_resolver.dart';
-import '../services/cli/claude/provider/claude_provider_credentials_service.dart';
-import '../services/cli/codex/provider/codex_provider_credentials_service.dart';
-import '../services/cli/opencode/provider/opencode_models_service.dart';
-import '../services/provider/api_model_catalog_service.dart';
-import '../services/cli/cursor/provider/cursor_agent_models_service.dart';
-import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
-import '../services/provider/provider_credential_host_runner.dart';
 import '../services/provider_usage/managed_provider_secret_store.dart';
 import '../services/provider_usage/managed_provider_usage_adapter.dart';
 import '../services/provider_usage/managed_provider_usage_coordinator.dart';
@@ -224,7 +204,6 @@ import '../services/github/github_credentials_store.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import '../services/ssh/ssh_connection_gate.dart';
 import '../services/ssh/ssh_home_connectivity_supervisor.dart';
-
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
 import '../services/ssh/mcp/session_ssh_mcp_executor.dart';
 import '../services/ssh/mcp/session_ssh_mcp_http.dart';
@@ -952,198 +931,14 @@ Future<AppShell> buildAppShell({
       await homePlaneSwitch.persistSshHomePathCacheIfLive();
     };
 
-    void onCredentialLoginHint(CredentialLoginProgress progress) {
-      appProviderCubit.reportCredentialLoginProgress(progress);
-    }
-
-    final credentialHostRunner = ProviderCredentialHostRunner(
-      oneShot: () => hostOneShotRunnerForContext(homeStorage.context),
-      streaming: () => hostProcessStarterForContext(homeStorage.context),
-      openUrl: openCredentialLoginUrl,
-      onLoginHint: onCredentialLoginHint,
+    wireCliBootstrap(
+      cliToolRegistry: cliToolRegistry,
+      homeStorage: homeStorage,
+      appProviderCubit: appProviderCubit,
+      sessionPreferencesCubit: sessionPreferencesCubit,
+      remoteDownloader: remoteDownloader,
+      openCredentialLoginUrl: openCredentialLoginUrl,
     );
-
-    final claudeCredentialsService = ClaudeProviderCredentialsService(
-      storage: homeStorage,
-      fs: homeStorage.fs,
-      basePath: homeStorage.paths.basePath,
-      resolveClaudeExecutable: () =>
-          sessionPreferencesCubit.resolveExecutable(CliTool.claude),
-      resolveHomeDirectory: () => homeStorage.home,
-      hostRunner: credentialHostRunner,
-    );
-    final cursorCredentialsService = CursorProviderCredentialsService(
-      storage: homeStorage,
-      fs: homeStorage.fs,
-      basePath: homeStorage.paths.basePath,
-      resolveCursorExecutable: () =>
-          sessionPreferencesCubit.resolveExecutable(CliTool.cursor),
-      hostRunner: credentialHostRunner,
-    );
-    final codexCredentialsService = CodexProviderCredentialsService(
-      storage: homeStorage,
-      fs: homeStorage.fs,
-      basePath: homeStorage.paths.basePath,
-      resolveCodexExecutable: () =>
-          sessionPreferencesCubit.resolveExecutable(CliTool.codex),
-      hostRunner: credentialHostRunner,
-    );
-    final opencodeModelsService = OpencodeModelsService(storage: homeStorage);
-
-    // Cached Gemini API key for the ACP agent env (refreshed from provider
-    // rows; the ACP credential source is a sync closure).
-    String? cachedGeminiApiKey;
-    // Cached xAI API key for the ACP/headless env; provider-bound keys are
-    // injected per seat, so this is only the app-wide fallback.
-    String? cachedGrokApiKey;
-    // Cached Claude provider row matching the CLI's selected official-vs-key
-    // id for the sync ACP auth source; refreshed alongside the Gemini key.
-    AppProviderConfig? cachedClaudeProvider;
-    // Cached Codex provider row matching the CLI's selected official-vs-key
-    // id for the sync ACP auth source; refreshed alongside Claude / Gemini.
-    AppProviderConfig? cachedCodexProvider;
-
-    cliToolRegistry.configure(
-      CliBootstrap({
-        CliTool.claude: ClaudeBootstrapEntry(
-          credentialsService: claudeCredentialsService,
-          acpAuthSource: () => claudeAcpAuthForProvider(
-            cachedClaudeProvider,
-            claudeCredentialsService,
-          ),
-          modelsService: ApiModelCatalogService(
-            storage: homeStorage,
-            protocol: ApiModelCatalogProtocol.anthropic,
-            cacheDirectory: 'claude_models',
-          ),
-        ),
-        CliTool.cursor: CursorBootstrapEntry(
-          credentialsService: cursorCredentialsService,
-          agentModelsService: CursorAgentModelsService(storage: homeStorage),
-        ),
-        CliTool.codex: CodexBootstrapEntry(
-          credentialsService: codexCredentialsService,
-          acpAuthSource: () => codexAcpAuthForProvider(cachedCodexProvider),
-          codexPathSource: () =>
-              sessionPreferencesCubit.resolveExecutable(CliTool.codex),
-          modelsService: ApiModelCatalogService(
-            storage: homeStorage,
-            protocol: ApiModelCatalogProtocol.openAi,
-            cacheDirectory: 'codex_models',
-          ),
-        ),
-        CliTool.opencode: OpencodeBootstrapEntry(
-          modelsService: opencodeModelsService,
-        ),
-        CliTool.gemini: GeminiBootstrapEntry(
-          credentialSource: () => cachedGeminiApiKey,
-        ),
-        CliTool.grok: GrokBootstrapEntry(
-          credentialSource: () => cachedGrokApiKey,
-        ),
-        CliTool.antigravity: AntigravityBootstrapEntry(
-          storage: homeStorage,
-          acpInstaller: AntigravityAcpAdapterInstaller(
-            storage: homeStorage,
-            binary: BinaryArchiveInstaller(
-              fs: homeStorage.fs,
-              fetch: (uri, {expectedSha256, onProgress, isCancelled}) =>
-                  remoteDownloader.fetch(
-                    uri,
-                    destFileName: 'antigravity-acp.zip',
-                    expectedSha256: expectedSha256,
-                    onProgress: onProgress,
-                    isCancelled: isCancelled,
-                  ),
-            ),
-          ),
-        ),
-      }, storage: homeStorage),
-    );
-    // Keep the cached Gemini API key current: the credential source must be
-    // sync (AcpCredentialSource), but provider rows load asynchronously.
-    var geminiCredentialRefreshInFlight = false;
-    void refreshGeminiCredential() {
-      if (geminiCredentialRefreshInFlight) return;
-      geminiCredentialRefreshInFlight = true;
-      appProviderCubit
-          .loadProvidersFor(CliTool.gemini)
-          .then((providers) {
-            final key = providers
-                .where((p) => p.id == 'google')
-                .map((p) => p.apiKey.trim())
-                .firstWhere((k) => k.isNotEmpty, orElse: () => '')
-                .trim();
-            cachedGeminiApiKey = key.isEmpty ? null : key;
-          })
-          .catchError((Object _) {})
-          .whenComplete(() => geminiCredentialRefreshInFlight = false);
-    }
-
-    var grokCredentialRefreshInFlight = false;
-    void refreshGrokCredential() {
-      if (grokCredentialRefreshInFlight) return;
-      grokCredentialRefreshInFlight = true;
-      appProviderCubit
-          .loadProvidersFor(CliTool.grok)
-          .then((providers) {
-            final key = providers
-                .map((p) => p.apiKey.trim())
-                .firstWhere((k) => k.isNotEmpty, orElse: () => '')
-                .trim();
-            cachedGrokApiKey = key.isEmpty ? null : key;
-          })
-          .catchError((Object _) {})
-          .whenComplete(() => grokCredentialRefreshInFlight = false);
-    }
-
-    var claudeProviderRefreshInFlight = false;
-    void refreshClaudeProvider() {
-      if (claudeProviderRefreshInFlight) return;
-      claudeProviderRefreshInFlight = true;
-      appProviderCubit
-          .loadProvidersFor(CliTool.claude)
-          .then((providers) {
-            cachedClaudeProvider = pickClaudeAcpProvider(
-              providers: providers,
-              selectedId: appProviderCubit
-                  .state
-                  .selectedProviderIdByCli[CliTool.claude],
-            );
-          })
-          .catchError((Object _) {})
-          .whenComplete(() => claudeProviderRefreshInFlight = false);
-    }
-
-    var codexProviderRefreshInFlight = false;
-    void refreshCodexProvider() {
-      if (codexProviderRefreshInFlight) return;
-      codexProviderRefreshInFlight = true;
-      appProviderCubit
-          .loadProvidersFor(CliTool.codex)
-          .then((providers) {
-            cachedCodexProvider = pickCodexAcpProvider(
-              providers: providers,
-              selectedId:
-                  appProviderCubit.state.selectedProviderIdByCli[CliTool.codex],
-            );
-          })
-          .catchError((Object _) {})
-          .whenComplete(() => codexProviderRefreshInFlight = false);
-    }
-
-    refreshClaudeProvider();
-    refreshCodexProvider();
-    refreshGeminiCredential();
-    refreshGrokCredential();
-    // Self-managing: when appProviderCubit closes (shell teardown), the
-    // broadcast stream's onDone fires and nothing further is refreshed.
-    appProviderCubit.stream.listen((_) {
-      refreshClaudeProvider();
-      refreshCodexProvider();
-      refreshGeminiCredential();
-      refreshGrokCredential();
-    }, onDone: () {});
 
     final skillCatalog = wireSkillCatalog(storage: homeStorage);
     final skillRepo = skillCatalog.skillRepository;
@@ -2083,6 +1878,8 @@ Future<AppShell> buildAppShell({
     // here so recovery is automatic; the connection page shows progress and
     // can cancel/continue it. Reachable and non-SSH homes keep their previous
     // boot behavior.
+    // isSshHome implies a non-null homeProfileId (set from
+    // isSshHome ? homeProfileId : null in wireHomePlane).
     if (isSshHome && !initialHome.reachable) {
       sshProfileConnectionCoordinator.restartReconnect(homeProfileId!);
     }
@@ -2374,7 +2171,6 @@ Future<AppShell> buildAppShell({
       writeHomeTarget: (target) => homeTarget = target,
       readActiveHomeProfileId: () => activeHomeProfileId,
       writeActiveHomeProfileId: (id) => activeHomeProfileId = id,
-      readWatchedConnectivityKey: () => watchedHomeProfileConnectivityKey,
       writeWatchedConnectivityKey: (key) =>
           watchedHomeProfileConnectivityKey = key,
       homeInvalidationService: () => homeInvalidationService,

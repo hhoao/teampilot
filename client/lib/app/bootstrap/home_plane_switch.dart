@@ -23,8 +23,8 @@ import 'managed_provider_control_plane.dart';
 /// active profile id, and the connectivity-watch baseline all stay shell-owned
 /// and arrive as accessor pairs ([readHomeTarget]/[writeHomeTarget],
 /// [readActiveHomeProfileId]/[writeActiveHomeProfileId],
-/// [readWatchedConnectivityKey]/[writeWatchedConnectivityKey]), so every write
-/// lands in the shell's own variable.
+/// [writeWatchedConnectivityKey]), so every write lands in the shell's own
+/// variable.
 ///
 /// The rest of the shell's seams arrive as accessors too:
 /// [reinstallStorageContext] is assigned by the shell after this controller
@@ -49,7 +49,6 @@ class HomePlaneSwitchController {
     required this.writeHomeTarget,
     required this.readActiveHomeProfileId,
     required this.writeActiveHomeProfileId,
-    required this.readWatchedConnectivityKey,
     required this.writeWatchedConnectivityKey,
     required this.homeInvalidationService,
   });
@@ -70,7 +69,6 @@ class HomePlaneSwitchController {
   final void Function(RuntimeTarget target) writeHomeTarget;
   final String? Function() readActiveHomeProfileId;
   final void Function(String? profileId) writeActiveHomeProfileId;
-  final String? Function() readWatchedConnectivityKey;
   final void Function(String? key) writeWatchedConnectivityKey;
   final HomeInvalidationService Function() homeInvalidationService;
 
