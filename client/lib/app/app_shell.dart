@@ -21,6 +21,7 @@ import 'bootstrap/install_wiring.dart';
 import 'bootstrap/session_runtime_wiring.dart';
 import 'bootstrap/session_state_wiring.dart';
 import 'bootstrap/session_usage_wiring.dart';
+import 'bootstrap/ssh_plane_wiring.dart';
 import 'bootstrap/workspace_wiring.dart';
 import 'bootstrap/connect_wiring.dart';
 import 'bootstrap/command_wiring.dart';
@@ -66,8 +67,6 @@ import '../services/catalog/catalog_mutation_bus.dart';
 import '../services/remote/remote_cli_readiness.dart';
 import '../services/editor_platform/editor_platform.dart';
 import '../services/launch_profile/team/launch_profile_selectors.dart';
-import '../services/ssh/worker/ssh_worker_entry.dart';
-import '../services/ssh/worker/ssh_worker_metrics.dart';
 import '../cubits/board_cubit.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
@@ -100,7 +99,6 @@ import '../cubits/config_cubit.dart';
 import '../cubits/connect_cubit.dart';
 import '../services/connect/endpoint_dial_planner.dart';
 import '../services/connect/paired_device_store.dart';
-import '../services/connect/paired_relay_tunnel_registry.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../models/layout_preferences.dart';
@@ -249,10 +247,6 @@ import '../services/ssh/ssh_home_connectivity_supervisor.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 
-import '../services/ssh/ssh_connection_events.dart';
-import '../services/ssh/worker/ssh_profile_worker_manager.dart';
-import '../services/ssh/worker/ssh_worker_auth_bridge.dart';
-import '../widgets/ssh/ssh_host_key_prompt_dialog.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
 import '../services/ssh/mcp/session_ssh_mcp_executor.dart';
 import '../services/ssh/mcp/session_ssh_mcp_http.dart';
@@ -666,83 +660,18 @@ Future<AppShell> buildAppShell({
     vault: vaultService,
     prompt: promptVaultUnlockFromRouter,
   );
-  // Relay tunnels for paired (QR) SSH profiles: while a tunnel lives, every
-  // dial for that profile rides the loopback port instead of the stored host.
-  final pairedRelayTunnels = PairedRelayTunnelRegistry(
-    credentialStore: sshCredentialStore,
-    vault: vaultAccess,
+  final sshTransport = wireSshTransport(
+    sshCredentialStore: sshCredentialStore,
+    preferences: preferences,
+    vaultAccess: vaultAccess,
+    vaultCredentialCapture: vaultCredentialCapture,
   );
-  final sshKnownHostRepo = SharedPrefsSshKnownHostRepository(preferences);
-  final sshConnectionEvents = SshConnectionEvents();
-  // Shared home-plane catalog rows cannot carry a vault reference; the device
-  // vault entry is owned by the profile id instead. Resolve it at connect time
-  // so a row created on the plane still finds the secret this device saved.
-  // Without this, "test connection" (which resolves the owner entry in the
-  // editor) succeeds while the durable connect gets an empty password.
-  Future<String?> sshVaultEntryIdFor(String profileId) async {
-    try {
-      await vaultAccess.tryAutoUnlock();
-      final entry = await vaultCredentialCapture.findOwner(
-        vaultOwnerKindSshProfile,
-        profileId,
-      );
-      final entryId = (entry?.id ?? '').trim();
-      return entryId.isEmpty ? null : entryId;
-    } on Object {
-      return null;
-    }
-  }
-
-  final sshWorkerAuthBridge = SshWorkerAuthBridge(
-    credentialStore: sshCredentialStore,
-    knownHostRepository: sshKnownHostRepo,
-    onHostKeyPrompt: showSshHostKeyPrompt,
-    dialTargetResolver: (profile) => pairedRelayTunnels.targetFor(profile.id),
-    vault: (entryId, field) => vaultAccess.functionalField(entryId, field),
-    vaultEntryIdFor: sshVaultEntryIdFor,
-  );
-  const sshWorkerCaptureMode = String.fromEnvironment(
-    'SSH_WORKER_CAPTURE_MODE',
-    defaultValue: 'worker',
-  );
-  final sshWorkerMetrics =
-      bool.fromEnvironment('SSH_WORKER_METRICS', defaultValue: false)
-      ? SshWorkerMetrics(enabled: true, logDiagnostic: appLogger.i)
-      : null;
-  final sshWorkerLauncher = sshWorkerCaptureMode == 'direct'
-      ? DirectSshWorkerLauncher()
-      : const IsolateSshWorkerLauncher();
-  final sshProfileWorkerManager = SshProfileWorkerManager(
-    launcher: sshWorkerLauncher,
-    authChallengeHandlerFor: sshWorkerAuthBridge.handlerFor,
-    metrics: sshWorkerMetrics,
-  );
-  // One app-level gate, owned by the connectivity supervisor. The pure pool
-  // only receives its read-only `beforeIo` guard; every state write goes
-  // through the supervisor (or its owned coordinator).
-  final sshConnectivityGate = SshConnectionGate();
-  final sshClientFactory = SshClientFactory(
-    credentialStore: sshCredentialStore,
-    knownHostRepository: sshKnownHostRepo,
-    events: sshConnectionEvents,
-    onHostKeyPrompt: showSshHostKeyPrompt,
-    dialTargetResolver: (profile) => pairedRelayTunnels.targetFor(profile.id),
-    vaultCredentials: (entryId, field) =>
-        vaultAccess.functionalField(entryId, field),
-    vaultEntryIdFor: sshVaultEntryIdFor,
-    workerAuthBridge: sshWorkerAuthBridge,
-    workerManager: sshProfileWorkerManager,
-    ioGuard: sshConnectivityGate.beforeIo,
-  );
-
-  /// Waits for the single connection driver to bring [SshProfileDownException]
-  /// profiles back up. Consumers use this instead of polling with their own
-  /// backoff.
-  Future<bool> waitForSshProfileRecovery(Object error) async {
-    if (error is! SshProfileDownException) return false;
-    await sshConnectivityGate.waitUntilUp(error.profileId);
-    return true;
-  }
+  final pairedRelayTunnels = sshTransport.pairedRelayTunnels;
+  final sshKnownHostRepo = sshTransport.sshKnownHosts;
+  final sshConnectionEvents = sshTransport.sshConnectionEvents;
+  final sshClientFactory = sshTransport.sshClientFactory;
+  final sshConnectivityGate = sshTransport.connectivityGate;
+  final waitForSshProfileRecovery = sshTransport.waitForSshProfileRecovery;
 
   // P1: the home target (the machine the control plane runs on) is the single
   // authority, stored device-local in HomeTargetStore. distro/profile are
