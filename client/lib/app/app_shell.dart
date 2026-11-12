@@ -12,8 +12,8 @@ import 'app_data_bootstrap.dart';
 import 'bootstrap/managed_provider_control_plane.dart';
 import 'bootstrap/provider_usage_http_client.dart';
 import 'bootstrap/catalog_wiring.dart';
+import 'bootstrap/session_state_wiring.dart';
 import 'bootstrap/session_usage_wiring.dart';
-import 'home_index_prefetch.dart';
 import 'team_generation_graph.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../services/cli/antigravity/antigravity_bootstrap_entry.dart';
@@ -1870,114 +1870,54 @@ Future<AppShell> buildAppShell({
     final skillInstallService = skillCatalog.skillInstallService;
     final skillAcquisitionEngine = skillCatalog.skillAcquisitionEngine;
 
-    llmConfigCubit = LlmConfigCubit(
+    final llmConfig = wireLlmConfig(
       appSettings: appSettings,
       storage: homeStorage,
-      executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
-      isSshMode: () => connectionModeService.isSshMode,
-      sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
+      sessionPreferences: sessionPreferencesCubit,
+      connectionMode: () => connectionModeService,
+      sshProfiles: () => sshProfileCubit,
       sshClientFactory: sshClientFactory,
-      sshWorkingDirectoryResolver: () =>
-          sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
     );
-
-    String? llmConfigPathOverrideForLaunch() {
-      final s = llmConfigCubit.state;
-      final path = s.effectiveConfigPath.trim();
-      if (path.isEmpty) return null;
-      if (connectionModeService.isSshMode) return path;
-      return s.isUsingCustomPath ? path : null;
-    }
+    llmConfigCubit = llmConfig.cubit;
+    final llmConfigPathOverrideForLaunch = llmConfig.pathOverrideForLaunch;
 
     final extensionCatalog = wireExtensionCatalog(storage: homeStorage);
     final extensionRepository = extensionCatalog.extensionRepository;
     final workspaceProjectConfigRepository =
         extensionCatalog.workspaceProjectConfigRepository;
 
-    identityRepository = LaunchProfileRepository(storage: homeStorage);
+    final identityWiring = wireIdentityRepository(storage: homeStorage);
+    identityRepository = identityWiring.identityRepository;
 
     final cliPresetsRepo = wireCliPresets(storage: homeStorage)
         .cliPresetsRepository;
 
-    sessionLifecycleService = SessionLifecycleService(
+    final sessionState = wireSessionState(
       storage: homeStorage,
-      storageRootsResolver: () async => homeStorage.context,
-      catalogContextResolver: () async => runtimeContextRegistry.home(),
+      runtimeContexts: runtimeContextRegistry,
       homeTarget: defaultTargetResolver,
-      // P2: launch resolves the work-plane on the workspace's target machine.
-      workContextResolver: runtimeContextRegistry.forTarget,
-      loadEnabledExtensionIds: ({teamId, workspaceId}) async {
-        final trimmedTeamId = teamId?.trim() ?? '';
-        if (trimmedTeamId.isNotEmpty) {
-          return extensionRepository.effectiveEnabledIds(trimmedTeamId);
-        }
-        final trimmedWorkspaceId = workspaceId?.trim() ?? '';
-        if (trimmedWorkspaceId.isNotEmpty) {
-          final config = await workspaceProjectConfigRepository.load(
-            trimmedWorkspaceId,
-          );
-          final global = (await extensionRepository.load()).globalEnabled;
-          return {
-            for (final manifest in builtInExtensionManifests())
-              if (config.effectiveExtensionEnabled(
-                extensionId: manifest.id,
-                globalEnabled: global,
-              ))
-                manifest.id,
-          };
-        }
-        return (await extensionRepository.load(forceReload: true))
-            .globalEnabled;
-      },
+      extensionRepository: extensionRepository,
+      workspaceConfig: workspaceProjectConfigRepository,
+      cliPresets: cliPresetsRepo,
       cliToolRegistry: cliToolRegistry,
-      cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
-      toolchainNodeResolver: () => sessionPreferencesCubit
-          .resolveToolchainExecutable(SessionPreferences.toolchainNode, ''),
-      identityRepository: identityRepository,
-      loadInstalledSkills: () => skillRepo.loadInstalled(),
-      cliPresetsRepository: cliPresetsRepo,
-      loadPresets: () => cliPresetsCubit.state.presets,
-      projectConfigRepository: workspaceProjectConfigRepository,
+      skillRepository: skillRepo,
+      sessionPreferences: sessionPreferencesCubit,
+      sshProfiles: sshProfileRepo,
+      cliPresetsCubit: () => cliPresetsCubit,
       sshProfileById: sshProfileById,
+      identityRepository: () => identityRepository,
     );
-    sessionRepo = SessionRepository(
-      storage: homeStorage,
-      lifecycleService: sessionLifecycleService,
+    sessionLifecycleService = sessionState.sessionLifecycleService;
+    sessionRepo = sessionState.sessionRepo;
+    final homeIndex = wireHomeIndexPrefetch(
+      bootstrapCubit: bootstrapCubit,
+      connectionMode: () => connectionModeService,
+      nativePrefetch: homeIndexPrefetchFuture,
+      sessions: () => sessionRepo,
+      identities: () => identityRepository,
+      boot: boot,
     );
-    boot('prefetching home index snapshots');
-    bootstrapCubit?.beginHomeIndex();
-    Future<void> prefetchHomeIndex() async {
-      try {
-        await Future.wait([
-          sessionRepo.loadWorkspacesIndex(),
-          identityRepository.loadAll(),
-        ]);
-      } on Object catch (error, stackTrace) {
-        if (isSshProfileDown(error)) {
-          appLogger.d(
-            '[boot] home index prefetch waiting for home transport',
-            error: error,
-            stackTrace: stackTrace,
-          );
-          return;
-        }
-        appLogger.w(
-          '[boot] home index prefetch failed',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
-    }
-
-    if (connectionModeService.isRemoteWorkPlane &&
-        homeIndexPrefetchFuture != null) {
-      boot('ignoring native-path home index prefetch (remote home)');
-    }
-    final homeIndexPrefetch = bindHomeIndexPrefetch(
-      isRemoteWorkPlane: connectionModeService.isRemoteWorkPlane,
-      nativePathPrefetch: homeIndexPrefetchFuture,
-      boundHomePrefetch: prefetchHomeIndex,
-    );
+    final homeIndexPrefetch = homeIndex.homeIndexPrefetch;
     final pluginMcp = wirePluginMcp(storage: homeStorage);
     final pluginRepository = pluginMcp.pluginRepository;
     final mcpRepository = pluginMcp.mcpRepository;
