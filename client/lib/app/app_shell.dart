@@ -9,9 +9,9 @@ import 'package:http/http.dart' as http;
 
 import '../cubits/app_bootstrap_cubit.dart';
 import 'app_data_bootstrap.dart';
-import 'bootstrap/cursor_usage_stack.dart';
 import 'bootstrap/managed_provider_control_plane.dart';
 import 'bootstrap/provider_usage_http_client.dart';
+import 'bootstrap/session_usage_wiring.dart';
 import 'home_index_prefetch.dart';
 import 'team_generation_graph.dart';
 import '../cubits/app_provider_cubit.dart';
@@ -38,10 +38,7 @@ import 'session_protocol_home.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/session_groups_cubit.dart';
 import '../cubits/session_usage_cubit.dart';
-import 'session_usage_services.dart';
-import '../models/cursor_usage_range.dart';
 import '../services/cursor_usage/cursor_usage_api_client.dart';
-import '../services/cursor_usage/cursor_usage_event_source.dart';
 import '../services/agent_runtime/agent_event_gateway.dart';
 import '../services/agent_runtime/agent_runtime.dart';
 import '../services/agent_runtime/runtime_event_journal.dart';
@@ -319,7 +316,6 @@ import '../services/termux/termux_config.dart';
 import '../services/termux/termux_transport_profile.dart';
 import '../services/termux/termux_work_ops_message.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
-import '../services/notification/notification_recorder.dart';
 import '../services/chat/session/session_lifecycle_service.dart';
 import '../services/skill/skill_acquisition_engine.dart';
 import '../services/skill/skill_fetch_service.dart';
@@ -365,7 +361,6 @@ import '../services/run/run_target_resolver.dart';
 import '../services/run/workspace_run_platform_factory.dart';
 import '../services/search/workspace_search_indexes.dart';
 import '../services/workspace/workspace_worktree_registry.dart';
-import '../services/usage/cursor_usage_sync_adapter.dart';
 import '../services/workspace/workspace_session_groups_registry.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
@@ -373,7 +368,6 @@ import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_run_service.dart';
 import '../services/terminal/workspace_terminal_session_ops.dart';
 import '../utils/logging/logger.dart';
-import '../utils/retryable_memo.dart';
 import 'ui_zoom_baseline.dart';
 
 /// Fully wired app dependencies produced after async bootstrap.
@@ -2072,81 +2066,18 @@ Future<AppShell> buildAppShell({
       },
     );
 
-    final cursorUsageApiClient = CursorUsageApiClient();
-    // The Cursor stack resolves paths and the filesystem from the active home
-    // plane, so it is rebuilt whenever that plane changes instead of pinning
-    // the first one for the whole app lifetime.
-    var cursorStackGeneration = -1;
-    CursorUsageStack? cachedCursorStack;
-    CursorUsageStack cursorStack() {
-      if (cachedCursorStack == null ||
-          cursorStackGeneration != homeStorage.generation) {
-        cursorStackGeneration = homeStorage.generation;
-        cachedCursorStack = CursorUsageStack(
-          storage: homeStorage,
-          api: cursorUsageApiClient,
-        );
-      }
-      return cachedCursorStack!;
-    }
-
-    final cursorAdapter = CursorUsageSyncAdapter(
-      listAccounts: () => cursorStack().registry.list(),
-      loadAccount: (accountId, range, mode) => cursorStack().coordinator.load(
-        accountId: accountId,
-        range: range,
-        mode: mode,
-      ),
-    );
-
-    final sessionUsageServices = SessionUsageServices.forStorage(
+    final sessionUsage = wireSessionUsage(
       storage: homeStorage,
       registry: cliToolRegistry,
       sessions: sessionRepo,
       teams: identityRepository,
-      loadCursorAccountUsage: () => CursorUsageEventSource(
-        listAccounts: () => cursorStack().registry.list(),
-        loadCache: (accountId) => cursorStack().cacheStore.load(accountId),
-      ).loadEvents(),
-      loadCursorAccounts: () => cursorStack().registry.list(),
-      syncCursorUsage: (range, startMs, endMs, full) =>
-          cursorAdapter.syncFor(range, startMs, endMs, full: full),
     );
-    final sessionUsageCubit = SessionUsageCubit(
-      loadEvents: sessionUsageServices.loadEvents,
-      syncAll: sessionUsageServices.syncAll,
-      startSync: sessionUsageServices.startSync,
-      startFullSync: sessionUsageServices.startFullSync,
-      loadPricing: sessionUsageServices.loadPricing,
-      savePricing: sessionUsageServices.savePricing,
-      loadUsageStats: sessionUsageServices.loadUsageStats,
-      compactUsage: sessionUsageServices.compactUsage,
-      loadSessions: sessionUsageServices.loadSessions,
-      loadTeams: sessionUsageServices.loadTeams,
-      loadCursorAccounts: sessionUsageServices.loadCursorAccounts,
-      syncCursorUsage: sessionUsageServices.syncCursorUsage,
-      storageChanges: homeStorage.changes.map<void>((_) {}),
-    );
-    // Usage events are loaded on demand by the usage page. Loading them here
-    // would pull the whole event store through the home plane before the
-    // first frame — tens of MB over SSH, decrypted on the UI isolate.
-    Future<void> warmStartupCaches() => warmCursorUsage(
-      accounts: () => cursorStack().registry.list(),
-      load: (accountId) => cursorStack().coordinator.load(
-        accountId: accountId,
-        range: const CursorUsagePresetRange(CursorUsagePreset.billingCycle),
-      ),
-    );
-
-    final notificationCubit = NotificationCubit(storage: homeStorage);
-    // Lazy: the first read is home-plane I/O, so the unreachable splash must
-    // not start it. Success is memoized; a transient failure is not, so the
-    // next hot-recovery attempt retries instead of reusing a rejected future.
-    final notificationBootstrap = retryableMemo(notificationCubit.load);
-    NotificationRecorder.install(notificationCubit);
-    final progressActivityCubit = ProgressActivityCubit(
-      historyRecorder: notificationCubit,
-    );
+    final cursorUsageApiClient = sessionUsage.cursorUsageApiClient;
+    final sessionUsageCubit = sessionUsage.sessionUsageCubit;
+    final warmStartupCaches = sessionUsage.warmStartupCaches;
+    final notificationCubit = sessionUsage.notificationCubit;
+    final notificationBootstrap = sessionUsage.notificationBootstrap;
+    final progressActivityCubit = sessionUsage.progressActivityCubit;
 
     // Repo clone executor: one shared SSH exec spawner for both the clone
     // process (ProcessRunExecutor) and the host runner's context resolution
