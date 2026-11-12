@@ -977,7 +977,6 @@ Future<AppShell> buildAppShell({
       cliToolRegistry: cliToolRegistry,
       skillRepository: skillRepo,
       sessionPreferences: sessionPreferencesCubit,
-      sshProfiles: sshProfileRepo,
       cliPresetsCubit: () => cliPresetsCubit,
       sshProfileById: sshProfileById,
       identityRepository: () => identityRepository,

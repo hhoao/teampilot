@@ -12,7 +12,6 @@ import '../../repositories/extension_repository.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../repositories/skill_repository.dart';
-import '../../repositories/ssh_profile_repository.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../../services/app/connection_mode_service.dart';
 import '../../services/chat/session/session_lifecycle_service.dart';
@@ -96,7 +95,6 @@ SessionStateWiring wireSessionState({
   required CliToolRegistry cliToolRegistry,
   required SkillRepository skillRepository,
   required SessionPreferencesCubit sessionPreferences,
-  required SshProfileRepository sshProfiles,
   required CliPresetsCubit Function() cliPresetsCubit,
   required SshProfile? Function(String id) sshProfileById,
   required LaunchProfileRepository Function() identityRepository,

@@ -50,14 +50,10 @@ typedef HubWiring = ({
   HookCubit hookCubit,
   TeamHubCubit teamHubCubit,
   ExpertHubCubit expertHubCubit,
-  CatalogWorkspaceBinder catalogWorkspaceBinder,
-  TeamHubFavoritesStore teamHubFavorites,
   ExpertHubCatalog expertHubCatalog,
   ExpertCapabilityResolver expertCapabilityResolver,
-  MemberRosterService memberRosterService,
   SessionRuntimePlanBuilder sessionRuntimePlanBuilder,
   LocalExpertStore localExpertStore,
-  Future<void> Function(String mcpId) unbindMcpEverywhere,
 });
 
 /// Builds the team and expert hub wiring for the home plane behind [storage].
@@ -92,6 +88,8 @@ Future<HubWiring> wireHubs({
     }
   }
 
+  // mcpCubit/hookCubit land after two awaits (assigned earlier at BASE); no
+  // reader runs in that window, so the ordering stays behavior-zero.
   final mcpCubit = McpCubit(
     mcpRepository,
     storage: storage,
@@ -251,13 +249,9 @@ Future<HubWiring> wireHubs({
     hookCubit: hookCubit,
     teamHubCubit: teamHubCubit,
     expertHubCubit: expertHubCubit,
-    catalogWorkspaceBinder: catalogWorkspaceBinder,
-    teamHubFavorites: teamHubFavorites,
     expertHubCatalog: expertHubCatalog,
     expertCapabilityResolver: expertCapabilityResolver,
-    memberRosterService: memberRosterService,
     sessionRuntimePlanBuilder: sessionRuntimePlanBuilder,
     localExpertStore: localExpertStore,
-    unbindMcpEverywhere: unbindMcpEverywhere,
   );
 }

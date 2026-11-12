@@ -21,16 +21,17 @@ import 'managed_provider_control_plane.dart';
 ///
 /// The controller owns no mutable state. The live home target, the published
 /// active profile id, and the connectivity-watch baseline all stay shell-owned
-/// and arrive as accessor pairs ([readHomeTarget]/[writeHomeTarget],
-/// [readActiveHomeProfileId]/[writeActiveHomeProfileId],
-/// [writeWatchedConnectivityKey]), so every write lands in the shell's own
-/// variable.
+/// and arrive as accessors ([readHomeTarget]/[writeHomeTarget],
+/// [readActiveHomeProfileId]/[writeActiveHomeProfileId], and the
+/// write-only [writeWatchedConnectivityKey]), so every write lands in the
+/// shell's own variable.
 ///
 /// The rest of the shell's seams arrive as accessors too:
-/// [reinstallStorageContext] is assigned by the shell after this controller
-/// exists, and [homeInvalidationService] is a shell `late final` assigned once
-/// the graph is wired — only [rebindHomeStoragePlane] reads it, and only at
-/// call time. No accessor points back at one of this controller's own methods.
+/// [reinstallStorageContext] is assigned by the shell before this controller
+/// is constructed, and [homeInvalidationService] is a shell `late final`
+/// assigned once the graph is wired — only [rebindHomeStoragePlane] reads it,
+/// and only at call time. No accessor points back at one of this controller's
+/// own methods.
 class HomePlaneSwitchController {
   HomePlaneSwitchController({
     required this.runtimeContexts,
