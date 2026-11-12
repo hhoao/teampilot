@@ -474,7 +474,7 @@ void main() {
       expect(
         RegExp(
           r'if \(isSshHome && !initialHome\.reachable\) \{ '
-          r'sshProfileConnectionCoordinator\.restartReconnect\(homeProfileId\);',
+          r'sshProfileConnectionCoordinator\.restartReconnect\(homeProfileId!?\);',
         ).hasMatch(src),
         isTrue,
         reason:

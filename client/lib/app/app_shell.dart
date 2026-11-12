@@ -16,6 +16,7 @@ import 'bootstrap/managed_provider_wiring.dart';
 import 'bootstrap/catalog_runtime_wiring.dart';
 import 'bootstrap/catalog_wiring.dart';
 import 'bootstrap/chat_session_wiring.dart';
+import 'bootstrap/home_plane_wiring.dart';
 import 'bootstrap/hub_wiring.dart';
 import 'bootstrap/install_wiring.dart';
 import 'bootstrap/session_runtime_wiring.dart';
@@ -51,7 +52,6 @@ import '../cubits/chat_cubit.dart';
 import '../cubits/session_usage_cubit.dart';
 import '../services/cursor_usage/cursor_usage_api_client.dart';
 import '../services/agent_runtime/agent_runtime.dart';
-import '../services/editor/markdown_network_image_store.dart';
 import '../services/event/agent_presence_projection.dart';
 import '../services/event/agent_presence_sink.dart';
 import '../services/event/event_transport_controller.dart';
@@ -150,8 +150,6 @@ import '../router/app_router.dart';
 import '../services/extension/builtin_manifests.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
-import '../services/shared_state/device_id_store.dart';
-import '../services/shared_state/shared_state_identity.dart';
 import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
 import '../services/storage/remote_target_migration.dart';
@@ -213,17 +211,13 @@ import '../services/provider_usage/cli_credential_source.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/remote_cli_locator.dart';
 import '../cubits/home_connection_cubit.dart';
-import '../services/ssh/tcp_reachability_probe.dart';
 import '../services/storage/home_connect_attempt.dart';
-import '../services/storage/runtime_context_resolver.dart';
-import '../services/storage/runtime_context_registry.dart';
 import '../services/storage/home_invalidation_service.dart';
 import '../services/storage/home_storage_invalidator.dart';
 import '../services/storage/home_target_controller.dart';
 import '../services/storage/home_storage.dart';
 import '../services/storage/workspace_directory_picker.dart';
 import '../services/storage/home_target_store.dart';
-import '../services/storage/runtime_target_registry.dart';
 import '../services/termux/termux_config.dart';
 import '../services/termux/termux_transport_profile.dart';
 import '../services/termux/termux_work_ops_message.dart';
@@ -859,138 +853,40 @@ Future<AppShell> buildAppShell({
     acpAdapterPathOverride: targetsRepo.acpAdapterPathOverride,
     setAcpAdapterPathOverride: targetsRepo.setAcpAdapterPathOverride,
   );
-  final runtimeTargetRegistry = RuntimeTargetRegistry(
-    repo: targetsRepo,
-    sshProfileRepo: sshProfileRepo,
-    isWindows: Platform.isWindows,
-    isAndroid: Platform.isAndroid,
-    hasTermuxConfig: () => termuxConfigCache != null,
-  );
-
-  // P2: de-singleton. One resolver + a per-target context registry. The home
-  // context (control plane) is materialized once and published on HomeStorage;
-  // work-plane contexts are resolved lazily per workspace target id.
-  final runtimeContextResolver = RuntimeContextResolver(
-    sshClientFactory: sshClientFactory,
-    nativeAppDataPath: nativeAppDataPath,
-    nativeHome:
-        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
-    nativeCwd: defaultWorkspaceDirectory,
-  );
   // Late holder: registry is created before AiHistoryLoader; onEvict clears
   // history memory cache when a work-plane target is disposed.
   AiHistoryLoader? aiHistoryLoaderRef;
-  final runtimeContextRegistry = RuntimeContextRegistry(
-    resolver: runtimeContextResolver,
-    homeTarget: defaultTargetResolver(),
+  final homePlane = await wireHomePlane(
+    targetsRepo: targetsRepo,
+    sshProfileRepo: sshProfileRepo,
     sshProfileById: sshProfileById,
-    termuxPathCache: () {
-      final cfg = termuxConfigCache;
-      if (cfg == null) {
-        return (home: null, appDataRoot: null);
-      }
-      return (home: cfg.lastHome, appDataRoot: cfg.lastAppDataRoot);
-    },
-    onEvict: (targetId) async {
-      final pid =
-          homeTargetFromId(targetId).sshProfileId ?? sshProfileIdOfId(targetId);
-      if (pid != null) {
-        sshClientFactory.disconnectProfile(
-          pid,
-          reason: SshTransportCloseReason.runtimeContextEvicted,
-        );
-      }
-      // v1: clear all history memory cache on work-plane drop.
-      aiHistoryLoaderRef?.clearCache();
-    },
+    homeTargetFromId: homeTargetFromId,
+    homeTarget: defaultTargetResolver,
+    termuxConfigStore: termuxConfigStore,
+    termuxConfig: () => termuxConfigCache,
+    setTermuxConfig: (config) => termuxConfigCache = config,
+    sshClientFactory: sshClientFactory,
+    historyLoader: () => aiHistoryLoaderRef,
+    nativeAppDataPath: nativeAppDataPath,
+    defaultWorkspaceDirectory: defaultWorkspaceDirectory,
+    boot: boot,
   );
-  boot('installing home runtime context');
-  final ensureHomeSw = Stopwatch()..start();
-  // SSH homes get one bounded attempt (TCP probe + time-boxed resolve) so an
-  // unreachable/slow host cannot hold the splash indefinitely. Every other
-  // home kind keeps the existing unbounded resolve.
-  final homeProfileId = homeTarget.sshProfileId;
-  final isSshHome =
-      homeTarget.kind == RuntimeKind.ssh &&
-      homeProfileId != null &&
-      homeProfileId.isNotEmpty;
+  final runtimeTargetRegistry = homePlane.runtimeTargetRegistry;
+  final runtimeContextRegistry = homePlane.runtimeContextRegistry;
+  final homeAttempt = homePlane.homeAttempt;
+  final initialHome = homePlane.initialHome;
+  final deferHomePlaneLoads = homePlane.deferHomePlaneLoads;
+  final homeProfileId = homePlane.homeProfileId;
+  final isSshHome = homePlane.isSshHome;
+  final homeSshProfile = homePlane.homeSshProfile;
+  final homeStorage = homePlane.homeStorage;
+  final scope = homePlane.scope;
+  homeWorkspaceUiCache = homePlane.homeWorkspaceUiCache;
   // The live home identity. [homeProfileId] is the boot-time snapshot; every
   // connection hook below reads this mutable value so a home switch inside the
   // running shell retargets the cubit/coordinator instead of retrying the
   // abandoned profile until the next restart.
   var activeHomeProfileId = isSshHome ? homeProfileId : null;
-  final homeSshProfile = isSshHome ? sshProfileById(homeProfileId) : null;
-  // One bounded attempt factory reused by boot and every later retry: it reads
-  // the registry's CURRENT home target, so it follows [setHomeTarget] too.
-  final homeAttempt = HomeConnectAttempt(
-    probe: const SocketTcpReachabilityProbe(),
-    resolve: () async {
-      await runtimeContextRegistry.ensureHome();
-      return runtimeContextRegistry.home();
-    },
-    cacheContext: runtimeContextRegistry.ensureHomeCached,
-    profileById: sshProfileById,
-  );
-  HomeConnectResult initialHome;
-  if (isSshHome) {
-    initialHome = await homeAttempt.run(homeProfileId);
-  } else {
-    await runtimeContextRegistry.ensureHome();
-    initialHome = HomeConnectResult.connected(runtimeContextRegistry.home());
-  }
-  boot('home runtime context ensured +${ensureHomeSw.elapsedMilliseconds}ms');
-  // A failed attempt already carries the cached-path context, so the shell can
-  // be built without waiting for any network round-trip.
-  final homeCtx =
-      initialHome.context ?? await runtimeContextRegistry.ensureHomeCached();
-  // True when an SSH home failed its first bounded attempt. Home-plane reads
-  // are then deferred to the post-connect chain: with no warm client every one
-  // of them starts a fresh storage open bounded by SshStorageIo.ioTimeout, and
-  // awaiting them here would reintroduce the splash stall this task removes.
-  final deferHomePlaneLoads = isSshHome && !initialHome.reachable;
-  final cfg = termuxConfigCache;
-  if (homeTarget.kind == RuntimeKind.termux &&
-      cfg != null &&
-      !homeCtx.pathsFromCache) {
-    final updated = cfg.copyWith(
-      lastHome: homeCtx.home,
-      lastAppDataRoot: homeCtx.appDataRoot,
-    );
-    termuxConfigCache = updated;
-    await termuxConfigStore.save(updated);
-  }
-  // Versioned, drain-safe home facade: home swaps publish through it and the
-  // outgoing context is retired (registry evict → drain-safe SSH disconnect)
-  // only after the new context is live. Every control-plane consumer receives
-  // it via constructor injection (or the RepositoryProvider in main.dart).
-  final homeStorage = HomeStorage(
-    homeCtx,
-    retire: (old) => runtimeContextRegistry.disposeContext(old),
-  );
-  // Shared-state stamps are device-scoped, so the id lives in the device
-  // plane and never travels through the home plane.
-  final deviceId = await DeviceIdStore(
-    fs: deviceLocalHomeStorage(nativeAppDataPath).fs,
-    path: AppPaths.pathContextForDataRoot(nativeAppDataPath)
-        .join(nativeAppDataPath, 'shared-state', 'device-id'),
-  ).loadOrCreate();
-  SharedStateIdentity.configure(deviceId: deviceId);
-  homeWorkspaceUiCache = HomeWorkspaceUiCache(storage: homeStorage);
-  // Disk cache for markdown network images lives under the home
-  // <teampilotRoot>/cache; bind it before any editor surface loads a badge.
-  MarkdownNetworkImageStore.storageHome = homeStorage;
-  boot(
-    'home context installed '
-    '(${homeStorage.context.mode}, home=${homeTarget.id}, '
-    'root=${homeStorage.appDataRoot})',
-  );
-
-  // Home-plane business vault. SSH login credentials remain in the device
-  // vault; everything else is written to / read from <home>/vault/.
-  final scope = HomeVaultScope(
-    storage: homeStorage,
-    keyStore: const FlutterSecureKeyValueStore(),
-  );
   homeVaultScope = scope;
   await scope.prepare();
   // Copy this device's business entries onto the plane it belongs to — also
@@ -2510,7 +2406,7 @@ Future<AppShell> buildAppShell({
     // can cancel/continue it. Reachable and non-SSH homes keep their previous
     // boot behavior.
     if (isSshHome && !initialHome.reachable) {
-      sshProfileConnectionCoordinator.restartReconnect(homeProfileId);
+      sshProfileConnectionCoordinator.restartReconnect(homeProfileId!);
     }
 
     // Saving an edited SSH target used to only reload the profile catalog, so
