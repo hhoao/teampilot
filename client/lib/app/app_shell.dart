@@ -3982,9 +3982,17 @@ Future<AppShell> buildAppShell({
           break;
         case SshPhase.up:
         case SshPhase.degraded:
-          cubit.markPlaneReady();
-          if (previous != SshPhase.up && previous != SshPhase.degraded) {
+          // Hot recovery (plane rebind + deferred remote boot) belongs to a
+          // genuine retry-loop recovery only, i.e. `reconnecting` → `up`.
+          // A plain `connecting` → `up` is a user/boot connect: treating it
+          // as a recovery re-enters `onConnected`, which calls
+          // `reconnectHomeSshIfNeeded` → `connect`, republishing `connecting`
+          // and looping forever (and re-running `selectProfile`, which spams
+          // stale remote-CLI discovery). Just project the status there.
+          if (previous == SshPhase.reconnecting) {
             cubit.markReconnected();
+          } else {
+            cubit.markPlaneReady();
           }
         case SshPhase.reconnecting:
           cubit.markBackgroundAttempt(state.attempt);
