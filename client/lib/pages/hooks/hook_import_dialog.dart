@@ -157,6 +157,7 @@ class _HookImportDialogState extends State<HookImportDialog> {
               CliTool.flashskyai,
               CliTool.codex,
               CliTool.cursor,
+              CliTool.grok,
             ],
             initialItem: _cli,
             searchable: false,

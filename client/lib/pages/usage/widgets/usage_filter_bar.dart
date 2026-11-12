@@ -24,17 +24,17 @@ class UsageFilterBar extends StatelessWidget {
       children: [
         UsageDateRangePicker(state: state, cubit: cubit),
         Container(width: 1, height: 20, color: cs.outlineVariant),
-        // Kept in one Row so the account picker always sits directly right of
-        // the CLI buttons instead of wrapping onto its own line.
-        Row(
-          mainAxisSize: MainAxisSize.min,
+        // Kept in one Wrap so the account picker sits directly right of the
+        // CLI buttons when there is room, but can fall to its own line instead
+        // of overflowing a narrow window.
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             _CliFilter(state: state, cubit: cubit),
-            if (state.cli == CliTool.cursor &&
-                state.cursorAccounts.isNotEmpty) ...[
-              const SizedBox(width: 8),
+            if (state.cli == CliTool.cursor && state.cursorAccounts.isNotEmpty)
               _CursorAccountFilter(state: state, cubit: cubit),
-            ],
           ],
         ),
       ],
@@ -85,37 +85,45 @@ class _CliFilter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      height: usageFilterControlHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        border: Border.all(color: cs.outlineVariant),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _CliButton(
-            label: context.l10n.sessionUsage.cliAll,
-            selected: state.cli == null,
-            onTap: () => cubit.setCli(null),
-          ),
-          for (final cli in CliTool.values)
-            Tooltip(
-              message: usageCliLabel(cli),
-              waitDuration: const Duration(milliseconds: 500),
-              child: _CliButton(
-                selected: state.cli == cli,
-                onTap: () => cubit.setCli(cli),
-                icon: CliBrandIcon(
-                  cli: cli,
-                  size: context.tpIconSizes.md,
-                  borderRadius: 4,
-                  showBorder: false,
-                ),
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) => ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Container(
+            height: usageFilterControlHeight,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              border: Border.all(color: cs.outlineVariant),
+              borderRadius: BorderRadius.circular(8),
             ),
-        ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _CliButton(
+                  label: context.l10n.sessionUsage.cliAll,
+                  selected: state.cli == null,
+                  onTap: () => cubit.setCli(null),
+                ),
+                for (final cli in CliTool.values)
+                  Tooltip(
+                    message: usageCliLabel(cli),
+                    waitDuration: const Duration(milliseconds: 500),
+                    child: _CliButton(
+                      selected: state.cli == cli,
+                      onTap: () => cubit.setCli(cli),
+                      icon: CliBrandIcon(
+                        cli: cli,
+                        size: context.tpIconSizes.md,
+                        borderRadius: 4,
+                        showBorder: false,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

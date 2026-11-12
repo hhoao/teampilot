@@ -89,6 +89,10 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'SessionStart',
       ),
+      CliTool.grok: HookCliSupport(
+        supported: true,
+        nativeEvent: 'SessionStart',
+      ),
     },
     HookEvent.sessionEnd: {
       CliTool.claude: HookCliSupport(
@@ -113,6 +117,7 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'sessionEnd',
       ),
+      CliTool.grok: HookCliSupport(supported: true, nativeEvent: 'SessionEnd'),
     },
     HookEvent.userPromptSubmit: {
       CliTool.claude: HookCliSupport(
@@ -153,6 +158,10 @@ abstract final class HookEventCapability {
         approximate: true,
         nativeEvent: 'PreInvocation',
       ),
+      CliTool.grok: HookCliSupport(
+        supported: true,
+        nativeEvent: 'UserPromptSubmit',
+      ),
     },
     HookEvent.preToolUse: {
       CliTool.claude: HookCliSupport(
@@ -186,6 +195,7 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'PreToolUse',
       ),
+      CliTool.grok: HookCliSupport(supported: true, nativeEvent: 'PreToolUse'),
     },
     HookEvent.postToolUse: {
       CliTool.claude: HookCliSupport(
@@ -225,6 +235,7 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'PostToolUse',
       ),
+      CliTool.grok: HookCliSupport(supported: true, nativeEvent: 'PostToolUse'),
     },
     HookEvent.postToolUseFailure: {
       CliTool.claude: HookCliSupport(
@@ -254,6 +265,10 @@ abstract final class HookEventCapability {
       CliTool.cursor: HookCliSupport(
         supported: true,
         nativeEvent: 'postToolUseFailure',
+      ),
+      CliTool.grok: HookCliSupport(
+        supported: true,
+        nativeEvent: 'PostToolUseFailure',
       ),
     },
     HookEvent.permissionRequest: {
@@ -301,6 +316,7 @@ abstract final class HookEventCapability {
         nativeEvent: 'session.idle',
       ),
       CliTool.antigravity: HookCliSupport(supported: true, nativeEvent: 'Stop'),
+      CliTool.grok: HookCliSupport(supported: true, nativeEvent: 'Stop'),
     },
     HookEvent.stopFailure: {
       CliTool.claude: HookCliSupport(
@@ -327,6 +343,7 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'StopFailure',
       ),
+      CliTool.grok: HookCliSupport(supported: true, nativeEvent: 'StopFailure'),
     },
     // SubagentStart is registered where the CLI exposes a native start hook
     // AND has no authoritative in-flight snapshot to reconcile against:
@@ -358,6 +375,10 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'subagentStart',
       ),
+      CliTool.grok: HookCliSupport(
+        supported: true,
+        nativeEvent: 'SubagentStart',
+      ),
     },
     HookEvent.subagentStop: {
       CliTool.claude: HookCliSupport(
@@ -388,6 +409,10 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'subagentStop',
       ),
+      CliTool.grok: HookCliSupport(
+        supported: true,
+        nativeEvent: 'SubagentStop',
+      ),
     },
     HookEvent.preCompact: {
       CliTool.claude: HookCliSupport(
@@ -412,6 +437,7 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'preCompact',
       ),
+      CliTool.grok: HookCliSupport(supported: true, nativeEvent: 'PreCompact'),
     },
     HookEvent.notification: {
       CliTool.claude: HookCliSupport(
@@ -435,6 +461,10 @@ abstract final class HookEventCapability {
         nativeEvent: 'Notification',
       ),
       CliTool.codex: HookCliSupport(
+        supported: true,
+        nativeEvent: 'Notification',
+      ),
+      CliTool.grok: HookCliSupport(
         supported: true,
         nativeEvent: 'Notification',
       ),

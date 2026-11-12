@@ -43,5 +43,6 @@
   "toolOpencode": "OpenCode",
   "toolQoder": "Qoder",
   "toolQoderCn": "Qoder CN",
-  "website": "Website"
+  "website": "Website",
+  "toolGrok": "Grok CLI"
 }

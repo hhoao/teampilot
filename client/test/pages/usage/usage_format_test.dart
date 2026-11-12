@@ -25,6 +25,7 @@ void main() {
               'Last 14 days',
             );
             expect(usageCliLabel(CliTool.qoderCn), 'Qoder CN');
+            expect(usageCliLabel(CliTool.grok), 'Grok');
             return const SizedBox.shrink();
           },
         ),

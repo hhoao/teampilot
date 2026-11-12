@@ -34,7 +34,13 @@ void main() {
     expect(CliTool.tryParse('Qoder-CN'), CliTool.qoderCn);
   });
 
-  test('CliTool.values length is 10 after adding qoder-cn', () {
-    expect(CliTool.values.length, 10);
+  test('CliTool has a grok value that parses round-trip', () {
+    expect(CliTool.grok.value, 'grok');
+    expect(CliTool.tryParse('grok'), CliTool.grok);
+    expect(CliTool.tryParse('Grok'), CliTool.grok);
+  });
+
+  test('CliTool.values length is 11 after adding grok', () {
+    expect(CliTool.values.length, 11);
   });
 }

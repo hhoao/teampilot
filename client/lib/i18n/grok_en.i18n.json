@@ -1,0 +1,14 @@
+{
+  "credentialsActionFailed": "The Grok action failed",
+  "credentialsCancel": "Cancel",
+  "credentialsDone": "Done",
+  "credentialsLogin": "Sign in",
+  "credentialsLoginExited": "Grok CLI exited. Close this dialog and start the sign-in again.",
+  "credentialsLoginFailed": "Could not start the login terminal: {error: String}",
+  "credentialsLoginIntro": "Complete the device sign-in in the terminal below. Grok prints a code and opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.",
+  "credentialsLoginStarting": "Starting Grok CLI…",
+  "credentialsLoginTitle": "Sign in to Grok",
+  "credentialsRelaunch": "Relaunch",
+  "credentialsSignedIn": "Signed in",
+  "credentialsImportGlobal": "Import existing login"
+}

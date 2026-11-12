@@ -370,6 +370,7 @@ class AppLocalizationsZh extends AppLocalizations with BaseTranslations<AppLocal
 	@override late final _AppLocalizations$git$zh git = _AppLocalizations$git$zh._(_root);
 	@override late final _AppLocalizations$gitGraph$zh gitGraph = _AppLocalizations$gitGraph$zh._(_root);
 	@override late final _AppLocalizations$github$zh github = _AppLocalizations$github$zh._(_root);
+	@override late final _AppLocalizations$grok$zh grok = _AppLocalizations$grok$zh._(_root);
 	@override late final _AppLocalizations$home$zh home = _AppLocalizations$home$zh._(_root);
 	@override late final _AppLocalizations$homeWorkspace$zh homeWorkspace = _AppLocalizations$homeWorkspace$zh._(_root);
 	@override late final _AppLocalizations$hook$zh hook = _AppLocalizations$hook$zh._(_root);
@@ -641,6 +642,7 @@ class _AppLocalizations$appProvider$zh extends AppLocalizations$appProvider$en {
 	@override String get toolQoder => 'Qoder';
 	@override String get toolQoderCn => 'Qoder 国内版';
 	@override String get website => '官网';
+	@override String get toolGrok => 'Grok CLI';
 }
 
 // Path: automations
@@ -1693,6 +1695,27 @@ class _AppLocalizations$github$zh extends AppLocalizations$github$en {
 	@override String get signIn => '使用 GitHub 登录';
 	@override String get switchAccount => '切换账号';
 	@override String get waitingCodeHint => '如有提示，请在 GitHub 上输入此验证码';
+}
+
+// Path: grok
+class _AppLocalizations$grok$zh extends AppLocalizations$grok$en {
+	_AppLocalizations$grok$zh._(AppLocalizationsZh root) : this._root = root, super.internal(root);
+
+	final AppLocalizationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get credentialsActionFailed => 'Grok 操作失败';
+	@override String get credentialsCancel => '取消';
+	@override String get credentialsDone => '完成';
+	@override String get credentialsLogin => '登录';
+	@override String get credentialsLoginExited => 'Grok CLI 已退出。请关闭此对话框后重新登录。';
+	@override String credentialsLoginFailed({required String error}) => '无法启动登录终端：${error}';
+	@override String get credentialsLoginIntro => '在下方终端完成设备登录。Grok 会显示验证码并打开浏览器；如果没有打开，请手动访问它输出的链接。也可以在这里切换账号。';
+	@override String get credentialsLoginStarting => '正在启动 Grok CLI…';
+	@override String get credentialsLoginTitle => '登录 Grok';
+	@override String get credentialsRelaunch => '重新启动';
+	@override String get credentialsSignedIn => '已登录';
+	@override String get credentialsImportGlobal => '导入已有登录';
 }
 
 // Path: home
@@ -4402,6 +4425,7 @@ extension on AppLocalizationsZh {
 			'appProvider.toolQoder' => 'Qoder',
 			'appProvider.toolQoderCn' => 'Qoder 国内版',
 			'appProvider.website' => '官网',
+			'appProvider.toolGrok' => 'Grok CLI',
 			'automations.boundSession' => '绑定会话',
 			'automations.boundSessionPending' => '首次运行后自动绑定会话',
 			'automations.boundSessionUnavailable' => '会话不可用，请切换或解绑',
@@ -4459,9 +4483,9 @@ extension on AppLocalizationsZh {
 			'automations.maxRunCount' => '运行次数上限',
 			'automations.maxRunCountHint' => '留空表示无限制',
 			'automations.message' => '消息',
-			'automations.name' => '名称',
 			_ => null,
 		} ?? switch (path) {
+			'automations.name' => '名称',
 			'automations.kNew' => '新建自动化',
 			'automations.nextRun' => ({required String time}) => '下次运行：${time}',
 			'automations.nextRunNone' => '暂无计划运行',
@@ -4973,9 +4997,9 @@ extension on AppLocalizationsZh {
 			'fileTree.importDropCopy' => '复制',
 			'fileTree.importDropMove' => '移动',
 			'fileTree.importOverwrite' => '覆盖',
-			'fileTree.importProgressCancel' => '取消',
 			_ => null,
 		} ?? switch (path) {
+			'fileTree.importProgressCancel' => '取消',
 			'fileTree.importProgressCurrent' => ({required String name}) => '${name}',
 			'fileTree.importProgressItems' => ({required int completed, required int total}) => '${completed} / ${total}',
 			'fileTree.importProgressTitle' => '正在导入…',
@@ -5181,6 +5205,18 @@ extension on AppLocalizationsZh {
 			'github.signIn' => '使用 GitHub 登录',
 			'github.switchAccount' => '切换账号',
 			'github.waitingCodeHint' => '如有提示，请在 GitHub 上输入此验证码',
+			'grok.credentialsActionFailed' => 'Grok 操作失败',
+			'grok.credentialsCancel' => '取消',
+			'grok.credentialsDone' => '完成',
+			'grok.credentialsLogin' => '登录',
+			'grok.credentialsLoginExited' => 'Grok CLI 已退出。请关闭此对话框后重新登录。',
+			'grok.credentialsLoginFailed' => ({required String error}) => '无法启动登录终端：${error}',
+			'grok.credentialsLoginIntro' => '在下方终端完成设备登录。Grok 会显示验证码并打开浏览器；如果没有打开，请手动访问它输出的链接。也可以在这里切换账号。',
+			'grok.credentialsLoginStarting' => '正在启动 Grok CLI…',
+			'grok.credentialsLoginTitle' => '登录 Grok',
+			'grok.credentialsRelaunch' => '重新启动',
+			'grok.credentialsSignedIn' => '已登录',
+			'grok.credentialsImportGlobal' => '导入已有登录',
 			'home.connectionCancelRetry' => '取消重试',
 			'home.connectionErrorAuth' => '认证失败',
 			'home.connectionErrorHostKey' => '主机身份已变更 — 请重新配对或确认新密钥',
@@ -5475,6 +5511,8 @@ extension on AppLocalizationsZh {
 			'managedProviders.endpointHelper' => '获取用量数据的请求地址。',
 			'managedProviders.endpointHint' => 'https://api.example.com/usage',
 			'managedProviders.error' => '错误',
+			_ => null,
+		} ?? switch (path) {
 			'managedProviders.fieldExampleLabel' => '示例',
 			'managedProviders.fieldMappingError' => '字段映射必须是无密钥的 JSON 对象。',
 			'managedProviders.fieldMappings' => '列表项字段映射（JSON）',
@@ -5488,8 +5526,6 @@ extension on AppLocalizationsZh {
 			'managedProviders.kind' => '类型',
 			'managedProviders.kindApiBalance' => 'API 余额',
 			'managedProviders.kindCustomHttp' => '自定义 HTTP',
-			_ => null,
-		} ?? switch (path) {
 			'managedProviders.kindPresetLockedHelper' => '当前预设或模板已锁定类型。',
 			'managedProviders.kindSubscriptionQuota' => '订阅额度',
 			'managedProviders.lastQueryFailed' => '上次查询失败',
@@ -5989,6 +6025,8 @@ extension on AppLocalizationsZh {
 			'rtk.statusJqMissing' => 'PATH 中未找到 jq',
 			'rtk.statusNotFound' => 'PATH 中未找到 rtk',
 			'rtk.statusVersionTooOld' => ({required String version}) => 'rtk ${version} 版本过低（需要 >= 0.23.0）',
+			_ => null,
+		} ?? switch (path) {
 			'run.acceptRecommendation' => '将建议配置添加到 launch.json',
 			'run.action' => '运行',
 			'run.addConfiguration' => '添加配置',
@@ -6002,8 +6040,6 @@ extension on AppLocalizationsZh {
 			'run.configurationName' => '名称',
 			'run.configurationTooltip' => '运行配置',
 			'run.configurationType' => '类型',
-			_ => null,
-		} ?? switch (path) {
 			'run.configurationsEmpty' => '暂无启动配置',
 			'run.configureLaunchItems' => '配置启动项',
 			'run.debug' => '调试',
@@ -6503,6 +6539,8 @@ extension on AppLocalizationsZh {
 			'sshProfile.formHostHint' => 'server、deploy@server:2222',
 			'sshProfile.formIdentityFile' => '私钥内容',
 			'sshProfile.formIdentityFileHelper' => '可直接粘贴私钥，或从文件导入。',
+			_ => null,
+		} ?? switch (path) {
 			'sshProfile.formIdentityFileHint' => '-----BEGIN OPENSSH PRIVATE KEY-----',
 			'sshProfile.formIdentityFileImport' => '从文件导入',
 			'sshProfile.formIdentityFileImportFailed' => '无法读取所选文件，请直接粘贴私钥',
@@ -6516,8 +6554,6 @@ extension on AppLocalizationsZh {
 			'sshProfile.formPort' => '端口',
 			'sshProfile.formPortInvalid' => '端口须在 1–65535 之间',
 			'sshProfile.formTitleEdit' => '编辑 SSH 目标',
-			_ => null,
-		} ?? switch (path) {
 			'sshProfile.formTitleNew' => '新的 SSH 目标',
 			'sshProfile.formUsername' => '用户名',
 			'sshProfile.formUsernameHint' => 'deploy',
@@ -7017,6 +7053,8 @@ extension on AppLocalizationsZh {
 			'workspace.terminalSshConnectFailed' => 'SSH 配置未找到或连接失败',
 			'workspace.terminalThemeAdaptive' => '跟随主题',
 			'workspace.terminalThemeClassicDark' => '经典暗色',
+			_ => null,
+		} ?? switch (path) {
 			'workspace.terminalThemeHighContrast' => '高对比',
 			'workspace.toolsResolveFailed' => '无法打开工作区工具',
 			'workspace.toolsResolveFailedHint' => '请确认远程机器可连通后再重试。',
@@ -7030,8 +7068,6 @@ extension on AppLocalizationsZh {
 			'worktree.branchLabel' => '分支名',
 			'worktree.createAction' => '创建',
 			'worktree.createFailed' => ({required Object error}) => '创建 worktree 失败：${error}',
-			_ => null,
-		} ?? switch (path) {
 			'worktree.createTitle' => '新建 worktree',
 			'worktree.creating' => '正在创建…',
 			'worktree.deleteAction' => '删除',

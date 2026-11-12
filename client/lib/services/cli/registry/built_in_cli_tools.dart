@@ -49,6 +49,11 @@ import '../cursor/cursor_tool.dart';
 import '../flashskyai/flashskyai_tool.dart';
 import '../gemini/capabilities/acp.dart';
 import '../gemini/gemini_tool.dart';
+import '../grok/capabilities/acp.dart';
+import '../grok/capabilities/headless.dart';
+import '../grok/capabilities/provider.dart';
+import '../grok/grok_bootstrap_entry.dart';
+import '../grok/grok_tool.dart';
 import '../opencode/opencode_tool.dart';
 import '../qoder/capabilities/headless.dart';
 import '../qoder/capabilities/provider.dart';
@@ -67,6 +72,7 @@ void registerBuiltInCliTools(
   );
   final cursorEntry = bootstrap?.entry<CursorBootstrapEntry>(CliTool.cursor);
   final geminiEntry = bootstrap?.entry<GeminiBootstrapEntry>(CliTool.gemini);
+  final grokEntry = bootstrap?.entry<GrokBootstrapEntry>(CliTool.grok);
   final storage = bootstrap?.storage;
 
   registry.register(
@@ -135,6 +141,17 @@ void registerBuiltInCliTools(
       // Non-const when a bootstrap entry supplies the credential source;
       // the pre-configure default omits GEMINI_API_KEY from the agent env.
       acp: GeminiAcpCapability(credentialSource: geminiEntry?.credentialSource),
+    ),
+  );
+
+  registry.register(
+    GrokCliTool(
+      provider: GrokProviderCapability(
+        storage: storage,
+        fallbackCredentialSource: grokEntry?.credentialSource,
+      ),
+      headless: GrokHeadlessCapability(storage: storage),
+      acp: GrokAcpCapability(credentialSource: grokEntry?.credentialSource),
     ),
   );
 

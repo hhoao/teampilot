@@ -94,6 +94,7 @@ final class WorkspaceCliCache {
     CliTool.codebuddy ||
     CliTool.antigravity ||
     CliTool.qoder ||
-    CliTool.qoderCn => const [],
+    CliTool.qoderCn ||
+    CliTool.grok => const [],
   };
 }

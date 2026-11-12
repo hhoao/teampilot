@@ -59,6 +59,7 @@ String usageCliLabel(CliTool cli) => switch (cli) {
   CliTool.antigravity => 'Antigravity',
   CliTool.qoder => 'Qoder',
   CliTool.qoderCn => 'Qoder CN',
+  CliTool.grok => 'Grok',
   CliTool.flashskyai => 'FlashSky',
 };
 
@@ -72,6 +73,7 @@ Color usageCliColor(CliTool cli) => switch (cli) {
   CliTool.antigravity => const Color(0xFF34A853),
   CliTool.qoder => const Color(0xFF6B4EFF),
   CliTool.qoderCn => const Color(0xFF6B4EFF),
+  CliTool.grok => const Color(0xFF111111),
   CliTool.flashskyai => const Color(0xFFF59E0B),
 };
 

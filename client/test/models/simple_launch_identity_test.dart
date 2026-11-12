@@ -64,6 +64,7 @@ void main() {
       CliTool.antigravity => 'antigravity',
       CliTool.qoder => 'qoder',
       CliTool.qoderCn => 'qoder-cn',
+      CliTool.grok => 'xai',
     };
     expect(
       SimpleLaunchIdentity.resolve(

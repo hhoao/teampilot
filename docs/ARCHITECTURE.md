@@ -215,7 +215,7 @@ personal, native team, and mixed team launches all resolve through
 session: `stampMemberAcp` writes `SessionMemberBinding.acp`, `isAcpChatSeat`
 reads it, and `AppSession.acp` stays personal-only (`isAcpChatSession`
 additionally requires `isSimple`). The four seeds are Claude, Codex, Cursor,
-and OpenCode; ACP-only CLIs (Gemini, CodeBuddy, Qoder) are always ACP when
+and OpenCode; ACP-only CLIs (Gemini, CodeBuddy, Qoder, Grok) are always ACP when
 the gates pass.
 
 Remote members use the same SSH exec transport as personal remote sessions:

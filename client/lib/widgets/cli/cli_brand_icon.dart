@@ -17,6 +17,7 @@ String? cliBrandIconKey(CliTool cli) => switch (cli) {
   CliTool.antigravity => 'gemini',
   CliTool.qoder => 'qoder',
   CliTool.qoderCn => 'qoder',
+  CliTool.grok => 'grok',
 };
 
 IconData cliToolIconData(CliTool cli) => switch (cli) {
@@ -30,6 +31,7 @@ IconData cliToolIconData(CliTool cli) => switch (cli) {
   CliTool.antigravity => Icons.rocket_launch_outlined,
   CliTool.qoder => Icons.terminal,
   CliTool.qoderCn => Icons.terminal,
+  CliTool.grok => Icons.auto_awesome_motion_outlined,
 };
 
 /// Renders a CLI brand mark (TeamPilot logo, bundled vendor icon, or fallback).

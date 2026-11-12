@@ -47,6 +47,7 @@ extension AppLocalizationsX on AppLocalizations {
       CliTool.antigravity => appProvider.toolAntigravity,
       CliTool.qoder => appProvider.toolQoder,
       CliTool.qoderCn => appProvider.toolQoderCn,
+      CliTool.grok => appProvider.toolGrok,
     };
   }
 

@@ -61,6 +61,7 @@ class HookImportParser {
     CliTool.codebuddy: const ClaudeFamilyHooksJsonDialect(),
     CliTool.qoder: const ClaudeFamilyHooksJsonDialect(),
     CliTool.qoderCn: const ClaudeFamilyHooksJsonDialect(),
+    CliTool.grok: const ClaudeFamilyHooksJsonDialect(),
     CliTool.flashskyai: const ClaudeFamilyHooksJsonDialect(),
     CliTool.codex: const CodexHooksJsonDialect(),
     CliTool.cursor: const CursorHooksJsonDialect(),

@@ -16,6 +16,7 @@ import '../cubits/app_provider_cubit.dart';
 import '../services/cli/antigravity/antigravity_bootstrap_entry.dart';
 import '../services/cli/antigravity/capabilities/acp_adapter_installer.dart';
 import '../services/cli/gemini/gemini_bootstrap_entry.dart';
+import '../services/cli/grok/grok_bootstrap_entry.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/remote_download_catalog_cubit.dart';
 import '../cubits/automation_cubit.dart';
@@ -1837,6 +1838,9 @@ Future<AppShell> buildAppShell({
     // Cached Gemini API key for the ACP agent env (refreshed from provider
     // rows; the ACP credential source is a sync closure).
     String? cachedGeminiApiKey;
+    // Cached xAI API key for the ACP/headless env; provider-bound keys are
+    // injected per seat, so this is only the app-wide fallback.
+    String? cachedGrokApiKey;
     // Cached Claude provider row matching the CLI's selected official-vs-key
     // id for the sync ACP auth source; refreshed alongside the Gemini key.
     AppProviderConfig? cachedClaudeProvider;
@@ -1879,6 +1883,9 @@ Future<AppShell> buildAppShell({
         CliTool.gemini: GeminiBootstrapEntry(
           credentialSource: () => cachedGeminiApiKey,
         ),
+        CliTool.grok: GrokBootstrapEntry(
+          credentialSource: () => cachedGrokApiKey,
+        ),
         CliTool.antigravity: AntigravityBootstrapEntry(
           storage: homeStorage,
           acpInstaller: AntigravityAcpAdapterInstaller(
@@ -1916,6 +1923,23 @@ Future<AppShell> buildAppShell({
           })
           .catchError((Object _) {})
           .whenComplete(() => geminiCredentialRefreshInFlight = false);
+    }
+
+    var grokCredentialRefreshInFlight = false;
+    void refreshGrokCredential() {
+      if (grokCredentialRefreshInFlight) return;
+      grokCredentialRefreshInFlight = true;
+      appProviderCubit
+          .loadProvidersFor(CliTool.grok)
+          .then((providers) {
+            final key = providers
+                .map((p) => p.apiKey.trim())
+                .firstWhere((k) => k.isNotEmpty, orElse: () => '')
+                .trim();
+            cachedGrokApiKey = key.isEmpty ? null : key;
+          })
+          .catchError((Object _) {})
+          .whenComplete(() => grokCredentialRefreshInFlight = false);
     }
 
     var claudeProviderRefreshInFlight = false;
@@ -1956,12 +1980,14 @@ Future<AppShell> buildAppShell({
     refreshClaudeProvider();
     refreshCodexProvider();
     refreshGeminiCredential();
+    refreshGrokCredential();
     // Self-managing: when appProviderCubit closes (shell teardown), the
     // broadcast stream's onDone fires and nothing further is refreshed.
     appProviderCubit.stream.listen((_) {
       refreshClaudeProvider();
       refreshCodexProvider();
       refreshGeminiCredential();
+      refreshGrokCredential();
     }, onDone: () {});
 
     final skillManifest = SkillManifestService(storage: homeStorage);

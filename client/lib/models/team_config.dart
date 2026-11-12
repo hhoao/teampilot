@@ -26,7 +26,8 @@ enum CliTool {
   codebuddy('codebuddy'),
   antigravity('antigravity'),
   qoder('qoder'),
-  qoderCn('qoder-cn');
+  qoderCn('qoder-cn'),
+  grok('grok');
 
   const CliTool(this.value);
 

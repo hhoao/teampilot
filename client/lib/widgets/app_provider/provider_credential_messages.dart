@@ -14,6 +14,7 @@ String providerCredentialSuccessMessage(AppLocalizations l10n, CliTool cli) {
     CliTool.antigravity => l10n.antigravity.credentialsSignedIn,
     CliTool.qoder => l10n.qoder.credentialsSignedIn,
     CliTool.qoderCn => l10n.qoder.credentialsSignedIn,
+    CliTool.grok => l10n.grok.credentialsSignedIn,
   };
 }
 
@@ -103,5 +104,6 @@ String _genericFailureMessage(AppLocalizations l10n, CliTool cli) {
     CliTool.antigravity => l10n.antigravity.credentialsActionFailed,
     CliTool.qoder => l10n.qoder.credentialsActionFailed,
     CliTool.qoderCn => l10n.qoder.credentialsActionFailed,
+    CliTool.grok => l10n.grok.credentialsActionFailed,
   };
 }

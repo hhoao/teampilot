@@ -467,6 +467,7 @@ String _sectionTitle(AppLocalizations l10n, CliTool cli) {
     CliTool.antigravity => l10n.appProvider.toolAntigravity,
     CliTool.qoder => l10n.appProvider.toolQoder,
     CliTool.qoderCn => l10n.appProvider.toolQoderCn,
+    CliTool.grok => l10n.appProvider.toolGrok,
   };
 }
 
@@ -487,6 +488,7 @@ String _actionLabel(
       CliTool.antigravity => l10n.antigravity.credentialsLogin,
       CliTool.qoder => l10n.qoder.credentialsLogin,
       CliTool.qoderCn => l10n.qoder.credentialsLogin,
+      CliTool.grok => l10n.grok.credentialsLogin,
     },
     ProviderCredentialActionKind.importGlobal => switch (cli) {
       CliTool.claude => l10n.claude.officialCredentialsImportGlobal,
@@ -499,6 +501,7 @@ String _actionLabel(
       CliTool.antigravity => l10n.appProvider.toolAntigravity,
       CliTool.qoder => l10n.appProvider.toolQoder,
       CliTool.qoderCn => l10n.appProvider.toolQoderCn,
+      CliTool.grok => l10n.grok.credentialsImportGlobal,
     },
     ProviderCredentialActionKind.importFile => switch (cli) {
       CliTool.claude => l10n.claude.officialCredentialsImportFile,
@@ -511,6 +514,7 @@ String _actionLabel(
       CliTool.antigravity => l10n.appProvider.toolAntigravity,
       CliTool.qoder => l10n.appProvider.toolQoder,
       CliTool.qoderCn => l10n.appProvider.toolQoderCn,
+      CliTool.grok => l10n.grok.credentialsImportGlobal,
     },
     ProviderCredentialActionKind.importDirectory =>
       l10n.cursor.credentialsImportFile,
@@ -525,6 +529,7 @@ String _actionLabel(
       CliTool.antigravity => l10n.appProvider.toolAntigravity,
       CliTool.qoder => l10n.appProvider.toolQoder,
       CliTool.qoderCn => l10n.appProvider.toolQoderCn,
+      CliTool.grok => l10n.appProvider.toolGrok,
     },
   };
 }
@@ -556,6 +561,7 @@ String _revokeConfirmMessage(
     CliTool.antigravity => l10n.appProvider.toolAntigravity,
     CliTool.qoder => l10n.appProvider.toolQoder,
     CliTool.qoderCn => l10n.appProvider.toolQoderCn,
+    CliTool.grok => l10n.appProvider.toolGrok,
   };
 }
 

@@ -161,6 +161,7 @@ abstract final class CliTestProfiles {
       CliTool.antigravity => _antigravity,
       CliTool.qoder => _qoder,
       CliTool.qoderCn => _qoderCn,
+      CliTool.grok => _grok,
     };
   }
 
@@ -336,6 +337,22 @@ abstract final class CliTestProfiles {
     dismissBootGates: dismissBootGatesStub,
     gatewayRedirectNotes:
         'N/A: qoder targets ACP (`qodercli --acp`), not the '
+        'mock-gateway matrix.',
+  );
+
+  /// Grok is ACP-only (`grok agent stdio`), so it stays outside the
+  /// mock-gateway matrix until an ACP harness lands.
+  static final CliTestProfile _grok = CliTestProfile(
+    tool: CliTool.grok,
+    wire: CliTestWire.openaiChat,
+    binaryName: 'grok',
+    resolveBinary: () => whichOnPath('grok'),
+    toolName: mapShortMcpToolRef,
+    assistantVisibleMarkers: const [markA1, markA2, markA3],
+    bootToPrompt: bootToPromptStub,
+    dismissBootGates: dismissBootGatesStub,
+    gatewayRedirectNotes:
+        'N/A: grok targets ACP (`grok agent stdio`), not the '
         'mock-gateway matrix.',
   );
 

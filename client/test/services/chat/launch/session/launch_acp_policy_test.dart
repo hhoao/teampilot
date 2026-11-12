@@ -32,6 +32,7 @@ void main() {
       CliTool.codebuddy,
       CliTool.qoder,
       CliTool.antigravity,
+      CliTool.grok,
     ]) {
       expect(
         resolveAcpOnTarget(cli: cli, targetId: 'ssh:box', requested: false),
@@ -94,6 +95,7 @@ void main() {
   test('acpForcedByCli is capability-only', () {
     expect(acpForcedByCli(CliTool.gemini), isTrue);
     expect(acpForcedByCli(CliTool.antigravity), isTrue);
+    expect(acpForcedByCli(CliTool.grok), isTrue);
     expect(acpForcedByCli(CliTool.claude), isFalse);
     expect(acpForcedByCli(null), isFalse);
   });

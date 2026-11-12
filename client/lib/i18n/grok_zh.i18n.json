@@ -1,0 +1,14 @@
+{
+  "credentialsActionFailed": "Grok 操作失败",
+  "credentialsCancel": "取消",
+  "credentialsDone": "完成",
+  "credentialsLogin": "登录",
+  "credentialsLoginExited": "Grok CLI 已退出。请关闭此对话框后重新登录。",
+  "credentialsLoginFailed": "无法启动登录终端：{error: String}",
+  "credentialsLoginIntro": "在下方终端完成设备登录。Grok 会显示验证码并打开浏览器；如果没有打开，请手动访问它输出的链接。也可以在这里切换账号。",
+  "credentialsLoginStarting": "正在启动 Grok CLI…",
+  "credentialsLoginTitle": "登录 Grok",
+  "credentialsRelaunch": "重新启动",
+  "credentialsSignedIn": "已登录",
+  "credentialsImportGlobal": "导入已有登录"
+}

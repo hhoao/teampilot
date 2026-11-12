@@ -945,6 +945,7 @@ class AppLocalizations with BaseTranslations<AppLocale, AppLocalizations> {
 	late final AppLocalizations$git$en git = AppLocalizations$git$en.internal(_root);
 	late final AppLocalizations$gitGraph$en gitGraph = AppLocalizations$gitGraph$en.internal(_root);
 	late final AppLocalizations$github$en github = AppLocalizations$github$en.internal(_root);
+	late final AppLocalizations$grok$en grok = AppLocalizations$grok$en.internal(_root);
 	late final AppLocalizations$home$en home = AppLocalizations$home$en.internal(_root);
 	late final AppLocalizations$homeWorkspace$en homeWorkspace = AppLocalizations$homeWorkspace$en.internal(_root);
 	late final AppLocalizations$hook$en hook = AppLocalizations$hook$en.internal(_root);
@@ -1558,6 +1559,9 @@ class AppLocalizations$appProvider$en {
 
 	/// en: 'Website'
 	String get website => 'Website';
+
+	/// en: 'Grok CLI'
+	String get toolGrok => 'Grok CLI';
 }
 
 // Path: automations
@@ -4152,6 +4156,51 @@ class AppLocalizations$github$en {
 
 	/// en: 'Enter this code on GitHub if prompted'
 	String get waitingCodeHint => 'Enter this code on GitHub if prompted';
+}
+
+// Path: grok
+class AppLocalizations$grok$en {
+	AppLocalizations$grok$en.internal(this._root);
+
+	final AppLocalizations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'The Grok action failed'
+	String get credentialsActionFailed => 'The Grok action failed';
+
+	/// en: 'Cancel'
+	String get credentialsCancel => 'Cancel';
+
+	/// en: 'Done'
+	String get credentialsDone => 'Done';
+
+	/// en: 'Sign in'
+	String get credentialsLogin => 'Sign in';
+
+	/// en: 'Grok CLI exited. Close this dialog and start the sign-in again.'
+	String get credentialsLoginExited => 'Grok CLI exited. Close this dialog and start the sign-in again.';
+
+	/// en: 'Could not start the login terminal: {error: String}'
+	String credentialsLoginFailed({required String error}) => 'Could not start the login terminal: ${error}';
+
+	/// en: 'Complete the device sign-in in the terminal below. Grok prints a code and opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.'
+	String get credentialsLoginIntro => 'Complete the device sign-in in the terminal below. Grok prints a code and opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.';
+
+	/// en: 'Starting Grok CLI…'
+	String get credentialsLoginStarting => 'Starting Grok CLI…';
+
+	/// en: 'Sign in to Grok'
+	String get credentialsLoginTitle => 'Sign in to Grok';
+
+	/// en: 'Relaunch'
+	String get credentialsRelaunch => 'Relaunch';
+
+	/// en: 'Signed in'
+	String get credentialsSignedIn => 'Signed in';
+
+	/// en: 'Import existing login'
+	String get credentialsImportGlobal => 'Import existing login';
 }
 
 // Path: home
@@ -10596,6 +10645,7 @@ extension on AppLocalizations {
 			'appProvider.toolQoder' => 'Qoder',
 			'appProvider.toolQoderCn' => 'Qoder CN',
 			'appProvider.website' => 'Website',
+			'appProvider.toolGrok' => 'Grok CLI',
 			'automations.boundSession' => 'Bound session',
 			'automations.boundSessionPending' => 'A session is bound after the first run',
 			'automations.boundSessionUnavailable' => 'Session unavailable — switch or unbind',
@@ -10653,9 +10703,9 @@ extension on AppLocalizations {
 			'automations.maxRunCount' => 'Run limit',
 			'automations.maxRunCountHint' => 'Leave empty for unlimited',
 			'automations.message' => 'Message',
-			'automations.name' => 'Name',
 			_ => null,
 		} ?? switch (path) {
+			'automations.name' => 'Name',
 			'automations.kNew' => 'New automation',
 			'automations.nextRun' => ({required String time}) => 'Next run: ${time}',
 			'automations.nextRunNone' => 'No upcoming run',
@@ -11167,9 +11217,9 @@ extension on AppLocalizations {
 			'fileTree.importDropCopy' => 'Copy',
 			'fileTree.importDropMove' => 'Move',
 			'fileTree.importOverwrite' => 'Overwrite',
-			'fileTree.importProgressCancel' => 'Cancel',
 			_ => null,
 		} ?? switch (path) {
+			'fileTree.importProgressCancel' => 'Cancel',
 			'fileTree.importProgressCurrent' => ({required String name}) => '${name}',
 			'fileTree.importProgressItems' => ({required int completed, required int total}) => '${completed} / ${total}',
 			'fileTree.importProgressTitle' => 'Importing…',
@@ -11375,6 +11425,18 @@ extension on AppLocalizations {
 			'github.signIn' => 'Sign in with GitHub',
 			'github.switchAccount' => 'Switch account',
 			'github.waitingCodeHint' => 'Enter this code on GitHub if prompted',
+			'grok.credentialsActionFailed' => 'The Grok action failed',
+			'grok.credentialsCancel' => 'Cancel',
+			'grok.credentialsDone' => 'Done',
+			'grok.credentialsLogin' => 'Sign in',
+			'grok.credentialsLoginExited' => 'Grok CLI exited. Close this dialog and start the sign-in again.',
+			'grok.credentialsLoginFailed' => ({required String error}) => 'Could not start the login terminal: ${error}',
+			'grok.credentialsLoginIntro' => 'Complete the device sign-in in the terminal below. Grok prints a code and opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.',
+			'grok.credentialsLoginStarting' => 'Starting Grok CLI…',
+			'grok.credentialsLoginTitle' => 'Sign in to Grok',
+			'grok.credentialsRelaunch' => 'Relaunch',
+			'grok.credentialsSignedIn' => 'Signed in',
+			'grok.credentialsImportGlobal' => 'Import existing login',
 			'home.connectionCancelRetry' => 'Stop retrying',
 			'home.connectionErrorAuth' => 'Authentication failed',
 			'home.connectionErrorHostKey' => 'Host identity changed — re-pair or confirm the new key',
@@ -11669,6 +11731,8 @@ extension on AppLocalizations {
 			'managedProviders.endpointHelper' => 'URL used to fetch usage data.',
 			'managedProviders.endpointHint' => 'https://api.example.com/usage',
 			'managedProviders.error' => 'Error',
+			_ => null,
+		} ?? switch (path) {
 			'managedProviders.fieldExampleLabel' => 'Example',
 			'managedProviders.fieldMappingError' => 'Field mappings must be a secret-free JSON object.',
 			'managedProviders.fieldMappings' => 'List item field mappings (JSON)',
@@ -11682,8 +11746,6 @@ extension on AppLocalizations {
 			'managedProviders.kind' => 'Kind',
 			'managedProviders.kindApiBalance' => 'API balance',
 			'managedProviders.kindCustomHttp' => 'Custom HTTP',
-			_ => null,
-		} ?? switch (path) {
 			'managedProviders.kindPresetLockedHelper' => 'Locked by the selected preset or provider template.',
 			'managedProviders.kindSubscriptionQuota' => 'Subscription quota',
 			'managedProviders.lastQueryFailed' => 'Last query failed',
@@ -12183,6 +12245,8 @@ extension on AppLocalizations {
 			'rtk.statusJqMissing' => 'jq not found on PATH',
 			'rtk.statusNotFound' => 'rtk not found on PATH',
 			'rtk.statusVersionTooOld' => ({required String version}) => 'rtk ${version} is too old (need >= 0.23.0)',
+			_ => null,
+		} ?? switch (path) {
 			'run.acceptRecommendation' => 'Add suggested configuration to launch.json',
 			'run.action' => 'Run',
 			'run.addConfiguration' => 'Add configuration',
@@ -12196,8 +12260,6 @@ extension on AppLocalizations {
 			'run.configurationName' => 'Name',
 			'run.configurationTooltip' => 'Run configuration',
 			'run.configurationType' => 'Type',
-			_ => null,
-		} ?? switch (path) {
 			'run.configurationsEmpty' => 'No launch configurations yet',
 			'run.configureLaunchItems' => 'Configure launch configurations',
 			'run.debug' => 'Debug',
@@ -12697,6 +12759,8 @@ extension on AppLocalizations {
 			'sshProfile.formHostHint' => 'server, deploy@server:2222',
 			'sshProfile.formIdentityFile' => 'Private key',
 			'sshProfile.formIdentityFileHelper' => 'Paste the private key, or import it from a file.',
+			_ => null,
+		} ?? switch (path) {
 			'sshProfile.formIdentityFileHint' => '-----BEGIN OPENSSH PRIVATE KEY-----',
 			'sshProfile.formIdentityFileImport' => 'Import from file',
 			'sshProfile.formIdentityFileImportFailed' => 'Could not read the selected file; paste the key instead',
@@ -12710,8 +12774,6 @@ extension on AppLocalizations {
 			'sshProfile.formPort' => 'Port',
 			'sshProfile.formPortInvalid' => 'Port must be between 1 and 65535',
 			'sshProfile.formTitleEdit' => 'Edit SSH target',
-			_ => null,
-		} ?? switch (path) {
 			'sshProfile.formTitleNew' => 'New SSH target',
 			'sshProfile.formUsername' => 'Username',
 			'sshProfile.formUsernameHint' => 'deploy',
@@ -13211,6 +13273,8 @@ extension on AppLocalizations {
 			'workspace.terminalSshConnectFailed' => 'SSH profile not found or connection failed',
 			'workspace.terminalThemeAdaptive' => 'Match app theme',
 			'workspace.terminalThemeClassicDark' => 'Classic dark',
+			_ => null,
+		} ?? switch (path) {
 			'workspace.terminalThemeHighContrast' => 'High contrast',
 			'workspace.toolsResolveFailed' => 'Could not open workspace tools',
 			'workspace.toolsResolveFailedHint' => 'Check that remote machines are reachable, then try again.',
@@ -13224,8 +13288,6 @@ extension on AppLocalizations {
 			'worktree.branchLabel' => 'Branch name',
 			'worktree.createAction' => 'Create',
 			'worktree.createFailed' => ({required Object error}) => 'Failed to create worktree: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'worktree.createTitle' => 'New worktree',
 			'worktree.creating' => 'Creating…',
 			'worktree.deleteAction' => 'Remove',
