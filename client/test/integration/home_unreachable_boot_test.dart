@@ -535,10 +535,10 @@ void main() {
     test('cubit/coordinator hooks read the live home id', () {
       expect(
         src,
-        contains('profileId == activeHomeProfileId'),
+        contains('state.profileId != activeHomeProfileId'),
         reason:
-            'onReconnectAttempt/onReconnected/persistRetry must follow home '
-            'switches, not the captured boot id',
+            'the connectivity projection must follow home switches, not the '
+            'captured boot id',
       );
       expect(
         src,
