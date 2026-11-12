@@ -47,7 +47,7 @@ import 'home_plane_switch.dart';
 ///
 /// The rest of the shell's seams arrive as accessors. [homePlaneSwitch] and
 /// [homeInvalidationService] are shell `late final`s assigned once the shell
-/// graph is wired — the only reads happen inside [runRemoteBootAfterConnectOnce],
+/// graph is wired — the only reads happen inside [_runRemoteBootAfterConnectOnce],
 /// i.e. strictly after construction. [homeConnectionCubit] is nullable because
 /// the shell keeps the same nullable local for its construction-failure
 /// teardown. No accessor points back at one of this controller's own methods.
@@ -169,7 +169,7 @@ class ShellBootController {
   /// Warm the shell-hosted config + auxiliary data and resolve onboarding.
   /// Shared by the native path and the remote (post-connect) boot so both
   /// stay identical; returns `showOnboardingWizard`.
-  Future<bool> warmShellAndPrepareInteractive() async {
+  Future<bool> _warmShellAndPrepareInteractive() async {
     await yieldUiFrame();
     // Managed Provider cache hydration is deliberately background work. The
     // shell can paint while the global Cubits transition from initial to
@@ -306,7 +306,7 @@ class ShellBootController {
         );
       }
     }
-    _remoteShowOnboarding = await warmShellAndPrepareInteractive();
+    _remoteShowOnboarding = await _warmShellAndPrepareInteractive();
     // Completed only once the whole chain succeeded: a transient failure
     // after a flaky reconnect must remain retryable by the next onConnected
     // (the status is `connected`, so the user has no manual retry surface).
@@ -361,7 +361,7 @@ class ShellBootController {
           );
           bootstrapCubit?.markHomeIndexReady();
         }
-        showOnboarding = await warmShellAndPrepareInteractive();
+        showOnboarding = await _warmShellAndPrepareInteractive();
       }
     } else {
       // The device-local SSH catalog is the one boot read that must survive
