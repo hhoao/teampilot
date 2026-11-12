@@ -99,7 +99,10 @@ class WorkspaceToolsScopeState extends Equatable {
 class WorkspaceToolsScopeCubit extends Cubit<WorkspaceToolsScopeState> {
   WorkspaceToolsScopeCubit({
     required SessionLifecycleService lifecycle,
-    Duration resolveTimeout = const Duration(seconds: 12),
+    // A healthy resolve is sub-second; during an SSH storage retire it would
+    // otherwise block the scope for the full old 12s before giving up. Fail the
+    // slice fast and let the next sync retry once the plane is back.
+    Duration resolveTimeout = const Duration(seconds: 5),
   }) : _lifecycle = lifecycle,
        _resolveTimeout = resolveTimeout,
        super(const WorkspaceToolsScopeState());

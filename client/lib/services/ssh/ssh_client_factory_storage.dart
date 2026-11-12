@@ -10,6 +10,10 @@ typedef _SshWorkerStorageClosed =
       StackTrace stackTrace,
     );
 
+/// Outcome of a keepalive probe. A [timedOut] probe means the link is slow
+/// (radio wake-up / handover), not necessarily dead; only [dead] is proof.
+enum _ProbeOutcome { healthy, timedOut, dead }
+
 /// Owns the factory's production storage leases without exposing dartssh2
 /// clients across the worker boundary.
 final class _SshWorkerStoragePool {
@@ -37,6 +41,14 @@ final class _SshWorkerStoragePool {
   final _SshWorkerStorageClosed _onTransportClosed;
   final Map<String, _WorkerStorageConnection> _connections = {};
   final Map<String, _WorkerStorageOpening> _openings = {};
+
+  /// After a live storage plane is retired, the next reopen waits out this
+  /// window. Without it every consumer (acp-history, shared-state, favourites,
+  /// display prefs, marketplace sweep…) reopens at once, so a flaky link turns
+  /// into a retire/reopen storm. Concurrent callers coalesce onto the one
+  /// delayed opening.
+  static const _retireCooldown = Duration(seconds: 2);
+  final Map<String, DateTime> _retireCooldowns = {};
 
   bool hasLiveClient(String profileId) {
     final connection = _connections[profileId];
@@ -116,7 +128,19 @@ final class _SshWorkerStoragePool {
           _throwIfOpeningInvalidated(profile.id, token);
           return cached.storage;
         }
-        if (await _probe(cached.storage)) {
+        final probe = await _probe(cached.storage);
+        if (probe == _ProbeOutcome.healthy) {
+          cached.probeTimeouts = 0;
+          cached.lastProbedAt = DateTime.now();
+          _throwIfOpeningInvalidated(profile.id, token);
+          return cached.storage;
+        }
+        if (probe == _ProbeOutcome.timedOut && cached.probeTimeouts < 1) {
+          // A single slow round trip (radio wake-up / handover) is common on
+          // mobile links. Retiring the lease here tears down every storage
+          // reader and forces a full reconnect; keep it and let the next real
+          // request (or a confirmed second timeout) decide.
+          cached.probeTimeouts += 1;
           cached.lastProbedAt = DateTime.now();
           _throwIfOpeningInvalidated(profile.id, token);
           return cached.storage;
@@ -138,6 +162,19 @@ final class _SshWorkerStoragePool {
           shutdownWorker: true,
         );
       }
+    }
+
+    // Space reopens after a recent retirement so a flaky link does not turn
+    // every consumer into a dial at once. Concurrent callers coalesce on this
+    // single opening, so only one waits.
+    final cooldownUntil = _retireCooldowns[profile.id];
+    if (cooldownUntil != null) {
+      final remaining = cooldownUntil.difference(DateTime.now());
+      if (remaining > Duration.zero) {
+        await Future<void>.delayed(remaining);
+        _throwIfOpeningInvalidated(profile.id, token);
+      }
+      _retireCooldowns.remove(profile.id);
     }
 
     final lease = await _manager.acquire(profile);
@@ -188,6 +225,7 @@ final class _SshWorkerStoragePool {
       _throwIfConnectionInvalidated(profile.id, token, connection);
       connection.lastProbedAt = DateTime.now();
       connection.readyCompleted = true;
+      _retireCooldowns.remove(profile.id);
       _onPoolChanged(profile.id);
       return storage;
     } on Object {
@@ -202,22 +240,25 @@ final class _SshWorkerStoragePool {
     }
   }
 
-  Future<bool> _probe(SshWorkerStorageClient storage) async {
+  Future<_ProbeOutcome> _probe(SshWorkerStorageClient storage) async {
     // A single slow SFTP round trip is common on mobile links during a radio
-    // wake-up or a network handover. Retiring the lease on that one blip tears
-    // down every session plane and forces a full relaunch, so confirm with a
-    // second probe before declaring the transport dead.
+    // wake-up or a network handover. Retry once; if both attempts fail, a pure
+    // timeout means "slow" (tolerable) while any definitive transport error
+    // means "dead".
+    var timedOut = false;
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
         // Probe the SFTP plane itself. A shell `exec` probe rejects valid
         // SFTP-only accounts and adds a full exec-channel round trip.
         await storage.realpath('.', timeout: SshStorageIo.probeTimeout);
-        return true;
+        return _ProbeOutcome.healthy;
+      } on TimeoutException {
+        timedOut = true;
       } on Object {
-        // Retry once below.
+        // Definitive error; still retry once below before giving up.
       }
     }
-    return false;
+    return timedOut ? _ProbeOutcome.timedOut : _ProbeOutcome.dead;
   }
 
   void disconnectProfile(
@@ -225,6 +266,7 @@ final class _SshWorkerStoragePool {
     required SshTransportCloseReason reason,
   }) {
     _openings.remove(profileId);
+    _retireCooldowns.remove(profileId);
     final connection = _connections[profileId];
     if (connection != null) {
       _retireConnection(
@@ -232,6 +274,7 @@ final class _SshWorkerStoragePool {
         connection,
         reason: reason,
         shutdownWorker: true,
+        cooldown: false,
       );
       return;
     }
@@ -244,9 +287,10 @@ final class _SshWorkerStoragePool {
     required SshTransportCloseReason reason,
   }) {
     _openings.remove(profileId);
+    _retireCooldowns.remove(profileId);
     final connection = _connections[profileId];
     if (connection != null) {
-      _retireConnection(profileId, connection, reason: reason);
+      _retireConnection(profileId, connection, reason: reason, cooldown: false);
     }
   }
 
@@ -282,6 +326,7 @@ final class _SshWorkerStoragePool {
     required SshTransportCloseReason reason,
     bool notifyTransportClose = true,
     bool shutdownWorker = false,
+    bool cooldown = true,
   }) {
     if (!identical(_connections[profileId], connection)) return;
     _connections.remove(profileId);
@@ -294,6 +339,11 @@ final class _SshWorkerStoragePool {
     _ignoreErrors(connection.lease.release());
     if (shutdownWorker) _disconnectManagerAfterDrain(profileId);
     if (connection.readyCompleted) {
+      // An unexpected retire (probe / timeout / transport event) backs the next
+      // reopen off; a deliberate disconnect (user / retarget) does not.
+      if (cooldown) {
+        _retireCooldowns[profileId] = DateTime.now().add(_retireCooldown);
+      }
       _onPoolChanged(profileId);
       if (notifyTransportClose) {
         _onTransportClosed(profileId, reason, StackTrace.current);
@@ -379,4 +429,8 @@ final class _WorkerStorageConnection {
   DateTime? lastProbedAt;
   var readyCompleted = false;
   var closed = false;
+
+  /// Consecutive slow (timed-out) probes. One is tolerated; a second confirms
+  /// the link is not merely slow. Reset by any healthy probe.
+  var probeTimeouts = 0;
 }
