@@ -165,6 +165,24 @@ final class SeatRewindStore {
       throw const RewindTurnSkipped();
     }
     await ensureRepo();
+    if (isRemote) {
+      final files = await _includedRuntimeFiles();
+      try {
+        return await _commitTurnRemoteBatched(
+          files: files,
+          messageId: messageId,
+          userMessageId: userMessageId,
+          nativeSessionId: nativeSessionId,
+        );
+      } on StateError catch (error) {
+        // Old git without `--pathspec-from-file`, or any other script failure,
+        // falls back to the per-step path (which itself degrades to one `git
+        // add` per file). Correctness of the checkpoint beats the round-trip win.
+        AppLogger.instance.w(
+          '[rewind] batched remote commit failed; retrying per step: $error',
+        );
+      }
+    }
     await _dropStaleSeatIndexEntries();
     await _addIncludedFiles(await _includedRuntimeFiles());
     final tree = (await _runGit([..._repoArgs, 'write-tree'])).trim();
@@ -207,6 +225,101 @@ final class SeatRewindStore {
       turnAt: turnAt,
       nativeSessionId: nativeSessionId,
     );
+  }
+
+  /// One remote `runScript` for the whole turn:
+  /// `git add` (pathspec list on stdin) → `write-tree` → `commit-tree` →
+  /// three `update-ref`s. The parent is resolved inside the script (and the
+  /// root commit bootstrapped on the first turn), so a steady-state turn costs
+  /// a single `find` plus one exec instead of ~8 SSH round-trips.
+  Future<RewindCheckpoint> _commitTurnRemoteBatched({
+    required List<String> files,
+    required String messageId,
+    required String userMessageId,
+    required String? nativeSessionId,
+  }) async {
+    final turnAt = DateTime.now().millisecondsSinceEpoch;
+    final message =
+        'checkpoint\n'
+        '\n'
+        'Turn-Message: $messageId\n'
+        'Turn-User: $userMessageId\n'
+        'Turn-At: $turnAt\n'
+        'Native-Session: ${nativeSessionId ?? ''}';
+    final qGitDir = RemoteFileStore.shellSingleQuote(gitDir);
+    final qWorkTree = RemoteFileStore.shellSingleQuote(workTree);
+    final qRootIndex = RemoteFileStore.shellSingleQuote(
+      paths.join(gitDir, 'root-index'),
+    );
+    final qKeepRef = RemoteFileStore.shellSingleQuote(
+      'refs/rewind/keep/$messageId',
+    );
+    final qMessage = RemoteFileStore.shellSingleQuote(message);
+    final addLine = files.isEmpty
+        ? ''
+        : 'git --git-dir $qGitDir --work-tree $qWorkTree '
+              'add --pathspec-from-file=- --pathspec-file-nul\n';
+    final script =
+        r'''
+set -e
+__ADD__tree=$(git --git-dir __GIT_DIR__ --work-tree __WORK_TREE__ write-tree)
+parent=$(git --git-dir __GIT_DIR__ --work-tree __WORK_TREE__ rev-parse --verify --quiet refs/rewind/checked-out || true)
+if [ -z "$parent" ]; then
+  parent=$(git --git-dir __GIT_DIR__ --work-tree __WORK_TREE__ rev-parse --verify --quiet refs/rewind/root || true)
+fi
+if [ -z "$parent" ]; then
+  root_tree=$(GIT_INDEX_FILE=__ROOT_INDEX__ git --git-dir __GIT_DIR__ --work-tree __WORK_TREE__ write-tree)
+  parent=$(git --git-dir __GIT_DIR__ --work-tree __WORK_TREE__ commit-tree "$root_tree" -m root)
+  git --git-dir __GIT_DIR__ --work-tree __WORK_TREE__ update-ref refs/rewind/root "$parent"
+  rm -f __ROOT_INDEX__
+fi
+commit=$(git --git-dir __GIT_DIR__ --work-tree __WORK_TREE__ commit-tree "$tree" -p "$parent" -m __MESSAGE__)
+git --git-dir __GIT_DIR__ --work-tree __WORK_TREE__ update-ref __KEEP_REF__ "$commit"
+git --git-dir __GIT_DIR__ --work-tree __WORK_TREE__ update-ref refs/rewind/live "$commit"
+git --git-dir __GIT_DIR__ --work-tree __WORK_TREE__ update-ref refs/rewind/checked-out "$commit"
+printf 'TP-TREE %s\nTP-PARENT %s\nTP-COMMIT %s\n' "$tree" "$parent" "$commit"
+'''
+            .replaceAll('__ADD__', addLine)
+            .replaceAll('__GIT_DIR__', qGitDir)
+            .replaceAll('__WORK_TREE__', qWorkTree)
+            .replaceAll('__ROOT_INDEX__', qRootIndex)
+            .replaceAll('__KEEP_REF__', qKeepRef)
+            .replaceAll('__MESSAGE__', qMessage);
+
+    final result = await git.runScript(
+      script,
+      workingDirectory: workTree,
+      environment: _gitIdentity,
+      stdinText: files.isEmpty ? null : '${files.join('\x00')}\x00',
+      timeout: commandTimeout,
+    );
+    final tree = _scriptField(result.stdout, 'TP-TREE');
+    final parent = _scriptField(result.stdout, 'TP-PARENT');
+    final commit = _scriptField(result.stdout, 'TP-COMMIT');
+    if (tree == null || parent == null || commit == null) {
+      throw StateError(
+        'batched remote commitTurn produced unexpected output: '
+        '${result.stdout}',
+      );
+    }
+    return RewindCheckpoint(
+      commit: commit,
+      parentCommit: parent,
+      messageId: messageId,
+      userMessageId: userMessageId,
+      turnAt: turnAt,
+      nativeSessionId: nativeSessionId,
+    );
+  }
+
+  static String? _scriptField(String output, String key) {
+    for (final line in const LineSplitter().convert(output)) {
+      if (line.startsWith('$key ')) {
+        final value = line.substring(key.length + 1).trim();
+        return value.isEmpty ? null : value;
+      }
+    }
+    return null;
   }
 
   /// Adds every included file in one git process.

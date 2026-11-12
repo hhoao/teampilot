@@ -537,6 +537,57 @@ exec "$realGit" "\$@"
     expect(runner.scripts.where((s) => s.contains('find')), hasLength(1));
     expect(runner.calls.any((c) => c.contains('ls-files')), isFalse);
   });
+
+  test(
+    'remote commitTurn batches add/write-tree/commit-tree/update-ref '
+    'into one script',
+    () async {
+      if (Platform.isWindows) return; // runScript is POSIX-only
+      final tmp = tmpDir.path;
+      final runner = _RecordingGitRunner(LocalGitCommandRunner());
+      final store = SeatRewindStore(
+        gitDir: '$tmp/repo.git',
+        workTree: '$tmp/work',
+        target: const SeatRewindTarget(
+          kind: SeatRewindKind.personalAcp,
+          tool: 'claude',
+        ),
+        git: runner,
+        fs: _RemoteDelegatingFs(),
+      );
+
+      // First turn bootstraps the repo (init) and the root commit.
+      final first = await store.commitTurn(messageId: 'm1');
+
+      // Steady state must be one `find` + one batch script, not ~8 execs.
+      runner.calls.clear();
+      runner.scripts.clear();
+      final second = await store.commitTurn(messageId: 'm2');
+
+      const perStep = {'add', 'write-tree', 'commit-tree', 'update-ref'};
+      expect(
+        runner.calls.where((args) => args.any(perStep.contains)),
+        isEmpty,
+        reason: 'add/write-tree/commit-tree/update-ref must run in the script',
+      );
+      expect(runner.scripts.where((s) => s.contains('find')), hasLength(1));
+      final batch = runner.scripts.singleWhere(
+        (s) =>
+            s.contains('add --pathspec-from-file=-') &&
+            s.contains('write-tree') &&
+            s.contains('commit-tree') &&
+            s.contains('update-ref refs/rewind/checked-out'),
+      );
+      expect(batch, contains('refs/rewind/keep/m2'));
+
+      // The batched checkpoint is real, chained, and actually contains the seat
+      // files the single `git add` staged.
+      expect(second.parentCommit, first.commit);
+      final names = await _lsTree(store, second.commit);
+      expect(names, contains('claude/projects/a.jsonl'));
+      expect(names, contains('acp-transcript.jsonl'));
+    },
+  );
 }
 
 Future<List<String>> _lsTree(SeatRewindStore store, String commit) async {

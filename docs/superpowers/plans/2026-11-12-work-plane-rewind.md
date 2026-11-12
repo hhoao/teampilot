@@ -934,6 +934,16 @@ Expected: PASS。
 cd /home/hhoa/git/hhoa/teampilot && git add client/lib/services/chat/rewind/seat_rewind_store.dart client/test/services/chat/rewind/seat_rewind_store_test.dart && git commit -m "perf(rewind): batch remote file listing and skip stale index walk"
 ```
 
+- [x] **Step 6 (follow-up): Batch the remote `commitTurn` sequence**
+
+Step 3 above only removed the two O(N) listings; a remote turn still issued
+`add → write-tree → rev-parse parent → commit-tree → 3× update-ref` as ~8
+sequential execs. `_commitTurnRemoteBatched` now folds that whole sequence
+(plus parent/root resolution) into one `runScript`, so a steady-state remote
+turn is `find` + one script (2 execs). Older git without
+`--pathspec-from-file` falls back to the per-step path. Test:
+`remote commitTurn batches add/write-tree/commit-tree/update-ref into one script`.
+
 ---
 
 ## Task 5: SeatRuntimeResolver + RewindCapability
