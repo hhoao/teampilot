@@ -5,7 +5,6 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 
 import '../cubits/app_bootstrap_cubit.dart';
 import 'app_data_bootstrap.dart';
@@ -19,6 +18,7 @@ import 'bootstrap/chat_session_wiring.dart';
 import 'bootstrap/home_plane_wiring.dart';
 import 'bootstrap/hub_wiring.dart';
 import 'bootstrap/install_wiring.dart';
+import 'bootstrap/platform_wiring.dart';
 import 'bootstrap/session_runtime_wiring.dart';
 import 'bootstrap/session_state_wiring.dart';
 import 'bootstrap/session_usage_wiring.dart';
@@ -75,11 +75,6 @@ import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
 import '../cubits/progress_activity_cubit.dart';
 import '../cubits/repo_clone_cubit.dart';
-import '../services/app/app_update_service.dart';
-import '../services/remote_download/remote_download_http.dart';
-import '../services/remote_download/remote_download_resolver.dart';
-import '../services/remote_download/remote_downloader.dart';
-import '../services/file_tree_import/workspace_import_service.dart';
 import '../services/install/install_job_registry.dart';
 import '../services/install/runners/app_update_install_job_runner.dart';
 import '../cubits/ai_history_cubit.dart';
@@ -128,7 +123,6 @@ import '../cubits/ssh_profile_cubit.dart';
 import '../cubits/vault_cubit.dart';
 import '../cubits/termux_cubit.dart';
 import '../cubits/github_account_cubit.dart';
-import '../config/github_oauth_config.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../cubits/team_hub_cubit.dart';
 import '../cubits/expert_hub_cubit.dart';
@@ -228,13 +222,9 @@ import '../services/plugin/plugin_repo_disk_cache_service.dart';
 import '../services/skill/registry/skill_registry_factory.dart';
 import '../services/storage/runtime_context.dart';
 import '../services/github/github_credentials_store.dart';
-import '../services/github/github_device_flow_auth.dart';
-import '../services/hub_publish/http_github_api_client.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import '../services/ssh/ssh_connection_gate.dart';
 import '../services/ssh/ssh_home_connectivity_supervisor.dart';
-
-import 'package:url_launcher/url_launcher.dart';
 
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
 import '../services/ssh/mcp/session_ssh_mcp_executor.dart';
@@ -757,62 +747,21 @@ Future<AppShell> buildAppShell({
     vaultCapture: vaultCredentialCapture,
   );
 
-  final githubCredentialsStore = GithubCredentialsStore(
-    kv: const FlutterSecureKeyValueStore(),
-    vault: vaultService,
-    vaultCapture: vaultCredentialCapture,
-    ensureVaultUnlocked: vaultUnlockGate.ensureUnlocked,
+  final platform = await wirePlatformServices(
+    nativeAppDataPath: nativeAppDataPath,
+    vaultService: vaultService,
+    vaultCredentialCapture: vaultCredentialCapture,
+    vaultUnlockGate: vaultUnlockGate,
   );
-  final githubDeviceFlow = githubDeviceFlowAvailable
-      ? GithubDeviceFlowAuth(clientId: githubOauthClientId)
-      : null;
-  final githubAccountCubit = GithubAccountCubit(
-    store: githubCredentialsStore,
-    deviceFlow: githubDeviceFlow,
-    openUrl: (uri) async {
-      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!ok) throw StateError('Could not launch $uri');
-    },
-    fetchLogin: (token) async {
-      final user = await HttpGithubApiClient().getAuthenticatedUser(
-        token: token,
-      );
-      return user.login;
-    },
-    deviceFlowAvailable: githubDeviceFlowAvailable,
-  );
-
-  // P1: targets.json is a pure target catalog (no default/migrate); the home
-  // target authority is the device-local homeTargetStore read above. The
-  // registry is used by the picker UI to list selectable targets.
-  final targetsRepo = deviceLocalTargetsRepository(nativeAppDataPath);
-  final termuxConfigStore = deviceLocalTermuxConfigStore(nativeAppDataPath);
-  final remoteDownloadSettingsStore = deviceLocalRemoteDownloadSettingsStore(
-    nativeAppDataPath,
-  );
-  final remoteDownloadCatalogCubit = RemoteDownloadCatalogCubit(
-    store: remoteDownloadSettingsStore,
-  );
-  unawaited(remoteDownloadCatalogCubit.load());
-  final appUpdateResolver = RemoteDownloadResolver.withProvider(
-    () => remoteDownloadCatalogCubit.state.catalog,
-  );
-  final appUpdateHttpClient = http.Client();
-  final remoteDownloader = RemoteDownloader(
-    client: appUpdateHttpClient,
-    resolver: appUpdateResolver,
-  );
-  final appUpdateService = AppUpdateService(
-    httpClient: appUpdateHttpClient,
-    resolver: appUpdateResolver,
-    downloadHttp: RemoteDownloadHttp(
-      client: appUpdateHttpClient,
-      resolver: appUpdateResolver,
-    ),
-    downloader: remoteDownloader,
-  );
-  final workspaceImportService = WorkspaceImportService();
-  var termuxConfigCache = await termuxConfigStore.load();
+  final githubCredentialsStore = platform.githubCredentials;
+  final githubAccountCubit = platform.githubAccountCubit;
+  final targetsRepo = platform.targetsRepo;
+  final termuxConfigStore = platform.termuxConfigStore;
+  final remoteDownloadCatalogCubit = platform.remoteDownloadCatalogCubit;
+  final remoteDownloader = platform.remoteDownloader;
+  final appUpdateService = platform.appUpdateService;
+  final workspaceImportService = platform.workspaceImportService;
+  var termuxConfigCache = platform.termuxConfigCache;
   TermuxCubit? termuxGateCubit;
   SshProfile? homeSshProfileCache;
   if (homeTarget.kind == RuntimeKind.ssh) {
