@@ -10,7 +10,7 @@ import 'package:http/http.dart' as http;
 import '../cubits/app_bootstrap_cubit.dart';
 import 'app_data_bootstrap.dart';
 import 'bootstrap/managed_provider_control_plane.dart';
-import 'bootstrap/provider_usage_http_client.dart';
+import 'bootstrap/managed_provider_wiring.dart';
 import 'bootstrap/catalog_wiring.dart';
 import 'bootstrap/hub_wiring.dart';
 import 'bootstrap/install_wiring.dart';
@@ -190,9 +190,6 @@ import '../services/vault/vault_access.dart';
 import '../services/vault/keychain_vault_backend.dart';
 import '../services/vault/legacy_import.dart';
 import '../services/vault/vault_split_migration.dart';
-import '../models/vault_reference.dart';
-import '../services/vault/provider_credential_link.dart';
-import '../services/vault/vault_reference_indexer.dart';
 import '../services/vault/vault_service.dart';
 import '../services/vault/vault_unlock_gate.dart';
 import '../services/io/local_filesystem.dart';
@@ -252,14 +249,9 @@ import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart
 import '../services/chat/runtime/pty/tab_member_pty_delivery.dart';
 import '../services/provider/provider_credential_host_runner.dart';
 import '../services/provider_usage/managed_provider_secret_store.dart';
-import '../services/provider_usage/managed_provider_cli_row_janitor.dart';
-import '../services/provider_usage/managed_provider_link_janitor.dart';
 import '../services/provider_usage/managed_provider_usage_adapter.dart';
 import '../services/provider_usage/managed_provider_usage_coordinator.dart';
 import '../services/provider_usage/managed_provider_usage_registry.dart';
-import '../services/provider_usage/adapters/claude_official_subscription_auth.dart';
-import '../services/provider_usage/adapters/codex_official_subscription_auth.dart';
-import '../services/provider_usage/adapters/cursor_official_subscription_auth.dart';
 import '../services/provider_usage/cli_credential_source.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/remote_cli_locator.dart';
@@ -1225,253 +1217,47 @@ Future<AppShell> buildAppShell({
   // Managed Providers belong to the home/control plane. Construct this graph
   // once after the home context is installed; workspace tabs only consume the Cubits
   // exposed by AppShell and never create provider-specific state.
-  final resolvedManagedProviderSecretStore =
-      managedProviderSecretStore ??
-      ManagedProviderSecretStore(const FlutterSecureKeyValueStore());
-  final resolvedManagedProviderUsageRepository =
-      managedProviderUsageRepository ??
-      ManagedProviderUsageRepository(storage: homeStorage);
-  final resolvedManagedProviderRepository =
-      managedProviderRepository ??
-      ManagedProviderRepository(
-        storage: homeStorage,
-        onProvidersDeleted: resolvedManagedProviderUsageRepository.deleteMany,
-      );
-
-  vaultCubit.attachReferenceIndexer(
-    VaultReferenceIndexer([
-      (entryId) async {
-        final profiles = await sshProfileRepo.loadAll();
-        return [
-          for (final profile in profiles)
-            if (profile.vaultEntryId == entryId)
-              VaultReference(
-                kind: VaultReferenceKind.sshProfile,
-                id: profile.id,
-                label: profile.name,
-              ),
-        ];
-      },
-      (entryId) async {
-        final perCli = await Future.wait([
-          for (final cli in CliTool.values)
-            AppProviderRepository(storage: homeStorage)
-                .loadProviders(cli, reconcileCredentials: false),
-        ]);
-        return [
-          for (final providers in perCli)
-            for (final provider in providers)
-              if (vaultEntryIdFromCredentialLink(provider.credentialLink) ==
-                  entryId)
-                VaultReference(
-                  kind: VaultReferenceKind.appProvider,
-                  id: provider.id,
-                  label: provider.name,
-                ),
-        ];
-      },
-      (entryId) async {
-        final entries = await resolvedManagedProviderRepository.load();
-        return [
-          for (final entry in entries)
-            if ((entry.vaultEntryId ?? '').trim() == entryId)
-              VaultReference(
-                kind: VaultReferenceKind.managedProvider,
-                id: entry.id,
-                label: entry.name,
-              ),
-        ];
-      },
-      (entryId) async {
-        final stored = await githubCredentialsStore.storedVaultEntryId();
-        if ((stored ?? '').trim() != entryId) return const [];
-        return const [
-          VaultReference(
-            kind: VaultReferenceKind.github,
-            id: 'github',
-            label: 'GitHub',
-          ),
-        ];
-      },
-    ]),
-  );
-  final ownsManagedProviderHttpClient =
-      managedProviderUsageHttpClient == null &&
-      managedProviderUsageCoordinator == null;
-  final ProviderUsageHttpClient? resolvedManagedProviderHttpClient =
-      managedProviderUsageHttpClient ??
-      (managedProviderUsageCoordinator == null
-          ? DefaultProviderUsageHttpClient()
-          : null);
-  final resolvedManagedProviderUsageRegistry =
-      managedProviderUsageRegistry ??
-      buildDefaultManagedProviderUsageRegistry(
-        fs: homeStorage.fs,
-        basePath: homeStorage.paths.basePath,
-        cliCredentials:
-            managedProviderCliCredentials ??
-            CliCredentialSourceResolver(
-              readers: {
-                'claude': ClaudeOfficialSubscriptionAuthReader(
-                  fs: homeStorage.fs,
-                  basePath: homeStorage.paths.basePath,
-                ),
-                'codex': CodexOfficialSubscriptionAuthReader(
-                  fs: homeStorage.fs,
-                  basePath: homeStorage.paths.basePath,
-                ),
-                'cursor': CursorOfficialSubscriptionAuthReader(
-                  fs: homeStorage.fs,
-                  basePath: homeStorage.paths.basePath,
-                ),
-              },
-            ),
-      );
-  final resolvedManagedProviderUsageCoordinator =
-      managedProviderUsageCoordinator ??
-      ManagedProviderUsageCoordinator(
-        providerRepository: resolvedManagedProviderRepository,
-        usageRepository: resolvedManagedProviderUsageRepository,
-        registry: resolvedManagedProviderUsageRegistry,
-        credentials: ManagedProviderCredentialResolver(
-          resolvedManagedProviderSecretStore,
-          // Live `provider:<cli>:<id>` credential sources read the app
-          // provider catalog; a dedicated repository instance avoids the
-          // (later-constructed) cubit's load-order dependency. Same disk,
-          // same cache-free reads.
-          appProviders: AppProviderRepository(storage: homeStorage),
-          vault: vaultAccess,
-        ),
-        http: resolvedManagedProviderHttpClient!,
-      );
-  final resolvedManagedProviderUsageCubit =
-      managedProviderUsageCubit ??
-      ManagedProviderUsageCubit(
-        coordinator: resolvedManagedProviderUsageCoordinator,
-      );
-  // Credential-login URL opener shared by the app provider cubit and the
-  // per-CLI credential host runner; declared before the managed-provider
-  // control plane so AppProviderCubit can be constructed above it.
-  Future<void> openCredentialLoginUrl(Uri uri) async {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
-  // Resolves a provider config's `credentialLink` to the linked managed
-  // entry's stored secret (spec: reverse direction). Secret-free failure: a
-  // missing entry or secret resolves to null, never throws.
-  Future<String?> appProviderLinkedCredentialLookup(String link) async {
-    final vaultEntryId = vaultEntryIdFromCredentialLink(link);
-    if (vaultEntryId != null) {
-      try {
-        return await vaultAccess.functionalField(vaultEntryId, 'apiKey');
-      } on Object {
-        return null;
-      }
-    }
-    final entries = await resolvedManagedProviderRepository.load();
-    final entry = entries.where((e) => e.id == link.trim()).firstOrNull;
-    if (entry == null) return null;
-    final entryVaultEntryId = entry.vaultEntryId?.trim() ?? '';
-    if (entryVaultEntryId.isNotEmpty) {
-      final field = entry.endpointConfig.credentialField ?? 'apiKey';
-      try {
-        return await vaultAccess.functionalField(entryVaultEntryId, field);
-      } on Object {
-        return null;
-      }
-    }
-    final ref = entry.credentialRef?.trim();
-    if (ref == null || ref.isEmpty) return null;
-    final scope = await resolvedManagedProviderSecretStore.read(ref);
-    final field = entry.endpointConfig.credentialField ?? 'apiKey';
-    final value = scope.valueFor(field);
-    return (value == null || value.isEmpty) ? null : value;
-  }
-
-  // CLI launch resolvers create their own AppProviderRepository instances
-  // (OpenCode, Claude, cross-machine bridges); give them the vault-aware
-  // lookup so `vault:` links resolve outside the provider cubit too.
-  AppProviderRepository.installDefaultLinkedCredentialLookup(
-    appProviderLinkedCredentialLookup,
-  );
-
-  // Constructed before the managed-provider control plane so
-  // ManagedProviderCubit can ensure dedicated per-entry CLI provider rows;
-  // only needs sessionPreferencesCubit and openCredentialLoginUrl.
-  appProviderCubit = AppProviderCubit(
+  final managedProv = wireManagedProviders(
     storage: homeStorage,
-    repository: AppProviderRepository(
-      storage: homeStorage,
-      linkedCredentialLookup: appProviderLinkedCredentialLookup,
-    ),
-    flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
-    openCredentialLoginUrl: openCredentialLoginUrl,
-    managedProviderRepository: resolvedManagedProviderRepository,
-    vaultCapture: vaultCredentialCapture,
-    ensureVaultUnlocked: vaultUnlockGate.ensureUnlocked,
+    vaultCubit: () => vaultCubit,
+    vaultAccess: vaultAccess,
+    vaultService: vaultService,
+    vaultCredentialCapture: vaultCredentialCapture,
+    vaultUnlockGate: vaultUnlockGate,
+    sshProfiles: sshProfileRepo,
+    githubCredentials: githubCredentialsStore,
+    sessionPreferences: sessionPreferencesCubit,
+    boot: boot,
+    repositoryOverride: managedProviderRepository,
+    usageRepositoryOverride: managedProviderUsageRepository,
+    secretStoreOverride: managedProviderSecretStore,
+    usageRegistryOverride: managedProviderUsageRegistry,
+    usageCoordinatorOverride: managedProviderUsageCoordinator,
+    cubitOverride: managedProviderCubit,
+    usageCubitOverride: managedProviderUsageCubit,
+    httpClientOverride: managedProviderUsageHttpClient,
+    cliCredentialsOverride: managedProviderCliCredentials,
   );
-
-  // Reclaims dedicated CLI provider rows and their isolated HOME
-  // directories: from the managed-provider delete hook and the one-shot
-  // startup sweep below.
-  final managedProviderCliRowJanitor = ManagedProviderCliRowJanitor(
-    fs: homeStorage.fs,
-    basePath: homeStorage.paths.basePath,
-    appProviderCubit: appProviderCubit,
-  );
-
-  final resolvedManagedProviderCubit =
-      managedProviderCubit ??
-      ManagedProviderCubit(
-        repository: resolvedManagedProviderRepository,
-        appProviderCubit: appProviderCubit,
-        rowJanitor: managedProviderCliRowJanitor,
-        ensureVaultUnlocked: vaultUnlockGate.ensureUnlocked,
-        onProviderDeletedState:
-            resolvedManagedProviderUsageCubit.removeProvider,
-        onProviderDeletedCredentialCleanup: (provider) async {
-          final vaultEntryId = provider.vaultEntryId?.trim() ?? '';
-          if (vaultEntryId.isNotEmpty) {
-            try {
-              await vaultService.delete(vaultEntryId);
-            } on Object catch (error, stackTrace) {
-              appLogger.w(
-                'Vault entry cleanup failed for managed provider ${provider.id}',
-                error: error,
-                stackTrace: stackTrace,
-              );
-            }
-          }
-          final ref = provider.credentialRef?.trim();
-          if (ref != null && ref.isNotEmpty) {
-            await resolvedManagedProviderSecretStore.delete(ref);
-          }
-          // Clear provider-config rows that referenced this entry's secret.
-          await ManagedProviderLinkJanitor(appProviderCubit: appProviderCubit)
-              .clearLinksFor(provider.id);
-        },
-      );
-  final managedProviderControlPlane = ManagedProviderControlPlane(
-    providerRepository: resolvedManagedProviderRepository,
-    usageRepository: resolvedManagedProviderUsageRepository,
-    secretStore: resolvedManagedProviderSecretStore,
-    usageRegistry: resolvedManagedProviderUsageRegistry,
-    usageCoordinator: resolvedManagedProviderUsageCoordinator,
-    providerCubit: resolvedManagedProviderCubit,
-    usageCubit: resolvedManagedProviderUsageCubit,
-    ownsProviderCubit: managedProviderCubit == null,
-    ownsUsageCubit: managedProviderUsageCubit == null,
-    ownsUsageCoordinator: managedProviderUsageCoordinator == null,
-    closeOwnedHttpClient: ownsManagedProviderHttpClient
-        ? () =>
-              (resolvedManagedProviderHttpClient!
-                      as DefaultProviderUsageHttpClient)
-                  .close()
-        : null,
-  );
-  final managedProviderControlPlaneLease = ManagedProviderControlPlaneLease(
-    managedProviderControlPlane,
-  );
+  appProviderCubit = managedProv.appProviderCubit;
+  final managedProviderControlPlane = managedProv.controlPlane;
+  final managedProviderControlPlaneLease = managedProv.controlPlaneLease;
+  final resolvedManagedProviderCubit = managedProv.providerCubit;
+  final resolvedManagedProviderUsageCubit = managedProv.usageCubit;
+  final hydrateManagedProviderData = managedProv.hydrate;
+  final openCredentialLoginUrl = managedProv.openCredentialLoginUrl;
+  // The control plane exposes the graph instances it owns; alias the names the
+  // rest of the shell (and the lease teardown) reads. Same identities as the
+  // ones constructed above.
+  final resolvedManagedProviderRepository =
+      managedProviderControlPlane.providerRepository;
+  final resolvedManagedProviderUsageRepository =
+      managedProviderControlPlane.usageRepository;
+  final resolvedManagedProviderSecretStore =
+      managedProviderControlPlane.secretStore;
+  final resolvedManagedProviderUsageRegistry =
+      managedProviderControlPlane.usageRegistry;
+  final resolvedManagedProviderUsageCoordinator =
+      managedProviderControlPlane.usageCoordinator;
 
   // Vault-first migration of every legacy secret. Constructed after the
   // managed-provider graph and the GitHub store so the closure above always
@@ -1536,30 +1322,6 @@ Future<AppShell> buildAppShell({
       }
     }());
   });
-
-  // One-shot startup sweep: reclaim orphaned `-mp-` rows and the legacy
-  // shared rows. Fire-and-forget and failure-tolerant — the control plane
-  // is fully usable without it.
-  unawaited(() async {
-    try {
-      final entries = await resolvedManagedProviderRepository.load();
-      await managedProviderCliRowJanitor.sweep(entries: entries);
-    } on Object catch (error, stackTrace) {
-      if (isSshProfileDown(error)) {
-        appLogger.d(
-          '[managed-provider] cli row sweep waiting for home transport',
-          error: error,
-          stackTrace: stackTrace,
-        );
-        return;
-      }
-      appLogger.w(
-        '[managed-provider] cli row sweep failed: $error',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
-  }());
 
   // Retried-bootstrap teardown seam: when wiring below fails after the
   // catalog runtime is assembled, its mutation bus must unregister its relay
@@ -2897,15 +2659,6 @@ Future<AppShell> buildAppShell({
     boot('buildAppShell complete');
     bootstrapCubit?.markShellReady();
     boot('buildAppShell shell ready');
-
-    Future<void>? managedProviderHydration;
-    Future<void> hydrateManagedProviderData() {
-      final existing = managedProviderHydration;
-      if (existing != null) return existing;
-      final future = managedProviderControlPlane.hydrate(boot: boot);
-      managedProviderHydration = future;
-      return future;
-    }
 
     reloadAllAppData =
         ({
