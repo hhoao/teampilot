@@ -17,6 +17,7 @@ import 'bootstrap/catalog_wiring.dart';
 import 'bootstrap/chat_session_wiring.dart';
 import 'bootstrap/hub_wiring.dart';
 import 'bootstrap/install_wiring.dart';
+import 'bootstrap/session_runtime_wiring.dart';
 import 'bootstrap/session_state_wiring.dart';
 import 'bootstrap/session_usage_wiring.dart';
 import 'bootstrap/workspace_wiring.dart';
@@ -38,9 +39,7 @@ import '../cubits/session_remote_activity_cubit.dart';
 import '../services/event/dispatcher.dart' as event_bus;
 import '../services/event/session_lifecycle_event.dart';
 import '../services/session_protocol/session_authority.dart';
-import '../services/session_protocol/session_models.dart';
 import '../services/session_sync/chat_session_activity_source.dart';
-import '../services/session_sync/chat_session_control_port.dart';
 import '../services/session_sync/session_content_invalidation_bus.dart';
 import '../services/session_sync/session_content_stream_bus.dart';
 import '../services/session_sync/session_protocol_controller.dart';
@@ -69,15 +68,10 @@ import '../services/launch_profile/team/launch_profile_selectors.dart';
 import '../services/ssh/worker/ssh_worker_entry.dart';
 import '../services/ssh/worker/ssh_worker_metrics.dart';
 import '../cubits/board_cubit.dart';
-import '../utils/session/workspace_tab_session_scope.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 
-import 'package:shared_ui/shared_ui.dart';
-
 import '../cubits/notification_cubit.dart';
-import '../pages/home_workspace/home_workspace_route.dart';
-import '../services/notification/desktop_system_notifier.dart';
 import '../cubits/progress_activity_cubit.dart';
 import '../cubits/repo_clone_cubit.dart';
 import '../services/app/app_update_service.dart';
@@ -99,7 +93,6 @@ import '../services/workbench/workbench_shell_launcher.dart';
 import '../services/workbench/workbench_strip_navigator.dart';
 import '../services/editor/markdown_view_mode_store.dart';
 import '../services/chat/conversation/history/ai_history_loader.dart';
-import '../services/chat/conversation/history/session_history_context_builder.dart';
 import '../cubits/ai_feature_settings_cubit.dart';
 import '../cubits/discovery_settings_cubit.dart';
 import '../cubits/config_cubit.dart';
@@ -2180,154 +2173,30 @@ Future<AppShell> buildAppShell({
     automationScheduler = automation.automationScheduler;
     final automationCatalogSub = automation.catalogSubscription;
 
-    final mailboxCubit = MailboxCubit(
-      busForScope: (scope) => scopedTeamBus(workbenchCubit, chatCubit, scope),
-    );
-
-    final boardCubit = BoardCubit(
-      busForScope: (scope) => scopedTeamBus(workbenchCubit, chatCubit, scope),
-    );
-
-    final aiHistoryLoader = AiHistoryLoader(
-      contextBuilder: const SessionHistoryContextBuilder(),
-      resolveWorkContext: (launchCtx, {String? memberId}) =>
-          sessionLifecycleService.launchWorkContext(
-            launchCtx,
-            memberId: memberId,
-          ),
-      registry: cliToolRegistry,
-      globalPresets: () => cliPresetsCubit.state.presets,
-    );
-    aiHistoryLoaderRef = aiHistoryLoader;
-    workspaceSearchIndexes.cachedHistoryMessages =
-        ({required sessionId, required memberId, required token}) =>
-            aiHistoryLoader.messagesIfCached(
-              sessionId: sessionId,
-              memberId: memberId,
-              token: token,
-            );
-    // Pods own a per-session HistoryStore once the loader exists (ChatCubit is
-    // constructed earlier); SessionChatView binds seats through the pod.
-    chatCubit.historyLoader = aiHistoryLoader;
-    final aiHistoryCubit = AiHistoryCubit(
-      loader: aiHistoryLoader,
-      loadMailboxRecords: (sessionId, memberId) async {
-        final bus = chatCubit.tabStore
-            .getOpenTabBySessionId(sessionId)
-            ?.teamBus;
-        if (bus == null) return const [];
-        return bus.memberMailRecords(memberId);
-      },
-    );
-    final sessionRemoteActivityCubit = SessionRemoteActivityCubit();
-    final sessionAuthority = SessionAuthority(
-      authorityId: SharedStateIdentity.deviceId,
-      controlPort: ChatSessionControlPort(chatCubit),
-    );
-    final sessionActivitySource = ChatSessionActivitySource(chatCubit);
-    final contentInvalidationSub = SessionContentInvalidationBus.stream.listen((
-      event,
-    ) {
-      if (!connectionModeService.isLocalMode) return;
-      sessionAuthority.publishContentInvalidated(
-        sessionId: event.sessionId,
-        memberId: event.memberId,
-      );
-    });
-    final contentStreamSub = SessionContentStreamBus.stream.listen((chunk) {
-      if (!connectionModeService.isLocalMode) return;
-      sessionAuthority.publishContentDelta(
-        sessionId: chunk.sessionId,
-        memberId: chunk.memberId,
-        kind: 'acp.messages',
-        payload: chunk.payload,
-        partial: !chunk.replace,
-      );
-    });
-    final sessionRemoteRefreshSub = sessionRemoteActivityCubit.stream.listen((
-      state,
-    ) {
-      if (!connectionModeService.isSshMode) return;
-      final known = {
-        for (final session in chatCubit.state.sessions) session.sessionId,
-      };
-      for (final snapshot in state.sessions.values) {
-        final workspaceId = snapshot.workspaceId;
-        if (workspaceId.isEmpty) continue;
-        chatCubit.upsertRemoteSessionHint(
-          sessionId: snapshot.sessionId,
-          workspaceId: workspaceId,
-        );
-        if (known.contains(snapshot.sessionId)) continue;
-        unawaited(chatCubit.refreshSessionsForWorkspace(workspaceId));
-      }
-    });
-    Future<void> notifyRemoteAttention(SessionAttention attention) async {
-      if (attention.kind != 'idle') return;
-      final session = chatCubit.state.sessions
-          .where((item) => item.sessionId == attention.sessionId)
-          .firstOrNull;
-      final title = (session?.display.trim().isNotEmpty ?? false)
-          ? session!.display.trim()
-          : attention.sessionId;
-      final locale = PlatformDispatcher.instance.locale;
-      final l10n = lookupAppLocalizations(
-        basicLocaleListResolution([locale], appLocalizationsSupportedLocales),
-      );
-      final payload = HomeWorkspaceRoute.sessionLocation(
-        workspaceId: session?.workspaceId ?? '',
-        sessionId: attention.sessionId,
-      );
-      notificationCubit.record(
-        title: title,
-        message: l10n.session.idleNotificationSubtitle,
-        variant: TpToastVariant.success,
-        payload: payload,
-      );
-      final notifier = DesktopSystemNotifier.instance;
-      if (await notifier.isAppFocused()) return;
-      await notifier.showNotification(
-        title: title,
-        body: l10n.session.idleNotificationSubtitle,
-        subtitle: l10n.session.idleNotificationTitle,
-        payload: payload,
-      );
-    }
-
-    final sessionProtocolController = SessionProtocolController(
-      deviceId: SharedStateIdentity.deviceId,
-      remoteCubit: sessionRemoteActivityCubit,
-      authority: sessionAuthority,
+    final sessionRuntime = wireSessionRuntime(
+      chat: () => chatCubit,
+      cliPresets: () => cliPresetsCubit,
+      lifecycle: () => sessionLifecycleService,
+      connectionMode: () => connectionModeService,
+      cliToolRegistry: cliToolRegistry,
+      workbench: workbenchCubit,
+      workspaceSearchIndexes: workspaceSearchIndexes,
+      notificationCubit: notificationCubit,
       isExpectedFailure: isSshProfileDown,
       waitForRecovery: waitForSshProfileRecovery,
-      onContentInvalidated: (invalidation) {
-        SessionContentInvalidationBus.publish(
-          sessionId: invalidation.sessionId,
-          memberId: invalidation.memberId,
-        );
-        chatCubit.onSessionHistoryStale?.call(invalidation.sessionId);
-      },
-      onContentDelta: (delta) {
-        if (delta.kind != 'acp.messages') return;
-        SessionContentStreamBus.publish(
-          sessionId: delta.sessionId,
-          memberId: delta.memberId,
-          payload: delta.payload,
-          replace: !delta.partial,
-        );
-      },
-      onSessionList: (delta) {
-        if (!connectionModeService.isSshMode) return;
-        chatCubit.applyRemoteSessionList(
-          workspaceId: delta.workspaceId,
-          upserted: delta.upserted,
-          removed: delta.removed,
-        );
-      },
-      onAttention: (attention) {
-        unawaited(notifyRemoteAttention(attention));
-      },
+      onHistoryLoaderCreated: (loader) => aiHistoryLoaderRef = loader,
     );
+    final mailboxCubit = sessionRuntime.mailboxCubit;
+    final boardCubit = sessionRuntime.boardCubit;
+    final aiHistoryCubit = sessionRuntime.aiHistoryCubit;
+    final sessionRemoteActivityCubit =
+        sessionRuntime.sessionRemoteActivityCubit;
+    final sessionAuthority = sessionRuntime.sessionAuthority;
+    final sessionActivitySource = sessionRuntime.activitySource;
+    final sessionProtocolController = sessionRuntime.protocolController;
+    final sessionRemoteRefreshSub = sessionRuntime.sessionRemoteRefreshSub;
+    final contentInvalidationSub = sessionRuntime.contentInvalidationSub;
+    final contentStreamSub = sessionRuntime.contentStreamSub;
     void reloadHistorySeat(String sessionId) {
       unawaited(aiHistoryCubit.softReloadIfSession(sessionId));
     }
