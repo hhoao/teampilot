@@ -376,12 +376,12 @@ wire protocol against an SSH server.
 ## Mobile remote connection contract
 
 - 远程连接（本地，移动端新增页面）：本机 `remote-targets.json` 的全量管理（增删改查、导入、连接/断开/重连、切换 home）；断线可用。设置里常驻入口（`ConfigSection.remoteConnections`），不依赖启动门控。数据与 SSH 服务器页完全分离：这里新增只写本机，不会出现在 SSH 服务器页。
-- SSH 服务器（远端）：与桌面端**同一页面、同一入口/标题**，绑定 home 平面目录（`PlaneSshProfileRepository`）。读取合并 `<home>/remote-targets.json`（远端主机本机配置）与 `<home>/ssh_profiles/profiles.json`（同步投影）；新增/编辑/删除落投影，对配对了同一平面的设备共享。本机连接目标不会出现在此页。home 切换时（`HomeStorage.changes`）重建平面仓库与 cubit 并重载列表。连接入口在「远程连接」（本机），连接成功后 `RemoteTargetSync` 把服务器写入平面投影，因此从任一设备连过的服务器都会出现在此页。
+- SSH 服务器（远端）：与桌面端**同一页面、同一入口/标题**，绑定 home 平面目录（`PlaneSshProfileRepository`）。只读写 `<home>/ssh_profiles/profiles.json`，不合并设备本地的 `remote-targets.json`，也不接收连接时的投影；条目在该页新增/编辑/删除，对配对了同一平面的设备共享。本机连接目标不会出现在此页，两页的条目数与字段集因此可以不同。home 切换时（`HomeStorage.changes`）重建平面仓库与 cubit 并重载列表。
 - 连接语义按入口分离：SSH 服务器页的「连接」= 桌面语义（`connect(id, switchHome: false)`，只建立连接、不切 home）；「远程连接」页的「连接」= 移动端语义（连接成功后 `applyAndroidSshConnectHome` 把 home 切到该主机）。
 - 字段归属：断线重连要用的字段放本地；只有连上后才用的配置放远端。
 - 凭据拆分：SSH 登录凭据留在设备 vault（断线仍可重连）；业务凭据（provider key、GitHub token 等）写 `<home>/vault/business.json`，随 home plane 走。`VaultDocumentStore` 合并两侧读取，按 owner kind 路由写入，远端侧故障不阻断本地 SSH 凭据；拆分前的业务条目做一次性复制迁移，不删除原数据。
 - 凭据迁移：启动时 + 每次 home 平面切换后都执行（`migrateBusinessVaultEntries` + `VaultLegacyImportService.runRepair`），两者幂等。`runRepair` 不受 `legacyImportVersion` 一次性标记限制，会把仍带明文 `apiKey` 且没有 vault 引用的 provider 回填进 home vault 并清掉明文；设备 vault 里的业务条目会复制到当前平面，SSH 登录凭据跳过。因此桌面端作为手机的 home 时会把自己的业务凭据发布成 `business.json`。注意：未启用加密时该文件是明文。
-- 同步：本地先行（`pendingSync`），连上后 `updatedAt` 新者胜。
+- 数据隔离：远程连接页与 SSH 服务器页各自维护自己的清单，之间没有 push/pull 投影，也没有 `pendingSync`。
 
 ## Home connection resilience
 

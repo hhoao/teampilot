@@ -4,11 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/remote_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
-import 'package:teampilot/models/ssh_server_profile.dart';
 import 'package:teampilot/repositories/remote_target_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
-import 'package:teampilot/repositories/ssh_server_profile_repository.dart';
-import 'package:teampilot/services/ssh/remote_target_sync.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import '../support/test_runtime_context.dart';
 import '../support/in_memory_filesystem.dart';
@@ -132,7 +129,6 @@ void main() {
       relayUrl: 'wss://relay.example.com',
       pairedDesktopId: 'desktop-1',
       updatedAt: 10,
-      pendingSync: true,
     );
     final profile = SshProfile.fromTarget(target);
     expect(profile.id, 't1');
@@ -173,7 +169,6 @@ void main() {
     expect(targets, hasLength(1));
     expect(targets.single.id, 'p1');
     expect(targets.single.embeddedTarget, isTrue);
-    expect(targets.single.pendingSync, isTrue);
     expect(targets.single.updatedAt, greaterThan(0));
 
     final profiles = await repo.loadAll();
@@ -213,7 +208,6 @@ void main() {
       expect(target.lastHome, isNull);
       expect(target.lastAppDataRoot, isNull);
       expect(target.lastGoodKind, isNull);
-      expect(target.pendingSync, isTrue);
       expect(target.updatedAt, greaterThan(0));
 
       final profile = (await repo.loadAll()).single;
@@ -245,126 +239,27 @@ void main() {
     },
   );
 
-  test(
-    'facade save keeps updatedAt/pendingSync for local-only field changes',
-    () async {
-      final (repo, targetRepo) = _facadePair();
-      // Clean, in-sync baseline with a known timestamp.
-      await targetRepo.save(
-        const RemoteTarget(
-          id: 'p1',
-          name: 'dev',
-          host: 'h',
-          username: 'u',
-          updatedAt: 100,
-          pendingSync: false,
-        ),
-      );
+  test('facade save persists local-only fields', () async {
+    final (repo, targetRepo) = _facadePair();
 
-      // Change only local-only state (credential reference + path cache).
-      final profile = (await repo.loadAll()).single;
-      await repo.save(
-        profile.copyWith(
-          vaultEntryId: 'vault-1',
-          lastHome: '/home/u',
-          lastAppDataRoot: '/data/u',
-        ),
-      );
+    await repo.save(
+      const SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'h',
+        username: 'u',
+        vaultEntryId: 'vault-1',
+        lastHome: '/home/u',
+        lastAppDataRoot: '/data/u',
+      ),
+    );
 
-      final target = (await targetRepo.loadAll()).single;
-      expect(target.updatedAt, 100);
-      expect(target.pendingSync, isFalse);
-      // The local-only fields are still persisted.
-      expect(target.vaultEntryId, 'vault-1');
-      expect(target.lastHome, '/home/u');
-      expect(target.lastAppDataRoot, '/data/u');
-    },
-  );
-
-  test(
-    'facade save bumps updatedAt/pendingSync on a sync-visible change',
-    () async {
-      final (repo, targetRepo) = _facadePair();
-      await targetRepo.save(
-        const RemoteTarget(
-          id: 'p1',
-          name: 'dev',
-          host: 'h',
-          username: 'u',
-          updatedAt: 100,
-          pendingSync: false,
-        ),
-      );
-
-      final profile = (await repo.loadAll()).single;
-      await repo.save(profile.copyWith(host: 'newhost.example.com'));
-
-      final target = (await targetRepo.loadAll()).single;
-      expect(target.host, 'newhost.example.com');
-      expect(target.pendingSync, isTrue);
-      expect(target.updatedAt, greaterThan(100));
-    },
-  );
-
-  test(
-    'local-only write does not clobber a newer remote config on pull/push',
-    () async {
-      final fs = InMemoryFilesystem();
-      final targetRepo = RemoteTargetRepository(
-        rootDir: '/tp/ssh_profiles',
-        fs: fs,
-      );
-      final repo = SshProfileRepository(
-        targetRepo: targetRepo,
-        storage: fakeHomeStorage(filesystem: fs),
-      );
-      final servers = SshServerProfileRepository(
-        storage: fakeHomeStorage(filesystem: fs),
-      );
-
-      // Clean local target (in sync), then a NEWER remote config with a changed
-      // host that has not yet been pulled.
-      await targetRepo.save(
-        const RemoteTarget(
-          id: 'p1',
-          name: 'dev',
-          host: 'old.example.com',
-          username: 'u',
-          updatedAt: 100,
-          pendingSync: false,
-        ),
-      );
-      await servers.save(
-        const SshServerProfile(
-          id: 'p1',
-          name: 'dev',
-          host: 'new.example.com',
-          username: 'u',
-          updatedAt: 200,
-        ),
-      );
-
-      // A local path-cache-style write must NOT bump updatedAt/pendingSync:
-      // otherwise pull() would see a newer local timestamp and skip the remote
-      // config, and push() would clobber it with the stale local host.
-      final profile = (await repo.loadAll()).single;
-      await repo.save(
-        profile.copyWith(lastHome: '/home/u', lastAppDataRoot: '/data/u'),
-      );
-      final localAfterCache = (await targetRepo.loadAll()).single;
-      expect(localAfterCache.updatedAt, 100);
-      expect(localAfterCache.pendingSync, isFalse);
-
-      final sync = RemoteTargetSync(targets: targetRepo, servers: servers);
-      final merged = await sync.pull((await targetRepo.findById('p1'))!);
-      if (merged.pendingSync) await sync.push(merged);
-
-      // The newer remote host won; the remote catalog was not overwritten.
-      expect((await targetRepo.findById('p1'))!.host, 'new.example.com');
-      expect((await targetRepo.findById('p1'))!.updatedAt, 200);
-      expect((await servers.findById('p1'))!.host, 'new.example.com');
-    },
-  );
+    final target = (await targetRepo.loadAll()).single;
+    expect(target.vaultEntryId, 'vault-1');
+    expect(target.lastHome, '/home/u');
+    expect(target.lastAppDataRoot, '/data/u');
+    expect(target.updatedAt, greaterThan(0));
+  });
 
   test('legacy repo getter throws a clear StateError', () async {
     final repo = SshProfileRepository(storage: fakeHomeStorage());

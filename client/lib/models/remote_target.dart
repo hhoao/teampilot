@@ -22,7 +22,6 @@ class RemoteTarget {
     this.relayUrl,
     this.pairedDesktopId,
     this.updatedAt = 0,
-    this.pendingSync = false,
   });
 
   factory RemoteTarget.fromJson(Map<String, Object?> json) {
@@ -64,9 +63,6 @@ class RemoteTarget {
       relayUrl: json['relayUrl'] as String?,
       pairedDesktopId: json['pairedDesktopId'] as String?,
       updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
-      pendingSync: json['pendingSync'] is bool
-          ? json['pendingSync'] as bool
-          : false,
     );
   }
 
@@ -86,7 +82,6 @@ class RemoteTarget {
   final String? relayUrl;
   final String? pairedDesktopId;
   final int updatedAt;
-  final bool pendingSync;
 
   String get hostIdentifier => '$username@$host:$port';
 
@@ -107,7 +102,6 @@ class RemoteTarget {
     String? relayUrl,
     String? pairedDesktopId,
     int? updatedAt,
-    bool? pendingSync,
   }) {
     return RemoteTarget(
       id: id ?? this.id,
@@ -126,7 +120,6 @@ class RemoteTarget {
       relayUrl: relayUrl ?? this.relayUrl,
       pairedDesktopId: pairedDesktopId ?? this.pairedDesktopId,
       updatedAt: updatedAt ?? this.updatedAt,
-      pendingSync: pendingSync ?? this.pendingSync,
     );
   }
 
@@ -150,7 +143,6 @@ class RemoteTarget {
     if (relayUrl != null) 'relayUrl': relayUrl,
     if (pairedDesktopId != null) 'pairedDesktopId': pairedDesktopId,
     'updatedAt': updatedAt,
-    'pendingSync': pendingSync,
   };
 
   @override
@@ -172,8 +164,7 @@ class RemoteTarget {
           embeddedTarget == other.embeddedTarget &&
           relayUrl == other.relayUrl &&
           pairedDesktopId == other.pairedDesktopId &&
-          updatedAt == other.updatedAt &&
-          pendingSync == other.pendingSync;
+          updatedAt == other.updatedAt;
 
   @override
   int get hashCode => Object.hash(
@@ -193,6 +184,5 @@ class RemoteTarget {
     relayUrl,
     pairedDesktopId,
     updatedAt,
-    pendingSync,
   );
 }
