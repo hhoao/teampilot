@@ -1,3 +1,4 @@
+import './ssh_connectivity_test_harness.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -463,6 +464,7 @@ Widget buildTestApp({
           create: (_) => SshConnectionCubit(
             factory: sshClientFactory,
             coordinator: sshCoordinator,
+            connectivity: TestSshConnectivity(),
           ),
         ),
         BlocProvider(

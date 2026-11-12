@@ -1,3 +1,4 @@
+import '../support/ssh_connectivity_test_harness.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -24,7 +25,14 @@ import '../support/in_memory_filesystem.dart';
 
 /// Avoids real connection attempts; the status card only reads state.
 class _StubSshConnectionCubit extends SshConnectionCubit {
-  _StubSshConnectionCubit({required super.factory, required super.coordinator});
+  _StubSshConnectionCubit({
+    required SshClientFactory factory,
+    required SshProfileConnectionCoordinator coordinator,
+  }) : super(
+        factory: factory,
+        coordinator: coordinator,
+        connectivity: TestSshConnectivity(),
+      );
 
   @override
   Future<void> connect(String profileId, {bool switchHome = true}) async {}

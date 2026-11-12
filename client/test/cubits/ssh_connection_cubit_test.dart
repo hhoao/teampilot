@@ -14,6 +14,7 @@ import 'package:teampilot/services/remote/remote_connection_monitor.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_connection_failure.dart';
+import 'package:teampilot/services/ssh/ssh_home_connectivity_supervisor.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
 import 'package:teampilot/services/ssh/ssh_transport_close.dart';
@@ -984,17 +985,22 @@ class _Harness {
             return _InstantAuthClient();
           },
     );
-    coordinator = SshProfileConnectionCoordinator(
+    // A REAL supervisor owns the coordinator and the connectivity state, so
+    // the pool-observation / liveness assertions below stay meaningful.
+    supervisor = SshHomeConnectivitySupervisor(
       factory: factory,
       events: events,
       profileResolver: (id) => _profiles[id],
+      gate: factory.connectionGate,
       policy: policy,
     );
+    coordinator = supervisor.coordinator;
   }
 
   final SshConnectionEvents events;
   final Map<String, SshProfile> _profiles;
   late final SshClientFactory factory;
+  late final SshHomeConnectivitySupervisor supervisor;
   late final SshProfileConnectionCoordinator coordinator;
 
   SshConnectionCubit createCubit({
@@ -1005,13 +1011,14 @@ class _Harness {
     return SshConnectionCubit(
       factory: factory,
       coordinator: coordinator,
+      connectivity: supervisor,
       selectProfileOnConnect: selectProfileOnConnect,
       pairedConnectAttempt: pairedConnectAttempt,
       sync: sync,
     );
   }
 
-  Future<void> dispose() => coordinator.dispose();
+  Future<void> dispose() => supervisor.dispose();
 }
 
 class _InstantAuthClient extends SSHClient {

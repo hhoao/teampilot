@@ -1,3 +1,4 @@
+import '../../support/ssh_connectivity_test_harness.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -163,9 +164,13 @@ class _RecordingWriter extends PairedProfileWriter {
 
 class _RecordingSshConnectionCubit extends SshConnectionCubit {
   _RecordingSshConnectionCubit({
-    required super.factory,
-    required super.coordinator,
-  });
+    required SshClientFactory factory,
+    required SshProfileConnectionCoordinator coordinator,
+  }) : super(
+        factory: factory,
+        coordinator: coordinator,
+        connectivity: TestSshConnectivity(),
+      );
 
   final connectCalls = <String>[];
 

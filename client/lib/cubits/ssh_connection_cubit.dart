@@ -7,10 +7,10 @@ import '../models/ssh_profile.dart';
 import '../models/ssh_reachability.dart';
 import '../services/connect/endpoint_dial_planner.dart';
 import '../services/connect/paired_relay_tunnel_registry.dart';
-import '../services/remote/remote_connection_monitor.dart';
 import '../services/ssh/remote_target_sync.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import '../services/ssh/ssh_connection_failure.dart';
+import '../services/ssh/ssh_home_connectivity_state.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
 import '../utils/logging/logger.dart';
 
@@ -106,40 +106,42 @@ class SshConnectionState {
   }
 }
 
-/// Global UI truth for durable SSH storage-pool connections.
+/// Projection of [SshConnectivitySource] onto the durable SSH hosts UI.
+///
+/// The supervisor is the single source of truth for connectivity state. This
+/// cubit owns only the profile catalog and command plumbing; it publishes
+/// command outcomes (connecting / failure) through [publish] and projects
+/// [stateFor] into view models. It never keeps an independent connected flag.
 class SshConnectionCubit extends Cubit<SshConnectionState> {
   SshConnectionCubit({
     required SshClientFactory factory,
     required SshProfileConnectionCoordinator coordinator,
+    required SshConnectivitySource connectivity,
     Future<void> Function(String id)? selectProfileOnConnect,
     PairedConnectAttempt? pairedConnectAttempt,
     PairedRelayTunnelRegistry? relayTunnels,
     RemoteTargetSync? sync,
   }) : _factory = factory,
        _coordinator = coordinator,
+       _connectivity = connectivity,
        _selectProfileOnConnect = selectProfileOnConnect,
        _pairedConnectAttempt = pairedConnectAttempt,
        _relayTunnels = relayTunnels,
        _sync = sync,
        super(const SshConnectionState()) {
-    _poolSubscription = _factory.storagePoolChanges.listen(_onPoolChanged);
+    _connectivitySub = _connectivity.changes.listen((_) => emit(_buildState()));
   }
 
   final SshClientFactory _factory;
   final SshProfileConnectionCoordinator _coordinator;
+  final SshConnectivitySource _connectivity;
   final Future<void> Function(String id)? _selectProfileOnConnect;
   final PairedConnectAttempt? _pairedConnectAttempt;
   final PairedRelayTunnelRegistry? _relayTunnels;
   final RemoteTargetSync? _sync;
 
   final Map<String, SshProfile> _profilesById = {};
-  final Map<String, StreamSubscription<RemoteConnectionState>>
-  _monitorSubscriptions = {};
-  final Set<String> _connectingIds = {};
-  final Map<String, String?> _lastErrorDetail = {};
-  final Map<String, SshHostUiStatus> _lastFailureStatus = {};
-
-  StreamSubscription<String>? _poolSubscription;
+  StreamSubscription<SshHomeConnectivityState>? _connectivitySub;
 
   Future<void> syncProfiles(List<SshProfile> profiles) async {
     final nextIds = profiles.map((p) => p.id).toSet();
@@ -152,20 +154,12 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
       // the pool is already cold or a reconnect is in flight.
       await _relayTunnels?.closeFor(id);
       await _coordinator.userDisconnect(id);
-      _unsubscribeMonitor(id);
       _profilesById.remove(id);
-      _connectingIds.remove(id);
-      _lastErrorDetail.remove(id);
-      _lastFailureStatus.remove(id);
     }
 
     _profilesById
       ..clear()
       ..addEntries(profiles.map((p) => MapEntry(p.id, p)));
-
-    for (final profile in profiles) {
-      _subscribeMonitor(profile.id);
-    }
 
     emit(_buildState());
   }
@@ -177,14 +171,19 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
     final profile = _profilesById[profileId];
     if (profile == null) return;
 
-    _connectingIds.add(profileId);
-    _lastErrorDetail.remove(profileId);
-    _lastFailureStatus.remove(profileId);
+    _connectivity.publish(
+      _connectivity.stateFor(profileId).copyWith(
+        phase: SshPhase.connecting,
+        attempt: 0,
+        storageLive: false,
+        clearFailure: true,
+        clearErrorDetail: true,
+      ),
+    );
     emit(_buildState());
 
     try {
       await _connectProfile(profile);
-      _connectingIds.remove(profileId);
       if (!_profilesById.containsKey(profileId)) {
         await _coordinator.userDisconnect(profileId);
         return;
@@ -224,9 +223,14 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
           );
         }
       }
+      // A dial that succeeded means a lease is cached: publish `up`, which
+      // atomically clears any prior failure (invariant 2 + 3). This works
+      // with any SshConnectivitySource, so command-driven tests stay real.
+      if (_factory.hasLiveStorageClient(profileId)) {
+        _connectivity.publish(SshHomeConnectivityState.up(profileId));
+      }
       emit(_buildState());
     } catch (error, stackTrace) {
-      _connectingIds.remove(profileId);
       if (!_profilesById.containsKey(profileId)) {
         return;
       }
@@ -244,15 +248,20 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
                   profile.hostKeyFingerprints.isNotEmpty) ||
               (profile.embeddedTarget && isTcpConnectionRefused(error)));
       final authFailed = isSshAuthFailure(error);
-      final status = authFailed
-          ? SshHostUiStatus.authFailed
-          : SshHostUiStatus.error;
-      _lastFailureStatus[profileId] = status;
-      _lastErrorDetail[profileId] = stalePairing
-          ? sshPairingStaleDetail
-          : error.toString();
+      _connectivity.publish(
+        _connectivity.stateFor(profileId).copyWith(
+          phase: SshPhase.failed,
+          failure: authFailed
+              ? SshFailureKind.authFailed
+              : SshFailureKind.transportError,
+          errorDetail: stalePairing
+              ? sshPairingStaleDetail
+              : error.toString(),
+          storageLive: false,
+        ),
+      );
       appLogger.w(
-        '[ssh] profile $profileId connect failed (${status.name}): '
+        '[ssh] profile $profileId connect failed: '
         '${sshConnectionFailureLogMessage(error)}',
         error: cause,
         stackTrace: stackTrace,
@@ -311,37 +320,16 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
 
   Future<void> disconnect(String profileId) async {
     if (!_profilesById.containsKey(profileId)) return;
-    _connectingIds.remove(profileId);
-    _lastErrorDetail.remove(profileId);
-    _lastFailureStatus.remove(profileId);
+    _connectivity.publish(
+      _connectivity.stateFor(profileId).copyWith(
+        phase: SshPhase.suspended,
+        attempt: 0,
+        storageLive: false,
+      ),
+    );
     await _relayTunnels?.closeFor(profileId);
     await _coordinator.userDisconnect(profileId);
     emit(_buildState());
-  }
-
-  void _onPoolChanged(String profileId) {
-    if (!_profilesById.containsKey(profileId)) return;
-    if (_factory.hasLiveStorageClient(profileId)) {
-      _lastErrorDetail.remove(profileId);
-      _lastFailureStatus.remove(profileId);
-    }
-    emit(_buildState());
-  }
-
-  void _onMonitorChanged(String profileId, RemoteConnectionState _) {
-    if (!_profilesById.containsKey(profileId)) return;
-    emit(_buildState());
-  }
-
-  void _subscribeMonitor(String profileId) {
-    if (_monitorSubscriptions.containsKey(profileId)) return;
-    _monitorSubscriptions[profileId] = _coordinator
-        .changesFor(profileId)
-        .listen((state) => _onMonitorChanged(profileId, state));
-  }
-
-  void _unsubscribeMonitor(String profileId) {
-    unawaited(_monitorSubscriptions.remove(profileId)?.cancel());
   }
 
   SshConnectionState _buildState() {
@@ -349,40 +337,29 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
     final hosts = <String, SshHostConnectionVm>{};
     for (final id in order) {
       final profile = _profilesById[id]!;
+      final state = _connectivity.stateFor(id);
       hosts[id] = SshHostConnectionVm(
         profileId: id,
         label: _labelFor(profile),
         host: profile.host,
-        status: _resolveStatus(id),
-        errorDetail: _lastErrorDetail[id],
+        status: _project(state),
+        errorDetail: state.errorDetail,
       );
     }
     return SshConnectionState(hostsById: hosts, profileOrder: order);
   }
 
-  SshHostUiStatus _resolveStatus(String profileId) {
-    if (_connectingIds.contains(profileId)) {
-      return SshHostUiStatus.connecting;
-    }
-
-    final live = _factory.hasLiveStorageClient(profileId);
-    final monitorStatus = _coordinator.monitorFor(profileId).state.status;
-
-    // Durable work-home truth is the storage pool. Member-plane reconnect
-    // noise must not flip the host away from connected while SFTP is live.
-    if (live) {
-      return SshHostUiStatus.connected;
-    }
-
-    if (monitorStatus == RemoteConnectionStatus.reconnecting) {
-      return SshHostUiStatus.reconnecting;
-    }
-
-    final failure = _lastFailureStatus[profileId];
-    if (failure != null) return failure;
-
-    return SshHostUiStatus.disconnected;
-  }
+  SshHostUiStatus _project(SshHomeConnectivityState s) => switch (s.phase) {
+    SshPhase.connecting => SshHostUiStatus.connecting,
+    SshPhase.up || SshPhase.degraded => SshHostUiStatus.connected,
+    SshPhase.reconnecting => SshHostUiStatus.reconnecting,
+    SshPhase.failed => s.failure == SshFailureKind.authFailed
+        ? SshHostUiStatus.authFailed
+        : SshHostUiStatus.error,
+    SshPhase.idle ||
+    SshPhase.unreachable ||
+    SshPhase.suspended => SshHostUiStatus.disconnected,
+  };
 
   String _labelFor(SshProfile profile) {
     final name = profile.name.trim();
@@ -391,11 +368,8 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
 
   @override
   Future<void> close() async {
-    await _poolSubscription?.cancel();
-    _poolSubscription = null;
-    for (final id in _monitorSubscriptions.keys.toList(growable: false)) {
-      _unsubscribeMonitor(id);
-    }
+    await _connectivitySub?.cancel();
+    _connectivitySub = null;
     return super.close();
   }
 }

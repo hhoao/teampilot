@@ -1,3 +1,4 @@
+import '../../support/ssh_connectivity_test_harness.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
@@ -84,9 +85,13 @@ class SpyTermuxCubit extends TermuxCubit {
 
 class _ControllableSshConnectionCubit extends SshConnectionCubit {
   _ControllableSshConnectionCubit({
-    required super.factory,
-    required super.coordinator,
-  });
+    required SshClientFactory factory,
+    required SshProfileConnectionCoordinator coordinator,
+  }) : super(
+        factory: factory,
+        coordinator: coordinator,
+        connectivity: TestSshConnectivity(),
+      );
 
   @override
   Future<void> connect(String profileId, {bool switchHome = true}) async {}

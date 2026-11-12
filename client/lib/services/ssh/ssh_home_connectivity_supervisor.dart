@@ -72,8 +72,17 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
       _changes.stream.where((s) => s.profileId == id);
 
   @override
-  SshHomeConnectivityState stateFor(String id) =>
-      _states[id] ?? SshHomeConnectivityState(profileId: id);
+  SshHomeConnectivityState stateFor(String id) {
+    final stored = _states[id];
+    if (stored != null) return stored;
+    // A pool that became live before this profile was ever observed (e.g. a
+    // cold-boot seed or an external clientForStorage) is already connected.
+    // Derive it on read so the projection never reports a live lease as idle.
+    if (_factory.hasLiveStorageClient(id)) {
+      return SshHomeConnectivityState.up(id);
+    }
+    return SshHomeConnectivityState(profileId: id);
+  }
 
   SshIoGuard get ioGuard => _gate.beforeIo;
   SshConnectionGate get gate => _gate;
@@ -138,12 +147,16 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
 
   // --- commands ---
 
+  /// Subscribes to a profile's monitor so future liveness changes are
+  /// observed. Deliberately does NOT emit a speculative derived state: at boot
+  /// an SSH home may already be seeded `connected` by `markInitial`, and a
+  /// cold-pool `unreachable` emission here would knock it back to the retry
+  /// page before any real transport close occurred (the original bug).
   void observeProfile(String id) {
     _monitorSubs.putIfAbsent(
       id,
       () => _coordinator.changesFor(id).listen((_) => _onMonitorChanged(id)),
     );
-    _emit(id);
   }
 
   void activateHome(String? id) {
@@ -187,15 +200,19 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
 
   Future<void> userConnect(SshProfile profile) {
     // Optimistic connecting so the progress surface appears before the dial.
-    publish(
-      stateFor(profile.id).copyWith(
-        phase: SshPhase.connecting,
-        attempt: 0,
-        storageLive: false,
-        clearFailure: true,
-        clearErrorDetail: true,
-      ),
-    );
+    // Skip it when a dial is already in flight: a concurrent second call would
+    // otherwise republish `connecting` on top of the first dial's `up`.
+    if (!_dialInFlight.containsKey(profile.id)) {
+      publish(
+        stateFor(profile.id).copyWith(
+          phase: SshPhase.connecting,
+          attempt: 0,
+          storageLive: false,
+          clearFailure: true,
+          clearErrorDetail: true,
+        ),
+      );
+    }
     return _coordinator.userConnect(profile);
   }
 
@@ -238,10 +255,11 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
     final live = _factory.hasLiveStorageClient(id);
     final monitor = _coordinator.monitorFor(id).state.status;
 
-    // A live lease or an `up` gate means a dial succeeded: both beat a
-    // connecting dial, monitor noise, and any sticky failure, and the `up`
-    // value clears them atomically (invariant 3).
-    if (live || _gate.stateOf(id) == SshConnectionGateState.up) {
+    // The durable truth is the live lease, not the dial-permission gate: a
+    // gate left `up` after the lease was evicted must not claim connected.
+    // A live lease beats a connecting dial, monitor noise and any sticky
+    // failure, and the `up` value clears them atomically (invariant 3).
+    if (live) {
       return SshHomeConnectivityState.up(id).copyWith(
         planeRebinding: _planeRebinding && id == _activeHomeId,
       );
@@ -280,9 +298,13 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
     final existing = _dialInFlight[profile.id];
     if (existing != null) return existing;
     _gate.markConnecting(profile.id);
-    final future = _dialProfile(profile).whenComplete(
-      () => _dialInFlight.remove(profile.id),
-    );
+    // The callback body MUST stay `void`. An expression-bodied
+    // `() => _dialInFlight.remove(id)` would return the removed Future, and
+    // `whenComplete` waits for a returned Future — deadlocking on the very
+    // future it is completing.
+    final future = _dialProfile(profile).whenComplete(() {
+      _dialInFlight.remove(profile.id);
+    });
     _dialInFlight[profile.id] = future;
     return future;
   }

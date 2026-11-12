@@ -1,3 +1,4 @@
+import '../../support/ssh_connectivity_test_harness.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
@@ -120,6 +121,7 @@ void main() {
     connectionCubit = SshConnectionCubit(
       factory: factory,
       coordinator: coordinator,
+      connectivity: TestSshConnectivity(),
     );
     profileCubit = SshProfileCubit(
       profileRepository: profileRepository,

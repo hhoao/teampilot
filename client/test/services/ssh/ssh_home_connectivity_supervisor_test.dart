@@ -23,7 +23,7 @@ class _Harness {
       credentialStore: InMemorySshCredentialStore(),
       knownHostRepository: InMemorySshKnownHostRepository(),
       events: events,
-      connectionGate: gate, // Task 4 改成 ioGuard: gate.beforeIo（唯一一行变化）
+      connectionGate: gate,
     );
     supervisor = SshHomeConnectivitySupervisor(
       factory: factory,
@@ -44,8 +44,45 @@ class _Harness {
   }
 }
 
+/// Wires a supervisor whose dial resolves without a real SSH client, so a
+/// successful switch can be driven in isolation. `dials` records every dial.
+class _DialHarness {
+  _DialHarness() {
+    gate = SshConnectionGate();
+    factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      events: events,
+      connectionGate: gate,
+    );
+    late SshHomeConnectivitySupervisor s;
+    s = SshHomeConnectivitySupervisor(
+      factory: factory,
+      events: events,
+      profileResolver: (id) => id == _profile.id ? _profile : null,
+      gate: gate,
+      dialProfile: (profile) async {
+        dials.add(profile.id);
+        s.publish(SshHomeConnectivityState.up(profile.id));
+      },
+    );
+    supervisor = s;
+  }
+
+  final events = SshConnectionEvents();
+  final dials = <String>[];
+  late final SshConnectionGate gate;
+  late final SshClientFactory factory;
+  late final SshHomeConnectivitySupervisor supervisor;
+
+  Future<void> dispose() async {
+    await supervisor.dispose();
+    await factory.close();
+  }
+}
+
 void main() {
-  test('observeProfile re-derives up and clears any prior failure', () async {
+  test('a successful reconnect clears any prior failure (invariant 3)', () async {
     final h = _Harness();
     addTearDown(h.dispose);
 
@@ -55,12 +92,13 @@ void main() {
 
     // A stale failure from an earlier wave.
     h.supervisor.noteNonRetryableClose(_profile.id, StateError('auth'));
-    // Gate has no onUp callback (see D3), so observeProfile is the explicit
-    // re-derive trigger. It always emits once, even when already subscribed.
-    h.gate.markUp(_profile.id);
-    h.supervisor.observeProfile(_profile.id);
+    await waitUntil(() => states.isNotEmpty && !states.last.isUp);
+    expect(states.last.phase, SshPhase.failed);
+    // The coordinator's onReconnected hook is the real path into `up`. The
+    // state value clears failure/errorDetail/attempt in that one emission.
+    h.supervisor.noteReconnected(_profile.id);
 
-    await waitUntil(() => states.isNotEmpty && states.last.isUp);
+    await waitUntil(() => states.last.isUp);
     expect(states.last.phase, SshPhase.up);
     expect(states.last.storageLive, isTrue);
     expect(states.last.failure, isNull);
@@ -89,5 +127,70 @@ void main() {
     h.supervisor.profileEdited(_profile.id);
     await waitUntil(() => phases.isNotEmpty);
     expect(phases.where((p) => p == SshPhase.failed), isEmpty);
+  });
+
+  test('a single dial completes and converges on up', () async {
+    final h = _DialHarness();
+    addTearDown(h.dispose);
+
+    final states = <SshHomeConnectivityState>[];
+    final sub = h.supervisor.changes.listen(states.add);
+    addTearDown(sub.cancel);
+
+    // Regression: an expression-bodied `whenComplete(() => map.remove(id))`
+    // returned the in-flight Future and deadlocked `userConnect` forever.
+    await h.supervisor
+        .userConnect(_profile)
+        .timeout(const Duration(seconds: 5));
+
+    await waitUntil(() => states.any((s) => s.isUp));
+    expect(h.dials, [_profile.id]);
+    expect(states.last.phase, SshPhase.up);
+    expect(states.last.storageLive, isTrue);
+    expect(states.last.failure, isNull);
+  });
+
+  test('re-dialing after a failure stays up with no spurious down phase',
+      () async {
+    final h = _DialHarness();
+    addTearDown(h.dispose);
+
+    final states = <SshHomeConnectivityState>[];
+    final sub = h.supervisor.changes.listen(states.add);
+    addTearDown(sub.cancel);
+
+    // The original bug: switching to a working connection reached the app but
+    // a stale failure kept the "需要重新连接" banner / retry page alive.
+    h.supervisor.noteNonRetryableClose(_profile.id, StateError('auth'));
+    await waitUntil(() => states.isNotEmpty && !states.last.isUp);
+
+    await h.supervisor
+        .userConnect(_profile)
+        .timeout(const Duration(seconds: 5));
+    await waitUntil(() => states.last.isUp);
+    final upIndex = states.lastIndexWhere((s) => s.isUp);
+
+    // No real transport close happened, so nothing after `up` may regress to
+    // a down/reconnecting phase, and the failure must be cleared atomically.
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(states.last.isUp, isTrue);
+    expect(states.last.failure, isNull);
+    expect(
+      states.skip(upIndex).where((s) => s.isDown || s.retryActive),
+      isEmpty,
+    );
+  });
+
+  test('concurrent dials share one in-flight attempt', () async {
+    final h = _DialHarness();
+    addTearDown(h.dispose);
+
+    await Future.wait([
+      h.supervisor.userConnect(_profile),
+      h.supervisor.userConnect(_profile),
+    ]).timeout(const Duration(seconds: 5));
+
+    expect(h.dials, [_profile.id]);
+    expect(h.supervisor.stateFor(_profile.id).isUp, isTrue);
   });
 }

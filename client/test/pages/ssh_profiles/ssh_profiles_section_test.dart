@@ -1,3 +1,4 @@
+import '../../support/ssh_connectivity_test_harness.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -37,9 +38,13 @@ const _profile = SshProfile(
 
 class _ControllableSshConnectionCubit extends SshConnectionCubit {
   _ControllableSshConnectionCubit({
-    required super.factory,
-    required super.coordinator,
-  });
+    required SshClientFactory factory,
+    required SshProfileConnectionCoordinator coordinator,
+  }) : super(
+        factory: factory,
+        coordinator: coordinator,
+        connectivity: TestSshConnectivity(),
+      );
 
   final connectCalls = <String>[];
   final disconnectCalls = <String>[];

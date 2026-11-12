@@ -1,3 +1,4 @@
+import '../../support/ssh_connectivity_test_harness.dart';
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -114,7 +115,11 @@ class _Harness {
   late final SshProfileConnectionCoordinator coordinator;
 
   SshConnectionCubit createCubit() {
-    return SshConnectionCubit(factory: factory, coordinator: coordinator);
+    return SshConnectionCubit(
+      factory: factory,
+      coordinator: coordinator,
+      connectivity: TestSshConnectivity(),
+    );
   }
 
   Future<void> dispose() => coordinator.dispose();

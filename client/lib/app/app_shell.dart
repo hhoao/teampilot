@@ -358,6 +358,7 @@ import '../services/github/github_device_flow_auth.dart';
 import '../services/hub_publish/http_github_api_client.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import '../services/ssh/ssh_connection_gate.dart';
+import '../services/ssh/ssh_home_connectivity_supervisor.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 
@@ -764,6 +765,9 @@ class AppShell {
   /// Re-arms the home connection after the current SSH profile's identity is
   /// edited; owned by the shell so teardown can cancel it.
   StreamSubscription<SshProfileState>? _homeProfileWatchSub;
+
+  /// Projects the connectivity supervisor onto the home connection page.
+  StreamSubscription<SshHomeConnectivityState>? _homeConnectivitySub;
 
   /// Re-syncs the business vault after a home-plane switch; owned by the shell
   /// so teardown can cancel it.
@@ -1725,6 +1729,7 @@ Future<AppShell> buildAppShell({
   // Watches the current home profile for identity edits so saving a fixed
   // host/port re-arms the connection instead of leaving the page dead.
   StreamSubscription<SshProfileState>? homeProfileWatchSub;
+  StreamSubscription<SshHomeConnectivityState>? homeConnectivitySub;
   String? watchedHomeProfileConnectivityKey;
 
   try {
@@ -3132,10 +3137,14 @@ Future<AppShell> buildAppShell({
     );
     chatCubit.bindPresenceCubit(memberPresenceCubit);
 
-    final sshProfileConnectionCoordinator = SshProfileConnectionCoordinator(
+    // Single owner of SSH home connectivity state. It owns the retry
+    // coordinator (exposed below for DI + the terminal panel) and publishes
+    // one state stream that both connection cubits project from.
+    final sshHomeConnectivity = SshHomeConnectivitySupervisor(
       factory: sshClientFactory,
       events: sshConnectionEvents,
       profileResolver: sshProfileById,
+      gate: sshClientFactory.connectionGate,
       onDisconnect: (profileId, error, stackTrace) {
         final profile = sshProfileById(profileId);
         final label = profile == null
@@ -3170,53 +3179,10 @@ Future<AppShell> buildAppShell({
         );
       },
       onReconnectSessionPlane: chatCubit.reconnectSshProfile,
-      // The home connection page is the only surface while the home is down,
-      // so surface the coordinator's retry loop there instead of letting it
-      // stop silently. Other profiles keep the default give-up behavior.
-      onReconnectAttempt: (profileId, attempt) {
-        final cubit = homeConnectionCubit;
-        if (cubit != null && profileId == activeHomeProfileId) {
-          cubit.markBackgroundAttempt(attempt);
-        }
-      },
-      onReconnected: (profileId) {
-        final cubit = homeConnectionCubit;
-        // Only a transition into `connected` runs hot recovery; a cycle that
-        // finishes after the cubit already connected must not repeat it.
-        if (cubit != null &&
-            profileId == activeHomeProfileId &&
-            cubit.state.status != HomeConnectionStatus.connected) {
-          cubit.markReconnected();
-        }
-      },
-      onNonRetryableClose: (profileId, error) {
-        // A changed host identity / bad credentials stopped the loop for good:
-        // name the actual cause so the user knows to re-pair or fix credentials
-        // rather than retrying (or restarting) in vain.
-        final cubit = homeConnectionCubit;
-        if (cubit != null &&
-            !cubit.isClosed &&
-            profileId == activeHomeProfileId) {
-          cubit.markUnreachable(
-            isSshHostKeyFailure(error)
-                ? HomeErrorKind.hostIdentityChanged
-                : isSshAuthFailure(error)
-                ? HomeErrorKind.authFailed
-                : HomeErrorKind.transportError,
-          );
-        }
-      },
-      persistRetry: (profileId) {
-        final cubit = homeConnectionCubit;
-        // Track the CURRENT home: after a home switch the abandoned profile
-        // must not keep a persistent loop alive (the switch path also cancels
-        // it, this is the second line of defence).
-        return cubit != null &&
-            !cubit.isClosed &&
-            profileId == activeHomeProfileId &&
-            cubit.state.status != HomeConnectionStatus.connected;
-      },
     );
+    // The coordinator stays available to RepositoryProvider consumers and to
+    // the terminal panel, but is now owned by the supervisor.
+    final sshProfileConnectionCoordinator = sshHomeConnectivity.coordinator;
 
     // Paired profiles (QR scan) try lan → extra → relay and persist the winner
     // without invalidating the pool connection that just succeeded.
@@ -3236,6 +3202,7 @@ Future<AppShell> buildAppShell({
     final sshConnectionCubit = SshConnectionCubit(
       factory: sshClientFactory,
       coordinator: sshProfileConnectionCoordinator,
+      connectivity: sshHomeConnectivity,
       selectProfileOnConnect: Platform.isAndroid
           ? (id) => applyAndroidSshConnectHome(
               profileId: id,
@@ -3970,11 +3937,58 @@ Future<AppShell> buildAppShell({
       port: isSshHome ? homeSshProfile?.port : null,
     )..markInitial(initialHome);
 
+    // Single subscription to the supervisor drives the home connection page.
+    // `markReconnected()` internally fires onConnected (plane rebind + deferred
+    // remote boot), so hot recovery is preserved; an `up` that follows a
+    // connecting/reconnecting/failed phase is the only thing that runs it.
+    SshPhase? previousHomePhase;
+    homeConnectivitySub = sshHomeConnectivity.changes.listen((state) {
+      final cubit = homeConnectionCubit;
+      if (cubit == null || cubit.isClosed) return;
+      if (state.profileId != activeHomeProfileId) return;
+      final previous = previousHomePhase;
+      previousHomePhase = state.phase;
+      if (state.planeRebinding) {
+        cubit.markPlaneRebinding();
+        return;
+      }
+      switch (state.phase) {
+        case SshPhase.idle:
+        case SshPhase.connecting:
+          break;
+        case SshPhase.up:
+        case SshPhase.degraded:
+          cubit.markPlaneReady();
+          if (previous != SshPhase.up && previous != SshPhase.degraded) {
+            cubit.markReconnected();
+          }
+        case SshPhase.reconnecting:
+          cubit.markBackgroundAttempt(state.attempt);
+        case SshPhase.unreachable:
+        case SshPhase.suspended:
+        case SshPhase.failed:
+          cubit.markUnreachable(
+            switch (state.failure) {
+              SshFailureKind.hostIdentityChanged =>
+                HomeErrorKind.hostIdentityChanged,
+              SshFailureKind.authFailed => HomeErrorKind.authFailed,
+              SshFailureKind.transportError => HomeErrorKind.transportError,
+              SshFailureKind.unknown => HomeErrorKind.unknown,
+              null => HomeErrorKind.transportError,
+            },
+          );
+      }
+    });
+
+    // The supervisor owns the retry loop's persistence decision; activate the
+    // current home so retries keep running until it is up (invariant 4).
+    sshHomeConnectivity.activateHome(isSshHome ? homeProfileId : null);
+
     // A cold start that could not reach the SSH home never opened a transport,
     // so no close event will ever start the coordinator's loop. Start it once
-    // here (the cubit's `persistRetry` then keeps it alive) so recovery is
-    // automatic; the connection page shows progress and can cancel/continue it.
-    // Reachable and non-SSH homes keep their previous boot behavior.
+    // here so recovery is automatic; the connection page shows progress and
+    // can cancel/continue it. Reachable and non-SSH homes keep their previous
+    // boot behavior.
     if (isSshHome && !initialHome.reachable) {
       sshProfileConnectionCoordinator.restartReconnect(homeProfileId);
     }
@@ -4003,6 +4017,9 @@ Future<AppShell> buildAppShell({
       if (cubit.state.status == HomeConnectionStatus.connected) return;
       appLogger.i('[home] current profile edited; retrying the connection');
       cubit.rebind(profileId: id, host: profile.host, port: profile.port);
+      // A local re-target: clear the stale failure and re-dial the edited
+      // profile without ever latching it as a non-retryable host-key change.
+      sshHomeConnectivity.profileEdited(id);
       unawaited(cubit.retryNow());
     });
 
@@ -4301,17 +4318,11 @@ Future<AppShell> buildAppShell({
         id,
       ); // persists + rebinds home + republishes HomeStorage
       final nextSshProfileId = activeHomeProfileId;
-      if (previousSshProfileId != null &&
-          previousSshProfileId != nextSshProfileId) {
-        // The connection page's retry loop must not keep firing for (and
-        // re-opening storage to) the abandoned profile: latch it so an
-        // in-flight attempt backs out, and drop its timer entirely.
-        await sshProfileConnectionCoordinator.userDisconnect(
-          previousSshProfileId,
-        );
-        sshProfileConnectionCoordinator.resetReconnectAttempts(
-          previousSshProfileId,
-        );
+      if (previousSshProfileId != nextSshProfileId) {
+        // Latch the abandoned profile (in-flight attempts back out, timer is
+        // dropped) and move the persistent retry loop to the new home — in one
+        // supervisor command instead of two independent coordinator calls.
+        sshHomeConnectivity.activateHome(nextSshProfileId);
       }
       // Reseed the connection cubit onto the new target. Its callbacks read
       // `activeHomeProfileId`, so without this the gate would keep showing the
@@ -4554,6 +4565,7 @@ Future<AppShell> buildAppShell({
     );
     shell._automationCatalogSub = automationCatalogSub;
     shell._homeProfileWatchSub = homeProfileWatchSub;
+    shell._homeConnectivitySub = homeConnectivitySub;
     shell._vaultPlaneSyncSub = vaultPlaneSyncSub;
     shell._sessionRemoteRefreshSub = sessionRemoteRefreshSub;
     shell._contentInvalidationSub = contentInvalidationSub;
@@ -4571,6 +4583,7 @@ Future<AppShell> buildAppShell({
     // construction may throw before it is assigned.
     await eventTransportController?.apply(EventTransportRole.none);
     await homeProfileWatchSub?.cancel();
+    await homeConnectivitySub?.cancel();
     await memberPresenceCubit?.close();
     await catalogRuntime?.bus.close();
     await homeConnectionCubit?.close();
@@ -4928,6 +4941,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     if (shell != null) {
       shell._automationCatalogSub?.cancel();
       shell._homeProfileWatchSub?.cancel();
+      shell._homeConnectivitySub?.cancel();
       shell._vaultPlaneSyncSub?.cancel();
       unawaited(shell._sessionRemoteRefreshSub?.cancel());
       unawaited(shell._contentInvalidationSub?.cancel());

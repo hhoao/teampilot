@@ -1,3 +1,4 @@
+import '../support/ssh_connectivity_test_harness.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -123,9 +124,13 @@ void main() {
 /// dial while still exercising the real `context.watch<SshConnectionCubit>()`.
 class _SeededSshConnectionCubit extends SshConnectionCubit {
   _SeededSshConnectionCubit({
-    required super.factory,
-    required super.coordinator,
-  });
+    required SshClientFactory factory,
+    required SshProfileConnectionCoordinator coordinator,
+  }) : super(
+        factory: factory,
+        coordinator: coordinator,
+        connectivity: TestSshConnectivity(),
+      );
 
   void seed(SshConnectionState state) => emit(state);
 }
