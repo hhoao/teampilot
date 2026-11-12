@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/chat/rewind/rewind_work_gate.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_paths.dart';
+import 'package:teampilot/services/git/git_command_runner.dart';
+import 'package:teampilot/services/io/filesystem.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/utils/logging/logger.dart';
 
@@ -63,9 +66,13 @@ final class SeatRewindStore {
     required this.gitDir,
     required this.workTree,
     required this.target,
-    this.gitExecutable = 'git',
+    GitCommandRunner? git,
+    Filesystem? fs,
+    String gitExecutable = 'git',
     this.commandTimeout = const Duration(seconds: 30),
-  });
+  })  : gitExecutable = gitExecutable,
+        git = git ?? LocalGitCommandRunner(gitExecutable: gitExecutable),
+        fs = fs ?? LocalFilesystem();
 
   /// Resolves the one canonical repository location for a seat.
   ///
@@ -92,10 +99,38 @@ final class SeatRewindStore {
     );
   }
 
+  /// Resolves the canonical repository for the active [RuntimeContext], wiring
+  /// the context's [Filesystem] and the backend-matched [GitCommandRunner].
+  factory SeatRewindStore.forContext({
+    required RuntimeContext context,
+    required String workspaceId,
+    required String sessionId,
+    required SeatRewindTarget target,
+    String? gitExecutable,
+    Duration commandTimeout = const Duration(seconds: 30),
+  }) => SeatRewindStore(
+    gitDir: context.layout.pathContext.join(
+      context.layout.workspace.sessionDir(workspaceId, sessionId),
+      'rewind',
+      target.seatKey,
+    ),
+    workTree: context.layout.workspace.sessionRuntimeDir(workspaceId, sessionId),
+    target: target,
+    git: gitCommandRunnerForContext(context, gitExecutable: gitExecutable),
+    fs: context.filesystem,
+    commandTimeout: commandTimeout,
+  );
+
   final String gitDir;
   final String workTree;
   final SeatRewindTarget target;
   final String gitExecutable;
+  final GitCommandRunner git;
+  final Filesystem fs;
+
+  /// Path joins use the injected filesystem's context so remote (posix) planes
+  /// build their paths with the right style. The local default is [p.context].
+  p.Context get paths => fs.pathContext;
 
   /// Upper bound for one git process. A checkpoint runs before the seat is
   /// published idle, so a stuck git process must never latch the turn forever.
@@ -111,12 +146,11 @@ final class SeatRewindStore {
   List<String> get _repoArgs => ['--git-dir', gitDir, '--work-tree', workTree];
 
   /// Whether this seat has a rewind repository yet.
-  Future<bool> repoExists() => Directory(gitDir).exists();
+  Future<bool> repoExists() async => (await fs.stat(gitDir)).exists;
 
   Future<void> ensureRepo() async {
-    final head = File(p.join(gitDir, 'HEAD'));
-    if (!await head.exists()) {
-      await Directory(gitDir).create(recursive: true);
+    if (!(await fs.stat(paths.join(gitDir, 'HEAD'))).exists) {
+      await fs.ensureDir(gitDir);
       await _runGit(['--git-dir', gitDir, 'init']);
       // Runtime bytes must round-trip verbatim. A user/global git config with
       // autocrlf, executable-bit tracking, or symlink checkout would rewrite
@@ -130,9 +164,9 @@ final class SeatRewindStore {
         await _runGit(['--git-dir', gitDir, 'config', entry.key, entry.value]);
       }
     }
-    final exclude = File(p.join(gitDir, 'info', 'exclude'));
-    await exclude.parent.create(recursive: true);
-    await exclude.writeAsString('${rewindExcludeNames.join('\n')}\n');
+    final excludePath = paths.join(gitDir, 'info', 'exclude');
+    await fs.ensureDir(paths.dirname(excludePath));
+    await fs.writeString(excludePath, '${rewindExcludeNames.join('\n')}\n');
   }
 
   Future<RewindCheckpoint> commitTurn({
@@ -233,7 +267,7 @@ final class SeatRewindStore {
   }
 
   Future<String?> checkedOut() async {
-    if (!Directory(gitDir).existsSync()) return null;
+    if (!(await fs.stat(gitDir)).exists) return null;
     final result = await _runGit([
       ..._repoArgs,
       'rev-parse',
@@ -250,7 +284,7 @@ final class SeatRewindStore {
   /// Written once per seat. Restoring it clears the seat's included files so
   /// the next launch starts a fresh agent session.
   Future<String> root() async {
-    if (!Directory(gitDir).existsSync()) await ensureRepo();
+    if (!(await fs.stat(gitDir)).exists) await ensureRepo();
     final existing = (await _runGit([
       ..._repoArgs,
       'rev-parse',
@@ -259,7 +293,7 @@ final class SeatRewindStore {
       'refs/rewind/root',
     ], allowFailure: true)).trim();
     if (existing.isNotEmpty) return existing;
-    final indexFile = p.join(gitDir, 'root-index');
+    final indexFile = paths.join(gitDir, 'root-index');
     try {
       final tree = (await _runGit(
         [..._repoArgs, 'write-tree'],
@@ -275,8 +309,9 @@ final class SeatRewindStore {
       await _runGit([..._repoArgs, 'update-ref', 'refs/rewind/root', commit]);
       return commit;
     } finally {
-      final index = File(indexFile);
-      if (index.existsSync()) index.deleteSync();
+      if ((await fs.stat(indexFile)).exists) {
+        await fs.removeRecursive(indexFile);
+      }
     }
   }
 
@@ -310,7 +345,7 @@ final class SeatRewindStore {
   /// The history UI reads this on every turn end, so the bodies come back in
   /// one `git log` rather than one process per checkpoint.
   Future<List<RewindCheckpoint>> checkpoints() async {
-    if (!Directory(gitDir).existsSync()) return const [];
+    if (!(await fs.stat(gitDir)).exists) return const [];
     final listed = await _runGit([
       ..._repoArgs,
       'for-each-ref',
@@ -384,6 +419,8 @@ final class SeatRewindStore {
       gitDir: destGitDir,
       workTree: destWorkTree,
       target: destTarget,
+      git: git,
+      fs: fs,
       gitExecutable: gitExecutable,
       commandTimeout: commandTimeout,
     );
@@ -412,23 +449,25 @@ final class SeatRewindStore {
   /// or not valid UTF-8 (binary CLI files such as `opencode.db`).
   Future<String?> showFile(String commit, String path) async {
     try {
-      final result = await _runProcess([
-        ..._repoArgs,
-        'show',
-        '$commit:$path',
-      ], allowFailure: true);
+      final result = await git.runRaw(
+        [..._repoArgs, 'show', '$commit:$path'],
+        workingDirectory: workTree,
+        allowFailure: true,
+        timeout: commandTimeout,
+      );
       if (result.exitCode == 0) return _utf8OrNull(result.stdout);
       if (target.seatKey != 'personal') return null;
       final sourcePath = await _personalizedSourcePath(commit, path);
       if (sourcePath == null) return null;
-      final mapped = await _runProcess([
-        ..._repoArgs,
-        'show',
-        '$commit:$sourcePath',
-      ], allowFailure: true);
+      final mapped = await git.runRaw(
+        [..._repoArgs, 'show', '$commit:$sourcePath'],
+        workingDirectory: workTree,
+        allowFailure: true,
+        timeout: commandTimeout,
+      );
       if (mapped.exitCode != 0) return null;
       return _utf8OrNull(mapped.stdout);
-    } on StateError {
+    } on Object {
       // A timed-out git process must not break history rendering.
       return null;
     }
@@ -497,11 +536,8 @@ final class SeatRewindStore {
       if (!target.includes(relative) || target.isExcluded(relative)) {
         continue;
       }
-      final type = await FileSystemEntity.type(
-        p.join(workTree, relative),
-        followLinks: false,
-      );
-      if (type == FileSystemEntityType.file) continue;
+      final kind = (await fs.lstat(paths.join(workTree, relative))).kind;
+      if (kind == FsEntityKind.file) continue;
       stale.add(relative);
     }
     if (stale.isEmpty) return;
@@ -568,11 +604,14 @@ final class SeatRewindStore {
       commit,
     ], allowFailure: true);
     if (fetched.exitCode == 0) return;
+    final fetchSource = paths.style == p.Style.posix
+        ? sourceGitDir
+        : Uri.file(sourceGitDir).toString();
     await _runGit([
       '--git-dir',
       gitDir,
       'fetch',
-      Uri.file(sourceGitDir).toString(),
+      fetchSource,
       commit,
     ]);
   }
@@ -705,67 +744,30 @@ final class SeatRewindStore {
     String sourcePath,
     String destRelative,
   ) async {
-    final destFile = File(p.join(workTree, destRelative));
-    await destFile.parent.create(recursive: true);
+    final destPath = paths.join(workTree, destRelative);
+    await fs.ensureDir(paths.dirname(destPath));
     // Never follow a CLI-created symlink out of the work tree.
-    if (await FileSystemEntity.isLink(destFile.path)) {
-      await Link(destFile.path).delete();
+    if ((await fs.lstat(destPath)).isSymlink) {
+      await fs.removeRecursive(destPath);
     }
-    await _runGitToFile([
+    final args = [
       '--git-dir',
       gitDir,
       'show',
       '$commit:$sourcePath',
-    ], destFile);
-  }
-
-  /// Streams one git blob into [dest] instead of buffering it in memory.
-  ///
-  /// Forking a seat with a large SQLite/transcript file would otherwise hold
-  /// the whole blob in the UI isolate's heap.
-  Future<void> _runGitToFile(List<String> args, File dest) async {
-    final process = await Process.start(gitExecutable, args);
-    final stderrFuture = process.stderr.transform(utf8.decoder).join();
-    final sink = dest.openWrite();
-    var timedOut = false;
-    try {
-      await process.stdout
-          .pipe(sink)
-          .timeout(
-            commandTimeout,
-            onTimeout: () {
-              timedOut = true;
-              process.kill();
-            },
-          );
-    } finally {
-      try {
-        await process.stdin.close();
-      } on Object {
-        // The process may already be gone after a timeout.
-      }
-    }
-    final exitCode = await process.exitCode.timeout(
-      commandTimeout,
-      onTimeout: () {
-        timedOut = true;
-        process.kill();
-        return -1;
-      },
+    ];
+    await git.runToFile(
+      args,
+      destPath,
+      workingDirectory: args.contains('--work-tree') ? workTree : null,
+      timeout: commandTimeout,
     );
-    final stderr = await stderrFuture;
-    if (timedOut || exitCode != 0) {
-      if (await dest.exists()) await dest.delete();
-      final reason = timedOut ? 'timed out after $commandTimeout' : stderr;
-      AppLogger.instance.e('git ${args.join(' ')} failed ($exitCode): $reason');
-      throw StateError('git ${args.join(' ')} failed ($exitCode): $reason');
-    }
   }
 
   Future<void> _deleteIncludedFilesNotIn(Set<String> keep) async {
     for (final relative in await _includedRuntimeFiles()) {
       if (keep.contains(relative)) continue;
-      await File(p.join(workTree, relative)).delete();
+      await fs.removeRecursive(paths.join(workTree, relative));
     }
   }
 
@@ -778,38 +780,35 @@ final class SeatRewindStore {
   /// tree) is skipped instead of failing the whole checkpoint.
   Future<List<String>> _includedRuntimeFiles() async {
     final found = <String>[];
-    final root = Directory(workTree);
-    if (!await root.exists()) return found;
+    if (!(await fs.stat(workTree)).exists) return found;
 
-    Future<void> visit(Directory dir, String relative) async {
-      List<FileSystemEntity> entries;
+    Future<void> visit(String dirPath, String relative) async {
+      List<FsDirEntry> entries;
       try {
-        entries = await dir.list(followLinks: false).toList();
-      } on FileSystemException catch (error) {
+        entries = await fs.listDir(dirPath);
+      } on Object catch (error) {
         AppLogger.instance.w(
-          '[rewind] skipped unreadable runtime directory ${dir.path}: $error',
+          '[rewind] skipped unreadable runtime directory $dirPath: $error',
         );
         return;
       }
       for (final entry in entries) {
-        final name = p.basename(entry.path);
+        final name = entry.name;
         final child = relative.isEmpty ? name : '$relative/$name';
-        final type = await FileSystemEntity.type(
-          entry.path,
-          followLinks: false,
-        );
-        if (type == FileSystemEntityType.directory) {
+        final childPath = paths.join(dirPath, name);
+        final kind = (await fs.lstat(childPath)).kind;
+        if (kind == FsEntityKind.directory) {
           if (target.isExcluded(child) || !_mayIncludeUnder(child)) continue;
-          await visit(Directory(entry.path), child);
+          await visit(childPath, child);
           continue;
         }
-        if (type != FileSystemEntityType.file) continue;
+        if (kind != FsEntityKind.file) continue;
         if (!target.includes(child) || target.isExcluded(child)) continue;
         found.add(child);
       }
     }
 
-    await visit(root, '');
+    await visit(workTree, '');
     return found;
   }
 
@@ -826,65 +825,19 @@ final class SeatRewindStore {
     return false;
   }
 
-  Future<({List<int> stdout, String stderr, int exitCode})> _runProcess(
-    List<String> args, {
-    bool allowFailure = false,
-    Map<String, String>? environment,
-    String? stdinText,
-  }) async {
-    final process = await Process.start(
-      gitExecutable,
-      args,
-      workingDirectory: args.contains('--work-tree') ? workTree : null,
-      environment: environment,
-    );
-    // Drain both pipes concurrently: a chatty stderr must not block stdout.
-    final stdoutFuture = process.stdout.fold<List<int>>(
-      <int>[],
-      (buffer, chunk) => buffer..addAll(chunk),
-    );
-    final stderrFuture = process.stderr.transform(utf8.decoder).join();
-    if (stdinText != null) process.stdin.write(stdinText);
-    try {
-      await process.stdin.close();
-    } on Object {
-      // A process that exits immediately may have already closed its stdin.
-    }
-    var timedOut = false;
-    final exitCode = await process.exitCode.timeout(
-      commandTimeout,
-      onTimeout: () {
-        timedOut = true;
-        process.kill();
-        return -1;
-      },
-    );
-    final stdout = await stdoutFuture;
-    final stderr = await stderrFuture;
-    if (timedOut) {
-      AppLogger.instance.e(
-        'git ${args.join(' ')} timed out after $commandTimeout',
-      );
-      throw StateError('git ${args.join(' ')} timed out after $commandTimeout');
-    }
-    if (!allowFailure && exitCode != 0) {
-      AppLogger.instance.e('git ${args.join(' ')} failed ($exitCode): $stderr');
-      throw StateError('git ${args.join(' ')} failed ($exitCode): $stderr');
-    }
-    return (stdout: stdout, stderr: stderr, exitCode: exitCode);
-  }
-
   Future<({String stdout, int exitCode})> _runGitResult(
     List<String> args, {
     bool allowFailure = false,
     Map<String, String>? environment,
     String? stdinText,
   }) async {
-    final result = await _runProcess(
+    final result = await git.runRaw(
       args,
-      allowFailure: allowFailure,
+      workingDirectory: args.contains('--work-tree') ? workTree : null,
       environment: environment,
       stdinText: stdinText,
+      allowFailure: allowFailure,
+      timeout: commandTimeout,
     );
     return (
       stdout: utf8.decode(result.stdout, allowMalformed: true),
