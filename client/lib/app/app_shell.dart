@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 
 import '../cubits/app_bootstrap_cubit.dart';
 import 'app_data_bootstrap.dart';
+import 'bootstrap/agent_runtime_wiring.dart';
 import 'bootstrap/managed_provider_control_plane.dart';
 import 'bootstrap/managed_provider_wiring.dart';
 import 'bootstrap/catalog_wiring.dart';
@@ -45,12 +46,7 @@ import 'session_protocol_home.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/session_usage_cubit.dart';
 import '../services/cursor_usage/cursor_usage_api_client.dart';
-import '../services/agent_runtime/agent_event_gateway.dart';
 import '../services/agent_runtime/agent_runtime.dart';
-import '../services/agent_runtime/runtime_event_journal.dart';
-import '../services/agent_runtime/runtime_event_projection.dart';
-import '../services/agent_runtime/seat_event_stream.dart';
-import '../services/agent_runtime/seat_lease_projection.dart';
 import '../services/editor/markdown_network_image_store.dart';
 import '../services/event/agent_presence_projection.dart';
 import '../services/event/agent_presence_sink.dart';
@@ -58,14 +54,7 @@ import '../services/event/event_transport_controller.dart';
 import '../services/event/presence_event_bridge.dart';
 import 'event_transport_home.dart';
 import '../services/chat/conversation/prompt_delivery/prompt_delivery_coordinator.dart';
-import '../services/chat/conversation/prompt_delivery/prompt_delivery_store.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
-import '../services/agent_status/ask_user_answer_pending_store.dart';
-import '../services/agent_status/ask_user_question_hook_gate.dart';
-import '../services/agent_status/exit_plan_mode_hook_gate.dart';
-import '../services/agent_status/general_permission_request_gate.dart';
-import '../services/chat/conversation/approvals/ask_user_question_answer_service.dart';
-import '../services/chat/conversation/approvals/exit_plan_mode_approval_service.dart';
 import '../services/chat/team_generation/mcp/team_composer_mcp_handler.dart';
 import '../models/app_provider_config.dart';
 import '../models/app_session.dart';
@@ -73,7 +62,6 @@ import '../models/session_list_entry.dart';
 import '../services/catalog/catalog_runtime.dart';
 import '../services/catalog/catalog_mutation_bus.dart';
 import '../services/catalog/catalog_production.dart';
-import '../services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/chat/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/chat/team_bus/remote/remote_member_bus_setup.dart';
 import '../services/remote/local_credential_exporter.dart';
@@ -239,7 +227,6 @@ import '../services/cli/opencode/provider/opencode_models_service.dart';
 import '../services/provider/api_model_catalog_service.dart';
 import '../services/cli/cursor/provider/cursor_agent_models_service.dart';
 import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
-import '../services/chat/runtime/pty/tab_member_pty_delivery.dart';
 import '../services/provider/provider_credential_host_runner.dart';
 import '../services/provider_usage/managed_provider_secret_store.dart';
 import '../services/provider_usage/managed_provider_usage_adapter.dart';
@@ -1838,70 +1825,18 @@ Future<AppShell> buildAppShell({
     );
 
     final automationRepo = buildAutomationRepository(storage: homeStorage);
-    final teammateBusMcpGateway = TeammateBusMcpGateway();
-    await teammateBusMcpGateway.ensureStarted();
-
-    // Shared AskUserAnswerPendingStore singleton (lives in buildAppShell):
-    // gateway GET /ask-user-answer + ChatCubit answer facade must reuse
-    // this instance — do not construct a second store.
-    final askUserAnswerPendingStore = AskUserAnswerPendingStore();
-    teammateBusMcpGateway.attachAskUserAnswerStore(askUserAnswerPendingStore);
-    final askUserQuestionHookGate = AskUserQuestionHookGate();
-    final generalPermissionRequestGate = GeneralPermissionRequestGate();
-    final askUserQuestionAnswerService = AskUserQuestionAnswerService(
-      store: askUserAnswerPendingStore,
-      hookGate: askUserQuestionHookGate,
-      generalPermissionGate: generalPermissionRequestGate,
-    );
-    final exitPlanModeHookGate = ExitPlanModeHookGate();
-    final exitPlanPermissionRequestGate = ExitPlanPermissionRequestGate();
-    final exitPlanModeApprovalService = ExitPlanModeApprovalService(
-      hookGate: exitPlanModeHookGate,
-      permissionGate: exitPlanPermissionRequestGate,
-    );
-
-    final agentAttentionCubit = AgentAttentionCubit();
-    final seatLeaseCubit = SeatLeaseCubit();
-    final agentStatusSeatLookup = AgentStatusSeatLookup();
-    final agentRuntimeStream = SeatEventStream();
-    final askUserQuestionProjection = AskUserQuestionRuntimeEventProjection(
-      hookGate: askUserQuestionHookGate,
-    );
-    final exitPlanModeProjection = ExitPlanModeRuntimeEventProjection(
-      hookGate: exitPlanModeHookGate,
-      permissionGate: exitPlanPermissionRequestGate,
-    );
-    final generalPermissionProjection = GeneralPermissionRuntimeEventProjection(
-      gate: generalPermissionRequestGate,
-    );
-    final runtimeProjections = [
-      RuntimeEventProjection.attention(
-        attention: agentAttentionCubit,
-        resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
-      ),
-      seatLeaseProjection(leases: seatLeaseCubit),
-      askUserQuestionProjection,
-      exitPlanModeProjection,
-      generalPermissionProjection,
-    ];
-    final agentEventGateway = AgentEventGateway(
-      journal: FileRuntimeEventJournal(
-        journalRoot: homeStorage.fs.pathContext.join(
-          homeStorage.paths.basePath,
-          'runtime-events',
-        ),
-        fs: homeStorage.fs,
-      ),
-      stream: agentRuntimeStream,
-      resolveCli: agentStatusSeatLookup.resolveCli,
-      projections: runtimeProjections,
-      responders: [
-        askUserQuestionProjection,
-        exitPlanModeProjection,
-        generalPermissionProjection,
-      ],
-    );
-    teammateBusMcpGateway.attachAgentEventGateway(agentEventGateway);
+    final agentEventPlane = await wireAgentEventPlane(storage: homeStorage);
+    final teammateBusMcpGateway = agentEventPlane.teammateBusMcpGateway;
+    final askUserAnswerPendingStore = agentEventPlane.askUserAnswerPendingStore;
+    final askUserQuestionAnswerService =
+        agentEventPlane.askUserQuestionAnswerService;
+    final generalPermissionRequestGate =
+        agentEventPlane.generalPermissionRequestGate;
+    final exitPlanModeApprovalService =
+        agentEventPlane.exitPlanModeApprovalService;
+    final agentAttentionCubit = agentEventPlane.agentAttentionCubit;
+    final seatLeaseCubit = agentEventPlane.seatLeaseCubit;
+    final agentStatusSeatLookup = agentEventPlane.agentStatusSeatLookup;
 
     catalogRuntime = CatalogRuntime.assemble(
       storage: homeStorage,
@@ -2095,26 +2030,15 @@ Future<AppShell> buildAppShell({
         ),
       );
     };
-    final promptDeliveryStore = FilePromptDeliveryStore(
-      root: homeStorage.fs.pathContext.join(
-        homeStorage.paths.basePath,
-        'prompt-deliveries',
-      ),
-      fs: homeStorage.fs,
+    final agentRuntimeWiring = wireAgentRuntime(
+      storage: homeStorage,
+      gateway: agentEventPlane.agentEventGateway,
+      projections: agentEventPlane.runtimeProjections,
+      chatCubit: () => chatCubit,
+      sessionLifecycleService: () => sessionLifecycleService,
     );
-    appScopedPromptDeliveries = PromptDeliveryCoordinator(
-      store: promptDeliveryStore,
-      commands: TabPromptDeliveryCommands(chatCubit.tabStore),
-    );
-    // One app-scoped runtime join: journaled hooks drive delivery correlation
-    // under per-seat serialization; restoreSession replays both durable stores
-    // before a session's input is enabled (see SessionLifecycleService).
-    final agentRuntime = AgentRuntime(
-      gateway: agentEventGateway,
-      projections: runtimeProjections,
-      promptDeliveries: appScopedPromptDeliveries,
-    );
-    sessionLifecycleService.attachAgentRuntime(agentRuntime);
+    appScopedPromptDeliveries = agentRuntimeWiring.promptDeliveries;
+    final agentRuntime = agentRuntimeWiring.agentRuntime;
 
     // Bound after [WorkbenchCubit] exists; togglePanel aliases new-terminal UX
     // into the floating shell (Task 6 redirects the launcher to floating tabs).
