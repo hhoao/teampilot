@@ -19,6 +19,7 @@ import 'bootstrap/session_usage_wiring.dart';
 import 'bootstrap/workspace_wiring.dart';
 import 'bootstrap/connect_wiring.dart';
 import 'bootstrap/command_wiring.dart';
+import 'bootstrap/automation_wiring.dart';
 import 'team_generation_graph.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../services/cli/antigravity/antigravity_bootstrap_entry.dart';
@@ -72,7 +73,6 @@ import '../models/session_list_entry.dart';
 import '../services/catalog/catalog_runtime.dart';
 import '../services/catalog/catalog_mutation_bus.dart';
 import '../services/catalog/catalog_production.dart';
-import '../services/catalog/modules/automation_catalog_module.dart';
 import '../services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/chat/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/chat/team_bus/remote/remote_member_bus_setup.dart';
@@ -167,7 +167,6 @@ import '../pages/vault/vault_status_section.dart'
 import '../repositories/app_settings_repository.dart';
 import '../repositories/session_preferences_repository.dart';
 import '../repositories/session_repository.dart';
-import '../repositories/automation_repository.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
@@ -195,12 +194,6 @@ import '../services/vault/vault_unlock_gate.dart';
 import '../services/io/local_filesystem.dart';
 import '../services/connect/connect_ssh_backend.dart';
 import '../services/perf/live_perf_driver.dart';
-import '../services/storage/workspace_layout.dart';
-import '../services/automation/automation_bus_gateway.dart';
-import '../services/automation/automation_command_executor.dart';
-import '../services/automation/automation_command_runner.dart';
-import '../services/automation/automation_dispatcher.dart';
-import '../services/automation/automation_run_accounting.dart';
 import '../services/automation/automation_schedule_calculator.dart';
 import '../services/automation/automation_scheduler.dart';
 import '../services/home_workspace/home_workspace_ui_cache.dart';
@@ -303,8 +296,6 @@ import '../services/git/git_command_runner.dart';
 import '../services/git/git_repo_store.dart';
 import '../services/workspace/workspace_tools_scope_registry.dart';
 import '../services/workspace/workspace_run_registry.dart';
-import '../services/run/process_run_executor.dart';
-import '../services/run/run_target_resolver.dart';
 import '../services/search/workspace_search_indexes.dart';
 import '../services/workspace/workspace_worktree_registry.dart';
 import '../services/workspace/workspace_session_groups_registry.dart';
@@ -1846,13 +1837,7 @@ Future<AppShell> buildAppShell({
       ),
     );
 
-    final automationRepo = AutomationRepository(
-      fs: homeStorage.fs,
-      layout: WorkspaceLayout(
-        teampilotRoot: homeStorage.paths.basePath,
-        fs: homeStorage.fs,
-      ),
-    );
+    final automationRepo = buildAutomationRepository(storage: homeStorage);
     final teammateBusMcpGateway = TeammateBusMcpGateway();
     await teammateBusMcpGateway.ensureStarted();
 
@@ -2327,96 +2312,21 @@ Future<AppShell> buildAppShell({
         cliPresetsCubit.state.presetById(presetId);
 
     final scheduleCalculator = AutomationScheduleCalculator();
-    void refreshAutomations() {
-      if (!automationCubit.isClosed) {
-        unawaited(automationCubit.reloadPreservingScope());
-      }
-    }
-
-    final automationCommandRunner = HostAutomationCommandRunner(
-      workspaceById: (workspaceId) => chatCubit.state.workspaces
-          .where((w) => w.workspaceId == workspaceId)
-          .firstOrNull,
-      resolver: RunTargetResolver(homeTarget: defaultTargetResolver),
-      executor: ProcessRunExecutor(sshSpawner: repoCloneSshSpawner),
-    );
-    final automationCommandExecutor = AutomationCommandExecutor(
-      repository: automationRepo,
-      accounting: AutomationRunAccounting(scheduleCalculator),
-      runner: automationCommandRunner,
-      onAfterRun: refreshAutomations,
-    );
-    final automationDispatcher = AutomationDispatcher(
+    final automation = wireAutomationRuntime(
       repository: automationRepo,
       scheduleCalculator: scheduleCalculator,
-      sessionRepository: sessionRepo,
-      busGateway: TabTeamBusGateway(
-        memberMaterializer: chatCubit.memberMaterializer,
-        sessionRuntime: chatCubit.sessionRuntime,
-        tabStore: chatCubit.tabStore,
-        activatePersonalAcp: chatCubit.retrySessionLaunch,
-        activateMemberSeat: chatCubit.ensureMemberTerminalForView,
-      ),
-      requestOpenSession: chatCubit.requestOpenSession,
-      requestCreateAndOpenSession: chatCubit.requestCreateAndOpenSession,
-      workspaceById: (workspaceId) => chatCubit.state.workspaces
-          .where((w) => w.workspaceId == workspaceId)
-          .firstOrNull,
+      catalogRuntime: catalogRuntime,
+      chatCubit: () => chatCubit,
+      sessionRepository: () => sessionRepo,
+      sessionPreferences: sessionPreferencesCubit,
       teamById: teamById,
       resolveCliPreset: resolveCliPreset,
-      sessionById: (sessionId, workspaceId) => chatCubit.state.sessions
-          .where(
-            (s) => s.sessionId == sessionId && s.workspaceId == workspaceId,
-          )
-          .firstOrNull,
-      applySessionTitle: chatCubit.applySessionTitle,
-      acpDefaultFor: sessionPreferencesCubit.acpDefaultFor,
-      runDeliveryInFlight: chatCubit.withOperatorDeliveryInFlight,
+      homeTarget: defaultTargetResolver,
+      sshSpawner: repoCloneSshSpawner,
     );
-    automationScheduler = AutomationScheduler(
-      repository: automationRepo,
-      dispatcher: automationDispatcher,
-      scheduleCalculator: scheduleCalculator,
-      commandExecutor: automationCommandExecutor,
-    );
-    automationCubit = AutomationCubit(
-      repository: automationRepo,
-      scheduler: automationScheduler,
-      scheduleCalculator: scheduleCalculator,
-    );
-    chatCubit.bindAutomationsChangeNotifier(refreshAutomations);
-    // Registered here rather than in CatalogRuntime.assemble because the
-    // automation repo, scheduler and resolver locals are constructed below
-    // that assemble call. The registry recomputes routes on every call, so
-    // these tools appear as soon as this runs; the bus subscription refreshes
-    // the Automations page after catalog-driven writes.
-    catalogRuntime.registry.register(
-      AutomationCatalogModule(
-        repository: automationRepo,
-        scheduleCalculator: scheduleCalculator,
-        bus: catalogRuntime.bus,
-        runNow: automationScheduler.runNow,
-        teamExists: (teamId) => teamById(teamId) != null,
-        presetExists: (presetId) => resolveCliPreset(presetId) != null,
-        memberExists: (teamId, memberId) {
-          final team = teamById(teamId);
-          return team != null &&
-              team.members.any((m) => m.id == memberId && m.isValid);
-        },
-        sessionExists: (sessionId, workspaceId) async {
-          final session = await sessionRepo.findById(sessionId);
-          return session != null && session.workspaceId == workspaceId;
-        },
-        workspaceFolders: (workspaceId) => chatCubit.state.workspaces
-            .where((w) => w.workspaceId == workspaceId)
-            .firstOrNull
-            ?.folders,
-      ),
-    );
-    final automationCatalogSub = catalogRuntime.bus.listen().listen((event) {
-      if (event.kind != 'automation') return;
-      refreshAutomations();
-    });
+    automationCubit = automation.automationCubit;
+    automationScheduler = automation.automationScheduler;
+    final automationCatalogSub = automation.catalogSubscription;
 
     final mailboxCubit = MailboxCubit(
       busForScope: (scope) => scopedTeamBus(workbenchCubit, chatCubit, scope),
