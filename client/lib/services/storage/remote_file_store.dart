@@ -500,6 +500,20 @@ class RemoteFileStore {
     return _clientFactory.runOnStorage(_profile, command);
   }
 
+  /// Runs [command] on the host with [stdin] bytes; returns the raw result.
+  Future<SSHRunResult> execShellWithStdin(
+    String command,
+    List<int> stdin, {
+    Duration timeout = SshStorageIo.provisionPhaseTimeout,
+  }) {
+    return _clientFactory.runOnStorageWithStdin(
+      _profile,
+      command,
+      stdin: stdin,
+      timeout: timeout,
+    );
+  }
+
   /// Opens a streaming SSH exec session (no short I/O timeout — caller waits on
   /// [ProcessRunHandle.exitCode]).
   Future<ProcessRunHandle> startShell(String command) =>

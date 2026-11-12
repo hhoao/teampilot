@@ -161,6 +161,54 @@ void main() {
     });
   });
 
+  group('RemoteGitCommandRunner raw/script/probe', () {
+    test('runRaw uses argv-safe exec and returns bytes', () async {
+      final commands = <String>[];
+      final runner = RemoteGitCommandRunner(
+        execShell: (cmd) async {
+          commands.add(cmd);
+          return _sshOk('abc');
+        },
+        execShellWithStdin: (cmd, stdin) async {
+          commands.add('$cmd|${utf8.decode(stdin)}');
+          return _sshOk('ok');
+        },
+      );
+      final raw = await runner.runRaw(['--git-dir', '/r', 'show', 'HEAD:a']);
+      expect(raw.exitCode, 0);
+      expect(utf8.decode(raw.stdout), 'abc');
+      final withStdin = await runner.runRaw(
+        ['--git-dir', '/r', 'update-ref', '--stdin'],
+        stdinText: 'update refs/x y\n',
+      );
+      expect(withStdin.stdout, isNotEmpty);
+      expect(commands.last, contains('update refs/x y'));
+    });
+
+    test('runToFile redirects on the host', () async {
+      final commands = <String>[];
+      final runner = RemoteGitCommandRunner(
+        execShell: (cmd) async {
+          commands.add(cmd);
+          return _sshOk('');
+        },
+      );
+      await runner.runToFile(['--git-dir', '/r', 'show', 'HEAD:a'], '/tmp/x y');
+      expect(commands.single, contains('>'));
+      expect(commands.single, contains("'/tmp/x y'"));
+    });
+
+    test('probe parses version via runRaw', () async {
+      final runner = RemoteGitCommandRunner(
+        execShell: (cmd) async => _sshOk('git version 2.43.0'),
+      );
+      final cap = await runner.probe();
+      expect(cap.available, isTrue);
+      expect(cap.version, '2.43');
+      expect(cap.pathspecFromFile, isTrue);
+    });
+  });
+
   group('WslGitCommandRunner', () {
     test(
       'isAvailable true when git exists in the distro (real shell semantics)',
@@ -200,6 +248,56 @@ void main() {
       expect(result.exitCode, 0);
       expect(calls.single, containsAll(['-d', 'Ubuntu', 'git', '-C']));
       expect(calls.single, contains('/home/user/repo'));
+    });
+  });
+
+  group('WslGitCommandRunner raw/script/probe', () {
+    test('probe parses version via runRaw', () async {
+      final runner = WslGitCommandRunner(
+        distro: 'Ubuntu',
+        wslProcessStarter: _fakeWslStart,
+      );
+      final cap = await runner.probe();
+      expect(cap.available, isTrue);
+      expect(cap.version, isNotNull);
+    });
+
+    test('runRaw returns bytes and forwards stdin', () async {
+      final runner = WslGitCommandRunner(
+        distro: 'Ubuntu',
+        wslProcessStarter: _fakeWslStart,
+      );
+      final ver = await runner.runRaw(['--version']);
+      expect(utf8.decode(ver.stdout), contains('git version'));
+      final hashed = await runner.runRaw(
+        ['hash-object', '--stdin'],
+        stdinText: 'abc',
+      );
+      expect(utf8.decode(hashed.stdout).trim(), isNotEmpty);
+    });
+
+    test('runScript runs a shell script inside the distro', () async {
+      final runner = WslGitCommandRunner(
+        distro: 'Ubuntu',
+        wslProcessStarter: _fakeWslStart,
+      );
+      final result = await runner.runScript('printf "ok"');
+      expect(result.stdout, 'ok');
+      expect(result.exitCode, 0);
+    });
+
+    test('runToFile redirects git output into a WSL path', () async {
+      final tmp = await Directory.systemTemp.createTemp('wsl-runner-');
+      addTearDown(() {
+        if (tmp.existsSync()) tmp.deleteSync(recursive: true);
+      });
+      final runner = WslGitCommandRunner(
+        distro: 'Ubuntu',
+        wslProcessStarter: _fakeWslStart,
+      );
+      final dest = '${tmp.path}/blob.txt';
+      await runner.runToFile(['--version'], dest);
+      expect(await File(dest).readAsString(), contains('git version'));
     });
   });
 
@@ -430,4 +528,15 @@ class _CapturingHostRunner implements HostOneShotRunner {
     seenExe = request.executable;
     return const HostRunResult(exitCode: 0, stdout: 'ok\n', stderr: '');
   }
+}
+
+/// Emulates `wsl.exe` on non-Windows hosts: drops the wsl-only `-d`/`--cd`
+/// prefix and runs the inner Linux command locally, so WSL runner tests can
+/// exercise real byte streams, stdin and exit codes without wsl.exe.
+Future<Process> _fakeWslStart(String executable, List<String> arguments) {
+  final inner = <String>[...arguments];
+  while (inner.isNotEmpty && (inner.first == '-d' || inner.first == '--cd')) {
+    inner.removeRange(0, 2);
+  }
+  return Process.start(inner.first, inner.sublist(1));
 }

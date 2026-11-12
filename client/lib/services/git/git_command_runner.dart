@@ -401,13 +401,26 @@ class LocalGitCommandRunner implements GitCommandRunner {
       gitCapabilityFromVersion(await runRaw(['--version'], allowFailure: true));
 }
 
+/// Default WSL spawner: `wsl.exe` is injected so byte streams, stdin and
+/// timeouts can be exercised in tests without a Windows host.
+Future<Process> _defaultWslProcessStart(
+  String executable,
+  List<String> arguments,
+) => Process.start(executable, arguments);
+
+typedef WslProcessStarter =
+    Future<Process> Function(String executable, List<String> arguments);
+
 class WslGitCommandRunner implements GitCommandRunner {
   WslGitCommandRunner({
     String? distro,
     String? gitExecutable,
     ProcessRunner? wslRunner,
     HostOneShotRunner? hostRunner,
-  }) : _exe = _resolvedConfiguredGit(gitExecutable),
+    WslProcessStarter? wslProcessStarter,
+  }) : _distro = distro?.trim(),
+       _spawn = wslProcessStarter ?? _defaultWslProcessStart,
+       _exe = _resolvedConfiguredGit(gitExecutable),
        _host =
            hostRunner ??
            WslHostOneShotRunner(
@@ -415,6 +428,8 @@ class WslGitCommandRunner implements GitCommandRunner {
              processRunner: _hostProcessRunnerFrom(wslRunner ?? Process.run),
            );
 
+  final String? _distro;
+  final WslProcessStarter _spawn;
   final String? _exe;
   final HostOneShotRunner _host;
 
@@ -447,6 +462,74 @@ class WslGitCommandRunner implements GitCommandRunner {
     return result.succeeded && result.stdout.trim().isNotEmpty;
   }
 
+  /// Builds the `wsl.exe` argv, forwarding cwd via `--cd` and environment via
+  /// an `env` prefix (same convention as [WslHostOneShotRunner]).
+  List<String> _wslArgv({
+    required String executable,
+    required List<String> arguments,
+    String? workingDirectory,
+    Map<String, String>? environment,
+  }) {
+    final env = environment;
+    final exe = env != null && env.isNotEmpty ? 'env' : executable;
+    final args = env != null && env.isNotEmpty
+        ? [
+            ...env.entries.map((e) => '${e.key}=${e.value}'),
+            executable,
+            ...arguments,
+          ]
+        : arguments;
+    return HostWslArgv.processInvocation(
+      distro: _distro,
+      workingDirectory: workingDirectory,
+      executable: exe,
+      arguments: args,
+    );
+  }
+
+  /// Mirrors [LocalGitCommandRunner]'s drain/timeout semantics: collect raw
+  /// stdout bytes, write optional stdin, bound the drain after a kill.
+  Future<({List<int> stdout, String stderr, int exitCode, bool timedOut})>
+      _runWslProcess(
+    List<String> argv, {
+    String? stdinText,
+    Duration? timeout,
+  }) async {
+    final process = await _spawn('wsl.exe', argv);
+    final outFuture = process.stdout.fold<List<int>>(
+      <int>[],
+      (buffer, chunk) => buffer..addAll(chunk),
+    );
+    final errFuture = process.stderr.transform(_lenientUtf8.decoder).join();
+    if (stdinText != null) process.stdin.write(stdinText);
+    try {
+      await process.stdin.close();
+    } on Object {
+      // already closed
+    }
+    var timedOut = false;
+    final exit = await process.exitCode.timeout(
+      timeout ?? const Duration(seconds: 30),
+      onTimeout: () {
+        timedOut = true;
+        process.kill();
+        return -1;
+      },
+    );
+    final stdout = await (timedOut
+        ? outFuture.timeout(_killGrace, onTimeout: () => <int>[])
+        : outFuture);
+    final stderr = await (timedOut
+        ? errFuture.timeout(_killGrace, onTimeout: () => '')
+        : errFuture);
+    return (
+      stdout: stdout,
+      stderr: stderr,
+      exitCode: exit,
+      timedOut: timedOut,
+    );
+  }
+
   @override
   Future<GitRawResult> runRaw(
     List<String> args, {
@@ -455,7 +538,28 @@ class WslGitCommandRunner implements GitCommandRunner {
     String? stdinText,
     bool allowFailure = false,
     Duration? timeout,
-  }) async => throw UnsupportedError('runRaw is not implemented for WSL yet');
+  }) async {
+    final result = await _runWslProcess(
+      _wslArgv(
+        executable: _git,
+        arguments: args,
+        workingDirectory: workingDirectory,
+        environment: environment,
+      ),
+      stdinText: stdinText,
+      timeout: timeout,
+    );
+    if (!allowFailure && (result.timedOut || result.exitCode != 0)) {
+      throw StateError(
+        'git ${args.join(' ')} failed (${result.exitCode}): ${result.stderr}',
+      );
+    }
+    return GitRawResult(
+      exitCode: result.exitCode,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    );
+  }
 
   @override
   Future<void> runToFile(
@@ -464,8 +568,25 @@ class WslGitCommandRunner implements GitCommandRunner {
     String? workingDirectory,
     Map<String, String>? environment,
     Duration? timeout,
-  }) async =>
-      throw UnsupportedError('runToFile is not implemented for WSL yet');
+  }) async {
+    final base = HostShellArgv.command(executable: _git, arguments: args);
+    final script = '$base > ${RemoteFileStore.shellSingleQuote(destPath)}';
+    final result = await _runWslProcess(
+      _wslArgv(
+        executable: 'sh',
+        arguments: ['-c', script],
+        workingDirectory: workingDirectory,
+        environment: environment,
+      ),
+      timeout: timeout,
+    );
+    if (result.timedOut || result.exitCode != 0) {
+      throw StateError(
+        'git ${args.join(' ')} redirect failed '
+        '(${result.exitCode}): ${result.stderr}',
+      );
+    }
+  }
 
   @override
   Future<GitCommandResult> runScript(
@@ -474,12 +595,27 @@ class WslGitCommandRunner implements GitCommandRunner {
     Map<String, String>? environment,
     String? stdinText,
     Duration? timeout,
-  }) async =>
-      throw UnsupportedError('runScript is not implemented for WSL yet');
+  }) async {
+    final result = await _runWslProcess(
+      _wslArgv(
+        executable: 'sh',
+        arguments: ['-c', script],
+        workingDirectory: workingDirectory,
+        environment: environment,
+      ),
+      stdinText: stdinText,
+      timeout: timeout,
+    );
+    return GitCommandResult(
+      exitCode: result.exitCode,
+      stdout: utf8.decode(result.stdout, allowMalformed: true),
+      stderr: result.stderr,
+    );
+  }
 
   @override
   Future<GitCapability> probe() async =>
-      throw UnsupportedError('probe is not implemented for WSL yet');
+      gitCapabilityFromVersion(await runRaw(['--version'], allowFailure: true));
 
   @override
   Future<GitCommandResult> runInDirectory(
@@ -502,6 +638,8 @@ class RemoteGitCommandRunner implements GitCommandRunner {
   RemoteGitCommandRunner({
     RemoteFileStore? store,
     Future<SSHRunResult> Function(String command)? execShell,
+    Future<SSHRunResult> Function(String command, List<int> stdin)?
+        execShellWithStdin,
     HostOneShotRunner? hostRunner,
     String? hostKey,
     String? gitExecutable,
@@ -510,6 +648,8 @@ class RemoteGitCommandRunner implements GitCommandRunner {
          'store or execShell required',
        ),
        _execShell = execShell ?? store!.execShell,
+       _execShellWithStdin =
+           execShellWithStdin ?? store?.execShellWithStdin,
        _hostKey = hostKey ?? '',
        _exe = _resolvedConfiguredGit(gitExecutable),
        _host =
@@ -517,6 +657,8 @@ class RemoteGitCommandRunner implements GitCommandRunner {
            RemoteHostOneShotRunner(execShell: execShell ?? store!.execShell);
 
   final Future<SSHRunResult> Function(String command) _execShell;
+  final Future<SSHRunResult> Function(String command, List<int> stdin)?
+      _execShellWithStdin;
   final HostOneShotRunner _host;
 
   /// Identifies the remote host so the availability probe is cached per host
@@ -559,8 +701,32 @@ class RemoteGitCommandRunner implements GitCommandRunner {
     String? stdinText,
     bool allowFailure = false,
     Duration? timeout,
-  }) async =>
-      throw UnsupportedError('runRaw is not implemented for remote yet');
+  }) async {
+    final command = HostShellArgv.command(
+      executable: _git,
+      arguments: args,
+      workingDirectory: workingDirectory,
+      environment: environment,
+    );
+    final SSHRunResult result;
+    if (stdinText == null) {
+      result = await _execShell(command);
+    } else {
+      final exec = _execShellWithStdin;
+      if (exec == null) throw StateError('stdin exec not configured');
+      result = await exec(command, utf8.encode(stdinText));
+    }
+    final exit = result.exitCode ?? (sshRunSucceeded(result) ? 0 : 1);
+    final raw = GitRawResult(
+      exitCode: exit,
+      stdout: result.stdout,
+      stderr: utf8.decode(result.stderr, allowMalformed: true),
+    );
+    if (!allowFailure && exit != 0) {
+      throw StateError('git ${args.join(' ')} failed ($exit): ${raw.stderr}');
+    }
+    return raw;
+  }
 
   @override
   Future<void> runToFile(
@@ -569,8 +735,20 @@ class RemoteGitCommandRunner implements GitCommandRunner {
     String? workingDirectory,
     Map<String, String>? environment,
     Duration? timeout,
-  }) async =>
-      throw UnsupportedError('runToFile is not implemented for remote yet');
+  }) async {
+    final base = HostShellArgv.command(
+      executable: _git,
+      arguments: args,
+      workingDirectory: workingDirectory,
+      environment: environment,
+    );
+    final result = await _execShell(
+      '$base > ${RemoteFileStore.shellSingleQuote(destPath)}',
+    );
+    if (sshRunFailed(result)) {
+      throw StateError('git ${args.join(' ')} redirect failed');
+    }
+  }
 
   @override
   Future<GitCommandResult> runScript(
@@ -579,12 +757,26 @@ class RemoteGitCommandRunner implements GitCommandRunner {
     Map<String, String>? environment,
     String? stdinText,
     Duration? timeout,
-  }) async =>
-      throw UnsupportedError('runScript is not implemented for remote yet');
+  }) async {
+    final prefix = HostShellArgv.command(
+      executable: 'sh',
+      arguments: ['-c', script],
+      workingDirectory: workingDirectory,
+      environment: environment,
+    );
+    final result = stdinText == null
+        ? await _execShell(prefix)
+        : await _execShellWithStdin!(prefix, utf8.encode(stdinText));
+    return GitCommandResult(
+      exitCode: result.exitCode ?? (sshRunSucceeded(result) ? 0 : 1),
+      stdout: utf8.decode(result.stdout, allowMalformed: true),
+      stderr: utf8.decode(result.stderr, allowMalformed: true),
+    );
+  }
 
   @override
   Future<GitCapability> probe() async =>
-      throw UnsupportedError('probe is not implemented for remote yet');
+      gitCapabilityFromVersion(await runRaw(['--version'], allowFailure: true));
 
   @override
   Future<GitCommandResult> runInDirectory(
