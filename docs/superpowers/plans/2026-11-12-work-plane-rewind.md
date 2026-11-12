@@ -1292,45 +1292,71 @@ cd /home/hhoa/git/hhoa/teampilot && git add client/lib/services/chat/rewind/seat
 
 ---
 
-## Task 7: 移动端放开 + 全量验证
+## Task 7: 移动端放开 + 收尾修复 + 全量验证
 
 **Files:**
-- Modify: `client/lib/services/cli/git_on_path.dart`（仅注释/保留；不再用于 rewind 判断）
+- Modify: `client/lib/cubits/chat_cubit.dart`
+- Modify: `client/lib/pages/chat/session_history_rewind_host.dart`
+- Modify: `client/lib/services/chat/rewind/seat_rewind_store.dart`
+- Modify: `client/lib/services/cli/git_on_path.dart`
 - Test: `client/test/services/chat/rewind/seat_rewind_policy_test.dart`
 - Manual: Android 真机
 
 **Interfaces:**
-- Consumes: Task 6 的 capability policy。
+- Consumes: Task 6 的 capability policy、Task 5 `SeatRuntimeResolver`/`RewindCapabilityCache`、Task 3 `SeatRewindStore.forContext`。
+
+> Task 6 已把 `isMobile` / `RewindDenial.mobilePlatform` / `RewindDenial.remoteRuntime` 全部删除（全仓 grep 为空），所以原「删除 mobile 拒绝」这一步已完成。本任务 Step 3 改为 Task 6 遗留的三项修复（详见 ledger）。
 
 - [ ] **Step 1: Write the failing test**
 
-在 `seat_rewind_policy_test.dart` 新增：
+在 `seat_rewind_policy_test.dart` 新增一个真实回归测试，沿用该文件现有的 `policy(...)` 与 `session()` helper：
 
 ```dart
-test('mobile platform is allowed when the work plane has git', () async {
-  // isMobile no longer participates; capability decides.
-  final result = await evaluateOn(
-    kind: RuntimeKind.ssh,
-    capability: const RewindCapability(available: true, version: '2.43'),
+test('ssh work plane with git is eligible (mobile enablement)', () {
+  final result = policy(
+    target: const RuntimeTarget(
+      id: 'ssh:phone',
+      label: 'Phone',
+      kind: RuntimeKind.ssh,
+    ),
+    capability: const RewindCapability(
+      available: true,
+      version: '2.43',
+      pathspecFromFile: true,
+    ),
+  ).evaluate(
+    session: session(),
+    memberId: null,
+    cli: CliTool.claude,
+    acp: false,
   );
   expect(result.allowed, isTrue);
 });
 ```
 
+`policy(...)` helper 的 `contextFor` 必须对该 ssh target 返回一个 `RuntimeContext`（用 Task 5 测试里的 `ctx(target, dir)` 形状构造；`RuntimeTarget.id` 要与传入的一致）。若 helper 已有 `capability` 参数则复用，否则补上。
+
 - [ ] **Step 2: Run test to verify it fails**
 
 Run:
 ```bash
-cd /home/hhoa/git/hhoa/teampilot/client && dart run tool/run_tests.dart test/services/chat/rewind/seat_rewind_policy_test.dart --plain-name "mobile platform"
+cd /home/hhoa/git/hhoa/teampilot/client && dart run tool/run_tests.dart test/services/chat/rewind/seat_rewind_policy_test.dart --plain-name "ssh work plane"
 ```
-Expected: FAIL（旧 `mobilePlatform` 拒绝仍存在，或 `isMobile` 注入）。
+Expected: FAIL 或编译失败（helper 尚不支持 ssh context / capability 注入）；记录真实 RED 输出。
 
-- [ ] **Step 3: Implement**
+- [ ] **Step 3: Implement the three Task 6 carry-over fixes + mobile cleanup**
 
-- 从 `SeatRewindPolicy` 删除 `isMobile` 字段与 `mobilePlatform` 分支。
-- `RewindDenial` 删除 `mobilePlatform` / `remoteRuntime`，保留 `workPlaneNotReady` / `unsupportedBackend`。
-- 全仓 `grep -rn "RewindDenial.mobilePlatform\|RewindDenial.remoteRuntime" client` 必须为空。
-- `git_on_path.dart` 的 `isMobilePlatform()` 若不再被引用则删除；被其它功能引用则保留。
+1. **Home-swap cache eviction（M1，真实的错平面风险）。** `HomeStorage.changes` 是 public broadcast stream（`home_storage.dart:64`），`ChatCubit` 持有 `_storage`。在 `ChatCubit` 里订阅并在 `close()` 中取消：
+   ```dart
+   late final StreamSubscription<StoragePlaneChange> _rewindPlaneSub =
+       _storage.changes.listen((_) => clearRewindCaches());
+   ```
+   `close()` 里加 `await _rewindPlaneSub.cancel();`（若已有 `close()` 只加这一行）。备选更省的做法：在 `prepareRewindFor` 里比对已缓存 context 的 `appDataRoot` 与当前 `_storage.context.appDataRoot`，不同则 invalidate 两个缓存。**二选一，不要都做。**
+2. **`_reload` guard（M2）。** `session_history_rewind_host.dart` 的 `_reload()` 是 fire-and-forget；给 `await cubit.prepareRewindFor(...)` 包 try/catch，失败时记日志并让 `allowed=false` 分支继续（保留 `mounted` / `serial` 检查），避免 unhandled zone error 与跳过 `setState`。
+3. **删除 dead `SeatRewindStore.forSession`（M3）。** 先 `grep -rn "SeatRewindStore.forSession" client` 确认为空；若仍有调用者，先迁到 `forContext` 再删。删掉后路径规则只剩 `forContext` 一份。
+4. `git_on_path.dart`：`grep -rn "isMobilePlatform" client` 若为空则删除该函数（保留 `gitOnPath()`，R2 的本地回退仍用）；非空则保留。
+
+> 不要再改 `SeatRewindPolicy` 的 denial 枚举或删 `isMobile` —— Task 6 已完成。
 
 - [ ] **Step 4: Run focused + full verification**
 
@@ -1358,7 +1384,7 @@ Expected: 全绿（若出现 `Failed to load` transport 错误，按既有环境
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /home/hhoa/git/hhoa/teampilot && git add client/lib/services/chat/rewind/seat_rewind_policy.dart client/lib/services/cli/git_on_path.dart client/test/services/chat/rewind/seat_rewind_policy_test.dart && git commit -m "feat(rewind): enable rewind on mobile when the work plane has git"
+cd /home/hhoa/git/hhoa/teampilot && git add <只列出本次实际修改的文件> && git commit -m "feat(rewind): enable mobile rewind and close work-plane cache lifecycle"
 ```
 
 ---
