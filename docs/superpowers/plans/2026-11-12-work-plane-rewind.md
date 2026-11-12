@@ -157,6 +157,20 @@ class GitCapability {
   final bool pathspecFromFile;
   static const unavailable = GitCapability(available: false);
 }
+
+/// Parses `git --version` output into a [GitCapability]. Shared by all runners.
+GitCapability gitCapabilityFromVersion(GitRawResult result) {
+  if (result.exitCode != 0) return GitCapability.unavailable;
+  final text = utf8.decode(result.stdout, allowMalformed: true).trim();
+  final match = RegExp(r'git version (\d+)\.(\d+)').firstMatch(text);
+  final major = int.tryParse(match?.group(1) ?? '') ?? 0;
+  final minor = int.tryParse(match?.group(2) ?? '') ?? 0;
+  return GitCapability(
+    available: true,
+    version: match == null ? text : '${match.group(1)}.${match.group(2)}',
+    pathspecFromFile: major > 2 || (major == 2 && minor >= 25),
+  );
+}
 ```
 
 接口新增（`GitCommandRunner` 内）：
@@ -324,19 +338,8 @@ class GitCapability {
   }
 
   @override
-  Future<GitCapability> probe() async {
-    final result = await runRaw(['--version'], allowFailure: true);
-    if (result.exitCode != 0) return GitCapability.unavailable;
-    final text = utf8.decode(result.stdout, allowMalformed: true).trim();
-    final match = RegExp(r'git version (\d+)\.(\d+)').firstMatch(text);
-    final major = int.tryParse(match?.group(1) ?? '') ?? 0;
-    final minor = int.tryParse(match?.group(2) ?? '') ?? 0;
-    return GitCapability(
-      available: true,
-      version: match == null ? text : '${match.group(1)}.${match.group(2)}',
-      pathspecFromFile: major > 2 || (major == 2 && minor >= 25),
-    );
-  }
+  Future<GitCapability> probe() async =>
+      gitCapabilityFromVersion(await runRaw(['--version'], allowFailure: true));
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -539,26 +542,15 @@ Expected: 编译失败（缺 `execShellWithStdin` 参数与实现）。
   }
 
   @override
-  Future<GitCapability> probe() async {
-    final result = await runRaw(['--version'], allowFailure: true);
-    if (result.exitCode != 0) return GitCapability.unavailable;
-    final text = utf8.decode(result.stdout, allowMalformed: true).trim();
-    final match = RegExp(r'git version (\d+)\.(\d+)').firstMatch(text);
-    final major = int.tryParse(match?.group(1) ?? '') ?? 0;
-    final minor = int.tryParse(match?.group(2) ?? '') ?? 0;
-    return GitCapability(
-      available: true,
-      version: match == null ? text : '${match.group(1)}.${match.group(2)}',
-      pathspecFromFile: major > 2 || (major == 2 && minor >= 25),
-    );
-  }
+  Future<GitCapability> probe() async =>
+      gitCapabilityFromVersion(await runRaw(['--version'], allowFailure: true));
 ```
 
 `WslGitCommandRunner` 用同样思路，基于 `wsl.exe`：
 - `runRaw`：`Process.start('wsl.exe', HostWslArgv.processInvocation(...), ...)`，stdout 收集 bytes。
 - `runToFile`：`sh -lc '<git argv> > <quoted dest>'`。
 - `runScript`：`wsl.exe sh -lc script`。
-- `probe`：`runRaw(['--version'])`。
+- `probe`：`gitCapabilityFromVersion(await runRaw(['--version'], allowFailure: true))`（与 Local/Remote 共用解析）。
 
 > 实现 WSL 时复用 `HostWslArgv.processInvocation`（已有），不要手拼 `wsl.exe` 参数。
 
