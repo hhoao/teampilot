@@ -118,7 +118,7 @@ class WorkbenchLayoutPersistence {
     _restored.add(id);
     _restoreInFlight = true;
     final restore = _repositoryFor(id)
-        .restore(_workbench, tabResolves: (tab) => _tabResolves(id, tab))
+        .restore(_workbench, tabResolves: (tab, _) => _tabResolves(id, tab))
         .then((_) async {
           _registerRestoredSessionTabs(id);
           await _hydrateRestoredSessionTabs(id);

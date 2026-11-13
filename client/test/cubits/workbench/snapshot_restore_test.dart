@@ -85,7 +85,10 @@ void main() {
     cubit.clearWorkspace(_ws);
     cubit.openSession(_ws, 's1');
 
-    await repo.restore(cubit, tabResolves: (tab) => tab != _s3 && tab != _sh1);
+    await repo.restore(
+      cubit,
+      tabResolves: (tab, _) => tab != _s3 && tab != _sh1,
+    );
 
     final center = cubit.centerLayout(_ws);
     // s3 was rejected; only s1 and s2 survive (s2's split group keeps s2).

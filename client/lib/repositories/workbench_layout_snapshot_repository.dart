@@ -4,6 +4,7 @@ import '../cubits/workbench/workbench_cubit.dart';
 import '../cubits/workbench/workbench_split_layout.dart';
 import '../cubits/workbench/tab_strip.dart';
 import '../cubits/workbench/workbench_tab.dart';
+import '../models/workbench_shell_descriptor.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/home_storage.dart';
 import '../services/storage/workspace_layout.dart';
@@ -13,7 +14,8 @@ import '../utils/logging/logger.dart';
 /// `<teampilotRoot>/workspace/workspaces/{id}/workbench-layout.json`:
 ///
 /// ```json
-/// {"center": <Task 1 layout snapshot>, "floating": <Task 1 layout snapshot>, "version": 1}
+/// {"center": <layout snapshot>, "floating": <layout snapshot>, "version": 2,
+///  "shellSessions": {"<tabId>": {"cwd": "...", "spec": {...}}}}
 /// ```
 ///
 /// Mirrors [AutomationRepository]'s per-workspace JSON conventions: an
@@ -39,22 +41,31 @@ class WorkbenchLayoutSnapshotRepository {
   final Filesystem _fs;
   final WorkspaceLayout _layout;
 
-  /// Snapshot format version. A persisted file whose `version` differs is
-  /// treated as corrupt (restore falls back to the current bar).
-  static const int currentVersion = 1;
+  /// Snapshot format version. v2 adds the `shellSessions` descriptor table;
+  /// v1 files remain readable (their shell tabs prune for lack of a descriptor).
+  static const int currentVersion = 2;
+  static const int minReadableVersion = 1;
 
   String get _file => _layout.workbenchLayoutFile(workspaceId);
 
   /// Writes both layout snapshots atomically. IO errors are logged, never
   /// thrown — persistence must not break tab interaction.
+  ///
+  /// [shellSessions] maps floating shell tab id → the descriptor needed to
+  /// re-open that shell after a restart (Task 4 decides which tabs survive).
   Future<void> save(
     WorkbenchGroupLayout center,
-    WorkbenchGroupLayout floating,
-  ) async {
+    WorkbenchGroupLayout floating, {
+    Map<String, WorkbenchShellDescriptor> shellSessions = const {},
+  }) async {
     final encoded = jsonEncode({
       'version': currentVersion,
       'center': toSnapshot(center),
       'floating': toSnapshot(floating),
+      'shellSessions': {
+        for (final entry in shellSessions.entries)
+          entry.key: entry.value.toJson(),
+      },
     });
     try {
       await _fs.ensureDir(_layout.workspaceDir(workspaceId));
@@ -79,13 +90,20 @@ class WorkbenchLayoutSnapshotRepository {
   /// - Runtime landing state never resurrects: a strip restored with tabs but
   ///   no active tab gets its first tab activated (landing draft/return fields
   ///   are not persisted at all).
-  Future<void> restore(
+  ///
+  /// Returns the snapshot's shell descriptors keyed by tab id — empty when the
+  /// file is missing/corrupt/unsupported or is a v1 snapshot. Descriptors are
+  /// returned even when the layout pruned to empty (the bar keeps its current
+  /// layout but the shell table is still valid input for the coordinator).
+  Future<Map<String, WorkbenchShellDescriptor>> restore(
     WorkbenchCubit workbench, {
-    bool Function(WorkbenchTabId tab)? tabResolves,
+    bool Function(WorkbenchTabId tab, WorkbenchShellDescriptor? descriptor)?
+    tabResolves,
   }) async {
-    final resolve = tabResolves ?? (_) => true;
+    final resolve = tabResolves ?? (tab, descriptor) => true;
     final Map<String, Object?>? json = await _readSnapshot();
-    if (json == null) return;
+    if (json == null) return const {};
+    final descriptors = _descriptorsFromSnapshot(json['shellSessions']);
 
     final centerJson = json['center'];
     final floatingJson = json['floating'];
@@ -94,19 +112,20 @@ class WorkbenchLayoutSnapshotRepository {
         '[workbench-layout] corrupt snapshot ($workspaceId): '
         'center/floating must be objects',
       );
-      return;
+      return descriptors;
     }
 
     final WorkbenchGroupLayout? center;
     final WorkbenchGroupLayout? floating;
     try {
+      bool resolved(WorkbenchTabId tab) => resolve(tab, descriptors[tab.id]);
       final decodedCenter = layoutFromSnapshot(
         Map<String, Object?>.from(centerJson),
-        tabResolves: resolve,
+        tabResolves: resolved,
       );
       final decodedFloating = layoutFromSnapshot(
         Map<String, Object?>.from(floatingJson),
-        tabResolves: resolve,
+        tabResolves: resolved,
       );
       center = decodedCenter == null
           ? null
@@ -116,7 +135,7 @@ class WorkbenchLayoutSnapshotRepository {
           : _withoutRuntimeLanding(decodedFloating);
     } on Object catch (e) {
       appLogger.w('[workbench-layout] corrupt snapshot ($workspaceId): $e');
-      return;
+      return descriptors;
     }
 
     if (center == null && floating == null) {
@@ -124,9 +143,31 @@ class WorkbenchLayoutSnapshotRepository {
         '[workbench-layout] snapshot pruned to empty ($workspaceId); '
         'keeping current layout',
       );
-      return;
+      return descriptors;
     }
     workbench.resetLayoutToSnapshot(workspaceId, center, floating);
+    return descriptors;
+  }
+
+  /// Decodes the `shellSessions` table, dropping (and logging) malformed
+  /// entries so one corrupt descriptor never poisons the whole snapshot.
+  Map<String, WorkbenchShellDescriptor> _descriptorsFromSnapshot(Object? json) {
+    if (json is! Map) return const {};
+    final out = <String, WorkbenchShellDescriptor>{};
+    for (final entry in json.entries) {
+      final tabId = entry.key;
+      if (tabId is! String || tabId.trim().isEmpty) continue;
+      final descriptor = WorkbenchShellDescriptor.fromJson(entry.value);
+      if (descriptor == null) {
+        appLogger.w(
+          '[workbench-layout] dropping corrupt shell descriptor '
+          '($workspaceId): $tabId',
+        );
+        continue;
+      }
+      out[tabId] = descriptor;
+    }
+    return out;
   }
 
   /// Landing is runtime-only: the snapshot encodes "landing shown" as a
@@ -188,10 +229,14 @@ class WorkbenchLayoutSnapshotRepository {
       return null;
     }
     final json = Map<String, Object?>.from(decoded);
-    if (json['version'] != currentVersion) {
+    final version = json['version'];
+    if (version is! int ||
+        version < minReadableVersion ||
+        version > currentVersion) {
       appLogger.w(
         '[workbench-layout] unsupported snapshot version ($workspaceId): '
-        '${json['version']} != $currentVersion',
+        '${json['version']} not in '
+        '[$minReadableVersion, $currentVersion]',
       );
       return null;
     }

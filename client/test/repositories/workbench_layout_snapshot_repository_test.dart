@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_split_layout.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
+import 'package:teampilot/models/workbench_shell_descriptor.dart';
+import 'package:teampilot/models/workspace_terminal_session_spec.dart';
 import 'package:teampilot/repositories/workbench_layout_snapshot_repository.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
@@ -61,7 +63,8 @@ void main() {
       final raw = fs.files[_file];
       expect(raw, isNotNull);
       final decoded = jsonDecode(raw!) as Map<String, Object?>;
-      expect(decoded['version'], 1);
+      expect(decoded['version'], 2);
+      expect(decoded['shellSessions'], isEmpty);
       expect(
         (decoded['center'] as Map)['root'],
         isA<Map>().having((r) => r['kind'], 'kind', 'branch'),
@@ -124,7 +127,7 @@ void main() {
       final restored = WorkbenchCubit();
       await repo.restore(
         restored,
-        tabResolves: (tab) => tab != _s2 && tab != _shell2,
+        tabResolves: (tab, _) => tab != _s2 && tab != _shell2,
       );
 
       expect(restored.centerLayout(_ws).lockedGroupIds, {
@@ -251,7 +254,7 @@ void main() {
         await repo.save(seeded.centerLayout(_ws), seeded.floatingLayout(_ws));
 
         final restored = WorkbenchCubit();
-        await repo.restore(restored, tabResolves: (tab) => tab != _s2);
+        await repo.restore(restored, tabResolves: (tab, _) => tab != _s2);
 
         // s2's group vanished; s1's group rolled up to the root.
         final center = restored.centerLayout(_ws);
@@ -271,7 +274,7 @@ void main() {
       await repo.save(seeded.centerLayout(_ws), seeded.floatingLayout(_ws));
 
       final restored = WorkbenchCubit()..openSession(_ws, 's9');
-      await repo.restore(restored, tabResolves: (_) => false);
+      await repo.restore(restored, tabResolves: (_, _) => false);
 
       expect(restored.centerOrder(_ws), [WorkbenchTabId.session('s9')]);
       expect(restored.floatingOrder(_ws), isEmpty);
@@ -297,5 +300,79 @@ void main() {
       await repo.delete();
       expect(fs.files.containsKey(_file), isFalse);
     });
+  });
+
+  test('round-trips shell descriptors and prunes tabs without one', () async {
+    final cubit = seedCubit();
+    const descriptor = WorkbenchShellDescriptor(
+      cwd: '/proj',
+      spec: WorkspaceTerminalLocalSpec('/bin/bash'),
+    );
+    await repo.save(
+      cubit.centerLayout(_ws),
+      cubit.floatingLayout(_ws),
+      shellSessions: {_shell1.id: descriptor},
+    );
+
+    final workbench = WorkbenchCubit();
+    addTearDown(workbench.close);
+    final restored = await repo.restore(
+      workbench,
+      tabResolves: (tab, d) => tab.kind != WorkbenchTabKind.shell || d != null,
+    );
+
+    expect(restored.keys, {_shell1.id});
+    expect(restored[_shell1.id], descriptor);
+    expect(workbench.mergedFloatingStrip(_ws).contains(_shell1), isTrue);
+    expect(workbench.mergedFloatingStrip(_ws).contains(_shell2), isFalse);
+  });
+
+  test('a v1 snapshot restores layouts with no shell descriptors', () async {
+    final cubit = seedCubit();
+    await repo.save(cubit.centerLayout(_ws), cubit.floatingLayout(_ws));
+    final decoded = jsonDecode(fs.files[_file]!) as Map<String, Object?>;
+    decoded['version'] = 1;
+    decoded.remove('shellSessions');
+    await fs.writeString(_file, jsonEncode(decoded));
+
+    final workbench = WorkbenchCubit();
+    addTearDown(workbench.close);
+    final restored = await repo.restore(
+      workbench,
+      tabResolves: (tab, d) => tab.kind != WorkbenchTabKind.shell || d != null,
+    );
+
+    expect(restored, isEmpty);
+    expect(workbench.mergedFloatingStrip(_ws).order, isEmpty);
+  });
+
+  test('a corrupt descriptor prunes only its own tab', () async {
+    final cubit = seedCubit();
+    await repo.save(
+      cubit.centerLayout(_ws),
+      cubit.floatingLayout(_ws),
+      shellSessions: {
+        _shell1.id: const WorkbenchShellDescriptor(
+          cwd: '/tmp',
+          spec: WorkspaceTerminalLocalSpec('/bin/bash'),
+        ),
+      },
+    );
+    final decoded = jsonDecode(fs.files[_file]!) as Map<String, Object?>;
+    (decoded['shellSessions'] as Map)[_shell2.id] = const {
+      'cwd': '/tmp',
+      'spec': {'type': 'bogus'},
+    };
+    await fs.writeString(_file, jsonEncode(decoded));
+
+    final workbench = WorkbenchCubit();
+    addTearDown(workbench.close);
+    final restored = await repo.restore(
+      workbench,
+      tabResolves: (tab, d) => tab.kind != WorkbenchTabKind.shell || d != null,
+    );
+
+    expect(restored.keys, {_shell1.id});
+    expect(workbench.floatingOrder(_ws), [_shell1]);
   });
 }

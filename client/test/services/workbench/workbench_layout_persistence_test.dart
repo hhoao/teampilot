@@ -100,7 +100,7 @@ void main() {
 
       expect(fs.files.containsKey(_file), isTrue);
       final decoded = jsonDecode(fs.files[_file]!) as Map<String, Object?>;
-      expect(decoded['version'], 1);
+      expect(decoded['version'], 2);
       final groups = (decoded['floating'] as Map)['groups'] as Map;
       // A tab id snapshot encodes as a [kind, id] pair (deep list equality —
       // `contains` would compare by identity).
