@@ -9,14 +9,16 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../cubits/branch_edit_controller.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/failed_message_record.dart';
 import '../../models/pending_branch_edit.dart';
+import '../../services/chat/rewind/edit/edit_operation.dart';
+import '../../services/chat/rewind/edit/seat_edit_coordinator.dart';
 import '../../services/chat/rewind/seat_branches.dart';
 import '../../utils/chat/chat_timestamp_format.dart';
 import '../../widgets/session_working_spinner.dart';
 import 'chat_message_action_menu.dart';
+import 'edit_operation_status.dart';
 import 'chat_message_edit_panel.dart';
 import 'chat_outline.dart';
 import 'chat_reveal_controller.dart';
@@ -89,7 +91,7 @@ class SessionHistoryThread extends StatefulWidget {
     this.onEditUserMessage,
     this.onPickEditAttachments,
     this.holdTranscript = false,
-    this.branchEdit,
+    this.seatEdit,
     this.onOptimisticLanded,
     this.turnInFlight = false,
     this.pendingUserText = '',
@@ -159,9 +161,14 @@ class SessionHistoryThread extends StatefulWidget {
   /// Copies the branch through the commit into a new session.
   final void Function(String commit)? onForkFrom;
 
-  /// Submits an edit. Returns true when the edit was accepted; false keeps
-  /// the editor open with the draft so the user can retry.
-  final Future<bool> Function(String messageId, String text)? onEditUserMessage;
+  /// Submits an edit. Returns true when the edit was accepted (not when it
+  /// finished), so the editor can close immediately.
+  final Future<bool> Function(
+    String messageId,
+    String text, {
+    required bool reopenEditor,
+  })?
+  onEditUserMessage;
 
   /// Opens the host file picker while a user message is being edited and
   /// returns `@` references to insert into the draft.
@@ -173,9 +180,9 @@ class SessionHistoryThread extends StatefulWidget {
   /// intermediate state and then the new turn makes the thread flash twice.
   final bool holdTranscript;
 
-  /// Shared edit state; when omitted the thread owns a private controller
-  /// (tests and standalone usage).
-  final BranchEditController? branchEdit;
+  /// Shared edit transaction; when omitted the thread owns a private
+  /// coordinator (tests and standalone usage).
+  final SeatEditCoordinator? seatEdit;
 
   /// Call when the runtime publishes the resent prompt.
   final VoidCallback? onOptimisticLanded;
@@ -265,7 +272,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   List<AiMessage> _messages = const [];
 
-  BranchEditController? _ownBranchEdit;
+  SeatEditCoordinator? _ownSeatEdit;
 
   ThemeData? _tightenedTheme;
   ThemeData? _tightenedThemeBase;
@@ -276,8 +283,23 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   /// re-arm must ignore it — otherwise the follow dies or re-arms mid-drag.
   double _extentBaseline = 0;
 
-  BranchEditController get _edit =>
-      widget.branchEdit ?? (_ownBranchEdit ??= BranchEditController());
+  SeatEditCoordinator get _edit =>
+      widget.seatEdit ??
+      (_ownSeatEdit ??= SeatEditCoordinator(
+        sessionId: '',
+        run: _noopEditRun,
+        watchdog: Duration.zero,
+      ));
+
+  /// Standalone threads never own a runtime; a submitted edit is a no-op.
+  static Future<void> _noopEditRun({
+    required String sessionId,
+    required String memberId,
+    required String userMessageId,
+    required String text,
+    required void Function(EditPhase phase) onPhase,
+    required bool Function() aborted,
+  }) async {}
 
   /// Theme for the live tip while the Running footer is appended: tightens the
   /// message's bottom gap so the footer sits under it like in-turn chrome.
@@ -311,6 +333,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       // Editing dims every turn, so all cached bodies must rebuild when the
       // edit state starts / stops — not just the turn owning the message.
       _edit.editingMessageId,
+      // A new edit transaction must rebuild the body so the inline editor is a
+      // fresh State (the previous one latched itself as submitted).
+      _edit.operation?.id,
       widget.onSwitchVersion != null,
       widget.onForkFrom != null,
       widget.onEditUserMessage != null,
@@ -327,18 +352,21 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     return Object.hashAll(keys);
   }
 
-  Future<bool> _submitEdit(AiMessage message, String text) async {
-    _edit.begin(
-      messageId: message.id,
-      text: text,
-      visibleMessageIds: _messages.map((m) => m.id),
+  /// Hands the edit to the host, which accepts it synchronously and runs the
+  /// resend in the background. A true result only means "accepted".
+  Future<bool> _submitEdit(
+    AiMessage message,
+    String text, {
+    bool reopenEditorOnFailure = false,
+  }) {
+    final submit = widget.onEditUserMessage;
+    if (submit == null) return Future<bool>.value(false);
+    _editBaselineIds = _messages.map((message) => message.id).toSet();
+    return submit(
+      message.id,
+      text,
+      reopenEditor: reopenEditorOnFailure,
     );
-    final accepted =
-        await (widget.onEditUserMessage?.call(message.id, text) ??
-            Future<bool>.value(true));
-    if (!mounted) return accepted;
-    _edit.finish(accepted: accepted, messageId: message.id);
-    return accepted;
   }
 
   Future<void> _openMobileEdit(
@@ -351,36 +379,25 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         !widget.turnInFlight;
     if (!rewindEnabled || _edit.editingMessageId == message.id) return;
     _edit.openEditor(message.id);
-    Future<bool>? inFlight;
-    final accepted = await showChatMessageEditSheet(
+    await showChatMessageEditSheet(
       context,
       initialText: _edit.draft ?? plainTextForCopy(message),
       title: context.l10n.edit.userMessage,
       cancelLabel: context.l10n.edit.cancel,
       sendLabel: context.l10n.edit.send,
-      onSubmit: (text) => inFlight = _submitEdit(message, text),
+      onSubmit: (text) => _submitEdit(message, text),
     );
     if (!mounted) return;
-    if (accepted) return;
-    // The sheet may be dismissed while a submit is still running; a failed
-    // submit re-latches `editingMessageId`, which would leave the mobile
-    // transcript dimmed with no editor open. Wait for the in-flight submit and
-    // clear that latched state.
-    var lateAccepted = false;
-    if (inFlight != null) {
-      try {
-        lateAccepted = await inFlight!;
-      } catch (_) {
-        _edit.clearPending();
-      }
-      if (!mounted) return;
-    }
-    if (!lateAccepted && _edit.editingMessageId == message.id) {
-      _edit.cancelEdit();
-    }
+    // The sheet is gone either way: drop the editor latch so the transcript is
+    // not left dimmed behind a missing editor.
+    _edit.cancelEditor();
   }
 
   PendingBranchEdit? get _pendingEdit => _edit.pending;
+
+  /// Message ids visible when the edit started: a replayed parent message is
+  /// never mistaken for the resent prompt.
+  Set<String> _editBaselineIds = const {};
 
   /// Message to reveal in the viewport (from [ChatRevealController]).
   String? _revealTargetId;
@@ -447,7 +464,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     if (!mounted) return;
     if (_anchorRestoreActive || _pendingRestoreAnchor != null) return;
     if (_scrollController.hasClients) {
-      _lastPixels = _scrollController.position.pixels;
+      final position = _scrollController.position;
+      _lastPixels = position.pixels;
+      // The extent churned while the host was inactive (estimates for unmounted
+      // turns, plus anything the turn streamed). Rebase the clamp baseline too,
+      // or the first foreground tick reads that churn as a layout clamp.
+      _extentBaseline = position.maxScrollExtent;
     }
     if (!_stickToEnd) return;
     _scheduleStickFrames();
@@ -456,8 +478,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   @override
   void didUpdateWidget(covariant SessionHistoryThread oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.branchEdit, widget.branchEdit)) {
-      (oldWidget.branchEdit ?? _ownBranchEdit)?.removeListener(
+    if (!identical(oldWidget.seatEdit, widget.seatEdit)) {
+      (oldWidget.seatEdit ?? _ownSeatEdit)?.removeListener(
         _onBranchEditChanged,
       );
       _edit.addListener(_onBranchEditChanged);
@@ -525,8 +547,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   @override
   void dispose() {
-    (widget.branchEdit ?? _ownBranchEdit)?.removeListener(_onBranchEditChanged);
-    _ownBranchEdit?.dispose();
+    (widget.seatEdit ?? _ownSeatEdit)?.removeListener(_onBranchEditChanged);
+    _ownSeatEdit?.dispose();
     _writeScrollAnchor();
     _stickGeneration++;
     _hoverResumeTimer?.cancel();
@@ -654,7 +676,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     if (expected.isEmpty) return true;
     for (final message in next.reversed) {
       if (message.role != AiRole.user) continue;
-      if (_edit.baselineIds.contains(message.id)) return false;
+      if (_editBaselineIds.contains(message.id)) return false;
       final text = message.parts
           .whereType<AiTextPart>()
           .map((part) => part.text)
@@ -1425,8 +1447,16 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                               context,
                             ).languageCode,
                           );
+                          // A new editing session for this message must build a
+                          // fresh editor State: the old one latched itself as
+                          // submitted and would ignore the retry. The operation
+                          // id changes on every submit, including a retry.
                           final messageChild = AiMessageView(
-                            key: ValueKey(ai.id),
+                            key: ValueKey(
+                              editing
+                                  ? '${ai.id}:edit:${_edit.operation?.id}'
+                                  : ai.id,
+                            ),
                             message: ai,
                             timestampText: timestampText,
                             actionBarHoverEnabled: _hoverEffectsEnabled,
@@ -1458,8 +1488,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                 ? () => unawaited(_openMobileEdit(context, ai))
                                 : () => _edit.openEditor(ai.id),
                             editLabel: editLabel,
-                            onSubmitEdit: (text) => _submitEdit(ai, text),
-                            onCancelEdit: _edit.cancelEdit,
+                            onSubmitEdit: (text) => _submitEdit(
+                              ai,
+                              text,
+                              reopenEditorOnFailure: true,
+                            ),
+                            onCancelEdit: _edit.cancelEditor,
                             onPickEditAttachments: widget.onPickEditAttachments,
                             editSendLabel: editSendLabel,
                             editCancelLabel: editCancelLabel,
@@ -1505,6 +1539,24 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                 ),
                               ),
                               child: result,
+                            );
+                          }
+                          // The edit transaction reports its own phase under
+                          // the bubble, so the author can tell "still working"
+                          // from "hung" and retry without reopening the editor.
+                          final editOperation = _edit.operation;
+                          if (editOperation != null &&
+                              editOperation.messageId == ai.id &&
+                              editOperation.phase != EditPhase.confirmed) {
+                            result = Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                result,
+                                EditOperationStatus(
+                                  operation: editOperation,
+                                  onRetry: () => unawaited(_edit.retry()),
+                                ),
+                              ],
                             );
                           }
                           final mobileEditingId = mobile

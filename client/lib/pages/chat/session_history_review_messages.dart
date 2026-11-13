@@ -105,7 +105,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     // (scroll position, cached bodies, optimistic bubble) and paints a
     // spinner: the visible flash. Keep it mounted for the whole edit window;
     // holdTranscript already freezes its contents until the new turn lands.
-    if (rewind?.holdTranscript == true || rewind?.branchEdit.pending != null) {
+    if (rewind?.holdTranscript == true || rewind?.seatEdit.pending != null) {
       return true;
     }
     if (_status == AiHistoryViewStatus.refreshing) return true;
@@ -174,7 +174,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               onEditUserMessage: rewind?.onEditUserMessage,
               onPickEditAttachments: rewind?.onPickEditAttachments,
               holdTranscript: rewind?.holdTranscript ?? false,
-              branchEdit: rewind?.branchEdit,
+              seatEdit: rewind?.seatEdit,
               onOptimisticLanded: rewind?.onOptimisticLanded,
               turnInFlight: turnInFlight,
               pendingUserText: pendingUserText,

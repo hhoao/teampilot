@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/ai_history_seat.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
-import 'package:teampilot/cubits/branch_edit_controller.dart';
+import 'package:teampilot/services/chat/rewind/edit/edit_operation.dart';
+import 'package:teampilot/services/chat/rewind/edit/seat_edit_coordinator.dart';
 import 'package:teampilot/pages/chat/session_history_review_messages.dart';
 import 'package:teampilot/pages/chat/session_history_rewind_host.dart';
 import 'package:teampilot/services/chat/rewind/seat_branches.dart';
@@ -91,7 +92,7 @@ void main() {
           ),
         ]);
 
-      Widget build(AiHistoryState state, {BranchEditController? edit}) => wrap(
+      Widget build(AiHistoryState state, {SeatEditCoordinator? edit}) => wrap(
         Column(
           children: [
             Expanded(
@@ -104,7 +105,7 @@ void main() {
                     ? null
                     : SessionHistoryRewindBinding(
                         branches: const SeatBranches.empty(),
-                        branchEdit: edit,
+                        seatEdit: edit,
                       ),
               ),
             ),
@@ -112,13 +113,13 @@ void main() {
         ),
       );
 
-      final edit = BranchEditController(watchdog: Duration.zero)
-        ..begin(
-          messageId: 'm-0',
-          text: 'edited',
-          visibleMessageIds: const ['m-0'],
-        );
+      final edit = SeatEditCoordinator(
+        sessionId: 's1',
+        run: _noopRun,
+        watchdog: Duration.zero,
+      );
       addTearDown(edit.dispose);
+      await edit.submit(messageId: 'm-0', memberId: 'm-0', text: 'edited');
 
       await tester.pumpWidget(
         build(
@@ -250,3 +251,12 @@ void main() {
     },
   );
 }
+
+Future<void> _noopRun({
+  required String sessionId,
+  required String memberId,
+  required String userMessageId,
+  required String text,
+  required void Function(EditPhase phase) onPhase,
+  required bool Function() aborted,
+}) async {}

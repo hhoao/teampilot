@@ -4,12 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../cubits/branch_edit_controller.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/workspace.dart';
 import '../../pages/home_workspace/workspace/workspace_session_actions.dart';
+import '../../services/chat/rewind/edit/edit_operation.dart';
+import '../../services/chat/rewind/edit/seat_edit_coordinator.dart';
 import '../../services/chat/rewind/seat_branches.dart';
 import '../../utils/logging/logger.dart';
 import '../../widgets/app_toast/app_toast.dart';
@@ -21,7 +22,7 @@ final class SessionHistoryRewindBinding {
     this.onForkFrom,
     this.onEditUserMessage,
     this.onPickEditAttachments,
-    required this.branchEdit,
+    required this.seatEdit,
     this.busy = false,
     this.onOptimisticLanded,
   });
@@ -29,16 +30,24 @@ final class SessionHistoryRewindBinding {
   final SeatBranches branches;
   final void Function(String commit)? onSwitchVersion;
   final void Function(String commit)? onForkFrom;
-  final Future<bool> Function(String messageId, String text)? onEditUserMessage;
+
+  /// Accepts the edit and returns immediately; progress lives on [seatEdit].
+  final Future<bool> Function(
+    String messageId,
+    String text, {
+    required bool reopenEditor,
+  })?
+  onEditUserMessage;
 
   /// Opens the host file picker for the inline editor and returns `@` refs.
   final Future<List<String>> Function()? onPickEditAttachments;
   final bool busy;
 
-  /// Single source of truth for pending/draft/editor state.
-  final BranchEditController branchEdit;
+  /// Single source of truth for the edit transaction, pending bubble, and
+  /// editor state.
+  final SeatEditCoordinator seatEdit;
 
-  bool get holdTranscript => branchEdit.holdsTranscript;
+  bool get holdTranscript => seatEdit.holdsTranscript;
 
   /// Called when the runtime finally publishes the resent prompt.
   final VoidCallback? onOptimisticLanded;
@@ -81,8 +90,9 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
   var _reloadSerial = 0;
   var _seenGeneration = 0;
   var _seenOperationInProgress = false;
+  EditPhase? _seenEditPhase;
   ChatCubit? _cubit;
-  BranchEditController? _branchEdit;
+  SeatEditCoordinator? _seatEdit;
   StreamSubscription<ChatState>? _generationSub;
 
   @override
@@ -93,7 +103,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
     if (_started) unawaited(_generationSub?.cancel());
     _started = true;
     _cubit = cubit;
-    _attachBranchEdit(cubit);
+    _attachSeatEdit(cubit);
     _seenGeneration =
         cubit.state.rewindHistoryGenerations[widget.session.sessionId] ?? 0;
     _seenOperationInProgress = cubit.state.rewindForkInProgress.contains(
@@ -110,7 +120,7 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         oldWidget.memberId != widget.memberId) {
       final cubit = _cubit;
       if (cubit != null) {
-        _attachBranchEdit(cubit);
+        _attachSeatEdit(cubit);
         _seenGeneration =
             cubit.state.rewindHistoryGenerations[widget.session.sessionId] ?? 0;
         _seenOperationInProgress = cubit.state.rewindForkInProgress.contains(
@@ -123,19 +133,31 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
 
   @override
   void dispose() {
-    _branchEdit?.removeListener(_onBranchEditChanged);
+    _seatEdit?.removeListener(_onSeatEditChanged);
     unawaited(_generationSub?.cancel());
     super.dispose();
   }
 
-  void _attachBranchEdit(ChatCubit cubit) {
-    _branchEdit?.removeListener(_onBranchEditChanged);
-    _branchEdit = cubit.branchEditFor(widget.session.sessionId);
-    _branchEdit!.addListener(_onBranchEditChanged);
+  void _attachSeatEdit(ChatCubit cubit) {
+    _seatEdit?.removeListener(_onSeatEditChanged);
+    _seatEdit = cubit.seatEditFor(widget.session.sessionId);
+    _seenEditPhase = _seatEdit!.operation?.phase;
+    _seatEdit!.addListener(_onSeatEditChanged);
   }
 
-  void _onBranchEditChanged() {
-    if (mounted) setState(() {});
+  void _onSeatEditChanged() {
+    if (!mounted) return;
+    final phase = _seatEdit?.operation?.phase;
+    final failed = phase == EditPhase.failed && _seenEditPhase != phase;
+    _seenEditPhase = phase;
+    setState(() {});
+    if (failed) {
+      AppToast.show(
+        context,
+        message: context.l10n.branchEditFailed,
+        variant: TpToastVariant.error,
+      );
+    }
   }
 
   void _onCubitState(ChatState next) {
@@ -263,54 +285,29 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
     }
   }
 
-  /// Returns true when the edited turn was accepted; false keeps the editor
-  /// open with the draft so the author can retry.
   void _onOptimisticLanded() {
-    _branchEdit?.markLanded();
+    _seatEdit?.markLanded();
   }
 
-  Future<bool> _onEditUserMessage(String messageId, String text) async {
+  /// Returns true as soon as the edit is accepted; the resend runs detached.
+  Future<bool> _onEditUserMessage(
+    String messageId,
+    String text, {
+    required bool reopenEditor,
+  }) async {
     if (_busy) return false;
-    setState(() => _busy = true);
-    try {
-      await _cubit!.editSeatTurn(
-        sessionId: widget.session.sessionId,
-        memberId: widget.memberId,
-        userMessageId: messageId,
-        text: text,
-      );
-      return true;
-    } on Object catch (error, stackTrace) {
-      appLogger.e(
-        '[rewind] editSeatTurn failed session=${widget.session.sessionId}: '
-        '$error',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      if (mounted) {
-        AppToast.show(
-          context,
-          message: context.l10n.branchEditFailed,
-          variant: TpToastVariant.error,
-        );
-      }
-      if (mounted) {
-        context.read<ChatCubit>().clearPendingBranchEdit(
-          widget.session.sessionId,
-        );
-      }
-      return false;
-    } finally {
-      if (mounted) {
-        setState(() => _busy = false);
-      }
-    }
+    return _seatEdit!.submit(
+      messageId: messageId,
+      memberId: widget.memberId,
+      text: text,
+      reopenEditorOnFailure: reopenEditor,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final state = context.read<ChatCubit>().state;
-    final branchEdit = _branchEdit!;
+    final seatEdit = _seatEdit!;
     return widget.builder(
       context,
       SessionHistoryRewindBinding(
@@ -319,12 +316,11 @@ class _SessionHistoryRewindHostState extends State<SessionHistoryRewindHost> {
         onForkFrom: _allowed ? _onForkFrom : null,
         onEditUserMessage: _allowed ? _onEditUserMessage : null,
         onPickEditAttachments: _allowed ? widget.onPickEditAttachments : null,
-        // Keep fork/switch/edit disabled until the optimistic prompt lands;
-        // clearing _busy at send time opens a race with a second rewind.
-        branchEdit: branchEdit,
+        // Keep fork/switch/edit disabled while an edit transaction runs.
+        seatEdit: seatEdit,
         busy:
             _busy ||
-            branchEdit.pending != null ||
+            seatEdit.isActive ||
             state.rewindForkInProgress.contains(widget.session.sessionId),
         onOptimisticLanded: _onOptimisticLanded,
       ),

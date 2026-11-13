@@ -4,6 +4,7 @@ import '../../../models/app_session.dart';
 import '../../../models/team_config.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../utils/logging/logger.dart';
+import 'edit/edit_operation.dart';
 import 'rewind_fork_service.dart';
 import 'rewind_work_gate.dart';
 import 'seat_branches.dart';
@@ -35,8 +36,6 @@ abstract interface class SeatRewindHost {
     required String message,
   });
   Future<AppSession?> rewindHydrate(String workspaceId, String sessionId);
-  void rewindBeginEdit(String sessionId, String userMessageId, String text);
-  void rewindClearEdit(String sessionId);
   void rewindSetInProgress(String sessionId, bool value);
   void rewindPublishHistory(String sessionId);
   void rewindMarkHistoryStale(String sessionId);
@@ -129,22 +128,29 @@ final class SeatRewindController {
     }
   }
 
+  /// Restore the turn before [userMessageId] and resend [text].
+  ///
+  /// [onPhase] reports each step so the coordinator can show progress; the
+  /// caller stops the operation from a compose Stop by flipping [aborted],
+  /// which is only honoured between phases.
   Future<void> editTurn({
     required String sessionId,
     required String memberId,
     required String userMessageId,
     required String text,
+    void Function(EditPhase phase)? onPhase,
+    bool Function()? aborted,
   }) async {
-    host.rewindBeginEdit(sessionId, userMessageId, text);
     final session = host.rewindSessionFor(sessionId);
     if (session == null) {
-      host.rewindClearEdit(sessionId);
       throw StateError('Session not found');
     }
     final store = _eligibility(session, memberId).store;
     if (store == null) {
-      host.rewindClearEdit(sessionId);
       throw StateError('Seat is not rewind-capable');
+    }
+    if (aborted?.call() ?? false) {
+      throw const SeatEditCancelled();
     }
     // Read the graph only after any in-flight checkpoint settles; otherwise
     // the parent and the previous checked-out tip can be one turn stale.
@@ -157,7 +163,6 @@ final class SeatRewindController {
       }
     }
     if (target == null) {
-      host.rewindClearEdit(sessionId);
       throw StateError('No checkpoint for the edited user message');
     }
     final before = await store.checkedOut();
@@ -167,6 +172,7 @@ final class SeatRewindController {
     var restored = false;
     host.rewindSetInProgress(sessionId, true);
     try {
+      onPhase?.call(EditPhase.restoring);
       await forkService.rewind(
         store: store,
         seat: host.rewindSeatProcess(session, memberId),
@@ -175,9 +181,13 @@ final class SeatRewindController {
             : target.parentCommit,
         onRestored: () => restored = true,
       );
+      if (aborted?.call() ?? false) throw const SeatEditCancelled();
       // The relaunch reconnects the seat asynchronously; a prompt delivered
       // while that connect is still in flight is rejected.
+      onPhase?.call(EditPhase.relaunching);
       await host.rewindAwaitSeatReady(sessionId);
+      if (aborted?.call() ?? false) throw const SeatEditCancelled();
+      onPhase?.call(EditPhase.delivering);
       final delivered = await host.rewindDeliverEdited(
         sessionId: sessionId,
         memberId: memberId,
@@ -186,6 +196,30 @@ final class SeatRewindController {
       if (!delivered) {
         throw StateError('The edited message was not delivered');
       }
+    } on SeatEditCancelled {
+      appLogger.d(
+        '[rewind] editTurn cancelled session=$sessionId restored=$restored',
+      );
+      if (restored && before != null) {
+        try {
+          await forkService.rewind(
+            store: store,
+            seat: host.rewindSeatProcess(session, memberId),
+            commit: before,
+            allowTurnInFlight: true,
+          );
+        } on Object catch (rollbackError, rollbackStack) {
+          appLogger.e(
+            '[rewind] edit cancel rollback failed session=$sessionId: '
+            '$rollbackError',
+            error: rollbackError,
+            stackTrace: rollbackStack,
+          );
+        }
+      }
+      host.rewindMarkHistoryStale(sessionId);
+      host.rewindPublishHistory(sessionId);
+      rethrow;
     } on Object catch (error, stackTrace) {
       appLogger.e(
         '[rewind] editTurn failed session=$sessionId: $error',

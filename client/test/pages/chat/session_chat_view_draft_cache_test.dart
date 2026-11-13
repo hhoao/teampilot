@@ -13,7 +13,8 @@ import 'package:teampilot/cubits/ai_history_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/services/chat/session/chat_tab_store.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
-import 'package:teampilot/cubits/branch_edit_controller.dart';
+import 'package:teampilot/services/chat/rewind/edit/edit_operation.dart';
+import 'package:teampilot/services/chat/rewind/edit/seat_edit_coordinator.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/expert_hub_cubit.dart';
@@ -49,6 +50,7 @@ import 'package:teampilot/services/chat/conversation/history/history_awaiting_wo
 import 'package:teampilot/services/chat/conversation/history/failed_message_store.dart';
 import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -59,12 +61,14 @@ import '../../support/compose_field_test_utils.dart';
 /// field, so the mock must provide a real empty map instead of mocktail's
 /// implicit null.
 class _MockChatCubit extends Mock implements ChatCubit {
-  final BranchEditController _branchEdit = BranchEditController(
+  final SeatEditCoordinator _seatEdit = SeatEditCoordinator(
+    sessionId: 's1',
+    run: _noopRun,
     watchdog: Duration.zero,
   );
 
   @override
-  BranchEditController branchEditFor(String sessionId) => _branchEdit;
+  SeatEditCoordinator seatEditFor(String sessionId) => _seatEdit;
 
   @override
   Future<AppSession?> hydrateSessionDocument(
@@ -569,6 +573,50 @@ void main() {
     },
   );
 
+  testWidgets(
+    'tap shows the submit spinner before the pending record is persisted',
+    (tester) async {
+      final session = _session('s-busy');
+      final persisted = Completer<FailedMessageRecord>();
+      when(
+        () => seat.persistPendingUser(
+          store: any(named: 'store'),
+          workspaceId: any(named: 'workspaceId'),
+          sessionId: any(named: 'sessionId'),
+          text: any(named: 'text'),
+        ),
+      ).thenAnswer((_) => persisted.future);
+
+      await pumpSession(tester, session: session);
+
+      await enterComposeText(tester, 'send now');
+      await tester.pump();
+      await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+      await tester.pump();
+
+      // The busy state must flip on the tap frame, not after the disk write.
+      expect(
+        tester
+            .widget<WorkspaceComposeCard>(find.byType(WorkspaceComposeCard))
+            .isSubmitting,
+        isTrue,
+      );
+      // Text stays recoverable until the pending record exists.
+      expect(_composeField(tester).controller!.text, 'send now');
+
+      persisted.complete(
+        FailedMessageRecord(
+          id: 'pending:busy',
+          text: 'send now',
+          createdAt: DateTime.utc(2026),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(_composeField(tester).controller!.text, isEmpty);
+    },
+  );
+
   testWidgets('successful session delivery removes the persisted draft', (
     tester,
   ) async {
@@ -784,3 +832,12 @@ Future<void> _flushRealIo(WidgetTester tester, {int rounds = 6}) async {
     await tester.pump();
   }
 }
+
+Future<void> _noopRun({
+  required String sessionId,
+  required String memberId,
+  required String userMessageId,
+  required String text,
+  required void Function(EditPhase phase) onPhase,
+  required bool Function() aborted,
+}) async {}

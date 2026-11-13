@@ -112,6 +112,7 @@ class SessionChatComposeSection extends StatelessWidget {
     this.userStoppedTurn = false,
     this.onUserStoppedTurn,
     this.turnStarting = false,
+    this.editOperationInFlight = false,
     this.acpRuntime,
     this.remoteBusyMemberId,
     super.key,
@@ -154,6 +155,9 @@ class SessionChatComposeSection extends StatelessWidget {
   /// History continue is awaiting connect / boot (Starting tip) — show Stop
   /// even though the seat is not [memberWorking] yet.
   final bool turnStarting;
+
+  /// An edited-message resend is running; Stop cancels that transaction.
+  final bool editOperationInFlight;
 
   /// First busy seat when the desktop authority owns this session. The
   /// compose Stop then routes `turn.cancel` over the session plane.
@@ -511,6 +515,7 @@ class SessionChatComposeSection extends StatelessWidget {
                                 composeTextEmpty: composeTextEmpty,
                                 userStoppedTurn: userStoppedTurn,
                                 turnStarting: turnStarting,
+                                editOperationInFlight: editOperationInFlight,
                               );
                           return WorkspaceComposeCard(
                             controller: composeController,
@@ -1337,6 +1342,13 @@ class SessionChatComposeSection extends StatelessWidget {
     required String shellMemberId,
   }) async {
     final chat = context.read<ChatCubit>();
+    final edit = chat.seatEditFor(sessionId);
+    if (edit.isCancellable) {
+      // The edit transaction owns the seat: cancelling it also rolls the
+      // branch back, so the turn-interrupt path must not run on top.
+      edit.cancel();
+      return;
+    }
     chat.pauseFollowUpQueue(sessionId, shellMemberId);
     await chat.interruptSelectedMemberTurn(
       sessionId: sessionId,

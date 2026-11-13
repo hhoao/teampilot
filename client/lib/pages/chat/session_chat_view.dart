@@ -1973,6 +1973,15 @@ class _SessionChatViewState extends State<SessionChatView> {
                                             listenable: Listenable.merge([
                                               _submitBusy,
                                               _userStoppedTurn,
+                                              // Rebuild the compose card when an
+                                              // edit transaction starts, moves
+                                              // phase, or ends: Stop must stay
+                                              // visible for the whole resend.
+                                              context
+                                                  .read<ChatCubit>()
+                                                  .seatEditFor(
+                                                    session.sessionId,
+                                                  ),
                                             ]),
                                             builder: (context, _) {
                                               return RemoteActivityBuilder(
@@ -2051,6 +2060,14 @@ class _SessionChatViewState extends State<SessionChatView> {
                                                             remote,
                                                             session.sessionId,
                                                           ),
+                                                      editOperationInFlight:
+                                                          context
+                                                              .read<ChatCubit>()
+                                                              .seatEditFor(
+                                                                session
+                                                                    .sessionId,
+                                                              )
+                                                              .isCancellable,
                                                     ),
                                                   );
                                                 },

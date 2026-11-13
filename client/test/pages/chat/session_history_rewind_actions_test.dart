@@ -9,7 +9,8 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
-import 'package:teampilot/cubits/branch_edit_controller.dart';
+import 'package:teampilot/services/chat/rewind/edit/edit_operation.dart';
+import 'package:teampilot/services/chat/rewind/edit/seat_edit_coordinator.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/pages/chat/session_history_rewind_host.dart';
 import 'package:teampilot/pages/chat/session_history_thread.dart';
@@ -245,6 +246,9 @@ void main() {
 
     expect(find.byType(TextField), findsNothing);
     expect(find.text('edited'), findsOneWidget);
+    // The transaction owns the progress line, so the author can tell the
+    // resend is still running after the editor is gone.
+    expect(find.text('Sending…'), findsOneWidget);
     expect(
       find.text('answer'),
       findsNothing,
@@ -329,6 +333,8 @@ void main() {
         ),
       ]);
     final gate = Completer<void>();
+    final editor = _editorFor(_GatedEditRun(gate));
+    addTearDown(editor.dispose);
     var landed = false;
     await tester.pumpWidget(
       MaterialApp(
@@ -354,10 +360,14 @@ void main() {
                   ),
                 },
               ),
-              onEditUserMessage: (messageId, text) async {
-                await gate.future;
-                return true;
-              },
+              seatEdit: editor,
+              onEditUserMessage: (messageId, text, {required reopenEditor}) =>
+                  editor.submit(
+                    messageId: messageId,
+                    memberId: 's1',
+                    text: text,
+                    reopenEditorOnFailure: reopenEditor,
+                  ),
               onOptimisticLanded: () => landed = true,
             ),
           ),
@@ -413,6 +423,8 @@ void main() {
     // The restore replays the parent prefix, which predates the edit.
     final restored = ExternalStoreAiThreadRuntime()..setMessages(const []);
     final gate = Completer<void>();
+    final editor = _editorFor(_GatedEditRun(gate));
+    addTearDown(editor.dispose);
 
     Widget build(AiThreadRuntime runtime) => MaterialApp(
       localizationsDelegates: appLocalizationsDelegates,
@@ -438,10 +450,14 @@ void main() {
                 ),
               },
             ),
-            onEditUserMessage: (messageId, text) async {
-              await gate.future;
-              return true;
-            },
+            seatEdit: editor,
+            onEditUserMessage: (messageId, text, {required reopenEditor}) =>
+                editor.submit(
+                  messageId: messageId,
+                  memberId: 's1',
+                  text: text,
+                  reopenEditorOnFailure: reopenEditor,
+                ),
           ),
         ),
       ),
@@ -489,6 +505,8 @@ void main() {
       ..setMessages(const [user, reply]);
     final restored = ExternalStoreAiThreadRuntime()..setMessages(const []);
     final gate = Completer<void>();
+    final editor = _editorFor(_GatedEditRun(gate, fail: true));
+    addTearDown(editor.dispose);
 
     Widget build(AiThreadRuntime runtime) => MaterialApp(
       localizationsDelegates: appLocalizationsDelegates,
@@ -513,10 +531,14 @@ void main() {
                 ),
               },
             ),
-            onEditUserMessage: (messageId, text) async {
-              await gate.future;
-              return false;
-            },
+            seatEdit: editor,
+            onEditUserMessage: (messageId, text, {required reopenEditor}) =>
+                editor.submit(
+                  messageId: messageId,
+                  memberId: 's1',
+                  text: text,
+                  reopenEditorOnFailure: reopenEditor,
+                ),
           ),
         ),
       ),
@@ -548,9 +570,17 @@ void main() {
     tester,
   ) async {
     final runtime = ExternalStoreAiThreadRuntime()..setMessages(const []);
-    final branchEdit = BranchEditController(watchdog: Duration.zero)
-      ..begin(messageId: 'u1', text: 'edited', visibleMessageIds: const []);
-    addTearDown(branchEdit.dispose);
+    final seatEdit = SeatEditCoordinator(
+      sessionId: 's1',
+      run: _noopRun,
+      watchdog: Duration.zero,
+    );
+    addTearDown(seatEdit.dispose);
+    await seatEdit.submit(
+      messageId: 'u1',
+      memberId: 's1',
+      text: 'edited',
+    );
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: appLocalizationsDelegates,
@@ -565,7 +595,7 @@ void main() {
               runtime: runtime,
               hasOlder: false,
               isLoadingOlder: false,
-              branchEdit: branchEdit,
+              seatEdit: seatEdit,
             ),
           ),
         ),
@@ -684,7 +714,7 @@ Future<ExternalStoreAiThreadRuntime> _pumpThread(
                   onForkFrom: binding.onForkFrom,
                   onEditUserMessage: binding.onEditUserMessage,
                   holdTranscript: binding.holdTranscript,
-                  branchEdit: binding.branchEdit,
+                  seatEdit: binding.seatEdit,
                   turnInFlight: binding.busy,
                 );
               },
@@ -704,7 +734,7 @@ class _BranchCubit extends ChatCubit {
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
         storage: testHomeStorage,
-        branchEditWatchdog: Duration.zero,
+        seatEditWatchdog: Duration.zero,
       );
 
   final switchedTo = <String>[];
@@ -725,6 +755,8 @@ class _BranchCubit extends ChatCubit {
     required String memberId,
     required String userMessageId,
     required String text,
+    void Function(EditPhase phase)? onPhase,
+    bool Function()? aborted,
   }) async {
     edits.add((userMessageId, text));
   }
@@ -791,6 +823,8 @@ final class _FailingEditCubit extends _BranchCubit {
     required String memberId,
     required String userMessageId,
     required String text,
+    void Function(EditPhase phase)? onPhase,
+    bool Function()? aborted,
   }) async {
     edits.add((userMessageId, text));
     if (failing) throw StateError('edit failed');
@@ -848,8 +882,46 @@ final class _GatedEditCubit extends _BranchCubit {
     required String memberId,
     required String userMessageId,
     required String text,
+    void Function(EditPhase phase)? onPhase,
+    bool Function()? aborted,
   }) async {
     edits.add((userMessageId, text));
+    onPhase?.call(EditPhase.delivering);
     await _gate.future;
   }
 }
+
+Future<void> _noopRun({
+  required String sessionId,
+  required String memberId,
+  required String userMessageId,
+  required String text,
+  required void Function(EditPhase phase) onPhase,
+  required bool Function() aborted,
+}) async {}
+
+final class _GatedEditRun {
+  _GatedEditRun(this.gate, {this.fail = false});
+
+  final Completer<void> gate;
+  final bool fail;
+
+  Future<void> call({
+    required String sessionId,
+    required String memberId,
+    required String userMessageId,
+    required String text,
+    required void Function(EditPhase phase) onPhase,
+    required bool Function() aborted,
+  }) async {
+    onPhase(EditPhase.delivering);
+    await gate.future;
+    if (fail) throw StateError('edit failed');
+  }
+}
+
+SeatEditCoordinator _editorFor(_GatedEditRun run) => SeatEditCoordinator(
+  sessionId: 's1',
+  run: run.call,
+  watchdog: Duration.zero,
+);

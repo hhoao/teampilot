@@ -46,7 +46,12 @@ Widget _harness({
   double width = 600,
   double height = 400,
   SeatBranches? branches,
-  Future<bool> Function(String messageId, String text)? onEditUserMessage,
+  Future<bool> Function(
+    String messageId,
+    String text, {
+    required bool reopenEditor,
+  })?
+  onEditUserMessage,
 }) {
   return MaterialApp(
     localizationsDelegates: appLocalizationsDelegates,
@@ -1417,7 +1422,7 @@ void main() {
             ),
           },
         ),
-        onEditUserMessage: (_, __) async => true,
+        onEditUserMessage: (_, __, {required reopenEditor}) async => true,
       ),
     );
     await pumpUntilSettled(tester);
@@ -1473,7 +1478,7 @@ void main() {
             ),
           },
         ),
-        onEditUserMessage: (_, __) async => true,
+        onEditUserMessage: (_, __, {required reopenEditor}) async => true,
       ),
     );
     await pumpUntilSettled(tester);
@@ -1513,7 +1518,7 @@ void main() {
           runtime: store,
           mobilePerformanceMode: true,
           branches: _singleVersionBranches('u1'),
-          onEditUserMessage: (id, text) {
+          onEditUserMessage: (id, text, {required reopenEditor}) {
             submitted.add('$id:$text');
             return gate.future;
           },
@@ -1546,7 +1551,7 @@ void main() {
   );
 
   testWidgets(
-    'dismissing the edit sheet mid-submit does not soft-lock the transcript on failure',
+    'dismissing the edit sheet clears the editor latch without dimming',
     (tester) async {
       final store = ExternalStoreAiThreadRuntime()
         ..setMessages(const [
@@ -1561,18 +1566,13 @@ void main() {
             parts: [AiTextPart(text: 'answer')],
           ),
         ]);
-      final submitted = <String>[];
-      final gate = Completer<bool>();
 
       await tester.pumpWidget(
         _harness(
           runtime: store,
           mobilePerformanceMode: true,
           branches: _singleVersionBranches('u1'),
-          onEditUserMessage: (id, text) {
-            submitted.add('$id:$text');
-            return gate.future;
-          },
+          onEditUserMessage: (_, __, {required reopenEditor}) async => true,
         ),
       );
       await pumpUntilSettled(tester);
@@ -1580,31 +1580,14 @@ void main() {
       await tester.tap(find.text('first'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const ValueKey('chat-message-dim:a1')), findsOneWidget);
 
-      await tester.enterText(
-        find.byKey(const ValueKey('chat-edit-sheet-field')),
-        'edited',
-      );
-      await tester.tap(find.byKey(const ValueKey('chat-edit-sheet-send')));
-      await tester.pump();
-
-      // Dismiss the sheet while the submit is still held open.
       await tester.tap(find.byKey(const ValueKey('chat-edit-sheet-close')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
+
       expect(find.byKey(const ValueKey('chat-edit-sheet-field')), findsNothing);
-
-      // The failed submit re-latches `editingMessageId`; the thread must
-      // reconcile it instead of leaving every other message dimmed and inert.
-      gate.complete(false);
-      await tester.pumpAndSettle();
-
-      expect(submitted, ['u1:edited']);
       expect(find.byKey(const ValueKey('chat-message-dim:a1')), findsNothing);
-      expect(
-        find.byKey(const ValueKey('chat-message-gestures:a1')),
-        findsOneWidget,
-      );
       expect(
         find.byKey(const ValueKey('chat-message-gestures:u1')),
         findsOneWidget,

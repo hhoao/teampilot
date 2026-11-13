@@ -1,10 +1,16 @@
 {
-  "edit": "Edit",
   "cancel": "Cancel",
+  "edit": "Edit",
   "memberSubtitle": "Edit provider, model, optional agent preset, and command arguments.",
   "modelTitle": "Edit {name: String}",
   "provider": "Edit provider",
+  "retry": "Retry",
   "send": "Send",
+  "statusFailed": "Send failed",
+  "statusReconnecting": "Reconnecting…",
+  "statusRewinding": "Rewinding…",
+  "statusSending": "Sending…",
+  "statusStopped": "Stopped",
   "teamSubtitle": "Edit team identity, working directory, and launch order.",
   "userMessage": "Edit message",
   "workspacePrimaryPath": "Edit primary directory"

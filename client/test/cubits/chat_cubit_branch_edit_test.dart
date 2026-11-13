@@ -9,6 +9,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/chat/rewind/edit/edit_operation.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_paths.dart';
 import 'package:teampilot/services/chat/rewind/seat_rewind_store.dart';
 
@@ -194,7 +195,7 @@ void main() {
     expect(edited!.parentCommit, root);
   });
 
-  test('the cubit owns the optimistic edit until it is cleared', () async {
+  test('the coordinator owns the optimistic edit until it lands', () async {
     final env = await _openPersonal();
     final store = env.store;
     await store.commitTurn(messageId: 'a1', userMessageId: 'u1');
@@ -209,28 +210,29 @@ void main() {
           );
         };
 
-    final edit = env.cubit.editSeatTurn(
-      sessionId: env.session.sessionId,
-      memberId: env.session.sessionId,
-      userMessageId: 'u2',
-      text: 'edited text',
+    final edit = env.cubit.seatEditFor(env.session.sessionId);
+    expect(
+      await edit.submit(
+        messageId: 'u2',
+        memberId: env.session.sessionId,
+        text: 'edited text',
+      ),
+      isTrue,
     );
 
-    final pending = env.cubit.branchEditFor(env.session.sessionId).pending;
-    expect(pending?.messageId, 'u2');
-    expect(pending?.text, 'edited text');
+    expect(edit.pending?.messageId, 'u2');
+    expect(edit.pending?.text, 'edited text');
+    expect(edit.holdsTranscript, isTrue);
 
     gate.complete();
-    await edit;
+    await edit.settled;
 
-    expect(
-      env.cubit.branchEditFor(env.session.sessionId).pending,
-      isNotNull,
-      reason: 'the runtime has not published the new prompt yet',
-    );
+    expect(edit.operation?.phase, EditPhase.awaitingReplay);
+    expect(edit.pending, isNotNull, reason: 'the transcript has not landed it');
 
-    env.cubit.clearPendingBranchEdit(env.session.sessionId);
-    expect(env.cubit.branchEditFor(env.session.sessionId).pending, isNull);
+    env.cubit.clearSeatEdit(env.session.sessionId);
+    expect(edit.pending, isNull);
+    expect(edit.operation?.phase, EditPhase.confirmed);
   });
 }
 

@@ -16,7 +16,6 @@ import '../models/workspace.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_launch_context.dart';
 import '../models/app_session.dart';
-import 'branch_edit_controller.dart';
 import '../models/member_presence.dart';
 import '../models/member_instance.dart';
 import '../services/chat/runtime/member_presence_service.dart';
@@ -38,6 +37,8 @@ import '../services/chat/rewind/rewind_work_gate.dart';
 import '../services/chat/rewind/seat_rewind_paths.dart';
 import '../services/chat/rewind/seat_rewind_policy.dart';
 import '../services/chat/rewind/seat_rewind_controller.dart';
+import '../services/chat/rewind/edit/edit_operation.dart';
+import '../services/chat/rewind/edit/seat_edit_coordinator.dart';
 import '../services/chat/rewind/seat_pty_checkpoint_tracker.dart';
 import '../services/chat/rewind/seat_rewind_store.dart';
 import '../services/chat/rewind/seat_runtime_resolver.dart';
@@ -179,7 +180,7 @@ class ChatCubit extends Cubit<ChatState>
     String Function()? termuxDisconnectedWorkOpsMessageResolver,
     RuntimeTarget Function()? termuxGateHomeResolver,
     PromptDeliveryCoordinator? Function()? promptDeliveries,
-    this.branchEditWatchdog = const Duration(seconds: 30),
+    this.seatEditWatchdog = const Duration(seconds: 30),
   }) : _remoteBusSetup = remoteBusSetup,
        _promptDeliveries = promptDeliveries,
        _remoteCliReadiness = remoteCliReadiness,
@@ -309,23 +310,25 @@ class ChatCubit extends Cubit<ChatState>
   })?
   debugDeliverEditedMessage;
 
-  /// Optimistic edit state, one controller per session, owned by the cubit so
-  /// it survives a chat-area rebuild caused by the restore's reconnect.
-  final Map<String, BranchEditController> _branchEdits = {};
+  /// Optimistic edit transactions, one per session, owned by the cubit so the
+  /// phase, pending bubble, and draft survive a chat-area rebuild caused by the
+  /// restore's reconnect.
+  final Map<String, SeatEditCoordinator> _seatEdits = {};
 
   /// Test seam: widget tests can use [Duration.zero] to avoid a pending timer.
-  final Duration branchEditWatchdog;
+  final Duration seatEditWatchdog;
 
-  BranchEditController branchEditFor(String sessionId) =>
-      _branchEdits.putIfAbsent(
-        sessionId,
-        () => BranchEditController(watchdog: branchEditWatchdog),
-      );
+  SeatEditCoordinator seatEditFor(String sessionId) => _seatEdits.putIfAbsent(
+    sessionId,
+    () => SeatEditCoordinator(
+      sessionId: sessionId,
+      run: _runSeatEdit,
+      watchdog: seatEditWatchdog,
+    ),
+  );
 
   /// Clears the optimistic bubble once the runtime publishes the new prompt.
-  void clearPendingBranchEdit(String sessionId) {
-    _branchEdits[sessionId]?.clearPending();
-  }
+  void clearSeatEdit(String sessionId) => _seatEdits[sessionId]?.markLanded();
 
   final _operatorMailboxQueued =
       StreamController<OperatorMailboxQueuedEvent>.broadcast();
@@ -3388,11 +3391,32 @@ class ChatCubit extends Cubit<ChatState>
     required String memberId,
     required String userMessageId,
     required String text,
+    void Function(EditPhase phase)? onPhase,
+    bool Function()? aborted,
   }) => _rewindController.editTurn(
     sessionId: sessionId,
     memberId: memberId,
     userMessageId: userMessageId,
     text: text,
+    onPhase: onPhase,
+    aborted: aborted,
+  );
+
+  /// Runs one [SeatEditCoordinator] transaction against the real rewind path.
+  Future<void> _runSeatEdit({
+    required String sessionId,
+    required String memberId,
+    required String userMessageId,
+    required String text,
+    required void Function(EditPhase phase) onPhase,
+    required bool Function() aborted,
+  }) => editSeatTurn(
+    sessionId: sessionId,
+    memberId: memberId,
+    userMessageId: userMessageId,
+    text: text,
+    onPhase: onPhase,
+    aborted: aborted,
   );
 
   /// Waits for the seat's post-rewind connect to settle before delivering.
@@ -3519,13 +3543,6 @@ class ChatCubit extends Cubit<ChatState>
   @override
   Future<AppSession?> rewindHydrate(String workspaceId, String sessionId) =>
       hydrateSessionDocument(workspaceId, sessionId);
-
-  @override
-  void rewindBeginEdit(String sessionId, String userMessageId, String text) =>
-      branchEditFor(sessionId).ensurePending(userMessageId, text);
-
-  @override
-  void rewindClearEdit(String sessionId) => clearPendingBranchEdit(sessionId);
 
   @override
   void rewindSetInProgress(String sessionId, bool value) =>
@@ -3815,10 +3832,10 @@ class ChatCubit extends Cubit<ChatState>
   @override
   Future<void> close() async {
     if (isClosed) return;
-    for (final controller in _branchEdits.values) {
+    for (final controller in _seatEdits.values) {
       controller.dispose();
     }
-    _branchEdits.clear();
+    _seatEdits.clear();
     await _agentAttentionSub?.cancel();
     _agentAttentionSub = null;
     _sessionRuntime.disposeIdleWatch();

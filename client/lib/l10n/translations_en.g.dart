@@ -2925,11 +2925,11 @@ class AppLocalizations$edit$en {
 
 	// Translations
 
-	/// en: 'Edit'
-	String get edit => 'Edit';
-
 	/// en: 'Cancel'
 	String get cancel => 'Cancel';
+
+	/// en: 'Edit'
+	String get edit => 'Edit';
 
 	/// en: 'Edit provider, model, optional agent preset, and command arguments.'
 	String get memberSubtitle => 'Edit provider, model, optional agent preset, and command arguments.';
@@ -2940,8 +2940,26 @@ class AppLocalizations$edit$en {
 	/// en: 'Edit provider'
 	String get provider => 'Edit provider';
 
+	/// en: 'Retry'
+	String get retry => 'Retry';
+
 	/// en: 'Send'
 	String get send => 'Send';
+
+	/// en: 'Send failed'
+	String get statusFailed => 'Send failed';
+
+	/// en: 'Reconnecting…'
+	String get statusReconnecting => 'Reconnecting…';
+
+	/// en: 'Rewinding…'
+	String get statusRewinding => 'Rewinding…';
+
+	/// en: 'Sending…'
+	String get statusSending => 'Sending…';
+
+	/// en: 'Stopped'
+	String get statusStopped => 'Stopped';
 
 	/// en: 'Edit team identity, working directory, and launch order.'
 	String get teamSubtitle => 'Edit team identity, working directory, and launch order.';
@@ -11058,12 +11076,18 @@ extension on AppLocalizations {
 			'download.sourcesSave' => 'Save',
 			'download.sourcesSettingsSubtitle' => 'Configure mirrors for GitHub downloads (app updates, Termux APK)',
 			'download.sourcesSettingsTitle' => 'Download sources',
-			'edit.edit' => 'Edit',
 			'edit.cancel' => 'Cancel',
+			'edit.edit' => 'Edit',
 			'edit.memberSubtitle' => 'Edit provider, model, optional agent preset, and command arguments.',
 			'edit.modelTitle' => ({required String name}) => 'Edit ${name}',
 			'edit.provider' => 'Edit provider',
+			'edit.retry' => 'Retry',
 			'edit.send' => 'Send',
+			'edit.statusFailed' => 'Send failed',
+			'edit.statusReconnecting' => 'Reconnecting…',
+			'edit.statusRewinding' => 'Rewinding…',
+			'edit.statusSending' => 'Sending…',
+			'edit.statusStopped' => 'Stopped',
 			'edit.teamSubtitle' => 'Edit team identity, working directory, and launch order.',
 			'edit.userMessage' => 'Edit message',
 			'edit.workspacePrimaryPath' => 'Edit primary directory',
@@ -11220,14 +11244,14 @@ extension on AppLocalizations {
 			'fileTree.importCancelAll' => 'Cancel all',
 			'fileTree.importConflictBody' => ({required String name}) => '"${name}" already exists at the destination.',
 			'fileTree.importConflictRemaining' => ({required int count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '1 more conflict after this.', other: '${count} more conflicts after this.', ), 
+			_ => null,
+		} ?? switch (path) {
 			'fileTree.importConflictRemainingZero' => 'No further conflicts.',
 			'fileTree.importConflictTitle' => 'Item already exists',
 			'fileTree.importConflictTypeMismatch' => 'A file and a folder cannot replace each other.',
 			'fileTree.importDropCopy' => 'Copy',
 			'fileTree.importDropMove' => 'Move',
 			'fileTree.importOverwrite' => 'Overwrite',
-			_ => null,
-		} ?? switch (path) {
 			'fileTree.importProgressCancel' => 'Cancel',
 			'fileTree.importProgressCurrent' => ({required String name}) => '${name}',
 			'fileTree.importProgressItems' => ({required int completed, required int total}) => '${completed} / ${total}',
@@ -11734,14 +11758,14 @@ extension on AppLocalizations {
 			'managedProviders.emptyHint' => 'Add a provider to track balances and quotas independently from CLI providers.',
 			'managedProviders.emptyTitle' => 'No managed providers',
 			'managedProviders.enable' => 'Enable',
+			_ => null,
+		} ?? switch (path) {
 			'managedProviders.enabled' => 'Enabled',
 			'managedProviders.enabledSubtitle' => 'Hides the provider and stops queries when off.',
 			'managedProviders.enabledTitle' => 'Enabled',
 			'managedProviders.endpoint' => 'Usage API URL',
 			'managedProviders.endpointError' => 'Enter an HTTPS or loopback endpoint for this HTTP adapter.',
 			'managedProviders.endpointHelper' => 'URL used to fetch usage data.',
-			_ => null,
-		} ?? switch (path) {
 			'managedProviders.endpointHint' => 'https://api.example.com/usage',
 			'managedProviders.error' => 'Error',
 			'managedProviders.fieldExampleLabel' => 'Example',
@@ -12248,14 +12272,14 @@ extension on AppLocalizations {
 			'rtk.bashOnlyHint' => 'Only applies to Agent Bash tool calls. Built-in Read, Grep, and Glob are not rewritten.',
 			'rtk.settingsDescription' => 'Compress Agent Bash command output before it reaches the model (requires rtk and jq on PATH).',
 			'rtk.settingsEnableTitle' => 'Enable RTK',
+			_ => null,
+		} ?? switch (path) {
 			'rtk.settingsInstallLink' => 'Install guide',
 			'rtk.settingsStatusTitle' => 'Host status',
 			'rtk.settingsTitle' => 'RTK token savings',
 			'rtk.statusInstalled' => ({required String version}) => 'rtk ${version} ready',
 			'rtk.statusInstalledGeneric' => 'rtk ready',
 			'rtk.statusJqMissing' => 'jq not found on PATH',
-			_ => null,
-		} ?? switch (path) {
 			'rtk.statusNotFound' => 'rtk not found on PATH',
 			'rtk.statusVersionTooOld' => ({required String version}) => 'rtk ${version} is too old (need >= 0.23.0)',
 			'run.acceptRecommendation' => 'Add suggested configuration to launch.json',
@@ -12762,14 +12786,14 @@ extension on AppLocalizations {
 			'sshProfile.formAuthChangeConfirm' => 'Switch and save',
 			'sshProfile.formAuthChangeTitle' => 'Switch authentication?',
 			'sshProfile.formAuthPrivateKey' => 'Private key',
+			_ => null,
+		} ?? switch (path) {
 			'sshProfile.formAuthType' => 'Authentication',
 			'sshProfile.formCredentialRequired' => 'Provide a private key or password.',
 			'sshProfile.formCredentialSaveFailed' => 'Target saved, but credentials could not be stored. Unlock the system keyring and edit the target to re-enter them.',
 			'sshProfile.formFieldRequired' => 'Required',
 			'sshProfile.formHost' => 'Host or alias',
 			'sshProfile.formHostHint' => 'server, deploy@server:2222',
-			_ => null,
-		} ?? switch (path) {
 			'sshProfile.formIdentityFile' => 'Private key',
 			'sshProfile.formIdentityFileHelper' => 'Paste the private key, or import it from a file.',
 			'sshProfile.formIdentityFileHint' => '-----BEGIN OPENSSH PRIVATE KEY-----',
@@ -13276,14 +13300,14 @@ extension on AppLocalizations {
 			'workspace.terminal' => 'Terminal',
 			'workspace.terminalClose' => 'Close terminal panel',
 			'workspace.terminalCloseSession' => 'Close terminal',
+			_ => null,
+		} ?? switch (path) {
 			'workspace.terminalNewSession' => 'New terminal',
 			'workspace.terminalNewSessionMenu' => 'New terminal session menu',
 			'workspace.terminalNewSshSession' => 'New SSH Session…',
 			'workspace.terminalNoWorkingDirectory' => 'Connect a session to open the shell terminal',
 			'workspace.terminalRestoring' => 'Restoring terminal…',
 			'workspace.terminalSettings' => 'Settings',
-			_ => null,
-		} ?? switch (path) {
 			'workspace.terminalSshConnectFailed' => 'SSH profile not found or connection failed',
 			'workspace.terminalThemeAdaptive' => 'Match app theme',
 			'workspace.terminalThemeClassicDark' => 'Classic dark',
