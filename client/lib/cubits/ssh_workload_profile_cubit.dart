@@ -22,10 +22,10 @@ import 'ssh_profile_cubit.dart';
 ///
 /// A single long-lived instance is injected via `BlocProvider.value`, so a
 /// home-plane swap must re-emit on the same instance rather than replace it:
-/// the cubit owns the [HomeStorage.changes] subscription and rebuilds its
-/// repository on every [load]. [close] cancels that subscription (shell
-/// teardown). A dropped plane / failed read yields an empty catalog — it never
-/// throws and never falls back to the A source.
+/// the cubit owns the [HomeStorage.changes] subscription, whose events trigger
+/// [load]. [close] cancels that subscription (shell teardown). A dropped plane
+/// / failed read yields an empty catalog — it never throws and never falls back
+/// to the A source.
 class SshWorkloadProfileCubit extends Cubit<SshProfileState> {
   SshWorkloadProfileCubit({
     required HomeStorage storage,
@@ -41,18 +41,44 @@ class SshWorkloadProfileCubit extends Cubit<SshProfileState> {
 
   StreamSubscription<StoragePlaneChange>? _changesSub;
 
-  /// Single-flight: boot, home-plane swaps, and manual refresh may overlap;
-  /// coalescing collapses them into one plane read.
+  /// The in-flight [load] chain, or null when idle.
   Future<void>? _loadFuture;
 
-  Future<void> load() => _loadFuture ??=
-      _doLoad().whenComplete(() => _loadFuture = null);
+  /// A [load] that arrives while a read is in flight is not dropped: it flags
+  /// exactly one re-read once the current read finishes. A swap published
+  /// during a slow plane read is therefore observed instead of coalesced away
+  /// (the in-flight read completes against the old transport).
+  bool _pendingReload = false;
+
+  Future<void> load() {
+    final inFlight = _loadFuture;
+    if (inFlight != null) {
+      _pendingReload = true;
+      return inFlight;
+    }
+    final chain = _runLoads();
+    _loadFuture = chain;
+    return chain;
+  }
+
+  Future<void> _runLoads() async {
+    try {
+      do {
+        _pendingReload = false;
+        await _doLoad();
+      } while (_pendingReload && !isClosed);
+    } finally {
+      _loadFuture = null;
+    }
+  }
 
   Future<void> _doLoad() async {
     if (isClosed) return;
     emit(state.copyWith(isLoading: true));
-    // Rebuild per load so a swap (which mutates [HomeStorage] in place) is
-    // always read through a repository bound to the current plane.
+    // Fresh repository per read (B-source contract). Plane switches are picked
+    // up by the changes subscription queuing a re-read, not by this rebuild:
+    // the repositories resolve storage through lazy getters and
+    // HomeStorage.swap mutates the same storage in place.
     final repository = PlaneSshProfileRepository(
       storage: _storage,
       servers: SshServerProfileRepository(storage: _storage),
