@@ -11,6 +11,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/pages/config/remote_connections_config_section.dart';
 import 'package:teampilot/pages/ssh_profiles/ssh_profiles_section.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
@@ -195,5 +196,27 @@ void main() {
     // remote connection state — this is the always-reachable config surface.
     expect(find.byType(SshProfilesSection), findsOneWidget);
     expect(find.text(l10n.sshProfile.sTargetsTitle), findsOneWidget);
+  });
+
+  testWidgets('renders A-source profiles injected from the watched cubit', (
+    tester,
+  ) async {
+    // The section is now presentational: RemoteConnectionsConfigSection feeds
+    // it the device-local (A-source) cubit's profiles. A profile saved to the
+    // device repository must flow through to the rendered list.
+    await profileRepository.save(
+      const SshProfile(
+        id: 'a1',
+        name: 'alpha-host',
+        host: 'a.example.com',
+        username: 'alice',
+      ),
+    );
+    await profileCubit.load();
+
+    await pumpSection(tester);
+
+    expect(find.byType(SshProfilesSection), findsOneWidget);
+    expect(find.text('alpha-host'), findsOneWidget);
   });
 }

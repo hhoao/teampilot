@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/ssh_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../repositories/ssh_profile_repository.dart';
 import '../../widgets/settings/workspace_pane_header.dart';
 import '../ssh_profiles/ssh_profiles_section.dart';
 
@@ -24,10 +27,18 @@ class RemoteConnectionsConfigSection extends StatelessWidget {
       children: [
         if (showHeading)
           WorkspacePaneHeader(title: l10n.remote.connectionsTitle),
-        const Expanded(
+        Expanded(
           child: SingleChildScrollView(
-            padding: EdgeInsets.all(16),
-            child: SshProfilesSection(showRemoteConfig: false),
+            padding: const EdgeInsets.all(16),
+            child: BlocBuilder<SshProfileCubit, SshProfileState>(
+              builder: (context, state) => SshProfilesSection(
+                profiles: state.profiles,
+                onRefresh: () => context.read<SshProfileCubit>().load(),
+                repository: context.read<SshProfileRepository>(),
+                profileCubit: context.read<SshProfileCubit>(),
+                showRemoteConfig: false,
+              ),
+            ),
           ),
         ),
       ],

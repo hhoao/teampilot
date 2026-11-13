@@ -10,14 +10,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/ssh_profile_cubit.dart';
+import 'package:teampilot/cubits/ssh_workload_profile_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/pages/ssh_profiles/ssh_profile_connection_status.dart';
 import 'package:teampilot/pages/ssh_profiles/ssh_profile_target_card.dart';
 import 'package:teampilot/pages/ssh_profiles/ssh_profiles_section.dart';
+import 'package:teampilot/repositories/plane_ssh_profile_repository.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
+import 'package:teampilot/repositories/ssh_server_profile_repository.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
@@ -34,6 +37,19 @@ const _profile = SshProfile(
   name: 'dev',
   host: 'example.com',
   username: 'alice',
+);
+
+const _injectedA = SshProfile(
+  id: 'inj-a',
+  name: 'injected-a',
+  host: 'a.example.com',
+  username: 'alice',
+);
+const _injectedB = SshProfile(
+  id: 'inj-b',
+  name: 'injected-b',
+  host: 'b.example.com',
+  username: 'bob',
 );
 
 class _ControllableSshConnectionCubit extends SshConnectionCubit {
@@ -210,6 +226,10 @@ Future<Widget> _host({
   required SshProfileRepository profileRepository,
   VaultService? vault,
   VaultUnlockGate? vaultUnlockGate,
+  List<SshProfile>? profiles,
+  Future<void> Function()? onRefresh,
+  Cubit<SshProfileState>? injectedCubit,
+  SshProfileRepository? injectedRepository,
 }) async {
   final theme = ThemeData(useMaterial3: true);
   return MaterialApp(
@@ -242,8 +262,15 @@ Future<Widget> _host({
             BlocProvider<SshProfileCubit>.value(value: profileCubit),
             BlocProvider<SshConnectionCubit>.value(value: connectionCubit),
           ],
-          child: const Scaffold(
-            body: SingleChildScrollView(child: SshProfilesSection()),
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: SshProfilesSection(
+                profiles: profiles ?? const [_profile],
+                onRefresh: onRefresh ?? () async {},
+                repository: injectedRepository ?? profileRepository,
+                profileCubit: injectedCubit ?? profileCubit,
+              ),
+            ),
           ),
         ),
       ),
@@ -476,6 +503,7 @@ void main() {
           credentialStore: harness.credentialStore,
           transportFactory: transportFactory,
           profileRepository: profileRepository,
+          profiles: [vaultProfile],
           vault: vault,
           vaultUnlockGate: gate,
         ),
@@ -521,6 +549,7 @@ void main() {
         credentialStore: harness.credentialStore,
         transportFactory: transportFactory,
         profileRepository: profileRepository,
+        profiles: [vaultProfile],
         vault: vault,
         vaultUnlockGate: gate,
       ),
@@ -535,5 +564,86 @@ void main() {
     expect(find.text(l10n.vault.lockedSaveBlocked), findsOneWidget);
     // Let the toast's dismissal timer expire before the tree is disposed.
     await tester.pump(const Duration(seconds: 6));
+  });
+
+  testWidgets('list comes from injected A-source profiles, not the cubit state', (
+    tester,
+  ) async {
+    // The watched SshProfileCubit holds only [_profile]; the injected list is
+    // deliberately different. A section still reading context.watch would
+    // render the cubit's single 'dev' card instead.
+    connectionCubit.seed(_stateWithHost(status: SshHostUiStatus.disconnected));
+
+    await tester.pumpWidget(
+      await _host(
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        profiles: const [_injectedA, _injectedB],
+      ),
+    );
+
+    expect(find.byType(SshProfileTargetCard), findsNWidgets(2));
+    expect(find.text('injected-a'), findsOneWidget);
+    expect(find.text('injected-b'), findsOneWidget);
+    expect(find.text('dev'), findsNothing);
+  });
+
+  testWidgets('list comes from injected B-source (workload cubit) profiles', (
+    tester,
+  ) async {
+    connectionCubit.seed(_stateWithHost(status: SshHostUiStatus.disconnected));
+    final storage = fakeHomeStorage();
+    final workloadCubit = SshWorkloadProfileCubit(storage: storage);
+    addTearDown(workloadCubit.close);
+    final planeRepository = PlaneSshProfileRepository(
+      storage: storage,
+      servers: SshServerProfileRepository(storage: storage),
+    );
+
+    await tester.pumpWidget(
+      await _host(
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        injectedCubit: workloadCubit,
+        injectedRepository: planeRepository,
+        profiles: const [_injectedA],
+      ),
+    );
+
+    // The workload cubit's own state is empty; the rendered row must be the
+    // injected B-source profile, proving the list is driven by the parameter.
+    expect(workloadCubit.state.profiles, isEmpty);
+    expect(find.byType(SshProfileTargetCard), findsOneWidget);
+    expect(find.text('injected-a'), findsOneWidget);
+    expect(find.text('dev'), findsNothing);
+  });
+
+  testWidgets('card refresh invokes the injected onRefresh callback', (
+    tester,
+  ) async {
+    connectionCubit.seed(_stateWithHost(status: SshHostUiStatus.disconnected));
+    var refreshes = 0;
+
+    await tester.pumpWidget(
+      await _host(
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        onRefresh: () async => refreshes++,
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.refresh));
+    await tester.pump();
+
+    expect(refreshes, 1);
   });
 }

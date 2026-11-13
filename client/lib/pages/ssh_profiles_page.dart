@@ -9,6 +9,7 @@ import '../cubits/ssh_server_config_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/ssh_profile.dart';
 import '../models/ssh_server_profile.dart';
+import '../repositories/ssh_profile_repository.dart';
 import '../repositories/ssh_server_profile_repository.dart';
 import '../services/storage/home_storage.dart';
 import 'ssh_profiles/ssh_profile_form_dialog.dart';
@@ -171,14 +172,26 @@ class SshServerProfileCard extends StatelessWidget {
 Future<void> openSshProfileEditor(
   BuildContext context, {
   SshProfile? profile,
+  SshProfileRepository? repository,
+  Cubit<SshProfileState>? profileCubit,
+  Future<void> Function()? onRefresh,
 }) async {
-  await showSshProfileFormDialog(context, profile: profile);
+  await showSshProfileFormDialog(
+    context,
+    profile: profile,
+    repository: repository,
+    profileCubit: profileCubit,
+    onRefresh: onRefresh,
+  );
 }
 
 Future<void> confirmDeleteSshProfile(
   BuildContext context,
-  SshProfile profile,
-) async {
+  SshProfile profile, {
+  SshProfileRepository? repository,
+  Cubit<SshProfileState>? profileCubit,
+  Future<void> Function()? onRefresh,
+}) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => TpDialog(
@@ -207,5 +220,16 @@ Future<void> confirmDeleteSshProfile(
     ),
   );
   if (confirmed != true || !context.mounted) return;
-  await context.read<SshProfileCubit>().deleteProfile(profile.id);
+  final cubit = profileCubit ?? context.read<SshProfileCubit>();
+  if (cubit is SshProfileCubit) {
+    // A source: full credential/vault cleanup + cubit reload.
+    await cubit.deleteProfile(profile.id);
+  } else {
+    // B source (workload catalog): the shared plane row has no on-device
+    // credential reference, so delete through the injected repository and
+    // reload the injected source.
+    await (repository ?? context.read<SshProfileRepository>())
+        .delete(profile.id);
+    await (onRefresh ?? () => context.read<SshProfileCubit>().load())();
+  }
 }

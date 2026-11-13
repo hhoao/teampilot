@@ -10,6 +10,7 @@ import '../../cubits/ssh_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
+import '../../repositories/ssh_profile_repository.dart';
 import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_credentials_resolver.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
@@ -26,12 +27,36 @@ import 'ssh_profile_target_card.dart';
 import 'ssh_profile_target_config_dialog.dart';
 
 /// Orca-style SSH target list for settings (desktop + Android).
+///
+/// The profile source is injected: callers pass the profiles to render, a
+/// refresh callback, the repository edits write through, and the cubit backing
+/// them. The device-local A source ([SshProfileCubit]) and the home-plane B
+/// source (the global workload cubit) both emit [SshProfileState], so the
+/// section stays agnostic about where its rows come from.
 class SshProfilesSection extends StatefulWidget {
   const SshProfilesSection({
     super.key,
+    required this.profiles,
+    required this.onRefresh,
+    required this.repository,
+    required this.profileCubit,
     this.showRemoteConfig = true,
     this.switchHomeOnConnect = true,
   });
+
+  /// Rows to render, supplied by the owning page's profile source.
+  final List<SshProfile> profiles;
+
+  /// Reloads the injected source after a write (e.g. `cubit.load()`).
+  final Future<void> Function() onRefresh;
+
+  /// Repository the edit/delete helpers write through. Scoped into the subtree
+  /// so a dialog built on the root navigator still targets the right catalog.
+  final SshProfileRepository repository;
+
+  /// Cubit backing [profiles]; typed to the shared [SshProfileState] supertype
+  /// so both the A-source [SshProfileCubit] and the B-source workload cubit fit.
+  final Cubit<SshProfileState> profileCubit;
 
   /// Dead-but-planned: the "remote config" editor operates on a local
   /// [SshProfile], not the remote server model, and production callers all
@@ -51,6 +76,26 @@ class SshProfilesSection extends StatefulWidget {
 
 class _SshProfilesSectionState extends State<SshProfilesSection> {
   final _testingIds = <String>{};
+
+  Future<void> _openEditor(BuildContext context, {SshProfile? profile}) {
+    return openSshProfileEditor(
+      context,
+      profile: profile,
+      repository: widget.repository,
+      profileCubit: widget.profileCubit,
+      onRefresh: widget.onRefresh,
+    );
+  }
+
+  Future<void> _deleteProfile(BuildContext context, SshProfile profile) {
+    return confirmDeleteSshProfile(
+      context,
+      profile,
+      repository: widget.repository,
+      profileCubit: widget.profileCubit,
+      onRefresh: widget.onRefresh,
+    );
+  }
 
   /// Returns `null` on success, otherwise the caught failure.
   Future<Object?> _runTest(SshProfile profile, {bool showToast = true}) async {
@@ -220,10 +265,24 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
 
   @override
   Widget build(BuildContext context) {
+    // Scope the injected profile source into the subtree: the form dialog and
+    // delete helper resolve their repository/cubit from the caller's context
+    // before a route is pushed on the root navigator, so they must see these
+    // values rather than the app-level device-local ones.
+    return RepositoryProvider<SshProfileRepository>.value(
+      value: widget.repository,
+      child: BlocProvider<Cubit<SshProfileState>>.value(
+        value: widget.profileCubit,
+        child: Builder(builder: _buildBody),
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final l10n = context.l10n;
-    final state = context.watch<SshProfileCubit>().state;
     final connectionState = context.watch<SshConnectionCubit>().state;
-    final profiles = state.profiles;
+    final profiles = widget.profiles;
+    final isLoading = widget.profileCubit.state.isLoading;
     final isAndroid = defaultTargetPlatform == TargetPlatform.android;
     final heading = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -264,7 +323,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                         label: Text(l10n.connect.scanQr),
                       ),
                       FilledButton.tonalIcon(
-                        onPressed: () => openSshProfileEditor(context),
+                        onPressed: () => _openEditor(context),
                         icon: const Icon(Icons.add, size: 18),
                         label: Text(l10n.sshProfile.sAddTarget),
                       ),
@@ -290,14 +349,14 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                   ),
                   const SizedBox(width: 8),
                   FilledButton.tonalIcon(
-                    onPressed: () => openSshProfileEditor(context),
+                    onPressed: () => _openEditor(context),
                     icon: const Icon(Icons.add, size: 18),
                     label: Text(l10n.sshProfile.sAddTarget),
                   ),
                 ],
               ),
             const SizedBox(height: 16),
-            if (state.isLoading)
+            if (isLoading)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(24),
@@ -338,10 +397,9 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                     onTest: () => _runTest(profile),
                     onConnect: () => _connect(profile),
                     onDisconnect: () => _disconnect(profile),
-                    onEdit: () =>
-                        openSshProfileEditor(context, profile: profile),
-                    onDelete: () => confirmDeleteSshProfile(context, profile),
-                    onRefresh: () => context.read<SshProfileCubit>().load(),
+                    onEdit: () => _openEditor(context, profile: profile),
+                    onDelete: () => _deleteProfile(context, profile),
+                    onRefresh: () => widget.onRefresh(),
                     onConfigure: widget.showRemoteConfig
                         ? () => showSshProfileTargetConfigDialog(
                             context,

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/home_connection_cubit.dart';
+import '../cubits/ssh_profile_cubit.dart';
 import '../l10n/l10n_extensions.dart';
+import '../repositories/ssh_profile_repository.dart';
 import 'ssh_profiles/ssh_profiles_section.dart';
 
 /// Target picker reached from the connection page's 「切换连接」.
@@ -30,10 +32,18 @@ class _RemoteTargetsPageState extends State<RemoteTargetsPage> {
   Widget build(BuildContext context) {
     final content = Scaffold(
       appBar: AppBar(title: Text(context.l10n.home.connectionSwitch)),
-      body: const SafeArea(
+      body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(16),
-          child: SshProfilesSection(showRemoteConfig: false),
+          padding: const EdgeInsets.all(16),
+          child: BlocBuilder<SshProfileCubit, SshProfileState>(
+            builder: (context, state) => SshProfilesSection(
+              profiles: state.profiles,
+              onRefresh: () => context.read<SshProfileCubit>().load(),
+              repository: context.read<SshProfileRepository>(),
+              profileCubit: context.read<SshProfileCubit>(),
+              showRemoteConfig: false,
+            ),
+          ),
         ),
       ),
     );
