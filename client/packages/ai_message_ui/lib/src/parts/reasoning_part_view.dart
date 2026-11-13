@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
 import '../markdown/compiled_markdown_chrome.dart';
 import '../strings.dart';
@@ -43,10 +42,27 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
   /// re-armed when they return to the bottom.
   bool _stickToBottom = true;
 
+  /// Offset observed on the previous scroll notification. Stick release is a
+  /// *drop* relative to this, never a property of a single metric snapshot:
+  /// the box's own follow jump and the layout corrections that re-create the
+  /// scroll position also dispatch notifications, and reading them as a user
+  /// gesture either cancels the follow or yanks a reader back.
+  double _lastPixels = 0;
+
   /// Initial metrics belong to the first layout, not to streamed growth.
   bool _firstMetrics = true;
 
   bool _scrollScheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Mounted already following (the live thinking block of a streaming
+    // turn): the body must open on the newest line, not on the first one.
+    // Without this pin the box stays at offset 0 for the whole turn because
+    // nothing else schedules the initial jump.
+    if (_open && widget.autoFollow) _scheduleScrollToBottom();
+  }
 
   @override
   void didUpdateWidget(covariant AiReasoningPartView oldWidget) {
@@ -88,6 +104,7 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
       if (position.maxScrollExtent - position.pixels > 0.5) {
         _scroll.jumpTo(position.maxScrollExtent);
       }
+      _lastPixels = _scroll.position.pixels;
     });
   }
 
@@ -103,12 +120,26 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
 
   bool _onScroll(ScrollNotification notification) {
     if (notification.depth != 0) return false;
-    if (notification is UserScrollNotification) {
-      if (notification.direction == ScrollDirection.idle) return false;
-      _stickToBottom = _isAtBottom(notification.metrics);
-    } else if (notification is OverscrollNotification) {
-      _stickToBottom = false;
+    final metrics = notification.metrics;
+    final pixels = metrics.pixels;
+
+    // Release only on an upward move that ends off the tip. Reading a single
+    // notification cannot tell a user drag from the follow's own jump or a
+    // layout correction (the scroll position is re-created whenever the chat
+    // theme changes during a live turn, which dispatches ScrollStart /
+    // Overscroll / ScrollEnd while the user does nothing). Comparing against
+    // the previous offset — and sparing a drop that lands exactly on the tip,
+    // a clamp after the content shrank — keeps the follow armed.
+    if (_stickToBottom) {
+      if (pixels < _lastPixels - _bottomEpsilon && !_isAtBottom(metrics)) {
+        _stickToBottom = false;
+      }
+    } else if (_isAtBottom(metrics)) {
+      // The reader came back to the newest line — resume following, like the
+      // transcript's jump-to-bottom control.
+      _stickToBottom = true;
     }
+    _lastPixels = pixels;
     return false;
   }
 

@@ -195,6 +195,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   /// Distance from the tip past which the jump-to-bottom button is offered.
   static const _scrollToBottomThreshold = 80.0;
 
+  /// Slack for [_isClampDrop]: a shrink clamp can land slightly short of the
+  /// new tip when the turn grew again in the same frame (one thinking/prose
+  /// line). Kept separate from [_scrollToBottomThreshold] so tuning the button
+  /// distance cannot silently change layout-clamp detection.
+  static const _layoutClampSlack = 80.0;
+
   /// Frames the anchor restore waits for the virtualized viewport to grow
   /// its extent toward the anchor (turns mount lazily / in chunks).
   static const _anchorRestoreFrames = 24;
@@ -261,8 +267,44 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   BranchEditController? _ownBranchEdit;
 
+  ThemeData? _tightenedTheme;
+  ThemeData? _tightenedThemeBase;
+
+  /// Extent seen by the previous scroll tick. A shrink clamps the offset down
+  /// to the new tip (the thinking body folding away when prose starts) with no
+  /// scroll notification, so both the "release" and the "back on the tip"
+  /// re-arm must ignore it — otherwise the follow dies or re-arms mid-drag.
+  double _extentBaseline = 0;
+
   BranchEditController get _edit =>
       widget.branchEdit ?? (_ownBranchEdit ??= BranchEditController());
+
+  /// Theme for the live tip while the Running footer is appended: tightens the
+  /// message's bottom gap so the footer sits under it like in-turn chrome.
+  ///
+  /// Cached against the base [ThemeData] instance: the extension is read from
+  /// that same theme, so a new base theme invalidates the cache.
+  /// Building a fresh copy per streamed chunk marked every Theme-dependent
+  /// widget in the message dirty and re-created the descendant
+  /// [ScrollPosition]s (framework didChangeDependencies → _updatePosition),
+  /// which cancels in-flight scroll activities (the thinking body's follow,
+  /// drags) and defeats the per-part render cache.
+  ThemeData _tightenedTipTheme(BuildContext context, AiMessageTheme aiTheme) {
+    final base = Theme.of(context);
+    final cached = _tightenedTheme;
+    if (cached != null && identical(base, _tightenedThemeBase)) {
+      return cached;
+    }
+    final next = base.copyWith(
+      extensions: [
+        ...base.extensions.values.where((e) => e is! AiMessageTheme),
+        aiTheme.copyWith(messageSpacing: 8),
+      ],
+    );
+    _tightenedTheme = next;
+    _tightenedThemeBase = base;
+    return next;
+  }
 
   Object? _bodyCacheKeyForTurn(ThreadTurn turn) {
     final keys = <Object?>[
@@ -728,6 +770,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     WidgetsBinding.instance.addPostFrameCallback((_) => apply());
   }
 
+  /// Whether an offset drop of [drop] pixels with an extent shrinking by
+  /// [shrink] pixels is a layout clamp rather than a user scroll. The clamp
+  /// drops the offset by about the shrink; a drag adds its own movement on top.
+  bool _isClampDrop(double shrink, double drop) =>
+      shrink > _bottomEpsilon && drop >= shrink - _layoutClampSlack;
+
   void _onScrollTick() {
     if (!_scrollController.hasClients) return;
     final position = _scrollController.position;
@@ -737,22 +785,32 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     // Release when the offset moved up and we are no longer pinned to the tip.
     // The extent is *not* required to be stable: while a turn streams the tip
     // grows every frame, and requiring `maxScrollExtent` to be unchanged (the
-    // previous rule) disabled this release for the whole streaming window. A
-    // drop that lands exactly on the tip is a layout clamp after the content
-    // shrank — not a user scroll — so it must not release.
+    // previous rule) disabled this release for the whole streaming window.
+    //
+    // A shrinking extent clamps the offset to the new tip: it looks like both
+    // a scroll-up (release) and a "user came back to the tip" (re-arm), and
+    // both would be wrong — the thinking body folding away is the common case.
     //
     // Background hosts are skipped: the thread keeps building there, but
     // unmounted-turn estimates churn the extent, so an offset drop is layout
     // noise, not a drag. Releasing on it would silently stop the follow for
     // good (the user is not there to scroll back down). [_restickAfterForeground]
     // re-anchors on return instead.
+    final shrink = _extentBaseline - max;
+    final drop = _lastPixels - pixels;
+    _extentBaseline = max;
+    final clamped = _isClampDrop(shrink, drop);
     if (_foreground) {
       if (_stickToEnd &&
-          pixels < _lastPixels - _bottomEpsilon &&
+          !clamped &&
+          drop > _bottomEpsilon &&
           max - pixels > _bottomEpsilon) {
         _setStickToEnd(false);
-      } else if (!_stickToEnd && max - pixels <= _bottomEpsilon) {
-        // Manual scroll back to tip — same as tapping the jump button.
+      } else if (!_stickToEnd &&
+          shrink <= _bottomEpsilon &&
+          max - pixels <= _bottomEpsilon) {
+        // Manual scroll back to tip — same as tapping the jump button. A
+        // shrinking extent also lands on the tip; that must not re-arm.
         _resumeStickToTip();
       }
     }
@@ -862,16 +920,15 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         if (_scrollController.hasClients) {
           final max = _scrollController.position.maxScrollExtent;
           final pixels = _scrollController.position.pixels;
-          // The user moved up since the last tick: `jumpTo` below would call
-          // `goIdle()`, cancel the in-flight drag and yank the thread back to
-          // the tip (each streaming update re-arms this chain, so the drag
-          // could never scroll). Hand the offset back to the user instead.
-          if (pixels < _lastPixels - _bottomEpsilon &&
-              max - pixels > _bottomEpsilon) {
-            _setStickToEnd(false);
-            return;
-          }
-          if (max > 0 && max - pixels > _bottomEpsilon) {
+          // Stick release lives in [_onScrollTick] and the scroll
+          // notifications; this chain only keeps the offset on the tip.
+          // Never move the offset under an active gesture: `jumpTo` calls
+          // `goIdle()`, which disposes the drag/fling and makes the thread
+          // unscrollable while a turn streams. `isScrollingNotifier` is true
+          // exactly while a drag, fling or animation owns the offset.
+          final gestureActive =
+              _scrollController.position.isScrollingNotifier.value;
+          if (!gestureActive && max > 0 && max - pixels > _bottomEpsilon) {
             _jumpTo(max);
           }
         }
@@ -1018,7 +1075,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       final delta = notification.scrollDelta;
       if (delta != null && delta != 0) {
         _suppressHoverForScroll();
-        if (delta < 0) {
+        // A shrink clamp also reports a negative delta; see [_onScrollTick].
+        final clamped = _isClampDrop(
+          _extentBaseline - notification.metrics.maxScrollExtent,
+          -delta,
+        );
+        if (delta < 0 && !clamped) {
           _setStickToEnd(false);
         }
       }
@@ -1424,13 +1486,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                           );
                           var result = tightenForRunning
                               ? Theme(
-                                  data: Theme.of(context).copyWith(
-                                    extensions: [
-                                      ...Theme.of(context).extensions.values
-                                          .where((e) => e is! AiMessageTheme),
-                                      aiTheme.copyWith(messageSpacing: 8),
-                                    ],
-                                  ),
+                                  data: _tightenedTipTheme(context, aiTheme),
                                   child: messageChild,
                                 )
                               : messageChild;
