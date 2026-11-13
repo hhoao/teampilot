@@ -31,7 +31,7 @@
 
 1. **完全替换**：ACP 会话以 agent 下发的列表为唯一事实来源；静态表仅在 agent 尚未下发非空列表时兜底；PTY 会话继续使用静态表。
 2. **空列表忽略**：空数组视为“agent 尚未就绪”，不覆盖当前菜单；只有非空列表才生效。
-3. **状态落点**：复用 `modelState` 链路（cubit state → `AcpRuntimeScope` → compose），不新增旁路接口。
+3. **状态落点**：复用 `modelState` 链路（cubit state → `AcpRuntimeScope` → compose）。握手期的命令列表另用可选能力接口的 pull getter 兜底：`session/new`/`session/load` 期间发出的更新发生在 cubit 订阅 `updates` 之前，broadcast 流不缓存，只靠事件会丢。
 4. **顺带修复 Grok 双斜杠**：在 `NativeCommand` 层归一化，不改 Grok 数据。
 
 ## 非目标
@@ -47,12 +47,14 @@
 ```
 acpd.AvailableCommandsSessionUpdate
   └─ AcpAgentSession._onSessionUpdate（绕过 bootstrap 抑制）
+       ├─ 保留最后一次非空列表 → AcpAvailableCommandsApi.availableCommands
        └─ _mapUpdate → AcpAvailableCommandsUpdate(List<AcpAvailableCommand>)
-            └─ AcpChatRuntimeCubit._onUpdate
+            └─ AcpChatRuntimeCubit._onUpdate（实时）
                  └─ AcpChatRuntimeState.availableCommands（List<NativeCommand>）
+                      ├─ 握手期由 AcpAvailableCommandsApi.availableCommands 播种
                       └─ AcpRuntimeUiState.availableCommands
                            └─ SessionChatComposeSection
-                                └─ nativeCommands = 动态非空 ? 动态 : 静态注册表
+                                └─ selectComposeNativeCommands(动态, 静态)
                                      └─ buildComposeSlashCandidates（现有逻辑）
 ```
 
@@ -101,6 +103,20 @@ case acpd.AvailableCommandsSessionUpdate():
 ```
 
 `_stripSlash` 去掉一个前导 `/`（`/compact` → `compact`）。
+
+**保留值 + 可选能力接口**（`services/acp/acp_session_runtime.dart`）：
+
+- `AcpAgentSession` 持有 `List<AcpAvailableCommand> _availableCommands`，在 `_onSessionUpdate` 映射出 `AcpAvailableCommandsUpdate` 时更新（空列表因此永远不会清空它），并提供 getter。
+- 新增可选能力接口，沿用 `AcpModelSwitchApi` 的 ISP 模式，所有既有 all-stub fake 不受影响：
+
+```dart
+abstract interface class AcpAvailableCommandsApi {
+  /// The last non-empty command list advertised during this session.
+  List<AcpAvailableCommand> get availableCommands;
+}
+```
+
+- `AcpSessionRuntime` 实现该接口，委托给当前 `_session`；未开 session 时返回 `const []`。
 
 ### 2. Bootstrap 抑制旁路
 
@@ -216,7 +232,7 @@ case AcpAvailableCommandsUpdate():
   ));
 ```
 
-- `start()` 进入 `ready` 时初始 state 为空（新 cubit），无需显式清理；若同一 cubit 被重新 `start()`，在启动处显式 `availableCommands: const []`，避免显示上一次连接的命令。
+- `start()` 进入 `ready` 时通过 `_readAvailableCommands()` 播种（镜像 `_readModelState()` 的可选能力检查）；握手期推送因此在订阅建立前也不会丢失，重新 `start()` 时以新连接的列表覆盖旧值，新会话未下发则回到空列表。
 - 与 `modelState` 一致：命令更新不属于 turn 内容，取消/失败后保留。
 
 ### 6. UI 投影与消费
@@ -255,7 +271,7 @@ final nativeCommands = agentCommands.isNotEmpty
 | 层 | 文件 | 用例 |
 |---|---|---|
 | 映射 | `test/services/acp/acp_session_test.dart` | 字段完整映射；空列表不 emit；load/resume bootstrap 期间仍收到；空名条目跳过；前导 `/` 被去除 |
-| cubit | `test/cubits/chat/acp/acp_chat_runtime_cubit_test.dart` | 更新写入 state 并完成类型转换；空列表不改 state；重新 start 后清空 |
+| cubit | `test/cubits/chat/acp/acp_chat_runtime_cubit_test.dart` | 更新写入 state 并完成类型转换；空列表不改 state；握手期保留值在 `ready` 时播种；重新 start 后由新连接覆盖 |
 | 投影/组件 | `test/pages/chat/session_chat_view_acp_test.dart`、`test/widgets/compose/compose_trigger_field_test.dart` | 动态命令替换静态表；无动态时回退；座位切换跟随对应 runtime；`descriptionText` 展示与搜索 |
 | 模型 | `test/services/cli/registry/native_command_capability_test.dart` | `name: '/compact'` 时 `slashName == 'compact'`、`insertText == '/compact'` |
 | catalog | `test/services/chat/conversation/compose/compose_slash_catalog_test.dart` | label 不带 `/`；`descriptionText` 参与过滤 |
@@ -285,7 +301,7 @@ cd client && dart run tool/run_tests.dart \
 ## 改动清单
 
 - `client/lib/services/acp/acp_session.dart`
-- `client/lib/services/acp/acp_frame_logger.dart`（把命令帧从“纯噪声”注释中移除；可选）
+- `client/lib/services/acp/acp_session_runtime.dart`（可选能力接口 + 委托 getter）
 - `client/lib/cubits/session/acp/acp_chat_runtime_cubit.dart`
 - `client/lib/pages/chat/acp_runtime_scope.dart`
 - `client/lib/pages/chat/session_chat_compose_section.dart`
