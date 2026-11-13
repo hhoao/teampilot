@@ -128,6 +128,9 @@ void main() {
           ),
           child: MultiBlocProvider(
             providers: [
+              RepositoryProvider<SshProfileRepository>.value(
+                value: profileRepository,
+              ),
               BlocProvider<SshProfileCubit>.value(value: profileCubit),
               BlocProvider<SshConnectionCubit>.value(value: connectionCubit),
               if (homeCubit != null)

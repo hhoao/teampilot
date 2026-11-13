@@ -171,8 +171,13 @@ Future<EditorHarness> pumpEditor(
                 child: Scaffold(
                   body: Builder(
                     builder: (ctx) => TextButton(
-                      onPressed: () =>
-                          showSshProfileFormDialog(ctx, profile: profile),
+                      onPressed: () => showSshProfileFormDialog(
+                        ctx,
+                        profile: profile,
+                        repository: planeRepository,
+                        profileCubit: planeCubit,
+                        onRefresh: () => planeCubit.load(),
+                      ),
                       child: const Text('open'),
                     ),
                   ),

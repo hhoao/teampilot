@@ -139,6 +139,10 @@ class SessionLifecycleService {
   final String Function()? _toolchainNodeResolver;
   SessionRuntimePlanBuilder? _runtimePlanBuilder;
   SessionResourceProviderResolver? _resourceProviderResolver;
+
+  /// Resolver for `profileOf` (workspace MCP targets / remote-session base
+  /// info). Wired by the app shell to the home-plane (B source) workload
+  /// catalog; unknown ids resolve to null so callers keep their null handling.
   final SshProfile? Function(String id)? sshProfileById;
 
   /// Current app home target (local, SSH, or WSL).

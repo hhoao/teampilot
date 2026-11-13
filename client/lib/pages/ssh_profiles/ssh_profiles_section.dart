@@ -10,6 +10,8 @@ import '../../cubits/ssh_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
+import '../../repositories/ssh_profile_repository.dart';
+import '../../services/ssh/android_ssh_connect_home.dart';
 import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_credentials_resolver.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
@@ -17,6 +19,7 @@ import '../../services/vault/credential_capture.dart';
 import '../../services/vault/vault_service.dart';
 import '../../services/vault/vault_unlock_gate.dart';
 import '../../services/storage/home_storage.dart';
+import '../../services/storage/home_target_controller.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
 import '../../utils/ui/app_keys.dart';
 import '../connect/android_pair_sheet.dart';
@@ -26,24 +29,65 @@ import 'ssh_profile_target_card.dart';
 import 'ssh_profile_target_config_dialog.dart';
 
 /// Orca-style SSH target list for settings (desktop + Android).
+///
+/// The profile source is injected: callers pass the profiles to render, a
+/// refresh callback, the repository edits write through, and the cubit backing
+/// them. The device-local A source ([SshProfileCubit]) and the home-plane B
+/// source (the global workload cubit) both emit [SshProfileState], so the
+/// section stays agnostic about where its rows come from.
 class SshProfilesSection extends StatefulWidget {
   const SshProfilesSection({
     super.key,
+    required this.profiles,
+    required this.onRefresh,
+    required this.onDelete,
+    required this.repository,
+    required this.profileCubit,
     this.showRemoteConfig = true,
     this.switchHomeOnConnect = true,
+    this.homeBindingMode = false,
   });
 
-  /// Dead-but-planned: the "remote config" editor operates on a local
-  /// [SshProfile], not the remote server model, and production callers all
-  /// pass `false`. It is intentionally retained for the follow-up spec that
-  /// adds full remote-config editing (credential push / port-forward /
-  /// root sandbox); this increment ships the SSH servers page read-only.
+  /// Rows to render, supplied by the owning page's profile source.
+  final List<SshProfile> profiles;
+
+  /// Reloads the injected source after a write (e.g. `cubit.load()`).
+  final Future<void> Function() onRefresh;
+
+  /// Deletes a row from the injected source. Supplied by the owning page so
+  /// the A source keeps credential/vault cleanup and the B source deletes the
+  /// shared plane record, without this widget inspecting the source type.
+  final Future<void> Function(String profileId) onDelete;
+
+  /// Repository the editor writes new/edited profiles through.
+  final SshProfileRepository repository;
+
+  /// Cubit backing [profiles]; typed to the shared [SshProfileState] supertype
+  /// so both the A-source [SshProfileCubit] and the B-source workload cubit fit.
+  final Cubit<SshProfileState> profileCubit;
+
+  /// The "remote config" editor operates on a local [SshProfile], not the
+  /// remote server model. The SSH-servers page passes `true`; the
+  /// remote-connections surfaces pass `false`. It is retained for the follow-up
+  /// spec that adds full remote-config editing (credential push / port-forward
+  /// / root sandbox); the connection behaviour is unchanged for now.
   final bool showRemoteConfig;
 
-  /// Android Connect rebinds the home plane to the connected host. The SSH
-  /// servers page turns this off so its connect matches the desktop one; the
-  /// remote-connections surfaces keep the mobile behaviour.
+  /// Android Connect rebinds the home plane to the connected host. Applies
+  /// only to the workload (non-[homeBindingMode]) connect path, which goes
+  /// through [SshConnectionCubit.connect]: the SSH-servers page passes
+  /// `false` so its connect keeps the current home.
   final bool switchHomeOnConnect;
+
+  /// When `true`, Connect performs a pure home binding instead of opening an
+  /// [SshConnectionCubit] connection: it selects the SSH home target
+  /// (`ssh:<id>`) and persists the selected profile through
+  /// [applyAndroidSshConnectHome]. The remote-connections surfaces (A source,
+  /// home-binding) set this; the SSH-servers page (B source, workload) leaves
+  /// it `false` and keeps `connect(id, switchHome: false)`. This is the single
+  /// explicit mode switch — no platform checks are scattered through the
+  /// connect path.
+  final bool homeBindingMode;
 
   @override
   State<SshProfilesSection> createState() => _SshProfilesSectionState();
@@ -51,6 +95,24 @@ class SshProfilesSection extends StatefulWidget {
 
 class _SshProfilesSectionState extends State<SshProfilesSection> {
   final _testingIds = <String>{};
+
+  Future<void> _openEditor(BuildContext context, {SshProfile? profile}) {
+    return openSshProfileEditor(
+      context,
+      profile: profile,
+      repository: widget.repository,
+      profileCubit: widget.profileCubit,
+      onRefresh: widget.onRefresh,
+    );
+  }
+
+  Future<void> _deleteProfile(BuildContext context, SshProfile profile) {
+    return confirmDeleteSshProfile(
+      context,
+      profile,
+      onDelete: widget.onDelete,
+    );
+  }
 
   /// Returns `null` on success, otherwise the caught failure.
   Future<Object?> _runTest(SshProfile profile, {bool showToast = true}) async {
@@ -101,6 +163,18 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
   Future<void> _connect(SshProfile profile) async {
     if (!await _ensureVaultUnlockedFor(profile)) return;
     if (!mounted) return;
+    if (widget.homeBindingMode) {
+      // Pure home binding: rebind the home plane to this host and persist the
+      // selected profile. No SshConnectionCubit.connect — the home-plane
+      // switch reconnects the host through its own connect(pid) path, and the
+      // device-local A host never reaches the B-only status bar.
+      await applyAndroidSshConnectHome(
+        profileId: profile.id,
+        selectHome: context.read<HomeTargetController>().select,
+        selectProfile: context.read<SshProfileCubit>().selectProfile,
+      );
+      return;
+    }
     await context.read<SshConnectionCubit>().connect(
       profile.id,
       switchHome: widget.switchHomeOnConnect,
@@ -221,9 +295,9 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final state = context.watch<SshProfileCubit>().state;
     final connectionState = context.watch<SshConnectionCubit>().state;
-    final profiles = state.profiles;
+    final profiles = widget.profiles;
+    final isLoading = widget.profileCubit.state.isLoading;
     final isAndroid = defaultTargetPlatform == TargetPlatform.android;
     final heading = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -264,7 +338,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                         label: Text(l10n.connect.scanQr),
                       ),
                       FilledButton.tonalIcon(
-                        onPressed: () => openSshProfileEditor(context),
+                        onPressed: () => _openEditor(context),
                         icon: const Icon(Icons.add, size: 18),
                         label: Text(l10n.sshProfile.sAddTarget),
                       ),
@@ -290,14 +364,14 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                   ),
                   const SizedBox(width: 8),
                   FilledButton.tonalIcon(
-                    onPressed: () => openSshProfileEditor(context),
+                    onPressed: () => _openEditor(context),
                     icon: const Icon(Icons.add, size: 18),
                     label: Text(l10n.sshProfile.sAddTarget),
                   ),
                 ],
               ),
             const SizedBox(height: 16),
-            if (state.isLoading)
+            if (isLoading)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(24),
@@ -338,10 +412,9 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                     onTest: () => _runTest(profile),
                     onConnect: () => _connect(profile),
                     onDisconnect: () => _disconnect(profile),
-                    onEdit: () =>
-                        openSshProfileEditor(context, profile: profile),
-                    onDelete: () => confirmDeleteSshProfile(context, profile),
-                    onRefresh: () => context.read<SshProfileCubit>().load(),
+                    onEdit: () => _openEditor(context, profile: profile),
+                    onDelete: () => _deleteProfile(context, profile),
+                    onRefresh: () => widget.onRefresh(),
                     onConfigure: widget.showRemoteConfig
                         ? () => showSshProfileTargetConfigDialog(
                             context,

@@ -3,7 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../cubits/home_connection_cubit.dart';
+import '../cubits/ssh_profile_cubit.dart';
 import '../l10n/l10n_extensions.dart';
+import '../repositories/ssh_profile_repository.dart';
 import '../services/storage/home_connect_attempt.dart';
 import 'remote_targets_page.dart';
 import 'ssh_profiles/ssh_profiles_section.dart';
@@ -85,10 +87,24 @@ class _RemoteConnectionsPageState extends State<RemoteConnectionsPage> {
       );
     }
 
-    // Setup / settings view: the target list.
-    const list = SingleChildScrollView(
-      padding: EdgeInsets.all(16),
-      child: SshProfilesSection(showRemoteConfig: false),
+    // Setup / settings view: the target list, fed by the device-local A source.
+    final list = SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: BlocBuilder<SshProfileCubit, SshProfileState>(
+        builder: (context, state) {
+          final cubit = context.read<SshProfileCubit>();
+          return SshProfilesSection(
+            profiles: state.profiles,
+            onRefresh: () => cubit.load(),
+            onDelete: cubit.deleteProfile,
+            repository: context.read<SshProfileRepository>(),
+            profileCubit: cubit,
+            showRemoteConfig: false,
+            // Home-binding only (A source): Connect selects the SSH home.
+            homeBindingMode: true,
+          );
+        },
+      ),
     );
     if (widget.embedded) return list;
     return Scaffold(body: SafeArea(child: list));

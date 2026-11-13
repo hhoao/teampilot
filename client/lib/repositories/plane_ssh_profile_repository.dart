@@ -4,12 +4,14 @@ import 'remote_target_repository.dart';
 import 'ssh_profile_repository.dart';
 import 'ssh_server_profile_repository.dart';
 
-/// [SshProfileRepository] over the shared home-plane server catalog.
+/// [SshProfileRepository] over the shared home-plane server catalog (B source).
 ///
-/// Reads merge the plane's own `remote-targets.json` with the synced
-/// `ssh_profiles/profiles.json`; writes go to the projection, the record every
-/// device paired to the plane shares. Profile selection stays a device concern,
-/// so it is never persisted on the plane.
+/// Reads only the home-plane `ssh_profiles/profiles.json` (B) and writes go
+/// back to that same `profiles.json`, the record every device paired to the
+/// plane shares. This device's vault references are lent read-only; the
+/// device-local catalog (A) is a separate source that is never merged or
+/// synced into B. Profile selection stays a device concern, so it is never
+/// persisted on the plane.
 ///
 /// This is what the "SSH servers" settings surface binds to, which keeps that
 /// page showing the plane's servers rather than this device's targets.
@@ -23,8 +25,8 @@ class PlaneSshProfileRepository extends SshProfileRepository {
 
   final SshServerProfileRepository _servers;
 
-  /// This device's connection catalog, used only to lend the matching server's
-  /// vault reference to the plane projection. It is never written to the plane.
+  /// This device's connection catalog, read only to lend the matching server's
+  /// vault reference to a B-source profile. It is never written to the plane.
   final RemoteTargetRepository? _deviceTargets;
 
   @override

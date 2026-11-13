@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/layout_cubit.dart';
+import '../../cubits/ssh_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/workspace_terminal_session_spec.dart';
@@ -99,7 +100,15 @@ Future<void> _handleLaunchMenuSelection({
       final spec = selected.spec;
       if (spec != null) onSessionSelected(spec, selected.launchCwd);
     case WorkspaceTerminalLaunchAction.newSshProfile:
-      await showSshProfileFormDialog(context);
+      // The + catalog creates a device-local (A source) target, so state that
+      // source explicitly rather than relying on an in-helper context lookup.
+      final cubit = context.read<SshProfileCubit>();
+      await showSshProfileFormDialog(
+        context,
+        repository: context.read<SshProfileRepository>(),
+        profileCubit: cubit,
+        onRefresh: () => cubit.load(),
+      );
     case WorkspaceTerminalLaunchAction.settings:
       if (!context.mounted) return;
       await showWorkspaceTerminalSettingsSheet(context);

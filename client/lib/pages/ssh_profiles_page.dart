@@ -9,6 +9,7 @@ import '../cubits/ssh_server_config_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/ssh_profile.dart';
 import '../models/ssh_server_profile.dart';
+import '../repositories/ssh_profile_repository.dart';
 import '../repositories/ssh_server_profile_repository.dart';
 import '../services/storage/home_storage.dart';
 import 'ssh_profiles/ssh_profile_form_dialog.dart';
@@ -171,14 +172,29 @@ class SshServerProfileCard extends StatelessWidget {
 Future<void> openSshProfileEditor(
   BuildContext context, {
   SshProfile? profile,
+  required SshProfileRepository repository,
+  required Cubit<SshProfileState> profileCubit,
+  required Future<void> Function() onRefresh,
 }) async {
-  await showSshProfileFormDialog(context, profile: profile);
+  await showSshProfileFormDialog(
+    context,
+    profile: profile,
+    repository: repository,
+    profileCubit: profileCubit,
+    onRefresh: onRefresh,
+  );
 }
 
+/// Confirms and performs a delete through the caller-supplied [onDelete].
+/// The source is explicit in that callback (A source → full
+/// `SshProfileCubit.deleteProfile` with credential/vault cleanup; B source →
+/// `repository.delete(id)` + source reload), so no runtime type inspection or
+/// implicit context lookup is needed here.
 Future<void> confirmDeleteSshProfile(
   BuildContext context,
-  SshProfile profile,
-) async {
+  SshProfile profile, {
+  required Future<void> Function(String profileId) onDelete,
+}) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => TpDialog(
@@ -207,5 +223,5 @@ Future<void> confirmDeleteSshProfile(
     ),
   );
   if (confirmed != true || !context.mounted) return;
-  await context.read<SshProfileCubit>().deleteProfile(profile.id);
+  await onDelete(profile.id);
 }

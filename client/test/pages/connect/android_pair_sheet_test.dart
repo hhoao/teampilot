@@ -12,8 +12,10 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
+import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/pages/connect/android_pair_sheet.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
@@ -173,11 +175,37 @@ class _RecordingSshConnectionCubit extends SshConnectionCubit {
       );
 
   final connectCalls = <String>[];
+  final syncCalls = <List<String>>[];
 
   @override
   Future<void> connect(String profileId, {bool switchHome = true}) async {
     connectCalls.add(profileId);
   }
+
+  @override
+  Future<void> syncProfiles(List<SshProfile> profiles) async {
+    syncCalls.add(profiles.map((p) => p.id).toList());
+    await super.syncProfiles(profiles);
+  }
+}
+
+/// Records the pure home-binding `select('ssh:<id>')` call that replaces the
+/// A-source sync + connect in the pair (home-binding) flow.
+class _RecordingHomeTargetController implements HomeTargetController {
+  final selected = <String>[];
+
+  @override
+  RuntimeTarget get current => RuntimeTarget.local();
+
+  @override
+  String get currentId => current.id;
+
+  @override
+  Future<List<RuntimeTarget>> listSelectable({String wslDistro = ''}) async =>
+      [current];
+
+  @override
+  Future<void> select(String id) async => selected.add(id);
 }
 
 class _FakeSshSocket implements SSHSocket {
@@ -262,6 +290,7 @@ class _Harness {
       factory: factory,
       coordinator: coordinator,
     );
+    homeTargetController = _RecordingHomeTargetController();
   }
 
   final ConnectPairClient pairClient;
@@ -273,6 +302,7 @@ class _Harness {
   late final SshClientFactory factory;
   late final SshProfileConnectionCoordinator coordinator;
   late final _RecordingSshConnectionCubit connectionCubit;
+  late final _RecordingHomeTargetController homeTargetController;
 
   Future<void> dispose() async {
     await connectionCubit.close();
@@ -310,6 +340,9 @@ Widget _host({
           ),
           RepositoryProvider<SshKnownHostRepository>.value(
             value: InMemorySshKnownHostRepository(),
+          ),
+          RepositoryProvider<HomeTargetController>.value(
+            value: harness.homeTargetController,
           ),
         ],
         child: MultiBlocProvider(
@@ -383,8 +416,19 @@ String _unsupportedOfferCode() {
   return 'teampilot://pair-ssh?code=$code';
 }
 
+/// Pairing is the Android home-binding entry (A source). After a successful
+/// pair the sheet must select the home target and persist the selected
+/// profile — never sync A-source profiles into SshConnectionCubit and never
+/// open an SshConnectionCubit connection (both would pollute the B-only
+/// status bar / reopen the home-binding path through connect()).
+void _expectPureHomeBinding(_Harness harness) {
+  expect(harness.connectionCubit.connectCalls, isEmpty);
+  expect(harness.connectionCubit.syncCalls, isEmpty);
+  expect(harness.homeTargetController.selected, ['ssh:${_profile.id}']);
+}
+
 void main() {
-  testWidgets('scan pairs, writes one profile, and connects it', (
+  testWidgets('scan pairs, writes one profile, and binds the SSH home', (
     tester,
   ) async {
     final writer = _RecordingWriter();
@@ -406,7 +450,7 @@ void main() {
 
     expect(transport.calls, 1);
     expect(writer.calls, 1);
-    expect(harness.connectionCubit.connectCalls, [_profile.id]);
+    _expectPureHomeBinding(harness);
     expect(await harness.credentials.loadDevicePrivateKey(), 'PRIVATE KEY');
   });
 
@@ -444,7 +488,7 @@ void main() {
     expect(loopbackPost.port, 45999);
     expect(loopbackPost.path, '/pair');
     expect(writer.calls, 1);
-    expect(harness.connectionCubit.connectCalls, [_profile.id]);
+    _expectPureHomeBinding(harness);
     expect(await harness.credentials.loadRelayGrant(_profile.id), 'grant-1');
   });
 
@@ -532,7 +576,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(writer.calls, 1);
-    expect(harness.connectionCubit.connectCalls, [_profile.id]);
+    _expectPureHomeBinding(harness);
   });
 
   testWidgets('corrupt stored device key is replaced before pairing', (

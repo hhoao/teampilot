@@ -27,6 +27,7 @@ import 'cubits/app_update_cubit.dart';
 import 'cubits/board_cubit.dart';
 import 'cubits/automation_cubit.dart';
 import 'cubits/ssh_connection_cubit.dart';
+import 'cubits/ssh_workload_profile_cubit.dart';
 import 'cubits/termux_cubit.dart';
 import 'cubits/chat_cubit.dart';
 import 'cubits/floating_workspace/floating_panel_visibility.dart';
@@ -782,6 +783,9 @@ void main() async {
                         value: shell.remoteDownloadCatalogCubit,
                       ),
                       BlocProvider.value(value: shell.sshProfileCubit),
+                      BlocProvider<SshWorkloadProfileCubit>.value(
+                        value: shell.sshWorkloadProfileCubit,
+                      ),
                       BlocProvider.value(value: shell.vaultCubit),
                       BlocProvider.value(value: shell.sshConnectionCubit),
                       BlocProvider.value(value: shell.termuxCubit),

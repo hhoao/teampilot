@@ -18,6 +18,7 @@ import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
+import 'package:teampilot/services/ssh/ssh_host_profile_assembly.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
 import 'package:teampilot/services/ssh/ssh_transport_close.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
@@ -279,6 +280,35 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets(
+    'assembled B+home catalog keeps the home profile connectable',
+    (tester) async {
+      final harness = _Harness();
+      final cubit = harness.createCubit();
+      addTearDown(() async {
+        await cubit.close();
+        await harness.dispose();
+      });
+      // Even with an empty B source (home plane unreachable), the assembled
+      // list must still carry the SSH home resolved from the A source, so
+      // boot reconnect and the disconnected banner can call connect(pid).
+      final assembled = assembleSshHostProfiles(
+        workloadProfiles: const [],
+        deviceProfiles: const [_profile],
+        home: RuntimeTarget.ssh(_profile.id, label: _profile.name),
+      );
+      expect(assembled.map((p) => p.id), [_profile.id]);
+      await cubit.syncProfiles(assembled);
+      expect(cubit.state.hostsById.containsKey(_profile.id), isTrue);
+
+      await cubit.connect(_profile.id);
+      expect(
+        cubit.state.hostsById[_profile.id]!.status,
+        SshHostUiStatus.connected,
+      );
+    },
+  );
 }
 
 class _InstantAuthClient extends SSHClient {

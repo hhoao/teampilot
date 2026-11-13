@@ -24,16 +24,22 @@ import '../vault/vault_secret_reveal.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
 
 /// Desktop settings: Orca-style modal for adding/editing an SSH target.
+///
+/// The write-through repository, the cubit whose [isClosed] state guards the
+/// post-save reload, and the refresh callback are all required: every caller
+/// states its profile source explicitly. There is no context-based fallback to
+/// the app-level device-local catalog — the SSH servers page passes the home
+/// plane (B source), while the startup gate, onboarding and terminal menu pass
+/// the global device-local (A source) values themselves. Dialog routes are
+/// built on the root navigator, so resolving the source from an in-tree
+/// provider override would not work anyway.
 Future<void> showSshProfileFormDialog(
   BuildContext context, {
   SshProfile? profile,
+  required SshProfileRepository repository,
+  required Cubit<SshProfileState> profileCubit,
+  required Future<void> Function() onRefresh,
 }) {
-  // Resolve from the caller's context. The SSH servers settings page provides
-  // the home-plane repository/cubit for its own subtree; a dialog route built
-  // on the root navigator would otherwise read the app-level device-local ones,
-  // saving into the wrong catalog and refreshing a list nobody is looking at.
-  final repository = context.read<SshProfileRepository>();
-  final profileCubit = context.read<SshProfileCubit>();
   return showTpDialog<void>(
     context: context,
     presentation: TpDialogPresentation.page,
@@ -44,6 +50,7 @@ Future<void> showSshProfileFormDialog(
       initialProfile: profile,
       repository: repository,
       profileCubit: profileCubit,
+      onRefresh: onRefresh,
     ),
   );
 }
@@ -52,11 +59,13 @@ class _SshProfileFormDialog extends StatefulWidget {
   const _SshProfileFormDialog({
     required this.repository,
     required this.profileCubit,
+    required this.onRefresh,
     this.initialProfile,
   });
 
   final SshProfileRepository repository;
-  final SshProfileCubit profileCubit;
+  final Cubit<SshProfileState> profileCubit;
+  final Future<void> Function() onRefresh;
   final SshProfile? initialProfile;
 
   @override
@@ -257,7 +266,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       );
       if (!mounted) return result.profile;
       if (notify) {
-        if (!widget.profileCubit.isClosed) await widget.profileCubit.load();
+        if (!widget.profileCubit.isClosed) await widget.onRefresh();
         if (mounted) Navigator.of(context).pop();
       }
       return result.profile;

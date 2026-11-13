@@ -375,13 +375,15 @@ wire protocol against an SSH server.
 
 ## Mobile remote connection contract
 
-- 远程连接（本地，移动端新增页面）：本机 `remote-targets.json` 的全量管理（增删改查、导入、连接/断开/重连、切换 home）；断线可用。设置里常驻入口（`ConfigSection.remoteConnections`），不依赖启动门控。数据与 SSH 服务器页完全分离：这里新增只写本机，不会出现在 SSH 服务器页。
-- SSH 服务器（远端）：与桌面端**同一页面、同一入口/标题**，绑定 home 平面目录（`PlaneSshProfileRepository`）。只读写 `<home>/ssh_profiles/profiles.json`，不合并设备本地的 `remote-targets.json`，也不接收连接时的投影；条目在该页新增/编辑/删除，对配对了同一平面的设备共享。本机连接目标不会出现在此页，两页的条目数与字段集因此可以不同。home 切换时（`HomeStorage.changes`）重建平面仓库与 cubit 并重载列表。
-- 连接语义按入口分离：SSH 服务器页的「连接」= 桌面语义（`connect(id, switchHome: false)`，只建立连接、不切 home）；「远程连接」页的「连接」= 移动端语义（连接成功后 `applyAndroidSshConnectHome` 把 home 切到该主机）。
-- 字段归属：断线重连要用的字段放本地；只有连上后才用的配置放远端。
-- 凭据拆分：SSH 登录凭据留在设备 vault（断线仍可重连）；业务凭据（provider key、GitHub token 等）写 `<home>/vault/business.json`，随 home plane 走。`VaultDocumentStore` 合并两侧读取，按 owner kind 路由写入，远端侧故障不阻断本地 SSH 凭据；拆分前的业务条目做一次性复制迁移，不删除原数据。
-- 凭据迁移：启动时 + 每次 home 平面切换后都执行（`migrateBusinessVaultEntries` + `VaultLegacyImportService.runRepair`），两者幂等。`runRepair` 不受 `legacyImportVersion` 一次性标记限制，会把仍带明文 `apiKey` 且没有 vault 引用的 provider 回填进 home vault 并清掉明文；设备 vault 里的业务条目会复制到当前平面，SSH 登录凭据跳过。因此桌面端作为手机的 home 时会把自己的业务凭据发布成 `business.json`。注意：未启用加密时该文件是明文。
-- 数据隔离：远程连接页与 SSH 服务器页各自维护自己的清单，之间没有 push/pull 投影，也没有 `pendingSync`。
+两个**互相独立**的 SSH profile 目录，各有自己的存储与消费链。它们不是同一份清单的两个视图，彼此不重复、不合并、不同步、不投影：`RemoteTargetSync` 已移除，远程连接页与 SSH 服务器页是服务不同消费方的两个不同目录，条目数与字段集天然可以不同 —— 不是「同一份清单把本机目标隐藏掉」。
+
+- **A 源（设备本地 home 绑定目录）**：`<nativeAppData>/remote-targets.json`，由全局 `SshProfileCubit` 持有，只写本机、**必须离线可用**（home plane 不可达时照常读写）。消费方：远程连接页（列表与增删改查 / 导入 / 连接-断开-重连 / 切换 home）、`StartupGate`、onboarding、home-target 选择、CLI 路径发现。设置里常驻入口（`ConfigSection.remoteConnections`），不依赖启动门控。在此新增 / 编辑只改本机的 `remote-targets.json`。
+- **B 源（home plane 工作负载主机目录）**：`<home>/ssh_profiles/profiles.json`，由 `PlaneSshProfileRepository` + 全局 `SshWorkloadProfileCubit` 持有，对配对了同一 home plane 的所有设备**跨设备共享**；`HomeStorage.changes` 切换平面时 cubit 在**同一实例**上重新 `load()` 并 emit，**不重建 cubit 实例**（`profileOf` 链的单仓库经 lazy getter 复用、catalog 每次 `load()` 新建临时仓库，仓库也都无需因切平面重建）。home plane 不可读时该目录**直接为空**（不报错）；状态栏 / SSH 服务器页列表 / 工作区 MCP `profileOf` 这些 B-only 消费链**不回退到 A 源**。消费方：SSH 服务器页、右下角状态栏、工作区 MCP（`profileOf`）、远程 session / 工作区；其中按 id 点查远程 session 的链走下面的「远程 session 的组合 id resolver」（先 B 源、未命中回退 A 源），不属于本条「无 A 回退」范围。`profiles.json` 中已有的历史投影条目**保留**，让老工作区 folder `ssh:<id>` 仍能解析，不做 id 重映射。
+- **状态栏过滤当前 home**：状态栏只显示 B 源主机。当前 SSH home 本身是 `SshConnectionCubit` 里的一条 storage-pool 连接，必须保持可连接：`assembleSshHostProfiles` 把「B 源 + 当前 home」喂给 cubit，`SshConnectionState.excluding(homeId)` 再把 home 主机从可见列表 / `connectedCount` / `isEmpty` 中隐藏；启动重连与 `SshHomeDisconnectedBanner` 仍通过 `connect(pid)` 触达它。这是「组装列表」的消费链，与下面的 id resolver 不同。
+- **远程 session 的组合 id resolver**：`wireChatSession` → `ChatCubit.sshProfileById` / `buildSessionConnectOrchestrator(profileById:)` 用 `combinedSshProfileResolver` 按 id 点查 —— **先 B 源，未命中回退 A 源 home profile**（让 B-only 工作负载主机能跑远程 session，同时保留 SSH home 模式 / 离线 home 绑定）。`ChatSessionShellFactory._profileFor` 的 selected-profile 兜底必须保留，不能换成 B-only 查询。工作区 MCP 的 `profileOf` 只读 B 源、无 A 回退。
+- **连接语义按入口分离**：SSH 服务器页（B 源）的「连接」= 桌面语义 `connect(id, switchHome: false)`，只建立工作负载连接、不切 home；远程连接页（A 源）的「连接」= **纯 home 绑定**：`HomeTargetController.select('ssh:$id')` + `SshProfileCubit.selectProfile(id)`（`applyAndroidSshConnectHome`），**不调用** `SshConnectionCubit.connect`，也不向状态栏贡献主机。
+- **凭据**：`SshServerProfile` 永不携带凭据或 `vaultEntryId`。B 源条目连接时按 `vaultOwnerKindSshProfile + profile.id` 解析本机 vault，或经 `PlaneSshProfileRepository._deviceVaultRefs()` 借用设备引用；`profiles.json` 不写入任何凭据。SSH 登录凭据留在设备 vault（断线仍可重连）；业务凭据（provider key、GitHub token 等）写 `<home>/vault/business.json`，随 home plane 走。`VaultDocumentStore` 同时读取两侧、按 owner kind 路由写入，远端侧故障不阻断本地 SSH 凭据；拆分前的业务条目做一次性复制迁移，不删除原数据。
+- **凭据迁移**：启动时 + 每次 home 平面切换后都执行（`migrateBusinessVaultEntries` + `VaultLegacyImportService.runRepair`），两者幂等。`runRepair` 不受 `legacyImportVersion` 一次性标记限制，会把仍带明文 `apiKey` 且没有 vault 引用的 provider 回填进 home vault 并清掉明文；设备 vault 里的业务条目会复制到当前平面，SSH 登录凭据跳过。因此桌面端作为手机的 home 时会把自己的业务凭据发布成 `business.json`。注意：未启用加密时该文件是明文。
 
 ## Home connection resilience
 

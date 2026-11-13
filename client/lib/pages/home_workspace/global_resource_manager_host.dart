@@ -24,6 +24,7 @@ import '../../services/resource_manager/resource_binding.dart';
 import '../../services/resource_manager/resource_binding_adapter.dart';
 import '../../services/resource_manager/resource_manager_lifecycle.dart';
 import '../../services/resource_manager/resource_tree_merge.dart';
+import '../../services/storage/home_target_controller.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_run_service.dart';
 import '../../services/workbench/workbench_shell_actions.dart';
@@ -351,6 +352,7 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
     final workspaceId = HomeWorkspaceRoute.workspaceId(
       GoRouterState.of(context).uri.toString(),
     );
+    final homeController = context.read<HomeTargetController>();
     return BlocProvider<ResourceManagerCubit>.value(
       value: _cubit,
       child: ResourceManagerNavigateScope(
@@ -383,6 +385,11 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
                     ProgressActivitiesStatusItem(workspaceId: workspaceId),
                     ResourceUsageStatusItem(),
                     SshHostsStatusItem(
+                      // Hide the current home storage-pool connection from the
+                      // workload host list; it is still connectable for boot /
+                      // disconnected-banner reconnect.
+                      homeSshProfileId: () =>
+                          homeController.current.sshProfileId,
                       onManage: () => openSshProfilesManagement(context),
                       onOpenTerminal: (profileId) =>
                           _openSshHostTerminal(profileId, workspaceId ?? ''),

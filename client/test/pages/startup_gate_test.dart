@@ -383,7 +383,12 @@ void main() {
 
     final ctx = tester.element(find.byType(RemoteConnectionsPage));
     // Do not await: the future completes only after the dialog pops.
-    final editor = openSshProfileEditor(ctx);
+    final editor = openSshProfileEditor(
+      ctx,
+      repository: profileRepository,
+      profileCubit: profileCubit,
+      onRefresh: () => profileCubit.load(),
+    );
     await tester.pumpAndSettle();
     expect(find.byType(TpDialogPageShell), findsOneWidget);
 
@@ -428,15 +433,20 @@ void main() {
 
     final ctx = tester.element(find.byType(RemoteConnectionsPage));
     // ignore: unawaited_futures — completes when the dialog pops
-    openSshProfileEditor(ctx);
+    openSshProfileEditor(
+      ctx,
+      repository: profileRepository,
+      profileCubit: profileCubit,
+      onRefresh: () => profileCubit.load(),
+    );
     await tester.pumpAndSettle();
 
-    // Dialog field order: label(0), host(1), username(2), port(3),
-    // private key(4), passphrase(5), password(6).
+    // Password-mode dialog field order: label(0), host(1), username(2),
+    // port(3), password(4).
     await tester.enterText(find.byType(TextField).at(0), 'My Box');
     await tester.enterText(find.byType(TextField).at(1), 'example.com');
     await tester.enterText(find.byType(TextField).at(2), 'alice');
-    await tester.enterText(find.byType(TextField).at(6), 'password123');
+    await tester.enterText(find.byType(TextField).at(4), 'password123');
 
     await tester.tap(
       find.descendant(
