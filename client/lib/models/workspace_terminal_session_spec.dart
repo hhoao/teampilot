@@ -188,3 +188,43 @@ bool _sameSshTarget(RuntimeTarget a, RuntimeTarget b) {
   if (a.kind != b.kind) return false;
   return (a.sshProfileId ?? '') == (b.sshProfileId ?? '');
 }
+
+/// Persistence codec for workspace shell specs (workbench-layout v2).
+Map<String, Object?> workspaceTerminalSpecToJson(
+  WorkspaceTerminalSessionSpec spec,
+) => switch (spec) {
+  WorkspaceTerminalLocalSpec(:final shellPath) => {
+    'type': 'local',
+    'shellPath': shellPath,
+  },
+  WorkspaceTerminalWorkspaceTargetSpec(:final targetId) => {
+    'type': 'target',
+    'targetId': targetId,
+  },
+  WorkspaceTerminalSshProfileSpec(:final profileId) => {
+    'type': 'sshProfile',
+    'profileId': profileId,
+  },
+};
+
+/// Null for malformed input; callers drop the owning persisted tab.
+WorkspaceTerminalSessionSpec? workspaceTerminalSpecFromJson(Object? json) {
+  if (json is! Map) return null;
+  final type = json['type'];
+  if (type is! String) return null;
+  return switch (type) {
+    'local' => switch (json['shellPath']) {
+      final String shellPath => WorkspaceTerminalLocalSpec(shellPath),
+      _ => null,
+    },
+    'target' => switch (json['targetId']) {
+      final String targetId => WorkspaceTerminalWorkspaceTargetSpec(targetId),
+      _ => null,
+    },
+    'sshProfile' => switch (json['profileId']) {
+      final String profileId => WorkspaceTerminalSshProfileSpec(profileId),
+      _ => null,
+    },
+    _ => null,
+  };
+}
