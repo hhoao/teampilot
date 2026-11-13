@@ -800,4 +800,18 @@ void main() {
       expect(groups[0].$2, ['s1', 's2']);
     });
   });
+
+  test('replaceFloatingTabId retargets only the floating layout', () {
+    final cubit = WorkbenchCubit()
+      ..openSession('ws', 's1')
+      ..openFloating('ws', WorkbenchTabId.shell('old'));
+    addTearDown(cubit.close);
+
+    cubit.replaceFloatingTabId('ws', 'old', 'new');
+
+    expect(cubit.mergedFloatingStrip('ws').order, [
+      WorkbenchTabId.shell('new'),
+    ]);
+    expect(cubit.centerOrder('ws'), [WorkbenchTabId.session('s1')]);
+  });
 }

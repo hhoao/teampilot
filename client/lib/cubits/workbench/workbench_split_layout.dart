@@ -521,6 +521,50 @@ class SplitLayoutReducer {
     return next;
   }
 
+  /// Replaces [from] with [to] in place across every group (order, active,
+  /// preview and pin sets, landing return tab). No-op when [from] == [to],
+  /// [from] is absent, or [to] already exists anywhere.
+  WorkbenchGroupLayout replaceTab(
+    WorkbenchGroupLayout layout,
+    WorkbenchTabId from,
+    WorkbenchTabId to,
+  ) {
+    if (from == to) return layout;
+    for (final strip in layout.groups.values) {
+      if (strip.contains(to)) return layout;
+    }
+    var changed = false;
+    final groups = <String, TabStrip>{};
+    for (final entry in layout.groups.entries) {
+      final strip = entry.value;
+      if (!strip.contains(from)) {
+        groups[entry.key] = strip;
+        continue;
+      }
+      changed = true;
+      Set<WorkbenchTabId> swap(Set<WorkbenchTabId> ids) {
+        if (!ids.contains(from)) return ids;
+        return {...ids}
+          ..remove(from)
+          ..add(to);
+      }
+
+      groups[entry.key] = strip.copyWith(
+        order: [for (final tab in strip.order) tab == from ? to : tab],
+        activeId: strip.activeId == from ? to : strip.activeId,
+        previewIds: swap(strip.previewIds),
+        pinnedIds: swap(strip.pinnedIds),
+        landingReturnTabId: strip.landingReturnTabId == from
+            ? to
+            : strip.landingReturnTabId,
+      );
+    }
+    if (!changed) return layout;
+    final next = layout.copyWith(groups: groups);
+    assert(_debugCheck(next));
+    return next;
+  }
+
   /// The strip of the group hosting [tabId], or null when absent.
   TabStrip? groupForTab(WorkbenchGroupLayout layout, WorkbenchTabId tabId) {
     final groupId = _groupContainingTab(layout, tabId);

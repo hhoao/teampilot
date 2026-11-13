@@ -524,6 +524,24 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     );
   }
 
+  /// Retargets a restored shell tab from its persisted entry id to the live
+  /// entry id created by the lazy rebuild (floating layout only).
+  void replaceFloatingTabId(
+    String workspaceId,
+    String fromEntryId,
+    String toEntryId,
+  ) {
+    _mutateLayout(
+      workspaceId,
+      floating: true,
+      mutate: (layout) => _lr.replaceTab(
+        layout,
+        WorkbenchTabId.shell(fromEntryId),
+        WorkbenchTabId.shell(toEntryId),
+      ),
+    );
+  }
+
   void openRun(
     String workspaceId,
     String runSessionId, {

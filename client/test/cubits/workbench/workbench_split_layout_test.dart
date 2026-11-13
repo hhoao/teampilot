@@ -882,4 +882,53 @@ void main() {
       expect(back, isNull);
     });
   });
+
+  group('replaceTab', () {
+    final oldShell = WorkbenchTabId.shell('old');
+    final newShell = WorkbenchTabId.shell('new');
+
+    test('replaces id in order, active, preview and pin sets in place', () {
+      var layout = _seed(_s1, oldShell, _s3);
+      layout = layout.copyWith(
+        groups: {
+          'g0': layout.groups['g0']!.copyWith(
+            activeId: oldShell,
+            previewIds: {oldShell},
+            pinnedIds: {oldShell},
+          ),
+        },
+      );
+
+      final next = const SplitLayoutReducer().replaceTab(
+        layout,
+        oldShell,
+        newShell,
+      );
+
+      final strip = next.groups['g0']!;
+      expect(strip.order, [_s1, newShell, _s3]);
+      expect(strip.activeId, newShell);
+      expect(strip.previewIds, {newShell});
+      expect(strip.pinnedIds, {newShell});
+      expect(next.focusedGroupId, layout.focusedGroupId);
+      expect(next.lockedGroupIds, layout.lockedGroupIds);
+    });
+
+    test('no-op guards: same id, missing source, existing target', () {
+      final layout = _seed(_s1, oldShell);
+      const r = SplitLayoutReducer();
+      expect(
+        identical(r.replaceTab(layout, oldShell, oldShell), layout),
+        isTrue,
+      );
+      expect(
+        identical(
+          r.replaceTab(layout, WorkbenchTabId.shell('nope'), newShell),
+          layout,
+        ),
+        isTrue,
+      );
+      expect(identical(r.replaceTab(layout, oldShell, _s1), layout), isTrue);
+    });
+  });
 }
