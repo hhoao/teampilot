@@ -1,9 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/catalog/catalog_kind.dart';
 import 'package:teampilot/services/catalog/catalog_mutation_bus.dart';
 import 'package:teampilot/services/event/async_dispatcher.dart';
+
+import '../support/app_shell_source.dart';
 
 void main() {
   group('bootstrap-failure catalog bus teardown', () {
@@ -48,7 +48,7 @@ void main() {
     test(
       'app_shell failure path closes the discarded shell catalog bus',
       () async {
-        final src = File('lib/app/app_shell.dart').readAsStringSync();
+        final src = readAppBootstrapSource();
 
         // The seam exists: AppShell exposes its assembled catalog runtime.
         expect(

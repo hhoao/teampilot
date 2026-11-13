@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/app/app_shell.dart';
+import 'package:teampilot/app/bootstrap/managed_provider_control_plane.dart';
 import 'package:teampilot/cubits/managed_provider_cubit.dart';
 import 'package:teampilot/cubits/managed_provider_usage_cubit.dart';
 import 'package:teampilot/models/managed_provider.dart';

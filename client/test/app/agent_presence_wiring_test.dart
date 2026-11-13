@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/app_shell_source.dart';
+
 /// Source-level pins for the presence-events app-shell wiring.
 ///
 /// The full bootstrap path is not widget-testable: `buildAppShell` wires the
@@ -11,7 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// all three kinds) is covered by
 /// `test/services/event/agent_presence_family_registration_test.dart`.
 void main() {
-  final src = File('lib/app/app_shell.dart').readAsStringSync();
+  final src = readAppBootstrapSource();
 
   group('presence-events app-shell wiring', () {
     test('exactly one app-lifetime projection exists in lib/', () {
@@ -31,7 +33,7 @@ void main() {
       }
       expect(
         constructions,
-        ['lib/app/app_shell.dart: 1'],
+        ['lib/app/team_pilot_bootstrap.dart: 1'],
         reason:
             'the projection must be created once, by the bootstrap state '
             '(not per bootstrap retry)',

@@ -29,7 +29,6 @@
 library;
 
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
@@ -48,6 +47,7 @@ import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_connect_attempt.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
+import '../support/app_shell_source.dart';
 import '../support/in_memory_filesystem.dart';
 import '../support/post_frame_test_harness.dart';
 
@@ -378,9 +378,7 @@ void main() {
     late final String src;
 
     setUpAll(() {
-      src = File(
-        'lib/app/app_shell.dart',
-      ).readAsStringSync().replaceAll(RegExp(r'\s+'), ' ');
+      src = readAppBootstrapSource().replaceAll(RegExp(r'\s+'), ' ');
     });
 
     test('an unreachable home defers the remote boot', () {
@@ -445,14 +443,14 @@ void main() {
     test('a successful home connection runs hot recovery', () {
       final onConnected = src.indexOf('onConnected: () {');
       final bootCall = src.indexOf(
-        'await runRemoteBootAfterConnect();',
+        'await shellBoot.runRemoteBootAfterConnect();',
         onConnected,
       );
       // Bound the window to the onConnected block: the same call also appears
       // later in bootstrapAppData (`showOnboarding = await ...`), so without
       // this upper bound deleting the hot-recovery call would still match.
       final afterBoot = src.indexOf(
-        'await reconnectHomeSshIfNeeded();',
+        'await shellBoot.reconnectHomeSshIfNeeded();',
         onConnected,
       );
       expect(onConnected, greaterThanOrEqualTo(0));
@@ -476,7 +474,7 @@ void main() {
       expect(
         RegExp(
           r'if \(isSshHome && !initialHome\.reachable\) \{ '
-          r'sshProfileConnectionCoordinator\.restartReconnect\(homeProfileId\);',
+          r'sshProfileConnectionCoordinator\.restartReconnect\(homeProfileId!?\);',
         ).hasMatch(src),
         isTrue,
         reason:
@@ -537,10 +535,10 @@ void main() {
     test('cubit/coordinator hooks read the live home id', () {
       expect(
         src,
-        contains('profileId == activeHomeProfileId'),
+        contains('state.profileId != activeHomeProfileId'),
         reason:
-            'onReconnectAttempt/onReconnected/persistRetry must follow home '
-            'switches, not the captured boot id',
+            'the connectivity projection must follow home switches, not the '
+            'captured boot id',
       );
       expect(
         src,

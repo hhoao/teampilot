@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'app/app_shell.dart';
+import 'app/team_pilot_bootstrap.dart';
 import 'app/team_generation_graph.dart';
 import 'services/chat/team_generation/team_generation_coordinator.dart';
 import 'services/install/install_job_registry.dart';
