@@ -331,4 +331,125 @@ void main() {
 
     expect(managed, 1);
   });
+
+  testWidgets('B-source workload host shown; home host hidden from count/rows', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    final cubit = harness.createCubit();
+    addTearDown(cubit.close);
+    cubit.seed(
+      _stateWithHosts(
+        hosts: const [
+          SshHostConnectionVm(
+            profileId: 'home',
+            label: 'Home Server',
+            host: 'home.example.com',
+            status: SshHostUiStatus.connected,
+          ),
+          SshHostConnectionVm(
+            profileId: 'workload',
+            label: 'Workload A',
+            host: 'work.example.com',
+            status: SshHostUiStatus.connected,
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(
+      _host(
+        cubit: cubit,
+        child: WorkspaceStatusBar(
+          items: [SshHostsStatusItem(homeSshProfileId: () => 'home')],
+        ),
+      ),
+    );
+
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
+    expect(find.byKey(const Key('ssh-hosts-pill')), findsOneWidget);
+    // Only the B-source host is counted; the current home is filtered out.
+    expect(find.text(l10n.ssh.hostsPillCount(count: 1)), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('ssh-hosts-pill')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Workload A'), findsOneWidget);
+    expect(find.text('Home Server'), findsNothing);
+  });
+
+  testWidgets('home host hidden from inactive rows', (tester) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    final cubit = harness.createCubit();
+    addTearDown(cubit.close);
+    cubit.seed(
+      _stateWithHosts(
+        hosts: const [
+          SshHostConnectionVm(
+            profileId: 'home',
+            label: 'Home Server',
+            host: 'home.example.com',
+            status: SshHostUiStatus.disconnected,
+          ),
+          SshHostConnectionVm(
+            profileId: 'workload',
+            label: 'Workload A',
+            host: 'work.example.com',
+            status: SshHostUiStatus.disconnected,
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(
+      _host(
+        cubit: cubit,
+        child: WorkspaceStatusBar(
+          items: [SshHostsStatusItem(homeSshProfileId: () => 'home')],
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('ssh-hosts-pill')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Workload A'), findsOneWidget);
+    expect(find.text('Home Server'), findsNothing);
+  });
+
+  testWidgets('only the home host hides the pill (filtered isEmpty)', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    final cubit = harness.createCubit();
+    addTearDown(cubit.close);
+    cubit.seed(
+      _stateWithHosts(
+        hosts: const [
+          SshHostConnectionVm(
+            profileId: 'home',
+            label: 'Home Server',
+            host: 'home.example.com',
+            status: SshHostUiStatus.connected,
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(
+      _host(
+        cubit: cubit,
+        child: WorkspaceStatusBar(
+          items: [SshHostsStatusItem(homeSshProfileId: () => 'home')],
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('ssh-hosts-pill')), findsNothing);
+  });
 }

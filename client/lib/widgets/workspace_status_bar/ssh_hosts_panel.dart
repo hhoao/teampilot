@@ -8,9 +8,34 @@ import '../../cubits/ssh_connection_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/ssh/ssh_connection_failure.dart';
 
+/// Display-only view of [SshConnectionState] with the current home host
+/// removed. The cubit keeps the home in its maps so `connect` still works;
+/// the status bar hides it here without mutating cubit state.
+extension SshHostsStatusBarView on SshConnectionState {
+  SshConnectionState excluding(String? homeProfileId) {
+    if (homeProfileId == null ||
+        (!hostsById.containsKey(homeProfileId) &&
+            !profileOrder.contains(homeProfileId))) {
+      return this;
+    }
+    return SshConnectionState(
+      hostsById: Map<String, SshHostConnectionVm>.of(hostsById)
+        ..remove(homeProfileId),
+      profileOrder: profileOrder
+          .where((id) => id != homeProfileId)
+          .toList(growable: false),
+    );
+  }
+}
+
 /// Open Remote Hosts popover body (header, host rows, Manage).
 class SshHostsPanel extends StatelessWidget {
-  const SshHostsPanel({this.onManage, this.onOpenTerminal, super.key});
+  const SshHostsPanel({
+    this.onManage,
+    this.onOpenTerminal,
+    this.homeSshProfileId,
+    super.key,
+  });
 
   /// Jump to SSH profile management (caller closes the popover).
   final VoidCallback? onManage;
@@ -18,6 +43,9 @@ class SshHostsPanel extends StatelessWidget {
   /// Open a floating shell for the host's SSH profile (caller closes the
   /// popover).
   final ValueChanged<String>? onOpenTerminal;
+
+  /// Resolves the current home's SSH profile id, hidden from the host rows.
+  final String? Function()? homeSshProfileId;
 
   static const double panelWidth = 320;
 
@@ -29,8 +57,9 @@ class SshHostsPanel extends StatelessWidget {
         final styles = TpTextStyles.of(context);
         final cs = Theme.of(context).colorScheme;
         final cubit = context.read<SshConnectionCubit>();
-        final connected = state.connectedHosts;
-        final inactive = state.inactiveHosts;
+        final visible = state.excluding(homeSshProfileId?.call());
+        final connected = visible.connectedHosts;
+        final inactive = visible.inactiveHosts;
 
         return SizedBox(
           width: panelWidth,

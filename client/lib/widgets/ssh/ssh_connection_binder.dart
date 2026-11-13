@@ -6,9 +6,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/ssh_connection_cubit.dart';
 import '../../cubits/ssh_profile_cubit.dart';
+import '../../cubits/ssh_workload_profile_cubit.dart';
 import '../../models/ssh_profile.dart';
+import '../../services/ssh/ssh_host_profile_assembly.dart';
+import '../../services/storage/home_target_controller.dart';
 
-/// Keeps [SshConnectionCubit] host VMs in sync with [SshProfileCubit] profiles.
+/// Keeps [SshConnectionCubit] host VMs in sync with the home-plane workload
+/// catalog (B source) plus the current SSH home profile (from the device-local
+/// A source). The home is kept in the cubit so boot reconnect and
+/// `SshHomeDisconnectedBanner` can still `connect(pid)`; the status bar hides
+/// it again through `SshConnectionState.excluding`.
 class SshConnectionBinder extends StatefulWidget {
   const SshConnectionBinder({required this.child, super.key});
 
@@ -27,9 +34,19 @@ class _SshConnectionBinderState extends State<SshConnectionBinder> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _requestSync(context.read<SshProfileCubit>().state.profiles);
+      _requestSync(_assembled(context));
     });
   }
+
+  /// Single assembly point shared with `shell_boot.reconnectHomeSshIfNeeded`,
+  /// so the binder and boot never disagree about the synced list.
+  List<SshProfile> _assembled(BuildContext context) =>
+      assembleSshHostProfiles(
+        workloadProfiles:
+            context.read<SshWorkloadProfileCubit>().state.profiles,
+        deviceProfiles: context.read<SshProfileCubit>().state.profiles,
+        home: context.read<HomeTargetController>().current,
+      );
 
   void _requestSync(List<SshProfile> profiles) {
     _pending = profiles;
@@ -60,10 +77,19 @@ class _SshConnectionBinderState extends State<SshConnectionBinder> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<SshProfileCubit, SshProfileState>(
-      listenWhen: (previous, next) =>
-          !listEquals(previous.profiles, next.profiles),
-      listener: (context, state) => _requestSync(state.profiles),
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<SshWorkloadProfileCubit, SshProfileState>(
+          listenWhen: (previous, next) =>
+              !listEquals(previous.profiles, next.profiles),
+          listener: (context, state) => _requestSync(_assembled(context)),
+        ),
+        BlocListener<SshProfileCubit, SshProfileState>(
+          listenWhen: (previous, next) =>
+              !listEquals(previous.profiles, next.profiles),
+          listener: (context, state) => _requestSync(_assembled(context)),
+        ),
+      ],
       child: widget.child,
     );
   }

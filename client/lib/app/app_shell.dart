@@ -1936,6 +1936,7 @@ Future<AppShell> buildAppShell({
     shellBoot = ShellBootController(
       homeStorage: homeStorage,
       sshProfileCubit: sshProfileCubit,
+      sshWorkloadProfileCubit: sshWorkloadProfileCubit,
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,
       layoutCubit: layoutCubit,

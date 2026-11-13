@@ -9,13 +9,22 @@ import 'workspace_status_bar.dart';
 
 /// Closed status-bar pill + Remote Hosts popover (`ssh-hosts`).
 class SshHostsStatusItem implements WorkspaceStatusBarItem {
-  SshHostsStatusItem({this.onManage, this.onOpenTerminal});
+  SshHostsStatusItem({
+    this.onManage,
+    this.onOpenTerminal,
+    this.homeSshProfileId,
+  });
 
   /// Navigate to SSH profile management (Task 6 wires GoRouter).
   final VoidCallback? onManage;
 
   /// Open a floating terminal for the given SSH profile id.
   final ValueChanged<String>? onOpenTerminal;
+
+  /// Resolves the current home's SSH profile id. The status bar hides this
+  /// host: the home storage-pool connection is kept in `SshConnectionCubit`
+  /// for boot/banner reconnect, but must not appear among workload hosts.
+  final String? Function()? homeSshProfileId;
 
   @override
   String get id => 'ssh-hosts';
@@ -26,6 +35,7 @@ class SshHostsStatusItem implements WorkspaceStatusBarItem {
       compact: compact,
       onManage: onManage,
       onOpenTerminal: onOpenTerminal,
+      homeSshProfileId: homeSshProfileId,
     );
   }
 }
@@ -35,11 +45,13 @@ class _SshHostsStatusSegment extends StatefulWidget {
     required this.compact,
     this.onManage,
     this.onOpenTerminal,
+    this.homeSshProfileId,
   });
 
   final bool compact;
   final VoidCallback? onManage;
   final ValueChanged<String>? onOpenTerminal;
+  final String? Function()? homeSshProfileId;
 
   @override
   State<_SshHostsStatusSegment> createState() => _SshHostsStatusSegmentState();
@@ -57,19 +69,26 @@ class _SshHostsStatusSegmentState extends State<_SshHostsStatusSegment> {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<SshConnectionCubit, SshConnectionState>(
-      buildWhen: (previous, next) =>
-          previous.connectedCount != next.connectedCount ||
-          previous.overallStatus != next.overallStatus ||
-          previous.isEmpty != next.isEmpty,
+      buildWhen: (previous, next) {
+        // Resolve the home id fresh on every comparison: a home switch can
+        // change which host is hidden even between the same cubit states.
+        final homeId = widget.homeSshProfileId?.call();
+        final prev = previous.excluding(homeId);
+        final curr = next.excluding(homeId);
+        return prev.connectedCount != curr.connectedCount ||
+            prev.overallStatus != curr.overallStatus ||
+            prev.isEmpty != curr.isEmpty;
+      },
       builder: (context, state) {
-        if (state.isEmpty) return const SizedBox.shrink();
+        final visible = state.excluding(widget.homeSshProfileId?.call());
+        if (visible.isEmpty) return const SizedBox.shrink();
 
         final l10n = context.l10n;
         final connecting =
-            state.overallStatus == SshHostsOverallStatus.connecting;
+            visible.overallStatus == SshHostsOverallStatus.connecting;
         final label = connecting
             ? l10n.ssh.hostsPillConnecting
-            : l10n.ssh.hostsPillCount(count: state.connectedCount);
+            : l10n.ssh.hostsPillCount(count: visible.connectedCount);
 
         return TpActionMenuAnchor(
           controller: _popover,
@@ -83,6 +102,7 @@ class _SshHostsStatusSegmentState extends State<_SshHostsStatusSegment> {
             offset: Offset(0, -8),
           ),
           popoverBuilder: (context, menu) => SshHostsPanel(
+            homeSshProfileId: widget.homeSshProfileId,
             onManage: () {
               menu.close();
               widget.onManage?.call();
@@ -100,7 +120,7 @@ class _SshHostsStatusSegmentState extends State<_SshHostsStatusSegment> {
               key: const Key('ssh-hosts-pill'),
               compact: widget.compact,
               label: label,
-              overallStatus: state.overallStatus,
+              overallStatus: visible.overallStatus,
               onTap: _popover.toggle,
             ),
           ),

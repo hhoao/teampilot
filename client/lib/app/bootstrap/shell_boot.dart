@@ -17,6 +17,7 @@ import '../../cubits/shortcut_cubit.dart';
 import '../../cubits/skill_cubit.dart';
 import '../../cubits/ssh_connection_cubit.dart';
 import '../../cubits/ssh_profile_cubit.dart';
+import '../../cubits/ssh_workload_profile_cubit.dart';
 import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import '../../repositories/app_settings_repository.dart';
@@ -28,6 +29,7 @@ import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/home_workspace/home_workspace_ui_cache.dart';
 import '../../services/perf/live_perf_driver.dart';
 import '../../services/plugin/marketplace_shared_store.dart';
+import '../../services/ssh/ssh_host_profile_assembly.dart';
 import '../../services/storage/home_invalidation_service.dart';
 import '../../services/storage/home_storage.dart';
 import '../../services/storage/runtime_context.dart';
@@ -55,6 +57,7 @@ class ShellBootController {
   ShellBootController({
     required this.homeStorage,
     required this.sshProfileCubit,
+    required this.sshWorkloadProfileCubit,
     required this.chatCubit,
     required this.sessionRepo,
     required this.layoutCubit,
@@ -92,6 +95,7 @@ class ShellBootController {
 
   final HomeStorage homeStorage;
   final SshProfileCubit sshProfileCubit;
+  final SshWorkloadProfileCubit sshWorkloadProfileCubit;
   final ChatCubit chatCubit;
   final SessionRepository sessionRepo;
   final LayoutCubit layoutCubit;
@@ -140,7 +144,16 @@ class ShellBootController {
     final home = defaultTargetResolver();
     final pid = home.sshProfileId;
     if (home.kind != RuntimeKind.ssh || pid == null || pid.isEmpty) return;
-    await sshConnectionCubit.syncProfiles(sshProfileCubit.state.profiles);
+    // Feed the same assembled list as the binder (B-source workload hosts +
+    // the current home), so the home stays connectable here and in the
+    // disconnected banner. The status bar hides the home again.
+    await sshConnectionCubit.syncProfiles(
+      assembleSshHostProfiles(
+        workloadProfiles: sshWorkloadProfileCubit.state.profiles,
+        deviceProfiles: sshProfileCubit.state.profiles,
+        home: home,
+      ),
+    );
     unawaited(sshConnectionCubit.connect(pid));
   }
 
