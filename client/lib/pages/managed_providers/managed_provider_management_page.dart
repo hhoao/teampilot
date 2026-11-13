@@ -132,24 +132,15 @@ class _ManagedProviderManagementPageState
                                     context.read<ManagedProviderCubit>().load(),
                               );
                             }
-                            return BlocBuilder<
-                              ManagedProviderUsageCubit,
-                              ManagedProviderUsageState
-                            >(
-                              builder: (context, usageState) =>
-                                  ManagedProviderList(
-                                    providers: providerState.providers,
-                                    snapshots: usageState.snapshots,
-                                    isRefreshing:
-                                        usageState.isRefreshingProvider,
-                                    onEdit: (provider) => _openEditor(
-                                      context,
-                                      provider: provider,
-                                    ),
-                                    onToggle: _toggle,
-                                    onDelete: _delete,
-                                    onRefresh: _refresh,
-                                  ),
+                            // Usage state is selected per card inside the list;
+                            // a snapshot refresh must not rebuild every card.
+                            return ManagedProviderList(
+                              providers: providerState.providers,
+                              onEdit: (provider) =>
+                                  _openEditor(context, provider: provider),
+                              onToggle: _toggle,
+                              onDelete: _delete,
+                              onRefresh: _refresh,
                             );
                           },
                         ),

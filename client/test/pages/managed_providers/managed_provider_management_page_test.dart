@@ -1813,4 +1813,61 @@ void main() {
     expect(find.text('Disabled'), findsOneWidget);
     expect(find.byIcon(Icons.play_circle_outline), findsOneWidget);
   });
+
+  testWidgets('usage update rebuilds only the card whose snapshot changed', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(
+        status: ManagedProviderLoadStatus.ready,
+        providers: [
+          _provider(id: 'p1'),
+          _provider(id: 'p2', name: 'Second'),
+        ],
+      ),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(
+        status: ManagedProviderUsageLoadStatus.ready,
+        snapshots: {'p1': _snapshot()},
+      ),
+    );
+    await pumpPage(tester);
+
+    final firstCardBefore = tester.widget(
+      find.byKey(const Key('managed-provider-p1')),
+    );
+    final secondCardBefore = tester.widget(
+      find.byKey(const Key('managed-provider-p2')),
+    );
+
+    // A fresh usage state whose p2 slice is unchanged (only p1 refreshed).
+    usageCubit.emit(
+      ManagedProviderUsageState(
+        status: ManagedProviderUsageLoadStatus.ready,
+        snapshots: {'p1': _snapshot().copyWith(fetchedAt: 200)},
+        generation: 1,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(usageCubit.state.generation, 1);
+    expect(
+      identical(
+        tester.widget(find.byKey(const Key('managed-provider-p1'))),
+        firstCardBefore,
+      ),
+      isFalse,
+      reason: 'the refreshed p1 card should have rebuilt',
+    );
+    expect(
+      identical(
+        tester.widget(find.byKey(const Key('managed-provider-p2'))),
+        secondCardBefore,
+      ),
+      isTrue,
+      reason: 'an unrelated card must not rebuild on a usage state emit',
+    );
+    expect(find.byKey(const Key('managed-provider-p1')), findsOneWidget);
+  });
 }
