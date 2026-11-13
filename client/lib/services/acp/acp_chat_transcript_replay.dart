@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 
+import 'acp_stream_channel_parts.dart';
+
 /// Current on-disk schema of the app-owned ACP chat transcript.
 ///
 /// v1 was a **whole-message snapshot**: one line per message with every part
@@ -539,17 +541,20 @@ class _MessageBuilder {
     parts[index] = part;
   }
 
-  AiMessage build() => AiMessage(
-    id: id,
-    role: role,
-    parts: [
+  AiMessage build() {
+    final raw = [
       for (final part in parts)
         if (part != null) part,
-    ],
-    createdAt: createdAt,
-    status: status,
-    deliveryChannel: deliveryChannel,
-  );
+    ];
+    return AiMessage(
+      id: id,
+      role: role,
+      parts: role == AiRole.assistant ? foldAcpStreamChannelParts(raw) : raw,
+      createdAt: createdAt,
+      status: status,
+      deliveryChannel: deliveryChannel,
+    );
+  }
 }
 
 // ----- v1 codec (read-only) -----

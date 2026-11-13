@@ -118,6 +118,111 @@ void main() {
     expect((loaded[2].parts.single as AiTextPart).text, 'Turn failed');
   });
 
+  test('decoder folds interleaved thought and text on assistant messages', () {
+    final jsonl = [
+      _line({'v': 2, 'type': 'assistant', 'id': 'acp-a-1'}),
+      _line({
+        'v': 2,
+        'type': 'part',
+        'mid': 'acp-a-1',
+        'i': 0,
+        'part': {'kind': 'reasoning', 'text': 'a'},
+      }),
+      _line({
+        'v': 2,
+        'type': 'part',
+        'mid': 'acp-a-1',
+        'i': 1,
+        'part': {'kind': 'text', 'text': '1'},
+      }),
+      _line({
+        'v': 2,
+        'type': 'part',
+        'mid': 'acp-a-1',
+        'i': 2,
+        'part': {'kind': 'reasoning', 'text': 'b'},
+      }),
+      _line({
+        'v': 2,
+        'type': 'part',
+        'mid': 'acp-a-1',
+        'i': 3,
+        'part': {'kind': 'text', 'text': '2'},
+      }),
+    ].join('\n');
+
+    final loaded = decodeAcpChatTranscript(jsonl);
+    expect(loaded, hasLength(1));
+    final parts = loaded.single.parts;
+    expect(parts, hasLength(2));
+    expect((parts[0] as AiReasoningPart).text, 'ab');
+    expect((parts[1] as AiTextPart).text, '12');
+  });
+
+  test('decoder leaves user parts unfolded', () {
+    final jsonl = [
+      _line({'v': 2, 'type': 'user', 'id': 'acp-u-1'}),
+      _line({
+        'v': 2,
+        'type': 'part',
+        'mid': 'acp-u-1',
+        'i': 0,
+        'part': {'kind': 'text', 'text': 'one'},
+      }),
+      _line({
+        'v': 2,
+        'type': 'part',
+        'mid': 'acp-u-1',
+        'i': 1,
+        'part': {'kind': 'text', 'text': 'two'},
+      }),
+    ].join('\n');
+
+    final loaded = decodeAcpChatTranscript(jsonl);
+    expect(loaded.single.parts, hasLength(2));
+    expect((loaded.single.parts[0] as AiTextPart).text, 'one');
+    expect((loaded.single.parts[1] as AiTextPart).text, 'two');
+  });
+
+  test('decoder keeps a tool call as a segment boundary', () {
+    final jsonl = [
+      _line({'v': 2, 'type': 'assistant', 'id': 'acp-a-1'}),
+      _line({
+        'v': 2,
+        'type': 'part',
+        'mid': 'acp-a-1',
+        'i': 0,
+        'part': {'kind': 'reasoning', 'text': 'a'},
+      }),
+      _line({
+        'v': 2,
+        'type': 'part',
+        'mid': 'acp-a-1',
+        'i': 1,
+        'part': {
+          'kind': 'tool',
+          'toolCallId': 't1',
+          'title': 'Read',
+          'status': 'complete',
+          'isError': false,
+        },
+      }),
+      _line({
+        'v': 2,
+        'type': 'part',
+        'mid': 'acp-a-1',
+        'i': 2,
+        'part': {'kind': 'reasoning', 'text': 'b'},
+      }),
+    ].join('\n');
+
+    final parts = decodeAcpChatTranscript(jsonl).single.parts;
+    expect(parts, hasLength(3));
+    expect((parts[0] as AiReasoningPart).text, 'a');
+    expect((parts[1] as AiToolCallPart).toolCallId, 't1');
+    expect((parts[2] as AiReasoningPart).text, 'b');
+  });
+
   test('round-trips TodoWrite args and task category', () {
     final original = [
       AiMessage(
