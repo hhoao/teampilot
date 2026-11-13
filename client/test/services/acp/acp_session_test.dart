@@ -2211,6 +2211,86 @@ void main() {
       });
     },
   );
+
+  test('maps available_commands_update and retains the latest list', () async {
+    session = await openSession();
+    final events = <AcpSessionUpdate>[];
+    final sub = session.updates.listen(events.add);
+
+    agentCtx.sessionUpdate(
+      sessionId: sessionId,
+      update: acpd.AvailableCommandsSessionUpdate(
+        update: acpd.AvailableCommandsUpdate(
+          availableCommands: [
+            acpd.AvailableCommand(
+              name: 'create_plan',
+              description: 'Create an implementation plan',
+              input: const acpd.UnstructuredCommandInput(hint: '<what>'),
+            ),
+            acpd.AvailableCommand(name: '/compact', description: 'Compact'),
+            acpd.AvailableCommand(name: '   ', description: 'ignored'),
+          ],
+        ),
+      ),
+    );
+    await pumpEventQueue();
+
+    final mapped = events.whereType<AcpAvailableCommandsUpdate>().single;
+    expect(mapped.commands.map((command) => command.name), [
+      'create_plan',
+      'compact',
+    ]);
+    expect(mapped.commands.first.description, 'Create an implementation plan');
+    expect(mapped.commands.first.inputHint, '<what>');
+    expect(mapped.commands.last.inputHint, isNull);
+    expect(session.availableCommands.map((command) => command.name), [
+      'create_plan',
+      'compact',
+    ]);
+
+    // An empty advertisement is "not ready yet" — it must not clear the list.
+    agentCtx.sessionUpdate(
+      sessionId: sessionId,
+      update: acpd.AvailableCommandsSessionUpdate(
+        update: const acpd.AvailableCommandsUpdate(availableCommands: []),
+      ),
+    );
+    await pumpEventQueue();
+    sub.cancel();
+
+    expect(events.whereType<AcpAvailableCommandsUpdate>(), hasLength(1));
+    expect(session.availableCommands.map((command) => command.name), [
+      'create_plan',
+      'compact',
+    ]);
+  });
+
+  test('a load session still accepts available_commands_update', () async {
+    agent.connection.onRequest(
+      'session/load',
+      (params) => acpd.LoadSessionResponse().toJson(),
+    );
+    session = await conn.loadSession(sessionId: 'agent-9', cwd: cwd);
+
+    final events = <AcpSessionUpdate>[];
+    final sub = session.updates.listen(events.add);
+
+    agentCtx.sessionUpdate(
+      sessionId: 'agent-9',
+      update: acpd.AvailableCommandsSessionUpdate(
+        update: const acpd.AvailableCommandsUpdate(
+          availableCommands: [
+            acpd.AvailableCommand(name: 'deploy', description: 'Deploy the app'),
+          ],
+        ),
+      ),
+    );
+    await pumpEventQueue();
+    sub.cancel();
+
+    final mapped = events.whereType<AcpAvailableCommandsUpdate>().single;
+    expect(mapped.commands.single.name, 'deploy');
+  });
 }
 
 const _askParams = {

@@ -29,6 +29,7 @@ import '../../../services/agent_status/agent_status_event.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../services/agent_status/agent_attention_port.dart';
 import '../../../services/agent_status/seat_lease_port.dart';
+import '../../../services/cli/registry/capabilities/native_command_capability.dart';
 
 /// Lifecycle phase of the terminal-less ACP chat session.
 enum AcpChatPhase {
@@ -91,6 +92,7 @@ class AcpChatRuntimeState {
     this.activity = AcpChatActivity.none,
     this.historyHydrated = false,
     this.modelState,
+    this.availableCommands = const [],
   });
 
   final AcpChatPhase phase;
@@ -122,6 +124,10 @@ class AcpChatRuntimeState {
   /// The agent's model selector, when it advertises one.
   final AcpModelState? modelState;
 
+  /// Commands the agent advertised for this session (empty = fall back to the
+  /// CLI's static table).
+  final List<NativeCommand> availableCommands;
+
   AcpChatRuntimeState copyWith({
     AcpChatPhase? phase,
     List<AiMessage>? messages,
@@ -132,6 +138,7 @@ class AcpChatRuntimeState {
     AcpChatActivity? activity,
     bool? historyHydrated,
     Object? modelState = _unset,
+    List<NativeCommand>? availableCommands,
   }) => AcpChatRuntimeState(
     phase: phase ?? this.phase,
     messages: messages ?? this.messages,
@@ -145,6 +152,7 @@ class AcpChatRuntimeState {
     modelState: identical(modelState, _unset)
         ? this.modelState
         : modelState as AcpModelState?,
+    availableCommands: availableCommands ?? this.availableCommands,
   );
 
   static const _unset = Object();
@@ -430,6 +438,32 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     return (runtime as AcpModelSwitchApi).modelState;
   }
 
+  /// Reads commands the agent advertised during the handshake, through the
+  /// optional ACP capability (the update stream is not subscribed yet).
+  ///
+  /// The cast is explicit because the two capabilities are unrelated
+  /// interfaces, so the `is!` check cannot promote the local.
+  List<NativeCommand> _readAvailableCommands() {
+    final runtime = _runtime;
+    if (runtime is! AcpAvailableCommandsApi) return const [];
+    return _toNativeCommands(
+      (runtime as AcpAvailableCommandsApi).availableCommands,
+    );
+  }
+
+  static List<NativeCommand> _toNativeCommands(
+    List<AcpAvailableCommand> commands,
+  ) => [
+    for (final command in commands)
+      NativeCommand(
+        name: command.name,
+        descriptionText: command.description.isEmpty
+            ? null
+            : command.description,
+        argumentHint: command.inputHint,
+      ),
+  ];
+
   /// Whether this runtime can switch models without restarting the agent.
   bool get supportsModelSwitch => _runtime is AcpModelSwitchApi;
 
@@ -645,7 +679,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     }
     await _applyLaunchModel();
     emit(
-      state.copyWith(phase: AcpChatPhase.ready, modelState: _readModelState()),
+      state.copyWith(
+        phase: AcpChatPhase.ready,
+        modelState: _readModelState(),
+        availableCommands: _readAvailableCommands(),
+      ),
     );
     final queued = _queuedPrompt;
     _queuedPrompt = null;
@@ -1054,6 +1092,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       case AcpModelStateUpdate():
         if (isClosed) return;
         emit(state.copyWith(modelState: update.state));
+      case AcpAvailableCommandsUpdate():
+        if (isClosed || update.commands.isEmpty) return;
+        emit(
+          state.copyWith(availableCommands: _toNativeCommands(update.commands)),
+        );
       case AcpUsageUpdate():
         // Context usage is recorded out-of-band for the usage collector; it
         // never becomes a chat row. A history replay re-sends the session's
@@ -1093,7 +1136,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     AcpStop() ||
     AcpOutOfTurnStop() ||
     AcpAuthNotice() ||
-    AcpModelStateUpdate() => false,
+    AcpModelStateUpdate() ||
+    AcpAvailableCommandsUpdate() => false,
     _ => true,
   };
 

@@ -1056,6 +1056,11 @@ class _ComposeTriggerSuggestionPanel extends StatelessWidget {
     ComposeSlashCandidate candidate,
   ) {
     final l10n = context.l10n;
+    final agentDescription = candidate.descriptionText?.trim();
+    final descriptionDetail =
+        agentDescription != null && agentDescription.isNotEmpty
+        ? agentDescription
+        : (candidate.description?.localized(context) ?? '');
     final details = <String>[
       switch (candidate.source) {
         ComposeSlashCandidateSource.native => l10n.compose.commandNative,
@@ -1064,8 +1069,7 @@ class _ComposeTriggerSuggestionPanel extends StatelessWidget {
       },
       if (candidate.subtitle?.trim().isNotEmpty == true)
         candidate.subtitle!.trim(),
-      if (candidate.description case final description?)
-        description.localized(context),
+      if (descriptionDetail.isNotEmpty) descriptionDetail,
     ].where((detail) => detail.isNotEmpty).toList();
     return details.isEmpty ? null : details.join(' · ');
   }

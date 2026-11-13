@@ -5,8 +5,9 @@ import 'package:flutter/widgets.dart';
 import '../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../services/acp/acp_client_extensions.dart';
 import '../../services/acp/acp_session.dart';
+import '../../services/cli/registry/capabilities/native_command_capability.dart';
 
-/// The three ACP bits the compose section renders.
+/// The four ACP bits the compose section renders.
 ///
 /// Keeping them in one value object lets an inherited scope notify compose
 /// without rebuilding the whole chat subtree on every streaming token.
@@ -16,16 +17,19 @@ final class AcpRuntimeUiState {
     required this.pendingClient,
     required this.inTurn,
     required this.modelState,
+    required this.availableCommands,
   });
 
   final AcpPendingClientRequest? pendingClient;
   final bool inTurn;
   final AcpModelState? modelState;
+  final List<NativeCommand> availableCommands;
 
   static AcpRuntimeUiState of(AcpChatRuntimeState state) => AcpRuntimeUiState(
     pendingClient: state.pendingClient,
     inTurn: state.inTurn,
     modelState: state.modelState,
+    availableCommands: state.availableCommands,
   );
 
   @override
@@ -33,10 +37,12 @@ final class AcpRuntimeUiState {
       other is AcpRuntimeUiState &&
       other.pendingClient == pendingClient &&
       other.inTurn == inTurn &&
-      other.modelState == modelState;
+      other.modelState == modelState &&
+      other.availableCommands == availableCommands;
 
   @override
-  int get hashCode => Object.hash(pendingClient, inTurn, modelState);
+  int get hashCode =>
+      Object.hash(pendingClient, inTurn, modelState, availableCommands);
 }
 
 /// Always-present ACP runtime scope.
