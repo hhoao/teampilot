@@ -65,6 +65,54 @@ class _FakeSessionOps extends WorkspaceTerminalSessionOps {
   }) async {}
 }
 
+/// Counts deferred connects so a deleted post-frame block cannot go unnoticed.
+class _CountingConnectSessionOps extends _FakeSessionOps {
+  int connectCount = 0;
+
+  @override
+  Future<void> connectEntry({
+    required WorkspaceTerminalGroup group,
+    required WorkspaceTerminalEntry entry,
+    required WorkspaceTerminalConnectCoordinator connectCoordinator,
+    required TerminalTheme theme,
+    required String sshConnectFailedMessage,
+    VoidCallback? onStateChanged,
+    bool Function()? mounted,
+  }) async {
+    connectCount++;
+  }
+}
+
+/// Closes the persisted tab while `createEntry` is in flight, then creates the
+/// entry anyway — the mid-restore close race from the review finding.
+class _CloseDuringCreateSessionOps extends _FakeSessionOps {
+  _CloseDuringCreateSessionOps(this.closePersistedTab);
+
+  final Future<void> Function() closePersistedTab;
+
+  @override
+  Future<WorkspaceTerminalEntry> createEntry({
+    required WorkspaceTerminalGroup group,
+    required WorkspaceShellConnector connector,
+    required String cwd,
+    required WorkspaceTerminalSessionSpec spec,
+    required bool select,
+    String titleLabel = '',
+    bool followWorkspace = false,
+  }) async {
+    await closePersistedTab();
+    return super.createEntry(
+      group: group,
+      connector: connector,
+      cwd: cwd,
+      spec: spec,
+      select: select,
+      titleLabel: titleLabel,
+      followWorkspace: followWorkspace,
+    );
+  }
+}
+
 class _StubConnector extends WorkspaceShellConnector {
   _StubConnector()
     : super(
@@ -399,6 +447,69 @@ void main() {
 
       expect(registry.groupFor('ws').entries, hasLength(1));
       expect(registry.groupFor('ws').activeId, entry.id);
+    });
+
+    testWidgets('schedules exactly one deferred connect for the new entry', (
+      tester,
+    ) async {
+      final sessionOps = _CountingConnectSessionOps();
+      final launcher = _launcher(
+        chat: chat,
+        workbench: workbench,
+        floating: floating,
+        registry: registry,
+        sessionOps: sessionOps,
+      );
+      workbench.openFloating('ws', WorkbenchTabId.shell('persisted'));
+
+      await launcher.restorePersistedShell(
+        workspaceId: 'ws',
+        tabId: 'persisted',
+        descriptor: const WorkbenchShellDescriptor(
+          cwd: '/tmp/proj',
+          spec: WorkspaceTerminalLocalSpec('/bin/bash'),
+        ),
+      );
+
+      // "Tab first, transport next": nothing connects before a frame paints.
+      expect(sessionOps.connectCount, 0);
+
+      tester.binding.scheduleFrame();
+      await tester.pump();
+
+      expect(sessionOps.connectCount, 1);
+      final entry = registry.groupFor('ws').entries.single;
+      expect(entry.followWorkspace, isFalse);
+    });
+
+    testWidgets('drops the created entry when its tab closes mid-restore', (
+      tester,
+    ) async {
+      final launcher = _launcher(
+        chat: chat,
+        workbench: workbench,
+        floating: floating,
+        registry: registry,
+        sessionOps: _CloseDuringCreateSessionOps(
+          () => workbench.close('ws', WorkbenchTabId.shell('persisted')),
+        ),
+      );
+      workbench.openFloating('ws', WorkbenchTabId.shell('persisted'));
+
+      await launcher.restorePersistedShell(
+        workspaceId: 'ws',
+        tabId: 'persisted',
+        descriptor: const WorkbenchShellDescriptor(
+          cwd: '/tmp/proj',
+          spec: WorkspaceTerminalLocalSpec('/bin/bash'),
+        ),
+      );
+
+      tester.binding.scheduleFrame();
+      await tester.pump();
+
+      expect(registry.groupFor('ws').entries, isEmpty);
+      expect(workbench.mergedFloatingStrip('ws').order, isEmpty);
     });
   });
 

@@ -440,6 +440,17 @@ class WorkbenchShellLauncher {
       followWorkspace: false,
     );
 
+    // The tab may have been closed while `createEntry` was in flight (it awaits
+    // e.g. the SSH profile lookup). Retargeting would then silently no-op and
+    // leak a created-but-invisible entry, so drop it and bail out.
+    if (!_workbench
+        .mergedFloatingStrip(wsId)
+        .order
+        .contains(WorkbenchTabId.shell(persistedId))) {
+      group.removeEntry(entry.id);
+      return;
+    }
+
     _workbench.replaceFloatingTabId(wsId, persistedId, entry.id);
 
     final resolvedTheme = resolveTerminalThemeFromLayout(
