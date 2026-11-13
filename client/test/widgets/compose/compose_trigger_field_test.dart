@@ -880,4 +880,41 @@ void main() {
         );
     expect(padded, isNotEmpty);
   });
+
+  testWidgets('agent-provided command description is shown in the menu', (
+    tester,
+  ) async {
+    final bus = CommandBus();
+    final controller = ComposeTextController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+      nativeCommands: const [
+        NativeCommand(
+          name: 'create_plan',
+          descriptionText: 'Create an implementation plan',
+          argumentHint: '<what>',
+        ),
+      ],
+    );
+
+    focusNode.requestFocus();
+    await tester.pump();
+    await enterComposeText(tester, '/cre');
+    await tester.pumpAndSettle(const Duration(milliseconds: 200));
+
+    expect(
+      find.textContaining('Create an implementation plan'),
+      findsOneWidget,
+    );
+  });
 }

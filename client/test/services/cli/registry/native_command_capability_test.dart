@@ -25,4 +25,26 @@ void main() {
     expect(cursorGoal.availability, NativeCommandAvailability.experimental);
     expect(cursorGoal.argumentHint, '<objective>');
   });
+
+  test('normalizes one leading slash from command names', () {
+    const command = NativeCommand(
+      name: '/compact',
+      description: NativeCommandDescription.compact,
+    );
+
+    expect(command.slashName, 'compact');
+    expect(command.insertText, '/compact');
+  });
+
+  test('agent-provided descriptions do not require an enum value', () {
+    const command = NativeCommand(
+      name: 'create_plan',
+      descriptionText: 'Create an implementation plan',
+      argumentHint: '<what>',
+    );
+
+    expect(command.description, isNull);
+    expect(command.descriptionText, 'Create an implementation plan');
+    expect(command.insertText, '/create_plan ');
+  });
 }

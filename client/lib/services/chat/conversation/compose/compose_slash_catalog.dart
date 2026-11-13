@@ -18,6 +18,7 @@ class ComposeSlashCandidate {
     this.subtitle,
     this.source,
     this.description,
+    this.descriptionText,
     this.availability = NativeCommandAvailability.stable,
     this.insertionSuffix = ' ',
   });
@@ -28,6 +29,7 @@ class ComposeSlashCandidate {
   final ComposeSlashCandidateKind kind;
   final ComposeSlashCandidateSource? source;
   final NativeCommandDescription? description;
+  final String? descriptionText;
   final NativeCommandAvailability availability;
   final String insertionSuffix;
 }
@@ -49,11 +51,15 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
 
   void add(ComposeSlashCandidate candidate) {
     if (!seen.add(candidate.insertText)) return;
-    if (needle.isNotEmpty &&
-        !candidate.label.toLowerCase().contains(needle) &&
-        !(candidate.description?.searchTerms.toLowerCase().contains(needle) ??
-            false)) {
-      return;
+    if (needle.isNotEmpty) {
+      final haystack = [
+        candidate.description?.searchTerms,
+        candidate.descriptionText,
+      ].whereType<String>().join(' ').toLowerCase();
+      if (!candidate.label.toLowerCase().contains(needle) &&
+          !haystack.contains(needle)) {
+        return;
+      }
     }
     out.add(candidate);
   }
@@ -74,7 +80,7 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
   }
 
   for (final command in nativeCommands) {
-    final name = command.name.trim();
+    final name = command.slashName.trim();
     if (name.isEmpty) continue;
     add(
       ComposeSlashCandidate(
@@ -83,6 +89,7 @@ List<ComposeSlashCandidate> buildComposeSlashCandidates({
         kind: ComposeSlashCandidateKind.command,
         source: ComposeSlashCandidateSource.native,
         description: command.description,
+        descriptionText: command.descriptionText,
         availability: command.availability,
         insertionSuffix: '',
       ),

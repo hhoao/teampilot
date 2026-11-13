@@ -20,19 +20,29 @@ enum NativeCommandAvailability { stable, experimental }
 final class NativeCommand {
   const NativeCommand({
     required this.name,
-    required this.description,
+    this.description,
+    this.descriptionText,
     this.argumentHint,
     this.availability = NativeCommandAvailability.stable,
   });
 
   final String name;
-  final NativeCommandDescription description;
+
+  /// Localized enum used by the curated static tables.
+  final NativeCommandDescription? description;
+
+  /// Agent-provided free text (ACP `AvailableCommand.description`).
+  final String? descriptionText;
+
   final String? argumentHint;
   final NativeCommandAvailability availability;
 
+  /// Command names are slash-free; tolerate one leading `/` from adapter data.
+  String get slashName => name.startsWith('/') ? name.substring(1) : name;
+
   bool get acceptsArgument => argumentHint != null;
 
-  String get insertText => acceptsArgument ? '/$name ' : '/$name';
+  String get insertText => acceptsArgument ? '/$slashName ' : '/$slashName';
 }
 
 abstract interface class NativeCommandCapability implements CliCapability {

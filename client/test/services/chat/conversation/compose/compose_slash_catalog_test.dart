@@ -283,4 +283,37 @@ void main() {
       },
     );
   }
+
+  test('normalizes a leading slash in native command labels', () {
+    final candidates = buildComposeSlashCandidates(
+      skills: const [],
+      plugins: const [],
+      enabledBundle: const ConfigBundle(),
+      query: '',
+      nativeCommands: const [
+        NativeCommand(
+          name: '/compact',
+          description: NativeCommandDescription.compact,
+        ),
+      ],
+    );
+
+    expect(candidates.single.label, 'compact');
+    expect(candidates.single.insertText, '/compact');
+  });
+
+  test('filters native commands by agent-provided description text', () {
+    final candidates = buildComposeSlashCandidates(
+      skills: const [],
+      plugins: const [],
+      enabledBundle: const ConfigBundle(),
+      query: 'diagram',
+      nativeCommands: const [
+        NativeCommand(name: 'create_plan', descriptionText: 'Draft a diagram'),
+      ],
+    );
+
+    expect(candidates.single.label, 'create_plan');
+    expect(candidates.single.insertText, '/create_plan');
+  });
 }
