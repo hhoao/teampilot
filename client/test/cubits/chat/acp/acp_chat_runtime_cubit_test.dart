@@ -137,7 +137,11 @@ class _FakeLivenessProbe implements AcpBackgroundLivenessProbe {
 
 /// All-stub [AcpSessionRuntimeApi] for cubit tests.
 class _FakeAcpRuntime
-    implements AcpSessionRuntimeApi, AcpHistorySyncApi, AcpModelSwitchApi {
+    implements
+        AcpSessionRuntimeApi,
+        AcpHistorySyncApi,
+        AcpModelSwitchApi,
+        AcpAvailableCommandsApi {
   final updatesController = StreamController<AcpSessionUpdate>.broadcast();
   final permissionsController =
       StreamController<AgentPermissionRequest>.broadcast();
@@ -169,6 +173,11 @@ class _FakeAcpRuntime
   AcpModelState? modelState;
   final List<String> setModels = [];
   Object? setModelError;
+
+  /// Commands retained by the session, exposed through
+  /// [AcpAvailableCommandsApi].
+  @override
+  List<AcpAvailableCommand> availableCommands = const [];
 
   @override
   Future<void> setModel(String modelId) async {
@@ -4123,6 +4132,77 @@ void main() {
     );
 
     expect(cubit.agentPid, isNull);
+  });
+
+  test('available command updates replace the compose command list', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+
+    runtime.emit(
+      const AcpAvailableCommandsUpdate([
+        AcpAvailableCommand(
+          name: 'create_plan',
+          description: 'Create a plan',
+          inputHint: '<what>',
+        ),
+        AcpAvailableCommand(name: 'compact', description: ''),
+      ]),
+    );
+    await pumpEventQueue();
+
+    expect(cubit.state.availableCommands.map((command) => command.name), [
+      'create_plan',
+      'compact',
+    ]);
+    final first = cubit.state.availableCommands.first;
+    expect(first.descriptionText, 'Create a plan');
+    expect(first.argumentHint, '<what>');
+    expect(cubit.state.availableCommands.last.descriptionText, isNull);
+    await cubit.close();
+  });
+
+  test('an empty available command update keeps the previous list', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+
+    runtime.emit(
+      const AcpAvailableCommandsUpdate([
+        AcpAvailableCommand(name: 'deploy', description: 'Deploy'),
+      ]),
+    );
+    await pumpEventQueue();
+    runtime.emit(const AcpAvailableCommandsUpdate([]));
+    await pumpEventQueue();
+
+    expect(cubit.state.availableCommands.single.name, 'deploy');
+    await cubit.close();
+  });
+
+  test('handshake-time available commands seed the compose list', () async {
+    runtime.availableCommands = const [
+      AcpAvailableCommand(name: 'deploy', description: 'Deploy the app'),
+    ];
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+
+    expect(cubit.state.availableCommands.single.name, 'deploy');
+    expect(
+      cubit.state.availableCommands.single.descriptionText,
+      'Deploy the app',
+    );
+    await cubit.close();
   });
 }
 
