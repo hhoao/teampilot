@@ -134,6 +134,8 @@ import '../repositories/session_repository.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
+import '../repositories/plane_ssh_profile_repository.dart';
+import '../repositories/ssh_server_profile_repository.dart';
 import '../repositories/workspace_project_config_repository.dart';
 import '../repositories/managed_provider_repository.dart';
 import '../repositories/managed_provider_usage_repository.dart';
@@ -210,6 +212,7 @@ import '../services/ssh/mcp/session_ssh_mcp_executor.dart';
 import '../services/ssh/mcp/session_ssh_mcp_http.dart';
 import '../services/ssh/mcp/session_ssh_mcp_operations.dart';
 import '../services/ssh/mcp/session_ssh_mcp_resolver.dart';
+import '../services/ssh/plane_ssh_profile_resolver.dart';
 import '../services/ssh/ssh_transport_close.dart';
 import '../services/ssh/android_ssh_connect_home.dart';
 import '../services/terminal/terminal_transport_factory.dart';
@@ -823,6 +826,22 @@ Future<AppShell> buildAppShell({
     deviceTargets: sshProfileRepo.targetRepo,
   );
   unawaited(sshWorkloadProfileCubit.load());
+  // One B-source repository instance for resolving workload hosts. Its `_fs` /
+  // `_root` are lazy getters over [homeStorage], so a home-plane swap needs no
+  // rebuild. [deviceTargets] only lends device vault references to plane rows
+  // (via `_deviceVaultRefs`, required for the subsequent connect); it is read
+  // only and never written to the plane.
+  final planeSshProfileRepo = PlaneSshProfileRepository(
+    storage: homeStorage,
+    servers: SshServerProfileRepository(storage: homeStorage),
+    deviceTargets: sshProfileRepo.targetRepo,
+  );
+  // Live B-source resolver threaded to every `profileOf` consumer. Reads the
+  // catalog cubit's state on each call, so an unreachable plane (empty emit)
+  // resolves to null with no error and never falls back to the A source.
+  final planeProfileById = planeSshProfileResolver(
+    () => sshWorkloadProfileCubit.state.profiles,
+  );
   final scope = homePlane.scope;
   homeWorkspaceUiCache = homePlane.homeWorkspaceUiCache;
   // The live home identity. [homeProfileId] is the boot-time snapshot; every
@@ -993,7 +1012,9 @@ Future<AppShell> buildAppShell({
       skillRepository: skillRepo,
       sessionPreferences: sessionPreferencesCubit,
       cliPresetsCubit: () => cliPresetsCubit,
-      sshProfileById: sshProfileById,
+      // Workspace MCP / remote-session `profileOf` resolves from the home
+      // plane (B source). The device-local A source stays for home binding.
+      sshProfileById: planeProfileById,
       identityRepository: () => identityRepository,
     );
     sessionLifecycleService = sessionState.sessionLifecycleService;
@@ -1256,10 +1277,24 @@ Future<AppShell> buildAppShell({
             final profileId = sshProfileIdOfId(folder.targetId);
             if (profileId != null) profileIds.add(profileId);
           }
+          // Resolve workspace SSH folders from the home-plane (B source)
+          // catalog only. findById -> loadAll lends the matching device vault
+          // reference (required for the subsequent connect); a dropped plane
+          // reads as empty: no error surfaced, no A-source fallback.
           final profiles = <String, SshProfile>{};
-          for (final id in profileIds) {
-            final profile = await sshProfileRepo.findById(id);
-            if (profile != null) profiles[id] = profile;
+          try {
+            for (final id in profileIds) {
+              final profile = await planeSshProfileRepo.findById(id);
+              if (profile != null) profiles[id] = profile;
+            }
+          } on Object catch (error, stackTrace) {
+            appLogger.w(
+              '[ssh-mcp] home-plane catalog read failed; '
+              'resolving no SSH MCP targets',
+              error: error,
+              stackTrace: stackTrace,
+            );
+            profiles.clear();
           }
           return resolveSessionSshMcpContext(
             session: session,
