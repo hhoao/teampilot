@@ -1146,6 +1146,179 @@ void main() {
     await cubit.close();
   });
 
+  test('interleaved thought and text coalesce onto two parts', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'a',
+        isThought: true,
+      ),
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '1',
+        isThought: false,
+      ),
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'b',
+        isThought: true,
+      ),
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '2',
+        isThought: false,
+      ),
+    );
+    await pumpEventQueue();
+
+    final parts = cubit.state.messages.single.parts;
+    expect(parts, hasLength(2));
+    expect((parts[0] as AiReasoningPart).text, 'ab');
+    expect((parts[1] as AiTextPart).text, '12');
+    await cubit.close();
+  });
+
+  test('a tool call keeps later thought on a new reasoning part', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'a',
+        isThought: true,
+      ),
+    );
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 't1',
+        title: 'read file',
+        status: AcpToolCallStatus.inProgress,
+      ),
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'b',
+        isThought: true,
+      ),
+    );
+    await pumpEventQueue();
+
+    final parts = cubit.state.messages.single.parts;
+    expect(parts, hasLength(3));
+    expect((parts[0] as AiReasoningPart).text, 'a');
+    expect(parts[1], isA<AiToolCallPart>());
+    expect((parts[2] as AiReasoningPart).text, 'b');
+    await cubit.close();
+  });
+
+  test('channels resume independently after a tool call', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'a',
+        isThought: true,
+      ),
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '1',
+        isThought: false,
+      ),
+    );
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 't1',
+        title: 'read file',
+        status: AcpToolCallStatus.inProgress,
+      ),
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'b',
+        isThought: true,
+      ),
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '2',
+        isThought: false,
+      ),
+    );
+    await pumpEventQueue();
+
+    final parts = cubit.state.messages.single.parts;
+    expect(parts, hasLength(5));
+    expect((parts[0] as AiReasoningPart).text, 'a');
+    expect((parts[1] as AiTextPart).text, '1');
+    expect(parts[2], isA<AiToolCallPart>());
+    expect((parts[3] as AiReasoningPart).text, 'b');
+    expect((parts[4] as AiTextPart).text, '2');
+    await cubit.close();
+  });
+
+  test('text that arrives first stays in front of later thought', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '1',
+        isThought: false,
+      ),
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'a',
+        isThought: true,
+      ),
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '2',
+        isThought: false,
+      ),
+    );
+    await pumpEventQueue();
+
+    final parts = cubit.state.messages.single.parts;
+    expect(parts, hasLength(2));
+    expect((parts[0] as AiTextPart).text, '12');
+    expect((parts[1] as AiReasoningPart).text, 'a');
+    await cubit.close();
+  });
+
   group('stream chunk coalescing', () {
     const window = Duration(milliseconds: 60);
     AcpMessageChunk chunk(String text, {bool thought = false}) =>
@@ -1218,6 +1391,29 @@ void main() {
         final parts = cubit.state.messages.single.parts;
         expect((parts[0] as AiReasoningPart).text, 'thinking');
         expect((parts[1] as AiTextPart).text, 'Answer');
+
+        unawaited(cubit.close());
+        async.flushMicrotasks();
+      });
+    });
+
+    test('coalesce window still folds thought/text switches onto two parts', () {
+      fakeAsync((async) {
+        final cubit = bootCubit(chunkCoalesceWindow: window);
+        startCubit(cubit);
+        async.flushMicrotasks();
+
+        runtime.emit(chunk('a', thought: true));
+        runtime.emit(chunk('1'));
+        runtime.emit(chunk('b', thought: true));
+        runtime.emit(chunk('2'));
+        async.flushMicrotasks();
+        async.elapse(window);
+
+        final parts = cubit.state.messages.single.parts;
+        expect(parts, hasLength(2));
+        expect((parts[0] as AiReasoningPart).text, 'ab');
+        expect((parts[1] as AiTextPart).text, '12');
 
         unawaited(cubit.close());
         async.flushMicrotasks();
@@ -1320,6 +1516,43 @@ void main() {
           .toList();
       expect(identical(nextTexts.first, head), isTrue);
       expect(nextTexts.map((p) => p.text).join(), '$first\n\n$second tail');
+      await cubit.close();
+    });
+
+    test('a later thought does not glue split text heads', () async {
+      final cubit = await startedCubit();
+      final first = 'A' * 5000;
+      final second = 'B' * 5000;
+      runtime.emit(
+        AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: '$first\n\n$second',
+          isThought: false,
+        ),
+      );
+      await pumpEventQueue();
+      final textsBefore = cubit.state.messages.single.parts
+          .whereType<AiTextPart>()
+          .toList();
+      expect(textsBefore.length, greaterThan(1));
+      final head = textsBefore.first;
+
+      runtime.emit(
+        const AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: 'hmm',
+          isThought: true,
+        ),
+      );
+      await pumpEventQueue();
+
+      final parts = cubit.state.messages.single.parts;
+      final texts = parts.whereType<AiTextPart>().toList();
+      expect(texts.length, textsBefore.length);
+      expect(identical(texts.first, head), isTrue);
+      expect(texts.map((p) => p.text).join(), '$first\n\n$second');
+      expect(parts.last, isA<AiReasoningPart>());
+      expect((parts.last as AiReasoningPart).text, 'hmm');
       await cubit.close();
     });
 

@@ -23,6 +23,7 @@ import '../../../services/acp/acp_model_ref.dart';
 import '../../../services/acp/acp_rpc_error.dart';
 import '../../../services/acp/acp_session.dart';
 import '../../../services/acp/acp_session_runtime.dart';
+import '../../../services/acp/acp_stream_channel_parts.dart';
 import '../../../services/agent_status/agent_attention_state.dart';
 import '../../../services/agent_status/agent_permission_request.dart';
 import '../../../services/agent_status/agent_status_event.dart';
@@ -2095,9 +2096,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// Appends parts onto the tip assistant message (streaming continuation),
   /// or opens a new assistant message when the tip is not appendable.
   ///
-  /// Consecutive [AiTextPart] / [AiReasoningPart] of the same type are
-  /// concatenated. ACP streams one NDJSON chunk per token; appending each as
-  /// its own part makes the UI render hundreds of thinking-process steps.
+  /// Thought and text are two channels punctuated by tool calls: a chunk
+  /// concatenates onto the last same-kind part in the current segment.
+  /// Interleaved token streams therefore stay one reasoning part and one
+  /// text part, instead of one thinking-process step per switch.
   ///
   /// Always re-emits the derived turn activity: a chunk that carries no
   /// visible text is dropped as an empty stream part but must still move the
@@ -2172,28 +2174,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   ) {
     final out = [...existing];
     for (final part in incoming) {
-      if (out.isEmpty) {
-        out.add(part);
-        continue;
-      }
-      final merged = _mergeStreamParts(out.last, part);
-      if (merged != null) {
-        out[out.length - 1] = merged;
-      } else {
-        out.add(part);
-      }
+      appendAcpStreamChannelPart(out, part);
     }
     return out;
-  }
-
-  static AiMessagePart? _mergeStreamParts(AiMessagePart a, AiMessagePart b) {
-    if (a is AiTextPart && b is AiTextPart) {
-      return AiTextPart(text: '${a.text}${b.text}');
-    }
-    if (a is AiReasoningPart && b is AiReasoningPart) {
-      return AiReasoningPart(text: '${a.text}${b.text}');
-    }
-    return null;
   }
 
   /// Character budget for one live assistant text part.
