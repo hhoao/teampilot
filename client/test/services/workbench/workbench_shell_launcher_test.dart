@@ -7,6 +7,7 @@ import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dar
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
+import 'package:teampilot/models/workbench_shell_descriptor.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_terminal_session_spec.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
@@ -317,6 +318,88 @@ void main() {
         expect(entry.followWorkspace, isTrue);
       },
     );
+  });
+
+  group('WorkbenchShellLauncher.restorePersistedShell', () {
+    late ChatCubit chat;
+    late WorkbenchCubit workbench;
+    late FloatingWorkspaceCubit floating;
+    late WorkspaceTerminalRegistry registry;
+
+    setUp(() {
+      chat = testChatCubit(executableResolver: () => 'true');
+      workbench = WorkbenchCubit();
+      floating = FloatingWorkspaceCubit();
+      registry = WorkspaceTerminalRegistry();
+    });
+
+    tearDown(() async {
+      await chat.close();
+      await workbench.close();
+      await floating.close();
+      registry.disposeAll();
+    });
+
+    testWidgets('creates the entry and retargets the persisted tab', (
+      tester,
+    ) async {
+      final launcher = _launcher(
+        chat: chat,
+        workbench: workbench,
+        floating: floating,
+        registry: registry,
+      );
+      workbench.openFloating('ws', WorkbenchTabId.shell('persisted'));
+
+      await launcher.restorePersistedShell(
+        workspaceId: 'ws',
+        tabId: 'persisted',
+        descriptor: const WorkbenchShellDescriptor(
+          cwd: '/tmp/proj',
+          spec: WorkspaceTerminalLocalSpec('/bin/bash'),
+        ),
+      );
+      await tester.pump();
+
+      final entry = registry.groupFor('ws').entries.single;
+      expect(entry.cwd, '/tmp/proj');
+      expect(entry.spec, const WorkspaceTerminalLocalSpec('/bin/bash'));
+      expect(registry.groupFor('ws').activeId, entry.id);
+      expect(workbench.mergedFloatingStrip('ws').order, [
+        WorkbenchTabId.shell(entry.id),
+      ]);
+    });
+
+    testWidgets('a live entry short-circuits without creating a new one', (
+      tester,
+    ) async {
+      final launcher = _launcher(
+        chat: chat,
+        workbench: workbench,
+        floating: floating,
+        registry: registry,
+      );
+      final entry = registry.groupFor('ws').addEntry(
+        cwd: '/tmp',
+        spec: const WorkspaceTerminalLocalSpec('/bin/bash'),
+        session: _testSession(),
+        select: false,
+      );
+      workbench.openFloating('ws', WorkbenchTabId.shell(entry.id));
+
+      await launcher.restorePersistedShell(
+        workspaceId: 'ws',
+        tabId: entry.id,
+        descriptor: const WorkbenchShellDescriptor(
+          cwd: '/elsewhere',
+          spec: WorkspaceTerminalLocalSpec('/bin/zsh'),
+        ),
+      );
+      await tester.pump();
+
+      expect(registry.groupFor('ws').entries, hasLength(1));
+      expect(registry.groupFor('ws').activeId, entry.id);
+    });
   });
 
   group('WorkbenchShellLauncher.focusOrCreateDefaultShell', () {

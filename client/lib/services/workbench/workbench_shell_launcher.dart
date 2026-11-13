@@ -10,6 +10,7 @@ import '../../cubits/layout_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/runtime_target.dart';
+import '../../models/workbench_shell_descriptor.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/workspace_terminal_session_spec.dart';
 import '../host/host_interactive_shell.dart';
@@ -385,5 +386,81 @@ class WorkbenchShellLauncher {
       }
     });
     return entry;
+  }
+
+  /// Recreates the PTY/SSH session for a persisted floating shell tab and
+  /// retargets the tab id from the persisted id to the new live entry id.
+  ///
+  /// Connect is deferred one frame (same "tab first, transport next" rhythm as
+  /// [openAndSelect]); the entry creation is what the caller awaits.
+  Future<void> restorePersistedShell({
+    required String workspaceId,
+    required String tabId,
+    required WorkbenchShellDescriptor descriptor,
+  }) async {
+    final wsId = workspaceId.trim();
+    final persistedId = tabId.trim();
+    if (wsId.isEmpty || persistedId.isEmpty) return;
+
+    final group = _registry.groupFor(wsId);
+    final live = group.entryById(persistedId);
+    if (live != null) {
+      group.activeId = live.id;
+      return;
+    }
+    if (!_workbench
+        .mergedFloatingStrip(wsId)
+        .order
+        .contains(WorkbenchTabId.shell(persistedId))) {
+      return;
+    }
+
+    final workspace = _chat.state.workspaces
+        .where((w) => w.workspaceId == wsId)
+        .firstOrNull;
+    final folders = workspace?.folders ?? const <WorkspaceFolder>[];
+    final spec = descriptor.spec;
+    final home = _homeTarget();
+    final launchCwd = workspaceShellLaunchWorkingDirectory(
+      spec: spec,
+      folders: folders,
+      localCwd: descriptor.cwd,
+      home: home,
+      usesPosixPaths: _usesPosixPaths,
+      sshDefaultWorkingDirectory: _sshDefaultWorkingDirectory(),
+    );
+    final entry = await _sessionOps.createEntry(
+      group: group,
+      connector: _connector,
+      cwd: launchCwd,
+      spec: spec,
+      select: true,
+      // Spec: a restored tab is pinned to its persisted cwd/spec; later
+      // workspace cwd syncs must not rewrite it.
+      followWorkspace: false,
+    );
+
+    _workbench.replaceFloatingTabId(wsId, persistedId, entry.id);
+
+    final resolvedTheme = resolveTerminalThemeFromLayout(
+      preferences: _layout.state.preferences,
+      platformBrightness: _platformBrightness(),
+    );
+    final coordinator = WorkspaceTerminalConnectCoordinator.termuxAware(
+      connector: _connector,
+      termuxConnected: _termuxConnected,
+      termuxWorkOpsBlockedMessage: _termuxWorkOpsBlockedMessage,
+    );
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        _sessionOps.connectEntry(
+          group: group,
+          entry: entry,
+          connectCoordinator: coordinator,
+          theme: resolvedTheme,
+          sshConnectFailedMessage: _sshConnectFailedMessage(),
+        ),
+      );
+    });
   }
 }
