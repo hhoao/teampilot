@@ -5,7 +5,6 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/session_usage_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
-import 'package:teampilot/models/session_usage.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_global_section.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_route.dart';
@@ -13,9 +12,10 @@ import 'package:teampilot/pages/home_workspace/home_workspace_sidebar.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/services/usage/session_usage_sync_service.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
+import 'package:teampilot/services/usage/usage_data_worker.dart';
 
 SessionUsageCubit _emptyCubit() => SessionUsageCubit(
-  loadEvents: () async => const <SessionUsageEvent>[],
+  loadUsageSource: () async => UsageSource.fromEvents(const []),
   syncAll: () async => const UsageSyncResult(),
   loadSessions: () async => const <AppSession>[],
   loadTeams: () async => const <TeamProfile>[],

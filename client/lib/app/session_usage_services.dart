@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import '../models/app_session.dart';
 import '../models/cursor_usage_account.dart';
@@ -17,6 +18,7 @@ import '../services/usage/json_usage_store.dart';
 import '../services/usage/json_usage_sync_state_store.dart';
 import '../services/usage/session_usage_sync_service.dart';
 import '../services/usage/team_pilot_usage_scan_target_provider.dart';
+import '../services/usage/usage_data_worker.dart';
 import '../services/usage/usage_pricing_store.dart';
 import '../services/usage/usage_store.dart';
 import '../services/usage/usage_sync_control.dart';
@@ -32,7 +34,7 @@ final class SessionUsageServices {
     required this.syncAll,
     required this.startSync,
     required this.startFullSync,
-    required this.loadEvents,
+    required this.loadUsageSource,
     required this.loadPricing,
     required this.savePricing,
     required this.loadUsageStats,
@@ -46,7 +48,7 @@ final class SessionUsageServices {
   final Future<UsageSyncResult> Function() syncAll;
   final UsageSyncHandle Function() startSync;
   final UsageSyncHandle Function() startFullSync;
-  final Future<List<SessionUsageEvent>> Function() loadEvents;
+  final Future<UsageSource> Function() loadUsageSource;
   final Future<UsagePricingLoad> Function() loadPricing;
   final Future<void> Function(List<UsagePriceRule> rules) savePricing;
   final Future<UsageStoreStats> Function() loadUsageStats;
@@ -197,29 +199,26 @@ final class SessionUsageServices {
 
     Future<UsageSyncResult> syncAll() => runSync(full: false);
 
-    Future<List<SessionUsageEvent>> loadEvents() async {
-      final stores = currentStores();
-      final base = await stores.store.readLatest();
+    Future<UsageSource> loadUsageSource() async {
+      final bytes = await storage.fs.readBytes(storage.paths.usageEventsFile);
       // Account rows replace the legacy CSV import: keeping both would double
       // count, since the two id schemes cannot be reconciled.
       final imported =
           await (loadCursorAccountUsage?.call() ??
               Future<List<SessionUsageEvent>>.value(const []));
-      if (imported.isEmpty) return base;
-      final byId = {for (final event in base) event.requestId: event};
-      for (final event in imported) {
-        byId[event.requestId] = event;
-      }
-      final merged = byId.values.toList(growable: false);
-      merged.sort((a, b) => a.timestampMs.compareTo(b.timestampMs));
-      return merged;
+      return UsageSource(
+        eventsJsonl: bytes is Uint8List
+            ? bytes
+            : Uint8List.fromList(bytes ?? const <int>[]),
+        cursorEvents: imported,
+      );
     }
 
     return SessionUsageServices._(
       syncAll: syncAll,
       startSync: startSync,
       startFullSync: startFullSync,
-      loadEvents: loadEvents,
+      loadUsageSource: loadUsageSource,
       loadPricing: () => currentStores().pricing.load(),
       savePricing: (rules) => currentStores().pricing.save(rules),
       loadUsageStats: () => currentStores().store.stats(),

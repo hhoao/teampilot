@@ -165,4 +165,23 @@ void main() {
 
     expect(await store.readLatest(), hasLength(2));
   });
+
+  test('maybeCompact skips an already-compact file', () async {
+    await store.upsert([event(id: 'one'), event(id: 'two')]);
+
+    final result = await store.maybeCompact(threshold: 1);
+
+    expect(result, isNull);
+    expect((await store.stats()).lineCount, 2);
+  });
+
+  test('maybeCompact rewrites when duplicate revisions exist', () async {
+    await store.upsert([event(id: 'one', output: 1)]);
+    await store.upsert([event(id: 'one', output: 5)]);
+
+    final result = await store.maybeCompact(threshold: 1);
+
+    expect(result?.removedLines, 1);
+    expect((await store.stats()).lineCount, 1);
+  });
 }

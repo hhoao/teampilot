@@ -10,6 +10,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/usage/widgets/usage_date_range_picker.dart';
 import 'package:teampilot/services/usage/session_usage_sync_service.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
+import 'package:teampilot/services/usage/usage_data_worker.dart';
 
 Widget _wrap(SessionUsageCubit cubit) {
   return MaterialApp(
@@ -35,7 +36,7 @@ Widget _wrap(SessionUsageCubit cubit) {
 }
 
 SessionUsageCubit _cubit() => SessionUsageCubit(
-  loadEvents: () async => const [],
+  loadUsageSource: () async => UsageSource.fromEvents(const []),
   syncAll: () async => const UsageSyncResult(),
   loadSessions: () async => const <AppSession>[],
   loadTeams: () async => const <TeamProfile>[],

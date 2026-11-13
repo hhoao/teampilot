@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:isolate';
 
 import '../../models/session_usage.dart';
 import '../../utils/lock_pool.dart';
@@ -45,36 +46,17 @@ class JsonUsageStore implements UsageStore {
     if (cached != null && _fingerprint == fingerprint) return cached;
 
     final raw = await _fs.readString(_path);
-    final index = <String, _UsageRecord>{};
-    var lineCount = 0;
     _needsLeadingNewline = raw != null && raw.isNotEmpty && !raw.endsWith('\n');
-    if (raw != null) {
-      for (final line in const LineSplitter().convert(raw)) {
-        lineCount++;
-        if (line.trim().isEmpty) continue;
-        try {
-          final decoded = jsonDecode(line);
-          if (decoded is! Map) continue;
-          final revision = (decoded['rev'] as num?)?.toInt() ?? 0;
-          final eventRaw = decoded['event'];
-          if (eventRaw is! Map) continue;
-          final event = SessionUsageEvent.fromJson(
-            Map<String, Object?>.from(eventRaw),
+    final parsed = raw == null
+        ? (index: <String, _UsageRecord>{}, lineCount: 0)
+        : await Isolate.run(
+            () => _parseUsageIndex(raw),
+            debugName: 'usage-store-parse',
           );
-          if (event.requestId.isEmpty) continue;
-          final previous = index[event.requestId];
-          if (previous == null || revision >= previous.revision) {
-            index[event.requestId] = _UsageRecord(event, revision);
-          }
-        } on Object {
-          continue;
-        }
-      }
-    }
-    _index = index;
-    _lineCount = lineCount;
+    _index = parsed.index;
+    _lineCount = parsed.lineCount;
     _fingerprint = fingerprint;
-    return index;
+    return parsed.index;
   }
 
   @override
@@ -200,8 +182,11 @@ class JsonUsageStore implements UsageStore {
     int threshold = 20000,
     int? retainAfterMs,
   }) async {
-    await _load();
+    final index = await _load();
     if (_lineCount < threshold) return null;
+    // Rewriting a file with no redundant revisions costs a full encode plus a
+    // multi-MB write and shrinks nothing.
+    if (retainAfterMs == null && _lineCount == index.length) return null;
     return compact(retainAfterMs: retainAfterMs);
   }
 
@@ -212,4 +197,35 @@ class JsonUsageStore implements UsageStore {
     events.sort((a, b) => a.timestampMs.compareTo(b.timestampMs));
     return events;
   }
+}
+
+/// Parses the append-only file off the UI isolate. Runs top-level so
+/// [Isolate.run] can send it without capturing the store.
+({Map<String, _UsageRecord> index, int lineCount}) _parseUsageIndex(
+  String raw,
+) {
+  final index = <String, _UsageRecord>{};
+  var lineCount = 0;
+  for (final line in const LineSplitter().convert(raw)) {
+    lineCount++;
+    if (line.trim().isEmpty) continue;
+    try {
+      final decoded = jsonDecode(line);
+      if (decoded is! Map) continue;
+      final revision = (decoded['rev'] as num?)?.toInt() ?? 0;
+      final eventRaw = decoded['event'];
+      if (eventRaw is! Map) continue;
+      final event = SessionUsageEvent.fromJson(
+        Map<String, Object?>.from(eventRaw),
+      );
+      if (event.requestId.isEmpty) continue;
+      final previous = index[event.requestId];
+      if (previous == null || revision >= previous.revision) {
+        index[event.requestId] = _UsageRecord(event, revision);
+      }
+    } on Object {
+      continue;
+    }
+  }
+  return (index: index, lineCount: lineCount);
 }

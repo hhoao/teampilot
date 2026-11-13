@@ -5,6 +5,7 @@ import 'package:teampilot/models/session_usage.dart';
 import 'package:teampilot/models/team_config.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import 'package:teampilot/services/usage/usage_data_worker.dart';
 
 void main() {
   setUp(setUpTestAppStorage);
@@ -45,7 +46,7 @@ void main() {
       loadCursorAccountUsage: () async => [event],
     );
 
-    final events = await services.loadEvents();
+    final events = decodeUsageEvents(await services.loadUsageSource());
 
     expect(events, hasLength(1));
     expect(events.single.requestId, event.requestId);

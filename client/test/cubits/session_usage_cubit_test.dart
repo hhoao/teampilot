@@ -10,6 +10,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/usage/session_usage_sync_service.dart';
 import 'package:teampilot/services/usage/usage_pricing_store.dart';
 import 'package:teampilot/services/usage/usage_store.dart';
+import 'package:teampilot/services/usage/usage_data_worker.dart';
 import 'package:teampilot/services/usage/usage_sync_control.dart';
 
 final _now = DateTime(2026, 10, 26, 18);
@@ -46,7 +47,7 @@ AppSession _session(String id, String display) => AppSession(
 void main() {
   test('loads cached events and attribution', () async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => [_session('s1', 'Alpha')],
       loadTeams: () async => const <TeamProfile>[],
@@ -63,10 +64,10 @@ void main() {
   });
 
   test('ensureLoaded and reload are single-flight', () async {
-    final completer = Completer<List<SessionUsageEvent>>();
+    final completer = Completer<UsageSource>();
     var loadCount = 0;
     final cubit = SessionUsageCubit(
-      loadEvents: () {
+      loadUsageSource: () {
         loadCount++;
         return completer.future;
       },
@@ -81,7 +82,7 @@ void main() {
     final second = cubit.ensureLoaded();
     expect(loadCount, 1);
 
-    completer.complete([_event()]);
+    completer.complete(UsageSource.fromEvents([_event()]));
     await Future.wait([first, second]);
     expect(cubit.state.status, SessionUsageStatus.ready);
 
@@ -92,12 +93,12 @@ void main() {
   test('filters recompute without reloading events', () async {
     var loadCount = 0;
     final cubit = SessionUsageCubit(
-      loadEvents: () async {
+      loadUsageSource: () async {
         loadCount++;
-        return [
+        return UsageSource.fromEvents([
           _event(id: 'a', sessionId: 's1'),
           _event(id: 'b', sessionId: 's2', input: 100),
-        ];
+        ]);
       },
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => [
@@ -129,6 +130,7 @@ void main() {
     expect(cubit.state.dashboard.rows, hasLength(1));
 
     cubit.setCli(CliTool.codex);
+    await Future<void>.delayed(Duration.zero);
     expect(cubit.state.dashboard.summary.requests, 0);
 
     cubit.setCustomRange(
@@ -151,7 +153,7 @@ void main() {
   test('refreshRangeNow is a no-op when live end is off', () async {
     var now = _now;
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => const <AppSession>[],
       loadTeams: () async => const <TeamProfile>[],
@@ -161,6 +163,7 @@ void main() {
 
     await cubit.ensureLoaded();
     cubit.setRange(UsageRange.today);
+    await Future<void>.delayed(Duration.zero);
     expect(cubit.state.dashboard.summary.requests, 1);
 
     final states = <SessionUsageState>[];
@@ -182,7 +185,7 @@ void main() {
   test('sync reloads, records time/result, and clears errors', () async {
     var events = [_event()];
     final cubit = SessionUsageCubit(
-      loadEvents: () async => events,
+      loadUsageSource: () async => UsageSource.fromEvents(events),
       syncAll: () async {
         events = [_event(), _event(id: 'r2', input: 20, output: 4)];
         return const UsageSyncResult(inserted: 1);
@@ -206,7 +209,7 @@ void main() {
 
   test('partial sync errors keep data visible', () async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async => const UsageSyncResult(
         errors: [UsageSyncError(sourceId: 'src', message: 'bad')],
       ),
@@ -227,7 +230,7 @@ void main() {
 
   test('fatal sync keeps the old dashboard and marks failure', () async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async => throw StateError('offline'),
       loadSessions: () async => const <AppSession>[],
       loadTeams: () async => const <TeamProfile>[],
@@ -249,9 +252,9 @@ void main() {
     final changes = StreamController<void>();
     var loadCount = 0;
     final cubit = SessionUsageCubit(
-      loadEvents: () async {
+      loadUsageSource: () async {
         loadCount++;
-        return [_event()];
+        return UsageSource.fromEvents([_event()]);
       },
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => const <AppSession>[],
@@ -280,9 +283,9 @@ void main() {
     final changes = StreamController<void>();
     var loadCount = 0;
     final cubit = SessionUsageCubit(
-      loadEvents: () async {
+      loadUsageSource: () async {
         loadCount++;
-        return [_event()];
+        return UsageSource.fromEvents([_event()]);
       },
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => const <AppSession>[],
@@ -307,7 +310,7 @@ void main() {
     final syncCompleter = Completer<UsageSyncResult>();
     var syncCount = 0;
     final cubit = SessionUsageCubit(
-      loadEvents: () async => const <SessionUsageEvent>[],
+      loadUsageSource: () async => UsageSource.fromEvents(const <SessionUsageEvent>[]),
       syncAll: () {
         syncCount++;
         return syncCompleter.future;
@@ -330,7 +333,7 @@ void main() {
     var now = DateTime(2026, 10, 26, 18);
     var syncCount = 0;
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async {
         syncCount++;
         return const UsageSyncResult();
@@ -357,7 +360,7 @@ void main() {
     final syncCompleter = Completer<UsageSyncResult>();
     var syncCount = 0;
     final cubit = SessionUsageCubit(
-      loadEvents: () async => const <SessionUsageEvent>[],
+      loadUsageSource: () async => UsageSource.fromEvents(const <SessionUsageEvent>[]),
       syncAll: () {
         syncCount++;
         return syncCompleter.future;
@@ -385,7 +388,7 @@ void main() {
       cancel: () => cancelCalls++,
     );
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async => const UsageSyncResult(),
       startSync: () => handle,
       loadSessions: () async => const <AppSession>[],
@@ -420,7 +423,7 @@ void main() {
 
   test('tracks whether the completed sync was manual', () async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => const <AppSession>[],
       loadTeams: () async => const <TeamProfile>[],
@@ -437,9 +440,9 @@ void main() {
 
   test('loads user pricing and computes cost', () async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [
+      loadUsageSource: () async => UsageSource.fromEvents([
         _event(model: 'custom', input: 1000000, output: 0),
-      ],
+      ]),
       syncAll: () async => const UsageSyncResult(),
       loadPricing: () async => const UsagePricingLoad(
         rules: [
@@ -466,9 +469,9 @@ void main() {
 
   test('empty user pricing still uses built-in reference prices', () async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [
+      loadUsageSource: () async => UsageSource.fromEvents([
         _event(model: 'claude-sonnet-4-5', input: 1000000, output: 1000000),
-      ],
+      ]),
       syncAll: () async => const UsageSyncResult(),
       loadPricing: () async => const UsagePricingLoad(rules: []),
       loadSessions: () async => const <AppSession>[],
@@ -488,9 +491,9 @@ void main() {
     var loadCount = 0;
     var saved = const <UsagePriceRule>[];
     final cubit = SessionUsageCubit(
-      loadEvents: () async {
+      loadUsageSource: () async {
         loadCount++;
-        return [_event(model: 'custom', input: 1000000, output: 0)];
+        return UsageSource.fromEvents([_event(model: 'custom', input: 1000000, output: 0)]);
       },
       syncAll: () async => const UsageSyncResult(),
       loadPricing: () async => const UsagePricingLoad(rules: []),
@@ -516,7 +519,7 @@ void main() {
 
   test('pricing save failure keeps the old catalog', () async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event(model: 'custom')],
+      loadUsageSource: () async => UsageSource.fromEvents([_event(model: 'custom')]),
       syncAll: () async => const UsageSyncResult(),
       loadPricing: () async => const UsagePricingLoad(rules: []),
       savePricing: (_) async => throw StateError('read-only'),
@@ -541,7 +544,7 @@ void main() {
       UsagePriceRule(model: 'old', inputPerMillion: 1, outputPerMillion: 1),
     ];
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async => const UsageSyncResult(),
       loadPricing: () async => UsagePricingLoad(
         rules: const [
@@ -573,9 +576,9 @@ void main() {
       sizeBytes: 1024,
     );
     final cubit = SessionUsageCubit(
-      loadEvents: () async {
+      loadUsageSource: () async {
         loadCount++;
-        return [_event()];
+        return UsageSource.fromEvents([_event()]);
       },
       syncAll: () async => const UsageSyncResult(),
       loadUsageStats: () async => stats,
@@ -612,12 +615,12 @@ void main() {
     expect(cubit.state.maintenanceBusy, isFalse);
   });
 
-  test('large filter changes compute off the UI thread', () async {
+  test('filter changes compute asynchronously through the worker', () async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [
+      loadUsageSource: () async => UsageSource.fromEvents([
         _event(id: 'a', sessionId: 's1'),
         _event(id: 'b', sessionId: 's2', input: 100),
-      ],
+      ]),
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => [
         _session('s1', 'Alpha'),
@@ -625,7 +628,6 @@ void main() {
       ],
       loadTeams: () async => const <TeamProfile>[],
       now: () => _now,
-      isolateThreshold: 1,
     );
     addTearDown(cubit.close);
 
@@ -644,7 +646,7 @@ void main() {
     'custom range filters events and clears when switching presets',
     () async {
       final cubit = SessionUsageCubit(
-        loadEvents: () async => [
+        loadUsageSource: () async => UsageSource.fromEvents([
           _event(
             id: 'recent',
             timestampMs: DateTime(2026, 10, 26, 12).millisecondsSinceEpoch,
@@ -653,7 +655,7 @@ void main() {
             id: 'old',
             timestampMs: DateTime(2026, 10, 20, 12).millisecondsSinceEpoch,
           ),
-        ],
+        ]),
         syncAll: () async => const UsageSyncResult(),
         loadSessions: () async => const <AppSession>[],
         loadTeams: () async => const <TeamProfile>[],
@@ -668,10 +670,12 @@ void main() {
         startMs: DateTime(2026, 10, 25).millisecondsSinceEpoch,
         endMs: DateTime(2026, 10, 26, 18).millisecondsSinceEpoch,
       );
+      await Future<void>.delayed(Duration.zero);
       expect(cubit.state.range, UsageRange.custom);
       expect(cubit.state.dashboard.summary.requests, 1);
 
       cubit.setRange(UsageRange.all);
+      await Future<void>.delayed(Duration.zero);
       expect(cubit.state.range, UsageRange.all);
       expect(cubit.state.customStartMs, isNull);
       expect(cubit.state.customEndMs, isNull);
@@ -683,12 +687,12 @@ void main() {
   test('live end uses now on refresh', () async {
     var now = DateTime(2026, 10, 26, 12);
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [
+      loadUsageSource: () async => UsageSource.fromEvents([
         _event(
           id: 'later',
           timestampMs: DateTime(2026, 10, 26, 13).millisecondsSinceEpoch,
         ),
-      ],
+      ]),
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => const <AppSession>[],
       loadTeams: () async => const <TeamProfile>[],
@@ -702,10 +706,12 @@ void main() {
       endMs: DateTime(2026, 10, 26, 12).millisecondsSinceEpoch,
       liveEnd: true,
     );
+    await Future<void>.delayed(Duration.zero);
     expect(cubit.state.dashboard.summary.requests, 0);
 
     now = DateTime(2026, 10, 26, 14);
     cubit.refreshRangeNow();
+    await Future<void>.delayed(Duration.zero);
     expect(cubit.state.dashboard.summary.requests, 1);
   });
 }

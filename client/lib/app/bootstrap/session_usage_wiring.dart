@@ -10,6 +10,7 @@ import '../../services/cursor_usage/cursor_usage_event_source.dart';
 import '../../services/notification/notification_recorder.dart';
 import '../../services/storage/home_storage.dart';
 import '../../services/usage/cursor_usage_sync_adapter.dart';
+import '../../services/usage/usage_data_worker.dart';
 import '../../utils/retryable_memo.dart';
 import '../session_usage_services.dart';
 import 'cursor_usage_stack.dart';
@@ -76,7 +77,8 @@ SessionUsageWiring wireSessionUsage({
         cursorAdapter.syncFor(range, startMs, endMs, full: full),
   );
   final sessionUsageCubit = SessionUsageCubit(
-    loadEvents: sessionUsageServices.loadEvents,
+    loadUsageSource: sessionUsageServices.loadUsageSource,
+    worker: IsolateUsageDataWorker(),
     syncAll: sessionUsageServices.syncAll,
     startSync: sessionUsageServices.startSync,
     startFullSync: sessionUsageServices.startFullSync,

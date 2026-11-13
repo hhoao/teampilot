@@ -23,7 +23,7 @@ class UsageDetailTable extends StatefulWidget {
     required this.onGroupByChanged,
     required this.onResetFilters,
     this.resetKey = '',
-    this.isComputing = false,
+    this.overlay,
     super.key,
   });
 
@@ -36,7 +36,10 @@ class UsageDetailTable extends StatefulWidget {
 
   /// Changes whenever range/CLI/group/search filters change; resets the page.
   final String resetKey;
-  final bool isComputing;
+
+  /// Painted above the table card. Keep the instance stable so overlay-only
+  /// state changes do not force the table to rebuild and lay out again.
+  final Widget? overlay;
 
   @override
   State<UsageDetailTable> createState() => _UsageDetailTableState();
@@ -233,15 +236,7 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
               ),
             ),
           ),
-          if (widget.isComputing)
-            Positioned.fill(
-              child: AbsorbPointer(
-                child: ColoredBox(
-                  color: cs.surface.withValues(alpha: 0.55),
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-              ),
-            ),
+          if (widget.overlay case final overlay?) overlay,
         ],
       ),
     );

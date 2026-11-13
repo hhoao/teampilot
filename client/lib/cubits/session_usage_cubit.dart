@@ -1,18 +1,16 @@
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_session.dart';
 import '../models/cursor_usage_account.dart';
-import '../models/session_usage.dart';
 import '../models/session_usage_dashboard.dart';
 import '../models/session_usage_pricing.dart';
 import '../models/team_config.dart';
 import '../services/usage/session_usage_sync_service.dart';
 import '../services/usage/usage_dashboard_engine.dart';
-import '../services/usage/usage_aggregator.dart';
+import '../services/usage/usage_data_worker.dart';
 import '../services/usage/usage_pricing_store.dart';
 import '../services/usage/usage_store.dart';
 import '../services/usage/usage_sync_control.dart';
@@ -212,10 +210,12 @@ final class SessionUsageState extends Equatable {
 /// Cached-event loader + manual sync state for the usage page.
 ///
 /// The cubit never scans CLI transcripts itself; [syncAll] does that and the
-/// cubit reloads the JSONL cache afterwards. Filters only recompute in memory.
+/// cubit hands the raw store to a [UsageDataWorker] afterwards. The event list
+/// and every aggregation live in the worker; the UI isolate only sees the
+/// resulting [UsageDashboard].
 final class SessionUsageCubit extends Cubit<SessionUsageState> {
   SessionUsageCubit({
-    required Future<List<SessionUsageEvent>> Function() loadEvents,
+    required Future<UsageSource> Function() loadUsageSource,
     Future<List<CursorUsageAccount>> Function()? loadCursorAccounts,
     Future<void> Function(
       UsageRange range,
@@ -235,8 +235,9 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     required Future<List<TeamProfile>> Function() loadTeams,
     Stream<void>? storageChanges,
     DateTime Function()? now,
-    this.isolateThreshold = 4000,
-  }) : _loadEvents = loadEvents,
+    UsageDataWorker? worker,
+  }) : _loadUsageSource = loadUsageSource,
+       _worker = worker ?? InlineUsageDataWorker(),
        _loadCursorAccounts = loadCursorAccounts,
        _syncCursorUsage = syncCursorUsage,
        _syncAll = syncAll,
@@ -250,7 +251,6 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
        _loadTeams = loadTeams,
        _now = now ?? DateTime.now,
        super(SessionUsageState()) {
-    _engine = UsageDashboardEngine(isolateThreshold: isolateThreshold);
     _storageSub = storageChanges?.listen((_) {
       // Nothing is loaded until a usage surface asks for it. Boot reinstalls
       // the home plane before that, and reloading there would pull the whole
@@ -260,7 +260,8 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     });
   }
 
-  final Future<List<SessionUsageEvent>> Function() _loadEvents;
+  final Future<UsageSource> Function() _loadUsageSource;
+  final UsageDataWorker _worker;
   final Future<List<CursorUsageAccount>> Function()? _loadCursorAccounts;
   final Future<void> Function(
     UsageRange range,
@@ -291,11 +292,9 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   bool _syncManual = true;
   bool _syncFull = false;
   UsagePricingCatalog _pricing = const UsagePricingCatalog();
-  List<SessionUsageEvent> _events = const [];
-  late final UsageDashboardEngine _engine;
-  final int isolateThreshold;
-  int _computeGeneration = 0;
   UsageAttribution _attribution = const UsageAttribution();
+  final Map<String, UsageDashboard> _dashboards = {};
+  int _computeGeneration = 0;
 
   Future<void> ensureLoaded() {
     if (state.status == SessionUsageStatus.ready ||
@@ -326,7 +325,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
 
   Future<void> _loadInternal() async {
     try {
-      final events = await _loadEvents();
+      final source = await _loadUsageSource();
       final sessions = await _loadSessions();
       final teams = await _loadTeams();
       var pricingCorrupted = false;
@@ -345,22 +344,23 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
         }
       }
       if (isClosed) return;
-      _events = events;
-      _pricing = pricing;
-      _computeGeneration++;
-      _engine.clearCache();
       _attribution = UsageAttribution.fromSessionsAndTeams(
         sessions: sessions,
         teams: teams,
       );
+      _pricing = pricing;
       final accounts =
           await (_loadCursorAccounts?.call() ??
               Future<List<CursorUsageAccount>>.value(const []));
       if (isClosed) return;
+      final load = _usageLoad(source);
+      final dashboard = await _worker.load(load);
+      if (isClosed) return;
+      _remember(load.filter, load.nowMs, dashboard);
       emit(
         state.copyWith(
           status: SessionUsageStatus.ready,
-          dashboard: _computeDashboard(),
+          dashboard: dashboard,
           pricing: pricing,
           pricingCorrupted: pricingCorrupted,
           cursorAccounts: accounts,
@@ -470,21 +470,22 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
 
     try {
       final result = await _runSync();
-      final events = await _loadEvents();
+      final source = await _loadUsageSource();
       final sessions = await _loadSessions();
       final teams = await _loadTeams();
       if (isClosed) return;
-      _events = events;
-      _computeGeneration++;
-      _engine.clearCache();
       _attribution = UsageAttribution.fromSessionsAndTeams(
         sessions: sessions,
         teams: teams,
       );
+      final load = _usageLoad(source);
+      final dashboard = await _worker.load(load);
+      if (isClosed) return;
+      _remember(load.filter, load.nowMs, dashboard);
       emit(
         state.copyWith(
           status: SessionUsageStatus.ready,
-          dashboard: _computeDashboard(),
+          dashboard: dashboard,
           isSyncing: false,
           isCancelling: false,
           clearSyncProgress: true,
@@ -557,12 +558,13 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     }
     if (isClosed || generation != _cursorSyncGeneration) return;
     try {
-      final events = await _loadEvents();
+      final source = await _loadUsageSource();
       if (isClosed || generation != _cursorSyncGeneration) return;
-      _events = events;
-      _computeGeneration++;
-      _engine.clearCache();
-      emit(state.copyWith(dashboard: _computeDashboard(), isComputing: false));
+      final load = _usageLoad(source);
+      final dashboard = await _worker.load(load);
+      if (isClosed || generation != _cursorSyncGeneration) return;
+      _remember(load.filter, load.nowMs, dashboard);
+      emit(state.copyWith(dashboard: dashboard, isComputing: false));
     } on Object {
       // Keep whatever the cache already produced.
     }
@@ -630,13 +632,22 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       await saver(rules);
       if (isClosed) return;
       _pricing = UsagePricingCatalog(userRules: rules);
-      _engine.clearCache();
+      final nowMs = _now().millisecondsSinceEpoch;
+      final filter = _filterFor(state);
+      final generation = ++_computeGeneration;
+      final dashboard = await _worker.compute(
+        filter,
+        nowMs,
+        pricing: _pricing,
+      );
+      if (isClosed || generation != _computeGeneration) return;
+      _remember(filter, nowMs, dashboard);
       emit(
         state.copyWith(
           pricing: _pricing,
           pricingSaving: false,
           pricingCorrupted: false,
-          dashboard: _computeDashboard(),
+          dashboard: dashboard,
           clearPricingError: true,
         ),
       );
@@ -715,21 +726,17 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       clearCursorAccount: clearCursorAccount,
     );
     final nowMs = _now().millisecondsSinceEpoch;
-    final cached = _engine.cached(_filterFor(next), nowMs);
+    final filter = _filterFor(next);
+    final key = UsageDashboardEngine.keyFor(filter, nowMs);
+    final cached = _dashboards[key];
     if (cached != null) {
       _computeGeneration++;
       emit(next.copyWith(dashboard: cached, isComputing: false));
       return;
     }
-    if (_events.length < _engine.isolateThreshold) {
-      emit(
-        next.copyWith(dashboard: _computeDashboard(next), isComputing: false),
-      );
-      return;
-    }
     final generation = ++_computeGeneration;
     emit(next.copyWith(isComputing: true));
-    unawaited(_computeDashboardInBackground(next, generation, nowMs));
+    unawaited(_computeInWorker(generation, filter, nowMs, key));
   }
 
   UsageFilter _filterFor(SessionUsageState current) => UsageFilter(
@@ -743,45 +750,40 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     liveEnd: current.liveEnd,
   );
 
-  Future<void> _computeDashboardInBackground(
-    SessionUsageState current,
-    int generation,
+  UsageLoad _usageLoad(UsageSource source) => UsageLoad(
+    source: source,
+    attribution: _attribution,
+    pricing: _pricing,
+    filter: _filterFor(state),
+    nowMs: _now().millisecondsSinceEpoch,
+  );
+
+  void _remember(
+    UsageFilter filter,
     int nowMs,
+    UsageDashboard dashboard,
+  ) {
+    _computeGeneration++;
+    _dashboards.clear();
+    _dashboards[UsageDashboardEngine.keyFor(filter, nowMs)] = dashboard;
+  }
+
+  void _cache(String key, UsageDashboard dashboard) {
+    if (_dashboards.length >= 16) _dashboards.remove(_dashboards.keys.first);
+    _dashboards[key] = dashboard;
+  }
+
+  Future<void> _computeInWorker(
+    int generation,
+    UsageFilter filter,
+    int nowMs,
+    String key,
   ) async {
-    UsageDashboard dashboard;
-    try {
-      dashboard = await _engine.dashboardForAsync(
-        events: _events,
-        attribution: _attribution,
-        pricing: _pricing,
-        filter: _filterFor(current),
-        nowMs: nowMs,
-      );
-    } on Object catch (error, stackTrace) {
-      AppLogger.instance.w(
-        '[usage] background dashboard failed: $error',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      dashboard = _computeDashboard(current);
-    }
+    final dashboard = await _worker.compute(filter, nowMs);
     if (isClosed || generation != _computeGeneration) return;
+    _cache(key, dashboard);
     emit(state.copyWith(dashboard: dashboard, isComputing: false));
   }
-
-  UsageDashboard _computeDashboard([SessionUsageState? stateOverride]) {
-    final current = stateOverride ?? state;
-    return _engine.dashboardFor(
-      events: _events,
-      attribution: _attribution,
-      pricing: _pricing,
-      filter: _filterFor(current),
-      nowMs: _now().millisecondsSinceEpoch,
-    );
-  }
-
-  List<UsageHeatmapDay> _heatmapFor(CliTool? cli) =>
-      _engine.heatmapFor(events: _events, pricing: _pricing, cli: cli);
 
   @override
   Future<void> close() async {
@@ -792,6 +794,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     if (progressSub != null) unawaited(progressSub.cancel());
     await _storageSub?.cancel();
     _storageSub = null;
+    _worker.close();
     return super.close();
   }
 }

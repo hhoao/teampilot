@@ -389,18 +389,22 @@ class _SpanBlock extends StatelessWidget {
     final level = future
         ? 0
         : usageHeatmapLevel(_metricValue(data, metric), thresholds);
-    return Tooltip(
-      message: future ? '' : _tooltip(dayStart, data, material),
-      waitDuration: const Duration(milliseconds: 150),
-      child: Container(
-        key: ValueKey('usageHeatmapCell-$dayStart'),
-        width: cell,
-        height: cell,
-        decoration: BoxDecoration(
-          color: future ? Colors.transparent : _heatColor(level, cs),
-          borderRadius: BorderRadius.circular(3),
-        ),
+    final box = Container(
+      key: ValueKey('usageHeatmapCell-$dayStart'),
+      width: cell,
+      height: cell,
+      decoration: BoxDecoration(
+        color: future ? Colors.transparent : _heatColor(level, cs),
+        borderRadius: BorderRadius.circular(3),
       ),
+    );
+    // Most cells have no usage; wrapping all 371 in a Tooltip built a
+    // MouseRegion/Semantics pair per cell and formatted every tooltip eagerly.
+    if (future || data == null) return box;
+    return Tooltip(
+      message: _tooltip(dayStart, data, material),
+      waitDuration: const Duration(milliseconds: 150),
+      child: box,
     );
   }
 

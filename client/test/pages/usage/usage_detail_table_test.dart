@@ -54,7 +54,7 @@ Widget _wrap({
   ValueChanged<UsageGroupBy>? onGroupByChanged,
   Locale locale = const Locale('en'),
   TextScaler textScaler = TextScaler.noScaling,
-  bool isComputing = false,
+  Widget? overlay,
 }) {
   return MaterialApp(
     locale: locale,
@@ -78,7 +78,7 @@ Widget _wrap({
                 onQueryChanged: (_) {},
                 onGroupByChanged: onGroupByChanged ?? (_) {},
                 onResetFilters: () {},
-                isComputing: isComputing,
+                overlay: overlay,
               ),
             ),
           ),
@@ -112,12 +112,14 @@ void main() {
     expect(find.textContaining('Group by'), findsNothing);
   });
 
-  testWidgets('shows a loading overlay while computing', (tester) async {
+  testWidgets('paints the supplied overlay above the table', (tester) async {
     await tester.pumpWidget(
       _wrap(
         dashboard: _dashboard(),
         repository: InMemoryAppSettingsRepository(),
-        isComputing: true,
+        overlay: const Positioned.fill(
+          child: Center(child: CircularProgressIndicator()),
+        ),
       ),
     );
     await tester.pump();

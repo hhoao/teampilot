@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 import '../../models/session_usage.dart';
 import '../../models/session_usage_dashboard.dart';
 import '../../models/session_usage_pricing.dart';
@@ -399,34 +397,3 @@ double? _heatmapHitRate(_HeatmapAccumulator bucket) {
   return base == 0 ? null : bucket.cacheRead / base;
 }
 
-/// Sendable payload for computing a dashboard on a background isolate.
-@immutable
-class UsageDashboardRequest {
-  const UsageDashboardRequest({
-    required this.events,
-    required this.attribution,
-    required this.filter,
-    required this.nowMs,
-    required this.pricing,
-    this.heatmap,
-  });
-
-  final List<SessionUsageEvent> events;
-  final UsageAttribution attribution;
-  final UsageFilter filter;
-  final int nowMs;
-  final UsagePricingCatalog pricing;
-  final List<UsageHeatmapDay>? heatmap;
-}
-
-/// Top-level entry point for `compute`.
-UsageDashboard buildUsageDashboardRequest(UsageDashboardRequest request) {
-  return buildUsageDashboard(
-    events: request.events,
-    attribution: request.attribution,
-    filter: request.filter,
-    nowMs: request.nowMs,
-    pricing: request.pricing,
-    heatmap: request.heatmap,
-  );
-}

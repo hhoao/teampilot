@@ -14,6 +14,7 @@ import 'package:teampilot/services/notification/notification_recorder.dart';
 import 'package:teampilot/services/usage/session_usage_sync_service.dart';
 import 'package:teampilot/services/usage/usage_sync_control.dart';
 import 'package:teampilot/widgets/workspace_status_bar/session_usage_progress_bridge.dart';
+import 'package:teampilot/services/usage/usage_data_worker.dart';
 
 class _Recorder implements NotificationRecorder {
   @override
@@ -34,7 +35,7 @@ void main() {
     final done = Completer<UsageSyncResult>();
     var cancelCalls = 0;
     final cubit = SessionUsageCubit(
-      loadEvents: () async => const [],
+      loadUsageSource: () async => UsageSource.fromEvents(const []),
       syncAll: () async => const UsageSyncResult(),
       startSync: () => UsageSyncHandle(
         done: done.future,

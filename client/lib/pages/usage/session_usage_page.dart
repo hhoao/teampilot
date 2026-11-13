@@ -156,6 +156,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
 
   @override
   Widget build(BuildContext context) {
+    final cubit = context.read<SessionUsageCubit>();
     final content = BlocListener<SessionUsageCubit, SessionUsageState>(
       listenWhen: (previous, current) => previous.liveEnd != current.liveEnd,
       listener: (context, state) => _syncLiveRangeTimer(state.liveEnd),
@@ -182,52 +183,89 @@ class _SessionUsagePageState extends State<SessionUsagePage>
             );
           }
         },
-        child: BlocBuilder<SessionUsageCubit, SessionUsageState>(
-          builder: (context, state) {
-            final cubit = context.read<SessionUsageCubit>();
-            final body = BlocBuilder<SessionUsageCubit, SessionUsageState>(
-              buildWhen: (previous, current) =>
-                  previous.status != current.status ||
-                  previous.dashboard != current.dashboard ||
-                  previous.isComputing != current.isComputing ||
-                  previous.errorMessage != current.errorMessage ||
-                  previous.pricingCorrupted != current.pricingCorrupted,
-              builder: (context, bodyState) => _buildBody(
-                context,
-                cubit,
-                bodyState,
-                DateTime.now().millisecondsSinceEpoch,
+        child: KeyedSubtree(
+          key: AppKeys.sessionUsagePage,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              BlocBuilder<SessionUsageCubit, SessionUsageState>(
+                buildWhen: _headerChanged,
+                builder: (context, state) => UsagePageHeader(
+                  state: state,
+                  onIncrementalSync: () => cubit.sync(),
+                  onFullSync: cubit.fullSync,
+                  onCancel: cubit.cancelSync,
+                  onSettings: () => _openSettings(cubit),
+                ),
               ),
-            );
-            return KeyedSubtree(
-              key: AppKeys.sessionUsagePage,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  UsagePageHeader(
-                    state: state,
-                    onIncrementalSync: () => cubit.sync(),
-                    onFullSync: cubit.fullSync,
-                    onCancel: cubit.cancelSync,
-                    onSettings: () => _openSettings(cubit),
-                  ),
-                  if (_errorBanner(context, cubit, state)
-                      case final banner?) ...[
-                    const SizedBox(height: 12),
-                    banner,
-                  ],
-                  const SizedBox(height: 16),
-                  Expanded(child: body),
-                ],
+              BlocBuilder<SessionUsageCubit, SessionUsageState>(
+                buildWhen: _bannerChanged,
+                builder: (context, state) => _banner(context, cubit, state),
               ),
-            );
-          },
+              const SizedBox(height: 16),
+              Expanded(
+                child: BlocBuilder<SessionUsageCubit, SessionUsageState>(
+                  buildWhen: _bodyChanged,
+                  builder: (context, state) => _buildBody(context, cubit, state),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
 
     if (widget.embedded) return content;
     return Padding(padding: WorkspacePaneInsets.page, child: content);
+  }
+
+  bool _headerChanged(SessionUsageState previous, SessionUsageState current) =>
+      previous.status != current.status ||
+      previous.isSyncing != current.isSyncing ||
+      previous.isCancelling != current.isCancelling ||
+      previous.syncProgress != current.syncProgress ||
+      previous.lastSyncAtMs != current.lastSyncAtMs;
+
+  bool _bannerChanged(SessionUsageState previous, SessionUsageState current) =>
+      previous.syncFailed != current.syncFailed ||
+      previous.syncErrors != current.syncErrors ||
+      previous.errorMessage != current.errorMessage ||
+      previous.dashboard.totalEventCount != current.dashboard.totalEventCount;
+
+  bool _bodyChanged(SessionUsageState previous, SessionUsageState current) =>
+      previous.status != current.status ||
+      previous.errorMessage != current.errorMessage ||
+      previous.dashboard.totalEventCount != current.dashboard.totalEventCount;
+
+  bool _filterChanged(SessionUsageState previous, SessionUsageState current) =>
+      previous.status != current.status ||
+      previous.range != current.range ||
+      previous.customStartMs != current.customStartMs ||
+      previous.customEndMs != current.customEndMs ||
+      previous.liveEnd != current.liveEnd ||
+      previous.cli != current.cli ||
+      previous.cursorAccountId != current.cursorAccountId ||
+      previous.cursorAccounts != current.cursorAccounts;
+
+  bool _summaryChanged(SessionUsageState previous, SessionUsageState current) =>
+      previous.dashboard.summary != current.dashboard.summary ||
+      previous.pricingCorrupted != current.pricingCorrupted;
+
+  bool _heatmapChanged(SessionUsageState previous, SessionUsageState current) =>
+      !identical(previous.dashboard.heatmap, current.dashboard.heatmap);
+
+  bool _tableChanged(SessionUsageState previous, SessionUsageState current) =>
+      !identical(previous.dashboard.rows, current.dashboard.rows) ||
+      previous.groupBy != current.groupBy;
+
+  Widget _banner(
+    BuildContext context,
+    SessionUsageCubit cubit,
+    SessionUsageState state,
+  ) {
+    final banner = _errorBanner(context, cubit, state);
+    if (banner == null) return const SizedBox.shrink();
+    return Padding(padding: const EdgeInsets.only(top: 12), child: banner);
   }
 
   Future<void> _openSettings(SessionUsageCubit cubit) async {
@@ -324,7 +362,6 @@ class _SessionUsagePageState extends State<SessionUsagePage>
     BuildContext context,
     SessionUsageCubit cubit,
     SessionUsageState state,
-    int nowMs,
   ) {
     if (!state.hasData) {
       if (state.status == SessionUsageStatus.initial ||
@@ -340,48 +377,51 @@ class _SessionUsagePageState extends State<SessionUsagePage>
       );
     }
 
-    final dashboard = state.dashboard;
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          UsageFilterBar(state: state, cubit: cubit),
+          BlocBuilder<SessionUsageCubit, SessionUsageState>(
+            buildWhen: _filterChanged,
+            builder: (context, state) =>
+                UsageFilterBar(state: state, cubit: cubit),
+          ),
           const SizedBox(height: 14),
-          BlocSelector<SessionUsageCubit, SessionUsageState, int>(
-            selector: (state) => Object.hash(
-              state.dashboard.summary,
-              Object.hashAll(state.dashboard.chart),
-              state.pricingCorrupted,
-            ),
-            builder: (context, _) => UsageSummaryCards(
-              dashboard: cubit.state.dashboard,
-              nowMs: nowMs,
-              pricingCorrupted: cubit.state.pricingCorrupted,
+          BlocBuilder<SessionUsageCubit, SessionUsageState>(
+            buildWhen: _summaryChanged,
+            builder: (context, state) => UsageSummaryCards(
+              dashboard: state.dashboard,
+              nowMs: DateTime.now().millisecondsSinceEpoch,
+              pricingCorrupted: state.pricingCorrupted,
               onManagePricing: () => _openPricing(cubit),
             ),
           ),
           const SizedBox(height: 14),
-          BlocSelector<SessionUsageCubit, SessionUsageState, int>(
-            selector: (state) => Object.hashAll(state.dashboard.heatmap),
-            builder: (context, _) => UsageHeatmapCard(
-              days: cubit.state.dashboard.heatmap,
-              nowMs: nowMs,
+          BlocBuilder<SessionUsageCubit, SessionUsageState>(
+            buildWhen: _heatmapChanged,
+            builder: (context, state) => UsageHeatmapCard(
+              days: state.dashboard.heatmap,
+              nowMs: DateTime.now().millisecondsSinceEpoch,
             ),
           ),
           const SizedBox(height: 14),
-          UsageDetailTable(
-            dashboard: dashboard,
-            groupBy: state.groupBy,
-            searchController: _searchController,
-            onQueryChanged: cubit.setQuery,
-            onGroupByChanged: cubit.setGroupBy,
-            onResetFilters: () => _resetFilters(cubit),
-            isComputing: state.isComputing,
-            resetKey:
-                '${state.range.name}|${state.customStartMs ?? ''}|'
-                '${state.customEndMs ?? ''}|${state.liveEnd}|'
-                '${state.cli?.name ?? ''}|${state.groupBy.name}|${state.query}',
+          BlocBuilder<SessionUsageCubit, SessionUsageState>(
+            buildWhen: _tableChanged,
+            builder: (context, state) => UsageDetailTable(
+              dashboard: state.dashboard,
+              groupBy: state.groupBy,
+              searchController: _searchController,
+              onQueryChanged: cubit.setQuery,
+              onGroupByChanged: cubit.setGroupBy,
+              onResetFilters: () => _resetFilters(cubit),
+              overlay: const _ComputingOverlay(),
+              resetKey:
+                  '${state.range.name}|${state.customStartMs ?? ''}|'
+                  '${state.customEndMs ?? ''}|${state.liveEnd}|'
+                  '${state.cli?.name ?? ''}|${state.groupBy.name}|'
+                  '${state.query}',
+            ),
           ),
         ],
       ),
@@ -416,5 +456,32 @@ class _SessionUsagePageState extends State<SessionUsagePage>
       );
     }
     return null;
+  }
+}
+
+/// Sits above the table card inside its `Stack`. It is a `const` child of the
+/// table, so only this overlay rebuilds when a compute starts or finishes —
+/// the table itself keeps its previous widget and skips layout.
+class _ComputingOverlay extends StatelessWidget {
+  const _ComputingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return BlocBuilder<SessionUsageCubit, SessionUsageState>(
+      buildWhen: (previous, current) =>
+          previous.isComputing != current.isComputing,
+      builder: (context, state) {
+        if (!state.isComputing) return const SizedBox.shrink();
+        return Positioned.fill(
+          child: AbsorbPointer(
+            child: ColoredBox(
+              color: cs.surface.withValues(alpha: 0.55),
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

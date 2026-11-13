@@ -1,23 +1,17 @@
-import 'package:flutter/foundation.dart';
-
 import '../../models/session_usage.dart';
 import '../../models/team_config.dart';
 import '../../models/session_usage_dashboard.dart';
 import '../../models/session_usage_pricing.dart';
 import 'usage_aggregator.dart';
 
-/// Dashboard computation for the usage page: the memo cache, the isolate
-/// dispatch and the heatmap memo.
+/// Dashboard computation for the usage page: the memo cache and the heatmap
+/// memo.
 ///
 /// The engine holds no inputs and no UI state: every call passes the events,
 /// pricing and attribution, and the caller clears the cache when those inputs
 /// change. That keeps the calculator testable without a cubit.
 final class UsageDashboardEngine {
-  UsageDashboardEngine({this.isolateThreshold = 4000});
-
-  /// Below this many events the dashboard is computed inline; above it the
-  /// compute runs in an isolate so the UI thread stays responsive.
-  final int isolateThreshold;
+  UsageDashboardEngine();
 
   final Map<String, UsageDashboard> _cache = {};
   List<UsageHeatmapDay>? _heatmapCache;
@@ -66,41 +60,6 @@ final class UsageDashboardEngine {
       nowMs: nowMs,
       pricing: pricing,
       heatmap: heatmapFor(events: events, pricing: pricing, cli: filter.cli),
-    );
-    _store(key, dashboard);
-    return dashboard;
-  }
-
-  /// Computes in an isolate when the event list is large enough to justify it.
-  Future<UsageDashboard> dashboardForAsync({
-    required List<SessionUsageEvent> events,
-    required UsageAttribution attribution,
-    required UsagePricingCatalog pricing,
-    required UsageFilter filter,
-    required int nowMs,
-  }) async {
-    final key = keyFor(filter, nowMs);
-    final hit = _cache[key];
-    if (hit != null) return hit;
-    if (events.length < isolateThreshold) {
-      return dashboardFor(
-        events: events,
-        attribution: attribution,
-        pricing: pricing,
-        filter: filter,
-        nowMs: nowMs,
-      );
-    }
-    final dashboard = await compute(
-      buildUsageDashboardRequest,
-      UsageDashboardRequest(
-        events: events,
-        attribution: attribution,
-        filter: filter,
-        nowMs: nowMs,
-        pricing: pricing,
-        heatmap: heatmapFor(events: events, pricing: pricing, cli: filter.cli),
-      ),
     );
     _store(key, dashboard);
     return dashboard;

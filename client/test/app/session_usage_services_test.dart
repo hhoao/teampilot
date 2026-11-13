@@ -8,6 +8,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/usage/json_usage_store.dart';
 
 import '../support/in_memory_filesystem.dart';
+import 'package:teampilot/services/usage/usage_data_worker.dart';
 
 SessionUsageEvent _event() => const SessionUsageEvent(
   requestId: 'claude:1',
@@ -37,13 +38,13 @@ void main() {
       loadTeams: () async => const [],
     );
 
-    expect(await services.loadEvents(), isEmpty);
+    expect(decodeUsageEvents(await services.loadUsageSource()), isEmpty);
 
     final result = await services.syncAll();
 
     expect(result.targetsScanned, 0);
     expect(result.errors, isEmpty);
-    expect(await services.loadEvents(), isEmpty);
+    expect(decodeUsageEvents(await services.loadUsageSource()), isEmpty);
   });
 
   test('loaders follow a home-plane swap', () async {
@@ -57,7 +58,7 @@ void main() {
       loadTeams: () async => const [],
     );
 
-    expect(await services.loadEvents(), isEmpty);
+    expect(decodeUsageEvents(await services.loadUsageSource()), isEmpty);
 
     final planeB = fakeHomeStorage(
       appDataRoot: '/tp-plane-b',
@@ -65,14 +66,14 @@ void main() {
     );
     await storage.swap(planeB.context);
 
-    expect(await services.loadEvents(), isEmpty);
+    expect(decodeUsageEvents(await services.loadUsageSource()), isEmpty);
 
     await JsonUsageStore(
       fs: planeB.fs,
       filePath: storage.paths.usageEventsFile,
     ).upsert([_event()]);
 
-    final events = await services.loadEvents();
+    final events = decodeUsageEvents(await services.loadUsageSource());
     expect(events, hasLength(1));
     expect(events.single.requestId, 'claude:1');
   });

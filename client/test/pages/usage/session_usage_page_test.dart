@@ -9,13 +9,16 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_usage.dart';
 import 'package:teampilot/models/session_usage_dashboard.dart';
+import 'package:teampilot/models/session_usage_pricing.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/usage/session_usage_page.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
+import 'package:teampilot/pages/usage/widgets/usage_detail_table.dart';
 import 'package:teampilot/pages/usage/widgets/usage_filter_bar.dart';
 import 'package:teampilot/pages/usage/widgets/usage_heatmap_card.dart';
 import 'package:teampilot/pages/usage/widgets/usage_table_toolbar.dart';
 import 'package:teampilot/services/usage/session_usage_sync_service.dart';
+import 'package:teampilot/services/usage/usage_data_worker.dart';
 import 'package:teampilot/services/usage/usage_sync_control.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 
@@ -60,7 +63,7 @@ List<AppSession> _pagedSessions(int count) => [
 ];
 
 SessionUsageCubit _pagedCubit(int count) => SessionUsageCubit(
-  loadEvents: () async => _pagedEvents(count),
+  loadUsageSource: () async => UsageSource.fromEvents(_pagedEvents(count)),
   syncAll: () async => const UsageSyncResult(),
   loadSessions: () async => _pagedSessions(count),
   loadTeams: () async => const <TeamProfile>[],
@@ -119,10 +122,10 @@ Widget _wrap(
 void main() {
   testWidgets('renders summary and grouped rows', (tester) async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [
+      loadUsageSource: () async => UsageSource.fromEvents([
         _event(),
         _event(id: 'r2', sessionId: 's2', cli: CliTool.codex, input: 20),
-      ],
+      ]),
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => [
         _session('s1', 'Alpha'),
@@ -146,7 +149,7 @@ void main() {
     var events = <SessionUsageEvent>[];
     var syncCalls = 0;
     final cubit = SessionUsageCubit(
-      loadEvents: () async => events,
+      loadUsageSource: () async => UsageSource.fromEvents(events),
       syncAll: () async {
         syncCalls++;
         events = [_event()];
@@ -176,7 +179,7 @@ void main() {
     tester,
   ) async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async => const UsageSyncResult(
         errors: [UsageSyncError(sourceId: 'src', message: 'bad')],
       ),
@@ -201,10 +204,10 @@ void main() {
     tester,
   ) async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [
+      loadUsageSource: () async => UsageSource.fromEvents([
         _event(),
         _event(id: 'r2', sessionId: 's2', cli: CliTool.codex, input: 20),
-      ],
+      ]),
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => [
         _session('s1', 'Alpha'),
@@ -234,7 +237,7 @@ void main() {
 
   testWidgets('load failure shows retry state', (tester) async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => throw StateError('offline'),
+      loadUsageSource: () async => throw StateError('offline'),
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => const <AppSession>[],
       loadTeams: () async => const <TeamProfile>[],
@@ -250,7 +253,7 @@ void main() {
 
   testWidgets('renders in dark mode without overflow', (tester) async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => [_session('s1', 'Alpha')],
       loadTeams: () async => const <TeamProfile>[],
@@ -269,10 +272,10 @@ void main() {
   ) async {
     _useTallViewport(tester);
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [
+      loadUsageSource: () async => UsageSource.fromEvents([
         _event(),
         _event(id: 'r2', sessionId: 's2', cli: CliTool.codex, input: 20),
-      ],
+      ]),
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => [
         _session('s1', 'Alpha'),
@@ -328,7 +331,7 @@ void main() {
       cancel: () => cancelCalls++,
     );
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async => const UsageSyncResult(),
       startSync: () => handle,
       loadSessions: () async => [_session('s1', 'Alpha')],
@@ -377,7 +380,7 @@ void main() {
       cancel: () {},
     );
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async => const UsageSyncResult(),
       startFullSync: () {
         fullCalls++;
@@ -428,9 +431,9 @@ void main() {
     var loadCount = 0;
     var syncCount = 0;
     final cubit = SessionUsageCubit(
-      loadEvents: () async {
+      loadUsageSource: () async {
         loadCount++;
-        return [_event()];
+        return UsageSource.fromEvents([_event()]);
       },
       syncAll: () async {
         syncCount++;
@@ -455,10 +458,10 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [
+      loadUsageSource: () async => UsageSource.fromEvents([
         _event(),
         _event(id: 'r2', sessionId: 's2', cli: CliTool.codex, input: 20),
-      ],
+      ]),
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => [
         _session('s1', 'Alpha'),
@@ -482,7 +485,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => [_session('s1', 'Alpha')],
       loadTeams: () async => const <TeamProfile>[],
@@ -499,7 +502,7 @@ void main() {
   testWidgets('auto sync scans once on open when stale', (tester) async {
     var syncCount = 0;
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async {
         syncCount++;
         return const UsageSyncResult();
@@ -521,7 +524,7 @@ void main() {
     var now = DateTime(2026, 10, 26, 18);
     var syncCount = 0;
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async {
         syncCount++;
         return const UsageSyncResult();
@@ -544,7 +547,7 @@ void main() {
 
   testWidgets('settings dialog persists the auto-scan toggle', (tester) async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => [_session('s1', 'Alpha')],
       loadTeams: () async => const <TeamProfile>[],
@@ -567,7 +570,7 @@ void main() {
   testWidgets('disabled auto sync skips the scan on open', (tester) async {
     var syncCount = 0;
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async {
         syncCount++;
         return const UsageSyncResult();
@@ -589,7 +592,7 @@ void main() {
     var now = DateTime(2026, 10, 26, 18);
     var syncCount = 0;
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [_event()],
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
       syncAll: () async {
         syncCount++;
         return const UsageSyncResult();
@@ -618,7 +621,7 @@ void main() {
 
   testWidgets('shows cost and unpriced rows', (tester) async {
     final cubit = SessionUsageCubit(
-      loadEvents: () async => [
+      loadUsageSource: () async => UsageSource.fromEvents([
         _event(
           id: 'priced',
           sessionId: 's1',
@@ -633,7 +636,7 @@ void main() {
           input: 1000000,
           output: 0,
         ),
-      ],
+      ]),
       syncAll: () async => const UsageSyncResult(),
       loadSessions: () async => [
         _session('s1', 'Alpha'),
@@ -737,4 +740,96 @@ void main() {
     expect(find.byKey(AppKeys.sessionUsagePrevPage), findsNothing);
     expect(find.byKey(AppKeys.sessionUsageNextPage), findsNothing);
   });
+
+  testWidgets('computing flag does not rebuild the table', (tester) async {
+    final held = _HeldWorker();
+    final cubit = SessionUsageCubit(
+      loadUsageSource: () async => UsageSource.fromEvents([_event()]),
+      syncAll: () async => const UsageSyncResult(),
+      loadSessions: () async => [_session('s1', 'Alpha')],
+      loadTeams: () async => const <TeamProfile>[],
+      worker: held,
+    );
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pumpAndSettle();
+
+    final before = tester.widget<UsageDetailTable>(
+      find.byType(UsageDetailTable),
+    );
+
+    cubit.setQuery('Alpha');
+    expect(cubit.state.isComputing, isTrue, reason: 'compute should be in flight');
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(
+      identical(
+        before,
+        tester.widget<UsageDetailTable>(find.byType(UsageDetailTable)),
+      ),
+      isTrue,
+    );
+
+    held.release();
+    await tester.pumpAndSettle();
+
+    expect(
+      identical(
+        before,
+        tester.widget<UsageDetailTable>(find.byType(UsageDetailTable)),
+      ),
+      isFalse,
+    );
+  });
+
+  testWidgets('search does not rebuild the heatmap', (tester) async {
+    final cubit = _pagedCubit(25);
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pumpAndSettle();
+
+    final before = tester.widget<UsageHeatmapCard>(
+      find.byType(UsageHeatmapCard),
+    );
+    cubit.setQuery('Session 1');
+    await tester.pumpAndSettle();
+
+    final after = tester.widget<UsageHeatmapCard>(
+      find.byType(UsageHeatmapCard),
+    );
+    // The heatmap depends on CLI-only history, so a query change must leave
+    // the same widget instance in the tree instead of rebuilding 371 cells.
+    expect(identical(before, after), isTrue);
+  });
+}
+
+/// Holds `compute` until [release], so the in-flight computing state can be
+/// observed without racing the inline worker.
+class _HeldWorker implements UsageDataWorker {
+  final InlineUsageDataWorker _inner = InlineUsageDataWorker();
+  final Completer<void> _gate = Completer<void>();
+
+  void release() {
+    if (!_gate.isCompleted) _gate.complete();
+  }
+
+  @override
+  Future<UsageDashboard> load(UsageLoad input) => _inner.load(input);
+
+  @override
+  Future<UsageDashboard> compute(
+    UsageFilter filter,
+    int nowMs, {
+    UsagePricingCatalog? pricing,
+  }) async {
+    await _gate.future;
+    return _inner.compute(filter, nowMs, pricing: pricing);
+  }
+
+  @override
+  void close() => _inner.close();
 }
