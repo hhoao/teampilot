@@ -1,0 +1,16 @@
+name: acp_proxy
+publish_to: none
+version: 0.1.0
+environment:
+  sdk: ^3.8.1
+dependencies:
+  acpd:
+    path: ../acpd/packages/acpd
+dev_dependencies:
+  acpd_test:
+    path: ../acpd/packages/acpd_test
+  test: ^1.25.0
+# acpd_test depends on hosted acpd. Pin the vendored checkout, same as the app.
+dependency_overrides:
+  acpd:
+    path: ../acpd/packages/acpd
