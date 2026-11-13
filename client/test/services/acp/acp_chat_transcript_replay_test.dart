@@ -9,6 +9,39 @@ import '../../support/in_memory_filesystem.dart';
 
 String _line(Map<String, Object?> entry) => jsonEncode(entry);
 
+/// Interleaved thought/text jsonl: R a, T 1, R b, T 2 (keyed i=0..3).
+String _interleavedThoughtTextJsonl({String id = 'acp-a-1'}) => [
+  _line({'v': 2, 'type': 'assistant', 'id': id}),
+  _line({
+    'v': 2,
+    'type': 'part',
+    'mid': id,
+    'i': 0,
+    'part': {'kind': 'reasoning', 'text': 'a'},
+  }),
+  _line({
+    'v': 2,
+    'type': 'part',
+    'mid': id,
+    'i': 1,
+    'part': {'kind': 'text', 'text': '1'},
+  }),
+  _line({
+    'v': 2,
+    'type': 'part',
+    'mid': id,
+    'i': 2,
+    'part': {'kind': 'reasoning', 'text': 'b'},
+  }),
+  _line({
+    'v': 2,
+    'type': 'part',
+    'mid': id,
+    'i': 3,
+    'part': {'kind': 'text', 'text': '2'},
+  }),
+].join('\n');
+
 /// Counts writes and makes them slow enough for a burst to overlap.
 class _SlowFilesystem extends InMemoryFilesystem {
   int writes = 0;
@@ -118,46 +151,64 @@ void main() {
     expect((loaded[2].parts.single as AiTextPart).text, 'Turn failed');
   });
 
-  test('decoder folds interleaved thought and text on assistant messages', () {
-    final jsonl = [
-      _line({'v': 2, 'type': 'assistant', 'id': 'acp-a-1'}),
-      _line({
-        'v': 2,
-        'type': 'part',
-        'mid': 'acp-a-1',
-        'i': 0,
-        'part': {'kind': 'reasoning', 'text': 'a'},
-      }),
-      _line({
-        'v': 2,
-        'type': 'part',
-        'mid': 'acp-a-1',
-        'i': 1,
-        'part': {'kind': 'text', 'text': '1'},
-      }),
-      _line({
-        'v': 2,
-        'type': 'part',
-        'mid': 'acp-a-1',
-        'i': 2,
-        'part': {'kind': 'reasoning', 'text': 'b'},
-      }),
-      _line({
-        'v': 2,
-        'type': 'part',
-        'mid': 'acp-a-1',
-        'i': 3,
-        'part': {'kind': 'text', 'text': '2'},
-      }),
-    ].join('\n');
-
-    final loaded = decodeAcpChatTranscript(jsonl);
+  test('decoder keeps interleaved thought and text as keyed parts', () {
+    final loaded = decodeAcpChatTranscript(_interleavedThoughtTextJsonl());
     expect(loaded, hasLength(1));
     final parts = loaded.single.parts;
-    expect(parts, hasLength(2));
-    expect((parts[0] as AiReasoningPart).text, 'ab');
-    expect((parts[1] as AiTextPart).text, '12');
+    expect(parts, hasLength(4));
+    expect((parts[0] as AiReasoningPart).text, 'a');
+    expect((parts[1] as AiTextPart).text, '1');
+    expect((parts[2] as AiReasoningPart).text, 'b');
+    expect((parts[3] as AiTextPart).text, '2');
   });
+
+  test(
+    'loadMessages folds interleaved thought and text on assistant messages',
+    () async {
+      final fs = InMemoryFilesystem();
+      const path = '/tp/acp-transcript.jsonl';
+      await fs.atomicWrite(path, _interleavedThoughtTextJsonl());
+      final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+      final loaded = await writer.loadMessages();
+      expect(loaded, hasLength(1));
+      final parts = loaded.single.parts;
+      expect(parts, hasLength(2));
+      expect((parts[0] as AiReasoningPart).text, 'ab');
+      expect((parts[1] as AiTextPart).text, '12');
+    },
+  );
+
+  test(
+    'saving a loaded interleaved assistant then growing text reads ab / 12c, never acb',
+    () async {
+      final fs = InMemoryFilesystem();
+      const path = '/tp/acp-transcript.jsonl';
+      await fs.atomicWrite(path, _interleavedThoughtTextJsonl());
+      final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+      final loaded = await writer.loadMessages();
+      final parts = loaded.single.parts;
+      await writer.saveMessages([
+        loaded.single.copyWith(
+          parts: [
+            parts[0],
+            const AiTextPart(text: '12c'),
+          ],
+        ),
+      ]);
+
+      void expectAbAnd12c(List<AiMessage> messages) {
+        expect(messages, hasLength(1));
+        final messageParts = messages.single.parts;
+        expect(messageParts, hasLength(2));
+        expect((messageParts[0] as AiReasoningPart).text, 'ab');
+        expect((messageParts[1] as AiTextPart).text, '12c');
+        expect((messageParts[0] as AiReasoningPart).text, isNot('acb'));
+      }
+
+      expectAbAnd12c(decodeAcpChatTranscript(fs.files[path]));
+      expectAbAnd12c(await writer.loadMessages());
+    },
+  );
 
   test('decoder leaves user parts unfolded', () {
     final jsonl = [
@@ -793,6 +844,60 @@ void main() {
     expect(result.messages.single.parts, hasLength(1));
     expect((result.messages.single.parts.single as AiTextPart).text, 'only');
   });
+
+  test(
+    'applyAcpChatTranscriptDelta keeps 8KB split heads when updating a tool',
+    () {
+      const running = AiToolCallPart(
+        toolCallId: 't1',
+        toolName: 'Read',
+        status: AiToolCallStatus.running,
+      );
+      final current = AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [
+          const AiReasoningPart(text: 'r'),
+          AiTextPart(text: 'A' * 5000),
+          AiTextPart(text: 'B' * 5000),
+          running,
+        ],
+      );
+      final next = current.copyWith(
+        parts: [
+          current.parts[0],
+          current.parts[1],
+          current.parts[2],
+          running.copyWith(status: AiToolCallStatus.complete),
+        ],
+      );
+      final records = buildAcpChatTranscriptDelta(
+        previous: [current],
+        next: [next],
+        fullParts: true,
+      );
+      expect(records, isNotNull);
+      expect(
+        records!.where((record) => record['type'] == 'part'),
+        hasLength(1),
+      );
+      expect(records.singleWhere((record) => record['type'] == 'part')['i'], 3);
+
+      final result = applyAcpChatTranscriptDelta(
+        current: [current],
+        jsonl: records.map(_line).join('\n'),
+      );
+      expect(result.messages, hasLength(1));
+      final parts = result.messages.single.parts;
+      expect(parts, hasLength(4));
+      expect(parts.whereType<AiToolCallPart>(), hasLength(1));
+      expect((parts[0] as AiReasoningPart).text, 'r');
+      expect((parts[1] as AiTextPart).text, 'A' * 5000);
+      expect((parts[2] as AiTextPart).text, 'B' * 5000);
+      expect((parts[3] as AiToolCallPart).toolCallId, 't1');
+      expect((parts[3] as AiToolCallPart).status, AiToolCallStatus.complete);
+    },
+  );
 
   test('reordering is not expressible as a keyed delta', () {
     final a = const AiMessage(

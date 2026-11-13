@@ -6,6 +6,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import '../io/filesystem.dart';
 import '../../utils/logging/logger.dart';
 import 'acp_chat_transcript_replay.dart';
+import 'acp_stream_channel_parts.dart';
 import 'acp_usage.dart';
 
 /// Append-only transcript of one ACP chat session's folded messages.
@@ -24,9 +25,10 @@ import 'acp_usage.dart';
 /// so [loadMessages] never observes an older snapshot.
 ///
 /// A compact rewrite is done on the first write, when legacy v1 records are
-/// detected, when messages are reordered/parts removed, or after
-/// [compactAfterAppendedBytes] of appends — that bounds log growth while
-/// keeping the per-commit path append-only.
+/// detected, when loaded assistant parts were channel-folded, when messages
+/// are reordered/parts removed, or after [compactAfterAppendedBytes] of
+/// appends — that bounds log growth while keeping the per-commit path
+/// append-only.
 ///
 /// Also appends `usage_update` samples to [usagePath] (JSONL) so the usage
 /// collector can re-read them out-of-band; the transcript itself never carries
@@ -62,8 +64,8 @@ class AcpChatTranscriptWriter {
   /// first [saveMessages] establishes a baseline.
   List<AiMessage>? _committed;
 
-  /// True when the file still contains legacy v1 records that must be
-  /// migrated to v2 before appending.
+  /// True when the next write must compact: legacy v1 records, or assistant
+  /// parts that were channel-folded on load (on-disk indices no longer match).
   bool _needsRewrite = false;
   int _appendedSinceCompact = 0;
 
@@ -75,11 +77,27 @@ class AcpChatTranscriptWriter {
       appLogger.w('[acp-transcript] ignored unreadable transcript path=$path');
     }
     // Decoded message instances are the same ones the runtime merges into its
-    // state, so the next save can diff by identity at zero cost.
-    _committed = result.messages;
-    _needsRewrite = result.hasLegacyRecords;
+    // state, so the next save can diff by identity at zero cost. Channel-fold
+    // assistant parts only here so keyed decode/delta stay index-faithful.
+    var compacted = false;
+    final messages = <AiMessage>[];
+    for (final message in result.messages) {
+      if (message.role != AiRole.assistant) {
+        messages.add(message);
+        continue;
+      }
+      final folded = foldAcpStreamChannelParts(message.parts);
+      if (folded.length != message.parts.length) {
+        compacted = true;
+        messages.add(message.copyWith(parts: folded));
+      } else {
+        messages.add(message);
+      }
+    }
+    _committed = messages;
+    _needsRewrite = result.hasLegacyRecords || compacted;
     _appendedSinceCompact = 0;
-    return result.messages;
+    return messages;
   }
 
   Future<void> saveMessages(List<AiMessage> messages) {
