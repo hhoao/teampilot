@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../../../io/filesystem.dart';
 import '../../../storage/home_storage.dart';
 import 'codebuddy_auth_store.dart';
+import 'codebuddy_region.dart';
 
 /// Account model catalog reported by an `initialize` + `session/new` probe.
 ///
@@ -88,11 +89,15 @@ CodebuddyModelsSnapshot? parseCodebuddyModelsResponse(Object? result) {
 }
 
 /// Runs one short-lived ACP handshake and returns the account's models.
+///
+/// [environment] is the account environment from
+/// `CodebuddyAuthStore.accountEnvironment` (token + region); empty for the
+/// machine login.
 typedef CodebuddyAcpModelsOpener =
     Future<CodebuddyModelsSnapshot?> Function({
       required String executable,
       required String configDir,
-      required String? accessToken,
+      required Map<String, String> environment,
       required Duration timeout,
     });
 
@@ -312,10 +317,12 @@ class CodebuddyModelsService {
       basePath: roots.basePath,
       pathContext: roots.fs.pathContext,
     );
-    final token = store.accessTokenFor(
-      await store.readProviderAuth(providerId),
-    );
-    if (token == null && !await _machineLoginExists(store)) return null;
+    final environment = await store.accountEnvironment(providerId);
+    if (environment == null && !await _machineLoginExists(store)) return null;
+
+    // A provider's probe dir is reused across re-logins; drop the region it
+    // cached under the previous account.
+    await CodebuddyRegion.clearCachedRegion(roots.fs, configDir);
 
     final resolved = executable?.trim().isNotEmpty == true
         ? executable!.trim()
@@ -323,7 +330,7 @@ class CodebuddyModelsService {
     final snapshot = await _opener(
       executable: resolved,
       configDir: configDir,
-      accessToken: token,
+      environment: environment ?? const {},
       timeout: probeTimeout,
     );
     if (snapshot == null || snapshot.modelIds.isEmpty) return null;
@@ -416,7 +423,7 @@ class CodebuddyModelsService {
   static Future<CodebuddyModelsSnapshot?> _defaultOpener({
     required String executable,
     required String configDir,
-    required String? accessToken,
+    required Map<String, String> environment,
     required Duration timeout,
   }) async {
     Process? process;
@@ -428,7 +435,7 @@ class CodebuddyModelsService {
         environment: {
           ...Platform.environment,
           'CODEBUDDY_CONFIG_DIR': configDir,
-          if (accessToken != null) CodebuddyAuthStore.apiKeyEnvKey: accessToken,
+          ...environment,
         },
         workingDirectory: configDir,
       );

@@ -89,7 +89,7 @@ void main() {
               ({
                 required executable,
                 required configDir,
-                required accessToken,
+                required environment,
                 required timeout,
               }) async => snapshot,
         );
@@ -170,7 +170,7 @@ void main() {
             ({
               required executable,
               required configDir,
-              required accessToken,
+              required environment,
               required timeout,
             }) async {
               calls++;
@@ -230,7 +230,7 @@ void main() {
             ({
               required executable,
               required configDir,
-              required accessToken,
+              required environment,
               required timeout,
             }) async {
               calls++;

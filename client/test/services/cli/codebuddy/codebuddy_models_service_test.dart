@@ -50,12 +50,12 @@ void main() {
             ({
               required executable,
               required configDir,
-              required accessToken,
+              required environment,
               required timeout,
             }) async {
               calls++;
               expect(executable, 'codebuddy');
-              expect(accessToken, 'tok-1');
+              expect(environment['CODEBUDDY_AUTH_TOKEN'], 'tok-1');
               expect(configDir, '/app/tmp/codebuddy-models/work');
               return const CodebuddyModelsSnapshot(
                 modelIds: ['hy3', 'glm-5.3'],
@@ -115,7 +115,7 @@ void main() {
           ({
             required executable,
             required configDir,
-            required accessToken,
+            required environment,
             required timeout,
           }) async {
             firstCalls++;
@@ -141,7 +141,7 @@ void main() {
           ({
             required executable,
             required configDir,
-            required accessToken,
+            required environment,
             required timeout,
           }) async {
             secondCalls++;
@@ -169,7 +169,7 @@ void main() {
           ({
             required executable,
             required configDir,
-            required accessToken,
+            required environment,
             required timeout,
           }) async {
             calls++;
@@ -197,11 +197,11 @@ void main() {
           ({
             required executable,
             required configDir,
-            required accessToken,
+            required environment,
             required timeout,
           }) async {
             calls++;
-            expect(accessToken, isNull);
+            expect(environment, isEmpty);
             return const CodebuddyModelsSnapshot(modelIds: ['hy3']);
           },
     );

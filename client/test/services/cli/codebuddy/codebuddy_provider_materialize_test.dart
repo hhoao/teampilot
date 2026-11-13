@@ -6,7 +6,9 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/cli/codebuddy/capabilities/provider.dart';
+import 'package:teampilot/services/cli/codebuddy/provider/codebuddy_region.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
+import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
@@ -374,5 +376,153 @@ void main() {
     expect(row['id'], 'gpt-5');
     expect(row['apiKey'], r'${CODEBUDDY_API_KEY}');
     expect(row['url'], 'https://api.example.com/v1/chat/completions');
+  });
+
+  test('pins the provider account region over a stale cached one', () async {
+    final base = await Directory.systemTemp.createTemp('codebuddy_cap_');
+    addTearDown(() async {
+      if (await base.exists()) await base.delete(recursive: true);
+    });
+
+    final fs = LocalFilesystem();
+    final memFs = InMemoryFilesystem();
+    final storage = fakeHomeStorage(filesystem: memFs, appDataRoot: base.path);
+    await memFs.ensureDir(p.join(base.path, 'providers', 'codebuddy'));
+    await memFs.atomicWrite(
+      p.join(base.path, 'providers', 'codebuddy', 'codebuddy.auth.json'),
+      jsonEncode({
+        'accessToken': 'tok-cn',
+        'expiresAt': DateTime.now()
+            .add(const Duration(days: 10))
+            .millisecondsSinceEpoch,
+        'domain': 'www.codebuddy.cn',
+      }),
+    );
+    final providersPath = p.join(
+      base.path,
+      'providers',
+      'codebuddy',
+      'providers.json',
+    );
+    await fs.ensureDir(p.dirname(providersPath));
+    await fs.atomicWrite(
+      providersPath,
+      jsonEncode({
+        'providers': {
+          'codebuddy': {'id': 'codebuddy', 'cli': 'codebuddy', 'name': 'CB'},
+        },
+      }),
+    );
+
+    final service = ConfigProfileService(
+      basePath: base.path,
+      fs: fs,
+      layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+      storage: storage,
+    );
+    final capability = CodebuddyProviderCapability(storage: storage);
+    const member = TeamMemberConfig(
+      id: 'm1',
+      name: 'Member',
+      provider: 'codebuddy',
+    );
+    final scope = resolveLaunchProfileScope(
+      workspaceId: 'workspace-1',
+      teamId: 'team-a',
+      appSessionId: 'session-1',
+      cliTeamName: 'session-1',
+    );
+    final configDir = p.join(
+      base.path,
+      'workspace',
+      'workspaces',
+      'workspace-1',
+      'sessions',
+      'session-1',
+      'runtime',
+      'codebuddy',
+    );
+    // Region cached by an international account in an earlier launch.
+    final cacheEntry = CodebuddyRegion.cacheEntryPath(fs.pathContext, configDir);
+    await fs.ensureDir(p.dirname(cacheEntry));
+    await fs.writeString(cacheEntry, 'external');
+
+    final contribution = await contribute(
+      capability,
+      ConfigProfileLaunchContext(
+        workspaceId: 'workspace-1',
+        teamId: 'team-a',
+        sessionId: scope.sessionId,
+        scope: scope,
+        member: member,
+        members: const [member],
+        workingDirectory: '/workspace/workspace',
+        paths: service,
+        catalog: service,
+      ),
+    );
+
+    expect(contribution.environment['CODEBUDDY_AUTH_TOKEN'], 'tok-cn');
+    expect(
+      contribution.environment[CodebuddyRegion.envKey],
+      CodebuddyRegion.internal.value,
+    );
+    expect((await fs.stat(cacheEntry)).kind, FsEntityKind.notFound);
+  });
+
+  test('machine-login launches re-derive the region', () async {
+    final base = await Directory.systemTemp.createTemp('codebuddy_cap_');
+    addTearDown(() async {
+      if (await base.exists()) await base.delete(recursive: true);
+    });
+
+    final fs = LocalFilesystem();
+    final storage = fakeHomeStorage(appDataRoot: base.path);
+    final service = ConfigProfileService(
+      basePath: base.path,
+      fs: fs,
+      layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+      storage: storage,
+    );
+    final capability = CodebuddyProviderCapability(storage: storage);
+    const member = TeamMemberConfig(id: 'm1', name: 'Member');
+    final scope = resolveLaunchProfileScope(
+      workspaceId: 'workspace-1',
+      teamId: '',
+      appSessionId: 'session-1',
+      cliTeamName: 'session-1',
+    );
+    final configDir = p.join(
+      base.path,
+      'workspace',
+      'workspaces',
+      'workspace-1',
+      'sessions',
+      'session-1',
+      'runtime',
+      'codebuddy',
+    );
+    final cacheEntry = CodebuddyRegion.cacheEntryPath(fs.pathContext, configDir);
+    await fs.ensureDir(p.dirname(cacheEntry));
+    await fs.writeString(cacheEntry, 'internal');
+
+    final contribution = await contribute(
+      capability,
+      ConfigProfileLaunchContext(
+        workspaceId: 'workspace-1',
+        teamId: '',
+        sessionId: scope.sessionId,
+        scope: scope,
+        member: member,
+        members: const [member],
+        workingDirectory: '/workspace/workspace',
+        paths: service,
+        catalog: service,
+      ),
+    );
+
+    expect(contribution.environment[CodebuddyRegion.envKey], isNull);
+    expect(contribution.environment['CODEBUDDY_AUTH_TOKEN'], isNull);
+    expect((await fs.stat(cacheEntry)).kind, FsEntityKind.notFound);
   });
 }

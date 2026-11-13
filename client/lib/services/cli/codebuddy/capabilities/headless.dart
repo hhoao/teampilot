@@ -158,12 +158,8 @@ final class CodebuddyHeadlessCapability
     );
     final authProviderId = (provider?.id ?? ctx.providerId).trim();
     if (authProviderId.isNotEmpty) {
-      final token = store.accessTokenFor(
-        await store.readProviderAuth(authProviderId),
-      );
-      if (token != null) {
-        extraEnvironment[CodebuddyAuthStore.apiKeyEnvKey] = token;
-      }
+      final accountEnv = await store.accountEnvironment(authProviderId);
+      if (accountEnv != null) extraEnvironment.addAll(accountEnv);
     }
     if (provider != null) {
       final apiKey = provider.apiKey.trim();

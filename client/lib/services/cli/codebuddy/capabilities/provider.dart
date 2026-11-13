@@ -22,6 +22,7 @@ import '../provider/codebuddy_auth_store.dart';
 import '../provider/codebuddy_login_dialog.dart';
 import '../provider/codebuddy_models_service.dart';
 import '../provider/codebuddy_provider_settings_resolver.dart';
+import '../provider/codebuddy_region.dart';
 import '../provider_presets.dart';
 import 'defaults.dart';
 
@@ -317,13 +318,6 @@ final class CodebuddyProviderCapability extends CatalogModelCapability
     );
   }
 
-  /// Injects the provider's isolated access token into a session home.
-  Future<String?> _providerAccessToken(String providerId) async {
-    final store = _authStore;
-    if (store == null) return null;
-    return store.accessTokenFor(await store.readProviderAuth(providerId));
-  }
-
   @override
   bool hidesApiKeyFields(AppProviderConfig provider) =>
       provider.isOfficial && !Platform.isAndroid && !Platform.isIOS;
@@ -407,6 +401,10 @@ final class CodebuddyProviderCapability extends CatalogModelCapability
       memberId: ctx.scope.memberId,
     );
     await delegate.fs.ensureDir(configDir);
+    // The CLI caches the region it resolved in this config dir and lets that
+    // cache outrank the login's own domain. The dir outlives account
+    // switches, so the region must be resolved afresh on every launch.
+    await CodebuddyRegion.clearCachedRegion(delegate.fs, configDir);
 
     final environment = <String, String>{configDirEnvKey: configDir};
     final settingsPath = delegate.joinWork(configDir, 'settings.json');
@@ -428,10 +426,8 @@ final class CodebuddyProviderCapability extends CatalogModelCapability
       return SessionHomeContribution(environment: environment);
     }
 
-    final accessToken = await _providerAccessToken(provider.id);
-    if (accessToken != null) {
-      environment[CodebuddyAuthStore.apiKeyEnvKey] = accessToken;
-    }
+    final accountEnv = await _authStore?.accountEnvironment(provider.id);
+    if (accountEnv != null) environment.addAll(accountEnv);
 
     final model = _resolveModel(ctx, provider);
     if (model.isNotEmpty) {

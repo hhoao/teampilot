@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../../io/filesystem.dart';
+import 'codebuddy_region.dart';
 
 /// CodeBuddy credential isolation for TeamPilot.
 ///
@@ -144,7 +145,7 @@ class CodebuddyAuthStore {
     return true;
   }
 
-  /// Valid access token for a provider, or null when missing/expired.
+  /// Access token for a provider, or null when missing/expired.
   String? accessTokenFor(Map<String, Object?>? auth) {
     final token = auth?['accessToken']?.toString().trim() ?? '';
     if (token.isEmpty) return null;
@@ -156,6 +157,23 @@ class CodebuddyAuthStore {
       }
     }
     return token;
+  }
+
+  /// Process environment the CLI needs to act as this provider's account, or
+  /// null when the provider has no usable login.
+  ///
+  /// The token alone does not identify the cloud, so the region from the
+  /// account's auth `domain` is pinned with it; otherwise the CLI falls back
+  /// to a region cached in its config dir, which outlives account switches.
+  Future<Map<String, String>?> accountEnvironment(String providerId) async {
+    final auth = await readProviderAuth(providerId);
+    final token = accessTokenFor(auth);
+    if (token == null) return null;
+    final region = CodebuddyRegion.forAuthDomain(auth?['domain']?.toString());
+    return {
+      apiKeyEnvKey: token,
+      if (region != null) CodebuddyRegion.envKey: region.value,
+    };
   }
 
   /// Auth directory the CLI uses under [home] on this platform.
