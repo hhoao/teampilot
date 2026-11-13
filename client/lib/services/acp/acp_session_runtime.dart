@@ -243,6 +243,16 @@ abstract interface class AcpModelSwitchApi {
   Future<void> setModel(String modelId);
 }
 
+/// Optional ACP capability: commands advertised by the agent.
+///
+/// Separate from [AcpSessionRuntimeApi] so existing all-stub fakes stay valid,
+/// mirroring [AcpModelSwitchApi]. The list is the last non-empty one seen in
+/// the open session, so a handshake-time advertisement survives the gap before
+/// the chat layer subscribes to [AcpSessionRuntimeApi.updates].
+abstract interface class AcpAvailableCommandsApi {
+  List<AcpAvailableCommand> get availableCommands;
+}
+
 /// Owns one ACP agent session for the chat layer: spawn + flag probe +
 /// session lifecycle.
 ///
@@ -258,7 +268,8 @@ class AcpSessionRuntime
         AcpSessionRuntimeApi,
         AcpHistorySyncApi,
         AcpAgentProcessPidApi,
-        AcpModelSwitchApi {
+        AcpModelSwitchApi,
+        AcpAvailableCommandsApi {
   AcpSessionRuntime({
     required AcpConnectionSpawner spawner,
     required this.logger,
@@ -579,6 +590,11 @@ class AcpSessionRuntime
   /// The open agent's model selector, or null when it advertises none.
   @override
   AcpModelState? get modelState => _session?.modelState;
+
+  /// The open agent's last advertised command list; empty when none yet.
+  @override
+  List<AcpAvailableCommand> get availableCommands =>
+      _session?.availableCommands ?? const [];
 
   /// Switches the open agent session's model via `session/set_config_option`.
   @override

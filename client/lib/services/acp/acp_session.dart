@@ -360,6 +360,26 @@ final class AcpModelStateUpdate extends AcpSessionUpdate {
   int get hashCode => state?.hashCode ?? 0;
 }
 
+/// One command the agent advertised through `available_commands_update`.
+final class AcpAvailableCommand {
+  const AcpAvailableCommand({
+    required this.name,
+    required this.description,
+    this.inputHint,
+  });
+
+  final String name;
+  final String description;
+  final String? inputHint;
+}
+
+/// The agent replaced its advertised command list (non-empty only).
+final class AcpAvailableCommandsUpdate extends AcpSessionUpdate {
+  const AcpAvailableCommandsUpdate(this.commands);
+
+  final List<AcpAvailableCommand> commands;
+}
+
 /// Cursor ACP child-agent lifecycle (`subagent_spawned` / `subagent_state_update`).
 ///
 /// A background Task returns immediately (`rawOutput.isBackground`), and the
@@ -573,6 +593,11 @@ class AcpAgentSession {
 
   /// The agent's model selector, or null when it does not advertise one.
   AcpModelState? get modelState => _modelStateFrom(_configOptions);
+
+  List<AcpAvailableCommand> _availableCommands = const [];
+
+  /// The last non-empty command list advertised during this session.
+  List<AcpAvailableCommand> get availableCommands => _availableCommands;
 
   /// Switches the open session to [modelId] via `session/set_config_option`.
   ///
@@ -932,7 +957,11 @@ class AcpAgentSession {
     // Bootstrap suppression hides the load/resume replay from [updates], but
     // an explicit [loadHistory] reconciliation must still observe it.
     final collecting = _collectingHistory;
-    if (_suppressBootstrap && !collecting) return;
+    if (_suppressBootstrap &&
+        !collecting &&
+        !_isAvailableCommandsUpdate(params)) {
+      return;
+    }
     if (params is! Map) return;
     final raw = Map<String, Object?>.from(params);
     final nested = raw['update'];
@@ -989,11 +1018,23 @@ class AcpAgentSession {
     }
     final mapped = _mapUpdate(update);
     if (mapped == null) return;
-    if (collecting) {
+    if (mapped is AcpAvailableCommandsUpdate) {
+      _availableCommands = mapped.commands;
+    }
+    // Commands are session metadata, not transcript: emit them even while a
+    // history replay is being collected so the chat layer never misses them.
+    if (collecting && mapped is! AcpAvailableCommandsUpdate) {
       _historyBuffer?.add(mapped);
       return;
     }
     _emit(mapped);
+  }
+
+  static bool _isAvailableCommandsUpdate(Object? params) {
+    if (params is! Map) return false;
+    final update = params['update'];
+    return update is Map &&
+        update['sessionUpdate'] == 'available_commands_update';
   }
 
   Future<Object?> _onRequestPermission(Object? params) async {
@@ -1205,9 +1246,24 @@ class AcpAgentSession {
         );
       case acpd.UsageSessionUpdate():
         return AcpUsageUpdate.fromAcpd(update);
-      // Available-commands, mode, and session-info updates have no chat-layer
-      // representation yet. Config options are handled before mapping (they
-      // update the model selector).
+      case acpd.AvailableCommandsSessionUpdate():
+        final commands = <AcpAvailableCommand>[];
+        for (final command in update.update.availableCommands) {
+          final name = _stripSlash(command.name.trim());
+          if (name.isEmpty) continue;
+          final hint = command.input?.hint.trim();
+          commands.add(
+            AcpAvailableCommand(
+              name: name,
+              description: command.description.trim(),
+              inputHint: (hint == null || hint.isEmpty) ? null : hint,
+            ),
+          );
+        }
+        return commands.isEmpty ? null : AcpAvailableCommandsUpdate(commands);
+      // Mode and session-info updates have no chat-layer representation yet.
+      // Config options are handled before mapping (they update the model
+      // selector).
       default:
         return null;
     }
@@ -1300,3 +1356,7 @@ class AcpAgentSession {
     if (!_updates.isClosed) _updates.add(update);
   }
 }
+
+/// Command names are slash-free at rest; agents may advertise a leading `/`.
+String _stripSlash(String name) =>
+    name.startsWith('/') ? name.substring(1) : name;
