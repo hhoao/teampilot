@@ -1379,6 +1379,9 @@ Future<AppShell> buildAppShell({
       workbench: workbenchCubit,
       chat: chatCubit,
       storage: homeStorage,
+      terminalRegistry: workspaceTerminalRegistry,
+      restoreTerminalSessions: () =>
+          layoutCubit.state.preferences.restoreTerminalSessions,
     )..start();
 
     // Team-generation workflow graph. Built after chatCubit and workbenchCubit
@@ -2046,6 +2049,8 @@ Future<AppShell> buildAppShell({
         floating: floatingWorkspaceCubit,
         registry: workspaceTerminalRegistry,
         runService: workspaceTerminalRunService,
+        descriptorFor: workbenchLayoutPersistence.descriptorFor,
+        restoreTab: resolvedShellLauncher.restorePersistedShell,
       ),
       diff: DiffPreviewFloatingSurface(
         editor: editorCubit,

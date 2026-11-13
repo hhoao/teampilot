@@ -165,6 +165,7 @@
   "terminalNewSessionMenu": "New terminal session menu",
   "terminalNewSshSession": "New SSH Session…",
   "terminalNoWorkingDirectory": "Connect a session to open the shell terminal",
+  "terminalRestoring": "Restoring terminal…",
   "terminalSettings": "Settings",
   "terminalSshConnectFailed": "SSH profile not found or connection failed",
   "terminalThemeAdaptive": "Match app theme",

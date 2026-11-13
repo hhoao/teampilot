@@ -10065,6 +10065,9 @@ class AppLocalizations$workspace$en {
 	/// en: 'Connect a session to open the shell terminal'
 	String get terminalNoWorkingDirectory => 'Connect a session to open the shell terminal';
 
+	/// en: 'Restoring terminal…'
+	String get terminalRestoring => 'Restoring terminal…';
+
 	/// en: 'Settings'
 	String get terminalSettings => 'Settings';
 
@@ -13277,10 +13280,11 @@ extension on AppLocalizations {
 			'workspace.terminalNewSessionMenu' => 'New terminal session menu',
 			'workspace.terminalNewSshSession' => 'New SSH Session…',
 			'workspace.terminalNoWorkingDirectory' => 'Connect a session to open the shell terminal',
+			'workspace.terminalRestoring' => 'Restoring terminal…',
 			'workspace.terminalSettings' => 'Settings',
-			'workspace.terminalSshConnectFailed' => 'SSH profile not found or connection failed',
 			_ => null,
 		} ?? switch (path) {
+			'workspace.terminalSshConnectFailed' => 'SSH profile not found or connection failed',
 			'workspace.terminalThemeAdaptive' => 'Match app theme',
 			'workspace.terminalThemeClassicDark' => 'Classic dark',
 			'workspace.terminalThemeHighContrast' => 'High contrast',

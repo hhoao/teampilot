@@ -3916,6 +3916,7 @@ class _AppLocalizations$workspace$zh extends AppLocalizations$workspace$en {
 	@override String get terminalNewSessionMenu => '新建终端会话菜单';
 	@override String get terminalNewSshSession => '新建 SSH 会话…';
 	@override String get terminalNoWorkingDirectory => '请先连接会话以打开 Shell 终端';
+	@override String get terminalRestoring => '正在恢复终端…';
 	@override String get terminalSettings => '设置';
 	@override String get terminalSshConnectFailed => 'SSH 配置未找到或连接失败';
 	@override String get terminalThemeAdaptive => '跟随主题';
@@ -7053,10 +7054,11 @@ extension on AppLocalizationsZh {
 			'workspace.terminalNewSessionMenu' => '新建终端会话菜单',
 			'workspace.terminalNewSshSession' => '新建 SSH 会话…',
 			'workspace.terminalNoWorkingDirectory' => '请先连接会话以打开 Shell 终端',
+			'workspace.terminalRestoring' => '正在恢复终端…',
 			'workspace.terminalSettings' => '设置',
-			'workspace.terminalSshConnectFailed' => 'SSH 配置未找到或连接失败',
 			_ => null,
 		} ?? switch (path) {
+			'workspace.terminalSshConnectFailed' => 'SSH 配置未找到或连接失败',
 			'workspace.terminalThemeAdaptive' => '跟随主题',
 			'workspace.terminalThemeClassicDark' => '经典暗色',
 			'workspace.terminalThemeHighContrast' => '高对比',

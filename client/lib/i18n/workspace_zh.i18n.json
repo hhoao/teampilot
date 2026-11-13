@@ -165,6 +165,7 @@
   "terminalNewSessionMenu": "新建终端会话菜单",
   "terminalNewSshSession": "新建 SSH 会话…",
   "terminalNoWorkingDirectory": "请先连接会话以打开 Shell 终端",
+  "terminalRestoring": "正在恢复终端…",
   "terminalSettings": "设置",
   "terminalSshConnectFailed": "SSH 配置未找到或连接失败",
   "terminalThemeAdaptive": "跟随主题",
