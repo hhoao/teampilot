@@ -21,7 +21,7 @@
 
 1. **通道模型**：工具调用是硬边界。每个边界之间 reasoning 最多占用一段、text 最多占用一段；同通道增量追加到该段。两段的相对顺序等于该段内两种类型 **第一次出现** 的顺序。
 2. **只改 ingest / load 的 part 折叠**。不改 `groupMessageParts`、不改 CoT 组件、不加「太碎就合」分支。
-3. **一个函数** 同时服务 live append、history replay、`loadMessages`。已落盘的碎 transcript 在加载时走同一条规则，重开即正常。
+3. **一个函数** 服务 live append（只折 incoming）和 `loadMessages`（折整条 assistant）。`decodeAcpChatTranscript` / delta replay **不**折叠，保住 v2 按下标寻址。已落盘的碎 transcript 在 `loadMessages` 时折叠，并标记 `_needsRewrite`，下次 save 整文件写成通道形态。
 4. **`_queueStreamChunk` 的 60ms 批处理保持原样**。它只负责少 emit；语义由折叠函数保证。即使窗口内积了交错 run，flush 后折叠会收成通道 part。
 
 ## 非目标
@@ -76,10 +76,16 @@ agent_thought_chunk / agent_message_chunk
                       ├─ appendAcpStreamChannelPart(existing, incoming…)
                       └─ _splitStreamingText（仅 live 尾部 text 的 8KB 分段）
 
-loadMessages / decodeAcpChatTranscript / delta replay
-  └─ _MessageBuilder.build()
-       └─ assistant：从 [] 起对每个 part 调用同一 append 函数
-       └─ user / system：原样产出
+live / replay cubit
+  └─ _coalesceStreamingParts：copy existing，对 incoming 调用 append
+       （不重折 existing，保留 8KB 文本分段）
+
+decodeAcpChatTranscript / applyAcpChatTranscriptDelta
+  └─ _MessageBuilder.build() 原样产出（保住 v2 part 下标）
+
+loadMessages
+  └─ decode 之后对 assistant 调用 foldAcpStreamChannelParts
+       └─ part 数量减少则 _needsRewrite，下次 save 整文件写成通道形态
 ```
 
 ### 1. 折叠函数
@@ -112,9 +118,11 @@ void appendAcpStreamChannelPart(
 
 ### 3. Transcript 加载
 
-折叠发生在 `_MessageBuilder.build()`（`acp_chat_transcript_replay.dart`）。全量 decode、delta replay、`loadMessages`、远端 payload hydrate 都走这里。只对 `assistant` 的 parts 从空列表归约；user / system 原样产出。
+`_MessageBuilder.build()` 不折叠：它是 v2 按下标寻址的共用出口（全量 decode、delta replay、writer 快照）。在这里折叠会让磁盘下标和内存 part 对不上，后续 `text` append / tool status 会写错位置。
 
-这样碎 session 重开即恢复为通道 part。已是通道形态的 parts 再折一遍结果相同。加载时相邻的 8KB live-split text 会被粘成一段，见上一节。
+通道折叠只发生在 `AcpChatTranscriptWriter.loadMessages`：decode 之后对 assistant 调用 `foldAcpStreamChannelParts`，user / system 原样。若折叠减少了 part 数，设 `_needsRewrite`，下一次 `saveMessages` 走现有 compact 整文件重写，磁盘下标与通道 part 对齐。
+
+远端 `replace: true` 快照仍走 `decodeAcpChatTranscript`（不折叠），因此 live 的 8KB 分段头不会被 follower 粘掉。
 
 ### 4. 持久化
 
@@ -131,7 +139,7 @@ void appendAcpStreamChannelPart(
 3. `think a, text 1, tool, think b, text 2` → `[R a, T 1, tool, R b, T 2]`。
 4. `text 1, think a, text 2` → `[T "12", R a]`（段内谁先到谁在前）。
 5. 现有 `consecutive thought chunks coalesce`、`consecutive text chunks coalesce; thought stays a separate part`、`keeps text/reasoning order across interleaved chunks` 仍然成立。
-6. `loadMessages`（或 decoder）读入交错 part 的 jsonl 后得到与 (1) 相同的折叠结果。
+6. `loadMessages` 读入交错 part 的 jsonl 后得到与 (1) 相同的折叠结果；`decodeAcpChatTranscript` 保持磁盘下标，不折叠。
 7. 空 chunk 仍丢弃，不新开 part。
 
 ## 错误与边界
