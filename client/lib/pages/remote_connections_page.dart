@@ -91,13 +91,17 @@ class _RemoteConnectionsPageState extends State<RemoteConnectionsPage> {
     final list = SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: BlocBuilder<SshProfileCubit, SshProfileState>(
-        builder: (context, state) => SshProfilesSection(
-          profiles: state.profiles,
-          onRefresh: () => context.read<SshProfileCubit>().load(),
-          repository: context.read<SshProfileRepository>(),
-          profileCubit: context.read<SshProfileCubit>(),
-          showRemoteConfig: false,
-        ),
+        builder: (context, state) {
+          final cubit = context.read<SshProfileCubit>();
+          return SshProfilesSection(
+            profiles: state.profiles,
+            onRefresh: () => cubit.load(),
+            onDelete: cubit.deleteProfile,
+            repository: context.read<SshProfileRepository>(),
+            profileCubit: cubit,
+            showRemoteConfig: false,
+          );
+        },
       ),
     );
     if (widget.embedded) return list;

@@ -172,9 +172,9 @@ class SshServerProfileCard extends StatelessWidget {
 Future<void> openSshProfileEditor(
   BuildContext context, {
   SshProfile? profile,
-  SshProfileRepository? repository,
-  Cubit<SshProfileState>? profileCubit,
-  Future<void> Function()? onRefresh,
+  required SshProfileRepository repository,
+  required Cubit<SshProfileState> profileCubit,
+  required Future<void> Function() onRefresh,
 }) async {
   await showSshProfileFormDialog(
     context,
@@ -185,12 +185,15 @@ Future<void> openSshProfileEditor(
   );
 }
 
+/// Confirms and performs a delete through the caller-supplied [onDelete].
+/// The source is explicit in that callback (A source → full
+/// `SshProfileCubit.deleteProfile` with credential/vault cleanup; B source →
+/// `repository.delete(id)` + source reload), so no runtime type inspection or
+/// implicit context lookup is needed here.
 Future<void> confirmDeleteSshProfile(
   BuildContext context,
   SshProfile profile, {
-  SshProfileRepository? repository,
-  Cubit<SshProfileState>? profileCubit,
-  Future<void> Function()? onRefresh,
+  required Future<void> Function(String profileId) onDelete,
 }) async {
   final confirmed = await showDialog<bool>(
     context: context,
@@ -220,16 +223,5 @@ Future<void> confirmDeleteSshProfile(
     ),
   );
   if (confirmed != true || !context.mounted) return;
-  final cubit = profileCubit ?? context.read<SshProfileCubit>();
-  if (cubit is SshProfileCubit) {
-    // A source: full credential/vault cleanup + cubit reload.
-    await cubit.deleteProfile(profile.id);
-  } else {
-    // B source (workload catalog): the shared plane row has no on-device
-    // credential reference, so delete through the injected repository and
-    // reload the injected source.
-    await (repository ?? context.read<SshProfileRepository>())
-        .delete(profile.id);
-    await (onRefresh ?? () => context.read<SshProfileCubit>().load())();
-  }
+  await onDelete(profile.id);
 }

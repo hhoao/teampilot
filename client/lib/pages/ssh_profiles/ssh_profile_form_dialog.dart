@@ -25,27 +25,21 @@ import '../../services/workspace/workspace_pane_policy.dart';
 
 /// Desktop settings: Orca-style modal for adding/editing an SSH target.
 ///
-/// The write-through repository / refresh callback may be injected by a caller
-/// that renders a catalog other than the app-level device-local one (the SSH
-/// servers page binds to the home plane). When omitted, they resolve from the
-/// caller's context, keeping the startup gate, onboarding and terminal menu
-/// callers on the global A source.
+/// The write-through repository, the cubit whose [isClosed] state guards the
+/// post-save reload, and the refresh callback are all required: every caller
+/// states its profile source explicitly. There is no context-based fallback to
+/// the app-level device-local catalog — the SSH servers page passes the home
+/// plane (B source), while the startup gate, onboarding and terminal menu pass
+/// the global device-local (A source) values themselves. Dialog routes are
+/// built on the root navigator, so resolving the source from an in-tree
+/// provider override would not work anyway.
 Future<void> showSshProfileFormDialog(
   BuildContext context, {
   SshProfile? profile,
-  SshProfileRepository? repository,
-  Cubit<SshProfileState>? profileCubit,
-  Future<void> Function()? onRefresh,
+  required SshProfileRepository repository,
+  required Cubit<SshProfileState> profileCubit,
+  required Future<void> Function() onRefresh,
 }) {
-  // Resolve from the caller's context. The SSH servers settings page injects
-  // the home-plane repository/cubit for its own subtree; a dialog route built
-  // on the root navigator would otherwise read the app-level device-local ones,
-  // saving into the wrong catalog and refreshing a list nobody is looking at.
-  final effectiveRepository =
-      repository ?? context.read<SshProfileRepository>();
-  final effectiveCubit = profileCubit ?? context.read<SshProfileCubit>();
-  final effectiveRefresh =
-      onRefresh ?? () => context.read<SshProfileCubit>().load();
   return showTpDialog<void>(
     context: context,
     presentation: TpDialogPresentation.page,
@@ -54,9 +48,9 @@ Future<void> showSshProfileFormDialog(
     maxHeight: kTpDialogPageWideMaxHeight,
     builder: (ctx) => _SshProfileFormDialog(
       initialProfile: profile,
-      repository: effectiveRepository,
-      profileCubit: effectiveCubit,
-      onRefresh: effectiveRefresh,
+      repository: repository,
+      profileCubit: profileCubit,
+      onRefresh: onRefresh,
     ),
   );
 }

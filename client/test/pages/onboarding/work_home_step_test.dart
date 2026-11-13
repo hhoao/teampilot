@@ -533,13 +533,19 @@ void main() {
 
     final ctx = tester.element(find.byType(RemoteConnectionsPage));
     // ignore: unawaited_futures — completes when the dialog pops
-    openSshProfileEditor(ctx);
+    openSshProfileEditor(
+      ctx,
+      repository: profileRepository,
+      profileCubit: profileCubit,
+      onRefresh: () => profileCubit.load(),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField).at(0), 'My Box');
     await tester.enterText(find.byType(TextField).at(1), 'example.com');
     await tester.enterText(find.byType(TextField).at(2), 'alice');
-    await tester.enterText(find.byType(TextField).at(6), 'password123');
+    // Password-mode dialog renders 5 fields; the password is index 4.
+    await tester.enterText(find.byType(TextField).at(4), 'password123');
 
     await tester.tap(
       find.descendant(

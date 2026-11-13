@@ -17,41 +17,69 @@ import '../ssh_profiles/ssh_profiles_section.dart';
 /// single long-lived [SshWorkloadProfileCubit] injected at the app root, which
 /// owns the `HomeStorage.changes` reload. This device's own connection targets
 /// belong to "Remote connections" (A source) and are never listed here.
-class SshProfilesConfigWorkspace extends StatelessWidget {
+class SshProfilesConfigWorkspace extends StatefulWidget {
   const SshProfilesConfigWorkspace({this.showHeading = true, super.key});
 
   final bool showHeading;
 
   @override
-  Widget build(BuildContext context) {
+  State<SshProfilesConfigWorkspace> createState() =>
+      _SshProfilesConfigWorkspaceState();
+}
+
+class _SshProfilesConfigWorkspaceState
+    extends State<SshProfilesConfigWorkspace> {
+  PlaneSshProfileRepository? _repository;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_repository != null) return;
+    // Built once. HomeStorage.swap mutates the same storage in place, so this
+    // repository — like the global workload cubit — always reads the current
+    // plane; there is no need to rebuild it on a home-plane change.
     final storage = context.read<HomeStorage>();
     // The editor's writes go to the shared home-plane catalog. Vault-reference
     // lending for the *list* is handled by the global workload cubit's own
     // read, so this write repository needs no device-target facade.
-    final repository = PlaneSshProfileRepository(
+    _repository = PlaneSshProfileRepository(
       storage: storage,
       servers: SshServerProfileRepository(storage: storage),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final repository = _repository!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (showHeading)
+        if (widget.showHeading)
           WorkspacePaneHeader(title: context.l10n.sshProfile.sPageTitle),
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: BlocBuilder<SshWorkloadProfileCubit, SshProfileState>(
-              builder: (context, state) => SshProfilesSection(
-                profiles: state.profiles,
-                onRefresh: () =>
-                    context.read<SshWorkloadProfileCubit>().load(),
-                repository: repository,
-                profileCubit: context.read<SshWorkloadProfileCubit>(),
-                showRemoteConfig: true,
-                // Desktop semantics: connect opens the host and keeps the
-                // current home. Switching home belongs to Remote connections.
-                switchHomeOnConnect: false,
-              ),
+              builder: (context, state) {
+                final cubit = context.read<SshWorkloadProfileCubit>();
+                return SshProfilesSection(
+                  profiles: state.profiles,
+                  onRefresh: () => cubit.load(),
+                  onDelete: (id) async {
+                    // The shared plane row has no on-device credential
+                    // reference, so delete the plane record and reload the
+                    // workload catalog, leaving device credentials untouched.
+                    await repository.delete(id);
+                    await cubit.load();
+                  },
+                  repository: repository,
+                  profileCubit: cubit,
+                  showRemoteConfig: true,
+                  // Desktop semantics: connect opens the host and keeps the
+                  // current home. Switching home belongs to Remote connections.
+                  switchHomeOnConnect: false,
+                );
+              },
             ),
           ),
         ),

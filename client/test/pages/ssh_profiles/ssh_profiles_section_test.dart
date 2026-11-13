@@ -228,6 +228,7 @@ Future<Widget> _host({
   VaultUnlockGate? vaultUnlockGate,
   List<SshProfile>? profiles,
   Future<void> Function()? onRefresh,
+  Future<void> Function(String profileId)? onDelete,
   Cubit<SshProfileState>? injectedCubit,
   SshProfileRepository? injectedRepository,
 }) async {
@@ -267,6 +268,7 @@ Future<Widget> _host({
               child: SshProfilesSection(
                 profiles: profiles ?? const [_profile],
                 onRefresh: onRefresh ?? () async {},
+                onDelete: onDelete ?? (_) async {},
                 repository: injectedRepository ?? profileRepository,
                 profileCubit: injectedCubit ?? profileCubit,
               ),
@@ -645,5 +647,32 @@ void main() {
     await tester.pump();
 
     expect(refreshes, 1);
+  });
+
+  testWidgets('delete confirmation invokes the injected onDelete callback', (
+    tester,
+  ) async {
+    // The section must be source-agnostic: it forwards deletes to the injected
+    // callback instead of reading a SshProfileCubit from context.
+    connectionCubit.seed(_stateWithHost(status: SshHostUiStatus.disconnected));
+    final deleted = <String>[];
+
+    await tester.pumpWidget(
+      await _host(
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        onDelete: (id) async => deleted.add(id),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除'));
+    await tester.pumpAndSettle();
+
+    expect(deleted, [_profile.id]);
   });
 }
