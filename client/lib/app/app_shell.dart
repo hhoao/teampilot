@@ -117,6 +117,7 @@ import '../services/hook/import/hook_import_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_connection_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
+import '../cubits/ssh_workload_profile_cubit.dart';
 import '../cubits/vault_cubit.dart';
 import '../cubits/termux_cubit.dart';
 import '../cubits/github_account_cubit.dart';
@@ -319,6 +320,7 @@ class AppShell {
     required this.appUpdateCubit,
     required this.remoteDownloadCatalogCubit,
     required this.sshProfileCubit,
+    required this.sshWorkloadProfileCubit,
     required this.vaultService,
     required this.homeVaultScope,
     required this.vaultCubit,
@@ -452,6 +454,7 @@ class AppShell {
   final AppUpdateCubit appUpdateCubit;
   final RemoteDownloadCatalogCubit remoteDownloadCatalogCubit;
   final SshProfileCubit sshProfileCubit;
+  final SshWorkloadProfileCubit sshWorkloadProfileCubit;
   final VaultService vaultService;
   final HomeVaultScope homeVaultScope;
   final VaultCubit vaultCubit;
@@ -515,6 +518,9 @@ class AppShell {
     unawaited(_sessionRemoteRefreshSub?.cancel());
     unawaited(_contentInvalidationSub?.cancel());
     unawaited(_contentStreamSub?.cancel());
+    // The workload catalog owns a HomeStorage.changes subscription; closing it
+    // here keeps that subscription tied to the shell lifetime.
+    unawaited(sshWorkloadProfileCubit.close());
   }
 
   final CommandBus commandBus;
@@ -808,6 +814,15 @@ Future<AppShell> buildAppShell({
   final isSshHome = homePlane.isSshHome;
   final homeSshProfile = homePlane.homeSshProfile;
   final homeStorage = homePlane.homeStorage;
+  // Global B-source workload catalog. Bound to the app-scoped [homeStorage]
+  // (not the device-local facade): a home-plane swap re-reads the new plane's
+  // server catalog through the cubit's own changes subscription. The device
+  // targets only lend vault references — they are never written to the plane.
+  final sshWorkloadProfileCubit = SshWorkloadProfileCubit(
+    storage: homeStorage,
+    deviceTargets: sshProfileRepo.targetRepo,
+  );
+  unawaited(sshWorkloadProfileCubit.load());
   final scope = homePlane.scope;
   homeWorkspaceUiCache = homePlane.homeWorkspaceUiCache;
   // The live home identity. [homeProfileId] is the boot-time snapshot; every
@@ -2352,6 +2367,7 @@ Future<AppShell> buildAppShell({
       appUpdateCubit: appUpdateCubit,
       remoteDownloadCatalogCubit: remoteDownloadCatalogCubit,
       sshProfileCubit: sshProfileCubit,
+      sshWorkloadProfileCubit: sshWorkloadProfileCubit,
       vaultService: vaultService,
       homeVaultScope: scope,
       vaultCubit: vaultCubit,
@@ -2407,6 +2423,9 @@ Future<AppShell> buildAppShell({
     await memberPresenceCubit?.close();
     await catalogRuntime?.bus.close();
     await homeConnectionCubit?.close();
+    // The workload catalog subscribes to homeStorage.changes; close it so the
+    // discarded shell leaves no listener on a plane that may be reused.
+    await sshWorkloadProfileCubit.close();
     await managedProviderControlPlaneLease.closeIfOwned();
     rethrow;
   }
