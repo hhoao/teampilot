@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 
-/// Red retry icon under a user bubble whose edit failed or was stopped.
+/// Red retry icon at the left of a user bubble whose edit failed or was
+/// stopped.
 ///
-/// Sits on the left of the thread, opposite the right-aligned bubble, so it
-/// reads as an action on that message rather than part of it. The transaction
-/// itself stays invisible: the sheet closes on submit, so this is the only way
-/// to resend the same text without reopening the editor. Desktop keeps its
-/// inline editor and therefore never shows it.
+/// The thread places it as the leading child of the bubble's row, so it sits on
+/// the same line and reads as an action on that message. The transaction itself
+/// stays invisible: the sheet closes on submit, so this is the only way to
+/// resend the same text without reopening the editor. Desktop keeps its inline
+/// editor and therefore never shows it.
 class EditRetryButton extends StatelessWidget {
   const EditRetryButton({required this.onRetry, super.key});
 

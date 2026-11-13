@@ -688,6 +688,16 @@ void main() {
       final retry = find.byKey(const ValueKey('chat-edit-retry'));
       expect(retry, findsOneWidget);
 
+      // The action sits on the bubble's row, to its left.
+      final retryRect = tester.getRect(retry);
+      final bubbleText = tester.getRect(find.text('first version'));
+      expect(retryRect.right, lessThan(bubbleText.left));
+      expect(
+        (retryRect.center.dy - bubbleText.center.dy).abs(),
+        lessThan(40),
+        reason: 'the retry must share the bubble row, not sit below it',
+      );
+
       cubit.failing = false;
       await tester.tap(retry);
       await tester.pump();
