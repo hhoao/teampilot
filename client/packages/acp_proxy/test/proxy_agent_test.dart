@@ -316,6 +316,106 @@ void main() {
       expect(env.book.turnInProgress(sessionId), isFalse);
     },
   );
+
+  test('reconnect delivers the spooled backlog before the live tail', () async {
+    final env = await _startEnv();
+    final first = env.connect();
+    final sessionId = await env.openSession(first);
+    env.fake.updateEvents.add(_chunk('backlog'));
+    await _tick();
+
+    final second = env.connect();
+    final closed = first.served.connection.onClose.first;
+    final load = second.client.client.loadSession(
+      LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+    );
+    await closed;
+    env.fake.updateEvents.add(_chunk('live'));
+    await load;
+
+    expect(_texts(second), ['backlog', 'live']);
+  });
+
+  test('a torn spool line does not drop the previous phone leg', () async {
+    final env = await _startEnv();
+    final first = env.connect();
+    final sessionId = await env.openSession(first);
+    final connectionId = env.book.connectionFor(sessionId);
+    File(
+      '${env.root.path}/acp-proxy/sessions/$sessionId/updates.jsonl',
+    ).writeAsStringSync('not-json\n', mode: FileMode.append, flush: true);
+
+    final second = env.connect();
+    await expectLater(
+      second.client.client.loadSession(
+        LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+      ),
+      throwsA(isA<RpcError>()),
+    );
+
+    expect(first.served.connection.isClosed, isFalse);
+    expect(env.book.connectionFor(sessionId), connectionId);
+    expect(
+      () => first.pair.right.send(
+        const TransportFrame.single(RpcNotification(method: 'x')),
+      ),
+      returnsNormally,
+    );
+  });
+
+  test('updates emitted inside openLoad play before the spool tail', () async {
+    final env = await _startEnv();
+    final phone = env.connect();
+    final sessionId = await env.openSession(phone);
+    env.fake.updateEvents.add(_chunk('from-spool'));
+    await _tick();
+    await _dropPhone(phone);
+
+    final revived = FakeUpstream(sessionId: sessionId);
+    addTearDown(() async {
+      await revived.updateEvents.close();
+      await revived.clientRequestEvents.close();
+    });
+    revived.onOpenLoad = () {
+      revived.updateEvents.add(_chunk('from-cli'));
+    };
+    env.fake.alive = false;
+    env.agent.connectNew =
+        ({
+          required AcpProxyLaunchMeta meta,
+          required String cwd,
+          required List<Map<String, Object?>> mcpServers,
+        }) async {
+          return revived;
+        };
+
+    final again = env.connect();
+    await again.client.client.loadSession(
+      LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+    );
+
+    expect(revived.openLoadCount, 1);
+    expect(env.fake.openLoadCount, 0);
+    expect(_texts(again), ['from-cli', 'from-spool']);
+  });
+
+  test('session new keeps an update emitted inside openNew', () async {
+    final fake = FakeUpstream();
+    fake.onOpenNew = () {
+      fake.updateEvents.add(_chunk('during-new'));
+    };
+    final env = await _startEnv(fake: fake);
+    final phone = env.connect();
+
+    await env.openSession(phone);
+
+    expect(_texts(phone), ['during-new']);
+    final stored = await env.spool.readAll(fake.sessionId);
+    expect(
+      stored.map((update) => update['sessionUpdate']),
+      contains('agent_message_chunk'),
+    );
+  });
 }
 
 Map<String, Object?> _meta({String permissionPolicy = 'fullAccess'}) => {
@@ -340,6 +440,19 @@ Map<String, Object?> _permissionParams(String sessionId) => {
     {'optionId': 'reject-once', 'name': 'Reject', 'kind': 'reject_once'},
   ],
 };
+
+Map<String, Object?> _chunk(String text) => {
+  'sessionUpdate': 'agent_message_chunk',
+  'content': {'type': 'text', 'text': text},
+};
+
+List<String> _texts(_Phone phone) => [
+  for (final notification in phone.updates)
+    if (notification.update is AgentMessageChunk)
+      ((notification.update as AgentMessageChunk).chunk.content
+              as TextContentBlock)
+          .text,
+];
 
 Future<void> _tick() => Future<void>.delayed(Duration.zero);
 
@@ -463,6 +576,8 @@ class FakeUpstream implements AcpUpstream {
   var cancelCount = 0;
   Object? openNewError;
   Object? openLoadError;
+  void Function()? onOpenNew;
+  void Function()? onOpenLoad;
 
   final updateEvents = StreamController<Map<String, Object?>>.broadcast(
     sync: true,
@@ -481,6 +596,7 @@ class FakeUpstream implements AcpUpstream {
     openNewCount++;
     final error = openNewError;
     if (error != null) throw error;
+    onOpenNew?.call();
     return sessionId;
   }
 
@@ -492,6 +608,7 @@ class FakeUpstream implements AcpUpstream {
     openLoadCount++;
     final error = openLoadError;
     if (error != null) throw error;
+    onOpenLoad?.call();
   }
 
   @override

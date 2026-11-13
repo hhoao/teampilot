@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:acpd/acpd.dart';
@@ -55,6 +56,7 @@ class AcpProxyAgent {
   final Map<String, AcpUpstream> _watched = {};
   final Map<String, StreamSubscription<Map<String, Object?>>> _updateSubs = {};
   final Map<String, StreamSubscription<AcpClientRequest>> _requestSubs = {};
+  final Map<String, _ReplayGate> _gates = {};
   final Map<String, List<Completer<PromptResponse>>> _promptWaiters = {};
   final Map<String, List<_Held>> _held = {};
   final Map<String, int> _permissionPendingCounts = {};
@@ -132,26 +134,54 @@ class AcpProxyAgent {
       cwd: request.cwd,
       mcpServers: mcpServers,
     );
-    final String sessionId;
+    final capture = _capture(upstream);
+    String? sessionId;
     try {
       sessionId = await upstream.openNew(
         meta: meta,
         cwd: request.cwd,
         mcpServers: mcpServers,
       );
+      final cliHistory = capture.takeUpdates();
+      await _remember(
+        sessionId: sessionId,
+        meta: meta,
+        cwd: request.cwd,
+        upstream: upstream,
+      );
+      await _playAndAttach(
+        context: connection.agent,
+        sessionId: sessionId,
+        leg: _legFor(connection),
+        cliHistory: cliHistory,
+        capture: capture,
+        upstream: upstream,
+      );
+      return NewSessionResponse(sessionId: sessionId);
     } catch (error) {
-      await _closeQuiet(upstream);
+      final id = sessionId;
+      if (id != null && book.connectionFor(id) == null) {
+        await _stopWatching(id);
+        if (identical(upstreams[id], upstream)) {
+          upstreams.remove(id);
+          await _closeQuiet(upstream);
+        }
+        _metas.remove(id);
+        _sessionIds.remove(id);
+        _sessionLeg.remove(id);
+        disconnectedSince.remove(id);
+        _gates.remove(id);
+        try {
+          await spool.delete(id);
+        } on Object {
+          // The session never became visible to the phone.
+        }
+      } else if (id == null) {
+        await _closeQuiet(upstream);
+      }
+      await capture.cancel();
       throw _surface(error);
     }
-
-    await _remember(
-      sessionId: sessionId,
-      meta: meta,
-      cwd: request.cwd,
-      upstream: upstream,
-    );
-    await _attach(sessionId, _legFor(connection));
-    return NewSessionResponse(sessionId: sessionId);
   }
 
   Future<LoadSessionResponse> _onLoad(
@@ -194,8 +224,12 @@ class AcpProxyAgent {
   }) async {
     final existing = upstreams[sessionId];
     if (existing != null && existing.alive) {
-      await _attach(sessionId, _legFor(connection));
-      await _replay(context, sessionId);
+      await _playAndAttach(
+        context: context,
+        sessionId: sessionId,
+        leg: _legFor(connection),
+        cliHistory: const [],
+      );
       return const LoadSessionResponse();
     }
 
@@ -210,20 +244,35 @@ class AcpProxyAgent {
       cwd: cwd,
       mcpServers: _mcpMaps(mcpServers),
     );
+    await _stopWatching(sessionId);
+    final capture = _capture(upstream);
     try {
       await upstream.openLoad(sessionId: sessionId, cwd: cwd);
     } catch (error) {
+      await capture.cancel();
       await _closeQuiet(upstream);
       throw _surface(error);
     }
-    await _remember(
-      sessionId: sessionId,
-      meta: launch,
-      cwd: cwd,
-      upstream: upstream,
-    );
-    await _attach(sessionId, _legFor(connection));
-    await _replay(context, sessionId);
+    final cliHistory = capture.takeUpdates();
+    try {
+      await _remember(
+        sessionId: sessionId,
+        meta: launch,
+        cwd: cwd,
+        upstream: upstream,
+      );
+      await _playAndAttach(
+        context: context,
+        sessionId: sessionId,
+        leg: _legFor(connection),
+        cliHistory: cliHistory,
+        capture: capture,
+        upstream: upstream,
+      );
+    } catch (error) {
+      if (!capture.bound) await capture.cancel();
+      rethrow;
+    }
     return const LoadSessionResponse();
   }
 
@@ -303,7 +352,6 @@ class AcpProxyAgent {
     upstreams[sessionId] = upstream;
     _metas[sessionId] = meta;
     _sessionIds.add(sessionId);
-    _watch(sessionId, upstream);
   }
 
   Future<AcpUpstream> _connect({
@@ -356,17 +404,187 @@ class AcpProxyAgent {
     throw StateError('phone leg missing');
   }
 
-  void _watch(String sessionId, AcpUpstream upstream) {
-    if (identical(_watched[sessionId], upstream)) return;
-    _updateSubs.remove(sessionId)?.cancel();
-    _requestSubs.remove(sessionId)?.cancel();
+  _Capture _capture(AcpUpstream upstream) {
+    final capture = _Capture();
+    capture.updateSub = upstream.updates.listen((update) {
+      if (capture.hold || capture.sessionId == null) {
+        capture.updates.add(update);
+        return;
+      }
+      _onUpstreamUpdate(capture.sessionId!, update);
+    });
+    capture.requestSub = upstream.clientRequests.listen((request) {
+      if (capture.hold || capture.sessionId == null) {
+        capture.requests.add(request);
+        return;
+      }
+      _onClientRequest(capture.sessionId!, upstream, request);
+    });
+    return capture;
+  }
+
+  void _bindCapture(String sessionId, AcpUpstream upstream, _Capture capture) {
+    final previousUpdate = _updateSubs.remove(sessionId);
+    if (!identical(previousUpdate, capture.updateSub)) {
+      previousUpdate?.cancel();
+    }
+    final previousRequest = _requestSubs.remove(sessionId);
+    if (!identical(previousRequest, capture.requestSub)) {
+      previousRequest?.cancel();
+    }
+    capture.sessionId = sessionId;
+    capture.bound = true;
     _watched[sessionId] = upstream;
-    _updateSubs[sessionId] = upstream.updates.listen((update) {
-      _onUpstreamUpdate(sessionId, update);
-    });
-    _requestSubs[sessionId] = upstream.clientRequests.listen((request) {
+    _updateSubs[sessionId] = capture.updateSub!;
+    _requestSubs[sessionId] = capture.requestSub!;
+  }
+
+  /// Sends [cliHistory], then the spool lines it does not already include,
+  /// then the live tail. The previous phone stays up until this succeeds.
+  Future<void> _playAndAttach({
+    required AgentContext context,
+    required String sessionId,
+    required _PhoneLeg leg,
+    required List<Map<String, Object?>> cliHistory,
+    _Capture? capture,
+    AcpUpstream? upstream,
+  }) async {
+    if (capture != null && upstream != null) {
+      _bindCapture(sessionId, upstream, capture);
+    }
+    final gate = _ReplayGate();
+    _gates[sessionId] = gate;
+    if (capture != null) {
+      final extras = capture.takeUpdates();
+      gate.requests.addAll(capture.takeRequests());
+      capture.hold = false;
+      for (final extra in extras) {
+        _onUpstreamUpdate(sessionId, extra);
+      }
+    }
+    // Lines already on disk before the yield. Chunks that append during
+    // [readAll] land in [gate] and, when the read sees them, in the snapshot.
+    final pendingMark = gate.pending.length;
+    final lineMark = _spoolLines(sessionId);
+    final List<Map<String, Object?>> spooled;
+    try {
+      spooled = await spool.readAll(sessionId);
+    } catch (error) {
+      _abandonReplay(sessionId, gate);
+      throw _surface(error);
+    }
+    var landed = spooled.length - lineMark;
+    if (landed < 0) landed = 0;
+
+    final counts = <String, int>{};
+    for (final update in spooled) {
+      final key = _updateKey(update);
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    final normalizedCli = <Map<String, Object?>>[];
+    final skip = <String, int>{};
+    for (final update in cliHistory) {
+      final stored = _normalizeMap(update);
+      normalizedCli.add(stored);
+      final key = _updateKey(stored);
+      if (stored['sessionUpdate'] != 'stop') {
+        skip[key] = (skip[key] ?? 0) + 1;
+      }
+      final left = counts[key] ?? 0;
+      if (left > 0) {
+        counts[key] = left - 1;
+      } else {
+        try {
+          spool.appendUpdate(sessionId, stored);
+        } on Object {
+          // Replay still sends the buffered CLI history.
+        }
+      }
+      if (stored['sessionUpdate'] == 'stop') {
+        _completeStop(sessionId, stored);
+        book.finishTurn(sessionId);
+      }
+    }
+
+    _deliverReplay(
+      context: context,
+      sessionId: sessionId,
+      cliHistory: normalizedCli,
+      spooled: spooled,
+      gate: gate,
+      skip: skip,
+      tailStart: pendingMark + landed,
+    );
+    final requests = List<AcpClientRequest>.from(gate.requests);
+    _gates.remove(sessionId);
+    await _attach(sessionId, leg);
+    final current = upstreams[sessionId];
+    if (current == null) return;
+    for (final request in requests) {
+      _onClientRequest(sessionId, current, request);
+    }
+  }
+
+  void _deliverReplay({
+    required AgentContext context,
+    required String sessionId,
+    required List<Map<String, Object?>> cliHistory,
+    required List<Map<String, Object?>> spooled,
+    required _ReplayGate gate,
+    required Map<String, int> skip,
+    required int tailStart,
+  }) {
+    for (final update in cliHistory) {
+      if (update['sessionUpdate'] == 'stop') continue;
+      _sendUpdate(context, sessionId, update);
+    }
+    for (final update in spooled) {
+      if (update['sessionUpdate'] == 'stop') continue;
+      final stored = _normalizeMap(update);
+      final key = _updateKey(stored);
+      final left = skip[key] ?? 0;
+      if (left > 0) {
+        skip[key] = left - 1;
+        continue;
+      }
+      _sendUpdate(context, sessionId, stored);
+    }
+    var index = tailStart < 0 ? 0 : tailStart;
+    while (index < gate.pending.length) {
+      final update = gate.pending[index++];
+      if (update['sessionUpdate'] == 'stop') continue;
+      _sendUpdate(context, sessionId, update);
+    }
+  }
+
+  void _abandonReplay(String sessionId, _ReplayGate gate) {
+    if (identical(_gates[sessionId], gate)) _gates.remove(sessionId);
+    final leg = _sessionLeg[sessionId];
+    if (leg != null && book.connectionFor(sessionId) != null) {
+      for (final update in gate.pending) {
+        if (update['sessionUpdate'] == 'stop') continue;
+        _sendUpdate(leg.context, sessionId, update);
+      }
+    }
+    final upstream = upstreams[sessionId];
+    if (upstream == null) return;
+    for (final request in gate.requests) {
       _onClientRequest(sessionId, upstream, request);
-    });
+    }
+  }
+
+  int _spoolLines(String sessionId) {
+    final file = File(
+      '${spool.root.path}/acp-proxy/sessions/$sessionId/updates.jsonl',
+    );
+    if (!file.existsSync()) return 0;
+    final raw = file.readAsStringSync();
+    if (raw.isEmpty) return 0;
+    var count = 0;
+    for (final line in const LineSplitter().convert(raw)) {
+      if (line.isNotEmpty) count++;
+    }
+    return count;
   }
 
   Future<void> _stopWatching(String sessionId) async {
@@ -385,6 +603,12 @@ class AcpProxyAgent {
     if (stored['sessionUpdate'] == 'stop') {
       _completeStop(sessionId, stored);
       book.finishTurn(sessionId);
+      _gates[sessionId]?.pending.add(stored);
+      return;
+    }
+    final gate = _gates[sessionId];
+    if (gate != null) {
+      gate.pending.add(stored);
       return;
     }
     final leg = _sessionLeg[sessionId];
@@ -398,14 +622,6 @@ class AcpProxyAgent {
     final response = PromptResponse(stopReason: _stopReason(update));
     for (final waiter in waiters) {
       if (!waiter.isCompleted) waiter.complete(response);
-    }
-  }
-
-  Future<void> _replay(AgentContext context, String sessionId) async {
-    final updates = await spool.readAll(sessionId);
-    for (final update in updates) {
-      if (update['sessionUpdate'] == 'stop') continue;
-      _sendUpdate(context, sessionId, update);
     }
   }
 
@@ -432,6 +648,11 @@ class AcpProxyAgent {
     AcpUpstream upstream,
     AcpClientRequest request,
   ) {
+    final gate = _gates[sessionId];
+    if (gate != null) {
+      gate.requests.add(request);
+      return;
+    }
     final leg = _sessionLeg[sessionId];
     if (leg != null && book.connectionFor(sessionId) != null) {
       unawaited(_forwardAndComplete(sessionId, upstream, leg, request));
@@ -604,6 +825,43 @@ class AcpProxyAgent {
   }
 }
 
+class _ReplayGate {
+  final pending = <Map<String, Object?>>[];
+  final requests = <AcpClientRequest>[];
+}
+
+class _Capture {
+  String? sessionId;
+  var hold = true;
+  var bound = false;
+  final updates = <Map<String, Object?>>[];
+  final requests = <AcpClientRequest>[];
+  StreamSubscription<Map<String, Object?>>? updateSub;
+  StreamSubscription<AcpClientRequest>? requestSub;
+
+  List<Map<String, Object?>> takeUpdates() {
+    final copy = List<Map<String, Object?>>.of(updates);
+    updates.clear();
+    return copy;
+  }
+
+  List<AcpClientRequest> takeRequests() {
+    final copy = List<AcpClientRequest>.of(requests);
+    requests.clear();
+    return copy;
+  }
+
+  Future<void> cancel() async {
+    if (bound) return;
+    final update = updateSub;
+    final request = requestSub;
+    updateSub = null;
+    requestSub = null;
+    await update?.cancel();
+    await request?.cancel();
+  }
+}
+
 class _PhoneLeg {
   _PhoneLeg(this.id, this.connection);
 
@@ -652,6 +910,9 @@ Map<String, Object?> _terminalOutcome(String method) {
   }
   return const {};
 }
+
+String _updateKey(Map<String, Object?> update) =>
+    jsonEncode(_normalizeMap(update));
 
 Object _surface(Object error) {
   if (error is RpcError) return error;
