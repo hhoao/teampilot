@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:acp_proxy/acp_proxy.dart';
@@ -491,6 +492,64 @@ void main() {
     expect(_texts(third), ['from-cli', 'from-spool']);
   });
 
+  test('a failed spool replace keeps the transcript and CLI history', () async {
+    final env = await _startEnv();
+    final first = env.connect();
+    final sessionId = await env.openSession(first);
+    final connectionId = env.book.connectionFor(sessionId);
+    env.fake.updateEvents.add(_chunk('from-spool'));
+    await _tick();
+    final transcript = File(
+      '${env.root.path}/acp-proxy/sessions/$sessionId/updates.jsonl',
+    );
+
+    final revived = FakeUpstream(sessionId: sessionId);
+    addTearDown(() async {
+      await revived.updateEvents.close();
+      await revived.clientRequestEvents.close();
+    });
+    var emitted = false;
+    revived.onOpenLoad = () {
+      if (emitted) return;
+      emitted = true;
+      revived.updateEvents.add(_chunk('from-cli'));
+    };
+    env.fake.alive = false;
+    env.agent.connectNew =
+        ({
+          required AcpProxyLaunchMeta meta,
+          required String cwd,
+          required List<Map<String, Object?>> mcpServers,
+        }) async {
+          return revived;
+        };
+
+    final limits = _FileGrowthLimit();
+    addTearDown(limits.restore);
+    final second = env.connect();
+    limits.block();
+    try {
+      await expectLater(
+        second.client.client.loadSession(
+          LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+        ),
+        throwsA(isA<RpcError>()),
+      );
+    } finally {
+      limits.restore();
+    }
+
+    expect(first.served.connection.isClosed, isFalse);
+    expect(env.book.connectionFor(sessionId), connectionId);
+    expect(transcript.readAsStringSync(), contains('from-spool'));
+
+    final third = env.connect();
+    await third.client.client.loadSession(
+      LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+    );
+    expect(_texts(third), ['from-cli', 'from-spool']);
+  });
+
   test('session new keeps an update emitted inside openNew', () async {
     final fake = FakeUpstream();
     fake.onOpenNew = () {
@@ -728,5 +787,95 @@ class FakeUpstream implements AcpUpstream {
   @override
   void completeClientRequest(Object id, Map<String, Object?> result) {
     completions[id] = result;
+  }
+}
+
+final class _RLimit extends Struct {
+  @Uint64()
+  external int cur;
+
+  @Uint64()
+  external int max;
+}
+
+typedef _SignalNative =
+    Pointer<NativeFunction<Void Function(Int32)>> Function(
+      Int32,
+      Pointer<NativeFunction<Void Function(Int32)>>,
+    );
+typedef _SignalDart =
+    Pointer<NativeFunction<Void Function(Int32)>> Function(
+      int,
+      Pointer<NativeFunction<Void Function(Int32)>>,
+    );
+
+/// Stops file growth so a truncate-then-write leaves an empty transcript.
+class _FileGrowthLimit {
+  _FileGrowthLimit() {
+    final libc = DynamicLibrary.open('libc.so.6');
+    _setrlimit = libc
+        .lookupFunction<
+          Int32 Function(Int32, Pointer<_RLimit>),
+          int Function(int, Pointer<_RLimit>)
+        >('setrlimit');
+    _getrlimit = libc
+        .lookupFunction<
+          Int32 Function(Int32, Pointer<_RLimit>),
+          int Function(int, Pointer<_RLimit>)
+        >('getrlimit');
+    _malloc = libc
+        .lookupFunction<
+          Pointer<Void> Function(IntPtr),
+          Pointer<Void> Function(int)
+        >('malloc');
+    _free = libc
+        .lookupFunction<
+          Void Function(Pointer<Void>),
+          void Function(Pointer<Void>)
+        >('free');
+    _signal = libc.lookupFunction<_SignalNative, _SignalDart>('signal');
+    _limit = _malloc(sizeOf<_RLimit>()).cast<_RLimit>();
+    _getrlimit(_rlimitFsize, _limit);
+    _savedCur = _limit.ref.cur;
+    _savedMax = _limit.ref.max;
+  }
+
+  static const _rlimitFsize = 1;
+  static const _sigxfsz = 25;
+
+  late final int Function(int, Pointer<_RLimit>) _setrlimit;
+  late final int Function(int, Pointer<_RLimit>) _getrlimit;
+  late final Pointer<Void> Function(int) _malloc;
+  late final void Function(Pointer<Void>) _free;
+  late final _SignalDart _signal;
+  late final Pointer<_RLimit> _limit;
+  late final int _savedCur;
+  late final int _savedMax;
+  Pointer<NativeFunction<Void Function(Int32)>>? _previousSignal;
+  var _blocked = false;
+  var _restored = false;
+
+  void block() {
+    // SIGXFSZ would kill the process when a write passes the limit.
+    _previousSignal = _signal(_sigxfsz, Pointer.fromAddress(1));
+    _limit.ref.cur = 0;
+    _limit.ref.max = _savedMax;
+    if (_setrlimit(_rlimitFsize, _limit) != 0) {
+      throw StateError('setrlimit failed');
+    }
+    _blocked = true;
+  }
+
+  void restore() {
+    if (_restored) return;
+    _restored = true;
+    if (_blocked) {
+      _limit.ref.cur = _savedCur;
+      _limit.ref.max = _savedMax;
+      _setrlimit(_rlimitFsize, _limit);
+      final previous = _previousSignal;
+      if (previous != null) _signal(_sigxfsz, previous);
+    }
+    _free(_limit.cast());
   }
 }

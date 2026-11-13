@@ -496,7 +496,13 @@ class AcpProxyAgent {
       spooled: spooled,
       tail: tail,
     );
-    _replaceSpool(sessionId, ordered);
+    try {
+      _replaceSpool(sessionId, ordered);
+    } catch (error) {
+      await _keepHistoryAfterFailedReplace(sessionId, history);
+      _abandonReplay(sessionId, gate);
+      throw _surface(error);
+    }
     _retainedCli.remove(sessionId);
     final baseline = gate.pending.length;
     _emitOrdered(context, sessionId, ordered);
@@ -537,6 +543,20 @@ class AcpProxyAgent {
       _retainedCli[sessionId] = [
         for (final update in history) _normalizeMap(update),
       ];
+      await _dropRememberedUpstream(sessionId);
+    }
+  }
+
+  Future<void> _keepHistoryAfterFailedReplace(
+    String sessionId,
+    List<Map<String, Object?>> history,
+  ) async {
+    if (history.isNotEmpty) {
+      _retainedCli[sessionId] = [
+        for (final update in history) _normalizeMap(update),
+      ];
+    }
+    if (_readableSpoolLines(sessionId).isEmpty) {
       await _dropRememberedUpstream(sessionId);
     }
   }
@@ -599,7 +619,26 @@ class AcpProxyAgent {
     for (final update in updates) {
       buffer.write('${jsonEncode(_normalizeMap(update))}\n');
     }
-    file.writeAsStringSync(buffer.toString(), flush: true);
+    final tmp = File('${file.path}.tmp');
+    try {
+      tmp.writeAsStringSync(buffer.toString(), flush: true);
+      if (!Platform.isWindows) {
+        final chmod = Process.runSync('chmod', ['600', tmp.path]);
+        if (chmod.exitCode != 0) {
+          throw StateError('chmod 600 failed for ${tmp.path}');
+        }
+      }
+      tmp.renameSync(file.path);
+    } on Object {
+      if (tmp.existsSync()) {
+        try {
+          tmp.deleteSync();
+        } on Object {
+          // The previous transcript is still at [file].
+        }
+      }
+      rethrow;
+    }
   }
 
   List<Map<String, Object?>> _readableSpoolLines(String sessionId) {
