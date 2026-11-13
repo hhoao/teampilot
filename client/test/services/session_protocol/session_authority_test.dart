@@ -8,6 +8,8 @@ final class _Control implements SessionControlPort {
   final List<String> refreshes = [];
   final List<Map<String, Object?>> adopted = [];
   final List<String> removed = [];
+  final List<(String, String, String)> edits = [];
+  final List<String> editCancels = [];
 
   @override
   Future<void> cancelTurn({
@@ -37,6 +39,27 @@ final class _Control implements SessionControlPort {
   }) async {
     removed.add(sessionId);
   }
+
+  @override
+  Future<void> editTurn({
+    required String sessionId,
+    required String memberId,
+    required String operationId,
+    required String userMessageId,
+    required String text,
+  }) async {
+    edits.add((operationId, userMessageId, text));
+  }
+
+  @override
+  Future<void> cancelEdit({
+    required String sessionId,
+    required String memberId,
+    required String operationId,
+  }) async {
+    editCancels.add(operationId);
+  }
+
 }
 
 SessionSeatActivity _seat(String state, {String memberId = 'dev'}) =>

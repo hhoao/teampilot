@@ -72,4 +72,38 @@ final class ChatSessionControlPort implements SessionControlPort {
       memberId: memberId,
     );
   }
+
+  @override
+  Future<void> editTurn({
+    required String sessionId,
+    required String memberId,
+    required String operationId,
+    required String userMessageId,
+    required String text,
+  }) async {
+    final accepted = await _chat
+        .seatEditFor(sessionId)
+        .submit(
+          messageId: userMessageId,
+          memberId: memberId,
+          text: text,
+          operationId: operationId,
+        );
+    if (!accepted) {
+      // The intent result must reflect a refused edit; the authority turns a
+      // thrown control error into `rejected: control_failed`.
+      throw StateError('edit was not accepted');
+    }
+  }
+
+  @override
+  Future<void> cancelEdit({
+    required String sessionId,
+    required String memberId,
+    required String operationId,
+  }) async {
+    final edit = _chat.seatEditFor(sessionId);
+    if (edit.operation?.id != operationId) return;
+    edit.cancel();
+  }
 }

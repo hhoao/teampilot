@@ -32,6 +32,11 @@ final class SessionAuthority {
   final Map<String, int> _contentSeq = {};
   final Map<String, int> _contentDeltaSeq = {};
   final Map<String, int> _sessionListRevisions = {};
+  final Map<String, Map<String, SessionOperation>> _operations = {};
+
+  /// Finished operations stay readable this long so a reconnecting client can
+  /// still learn the outcome instead of losing it.
+  static const operationRetention = Duration(minutes: 5);
 
   final StreamController<SessionDelta> _deltas =
       StreamController<SessionDelta>.broadcast();
@@ -68,6 +73,7 @@ final class SessionAuthority {
       epoch: epoch,
       revision: _revisions[sessionId] ?? 0,
       seats: ordered,
+      operations: _orderedOperations(sessionId),
       authorityId: authorityId,
       workspaceId: _workspaceIds[sessionId] ?? '',
     );
@@ -109,6 +115,7 @@ final class SessionAuthority {
       revision: revision,
       seats: normalized.values.toList()
         ..sort((a, b) => a.memberId.compareTo(b.memberId)),
+      operations: _orderedOperations(trimmed),
       workspaceId: _workspaceIds[trimmed] ?? '',
     );
     if (!_deltas.isClosed) _deltas.add(delta);
@@ -126,6 +133,7 @@ final class SessionAuthority {
     _contentSeq.clear();
     _contentDeltaSeq.clear();
     _sessionListRevisions.clear();
+    _operations.clear();
   }
 
   SessionDelta? removeSession(String sessionId) {
@@ -135,6 +143,7 @@ final class SessionAuthority {
     final workspaceId = _workspaceIds.remove(trimmed) ?? '';
     _contentDeltaSeq.removeWhere((key, _) => key.startsWith('$trimmed|'));
     _contentSeq.remove(trimmed);
+    _operations.remove(trimmed);
     final base = _revisions[trimmed] ?? 0;
     final revision = base + 1;
     _revisions[trimmed] = revision;
@@ -295,6 +304,10 @@ final class SessionAuthority {
       );
     }
     switch (intent.op) {
+      case 'turn.edit':
+        return _handleTurnEdit(intent, session);
+      case 'op.cancel':
+        return _handleOperationCancel(intent);
       case 'turn.cancel':
         final memberId = intent.memberId.trim();
         SessionSeatActivity? target;
@@ -349,6 +362,217 @@ final class SessionAuthority {
           code: 'unsupported_op',
         );
     }
+  }
+
+  Future<SessionIntentResult> _handleTurnEdit(
+    SessionIntent intent,
+    SessionSnapshot session,
+  ) async {
+    final opId = intent.operationId.trim();
+    final memberId = intent.memberId.trim();
+    final messageId = intent.userMessageId.trim();
+    final text = intent.text.trim();
+    if (opId.isEmpty || memberId.isEmpty || messageId.isEmpty || text.isEmpty) {
+      return SessionIntentResult(
+        id: intent.id,
+        status: SessionIntentStatus.rejected,
+        epoch: epoch,
+        revision: session.revision,
+        code: 'turn_edit_payload_invalid',
+      );
+    }
+    // A replayed intent (same client-generated opId) must not start a second
+    // restore: the caller only needs to know it was accepted.
+    if (session.operation(opId) != null) {
+      return SessionIntentResult(
+        id: intent.id,
+        status: SessionIntentStatus.applied,
+        epoch: epoch,
+        revision: session.revision,
+      );
+    }
+    SessionSeatActivity? seat;
+    for (final candidate in session.seats) {
+      if (candidate.memberId == memberId) {
+        seat = candidate;
+        break;
+      }
+    }
+    if (seat == null) {
+      return SessionIntentResult(
+        id: intent.id,
+        status: SessionIntentStatus.rejected,
+        epoch: epoch,
+        revision: session.revision,
+        code: 'seat_not_found',
+      );
+    }
+    final expectedTurn = intent.expectedTurnId?.trim() ?? '';
+    if (expectedTurn.isNotEmpty && (seat.turnId ?? '') != expectedTurn) {
+      return SessionIntentResult(
+        id: intent.id,
+        status: SessionIntentStatus.rejected,
+        epoch: epoch,
+        revision: session.revision,
+        code: 'turn_moved',
+      );
+    }
+    try {
+      await _controlPort.editTurn(
+        sessionId: intent.sessionId,
+        memberId: memberId,
+        operationId: opId,
+        userMessageId: messageId,
+        text: text,
+      );
+      return SessionIntentResult(
+        id: intent.id,
+        status: SessionIntentStatus.applied,
+        epoch: epoch,
+        revision: _revisions[intent.sessionId] ?? session.revision,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[session-authority] turn.edit failed session=${intent.sessionId} '
+        'member=$memberId op=$opId',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return SessionIntentResult(
+        id: intent.id,
+        status: SessionIntentStatus.rejected,
+        epoch: epoch,
+        revision: session.revision,
+        code: 'control_failed',
+        message: '$error',
+      );
+    }
+  }
+
+  Future<SessionIntentResult> _handleOperationCancel(SessionIntent intent) async {
+    final opId = intent.operationId.trim();
+    final session = snapshot(intent.sessionId);
+    final operation = opId.isEmpty ? null : session?.operation(opId);
+    if (operation == null) {
+      return SessionIntentResult(
+        id: intent.id,
+        status: SessionIntentStatus.noop,
+        epoch: epoch,
+        revision: session?.revision ?? _revisions[intent.sessionId] ?? 0,
+        code: 'unknown_operation',
+      );
+    }
+    if (operation.isTerminal) {
+      return SessionIntentResult(
+        id: intent.id,
+        status: SessionIntentStatus.noop,
+        epoch: epoch,
+        revision: session!.revision,
+        code: 'already_terminal',
+      );
+    }
+    try {
+      await _controlPort.cancelEdit(
+        sessionId: operation.sessionId,
+        memberId: operation.memberId,
+        operationId: opId,
+      );
+      return SessionIntentResult(
+        id: intent.id,
+        status: SessionIntentStatus.applied,
+        epoch: epoch,
+        revision: session!.revision,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[session-authority] op.cancel failed session=${operation.sessionId} '
+        'op=$opId',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return SessionIntentResult(
+        id: intent.id,
+        status: SessionIntentStatus.rejected,
+        epoch: epoch,
+        revision: session!.revision,
+        code: 'control_failed',
+        message: '$error',
+      );
+    }
+  }
+
+  List<SessionOperation> _orderedOperations(String sessionId) {
+    final ops = _operations[sessionId];
+    if (ops == null || ops.isEmpty) return const [];
+    final ordered = ops.values.toList()
+      ..sort((a, b) => a.startedAt.compareTo(b.startedAt));
+    return ordered;
+  }
+
+  void _pruneOperations(String sessionId) {
+    final ops = _operations[sessionId];
+    if (ops == null || ops.isEmpty) return;
+    final cutoff = _clock()
+        .subtract(operationRetention)
+        .millisecondsSinceEpoch;
+    ops.removeWhere(
+      (_, op) => op.isTerminal && op.updatedAt > 0 && op.updatedAt < cutoff,
+    );
+    if (ops.isEmpty) _operations.remove(sessionId);
+  }
+
+  String _operationKey(SessionOperation operation) => [
+    operation.kind,
+    operation.phase,
+    operation.errorCode,
+    operation.memberId,
+    operation.messageId,
+  ].join('|');
+
+  /// Merges one delegated operation into the session state and broadcasts it.
+  ///
+  /// Returns null when the session is unknown or the operation is unchanged, so
+  /// a phase recompute that produces the same value never spams the wire.
+  SessionDelta? publishOperation(SessionOperation operation) {
+    final sessionId = operation.sessionId.trim();
+    final seats = _sessions[sessionId];
+    if (seats == null) return null;
+    final ops = _operations.putIfAbsent(sessionId, () => {});
+    final now = _clock().millisecondsSinceEpoch;
+    final stored = SessionOperation(
+      id: operation.id,
+      kind: operation.kind,
+      sessionId: sessionId,
+      memberId: operation.memberId,
+      messageId: operation.messageId,
+      phase: operation.phase,
+      startedAt: operation.startedAt > 0 ? operation.startedAt : now,
+      // The authority owns the clock: retention must not depend on a device's
+      // timestamp (or on test fixtures).
+      updatedAt: now,
+      errorCode: operation.errorCode,
+    );
+    final previous = ops[stored.id];
+    if (previous != null && _operationKey(previous) == _operationKey(stored)) {
+      return null;
+    }
+    ops[stored.id] = stored;
+    _pruneOperations(sessionId);
+    final base = _revisions[sessionId] ?? 0;
+    final revision = base + 1;
+    _revisions[sessionId] = revision;
+    final delta = SessionDelta(
+      sessionId: sessionId,
+      epoch: epoch,
+      baseRevision: base,
+      revision: revision,
+      seats: seats.values.toList()
+        ..sort((a, b) => a.memberId.compareTo(b.memberId)),
+      operations: _orderedOperations(sessionId),
+      workspaceId: _workspaceIds[sessionId] ?? '',
+    );
+    if (!_deltas.isClosed) _deltas.add(delta);
+    return delta;
   }
 
   SessionContentInvalidated publishContentInvalidated({

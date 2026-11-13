@@ -64,6 +64,88 @@ final class SessionSeatActivity {
   }
 }
 
+/// One delegated operation running on the authority (today: `turn.edit`).
+///
+/// Phases are strings, not an enum, so a newer authority can add one without
+/// breaking a client that only knows the older set.
+final class SessionOperation {
+  const SessionOperation({
+    required this.id,
+    required this.kind,
+    required this.sessionId,
+    required this.memberId,
+    required this.messageId,
+    required this.phase,
+    this.startedAt = 0,
+    this.updatedAt = 0,
+    this.errorCode = '',
+  });
+
+  static const kindTurnEdit = 'turn.edit';
+
+  static const phaseQueued = 'queued';
+  static const phaseRestoring = 'restoring';
+  static const phaseRelaunching = 'relaunching';
+  static const phaseDelivering = 'delivering';
+  static const phaseAwaitingReplay = 'awaitingReplay';
+  static const phaseConfirmed = 'confirmed';
+  static const phaseFailed = 'failed';
+  static const phaseCancelled = 'cancelled';
+
+  final String id;
+  final String kind;
+  final String sessionId;
+  final String memberId;
+  final String messageId;
+  final String phase;
+  final int startedAt;
+  final int updatedAt;
+  final String errorCode;
+
+  bool get isTerminal =>
+      phase == phaseConfirmed ||
+      phase == phaseFailed ||
+      phase == phaseCancelled;
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'kind': kind,
+    'sessionId': sessionId,
+    'memberId': memberId,
+    'messageId': messageId,
+    'phase': phase,
+    'startedAt': startedAt,
+    'updatedAt': updatedAt,
+    if (errorCode.isNotEmpty) 'errorCode': errorCode,
+  };
+
+  static SessionOperation? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final id = json['id'];
+    final kind = json['kind'];
+    final sessionId = json['sessionId'];
+    final phase = json['phase'];
+    if (id is! String || kind is! String || sessionId is! String) return null;
+    if (phase is! String || phase.isEmpty) return null;
+    final memberId = json['memberId'];
+    final messageId = json['messageId'];
+    final startedAt = json['startedAt'];
+    final updatedAt = json['updatedAt'];
+    final errorCode = json['errorCode'];
+    return SessionOperation(
+      id: id,
+      kind: kind,
+      sessionId: sessionId,
+      memberId: memberId is String ? memberId : '',
+      messageId: messageId is String ? messageId : '',
+      phase: phase,
+      startedAt: startedAt is num ? startedAt.toInt() : 0,
+      updatedAt: updatedAt is num ? updatedAt.toInt() : 0,
+      errorCode: errorCode is String ? errorCode : '',
+    );
+  }
+}
+
 /// One session's state at a revision.
 final class SessionSnapshot {
   const SessionSnapshot({
@@ -71,6 +153,7 @@ final class SessionSnapshot {
     required this.epoch,
     required this.revision,
     required this.seats,
+    this.operations = const [],
     this.authorityId = '',
     this.workspaceId = '',
   });
@@ -79,10 +162,20 @@ final class SessionSnapshot {
   final int epoch;
   final int revision;
   final List<SessionSeatActivity> seats;
+
+  /// Non-terminal delegated operations plus recently finished ones.
+  final List<SessionOperation> operations;
   final String authorityId;
   final String workspaceId;
 
   bool get isBusy => seats.any((seat) => seat.isBusy);
+
+  SessionOperation? operation(String operationId) {
+    for (final operation in operations) {
+      if (operation.id == operationId) return operation;
+    }
+    return null;
+  }
 
   Map<String, Object?> toJson() => {
     'sessionId': sessionId,
@@ -91,6 +184,8 @@ final class SessionSnapshot {
     'authorityId': authorityId,
     if (workspaceId.isNotEmpty) 'workspaceId': workspaceId,
     'seats': [for (final seat in seats) seat.toJson()],
+    if (operations.isNotEmpty)
+      'operations': [for (final op in operations) op.toJson()],
   };
 
   static SessionSnapshot? fromJson(Object? json) {
@@ -109,11 +204,20 @@ final class SessionSnapshot {
         if (seat != null) seats.add(seat);
       }
     }
+    final operations = <SessionOperation>[];
+    final rawOperations = json['operations'];
+    if (rawOperations is List) {
+      for (final raw in rawOperations) {
+        final op = SessionOperation.fromJson(raw);
+        if (op != null) operations.add(op);
+      }
+    }
     return SessionSnapshot(
       sessionId: sessionId,
       epoch: epoch is num ? epoch.toInt() : 0,
       revision: revision is num ? revision.toInt() : 0,
       seats: seats,
+      operations: operations,
       authorityId: authorityId is String ? authorityId : '',
       workspaceId: workspaceId is String ? workspaceId : '',
     );
@@ -128,6 +232,7 @@ final class SessionDelta {
     required this.baseRevision,
     required this.revision,
     required this.seats,
+    this.operations = const [],
     this.removed = false,
     this.workspaceId = '',
   });
@@ -137,6 +242,9 @@ final class SessionDelta {
   final int baseRevision;
   final int revision;
   final List<SessionSeatActivity> seats;
+
+  /// Full operation list for the session; empty means "unchanged".
+  final List<SessionOperation> operations;
   final bool removed;
   final String workspaceId;
 
@@ -148,6 +256,8 @@ final class SessionDelta {
     'removed': removed,
     if (workspaceId.isNotEmpty) 'workspaceId': workspaceId,
     'seats': [for (final seat in seats) seat.toJson()],
+    if (operations.isNotEmpty)
+      'operations': [for (final op in operations) op.toJson()],
   };
 
   static SessionDelta? fromJson(Object? json) {
@@ -167,20 +277,29 @@ final class SessionDelta {
         if (seat != null) seats.add(seat);
       }
     }
+    final operations = <SessionOperation>[];
+    final rawOperations = json['operations'];
+    if (rawOperations is List) {
+      for (final raw in rawOperations) {
+        final op = SessionOperation.fromJson(raw);
+        if (op != null) operations.add(op);
+      }
+    }
     return SessionDelta(
       sessionId: sessionId,
       epoch: epoch is num ? epoch.toInt() : 0,
       baseRevision: base is num ? base.toInt() : 0,
       revision: revision is num ? revision.toInt() : 0,
       seats: seats,
+      operations: operations,
       removed: removed is bool ? removed : false,
       workspaceId: workspaceId is String ? workspaceId : '',
     );
   }
 }
 
-/// Typed control request. Supported ops: `turn.cancel`, `session.refresh`,
-/// `session.create`, `session.remove`.
+/// Typed control request. Supported ops: `turn.cancel`, `turn.edit`,
+/// `op.cancel`, `session.refresh`, `session.create`, `session.remove`.
 final class SessionIntent {
   const SessionIntent({
     required this.id,
@@ -192,6 +311,9 @@ final class SessionIntent {
     this.expectedEpoch,
     this.expectedTurnId,
     this.deadline,
+    this.operationId = '',
+    this.userMessageId = '',
+    this.text = '',
   });
 
   final String id;
@@ -209,6 +331,16 @@ final class SessionIntent {
   final String? expectedTurnId;
   final DateTime? deadline;
 
+  /// `turn.edit` / `op.cancel`: the delegated operation this intent belongs to.
+  /// Client-generated and used by the authority for idempotency.
+  final String operationId;
+
+  /// `turn.edit`: the user message being rewritten.
+  final String userMessageId;
+
+  /// `turn.edit`: the replacement text.
+  final String text;
+
   Map<String, Object?> toJson() => {
     'id': id,
     'op': op,
@@ -219,6 +351,9 @@ final class SessionIntent {
     if (expectedEpoch != null) 'expectedEpoch': expectedEpoch,
     if (expectedTurnId != null) 'expectedTurnId': expectedTurnId,
     if (deadline != null) 'deadline': deadline!.toUtc().toIso8601String(),
+    if (operationId.isNotEmpty) 'operationId': operationId,
+    if (userMessageId.isNotEmpty) 'userMessageId': userMessageId,
+    if (text.isNotEmpty) 'text': text,
   };
 
   static SessionIntent? fromJson(Object? json) {
@@ -233,6 +368,9 @@ final class SessionIntent {
     final expectedEpoch = json['expectedEpoch'];
     final expectedTurnId = json['expectedTurnId'];
     final deadline = json['deadline'];
+    final operationId = json['operationId'];
+    final userMessageId = json['userMessageId'];
+    final text = json['text'];
     return SessionIntent(
       id: id,
       op: op,
@@ -248,6 +386,9 @@ final class SessionIntent {
       expectedEpoch: expectedEpoch is num ? expectedEpoch.toInt() : null,
       expectedTurnId: expectedTurnId is String ? expectedTurnId : null,
       deadline: deadline is String ? DateTime.tryParse(deadline) : null,
+      operationId: operationId is String ? operationId : '',
+      userMessageId: userMessageId is String ? userMessageId : '',
+      text: text is String ? text : '',
     );
   }
 }

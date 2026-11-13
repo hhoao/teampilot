@@ -111,6 +111,8 @@ final class SessionClient {
           'state',
           'content.invalidated',
           'intent.turn.cancel',
+          'intent.turn.edit',
+          'op.state',
           'attention',
         ],
       },
@@ -154,6 +156,36 @@ final class SessionClient {
     expectedTurnId: expectedTurnId,
   );
 
+  /// Delegates an edited-message resend to the authority. Resolves once the
+  /// operation is queued; phases arrive through the session snapshot/delta.
+  Future<SessionIntentResult> editTurn({
+    required String sessionId,
+    required String memberId,
+    required String operationId,
+    required String userMessageId,
+    required String text,
+    String? expectedTurnId,
+  }) => _sendIntent(
+    op: 'turn.edit',
+    sessionId: sessionId,
+    memberId: memberId,
+    expectedTurnId: expectedTurnId,
+    operationId: operationId,
+    userMessageId: userMessageId,
+    text: text,
+  );
+
+  Future<SessionIntentResult> cancelOperation({
+    required String sessionId,
+    required String memberId,
+    required String operationId,
+  }) => _sendIntent(
+    op: 'op.cancel',
+    sessionId: sessionId,
+    memberId: memberId,
+    operationId: operationId,
+  );
+
   Future<SessionIntentResult> refreshSessions({required String workspaceId}) =>
       _sendIntent(
         op: 'session.refresh',
@@ -191,6 +223,9 @@ final class SessionClient {
     String workspaceId = '',
     Map<String, Object?>? sessionListEntry,
     String? expectedTurnId,
+    String operationId = '',
+    String userMessageId = '',
+    String text = '',
   }) async {
     if (_closed) {
       return const SessionIntentResult(
@@ -210,6 +245,9 @@ final class SessionClient {
       expectedEpoch: _epoch,
       expectedTurnId: expectedTurnId,
       deadline: DateTime.now().toUtc().add(intentTimeout),
+      operationId: operationId,
+      userMessageId: userMessageId,
+      text: text,
     );
     final completer = Completer<SessionIntentResult>();
     _pending[id] = completer;
@@ -473,6 +511,54 @@ final class SessionClientConnection {
       workspaceId: workspaceId,
       sessionId: sessionId,
       entry: entry,
+    );
+  }
+
+  Future<SessionIntentResult> editTurn({
+    required String sessionId,
+    required String memberId,
+    required String operationId,
+    required String userMessageId,
+    required String text,
+  }) {
+    final client = _client;
+    if (client == null || !client.isReady) {
+      return Future.value(
+        const SessionIntentResult(
+          id: '',
+          status: SessionIntentStatus.rejected,
+          code: 'not_connected',
+        ),
+      );
+    }
+    return client.editTurn(
+      sessionId: sessionId,
+      memberId: memberId,
+      operationId: operationId,
+      userMessageId: userMessageId,
+      text: text,
+    );
+  }
+
+  Future<SessionIntentResult> cancelOperation({
+    required String sessionId,
+    required String memberId,
+    required String operationId,
+  }) {
+    final client = _client;
+    if (client == null || !client.isReady) {
+      return Future.value(
+        const SessionIntentResult(
+          id: '',
+          status: SessionIntentStatus.rejected,
+          code: 'not_connected',
+        ),
+      );
+    }
+    return client.cancelOperation(
+      sessionId: sessionId,
+      memberId: memberId,
+      operationId: operationId,
     );
   }
 

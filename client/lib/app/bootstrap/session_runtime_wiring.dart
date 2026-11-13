@@ -225,6 +225,15 @@ SessionRuntimeWiring wireSessionRuntime({
     },
   );
 
+  // Edits run on the runtime owner: when this process is a connected client,
+  // the desktop that owns the seat executes them and streams the phases back.
+  chatCubit.seatEditTransportFor =
+      ({required String sessionId, required String memberId}) =>
+          sessionProtocolController.editTransportFor(
+            sessionId: sessionId,
+            memberId: memberId,
+          );
+
   return (
     sessionRemoteActivityCubit: sessionRemoteActivityCubit,
     sessionAuthority: sessionAuthority,

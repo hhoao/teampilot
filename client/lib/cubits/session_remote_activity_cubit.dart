@@ -63,6 +63,10 @@ class SessionRemoteActivityCubit extends Cubit<SessionRemoteActivityState> {
         epoch: delta.epoch,
         revision: delta.revision,
         seats: delta.seats,
+        // An empty list means the delta did not touch operations.
+        operations: delta.operations.isEmpty
+            ? (current?.operations ?? const [])
+            : delta.operations,
         authorityId: current?.authorityId ?? '',
         workspaceId: delta.workspaceId.isNotEmpty
             ? delta.workspaceId

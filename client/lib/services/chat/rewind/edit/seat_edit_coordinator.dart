@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../models/pending_branch_edit.dart';
 import 'edit_operation.dart';
+import 'edit_transport.dart';
 
 /// Runs one edit transaction on behalf of [SeatEditCoordinator].
 ///
@@ -29,8 +30,13 @@ final class SeatEditCoordinator extends ChangeNotifier {
   SeatEditCoordinator({
     required this.sessionId,
     required SeatEditRunner run,
+    this.transportFor,
     this.watchdog = const Duration(seconds: 30),
   }) : _run = run;
+
+  /// Picks the executor for one seat: null runs locally, non-null delegates to
+  /// the desktop authority that owns the runtime.
+  final SeatEditTransport? Function(String memberId)? transportFor;
 
   final String sessionId;
   final SeatEditRunner _run;
@@ -46,6 +52,8 @@ final class SeatEditCoordinator extends ChangeNotifier {
   Timer? _timer;
   var _serial = 0;
   Future<void>? _settled;
+  SeatEditTransport? _transport;
+  StreamSubscription<EditOperation>? _remoteSub;
 
   /// The transaction to render, if any.
   EditOperation? get operation => _operation;
@@ -81,6 +89,7 @@ final class SeatEditCoordinator extends ChangeNotifier {
     required String memberId,
     required String text,
     bool reopenEditorOnFailure = false,
+    String? operationId,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return false;
@@ -89,10 +98,13 @@ final class SeatEditCoordinator extends ChangeNotifier {
     _timer = null;
     _abortRequested = false;
     _reopenEditorOnFailure = reopenEditorOnFailure;
+    _transport = transportFor?.call(memberId);
     _editingMessageId = null;
     _draft = null;
     final op = EditOperation(
-      id: 'edit-${++_serial}',
+      id: operationId?.trim().isNotEmpty == true
+          ? operationId!.trim()
+          : 'edit-${++_serial}',
       sessionId: sessionId,
       memberId: memberId,
       messageId: messageId,
@@ -113,6 +125,13 @@ final class SeatEditCoordinator extends ChangeNotifier {
     final op = _operation;
     if (op == null || !op.phase.isCancellable) return;
     _abortRequested = true;
+    final transport = _transport;
+    if (transport != null) {
+      // The authority decides where the boundary is; its cancelled/failed
+      // phase settles this operation.
+      unawaited(transport.cancel(op.id));
+      return;
+    }
     if (op.phase == EditPhase.queued) {
       _settle(EditPhase.cancelled, failure: EditFailure.cancelled);
     }
@@ -144,6 +163,9 @@ final class SeatEditCoordinator extends ChangeNotifier {
   void clear() {
     _timer?.cancel();
     _timer = null;
+    _remoteSub?.cancel();
+    _remoteSub = null;
+    _transport = null;
     _abortRequested = false;
     _operation = null;
     _editingMessageId = null;
@@ -170,6 +192,8 @@ final class SeatEditCoordinator extends ChangeNotifier {
   }
 
   Future<void> _execute(EditOperation op) async {
+    final transport = _transport;
+    if (transport != null) return _executeRemote(op, transport);
     try {
       await _run(
         sessionId: op.sessionId,
@@ -184,6 +208,48 @@ final class SeatEditCoordinator extends ChangeNotifier {
     } on SeatEditCancelled {
       _settle(EditPhase.cancelled, failure: EditFailure.cancelled);
     } on Object catch (error) {
+      _settle(
+        EditPhase.failed,
+        failure: EditFailure.deliveryFailed,
+        detail: '$error',
+      );
+    }
+  }
+
+  /// Delegated run: the authority publishes phases; this side never restores,
+  /// relaunches, or injects anything.
+  Future<void> _executeRemote(
+    EditOperation op,
+    SeatEditTransport transport,
+  ) async {
+    _remoteSub = transport.operations
+        .where((remote) => remote.id == op.id)
+        .listen((remote) {
+          if (_operation?.id != op.id) return;
+          if (remote.phase.isTerminal) {
+            _settle(remote.phase, failure: remote.failure);
+          } else {
+            _advance(remote.phase);
+          }
+        });
+    try {
+      final accepted = await transport.submit(
+        operationId: op.id,
+        messageId: op.messageId,
+        text: op.text,
+      );
+      if (!accepted && _operation?.id == op.id && !isActive && _operation == op) {
+        return;
+      }
+      if (!accepted && _operation?.id == op.id && !(_operation!.phase.isTerminal)) {
+        _settle(
+          EditPhase.failed,
+          failure: EditFailure.deliveryFailed,
+          detail: 'intent_rejected',
+        );
+      }
+    } on Object catch (error) {
+      if (_operation?.id != op.id || _operation!.phase.isTerminal) return;
       _settle(
         EditPhase.failed,
         failure: EditFailure.deliveryFailed,
@@ -209,6 +275,9 @@ final class SeatEditCoordinator extends ChangeNotifier {
     if (op == null) return;
     _timer?.cancel();
     _timer = null;
+    _remoteSub?.cancel();
+    _remoteSub = null;
+    _transport = null;
     _abortRequested = false;
     _operation = op.copyWith(phase: phase, failure: failure, detail: detail);
     if (phase == EditPhase.failed && _reopenEditorOnFailure) {
@@ -230,6 +299,8 @@ final class SeatEditCoordinator extends ChangeNotifier {
   void dispose() {
     _timer?.cancel();
     _timer = null;
+    _remoteSub?.cancel();
+    _remoteSub = null;
     super.dispose();
   }
 }

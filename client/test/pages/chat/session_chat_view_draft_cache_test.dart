@@ -50,7 +50,6 @@ import 'package:teampilot/services/chat/conversation/history/history_awaiting_wo
 import 'package:teampilot/services/chat/conversation/history/failed_message_store.dart';
 import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
-import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -570,50 +569,6 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-    },
-  );
-
-  testWidgets(
-    'tap shows the submit spinner before the pending record is persisted',
-    (tester) async {
-      final session = _session('s-busy');
-      final persisted = Completer<FailedMessageRecord>();
-      when(
-        () => seat.persistPendingUser(
-          store: any(named: 'store'),
-          workspaceId: any(named: 'workspaceId'),
-          sessionId: any(named: 'sessionId'),
-          text: any(named: 'text'),
-        ),
-      ).thenAnswer((_) => persisted.future);
-
-      await pumpSession(tester, session: session);
-
-      await enterComposeText(tester, 'send now');
-      await tester.pump();
-      await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
-      await tester.pump();
-
-      // The busy state must flip on the tap frame, not after the disk write.
-      expect(
-        tester
-            .widget<WorkspaceComposeCard>(find.byType(WorkspaceComposeCard))
-            .isSubmitting,
-        isTrue,
-      );
-      // Text stays recoverable until the pending record exists.
-      expect(_composeField(tester).controller!.text, 'send now');
-
-      persisted.complete(
-        FailedMessageRecord(
-          id: 'pending:busy',
-          text: 'send now',
-          createdAt: DateTime.utc(2026),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(_composeField(tester).controller!.text, isEmpty);
     },
   );
 

@@ -8,6 +8,23 @@ abstract interface class SessionControlPort {
     required String memberId,
   });
 
+  /// Accepts a delegated edited-message resend. Must return once the operation
+  /// is queued, not when it finishes: the intent is answered on a short budget.
+  Future<void> editTurn({
+    required String sessionId,
+    required String memberId,
+    required String operationId,
+    required String userMessageId,
+    required String text,
+  });
+
+  /// Stops a delegated operation at its next phase boundary.
+  Future<void> cancelEdit({
+    required String sessionId,
+    required String memberId,
+    required String operationId,
+  });
+
   /// Re-reads [workspaceId]'s session list from the shared home plane.
   ///
   /// Used by a mobile client after it creates a conversation: the desktop

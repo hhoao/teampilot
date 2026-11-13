@@ -38,6 +38,7 @@ import '../services/chat/rewind/seat_rewind_paths.dart';
 import '../services/chat/rewind/seat_rewind_policy.dart';
 import '../services/chat/rewind/seat_rewind_controller.dart';
 import '../services/chat/rewind/edit/edit_operation.dart';
+import '../services/chat/rewind/edit/edit_transport.dart';
 import '../services/chat/rewind/edit/seat_edit_coordinator.dart';
 import '../services/chat/rewind/seat_pty_checkpoint_tracker.dart';
 import '../services/chat/rewind/seat_rewind_store.dart';
@@ -318,12 +319,24 @@ class ChatCubit extends Cubit<ChatState>
   /// Test seam: widget tests can use [Duration.zero] to avoid a pending timer.
   final Duration seatEditWatchdog;
 
+  /// Resolves the delegated executor for one seat. Installed when this process
+  /// is a session-protocol client; null keeps every edit local.
+  SeatEditTransport? Function({
+    required String sessionId,
+    required String memberId,
+  })?
+  seatEditTransportFor;
+
   SeatEditCoordinator seatEditFor(String sessionId) => _seatEdits.putIfAbsent(
     sessionId,
     () => SeatEditCoordinator(
       sessionId: sessionId,
       run: _runSeatEdit,
       watchdog: seatEditWatchdog,
+      transportFor: (memberId) => seatEditTransportFor?.call(
+        sessionId: sessionId,
+        memberId: memberId,
+      ),
     ),
   );
 

@@ -20,6 +20,8 @@ final class SessionServer {
       'state',
       'content.invalidated',
       'intent.turn.cancel',
+      'intent.turn.edit',
+      'op.state',
       'attention',
     ],
     this.helloTimeout = const Duration(seconds: 5),

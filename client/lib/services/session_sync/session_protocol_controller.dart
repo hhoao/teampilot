@@ -3,6 +3,9 @@ import 'dart:io';
 
 import '../../cubits/session_remote_activity_cubit.dart';
 import '../../utils/logging/logger.dart';
+import '../chat/rewind/edit/edit_transport.dart';
+import 'remote_seat_edit_transport.dart';
+import 'session_edit_executor.dart';
 import '../io/filesystem.dart';
 import '../session_protocol/session_authority.dart';
 import '../session_protocol/session_channel.dart';
@@ -75,6 +78,35 @@ final class SessionProtocolController {
   SessionProtocolRole get role => _role;
 
   bool get isClient => _role == SessionProtocolRole.client;
+
+  /// The transport that delegates an edited-message resend to the desktop.
+  ///
+  /// Null unless this process is a connected client *and* the authority reports
+  /// the seat: delegating a seat whose runtime the phone started over SSH would
+  /// make the desktop spawn a second runtime for the same work tree.
+  SeatEditTransport? editTransportFor({
+    required String sessionId,
+    required String memberId,
+  }) {
+    final client = _client;
+    final ownsSeat =
+        remoteCubit.state
+            .session(sessionId)
+            ?.seats
+            .any((seat) => seat.memberId == memberId) ??
+        false;
+    final executor = resolveEditExecutor(
+      isClient: _role == SessionProtocolRole.client && (client?.isReady ?? false),
+      authorityOwnsSeat: ownsSeat,
+    );
+    if (executor != EditExecutor.authority || client == null) return null;
+    return RemoteSeatEditTransport(
+      connection: client,
+      activity: remoteCubit,
+      sessionId: sessionId,
+      memberId: memberId,
+    );
+  }
 
   Future<SessionIntentResult> createSession({
     required String workspaceId,
