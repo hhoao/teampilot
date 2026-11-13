@@ -1447,6 +1447,16 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                               context,
                             ).languageCode,
                           );
+                          // A failed or stopped resend leaves one red retry at
+                          // the left of the bubble, centred on it. The
+                          // transaction itself is not rendered. The desktop
+                          // inline editor keeps the draft, so it shows nothing.
+                          final editOperation = _edit.operation;
+                          final showEditRetry =
+                              editOperation != null &&
+                              editOperation.messageId == ai.id &&
+                              editOperation.phase.allowsRetry &&
+                              _edit.editingMessageId != ai.id;
                           // A new editing session for this message must build a
                           // fresh editor State: the old one latched itself as
                           // submitted and would ignore the retry. The operation
@@ -1517,6 +1527,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                             previousVersionLabel: previousVersionLabel,
                             nextVersionLabel: nextVersionLabel,
                             rewindForkEnabled: !widget.turnInFlight,
+                            leadingAction: showEditRetry
+                                ? EditRetryButton(
+                                    onRetry: () => unawaited(_edit.retry()),
+                                  )
+                                : null,
                           );
                           var result = tightenForRunning
                               ? Theme(
@@ -1539,27 +1554,6 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                 ),
                               ),
                               child: result,
-                            );
-                          }
-                          // A failed or stopped resend leaves one red retry at
-                          // the left of the bubble's row: the transaction is
-                          // not rendered, so this is the only way back without
-                          // reopening the editor. The desktop inline editor
-                          // keeps the draft, so it shows nothing extra.
-                          final editOperation = _edit.operation;
-                          if (editOperation != null &&
-                              editOperation.messageId == ai.id &&
-                              editOperation.phase.allowsRetry &&
-                              _edit.editingMessageId != ai.id) {
-                            result = Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                EditRetryButton(
-                                  onRetry: () => unawaited(_edit.retry()),
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(child: result),
-                              ],
                             );
                           }
                           final mobileEditingId = mobile

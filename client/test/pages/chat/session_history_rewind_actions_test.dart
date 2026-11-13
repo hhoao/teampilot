@@ -694,8 +694,8 @@ void main() {
       expect(retryRect.right, lessThan(bubbleText.left));
       expect(
         (retryRect.center.dy - bubbleText.center.dy).abs(),
-        lessThan(40),
-        reason: 'the retry must share the bubble row, not sit below it',
+        lessThan(4),
+        reason: 'the retry must be centred on the bubble itself',
       );
 
       cubit.failing = false;

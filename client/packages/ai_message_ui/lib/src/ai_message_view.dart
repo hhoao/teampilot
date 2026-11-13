@@ -44,6 +44,7 @@ class AiMessageView extends StatefulWidget {
     this.onNextVersion,
     this.previousVersionLabel = 'Previous version',
     this.nextVersionLabel = 'Next version',
+    this.leadingAction,
     super.key,
   });
 
@@ -93,6 +94,10 @@ class AiMessageView extends StatefulWidget {
   final VoidCallback? onNextVersion;
   final String previousVersionLabel;
   final String nextVersionLabel;
+
+  /// Rendered immediately left of a user bubble, vertically centered on the
+  /// bubble itself (not on the bubble + action bar). Used for retry actions.
+  final Widget? leadingAction;
 
   /// When `false`, ignore pointer-enter for hover ActionBars (history fling).
   /// Defaults to always enabled when null.
@@ -202,6 +207,7 @@ class _AiMessageViewState extends State<AiMessageView> {
             onNextVersion: widget.onNextVersion,
             previousVersionLabel: widget.previousVersionLabel,
             nextVersionLabel: widget.nextVersionLabel,
+            leadingAction: widget.leadingAction,
           ),
           AiRole.assistant => _AssistantBlock(
             timestampText: widget.timestampText,
@@ -338,6 +344,7 @@ class _UserBubble extends StatelessWidget {
     this.previousVersionLabel = 'Previous version',
     this.nextVersionLabel = 'Next version',
     this.timestampText,
+    this.leadingAction,
   });
 
   final ColorScheme scheme;
@@ -368,6 +375,9 @@ class _UserBubble extends StatelessWidget {
   final String nextVersionLabel;
 
   final String? timestampText;
+
+  /// Rendered immediately left of the bubble, vertically centered on it.
+  final Widget? leadingAction;
 
   @override
   Widget build(BuildContext context) {
@@ -411,35 +421,49 @@ class _UserBubble extends StatelessWidget {
               ? constraints.maxWidth
               : 480.0;
           final bubbleMax = aiTheme.userBubbleMaxWidth.clamp(0.0, threadMax);
+          final bubble = ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: bubbleMax),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(aiTheme.userBubbleRadius),
+              child: ColoredBox(
+                color: aiTheme.resolveUserBubble(scheme),
+                child: _UserBubbleFadeHost(
+                  messageId: message.id,
+                  textSignature: message.parts
+                      .whereType<AiTextPart>()
+                      .map((p) => p.text)
+                      .join('\u0000'),
+                  fadeColor: aiTheme.resolveUserBubble(scheme),
+                  contentPadding: kUserBubbleContentPadding,
+                  child: DefaultTextStyle.merge(
+                    style: aiTheme.markdown.userBubble(
+                      aiTheme.resolveUserForeground(scheme),
+                    ),
+                    textHeightBehavior: kUserBubbleTextHeightBehavior,
+                    child: parts,
+                  ),
+                ),
+              ),
+            ),
+          );
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: bubbleMax),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(aiTheme.userBubbleRadius),
-                  child: ColoredBox(
-                    color: aiTheme.resolveUserBubble(scheme),
-                    child: _UserBubbleFadeHost(
-                      messageId: message.id,
-                      textSignature: message.parts
-                          .whereType<AiTextPart>()
-                          .map((p) => p.text)
-                          .join('\u0000'),
-                      fadeColor: aiTheme.resolveUserBubble(scheme),
-                      contentPadding: kUserBubbleContentPadding,
-                      child: DefaultTextStyle.merge(
-                        style: aiTheme.markdown.userBubble(
-                          aiTheme.resolveUserForeground(scheme),
-                        ),
-                        textHeightBehavior: kUserBubbleTextHeightBehavior,
-                        child: parts,
-                      ),
-                    ),
-                  ),
+              if (leadingAction == null)
+                bubble
+              else
+                // The action centres on the bubble itself, not on the bubble
+                // plus the action bar underneath it.
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    leadingAction!,
+                    const SizedBox(width: 6),
+                    Flexible(child: bubble),
+                  ],
                 ),
-              ),
               if (showActionBar)
                 Padding(
                   padding: const EdgeInsets.only(top: 10, bottom: 18),
