@@ -399,6 +399,98 @@ void main() {
     expect(_texts(again), ['from-cli', 'from-spool']);
   });
 
+  test('later live load keeps CLI history ahead of the spool', () async {
+    final env = await _startEnv();
+    final phone = env.connect();
+    final sessionId = await env.openSession(phone);
+    env.fake.updateEvents.add(_chunk('from-spool'));
+    await _tick();
+    await _dropPhone(phone);
+
+    final revived = FakeUpstream(sessionId: sessionId);
+    addTearDown(() async {
+      await revived.updateEvents.close();
+      await revived.clientRequestEvents.close();
+    });
+    revived.onOpenLoad = () {
+      revived.updateEvents.add(_chunk('from-cli'));
+    };
+    env.fake.alive = false;
+    env.agent.connectNew =
+        ({
+          required AcpProxyLaunchMeta meta,
+          required String cwd,
+          required List<Map<String, Object?>> mcpServers,
+        }) async {
+          return revived;
+        };
+
+    final again = env.connect();
+    await again.client.client.loadSession(
+      LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+    );
+    expect(_texts(again), ['from-cli', 'from-spool']);
+    await _dropPhone(again);
+
+    final later = env.connect();
+    await later.client.client.loadSession(
+      LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+    );
+
+    expect(revived.openLoadCount, 1);
+    expect(_texts(later), ['from-cli', 'from-spool']);
+  });
+
+  test('a torn read keeps CLI history for the next load', () async {
+    final env = await _startEnv();
+    final first = env.connect();
+    final sessionId = await env.openSession(first);
+    final connectionId = env.book.connectionFor(sessionId);
+    env.fake.updateEvents.add(_chunk('from-spool'));
+    await _tick();
+    File(
+      '${env.root.path}/acp-proxy/sessions/$sessionId/updates.jsonl',
+    ).writeAsStringSync('not-json\n', mode: FileMode.append, flush: true);
+
+    final revived = FakeUpstream(sessionId: sessionId);
+    addTearDown(() async {
+      await revived.updateEvents.close();
+      await revived.clientRequestEvents.close();
+    });
+    var emitted = false;
+    revived.onOpenLoad = () {
+      if (emitted) return;
+      emitted = true;
+      revived.updateEvents.add(_chunk('from-cli'));
+    };
+    env.fake.alive = false;
+    env.agent.connectNew =
+        ({
+          required AcpProxyLaunchMeta meta,
+          required String cwd,
+          required List<Map<String, Object?>> mcpServers,
+        }) async {
+          return revived;
+        };
+
+    final second = env.connect();
+    await expectLater(
+      second.client.client.loadSession(
+        LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+      ),
+      throwsA(isA<RpcError>()),
+    );
+    expect(first.served.connection.isClosed, isFalse);
+    expect(env.book.connectionFor(sessionId), connectionId);
+
+    final third = env.connect();
+    await third.client.client.loadSession(
+      LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+    );
+
+    expect(_texts(third), ['from-cli', 'from-spool']);
+  });
+
   test('session new keeps an update emitted inside openNew', () async {
     final fake = FakeUpstream();
     fake.onOpenNew = () {

@@ -57,6 +57,9 @@ class AcpProxyAgent {
   final Map<String, StreamSubscription<Map<String, Object?>>> _updateSubs = {};
   final Map<String, StreamSubscription<AcpClientRequest>> _requestSubs = {};
   final Map<String, _ReplayGate> _gates = {};
+
+  /// CLI history captured before a spool read failed. The next load merges it.
+  final Map<String, List<Map<String, Object?>>> _retainedCli = {};
   final Map<String, List<Completer<PromptResponse>>> _promptWaiters = {};
   final Map<String, List<_Held>> _held = {};
   final Map<String, int> _permissionPendingCounts = {};
@@ -171,6 +174,7 @@ class AcpProxyAgent {
         _sessionLeg.remove(id);
         disconnectedSince.remove(id);
         _gates.remove(id);
+        _retainedCli.remove(id);
         try {
           await spool.delete(id);
         } on Object {
@@ -332,6 +336,7 @@ class AcpProxyAgent {
     _sessionLeg.remove(sessionId);
     _sessionIds.remove(sessionId);
     disconnectedSince.remove(sessionId);
+    _retainedCli.remove(sessionId);
     return const CloseSessionResponse();
   }
 
@@ -439,8 +444,9 @@ class AcpProxyAgent {
     _requestSubs[sessionId] = capture.requestSub!;
   }
 
-  /// Sends [cliHistory], then the spool lines it does not already include,
-  /// then the live tail. The previous phone stays up until this succeeds.
+  /// Sends CLI history, then spool lines it does not include, then the live
+  /// tail. That same order is written back to the spool. The previous phone
+  /// stays up until the read succeeds.
   Future<void> _playAndAttach({
     required AgentContext context,
     required String sessionId,
@@ -452,6 +458,10 @@ class AcpProxyAgent {
     if (capture != null && upstream != null) {
       _bindCapture(sessionId, upstream, capture);
     }
+    final history = <Map<String, Object?>>[
+      ..._retainedCli[sessionId] ?? const [],
+      ...cliHistory,
+    ];
     final gate = _ReplayGate();
     _gates[sessionId] = gate;
     if (capture != null) {
@@ -470,51 +480,32 @@ class AcpProxyAgent {
     try {
       spooled = await spool.readAll(sessionId);
     } catch (error) {
+      await _preserveHistory(sessionId, history);
       _abandonReplay(sessionId, gate);
       throw _surface(error);
     }
     var landed = spooled.length - lineMark;
     if (landed < 0) landed = 0;
-
-    final counts = <String, int>{};
-    for (final update in spooled) {
-      final key = _updateKey(update);
-      counts[key] = (counts[key] ?? 0) + 1;
-    }
-    final normalizedCli = <Map<String, Object?>>[];
-    final skip = <String, int>{};
-    for (final update in cliHistory) {
-      final stored = _normalizeMap(update);
-      normalizedCli.add(stored);
-      final key = _updateKey(stored);
-      if (stored['sessionUpdate'] != 'stop') {
-        skip[key] = (skip[key] ?? 0) + 1;
-      }
-      final left = counts[key] ?? 0;
-      if (left > 0) {
-        counts[key] = left - 1;
-      } else {
-        try {
-          spool.appendUpdate(sessionId, stored);
-        } on Object {
-          // Replay still sends the buffered CLI history.
-        }
-      }
-      if (stored['sessionUpdate'] == 'stop') {
-        _completeStop(sessionId, stored);
-        book.finishTurn(sessionId);
-      }
-    }
-
-    _deliverReplay(
-      context: context,
+    final tailStart = pendingMark + landed;
+    final tail = <Map<String, Object?>>[
+      for (var i = tailStart; i < gate.pending.length; i++) gate.pending[i],
+    ];
+    final ordered = _orderedReplay(
       sessionId: sessionId,
-      cliHistory: normalizedCli,
+      cliHistory: history,
       spooled: spooled,
-      gate: gate,
-      skip: skip,
-      tailStart: pendingMark + landed,
+      tail: tail,
     );
+    _replaceSpool(sessionId, ordered);
+    _retainedCli.remove(sessionId);
+    final baseline = gate.pending.length;
+    _emitOrdered(context, sessionId, ordered);
+    var index = baseline;
+    while (index < gate.pending.length) {
+      final update = gate.pending[index++];
+      if (update['sessionUpdate'] == 'stop') continue;
+      _sendUpdate(context, sessionId, update);
+    }
     final requests = List<AcpClientRequest>.from(gate.requests);
     _gates.remove(sessionId);
     await _attach(sessionId, leg);
@@ -525,37 +516,113 @@ class AcpProxyAgent {
     }
   }
 
-  void _deliverReplay({
-    required AgentContext context,
+  /// Keeps [history] across a failed spool read. A readable rewrite lets the
+  /// next live load replay it; otherwise the upstream is dropped so that load
+  /// does not skip [AcpUpstream.openLoad] with the history gone.
+  Future<void> _preserveHistory(
+    String sessionId,
+    List<Map<String, Object?>> history,
+  ) async {
+    if (history.isEmpty) return;
+    try {
+      final ordered = _orderedReplay(
+        sessionId: sessionId,
+        cliHistory: history,
+        spooled: _readableSpoolLines(sessionId),
+        tail: const [],
+      );
+      _replaceSpool(sessionId, ordered);
+      _retainedCli.remove(sessionId);
+    } on Object {
+      _retainedCli[sessionId] = [
+        for (final update in history) _normalizeMap(update),
+      ];
+      await _dropRememberedUpstream(sessionId);
+    }
+  }
+
+  Future<void> _dropRememberedUpstream(String sessionId) async {
+    final upstream = upstreams.remove(sessionId);
+    await _stopWatching(sessionId);
+    if (upstream != null) await _closeQuiet(upstream);
+  }
+
+  List<Map<String, Object?>> _orderedReplay({
     required String sessionId,
     required List<Map<String, Object?>> cliHistory,
     required List<Map<String, Object?>> spooled,
-    required _ReplayGate gate,
-    required Map<String, int> skip,
-    required int tailStart,
+    required List<Map<String, Object?>> tail,
   }) {
+    final skip = <String, int>{};
+    final ordered = <Map<String, Object?>>[];
     for (final update in cliHistory) {
-      if (update['sessionUpdate'] == 'stop') continue;
-      _sendUpdate(context, sessionId, update);
+      final stored = _normalizeMap(update);
+      ordered.add(stored);
+      if (stored['sessionUpdate'] == 'stop') {
+        _completeStop(sessionId, stored);
+        book.finishTurn(sessionId);
+      } else {
+        final key = _updateKey(stored);
+        skip[key] = (skip[key] ?? 0) + 1;
+      }
     }
     for (final update in spooled) {
-      if (update['sessionUpdate'] == 'stop') continue;
       final stored = _normalizeMap(update);
-      final key = _updateKey(stored);
-      final left = skip[key] ?? 0;
+      final left = skip[_updateKey(stored)] ?? 0;
       if (left > 0) {
-        skip[key] = left - 1;
+        skip[_updateKey(stored)] = left - 1;
         continue;
       }
-      _sendUpdate(context, sessionId, stored);
+      ordered.add(stored);
     }
-    var index = tailStart < 0 ? 0 : tailStart;
-    while (index < gate.pending.length) {
-      final update = gate.pending[index++];
+    for (final update in tail) {
+      ordered.add(_normalizeMap(update));
+    }
+    return ordered;
+  }
+
+  void _emitOrdered(
+    AgentContext context,
+    String sessionId,
+    List<Map<String, Object?>> ordered,
+  ) {
+    for (final update in ordered) {
       if (update['sessionUpdate'] == 'stop') continue;
       _sendUpdate(context, sessionId, update);
     }
   }
+
+  void _replaceSpool(String sessionId, List<Map<String, Object?>> updates) {
+    final file = _updatesFile(sessionId);
+    if (!file.existsSync()) return;
+    final buffer = StringBuffer();
+    for (final update in updates) {
+      buffer.write('${jsonEncode(_normalizeMap(update))}\n');
+    }
+    file.writeAsStringSync(buffer.toString(), flush: true);
+  }
+
+  List<Map<String, Object?>> _readableSpoolLines(String sessionId) {
+    final file = _updatesFile(sessionId);
+    if (!file.existsSync()) return const [];
+    final raw = file.readAsStringSync();
+    if (raw.isEmpty) return const [];
+    final updates = <Map<String, Object?>>[];
+    for (final line in const LineSplitter().convert(raw)) {
+      if (line.isEmpty) continue;
+      try {
+        final decoded = jsonDecode(line);
+        if (decoded is! Map) continue;
+        updates.add(Map<String, Object?>.from(decoded));
+      } on Object {
+        // A torn line is omitted so the history ahead of it can be stored.
+      }
+    }
+    return updates;
+  }
+
+  File _updatesFile(String sessionId) =>
+      File('${spool.root.path}/acp-proxy/sessions/$sessionId/updates.jsonl');
 
   void _abandonReplay(String sessionId, _ReplayGate gate) {
     if (identical(_gates[sessionId], gate)) _gates.remove(sessionId);
@@ -574,9 +641,7 @@ class AcpProxyAgent {
   }
 
   int _spoolLines(String sessionId) {
-    final file = File(
-      '${spool.root.path}/acp-proxy/sessions/$sessionId/updates.jsonl',
-    );
+    final file = _updatesFile(sessionId);
     if (!file.existsSync()) return 0;
     final raw = file.readAsStringSync();
     if (raw.isEmpty) return 0;
