@@ -316,4 +316,28 @@ void main() {
     expect(candidates.single.label, 'create_plan');
     expect(candidates.single.insertText, '/create_plan');
   });
+
+  test('agent commands replace the static table only when non-empty', () {
+    const agent = [
+      NativeCommand(name: 'deploy', descriptionText: 'Deploy the app'),
+    ];
+    const curated = [
+      NativeCommand(name: 'help', description: NativeCommandDescription.help),
+    ];
+
+    expect(
+      selectComposeNativeCommands(
+        agentCommands: agent,
+        staticCommands: curated,
+      ),
+      agent,
+    );
+    expect(
+      selectComposeNativeCommands(
+        agentCommands: const [],
+        staticCommands: curated,
+      ),
+      curated,
+    );
+  });
 }

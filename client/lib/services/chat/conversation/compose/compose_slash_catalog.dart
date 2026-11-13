@@ -34,6 +34,14 @@ class ComposeSlashCandidate {
   final String insertionSuffix;
 }
 
+/// Agent-advertised commands are the session's source of truth once any
+/// arrive; an empty list means "not advertised yet" and falls back to the
+/// curated per-CLI table.
+List<NativeCommand> selectComposeNativeCommands({
+  required List<NativeCommand> agentCommands,
+  required List<NativeCommand> staticCommands,
+}) => agentCommands.isNotEmpty ? agentCommands : staticCommands;
+
 List<ComposeSlashCandidate> buildComposeSlashCandidates({
   required List<Skill> skills,
   required List<Plugin> plugins,

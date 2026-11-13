@@ -41,6 +41,7 @@ import '../../services/chat/conversation/compose/compose_file_attach.dart';
 import '../../services/chat/conversation/compose/compose_text_controller.dart';
 import '../../services/chat/conversation/compose/compose_file_drop_ingestor.dart';
 import '../../services/chat/conversation/compose/compose_landing_bundle.dart';
+import '../../services/chat/conversation/compose/compose_slash_catalog.dart';
 import '../../services/chat/conversation/compose/compose_voice_input.dart';
 import '../../services/expert_hub/builtin_member_templates.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
@@ -234,9 +235,15 @@ class SessionChatComposeSection extends StatelessWidget {
             ?.supportsTurnInterrupt ??
         false;
     final skillSyntax = registry.capability<SkillCapability>(lockedCli);
-    final nativeCommands =
-        registry.capability<NativeCommandCapability>(lockedCli)?.commands ??
-        const <NativeCommand>[];
+    final agentCommands = acpRuntime == null
+        ? const <NativeCommand>[]
+        : (acpUi?.availableCommands ?? const <NativeCommand>[]);
+    final nativeCommands = selectComposeNativeCommands(
+      agentCommands: agentCommands,
+      staticCommands:
+          registry.capability<NativeCommandCapability>(lockedCli)?.commands ??
+          const <NativeCommand>[],
+    );
 
     // -- Derived values --------------------------------------------------
     final sameCliPresets = presetsForCli(presets, lockedCli);
