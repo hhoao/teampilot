@@ -14,16 +14,21 @@ import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/workbench_shell_descriptor.dart';
 import 'package:teampilot/models/workspace_folder.dart';
+import 'package:teampilot/models/workspace_terminal_session_spec.dart';
 import 'package:teampilot/repositories/automation_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/workbench_layout_snapshot_repository.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
+import 'package:teampilot/services/terminal/terminal_session.dart';
+import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/workbench/workbench_layout_persistence.dart';
 
 import '../../support/in_memory_filesystem.dart'
     show InMemoryFilesystem, fakeHomeStorage;
 import '../../support/post_frame_test_harness.dart';
+import '../../support/rust_lib_test_init.dart';
 
 const _root = '/tp-root';
 const _ws = 'ws';
@@ -33,6 +38,7 @@ final _sh2 = WorkbenchTabId.shell('sh2');
 final _sh3 = WorkbenchTabId.shell('sh3');
 
 void main() {
+  setUpAll(initRustLibForTests);
   // ChatCubit construction touches AppStorage-bound services.
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
@@ -47,8 +53,10 @@ void main() {
       ChatCubit chat,
       WorkbenchLayoutPersistence persistence,
     )
-    body,
-  ) {
+    body, {
+    bool restoreTerminalSessions = true,
+    WorkspaceTerminalRegistry? terminalRegistry,
+  }) {
     fakeAsync((async) {
       final fs = InMemoryFilesystem();
       final layout = WorkspaceLayout(teampilotRoot: _root, fs: fs);
@@ -65,24 +73,52 @@ void main() {
         storage: home,
         fs: fs,
         layout: layout,
+        terminalRegistry: terminalRegistry,
+        restoreTerminalSessions: () => restoreTerminalSessions,
       )..start();
       body(async, fs, workbench, chat, persistence);
     });
+  }
+
+  Map<String, WorkbenchShellDescriptor> descriptorsFor(WorkbenchCubit cubit) {
+    final ids = <String>{};
+    for (final layout in [
+      cubit.centerLayout(_ws),
+      cubit.floatingLayout(_ws),
+    ]) {
+      for (final strip in layout.groups.values) {
+        for (final tab in strip.order) {
+          if (tab.kind == WorkbenchTabKind.shell) ids.add(tab.id);
+        }
+      }
+    }
+    return {
+      for (final id in ids)
+        id: const WorkbenchShellDescriptor(
+          cwd: '/tmp',
+          spec: WorkspaceTerminalLocalSpec('/bin/bash'),
+        ),
+    };
   }
 
   /// Persists [seeder]'s current layouts for [_ws] through the repository.
   void seedSnapshot(
     FakeAsync async,
     InMemoryFilesystem fs,
-    WorkbenchCubit seeder,
-  ) {
+    WorkbenchCubit seeder, {
+    Map<String, WorkbenchShellDescriptor>? shellSessions,
+  }) {
     unawaited(
       WorkbenchLayoutSnapshotRepository(
         workspaceId: _ws,
         storage: fakeHomeStorage(filesystem: fs, appDataRoot: _root),
         fs: fs,
         layout: WorkspaceLayout(teampilotRoot: _root, fs: fs),
-      ).save(seeder.centerLayout(_ws), seeder.floatingLayout(_ws)),
+      ).save(
+        seeder.centerLayout(_ws),
+        seeder.floatingLayout(_ws),
+        shellSessions: shellSessions ?? descriptorsFor(seeder),
+      ),
     );
     async.flushMicrotasks();
   }
@@ -392,4 +428,115 @@ void main() {
       expect(tab!.persistedSession?.folders, isNotEmpty);
     },
   );
+
+  test('shell tabs are pruned when terminal restore is off', () {
+    withPersistence(
+      (async, fs, workbench, _, persistence) {
+        final seeder = WorkbenchCubit()
+          ..openFile(_ws, '/one.dart')
+          ..openFloating(_ws, _sh1);
+        seedSnapshot(async, fs, seeder);
+        seeder.close();
+
+        unawaited(persistence.restoreForWorkspace(_ws));
+        async.flushMicrotasks();
+
+        expect(workbench.centerOrder(_ws), [WorkbenchTabId.file('/one.dart')]);
+        expect(workbench.floatingOrder(_ws), isEmpty);
+      },
+      restoreTerminalSessions: false,
+    );
+  });
+
+  test('shell tabs without a descriptor are pruned even when enabled', () {
+    withPersistence((async, fs, workbench, _, persistence) {
+      final seeder = WorkbenchCubit()..openFloating(_ws, _sh1);
+      seedSnapshot(async, fs, seeder, shellSessions: const {});
+      seeder.close();
+
+      unawaited(persistence.restoreForWorkspace(_ws));
+      async.flushMicrotasks();
+
+      expect(workbench.floatingOrder(_ws), isEmpty);
+    });
+  });
+
+  test('save derives live descriptors and preserves unactivated ones', () {
+    final registry = WorkspaceTerminalRegistry();
+    addTearDown(registry.disposeAll);
+    withPersistence(
+      (async, fs, workbench, _, persistence) {
+        final seeder = WorkbenchCubit()
+          ..openFloating(_ws, _sh1)
+          ..openFloating(_ws, _sh2);
+        seedSnapshot(async, fs, seeder);
+        seeder.close();
+
+        unawaited(persistence.restoreForWorkspace(_ws));
+        async.flushMicrotasks();
+        expect(workbench.floatingOrder(_ws), [_sh1, _sh2]);
+
+        // The lazy rebuild turned sh1 into a live entry (new id).
+        final live = registry
+            .groupFor(_ws)
+            .addEntry(
+              cwd: '/live',
+              spec: const WorkspaceTerminalSshProfileSpec('p1'),
+              session: TerminalSession(
+                executable: '/bin/bash',
+                validateLaunch: false,
+                parseExecutable: false,
+                fs: InMemoryFilesystem(),
+              ),
+              select: true,
+            );
+        workbench.replaceFloatingTabId(_ws, _sh1.id, live.id);
+        expect(persistence.descriptorFor(_ws, _sh1.id), isNull);
+        expect(persistence.descriptorFor(_ws, _sh2.id), isNotNull);
+
+        async.elapse(const Duration(milliseconds: 600));
+        final decoded = jsonDecode(fs.files[_file]!) as Map<String, Object?>;
+        final shells = decoded['shellSessions'] as Map<String, Object?>;
+        expect(shells.keys, {live.id, _sh2.id});
+        expect((shells[live.id] as Map)['cwd'], '/live');
+        expect(((shells[live.id] as Map)['spec'] as Map)['type'], 'sshProfile');
+      },
+      terminalRegistry: registry,
+    );
+  });
+
+  test('a live registry entry keeps its shell tab even with restore off', () {
+    final registry = WorkspaceTerminalRegistry();
+    addTearDown(registry.disposeAll);
+    withPersistence(
+      (async, fs, workbench, _, persistence) {
+        // A live entry's id IS the tab id (same process, workspace reopened),
+        // so the snapshot is seeded with it and no descriptor.
+        final live = registry
+            .groupFor(_ws)
+            .addEntry(
+              cwd: '/tmp',
+              spec: const WorkspaceTerminalLocalSpec('/bin/bash'),
+              session: TerminalSession(
+                executable: '/bin/bash',
+                validateLaunch: false,
+                parseExecutable: false,
+                fs: InMemoryFilesystem(),
+              ),
+              select: true,
+            );
+        final shell = WorkbenchTabId.shell(live.id);
+        final seeder = WorkbenchCubit()..openFloating(_ws, shell);
+        seedSnapshot(async, fs, seeder, shellSessions: const {});
+        seeder.close();
+
+        unawaited(persistence.restoreForWorkspace(_ws));
+        async.flushMicrotasks();
+
+        expect(workbench.floatingOrder(_ws), [shell]);
+      },
+      restoreTerminalSessions: false,
+      terminalRegistry: registry,
+    );
+  });
 }

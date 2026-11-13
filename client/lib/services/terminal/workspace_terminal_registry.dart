@@ -137,6 +137,10 @@ class WorkspaceTerminalRegistry {
   WorkspaceTerminalGroup groupFor(String workspaceId) =>
       _groups.putIfAbsent(workspaceId, WorkspaceTerminalGroup.new);
 
+  /// Presence peek that does not create a group.
+  bool containsEntry(String workspaceId, String entryId) =>
+      _groups[workspaceId]?.contains(entryId) ?? false;
+
   void disposeWorkspace(String workspaceId) {
     _groups.remove(workspaceId)?.dispose();
   }

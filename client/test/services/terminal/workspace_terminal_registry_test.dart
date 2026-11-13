@@ -76,5 +76,22 @@ void main() {
       expect(a.entries.single, e1);
       reg.disposeAll();
     });
+
+    test('containsEntry peek does not create a group', () {
+      final reg = WorkspaceTerminalRegistry();
+      final a = reg.groupFor('A');
+      final entry = a.addEntry(
+        cwd: '/tmp/a',
+        spec: const WorkspaceTerminalLocalSpec('/bin/bash'),
+        session: _testSession(),
+        select: true,
+      );
+
+      expect(reg.containsEntry('A', entry.id), isTrue);
+      expect(reg.containsEntry('A', 'missing'), isFalse);
+      // Unknown workspace: false, and no group is materialized.
+      expect(reg.containsEntry('B', entry.id), isFalse);
+      reg.disposeAll();
+    });
   });
 }

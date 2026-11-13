@@ -5,10 +5,12 @@ import '../chat/session/chat_tab.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../cubits/workbench/workbench_tab_bar.dart';
+import '../../models/workbench_shell_descriptor.dart';
 import '../../repositories/workbench_layout_snapshot_repository.dart';
 import '../io/filesystem.dart';
 import '../storage/home_storage.dart';
 import '../storage/workspace_layout.dart';
+import '../terminal/workspace_terminal_registry.dart';
 
 /// App-lifetime coordinator for workbench split-layout persistence.
 ///
@@ -26,15 +28,20 @@ import '../storage/workspace_layout.dart';
 ///   only refresh the diff baseline (the pending dirty set is flushed by a
 ///   debounce re-armed when the restore completes), and flushes are
 ///   re-entrancy guarded. A workspace whose bar left the state
-///   ([WorkbenchCubit.clearWorkspace]) is dropped from the dirty set and
-///   re-armed for a later restore.
+///   ([WorkbenchCubit.clearWorkspace]) is dropped from the dirty set, its
+///   pending flushes and restored-descriptor cache, and re-armed for a later
+///   restore. Each flush also synthesizes the v2 `shellSessions` table
+///   (live registry entry → its cwd/spec; restored-but-never-activated tab →
+///   the descriptor cached at restore; restore preference off → empty).
 /// - **Restore:** [restoreForWorkspace] applies the persisted snapshot once
 ///   per workspace. The caller must invoke it *after* the workspace's
 ///   sessions rehydrated (the workspace activation chain awaits
 ///   `ChatCubit.ensureSessionsForWorkspace` first) so session-id resolution
 ///   is accurate: session tabs resolve against `ChatCubit.state.sessions`
-///   and the open tab store; every other kind resolves true (domain sync
-///   strips stale ids on its own, per `WorkbenchShellRunSync` precedent).
+///   and the open tab store; shell tabs resolve on a live terminal-registry
+///   entry, else on terminal-restore being enabled plus a snapshot descriptor;
+///   every other kind resolves true (domain sync strips stale ids on its own,
+///   per `WorkbenchShellRunSync` precedent).
 ///
 /// Workspace *removal* needs no wiring here: the existing lifecycle deletes
 /// the whole workspace directory (`ChatCubit.deleteWorkspace` →
@@ -47,6 +54,8 @@ class WorkbenchLayoutPersistence {
     required HomeStorage storage,
     Filesystem? fs,
     WorkspaceLayout? layout,
+    WorkspaceTerminalRegistry? terminalRegistry,
+    bool Function()? restoreTerminalSessions,
   }) : _workbench = workbench,
        _chat = chat,
        _storage = storage,
@@ -56,7 +65,9 @@ class WorkbenchLayoutPersistence {
            WorkspaceLayout(
              teampilotRoot: storage.paths.basePath,
              fs: storage.fs,
-           );
+           ),
+       _terminalRegistry = terminalRegistry,
+       _restoreTerminalSessions = restoreTerminalSessions ?? (() => false);
 
   static const Duration saveDebounce = Duration(milliseconds: 500);
 
@@ -65,12 +76,21 @@ class WorkbenchLayoutPersistence {
   final HomeStorage _storage;
   final Filesystem _fs;
   final WorkspaceLayout _layout;
+  final WorkspaceTerminalRegistry? _terminalRegistry;
+  final bool Function() _restoreTerminalSessions;
 
   StreamSubscription<WorkbenchState>? _subscription;
   Timer? _debounce;
   final Map<String, WorkspaceTabBar> _lastBars = {};
   final Set<String> _dirty = {};
   final Set<String> _restored = {};
+
+  /// Restored-but-not-yet-rebuilt shell descriptors per workspace. Only
+  /// survives so `_flush` can re-persist a tab that was never activated (its
+  /// descriptor would otherwise be lost on the next restart); dropped when the
+  /// bar is cleared.
+  final Map<String, Map<String, WorkbenchShellDescriptor>> _restoredDescriptors =
+      {};
   final Map<String, Future<void>> _restoreFutures = {};
   final Map<String, WorkbenchLayoutSnapshotRepository> _repositories = {};
   bool _restoreInFlight = false;
@@ -118,8 +138,16 @@ class WorkbenchLayoutPersistence {
     _restored.add(id);
     _restoreInFlight = true;
     final restore = _repositoryFor(id)
-        .restore(_workbench, tabResolves: (tab, _) => _tabResolves(id, tab))
-        .then((_) async {
+        .restore(
+          _workbench,
+          tabResolves: (tab, descriptor) => _tabResolves(id, tab, descriptor),
+        )
+        .then((descriptors) async {
+          _restoredDescriptors[id] = {
+            for (final entry in descriptors.entries)
+              if (_shellTabIds(id).contains(entry.key))
+                entry.key: entry.value,
+          };
           _registerRestoredSessionTabs(id);
           await _hydrateRestoredSessionTabs(id);
         });
@@ -223,7 +251,22 @@ class WorkbenchLayoutPersistence {
         ),
       );
 
-  bool _tabResolves(String workspaceId, WorkbenchTabId tab) {
+  /// Restore gate for persisted tab ids. Session ids resolve against
+  /// ChatCubit's sessions/tab store; shell tabs survive only when a live
+  /// registry entry backs them or terminal restore is enabled and the snapshot
+  /// carries a descriptor (the surface lazily rebuilds the PTY on activation);
+  /// everything else resolves true (domain sync strips stale ids on its own).
+  bool _tabResolves(
+    String workspaceId,
+    WorkbenchTabId tab,
+    WorkbenchShellDescriptor? descriptor,
+  ) {
+    if (tab.kind == WorkbenchTabKind.shell) {
+      if (_terminalRegistry?.containsEntry(workspaceId, tab.id) ?? false) {
+        return true;
+      }
+      return _restoreTerminalSessions() && descriptor != null;
+    }
     if (tab.kind != WorkbenchTabKind.session) return true;
     for (final session in _chat.state.sessions) {
       if (session.sessionId == tab.id && session.workspaceId == workspaceId) {
@@ -234,6 +277,32 @@ class WorkbenchLayoutPersistence {
       if (tabInfo.sessionId == tab.id) return true;
     }
     return false;
+  }
+
+  /// Shell tab ids currently present in [workspaceId]'s restored layouts.
+  Set<String> _shellTabIds(String workspaceId) {
+    final ids = <String>{};
+    for (final layout in [
+      _workbench.centerLayout(workspaceId),
+      _workbench.floatingLayout(workspaceId),
+    ]) {
+      for (final strip in layout.groups.values) {
+        for (final tab in strip.order) {
+          if (tab.kind == WorkbenchTabKind.shell) ids.add(tab.id);
+        }
+      }
+    }
+    return ids;
+  }
+
+  /// Restored descriptor for a not-yet-rebuilt shell tab (null once the tab
+  /// was retargeted, pruned, or already has a live entry).
+  WorkbenchShellDescriptor? descriptorFor(String workspaceId, String tabId) {
+    final id = workspaceId.trim();
+    final descriptor = _restoredDescriptors[id]?[tabId];
+    if (descriptor == null) return null;
+    if (_terminalRegistry?.containsEntry(id, tabId) ?? false) return null;
+    return _shellTabIds(id).contains(tabId) ? descriptor : null;
   }
 
   void _onWorkbenchState(WorkbenchState state) {
@@ -251,6 +320,7 @@ class WorkbenchLayoutPersistence {
         // restore so reopening the workspace reloads its snapshot.
         _dirty.remove(id);
         _restored.remove(id);
+        _restoredDescriptors.remove(id);
       }
     }
     _lastBars
@@ -276,11 +346,44 @@ class WorkbenchLayoutPersistence {
         for (final id in ids) {
           final bar = _workbench.state.byWorkspace[id];
           if (bar == null) continue; // cleared while debounced
-          await _repositoryFor(id).save(bar.center, bar.floating);
+          await _repositoryFor(id).save(
+            bar.center,
+            bar.floating,
+            shellSessions: _shellDescriptorsFor(id, bar),
+          );
         }
       } while (_flushAgain);
     } finally {
       _flushInFlight = false;
     }
+  }
+
+  /// Shell descriptors to persist for [bar]: live entries are read from the
+  /// registry (covers rebuilt/lazily-created tabs), never-activated restored
+  /// tabs fall back to the restore cache, and tabs no longer in the layout are
+  /// dropped. Empty when terminal restore is off.
+  Map<String, WorkbenchShellDescriptor> _shellDescriptorsFor(
+    String workspaceId,
+    WorkspaceTabBar bar,
+  ) {
+    if (!_restoreTerminalSessions()) return const {};
+    final restored = _restoredDescriptors[workspaceId];
+    final out = <String, WorkbenchShellDescriptor>{};
+    for (final layout in [bar.center, bar.floating]) {
+      for (final strip in layout.groups.values) {
+        for (final tab in strip.order) {
+          if (tab.kind != WorkbenchTabKind.shell) continue;
+          final entry =
+              (_terminalRegistry?.containsEntry(workspaceId, tab.id) ?? false)
+              ? _terminalRegistry!.groupFor(workspaceId).entryById(tab.id)
+              : null;
+          final descriptor = entry != null
+              ? WorkbenchShellDescriptor(cwd: entry.cwd, spec: entry.spec)
+              : restored?[tab.id];
+          if (descriptor != null) out[tab.id] = descriptor;
+        }
+      }
+    }
+    return out;
   }
 }
