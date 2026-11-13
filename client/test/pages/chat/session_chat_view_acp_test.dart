@@ -304,6 +304,9 @@ void main() {
     when(() => seat.markExternalLoading()).thenReturn(null);
     when(() => seat.adoptExternalMessages(any())).thenReturn(null);
     when(
+      () => seat.adoptExternalMessages(any(), dropPendings: false),
+    ).thenReturn(null);
+    when(
       () => seat.hydratePendingUsers(
         store: any(named: 'store'),
         workspaceId: any(named: 'workspaceId'),
@@ -738,7 +741,10 @@ void main() {
         reason: 'ACP must never use the PTY transcript loader',
       );
       final adopted = verify(
-        () => seat.adoptExternalMessages(captureAny()),
+        () => seat.adoptExternalMessages(
+          captureAny(),
+          dropPendings: false,
+        ),
       ).captured;
       expect(adopted, isNotEmpty);
       final messages = adopted.last as List<AiMessage>;
@@ -753,7 +759,10 @@ void main() {
 
       expect(tester.takeException(), isNull);
       final adopted = verify(
-        () => seat.adoptExternalMessages(captureAny()),
+        () => seat.adoptExternalMessages(
+          captureAny(),
+          dropPendings: false,
+        ),
       ).captured;
       expect(adopted, isNotEmpty, reason: 'the loading state must be released');
       expect(adopted.last as List<AiMessage>, isEmpty);
@@ -784,6 +793,9 @@ void main() {
 
       expect(tester.takeException(), isNull);
       verifyNever(() => seat.adoptExternalMessages(any()));
+      verifyNever(
+        () => seat.adoptExternalMessages(any(), dropPendings: false),
+      );
     },
   );
 
@@ -808,6 +820,9 @@ void main() {
 
       expect(tester.takeException(), isNull);
       verifyNever(() => seat.adoptExternalMessages(any()));
+      verifyNever(
+        () => seat.adoptExternalMessages(any(), dropPendings: false),
+      );
     },
   );
 

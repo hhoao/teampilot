@@ -321,10 +321,18 @@ class _SessionChatViewState extends State<SessionChatView> {
       if (chunk.memberId.isNotEmpty && chunk.memberId != memberId) return;
       _lastContentStreamAt = DateTime.now();
       if (chunk.replace) {
-        _seat?.adoptExternalMessages(decodeAcpChatTranscript(chunk.payload));
+        // Speculative snapshot: during lazy attach it can predate the just-sent
+        // turn, so keep the optimistic bubble until the hydrated publish.
+        _seat?.adoptExternalMessages(
+          decodeAcpChatTranscript(chunk.payload),
+          dropPendings: false,
+        );
         return;
       }
-      _seat?.applyExternalTranscriptDelta(chunk.payload);
+      _seat?.applyExternalTranscriptDelta(
+        chunk.payload,
+        dropPendings: false,
+      );
     });
     unawaited(_loadWorkspaceProjectBundle());
   }
@@ -357,6 +365,9 @@ class _SessionChatViewState extends State<SessionChatView> {
       seatHasMessages: seat.loadedMessages.isNotEmpty,
       historyHydrated: runtime.state.historyHydrated,
     )) {
+      // The hydrated ACP runtime is the single authoritative replacement: its
+      // ids never match an optimistic pending, so this is the one point that
+      // drops the overlay (default dropPendings=true).
       seat.adoptExternalMessages(runtime.state.messages);
     }
     if (seat.state.awaitingAssistant != runtime.state.inTurn) {
@@ -428,11 +439,16 @@ class _SessionChatViewState extends State<SessionChatView> {
     // non-forced seat releases its loading state with an empty snapshot.
     if (messages == null || (messages.isEmpty && hasContent)) {
       if (!force && !hasContent) {
-        seat.adoptExternalMessages(const <AiMessage>[]);
+        seat.adoptExternalMessages(
+          const <AiMessage>[],
+          dropPendings: false,
+        );
       }
       return;
     }
-    seat.adoptExternalMessages(messages);
+    // File snapshot read: still speculative during lazy attach — do not drop
+    // the optimistic bubble before the hydrated runtime publish.
+    seat.adoptExternalMessages(messages, dropPendings: false);
   }
 
   Future<void> _loadWorkspaceProjectBundle() async {
@@ -1346,45 +1362,49 @@ class _SessionChatViewState extends State<SessionChatView> {
     // ACP sessions never spawn.
     if (_usesAcpTranscript) {
       final acpRuntime = widget.acpRuntime;
+      if (acpRuntime == null && !isAcpChatSession(widget.session)) {
+        // A mixed ACP seat has no lazy attach-then-send funnel; failing is
+        // safer than leaking into the host's PTY delivery (which waits for a
+        // shell these seats never spawn).
+        return const HistoryContinueSubmitResult.failed();
+      }
+      // Paint the optimistic user bubble on the tap frame, before ANY await:
+      // clearing the compose draft is disk/SSH I/O and lazy attach / hydrate
+      // can take seconds. Both ACP branches own the turn through the same seat
+      // overlay; the hydrated runtime publish is the only point that replaces
+      // it (adoptExternalMessages with dropPendings=true).
+      final seat = _seat;
+      seat?.enqueuePendingUser(text);
+      if (clearCompose) {
+        await _discardComposeDraftForSubmit();
+      }
       if (acpRuntime == null) {
-        // Personal ACP seat with no runtime yet (history-only open / idle
-        // reclaim). The host submit hook owns the lazy attach-then-send
-        // funnel; falling through to the PTY path would wait for a shell
-        // these seats never spawn. A mixed ACP seat has no such funnel, so it
-        // must fail instead of leaking into the host's PTY delivery.
-        if (!isAcpChatSession(widget.session)) {
-          return const HistoryContinueSubmitResult.failed();
-        }
-        if (clearCompose) {
-          await _discardComposeDraftForSubmit();
-        }
-        // The lazy attach stages env/MCP/manifests and spawns the agent before
-        // the cubit exists (~1s), so delivering alone would leave the composer
-        // empty with no bubble. Seed the visible seat now; the cubit's first
-        // hydrate publish replaces it (`adoptExternalMessages` drops pendings).
-        final seat = _seat;
-        seat?.enqueuePendingUser(text);
         final result = await widget.onSubmit(text);
         if (!result.ok) seat?.removePendingMatching(text);
         return result;
       }
-      if (clearCompose) {
-        await _discardComposeDraftForSubmit();
-      }
       final sent = acpRuntime.sendPrompt(text);
-      if (!sent && !acpRuntime.isClosed && acpRuntime.state.inTurn) {
-        // Race: the compose gate saw an idle seat, but the runtime latched a
-        // turn before `sendPrompt` ran. The draft is already cleared and ACP
-        // has no optimistic pending bubble — queue it instead of losing it.
-        chat.followUpQueue.enqueue(_followUpSeatKey, text);
-        _notifyFollowUpMemberWorking(chat);
+      if (!sent) {
+        // sendPrompt refused the turn (already in turn / ended). Drop the
+        // overlay so a message that never started leaves no fake bubble.
+        seat?.removePendingMatching(text);
+        if (!acpRuntime.isClosed && acpRuntime.state.inTurn) {
+          // Race: the compose gate saw an idle seat, but the runtime latched a
+          // turn before `sendPrompt` ran. Queue it instead of losing it.
+          chat.followUpQueue.enqueue(_followUpSeatKey, text);
+          _notifyFollowUpMemberWorking(chat);
+          return const HistoryContinueSubmitResult(
+            ok: true,
+            channel: HistoryContinueChannel.pty,
+          );
+        }
         return const HistoryContinueSubmitResult(
-          ok: true,
+          ok: false,
           channel: HistoryContinueChannel.pty,
         );
       }
-      return HistoryContinueSubmitResult(
-        ok: sent,
+      return const HistoryContinueSubmitResult(
+        ok: true,
         channel: HistoryContinueChannel.pty,
       );
     }

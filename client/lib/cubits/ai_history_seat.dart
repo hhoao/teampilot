@@ -938,11 +938,26 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   }
 
   /// Replace the seat with the ACP cubit's transcript (app-side single source).
-  void adoptExternalMessages(List<AiMessage> messages) {
+  ///
+  /// [dropPendings] belongs only to the authoritative hydrated-runtime publish:
+  /// cubit ids (`acp-u-<uuid>`) never match optimistic pending ids
+  /// (`pending:<uuid>`), so that one replacement must drop a leftover overlay
+  /// or it paints a second user bubble. Speculative snapshots (content-stream
+  /// replace, transcript-file reads, deltas) can arrive during lazy attach
+  /// *before* the just-sent turn is committed — they must keep the optimistic
+  /// bubble alive until that publish, otherwise it flickers out and back in.
+  void adoptExternalMessages(
+    List<AiMessage> messages, {
+    bool dropPendings = true,
+  }) {
     if (isClosed) return;
-    // Cubit ids (`acp-u-<uuid>`) never match PTY pending ids (`pending:<uuid>`).
-    // Rematching a leftover landing overlay would paint a second user bubble.
-    _dropAllPendings(removePersisted: true);
+    // A speculative snapshot (dropPendings=false) normally keeps the overlay.
+    // But if it newly carries the real user turn, that turn is already in the
+    // replacement — keeping the pending would paint two identical bubbles.
+    // Only the hydrated publish (dropPendings=true) drops unconditionally.
+    if (dropPendings || _incomingConfirmsPending(messages)) {
+      _dropAllPendings(removePersisted: true);
+    }
     _cliMessages = List.unmodifiable(messages);
     final sessionId = state.sessionId ?? '';
     final memberId = state.memberId ?? '';
@@ -951,7 +966,12 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         state.status == AiHistoryViewStatus.empty ||
         _allMessages.isEmpty;
     if (cold) {
-      _applyMessages(messages, sessionId, memberId);
+      _applyMessages(
+        messages,
+        sessionId,
+        memberId,
+        dropPendings: dropPendings,
+      );
       return;
     }
     messages = reuseHistoryMessageIdentity(
@@ -981,6 +1001,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   void mergeExternalMessages(
     List<AiMessage> changed, {
     Set<String> removedIds = const {},
+    bool dropPendings = true,
   }) {
     if (isClosed || (changed.isEmpty && removedIds.isEmpty)) return;
     final byId = {for (final message in _cliMessages) message.id: message};
@@ -997,23 +1018,30 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     for (final message in changed) {
       if (seen.add(message.id)) merged.add(byId[message.id]!);
     }
-    adoptExternalMessages(merged);
+    adoptExternalMessages(merged, dropPendings: dropPendings);
   }
 
   /// Applies a v2 transcript delta to the resident message list. Only messages
   /// touched by the delta are rebuilt.
-  void applyExternalTranscriptDelta(String payload) {
+  void applyExternalTranscriptDelta(
+    String payload, {
+    bool dropPendings = true,
+  }) {
     if (isClosed || payload.trim().isEmpty) return;
     final result = applyAcpChatTranscriptDelta(
       current: _cliMessages,
       jsonl: payload,
     );
     if (result.replaceAll) {
-      adoptExternalMessages(result.messages);
+      adoptExternalMessages(result.messages, dropPendings: dropPendings);
       return;
     }
     if (result.messages.isEmpty && result.removedIds.isEmpty) return;
-    mergeExternalMessages(result.messages, removedIds: result.removedIds);
+    mergeExternalMessages(
+      result.messages,
+      removedIds: result.removedIds,
+      dropPendings: dropPendings,
+    );
   }
 
   void setAwaitingAssistant(bool value) {
@@ -1341,8 +1369,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   void _applyMessages(
     List<AiMessage> messages,
     String sessionId,
-    String memberId,
-  ) {
+    String memberId, {
+    bool dropPendings = true,
+  }) {
     final cli = _lastCli;
     if (cli != null) {
       messages = _loader.annotate(messages, cli: cli);
@@ -1357,7 +1386,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     _allMessages = messages;
     _committedLength = _allMessages.length;
     _visibleCount = math.min(kSessionHistoryInitialTurns, _committedLength);
-    _reconcilePendings();
+    _reconcilePendings(dropPendings: dropPendings);
 
     if (_allMessages.isEmpty) {
       _emitEmptyOrPendingReady(sessionId, memberId);
@@ -1566,7 +1595,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   /// in the applied timeline. The pending text is not compared: a CLI may
   /// rewrite what the user typed. First apply only records a baseline so a
   /// seed/pending overlay survives the load that was already in flight.
-  void _reconcilePendings() {
+  void _reconcilePendings({bool dropPendings = true}) {
     final ids = [for (final message in _allMessages) message.id];
     final tipContent = _allMessages.isEmpty
         ? null
@@ -1579,7 +1608,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     }
     if (!_sameStringList(ids, _lastAppliedIds) ||
         tipContent != _lastAppliedTipContent) {
-      _dropAllPendings(removePersisted: true);
+      if (dropPendings) {
+        _dropAllPendings(removePersisted: true);
+      }
     }
     _lastAppliedIds = ids;
     _lastAppliedTipContent = tipContent;
@@ -1620,6 +1651,44 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     for (final previous in replaced) {
       unawaited(_removePersistedPending(previous.id));
     }
+  }
+
+  /// Whether a *speculative* snapshot (dropPendings=false) newly carries the
+  /// real user turn backing the current overlay. remerge dedupes by id only, so
+  /// pending (`pending:…`) and a real turn (`acp-u-…`) with the same text would
+  /// otherwise both render. Detecting it here — before the timeline is replaced
+  /// — gives every speculative path (stream replace, delta, merge, file read)
+  /// one shared guard, and avoids touching the render path.
+  ///
+  /// The signal is an id *addition* of a non-pending user turn whose normalized
+  /// text contains the pending text. Ids keep an old snapshot (the original
+  /// flicker: incoming == before) from dropping the overlay, and keep a second
+  /// send that repeats an earlier turn's text from being read as "confirmed".
+  /// Text containment (not equality) tolerates CLIs that wrap the typed prompt
+  /// in extra context; see transcriptConfirmsPendingRecord.
+  bool _incomingConfirmsPending(List<AiMessage> incoming) {
+    if (_pendingQueue.isEmpty) return false;
+    bool isRealUser(AiMessage m) =>
+        m.role == AiRole.user && !m.id.startsWith('pending:');
+    final beforeIds = {
+      for (final m in _allMessages)
+        if (isRealUser(m)) m.id,
+    };
+    final targets = _pendingQueue
+        .map((p) => normalizeAiHistoryPendingText(p.text))
+        .where((t) => t.isNotEmpty)
+        .toList();
+    if (targets.isEmpty) return false;
+    for (final m in incoming) {
+      if (!isRealUser(m) || beforeIds.contains(m.id)) continue;
+      final text = normalizeAiHistoryPendingText(
+        m.parts.whereType<AiTextPart>().map((p) => p.text).join(' '),
+      );
+      for (final target in targets) {
+        if (text.contains(target)) return true;
+      }
+    }
+    return false;
   }
 
   void _dropAllPendings({required bool removePersisted}) {

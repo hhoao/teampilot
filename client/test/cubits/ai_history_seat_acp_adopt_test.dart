@@ -121,6 +121,126 @@ void main() {
   );
 
   test(
+    'speculative snapshot keeps the optimistic overlay until the hydrated publish',
+    () {
+      seat.markExternalLoading();
+      final oldTranscript = [
+        const AiMessage(
+          id: 'u0',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'earlier question')],
+        ),
+        const AiMessage(
+          id: 'a0',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'earlier answer')],
+        ),
+      ];
+      seat.adoptExternalMessages(oldTranscript);
+
+      // Lazy attach seeds the bubble before the runtime owns the turn.
+      seat.enqueuePendingUser('提交了吗');
+      expect(seat.runtime.messages, hasLength(3));
+      expect(seat.runtime.messages.last.id, startsWith('pending:'));
+
+      // A stale snapshot re-publishing the OLD transcript must not drop it.
+      seat.adoptExternalMessages(oldTranscript, dropPendings: false);
+      expect(seat.runtime.messages, hasLength(3));
+      expect(seat.runtime.messages.last.id, startsWith('pending:'));
+
+      // The hydrated publish carries the real user turn and is the single
+      // point that drops the overlay — no duplicate and no flicker gap.
+      seat.adoptExternalMessages(
+        [
+          ...oldTranscript,
+          const AiMessage(
+            id: 'acp-u-1',
+            role: AiRole.user,
+            parts: [AiTextPart(text: '提交了吗')],
+          ),
+        ],
+        dropPendings: true,
+      );
+      expect(seat.runtime.messages, hasLength(3));
+      expect(seat.runtime.messages.last.id, 'acp-u-1');
+      expect(
+        seat.runtime.messages.where((m) => m.id.startsWith('pending:')),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
+    'speculative cold snapshot keeps the overlay on a brand-new seat',
+    () {
+      seat.enqueuePendingUser('first message');
+      expect(seat.runtime.messages.single.id, startsWith('pending:'));
+
+      // Empty speculative snapshots during lazy attach must not clear it.
+      seat.adoptExternalMessages(const <AiMessage>[], dropPendings: false);
+      expect(seat.runtime.messages.single.id, startsWith('pending:'));
+
+      seat.adoptExternalMessages(
+        const [
+          AiMessage(
+            id: 'acp-u-1',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'first message')],
+          ),
+        ],
+        dropPendings: true,
+      );
+      expect(seat.runtime.messages.single.id, 'acp-u-1');
+    },
+  );
+
+  test(
+    'speculative snapshot drops the overlay only when a NEW real user turn confirms it',
+    () {
+      seat.markExternalLoading();
+      const existing = [
+        AiMessage(
+          id: 'u1',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'hello')],
+        ),
+      ];
+      seat.adoptExternalMessages(existing);
+
+      // A second send that repeats the earlier turn's text.
+      seat.enqueuePendingUser('hello');
+      expect(seat.runtime.messages, hasLength(2));
+      expect(seat.runtime.messages.last.id, startsWith('pending:'));
+
+      // Re-publishing the OLD turn (same id) is the stale-snapshot case: it
+      // must NOT be read as confirmation, or the second send loses its bubble.
+      seat.adoptExternalMessages(existing, dropPendings: false);
+      expect(seat.runtime.messages, hasLength(2));
+      expect(seat.runtime.messages.last.id, startsWith('pending:'));
+
+      // A genuinely NEW real turn (new id) whose text wraps the typed prompt
+      // confirms this send: drop the overlay, no duplicate and no flicker gap.
+      seat.adoptExternalMessages(
+        [
+          ...existing,
+          const AiMessage(
+            id: 'acp-u-2',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'Prompt received: hello')],
+          ),
+        ],
+        dropPendings: false,
+      );
+      expect(seat.runtime.messages, hasLength(2));
+      expect(seat.runtime.messages.last.id, 'acp-u-2');
+      expect(
+        seat.runtime.messages.where((m) => m.id.startsWith('pending:')),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
     'live adopt with the same length keeps the window and updates the tip',
     () {
       seat.markExternalLoading();
