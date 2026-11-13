@@ -6,11 +6,6 @@
   "provider": "Edit provider",
   "retry": "Retry",
   "send": "Send",
-  "statusFailed": "Send failed",
-  "statusReconnecting": "Reconnecting…",
-  "statusRewinding": "Rewinding…",
-  "statusSending": "Sending…",
-  "statusStopped": "Stopped",
   "teamSubtitle": "Edit team identity, working directory, and launch order.",
   "userMessage": "Edit message",
   "workspacePrimaryPath": "Edit primary directory"

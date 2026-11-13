@@ -6,11 +6,6 @@
   "provider": "编辑服务商",
   "retry": "重试",
   "send": "发送",
-  "statusFailed": "发送失败",
-  "statusReconnecting": "正在重连…",
-  "statusRewinding": "正在回退…",
-  "statusSending": "正在发送…",
-  "statusStopped": "已停止",
   "teamSubtitle": "编辑团队标识、工作目录和启动顺序。",
   "userMessage": "编辑消息",
   "workspacePrimaryPath": "编辑主目录"

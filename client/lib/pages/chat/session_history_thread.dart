@@ -18,7 +18,7 @@ import '../../services/chat/rewind/seat_branches.dart';
 import '../../utils/chat/chat_timestamp_format.dart';
 import '../../widgets/session_working_spinner.dart';
 import 'chat_message_action_menu.dart';
-import 'edit_operation_status.dart';
+import 'edit_retry_button.dart';
 import 'chat_message_edit_panel.dart';
 import 'chat_outline.dart';
 import 'chat_reveal_controller.dart';
@@ -1541,19 +1541,21 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                               child: result,
                             );
                           }
-                          // The edit transaction reports its own phase under
-                          // the bubble, so the author can tell "still working"
-                          // from "hung" and retry without reopening the editor.
+                          // A failed or stopped resend leaves one red retry
+                          // under the bubble: the transaction itself is not
+                          // rendered, so this is the only way back without
+                          // reopening the editor. The desktop inline editor
+                          // already keeps the draft, so it shows nothing extra.
                           final editOperation = _edit.operation;
                           if (editOperation != null &&
                               editOperation.messageId == ai.id &&
-                              editOperation.phase != EditPhase.confirmed) {
+                              editOperation.phase.allowsRetry &&
+                              _edit.editingMessageId != ai.id) {
                             result = Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 result,
-                                EditOperationStatus(
-                                  operation: editOperation,
+                                EditRetryButton(
                                   onRetry: () => unawaited(_edit.retry()),
                                 ),
                               ],

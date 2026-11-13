@@ -246,9 +246,9 @@ void main() {
 
     expect(find.byType(TextField), findsNothing);
     expect(find.text('edited'), findsOneWidget);
-    // The transaction owns the progress line, so the author can tell the
-    // resend is still running after the editor is gone.
-    expect(find.text('Sending…'), findsOneWidget);
+    // The transaction itself renders nothing under the bubble; only a failure
+    // or a stop adds the retry action.
+    expect(find.byKey(const ValueKey('chat-edit-retry')), findsNothing);
     expect(
       find.text('answer'),
       findsNothing,
@@ -661,6 +661,45 @@ void main() {
     expect(find.text('answer one'), findsNothing);
     expect(find.text('original question'), findsOneWidget);
   });
+
+  testWidgets(
+    'a failed edit offers a red retry under the bubble on mobile',
+    (tester) async {
+      final cubit = _FailingEditCubit();
+      addTearDown(() async {
+        if (!cubit.isClosed) await cubit.close();
+      });
+      await _pumpThread(tester, cubit, mobile: true);
+
+      await tester.tap(find.text('first version'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.enterText(
+        find.byKey(const ValueKey('chat-edit-sheet-field')),
+        'edited',
+      );
+      await tester.tap(find.byKey(const ValueKey('chat-edit-sheet-send')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // The sheet is gone and the transaction renders nothing, but the author
+      // can still resend the same text from the bubble.
+      expect(find.byKey(const ValueKey('chat-edit-sheet-field')), findsNothing);
+      final retry = find.byKey(const ValueKey('chat-edit-retry'));
+      expect(retry, findsOneWidget);
+
+      cubit.failing = false;
+      await tester.tap(retry);
+      await tester.pump();
+
+      expect(cubit.edits, [('u1', 'edited'), ('u1', 'edited')]);
+      expect(find.byKey(const ValueKey('chat-edit-retry')), findsNothing);
+
+      TpToast.dismiss();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+    },
+  );
 }
 
 /// Pumps the history host around a personal session with one user message and
@@ -669,6 +708,7 @@ Future<ExternalStoreAiThreadRuntime> _pumpThread(
   WidgetTester tester,
   ChatCubit cubit, {
   List<AiMessage>? messages,
+  bool mobile = false,
 }) async {
   final runtime = ExternalStoreAiThreadRuntime()
     ..setMessages(
@@ -715,6 +755,7 @@ Future<ExternalStoreAiThreadRuntime> _pumpThread(
                   onEditUserMessage: binding.onEditUserMessage,
                   holdTranscript: binding.holdTranscript,
                   seatEdit: binding.seatEdit,
+                  mobilePerformanceMode: mobile,
                   turnInFlight: binding.busy,
                 );
               },

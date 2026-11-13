@@ -1217,11 +1217,6 @@ class _AppLocalizations$edit$zh extends AppLocalizations$edit$en {
 	@override String get provider => '编辑服务商';
 	@override String get retry => '重试';
 	@override String get send => '发送';
-	@override String get statusFailed => '发送失败';
-	@override String get statusReconnecting => '正在重连…';
-	@override String get statusRewinding => '正在回退…';
-	@override String get statusSending => '正在发送…';
-	@override String get statusStopped => '已停止';
 	@override String get teamSubtitle => '编辑团队标识、工作目录和启动顺序。';
 	@override String get userMessage => '编辑消息';
 	@override String get workspacePrimaryPath => '编辑主目录';
@@ -4845,11 +4840,6 @@ extension on AppLocalizationsZh {
 			'edit.provider' => '编辑服务商',
 			'edit.retry' => '重试',
 			'edit.send' => '发送',
-			'edit.statusFailed' => '发送失败',
-			'edit.statusReconnecting' => '正在重连…',
-			'edit.statusRewinding' => '正在回退…',
-			'edit.statusSending' => '正在发送…',
-			'edit.statusStopped' => '已停止',
 			'edit.teamSubtitle' => '编辑团队标识、工作目录和启动顺序。',
 			'edit.userMessage' => '编辑消息',
 			'edit.workspacePrimaryPath' => '编辑主目录',
@@ -5006,13 +4996,13 @@ extension on AppLocalizationsZh {
 			'fileTree.importCancelAll' => '全部取消',
 			'fileTree.importConflictBody' => ({required String name}) => '目标位置已存在「${name}」。',
 			'fileTree.importConflictRemaining' => ({required int count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, other: '之后还有 ${count} 个冲突。', ), 
-			_ => null,
-		} ?? switch (path) {
 			'fileTree.importConflictRemainingZero' => '没有更多冲突。',
 			'fileTree.importConflictTitle' => '项目已存在',
 			'fileTree.importConflictTypeMismatch' => '文件和文件夹不能互相替换。',
 			'fileTree.importDropCopy' => '复制',
 			'fileTree.importDropMove' => '移动',
+			_ => null,
+		} ?? switch (path) {
 			'fileTree.importOverwrite' => '覆盖',
 			'fileTree.importProgressCancel' => '取消',
 			'fileTree.importProgressCurrent' => ({required String name}) => '${name}',
@@ -5520,13 +5510,13 @@ extension on AppLocalizationsZh {
 			'managedProviders.emptyHint' => '添加 Provider 以独立跟踪余额和配额。',
 			'managedProviders.emptyTitle' => '暂无管理 Provider',
 			'managedProviders.enable' => '启用',
-			_ => null,
-		} ?? switch (path) {
 			'managedProviders.enabled' => '已启用',
 			'managedProviders.enabledSubtitle' => '关闭后隐藏并停止查询。',
 			'managedProviders.enabledTitle' => '启用',
 			'managedProviders.endpoint' => '用量 API 地址',
 			'managedProviders.endpointError' => '此 HTTP 适配器需要 HTTPS 或回环地址。',
+			_ => null,
+		} ?? switch (path) {
 			'managedProviders.endpointHelper' => '获取用量数据的请求地址。',
 			'managedProviders.endpointHint' => 'https://api.example.com/usage',
 			'managedProviders.error' => '错误',
@@ -6034,13 +6024,13 @@ extension on AppLocalizationsZh {
 			'rtk.bashOnlyHint' => '仅作用于 Agent 的 Bash 工具调用；内置 Read、Grep、Glob 不会自动改写。',
 			'rtk.settingsDescription' => '在命令输出进入模型前压缩 Agent Bash 结果（需本机 PATH 中有 rtk 与 jq）。',
 			'rtk.settingsEnableTitle' => '启用 RTK',
-			_ => null,
-		} ?? switch (path) {
 			'rtk.settingsInstallLink' => '安装说明',
 			'rtk.settingsStatusTitle' => '本机状态',
 			'rtk.settingsTitle' => 'RTK 省 token',
 			'rtk.statusInstalled' => ({required String version}) => 'rtk ${version} 已就绪',
 			'rtk.statusInstalledGeneric' => 'rtk 已就绪',
+			_ => null,
+		} ?? switch (path) {
 			'rtk.statusJqMissing' => 'PATH 中未找到 jq',
 			'rtk.statusNotFound' => 'PATH 中未找到 rtk',
 			'rtk.statusVersionTooOld' => ({required String version}) => 'rtk ${version} 版本过低（需要 >= 0.23.0）',
@@ -6548,13 +6538,13 @@ extension on AppLocalizationsZh {
 			'sshProfile.formAuthChangeConfirm' => '切换并保存',
 			'sshProfile.formAuthChangeTitle' => '切换认证方式？',
 			'sshProfile.formAuthPrivateKey' => '私钥',
-			_ => null,
-		} ?? switch (path) {
 			'sshProfile.formAuthType' => '认证方式',
 			'sshProfile.formCredentialRequired' => '请提供私钥或密码。',
 			'sshProfile.formCredentialSaveFailed' => '目标已保存，但无法写入凭据。请解锁系统钥匙环后编辑该目标并重新填写。',
 			'sshProfile.formFieldRequired' => '必填',
 			'sshProfile.formHost' => '主机或别名',
+			_ => null,
+		} ?? switch (path) {
 			'sshProfile.formHostHint' => 'server、deploy@server:2222',
 			'sshProfile.formIdentityFile' => '私钥内容',
 			'sshProfile.formIdentityFileHelper' => '可直接粘贴私钥，或从文件导入。',
@@ -7062,13 +7052,13 @@ extension on AppLocalizationsZh {
 			'workspace.terminal' => '终端',
 			'workspace.terminalClose' => '关闭终端面板',
 			'workspace.terminalCloseSession' => '关闭终端',
-			_ => null,
-		} ?? switch (path) {
 			'workspace.terminalNewSession' => '新建终端',
 			'workspace.terminalNewSessionMenu' => '新建终端会话菜单',
 			'workspace.terminalNewSshSession' => '新建 SSH 会话…',
 			'workspace.terminalNoWorkingDirectory' => '请先连接会话以打开 Shell 终端',
 			'workspace.terminalRestoring' => '正在恢复终端…',
+			_ => null,
+		} ?? switch (path) {
 			'workspace.terminalSettings' => '设置',
 			'workspace.terminalSshConnectFailed' => 'SSH 配置未找到或连接失败',
 			'workspace.terminalThemeAdaptive' => '跟随主题',

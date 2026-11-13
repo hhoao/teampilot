@@ -2946,21 +2946,6 @@ class AppLocalizations$edit$en {
 	/// en: 'Send'
 	String get send => 'Send';
 
-	/// en: 'Send failed'
-	String get statusFailed => 'Send failed';
-
-	/// en: 'Reconnecting…'
-	String get statusReconnecting => 'Reconnecting…';
-
-	/// en: 'Rewinding…'
-	String get statusRewinding => 'Rewinding…';
-
-	/// en: 'Sending…'
-	String get statusSending => 'Sending…';
-
-	/// en: 'Stopped'
-	String get statusStopped => 'Stopped';
-
 	/// en: 'Edit team identity, working directory, and launch order.'
 	String get teamSubtitle => 'Edit team identity, working directory, and launch order.';
 
@@ -11083,11 +11068,6 @@ extension on AppLocalizations {
 			'edit.provider' => 'Edit provider',
 			'edit.retry' => 'Retry',
 			'edit.send' => 'Send',
-			'edit.statusFailed' => 'Send failed',
-			'edit.statusReconnecting' => 'Reconnecting…',
-			'edit.statusRewinding' => 'Rewinding…',
-			'edit.statusSending' => 'Sending…',
-			'edit.statusStopped' => 'Stopped',
 			'edit.teamSubtitle' => 'Edit team identity, working directory, and launch order.',
 			'edit.userMessage' => 'Edit message',
 			'edit.workspacePrimaryPath' => 'Edit primary directory',
@@ -11244,13 +11224,13 @@ extension on AppLocalizations {
 			'fileTree.importCancelAll' => 'Cancel all',
 			'fileTree.importConflictBody' => ({required String name}) => '"${name}" already exists at the destination.',
 			'fileTree.importConflictRemaining' => ({required int count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '1 more conflict after this.', other: '${count} more conflicts after this.', ), 
-			_ => null,
-		} ?? switch (path) {
 			'fileTree.importConflictRemainingZero' => 'No further conflicts.',
 			'fileTree.importConflictTitle' => 'Item already exists',
 			'fileTree.importConflictTypeMismatch' => 'A file and a folder cannot replace each other.',
 			'fileTree.importDropCopy' => 'Copy',
 			'fileTree.importDropMove' => 'Move',
+			_ => null,
+		} ?? switch (path) {
 			'fileTree.importOverwrite' => 'Overwrite',
 			'fileTree.importProgressCancel' => 'Cancel',
 			'fileTree.importProgressCurrent' => ({required String name}) => '${name}',
@@ -11758,13 +11738,13 @@ extension on AppLocalizations {
 			'managedProviders.emptyHint' => 'Add a provider to track balances and quotas independently from CLI providers.',
 			'managedProviders.emptyTitle' => 'No managed providers',
 			'managedProviders.enable' => 'Enable',
-			_ => null,
-		} ?? switch (path) {
 			'managedProviders.enabled' => 'Enabled',
 			'managedProviders.enabledSubtitle' => 'Hides the provider and stops queries when off.',
 			'managedProviders.enabledTitle' => 'Enabled',
 			'managedProviders.endpoint' => 'Usage API URL',
 			'managedProviders.endpointError' => 'Enter an HTTPS or loopback endpoint for this HTTP adapter.',
+			_ => null,
+		} ?? switch (path) {
 			'managedProviders.endpointHelper' => 'URL used to fetch usage data.',
 			'managedProviders.endpointHint' => 'https://api.example.com/usage',
 			'managedProviders.error' => 'Error',
@@ -12272,13 +12252,13 @@ extension on AppLocalizations {
 			'rtk.bashOnlyHint' => 'Only applies to Agent Bash tool calls. Built-in Read, Grep, and Glob are not rewritten.',
 			'rtk.settingsDescription' => 'Compress Agent Bash command output before it reaches the model (requires rtk and jq on PATH).',
 			'rtk.settingsEnableTitle' => 'Enable RTK',
-			_ => null,
-		} ?? switch (path) {
 			'rtk.settingsInstallLink' => 'Install guide',
 			'rtk.settingsStatusTitle' => 'Host status',
 			'rtk.settingsTitle' => 'RTK token savings',
 			'rtk.statusInstalled' => ({required String version}) => 'rtk ${version} ready',
 			'rtk.statusInstalledGeneric' => 'rtk ready',
+			_ => null,
+		} ?? switch (path) {
 			'rtk.statusJqMissing' => 'jq not found on PATH',
 			'rtk.statusNotFound' => 'rtk not found on PATH',
 			'rtk.statusVersionTooOld' => ({required String version}) => 'rtk ${version} is too old (need >= 0.23.0)',
@@ -12786,13 +12766,13 @@ extension on AppLocalizations {
 			'sshProfile.formAuthChangeConfirm' => 'Switch and save',
 			'sshProfile.formAuthChangeTitle' => 'Switch authentication?',
 			'sshProfile.formAuthPrivateKey' => 'Private key',
-			_ => null,
-		} ?? switch (path) {
 			'sshProfile.formAuthType' => 'Authentication',
 			'sshProfile.formCredentialRequired' => 'Provide a private key or password.',
 			'sshProfile.formCredentialSaveFailed' => 'Target saved, but credentials could not be stored. Unlock the system keyring and edit the target to re-enter them.',
 			'sshProfile.formFieldRequired' => 'Required',
 			'sshProfile.formHost' => 'Host or alias',
+			_ => null,
+		} ?? switch (path) {
 			'sshProfile.formHostHint' => 'server, deploy@server:2222',
 			'sshProfile.formIdentityFile' => 'Private key',
 			'sshProfile.formIdentityFileHelper' => 'Paste the private key, or import it from a file.',
@@ -13300,13 +13280,13 @@ extension on AppLocalizations {
 			'workspace.terminal' => 'Terminal',
 			'workspace.terminalClose' => 'Close terminal panel',
 			'workspace.terminalCloseSession' => 'Close terminal',
-			_ => null,
-		} ?? switch (path) {
 			'workspace.terminalNewSession' => 'New terminal',
 			'workspace.terminalNewSessionMenu' => 'New terminal session menu',
 			'workspace.terminalNewSshSession' => 'New SSH Session…',
 			'workspace.terminalNoWorkingDirectory' => 'Connect a session to open the shell terminal',
 			'workspace.terminalRestoring' => 'Restoring terminal…',
+			_ => null,
+		} ?? switch (path) {
 			'workspace.terminalSettings' => 'Settings',
 			'workspace.terminalSshConnectFailed' => 'SSH profile not found or connection failed',
 			'workspace.terminalThemeAdaptive' => 'Match app theme',
