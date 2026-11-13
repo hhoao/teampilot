@@ -1,6 +1,8 @@
 {
   "previewTabsDescription": "File and diff previews share one replaceable tab in the floating panel until pinned.",
   "previewTabsTitle": "Single preview tab",
+  "restoreTerminalSessionsDescription": "Keep floating terminal tabs across restarts; a tab reconnects only when you first open it.",
+  "restoreTerminalSessionsTitle": "Restore terminal tabs",
   "workspaceAddTooltip": "Open in floating workspace",
   "workspaceCloseTab": "Close tab",
   "workspaceMaximize": "Maximize",

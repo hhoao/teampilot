@@ -74,15 +74,32 @@ void main() {
 
     expect(find.text('Fold into thinking process'), findsOneWidget);
     // 12 categories + the 3 cot expand switches + the auto-open subagent
-    // preview switch + the floating preview tab switch = 17 Switch widgets.
-    expect(find.byType(Switch), findsNWidgets(17));
+    // preview switch + the floating preview tab switch + the restore terminal
+    // tabs switch = 18 Switch widgets.
+    expect(find.byType(Switch), findsNWidgets(18));
     final switches = tester.widgetList<Switch>(find.byType(Switch)).toList();
     // 7 workhorse categories default to folded (on); interaction categories
     // (subagent / ask user / plan / tasks & todos) and the two inner cot
     // switches plus auto-open subagent preview default off. The
     // latest-message cot switch and the floating preview tab switch default
-    // on (9).
+    // on (9); restore terminal tabs defaults off, so the count stays 9.
     final onCount = switches.where((s) => s.value).length;
     expect(onCount, 9);
+
+    // Restore-terminal-tabs switch defaults off and writes to the cubit.
+    final restoreSwitch = find.descendant(
+      of: find.ancestor(
+        of: find.text('Restore terminal tabs'),
+        matching: find.byType(TpPreferenceRow),
+      ),
+      matching: find.byType(Switch),
+    );
+    expect(restoreSwitch, findsOneWidget);
+    expect(tester.widget<Switch>(restoreSwitch).value, isFalse);
+    await tester.ensureVisible(restoreSwitch);
+    await tester.pumpAndSettle();
+    await tester.tap(restoreSwitch);
+    await tester.pumpAndSettle();
+    expect(cubit.state.preferences.restoreTerminalSessions, isTrue);
   });
 }

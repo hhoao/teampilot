@@ -1472,6 +1472,8 @@ class _AppLocalizations$floating$zh extends AppLocalizations$floating$en {
 	// Translations
 	@override String get previewTabsDescription => '文件与 diff 预览在浮动面板中共享一个可替换的标签页，固定后保留。';
 	@override String get previewTabsTitle => '单个预览标签页';
+	@override String get restoreTerminalSessionsDescription => '重启后保留浮动终端标签，首次打开该标签时才重新连接。';
+	@override String get restoreTerminalSessionsTitle => '恢复终端标签';
 	@override String get workspaceAddTooltip => '在浮动工作区打开';
 	@override String get workspaceCloseTab => '关闭标签';
 	@override String get workspaceMaximize => '最大化';
@@ -5028,6 +5030,8 @@ extension on AppLocalizationsZh {
 			'fileTree.sourceMissing' => '源文件不存在',
 			'floating.previewTabsDescription' => '文件与 diff 预览在浮动面板中共享一个可替换的标签页，固定后保留。',
 			'floating.previewTabsTitle' => '单个预览标签页',
+			'floating.restoreTerminalSessionsDescription' => '重启后保留浮动终端标签，首次打开该标签时才重新连接。',
+			'floating.restoreTerminalSessionsTitle' => '恢复终端标签',
 			'floating.workspaceAddTooltip' => '在浮动工作区打开',
 			'floating.workspaceCloseTab' => '关闭标签',
 			'floating.workspaceMaximize' => '最大化',
@@ -5509,10 +5513,10 @@ extension on AppLocalizationsZh {
 			'managedProviders.endpoint' => '用量 API 地址',
 			'managedProviders.endpointError' => '此 HTTP 适配器需要 HTTPS 或回环地址。',
 			'managedProviders.endpointHelper' => '获取用量数据的请求地址。',
-			'managedProviders.endpointHint' => 'https://api.example.com/usage',
-			'managedProviders.error' => '错误',
 			_ => null,
 		} ?? switch (path) {
+			'managedProviders.endpointHint' => 'https://api.example.com/usage',
+			'managedProviders.error' => '错误',
 			'managedProviders.fieldExampleLabel' => '示例',
 			'managedProviders.fieldMappingError' => '字段映射必须是无密钥的 JSON 对象。',
 			'managedProviders.fieldMappings' => '列表项字段映射（JSON）',
@@ -6023,10 +6027,10 @@ extension on AppLocalizationsZh {
 			'rtk.statusInstalled' => ({required String version}) => 'rtk ${version} 已就绪',
 			'rtk.statusInstalledGeneric' => 'rtk 已就绪',
 			'rtk.statusJqMissing' => 'PATH 中未找到 jq',
-			'rtk.statusNotFound' => 'PATH 中未找到 rtk',
-			'rtk.statusVersionTooOld' => ({required String version}) => 'rtk ${version} 版本过低（需要 >= 0.23.0）',
 			_ => null,
 		} ?? switch (path) {
+			'rtk.statusNotFound' => 'PATH 中未找到 rtk',
+			'rtk.statusVersionTooOld' => ({required String version}) => 'rtk ${version} 版本过低（需要 >= 0.23.0）',
 			'run.acceptRecommendation' => '将建议配置添加到 launch.json',
 			'run.action' => '运行',
 			'run.addConfiguration' => '添加配置',
@@ -6537,10 +6541,10 @@ extension on AppLocalizationsZh {
 			'sshProfile.formFieldRequired' => '必填',
 			'sshProfile.formHost' => '主机或别名',
 			'sshProfile.formHostHint' => 'server、deploy@server:2222',
-			'sshProfile.formIdentityFile' => '私钥内容',
-			'sshProfile.formIdentityFileHelper' => '可直接粘贴私钥，或从文件导入。',
 			_ => null,
 		} ?? switch (path) {
+			'sshProfile.formIdentityFile' => '私钥内容',
+			'sshProfile.formIdentityFileHelper' => '可直接粘贴私钥，或从文件导入。',
 			'sshProfile.formIdentityFileHint' => '-----BEGIN OPENSSH PRIVATE KEY-----',
 			'sshProfile.formIdentityFileImport' => '从文件导入',
 			'sshProfile.formIdentityFileImportFailed' => '无法读取所选文件，请直接粘贴私钥',
@@ -7051,10 +7055,10 @@ extension on AppLocalizationsZh {
 			'workspace.terminalNoWorkingDirectory' => '请先连接会话以打开 Shell 终端',
 			'workspace.terminalSettings' => '设置',
 			'workspace.terminalSshConnectFailed' => 'SSH 配置未找到或连接失败',
-			'workspace.terminalThemeAdaptive' => '跟随主题',
-			'workspace.terminalThemeClassicDark' => '经典暗色',
 			_ => null,
 		} ?? switch (path) {
+			'workspace.terminalThemeAdaptive' => '跟随主题',
+			'workspace.terminalThemeClassicDark' => '经典暗色',
 			'workspace.terminalThemeHighContrast' => '高对比',
 			'workspace.toolsResolveFailed' => '无法打开工作区工具',
 			'workspace.toolsResolveFailedHint' => '请确认远程机器可连通后再重试。',

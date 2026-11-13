@@ -239,6 +239,17 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
+                TpPreferenceRow(
+                  title: l10n.floating.restoreTerminalSessionsTitle,
+                  subtitle: l10n.floating.restoreTerminalSessionsDescription,
+                  trailing: Switch(
+                    value: context.select<LayoutCubit, bool>(
+                      (c) => c.state.preferences.restoreTerminalSessions,
+                    ),
+                    onChanged: controller.setRestoreTerminalSessions,
+                  ),
+                  showDividerBelow: true,
+                ),
                 TpSectionHeader(title: l10n.thinkingProcessSectionTitle),
                 TpPreferenceRow(
                   title: l10n.cotExpandLatestOnOpenTitle,

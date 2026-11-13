@@ -194,6 +194,7 @@ class LayoutPreferences {
     this.floatingMaximized = false,
     this.filePreviewHost = FilePreviewHost.floating,
     this.floatingPreviewTabs = true,
+    this.restoreTerminalSessions = false,
     this.rightToolOpenIds = const [],
     this.rightToolSelectedId,
     this.rightToolDismissedIds = const [],
@@ -311,6 +312,8 @@ class LayoutPreferences {
           _enumValue(FilePreviewHost.values, json['filePreviewHost']) ??
           FilePreviewHost.floating,
       floatingPreviewTabs: json['floatingPreviewTabs'] as bool? ?? true,
+      restoreTerminalSessions:
+          json['restoreTerminalSessions'] as bool? ?? false,
       rightToolOpenIds: openSet.openIds,
       rightToolSelectedId: openSet.selectedId,
       rightToolDismissedIds: openSet.dismissedIds,
@@ -434,6 +437,10 @@ class LayoutPreferences {
   /// tab until promoted/pinned. Default on.
   final bool floatingPreviewTabs;
 
+  /// Keep floating shell tabs across restarts; a tab reconnects (PTY/SSH) only
+  /// when it is first activated. Default off — stale runtime tabs are pruned.
+  final bool restoreTerminalSessions;
+
   final List<String> rightToolOpenIds;
   final String? rightToolSelectedId;
   final List<String> rightToolDismissedIds;
@@ -491,6 +498,7 @@ class LayoutPreferences {
     bool? floatingMaximized,
     FilePreviewHost? filePreviewHost,
     bool? floatingPreviewTabs,
+    bool? restoreTerminalSessions,
     List<String>? rightToolOpenIds,
     String? rightToolSelectedId,
     bool clearRightToolSelectedId = false,
@@ -585,6 +593,8 @@ class LayoutPreferences {
       floatingMaximized: floatingMaximized ?? this.floatingMaximized,
       filePreviewHost: filePreviewHost ?? this.filePreviewHost,
       floatingPreviewTabs: floatingPreviewTabs ?? this.floatingPreviewTabs,
+      restoreTerminalSessions:
+          restoreTerminalSessions ?? this.restoreTerminalSessions,
       rightToolOpenIds: rightToolOpenIds ?? this.rightToolOpenIds,
       rightToolSelectedId: clearRightToolSelectedId
           ? null
@@ -650,6 +660,7 @@ class LayoutPreferences {
       floatingToggleDy: floatingToggleDy,
       floatingMaximized: floatingMaximized,
       filePreviewHost: filePreviewHost,
+      restoreTerminalSessions: restoreTerminalSessions,
       rightToolOpenIds: rightToolOpenIds,
       rightToolSelectedId: rightToolSelectedId,
       rightToolDismissedIds: rightToolDismissedIds,
@@ -709,6 +720,7 @@ class LayoutPreferences {
       'floatingMaximized': floatingMaximized,
       'filePreviewHost': filePreviewHost.name,
       'floatingPreviewTabs': floatingPreviewTabs,
+      'restoreTerminalSessions': restoreTerminalSessions,
       'rightToolOpenIds': rightToolOpenIds,
       'rightToolSelectedId': rightToolSelectedId,
       'rightToolDismissedIds': rightToolDismissedIds,

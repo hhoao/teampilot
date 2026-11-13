@@ -415,6 +415,9 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setFloatingPreviewTabs(bool value) =>
       _save(state.preferences.copyWith(floatingPreviewTabs: value));
 
+  Future<void> setRestoreTerminalSessions(bool value) =>
+      _save(state.preferences.copyWith(restoreTerminalSessions: value));
+
   Future<void> setCotExpandReasoningOnOpen(bool value) =>
       _save(state.preferences.copyWith(cotExpandReasoningOnOpen: value));
 

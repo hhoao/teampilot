@@ -1,6 +1,8 @@
 {
   "previewTabsDescription": "文件与 diff 预览在浮动面板中共享一个可替换的标签页，固定后保留。",
   "previewTabsTitle": "单个预览标签页",
+  "restoreTerminalSessionsDescription": "重启后保留浮动终端标签，首次打开该标签时才重新连接。",
+  "restoreTerminalSessionsTitle": "恢复终端标签",
   "workspaceAddTooltip": "在浮动工作区打开",
   "workspaceCloseTab": "关闭标签",
   "workspaceMaximize": "最大化",

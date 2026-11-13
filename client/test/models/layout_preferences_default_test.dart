@@ -509,4 +509,22 @@ void main() {
     expect(cleared.rightToolSelectedId, isNull);
     expect(cleared.rightToolOpenIds, ['members']);
   });
+
+  test('restoreTerminalSessions defaults false and round-trips', () {
+    expect(const LayoutPreferences().restoreTerminalSessions, isFalse);
+    expect(
+      LayoutPreferences.fromJson(const {}).restoreTerminalSessions,
+      isFalse,
+    );
+    const enabled = LayoutPreferences(restoreTerminalSessions: true);
+    expect(enabled.toJson()['restoreTerminalSessions'], isTrue);
+    expect(
+      LayoutPreferences.fromJson(enabled.toJson()).restoreTerminalSessions,
+      isTrue,
+    );
+    expect(
+      enabled.copyWith(restoreTerminalSessions: false).restoreTerminalSessions,
+      isFalse,
+    );
+  });
 }

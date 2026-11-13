@@ -3582,6 +3582,12 @@ class AppLocalizations$floating$en {
 	/// en: 'Single preview tab'
 	String get previewTabsTitle => 'Single preview tab';
 
+	/// en: 'Keep floating terminal tabs across restarts; a tab reconnects only when you first open it.'
+	String get restoreTerminalSessionsDescription => 'Keep floating terminal tabs across restarts; a tab reconnects only when you first open it.';
+
+	/// en: 'Restore terminal tabs'
+	String get restoreTerminalSessionsTitle => 'Restore terminal tabs';
+
 	/// en: 'Open in floating workspace'
 	String get workspaceAddTooltip => 'Open in floating workspace';
 
@@ -11248,6 +11254,8 @@ extension on AppLocalizations {
 			'fileTree.sourceMissing' => 'The copied item no longer exists',
 			'floating.previewTabsDescription' => 'File and diff previews share one replaceable tab in the floating panel until pinned.',
 			'floating.previewTabsTitle' => 'Single preview tab',
+			'floating.restoreTerminalSessionsDescription' => 'Keep floating terminal tabs across restarts; a tab reconnects only when you first open it.',
+			'floating.restoreTerminalSessionsTitle' => 'Restore terminal tabs',
 			'floating.workspaceAddTooltip' => 'Open in floating workspace',
 			'floating.workspaceCloseTab' => 'Close tab',
 			'floating.workspaceMaximize' => 'Maximize',
@@ -11729,10 +11737,10 @@ extension on AppLocalizations {
 			'managedProviders.endpoint' => 'Usage API URL',
 			'managedProviders.endpointError' => 'Enter an HTTPS or loopback endpoint for this HTTP adapter.',
 			'managedProviders.endpointHelper' => 'URL used to fetch usage data.',
-			'managedProviders.endpointHint' => 'https://api.example.com/usage',
-			'managedProviders.error' => 'Error',
 			_ => null,
 		} ?? switch (path) {
+			'managedProviders.endpointHint' => 'https://api.example.com/usage',
+			'managedProviders.error' => 'Error',
 			'managedProviders.fieldExampleLabel' => 'Example',
 			'managedProviders.fieldMappingError' => 'Field mappings must be a secret-free JSON object.',
 			'managedProviders.fieldMappings' => 'List item field mappings (JSON)',
@@ -12243,10 +12251,10 @@ extension on AppLocalizations {
 			'rtk.statusInstalled' => ({required String version}) => 'rtk ${version} ready',
 			'rtk.statusInstalledGeneric' => 'rtk ready',
 			'rtk.statusJqMissing' => 'jq not found on PATH',
-			'rtk.statusNotFound' => 'rtk not found on PATH',
-			'rtk.statusVersionTooOld' => ({required String version}) => 'rtk ${version} is too old (need >= 0.23.0)',
 			_ => null,
 		} ?? switch (path) {
+			'rtk.statusNotFound' => 'rtk not found on PATH',
+			'rtk.statusVersionTooOld' => ({required String version}) => 'rtk ${version} is too old (need >= 0.23.0)',
 			'run.acceptRecommendation' => 'Add suggested configuration to launch.json',
 			'run.action' => 'Run',
 			'run.addConfiguration' => 'Add configuration',
@@ -12757,10 +12765,10 @@ extension on AppLocalizations {
 			'sshProfile.formFieldRequired' => 'Required',
 			'sshProfile.formHost' => 'Host or alias',
 			'sshProfile.formHostHint' => 'server, deploy@server:2222',
-			'sshProfile.formIdentityFile' => 'Private key',
-			'sshProfile.formIdentityFileHelper' => 'Paste the private key, or import it from a file.',
 			_ => null,
 		} ?? switch (path) {
+			'sshProfile.formIdentityFile' => 'Private key',
+			'sshProfile.formIdentityFileHelper' => 'Paste the private key, or import it from a file.',
 			'sshProfile.formIdentityFileHint' => '-----BEGIN OPENSSH PRIVATE KEY-----',
 			'sshProfile.formIdentityFileImport' => 'Import from file',
 			'sshProfile.formIdentityFileImportFailed' => 'Could not read the selected file; paste the key instead',
@@ -13271,10 +13279,10 @@ extension on AppLocalizations {
 			'workspace.terminalNoWorkingDirectory' => 'Connect a session to open the shell terminal',
 			'workspace.terminalSettings' => 'Settings',
 			'workspace.terminalSshConnectFailed' => 'SSH profile not found or connection failed',
-			'workspace.terminalThemeAdaptive' => 'Match app theme',
-			'workspace.terminalThemeClassicDark' => 'Classic dark',
 			_ => null,
 		} ?? switch (path) {
+			'workspace.terminalThemeAdaptive' => 'Match app theme',
+			'workspace.terminalThemeClassicDark' => 'Classic dark',
 			'workspace.terminalThemeHighContrast' => 'High contrast',
 			'workspace.toolsResolveFailed' => 'Could not open workspace tools',
 			'workspace.toolsResolveFailedHint' => 'Check that remote machines are reachable, then try again.',
