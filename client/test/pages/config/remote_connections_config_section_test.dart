@@ -11,8 +11,10 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/pages/config/remote_connections_config_section.dart';
+import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/pages/ssh_profiles/ssh_profiles_section.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
@@ -84,6 +86,45 @@ class _NoopSink implements StreamSink<List<int>> {
   Future get done async {}
 }
 
+/// Records `connect` so the home-binding test can prove the remote-connections
+/// surface never opens an [SshConnectionCubit] connection.
+class _RecordingSshConnectionCubit extends SshConnectionCubit {
+  _RecordingSshConnectionCubit({
+    required SshClientFactory factory,
+    required SshProfileConnectionCoordinator coordinator,
+  }) : super(
+          factory: factory,
+          coordinator: coordinator,
+          connectivity: TestSshConnectivity(),
+        );
+
+  final connectCalls = <String>[];
+
+  @override
+  Future<void> connect(String profileId, {bool switchHome = true}) async {
+    connectCalls.add(profileId);
+  }
+}
+
+/// Records the pure home-binding `select('ssh:<id>')` call. The remote
+/// connection's home switch is the only effect under test here.
+class _RecordingHomeTargetController implements HomeTargetController {
+  final selected = <String>[];
+
+  @override
+  RuntimeTarget get current => RuntimeTarget.local();
+
+  @override
+  String get currentId => current.id;
+
+  @override
+  Future<List<RuntimeTarget>> listSelectable({String wslDistro = ''}) async =>
+      [current];
+
+  @override
+  Future<void> select(String id) async => selected.add(id);
+}
+
 void main() {
   late Directory tempDir;
   late SshProfileRepository profileRepository;
@@ -91,7 +132,8 @@ void main() {
   late InMemorySshKnownHostRepository knownHosts;
   late SshClientFactory factory;
   late SshProfileConnectionCoordinator coordinator;
-  late SshConnectionCubit connectionCubit;
+  late _RecordingSshConnectionCubit connectionCubit;
+  late _RecordingHomeTargetController homeTargetController;
   late SshProfileCubit profileCubit;
   late TerminalTransportFactory transportFactory;
   late AppLocalizations l10n;
@@ -119,11 +161,11 @@ void main() {
       fs: InMemoryFilesystem(),
       storage: fakeHomeStorage(),
     );
-    connectionCubit = SshConnectionCubit(
+    connectionCubit = _RecordingSshConnectionCubit(
       factory: factory,
       coordinator: coordinator,
-      connectivity: TestSshConnectivity(),
     );
+    homeTargetController = _RecordingHomeTargetController();
     profileCubit = SshProfileCubit(
       profileRepository: profileRepository,
       credentialStore: credentialStore,
@@ -170,6 +212,9 @@ void main() {
               ),
               RepositoryProvider<SshProfileRepository>.value(
                 value: profileRepository,
+              ),
+              RepositoryProvider<HomeTargetController>.value(
+                value: homeTargetController,
               ),
             ],
             child: MultiBlocProvider(
@@ -219,4 +264,32 @@ void main() {
     expect(find.byType(SshProfilesSection), findsOneWidget);
     expect(find.text('alpha-host'), findsOneWidget);
   });
+
+  testWidgets(
+    'connect binds the SSH home instead of SshConnectionCubit.connect',
+    (tester) async {
+      // Remote connections is the A-source home-binding surface: tapping
+      // Connect must select the home target + persist the selected profile,
+      // and must NOT open an SshConnectionCubit connection (which would feed
+      // the B-only status bar with an A-source host).
+      await profileRepository.save(
+        const SshProfile(
+          id: 'a1',
+          name: 'alpha-host',
+          host: 'a.example.com',
+          username: 'alice',
+        ),
+      );
+      await profileCubit.load();
+
+      await pumpSection(tester);
+
+      await tester.tap(find.text(l10n.sshProfile.connect));
+      await tester.pumpAndSettle();
+
+      expect(connectionCubit.connectCalls, isEmpty);
+      expect(homeTargetController.selected, ['ssh:a1']);
+      expect(profileCubit.state.selectedProfileId, 'a1');
+    },
+  );
 }

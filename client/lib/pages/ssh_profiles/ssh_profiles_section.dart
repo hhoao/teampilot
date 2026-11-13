@@ -11,6 +11,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_profile_repository.dart';
+import '../../services/ssh/android_ssh_connect_home.dart';
 import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_credentials_resolver.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
@@ -18,6 +19,7 @@ import '../../services/vault/credential_capture.dart';
 import '../../services/vault/vault_service.dart';
 import '../../services/vault/vault_unlock_gate.dart';
 import '../../services/storage/home_storage.dart';
+import '../../services/storage/home_target_controller.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
 import '../../utils/ui/app_keys.dart';
 import '../connect/android_pair_sheet.dart';
@@ -43,6 +45,7 @@ class SshProfilesSection extends StatefulWidget {
     required this.profileCubit,
     this.showRemoteConfig = true,
     this.switchHomeOnConnect = true,
+    this.homeBindingMode = false,
   });
 
   /// Rows to render, supplied by the owning page's profile source.
@@ -70,10 +73,21 @@ class SshProfilesSection extends StatefulWidget {
   /// / root sandbox); the connection behaviour is unchanged for now.
   final bool showRemoteConfig;
 
-  /// Android Connect rebinds the home plane to the connected host. The SSH
-  /// servers page turns this off so its connect matches the desktop one; the
-  /// remote-connections surfaces keep the mobile behaviour.
+  /// Android Connect rebinds the home plane to the connected host. Applies
+  /// only to the workload (non-[homeBindingMode]) connect path, which goes
+  /// through [SshConnectionCubit.connect]: the SSH-servers page passes
+  /// `false` so its connect keeps the current home.
   final bool switchHomeOnConnect;
+
+  /// When `true`, Connect performs a pure home binding instead of opening an
+  /// [SshConnectionCubit] connection: it selects the SSH home target
+  /// (`ssh:<id>`) and persists the selected profile through
+  /// [applyAndroidSshConnectHome]. The remote-connections surfaces (A source,
+  /// home-binding) set this; the SSH-servers page (B source, workload) leaves
+  /// it `false` and keeps `connect(id, switchHome: false)`. This is the single
+  /// explicit mode switch — no platform checks are scattered through the
+  /// connect path.
+  final bool homeBindingMode;
 
   @override
   State<SshProfilesSection> createState() => _SshProfilesSectionState();
@@ -149,6 +163,18 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
   Future<void> _connect(SshProfile profile) async {
     if (!await _ensureVaultUnlockedFor(profile)) return;
     if (!mounted) return;
+    if (widget.homeBindingMode) {
+      // Pure home binding: rebind the home plane to this host and persist the
+      // selected profile. No SshConnectionCubit.connect — the home-plane
+      // switch reconnects the host through its own connect(pid) path, and the
+      // device-local A host never reaches the B-only status bar.
+      await applyAndroidSshConnectHome(
+        profileId: profile.id,
+        selectHome: context.read<HomeTargetController>().select,
+        selectProfile: context.read<SshProfileCubit>().selectProfile,
+      );
+      return;
+    }
     await context.read<SshConnectionCubit>().connect(
       profile.id,
       switchHome: widget.switchHomeOnConnect,

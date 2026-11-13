@@ -212,6 +212,7 @@ import '../services/ssh/mcp/session_ssh_mcp_executor.dart';
 import '../services/ssh/mcp/session_ssh_mcp_http.dart';
 import '../services/ssh/mcp/session_ssh_mcp_operations.dart';
 import '../services/ssh/mcp/session_ssh_mcp_resolver.dart';
+import '../services/ssh/combined_ssh_profile_resolver.dart';
 import '../services/ssh/plane_ssh_profile_resolver.dart';
 import '../services/ssh/ssh_transport_close.dart';
 import '../services/ssh/android_ssh_connect_home.dart';
@@ -842,6 +843,18 @@ Future<AppShell> buildAppShell({
   final planeProfileById = planeSshProfileResolver(
     () => sshWorkloadProfileCubit.state.profiles,
   );
+  // Combined id resolver for the remote-session / provisioning chain
+  // (wireChatSession -> ChatCubit.sshProfileById and
+  // buildSessionConnectOrchestrator(profileById:)). B source first (so a
+  // B-only workload host can run a remote session), then the device-local A
+  // source home profile on a miss. This is a point lookup, NOT the
+  // assembleSshHostProfiles list assembler. The A fallback preserves SSH home
+  // mode / offline home binding, and ChatSessionShellFactory._profileFor keeps
+  // its selected-profile fallback as the last resort (no B-only replacement).
+  final sessionProfileById = combinedSshProfileResolver(
+    workloadById: planeProfileById,
+    homeById: sshProfileById,
+  );
   final scope = homePlane.scope;
   homeWorkspaceUiCache = homePlane.homeWorkspaceUiCache;
   // The live home identity. [homeProfileId] is the boot-time snapshot; every
@@ -1344,7 +1357,9 @@ Future<AppShell> buildAppShell({
       layoutCubit: layoutCubit,
       targets: targetsRepo,
       transportFactory: transportFactory,
-      sshProfileById: sshProfileById,
+      // Combined B-first + A-fallback id resolver so B-only workload hosts
+      // can run remote sessions / provisioning (Task 4 wiring gap).
+      sshProfileById: sessionProfileById,
       defaultTargetResolver: defaultTargetResolver,
       sshClientFactory: sshClientFactory,
       runtimePlanBuilder: sessionRuntimePlanBuilder,

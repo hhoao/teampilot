@@ -40,6 +40,10 @@ class RemoteConnectionsConfigSection extends StatelessWidget {
                   repository: context.read<SshProfileRepository>(),
                   profileCubit: cubit,
                   showRemoteConfig: false,
+                  // Remote connections is home-binding only (A source):
+                  // Connect selects the SSH home instead of opening an
+                  // SshConnectionCubit connection.
+                  homeBindingMode: true,
                 );
               },
             ),

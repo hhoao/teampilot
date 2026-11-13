@@ -12,7 +12,6 @@ import 'package:permission_handler/permission_handler.dart'
     show openAppSettings;
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../cubits/ssh_connection_cubit.dart';
 import '../../cubits/ssh_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../repositories/ssh_credential_store.dart';
@@ -24,6 +23,8 @@ import '../../services/connect/pairing_http.dart';
 import '../../services/connect/phone_relay_tunnel.dart';
 import '../../services/connect/ssh_device_key.dart';
 import '../../services/connect/ssh_pairing_offer.dart';
+import '../../services/ssh/android_ssh_connect_home.dart';
+import '../../services/storage/home_target_controller.dart';
 import '../../utils/logging/logger_utils.dart';
 import '../../utils/ui/app_keys.dart';
 
@@ -114,7 +115,7 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
           knownHostRepository: context.read<SshKnownHostRepository>(),
         );
     final profiles = context.read<SshProfileCubit>();
-    final connections = context.read<SshConnectionCubit>();
+    final homeTargetController = context.read<HomeTargetController>();
     setState(() {
       _pairing = true;
       _error = null;
@@ -143,9 +144,21 @@ class _AndroidPairSheetState extends State<AndroidPairSheet> {
       }
 
       await profiles.load();
-      await connections.syncProfiles(profiles.state.profiles);
-      final profileId = profile.id;
-      unawaited(connections.connect(profileId));
+      // Pairing is the Android home-binding entry (A source): bind the freshly
+      // paired host as the SSH home through the pure path. Do NOT sync the
+      // A-source list into SshConnectionCubit — that map is owned by
+      // SshConnectionBinder (B source + current home) and A hosts must never
+      // repopulate the B-only status bar. Do NOT call
+      // SshConnectionCubit.connect either: once the A-source sync is gone the
+      // paired host is not in its profile map (a no-op), and the home-plane
+      // switch reconnects the host through its own connect(pid) path.
+      unawaited(
+        applyAndroidSshConnectHome(
+          profileId: profile.id,
+          selectHome: homeTargetController.select,
+          selectProfile: profiles.selectProfile,
+        ),
+      );
       if (!mounted) return;
       setState(() => _pairing = false);
       // PopScope blocks pop while _pairing is true; wait one frame after clearing it.

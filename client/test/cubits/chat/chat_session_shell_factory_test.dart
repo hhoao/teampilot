@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/chat/launch/connect/chat_session_shell_factory.dart';
+import 'package:teampilot/services/ssh/combined_ssh_profile_resolver.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -83,6 +84,60 @@ void main() {
     expect(session.runtimeTarget.namespace.isSsh, isTrue);
     expect(session.validateLaunch, isFalse);
     expect(session.usesRemoteTransport, isTrue);
+  });
+
+  test('profileFor resolves a B-only workload id via the combined resolver',
+      () {
+    const workload = SshProfile(
+      id: 'workload',
+      name: 'box',
+      host: 'work.example.com',
+      username: 'u',
+    );
+    // The combined resolver fed by wireChatSession: B source has the host,
+    // the A source does not. A B-only workload host must resolve for remote
+    // sessions / provisioning (the Task 4 wiring gap).
+    final byId = combinedSshProfileResolver(
+      workloadById: (id) => id == 'workload' ? workload : null,
+      homeById: (_) => null,
+    );
+    final factory = ChatSessionShellFactory(
+      executableResolver: () => 'claude',
+      sshProfileById: byId,
+      sshProfileResolver: () => null,
+    );
+
+    expect(
+      factory.profileFor(RuntimeTarget.ssh('workload', label: 'box')),
+      workload,
+    );
+  });
+
+  test('profileFor keeps the selected SSH home fallback when by-id misses', () {
+    const home = SshProfile(
+      id: 'home',
+      name: 'home',
+      host: 'home.example.com',
+      username: 'u',
+    );
+    // Both sources miss (e.g. offline / no id): _profileFor must still fall
+    // back to `_sshProfileResolver?.call()` (the A-source selected home), so
+    // SSH home mode and offline home binding keep working. The combined
+    // resolver must NOT replace that fallback with a B-only lookup.
+    final byId = combinedSshProfileResolver(
+      workloadById: (_) => null,
+      homeById: (_) => null,
+    );
+    final factory = ChatSessionShellFactory(
+      executableResolver: () => 'claude',
+      sshProfileById: byId,
+      sshProfileResolver: () => home,
+    );
+
+    expect(
+      factory.profileFor(RuntimeTarget.ssh('unknown', label: 'home')),
+      home,
+    );
   });
 
   test('cliForMember resolves member-specific cli', () {

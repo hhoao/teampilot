@@ -45,6 +45,8 @@ class _RemoteTargetsPageState extends State<RemoteTargetsPage> {
                 repository: context.read<SshProfileRepository>(),
                 profileCubit: cubit,
                 showRemoteConfig: false,
+                // Home-binding only (A source): Connect selects the SSH home.
+                homeBindingMode: true,
               );
             },
           ),
