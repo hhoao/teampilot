@@ -162,14 +162,23 @@ flutter:
     - assets/hooks/teampilot-team-lead-delegate-only.sh
     - assets/hooks/teampilot-team-lead-delegate-only.ps1
 
+# Splash artwork. `icon_splash_hd.png` (1024px) is the single high-res master
+# shared by the bootstrap page, Android 12, and (via a one-pass downscale) the
+# pre-12 source `icon_splash.png` (256px). The mark is ~34% of the canvas;
+# icon.svg is the vector original. Keep a 256px source for pre-12 because the
+# generator emits `width * density/4`, so a larger source there would balloon
+# the <bitmap> icon from 64dp to 256dp. All three layers are downscaled (never
+# magnified) from high-res art, so they stay sharp on dense screens. Every
+# Android drawable is reproducible from this config with
+# `dart run flutter_native_splash:create` — no manual PNG edits.
 flutter_native_splash:
   color: "#FFFFFF"
-  image: assets/icons/icon_bg.png
+  image: assets/icons/icon_splash.png
   android: true
   ios: false
   android_12:
     color: "#FFFFFF"
-    image: assets/icons/icon_bg.png
+    image: assets/icons/icon_splash_hd.png
 
 flutter_launcher_icons:
   android: true

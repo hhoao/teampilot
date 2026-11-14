@@ -5,7 +5,11 @@ import 'package:flutter/material.dart';
 class AppBootstrapLoadingPage extends StatelessWidget {
   const AppBootstrapLoadingPage({super.key});
 
-  static const _splashLogo = 'assets/icons/icon_bg.png';
+  // High-res (1024px) artwork shared with the Android 12 splash. At width 256
+  // the image is downscaled rather than magnified, so the mark stays sharp on
+  // dense screens; icon.svg is the vector original. See pubspec.yaml for the
+  // pre-12 variant.
+  static const _splashLogo = 'assets/icons/icon_splash_hd.png';
 
   @override
   Widget build(BuildContext context) {
