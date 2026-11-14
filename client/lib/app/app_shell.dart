@@ -965,6 +965,10 @@ Future<AppShell> buildAppShell({
   StreamSubscription<SshProfileState>? homeProfileWatchSub;
   StreamSubscription<SshHomeConnectivityState>? homeConnectivitySub;
   String? watchedHomeProfileConnectivityKey;
+  // Declared outside the try so the wiring-failure path can tear down the
+  // subscriptions/inbox of a discarded shell.
+  StreamSubscription<AttentionEvent>? attentionSub;
+  AttentionInbox? attentionInbox;
 
   try {
     connectionModeService = ConnectionModeService(
@@ -1654,8 +1658,8 @@ Future<AppShell> buildAppShell({
     final sessionRemoteRefreshSub = sessionRuntime.sessionRemoteRefreshSub;
     final contentInvalidationSub = sessionRuntime.contentInvalidationSub;
     final contentStreamSub = sessionRuntime.contentStreamSub;
-    final attentionInbox = sessionRuntime.attentionInbox;
-    final attentionSub = sessionRuntime.attentionSub;
+    attentionInbox = sessionRuntime.attentionInbox;
+    attentionSub = sessionRuntime.attentionSub;
     void reloadHistorySeat(String sessionId) {
       unawaited(aiHistoryCubit.softReloadIfSession(sessionId));
     }
@@ -2489,6 +2493,8 @@ Future<AppShell> buildAppShell({
     await eventTransportController?.apply(EventTransportRole.none);
     await homeProfileWatchSub?.cancel();
     await homeConnectivitySub?.cancel();
+    await attentionSub?.cancel();
+    await attentionInbox?.dispose();
     await memberPresenceCubit?.close();
     await catalogRuntime?.bus.close();
     await homeConnectionCubit?.close();

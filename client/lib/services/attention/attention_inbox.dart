@@ -58,6 +58,7 @@ final class AttentionInbox {
 
   /// Advances past a range the authority no longer retains. Does not emit.
   Future<void> skipGap(String homeId, AttentionBatch batch) async {
+    assert(batch.gap, 'skipGap requires a gap batch');
     final existing = store.cursorFor(homeId);
     if (existing != null &&
         existing.authorityId == batch.authorityId &&

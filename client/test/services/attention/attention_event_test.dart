@@ -93,6 +93,27 @@ void main() {
     );
   });
 
+  test('AttentionCursor ignores a stale (older epoch) event', () {
+    const cursor = AttentionCursor(authorityId: 'desk', epoch: 8, seq: 5);
+    final stale = AttentionEvent(
+      eventId: 'evt-stale',
+      authorityId: 'desk',
+      epoch: 7,
+      seq: 99,
+      sessionId: 's1',
+      memberId: 'dev',
+      kind: AttentionKind.idle,
+      occurredAt: DateTime.utc(2026, 11, 14),
+      expiresAt: DateTime.utc(2026, 11, 21),
+    );
+
+    final advanced = cursor.advance(stale);
+
+    expect(advanced.authorityId, 'desk');
+    expect(advanced.epoch, 8);
+    expect(advanced.seq, 5);
+  });
+
   test('AttentionBatch round-trips through JSON', () {
     final occurred = DateTime.utc(2026, 11, 14);
     final batch = AttentionBatch(
@@ -124,5 +145,33 @@ void main() {
     expect(decoded.toSeq, 2);
     expect(decoded.events.single.eventId, 'evt-2');
     expect(decoded.gap, isFalse);
+  });
+
+  test('AttentionBatch marks a gap when an event entry is invalid', () {
+    final occurred = DateTime.utc(2026, 11, 14);
+    final valid = AttentionEvent(
+      eventId: 'evt-2',
+      authorityId: 'desk',
+      epoch: 7,
+      seq: 2,
+      sessionId: 's1',
+      memberId: 'dev',
+      kind: AttentionKind.idle,
+      occurredAt: occurred,
+      expiresAt: occurred.add(const Duration(days: 7)),
+    );
+
+    final decoded = AttentionBatch.fromJson({
+      'authority': 'desk',
+      'epoch': 7,
+      'fromSeq': 2,
+      'toSeq': 3,
+      'events': [valid.toJson(), {'eventId': ''}],
+      'gap': false,
+    });
+
+    expect(decoded, isNotNull);
+    expect(decoded!.gap, isTrue);
+    expect(decoded.events.single.eventId, 'evt-2');
   });
 }

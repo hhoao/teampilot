@@ -40,11 +40,16 @@ final class AttentionBatch {
     final gap = json['gap'];
     if (authority is! String || authority.isEmpty) return null;
     final events = <AttentionEvent>[];
+    var invalid = false;
     final rawEvents = json['events'];
     if (rawEvents is List) {
       for (final raw in rawEvents) {
         final event = AttentionEvent.fromJson(raw);
-        if (event != null) events.add(event);
+        if (event != null) {
+          events.add(event);
+        } else {
+          invalid = true;
+        }
       }
     }
     return AttentionBatch(
@@ -53,7 +58,8 @@ final class AttentionBatch {
       fromSeq: fromSeq is num ? fromSeq.toInt() : 0,
       toSeq: toSeq is num ? toSeq.toInt() : 0,
       events: events,
-      gap: gap is bool ? gap : false,
+      // A dropped entry means the batch is no longer contiguous.
+      gap: (gap is bool && gap) || invalid,
     );
   }
 }

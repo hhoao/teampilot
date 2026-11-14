@@ -13,7 +13,16 @@ final class AttentionCursor {
   final int seq;
 
   AttentionCursor advance(AttentionEvent event) {
-    if (event.authorityId != authorityId || event.epoch != epoch) {
+    if (event.authorityId != authorityId) {
+      return AttentionCursor(
+        authorityId: event.authorityId,
+        epoch: event.epoch,
+        seq: event.seq,
+      );
+    }
+    // A stale (older-epoch) event must never rewind the cursor.
+    if (event.epoch < epoch) return this;
+    if (event.epoch > epoch) {
       return AttentionCursor(
         authorityId: event.authorityId,
         epoch: event.epoch,

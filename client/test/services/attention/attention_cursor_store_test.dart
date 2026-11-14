@@ -209,6 +209,27 @@ void main() {
     expect(second.cursorFor('local'), isNull);
   });
 
+  test('a corrupt cursor file self-heals on the next write', () async {
+    final fs = InMemoryFilesystem();
+    const path = '/tp/attention/cursors.json';
+    fs.files[path] = 'not json';
+
+    final store = AttentionCursorStore(fs: fs, path: path);
+    await store.load();
+    expect(store.cursorFor('local'), isNull);
+
+    await store.remember(
+      'local',
+      const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 4),
+      ['e4'],
+    );
+
+    final saved = jsonDecode(fs.files[path]!) as Map;
+    final cursors = saved['cursors'] as Map;
+    expect((cursors['local'] as Map)['seq'], 4);
+    expect(saved['seenEventIds'], ['e4']);
+  });
+
   test('rejects a non-positive seen event id cap', () {
     expect(
       () => AttentionCursorStore(maxSeenEventIds: 0),

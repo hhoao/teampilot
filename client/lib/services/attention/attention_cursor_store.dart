@@ -66,11 +66,21 @@ final class AttentionCursorStore {
     try {
       final raw = await fs.readString(path);
       if (raw != null && raw.trim().isNotEmpty) {
-        final decoded = jsonDecode(raw);
-        if (decoded is Map) {
-          _applyCursors(decoded['cursors']);
-          _applySeenEventIds(decoded['seenEventIds']);
-          _trimSeen();
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is Map) {
+            _applyCursors(decoded['cursors']);
+            _applySeenEventIds(decoded['seenEventIds']);
+            _trimSeen();
+          }
+        } on FormatException catch (error, stackTrace) {
+          // Corrupt file: fall back to empty state and let the next write
+          // replace it instead of blocking persistence forever.
+          appLogger.w(
+            '[$tag] cursor file corrupt; resetting path=$path',
+            error: error,
+            stackTrace: stackTrace,
+          );
         }
       }
       _loaded = true;
