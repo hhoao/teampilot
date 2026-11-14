@@ -1,6 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/attention/attention_batch.dart';
+import 'package:teampilot/services/attention/attention_cursor.dart';
+import 'package:teampilot/services/attention/attention_event.dart';
+import 'package:teampilot/services/attention/attention_log.dart';
 import 'package:teampilot/services/session_protocol/session_authority.dart';
 import 'package:teampilot/services/session_protocol/session_channel.dart';
 import 'package:teampilot/services/session_protocol/session_client.dart';
@@ -64,7 +68,6 @@ final class _Control implements SessionControlPort {
   }) async {
     editCancels.add(operationId);
   }
-
 }
 
 final class _Pipe {
@@ -126,7 +129,7 @@ SessionSeatActivity _seat(String state) => SessionSeatActivity(
 
 void main() {
   test(
-    'server and client exchange snapshot, delta, intent and attention',
+    'server and client exchange snapshot, delta, intent and attention events',
     () async {
       final pipe = _Pipe();
       final control = _Control();
@@ -145,7 +148,8 @@ void main() {
       final contents = <SessionContentInvalidated>[];
       final contentDeltas = <SessionContentDelta>[];
       final sessionLists = <SessionListDelta>[];
-      final attentions = <SessionAttention>[];
+      final batches = <AttentionBatch>[];
+      final errors = <String>[];
       final client = SessionClient(
         channel: pipe.client,
         deviceId: 'phone',
@@ -155,7 +159,8 @@ void main() {
           onContent: contents.add,
           onContentDelta: contentDeltas.add,
           onSessionList: sessionLists.add,
-          onAttention: attentions.add,
+          onAttentionBatch: batches.add,
+          onError: (code, message) => errors.add(code),
         ),
       );
 
@@ -229,15 +234,183 @@ void main() {
       expect(contentDeltas.last.seq, 2);
       expect(contentDeltas.last.baseSeq, 1);
 
-      authority.publishAttention(sessionId: 's1', kind: 'idle', id: 'a1');
-      await _waitFor(() => attentions.isNotEmpty);
-      expect(attentions.single.kind, 'idle');
+      await authority.publishAttention(
+        sessionId: 's1',
+        kind: AttentionKind.idle,
+        memberId: 'dev',
+      );
+      await _waitFor(() => batches.isNotEmpty);
+      expect(batches.single.events.single.kind, AttentionKind.idle);
+      expect(batches.single.events.single.seq, 1);
+
+      client.sendAttentionAck(
+        authorityId: 'desk',
+        epoch: 7,
+        seq: batches.single.toSeq,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(errors, isEmpty);
 
       await client.close();
       await server.stop();
       await authority.dispose();
     },
   );
+
+  test('reconnect replays events after the client cursor', () async {
+    final control = _Control();
+    final authority = SessionAuthority(
+      authorityId: 'desk',
+      controlPort: control,
+      epoch: 7,
+    );
+
+    final firstPipe = _Pipe();
+    final firstBatches = <AttentionBatch>[];
+    final firstServer = SessionServer(
+      channel: firstPipe.server,
+      authority: authority,
+      deviceId: 'desk',
+    );
+    final firstClient = SessionClient(
+      channel: firstPipe.client,
+      deviceId: 'phone',
+      callbacks: SessionClientCallbacks(onAttentionBatch: firstBatches.add),
+    );
+    await firstServer.start();
+    await firstClient.start();
+    await _waitFor(() => firstClient.isReady);
+
+    await authority.publishAttention(sessionId: 's1', kind: AttentionKind.idle);
+    await _waitFor(() => firstBatches.isNotEmpty);
+    final cursor = AttentionCursor(
+      authorityId: 'desk',
+      epoch: 7,
+      seq: firstBatches.single.toSeq,
+    );
+
+    await firstClient.close();
+    await firstServer.stop();
+
+    await authority.publishAttention(sessionId: 's2', kind: AttentionKind.idle);
+
+    final secondPipe = _Pipe();
+    final secondBatches = <AttentionBatch>[];
+    final secondServer = SessionServer(
+      channel: secondPipe.server,
+      authority: authority,
+      deviceId: 'desk',
+    );
+    final secondClient = SessionClient(
+      channel: secondPipe.client,
+      deviceId: 'phone',
+      attentionCursors: () => {'desk': cursor},
+      callbacks: SessionClientCallbacks(onAttentionBatch: secondBatches.add),
+    );
+    await secondServer.start();
+    await secondClient.start();
+    await _waitFor(() => secondBatches.isNotEmpty);
+
+    expect(secondBatches.single.events.single.sessionId, 's2');
+    expect(secondBatches.single.events.single.seq, 2);
+
+    await secondClient.close();
+    await secondServer.stop();
+    await authority.dispose();
+  });
+
+  test(
+    'an epoch mismatch starts from live instead of replaying old events',
+    () async {
+      final authority = SessionAuthority(
+        authorityId: 'desk',
+        controlPort: _Control(),
+        epoch: 7,
+      );
+      await authority.publishAttention(
+        sessionId: 'old',
+        kind: AttentionKind.idle,
+      );
+
+      final pipe = _Pipe();
+      final batches = <AttentionBatch>[];
+      final server = SessionServer(
+        channel: pipe.server,
+        authority: authority,
+        deviceId: 'desk',
+      );
+      final client = SessionClient(
+        channel: pipe.client,
+        deviceId: 'phone',
+        attentionCursors: () => const {
+          'desk': AttentionCursor(authorityId: 'desk', epoch: 6, seq: 1),
+        },
+        callbacks: SessionClientCallbacks(onAttentionBatch: batches.add),
+      );
+      await server.start();
+      await client.start();
+      await _waitFor(() => client.isReady);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(batches, isEmpty);
+
+      await authority.publishAttention(
+        sessionId: 'new',
+        kind: AttentionKind.idle,
+      );
+      await _waitFor(() => batches.isNotEmpty);
+      expect(batches.single.events.single.sessionId, 'new');
+
+      await client.close();
+      await server.stop();
+      await authority.dispose();
+    },
+  );
+
+  test('a cursor older than the retained window reports a gap', () async {
+    final log = AttentionLog(authorityId: 'desk', epoch: 7, maxEvents: 2);
+    final authority = SessionAuthority(
+      authorityId: 'desk',
+      controlPort: _Control(),
+      epoch: 7,
+      attentionLog: log,
+    );
+    for (var i = 0; i < 3; i++) {
+      await authority.publishAttention(
+        sessionId: 's$i',
+        kind: AttentionKind.idle,
+      );
+    }
+
+    final pipe = _Pipe();
+    final batches = <AttentionBatch>[];
+    final server = SessionServer(
+      channel: pipe.server,
+      authority: authority,
+      deviceId: 'desk',
+    );
+    final client = SessionClient(
+      channel: pipe.client,
+      deviceId: 'phone',
+      attentionCursors: () => const {
+        'desk': AttentionCursor(authorityId: 'desk', epoch: 7, seq: 0),
+      },
+      callbacks: SessionClientCallbacks(onAttentionBatch: batches.add),
+    );
+    await server.start();
+    await client.start();
+    await _waitFor(() => batches.isNotEmpty);
+
+    expect(batches.any((batch) => batch.gap), isTrue);
+    expect(batches.expand((batch) => batch.events).map((event) => event.seq), [
+      2,
+      3,
+    ]);
+
+    await client.close();
+    await server.stop();
+    await authority.dispose();
+  });
 
   test('client cancel is a noop when the turn already ended', () async {
     final pipe = _Pipe();
