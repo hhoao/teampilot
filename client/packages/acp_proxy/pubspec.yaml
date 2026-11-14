@@ -6,11 +6,13 @@ environment:
 dependencies:
   acpd:
     path: ../acpd/packages/acpd
+  acpd_io:
+    path: ../acpd/packages/acpd_io
 dev_dependencies:
   acpd_test:
     path: ../acpd/packages/acpd_test
   test: ^1.25.0
-# acpd_test depends on hosted acpd. Pin the vendored checkout, same as the app.
+# acpd_io and acpd_test depend on hosted acpd. Pin the vendored checkout, same as the app.
 dependency_overrides:
   acpd:
     path: ../acpd/packages/acpd
