@@ -27,6 +27,18 @@ abstract final class GrokConstants {
   static const authNamespace = 'grok';
   static const authMarkerFileName = '.grok-provider';
 
+  /// grok External Auth Provider command (injected into the agent env).
+  static const authProviderCommandEnvKey = 'GROK_AUTH_PROVIDER_COMMAND';
+
+  /// Per-seat shim configuration (endpoint + token, 0600, no access token).
+  static const leaseConfigFileName = 'credential-lease.json';
+
+  /// Shim written into `<GROK_HOME>/bin/`.
+  static const leaseShimFileName = 'teampilot-grok-auth';
+
+  /// ACP authenticate method id that triggers the external auth provider.
+  static const oauthMethodId = 'grok.com';
+
   static const defaultProviderId = 'xai';
   static const defaultModel = 'grok-4.7';
 }
