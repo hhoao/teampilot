@@ -113,7 +113,7 @@ class AcpProxyAgent {
   InitializeResponse _onInitialize(InitializeRequest _) {
     return const InitializeResponse(
       protocolVersion: ProtocolVersion.v1,
-      agentCapabilities: AgentCapabilities(),
+      agentCapabilities: AgentCapabilities(loadSession: true),
     );
   }
 

@@ -8,6 +8,20 @@ import 'package:acpd_test/acpd_test.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('initialize advertises loadSession and does not spawn a CLI', () async {
+    final env = await _startEnv();
+    final phone = env.connect();
+
+    final initialized = await phone.client.client.initialize(
+      const InitializeRequest(protocolVersion: ProtocolVersion.v1),
+    );
+
+    expect(initialized.protocolVersion, ProtocolVersion.v1);
+    expect(initialized.agentCapabilities?.loadSession, isTrue);
+    expect(initialized.agentCapabilities?.sessionCapabilities?.resume, isNull);
+    expect(env.fake.openNewCount, 0);
+  });
+
   test('disconnect leaves the upstream running', () async {
     final env = await _startEnv();
     final phone = env.connect();
