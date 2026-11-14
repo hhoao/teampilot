@@ -49,18 +49,23 @@ Future<void> reapIdleSessions({
       continue;
     }
     if (now.difference(since) <= idleTimeout) continue;
-    final close = closeSession;
-    if (close != null) {
-      await close(sessionId);
+    try {
+      final close = closeSession;
+      if (close != null) {
+        await close(sessionId);
+        continue;
+      }
+      final upstream = upstreams[sessionId];
+      if (upstream != null) {
+        await upstream.close();
+        upstreams.remove(sessionId);
+      }
+      await spool.delete(sessionId);
+      disconnectedSince.remove(sessionId);
+      book.forget(sessionId);
+    } on Object {
+      // A failed delete must stay retryable and must not skip later sessions.
       continue;
     }
-    final upstream = upstreams[sessionId];
-    if (upstream != null) {
-      await upstream.close();
-      upstreams.remove(sessionId);
-    }
-    await spool.delete(sessionId);
-    disconnectedSince.remove(sessionId);
-    book.forget(sessionId);
   }
 }

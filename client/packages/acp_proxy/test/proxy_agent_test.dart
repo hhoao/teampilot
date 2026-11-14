@@ -233,7 +233,9 @@ void main() {
     expect(env.agent.idleClockRunning(sessionId), isFalse);
 
     await Future<void>.delayed(timeout + const Duration(milliseconds: 30));
-    expect(env.fake.completions['q1'], {'outcome': 'cancelled'});
+    expect(env.fake.completions['q1'], {
+      'outcome': {'outcome': 'cancelled'},
+    });
     expect(env.fake.completions['q1']!.containsKey('answers'), isFalse);
     expect(env.agent.permissionPending(sessionId), isFalse);
     expect(env.fake.closeCount, 0);
@@ -645,6 +647,577 @@ void main() {
       contains('agent_message_chunk'),
     );
   });
+
+  test(
+    'failed spool delete keeps the session for the next idle tick',
+    () async {
+      final root = await Directory.systemTemp.createTemp('acp-proxy-agent');
+      addTearDown(() => root.delete(recursive: true));
+      final spool = _FailingDeleteSpool(root: root);
+      final book = AcpProxySessionBook();
+      final upstreams = <String, AcpUpstream>{};
+      final agent = AcpProxyAgent(
+        endpointCli: 'claude',
+        book: book,
+        spool: spool,
+        upstreams: upstreams,
+      );
+      const meta = AcpProxyLaunchMeta(
+        cli: 'claude',
+        executable: '/usr/local/bin/claude',
+        args: ['--acp'],
+        env: {'TOKEN': 'super-secret'},
+        permissionPolicy: AcpProxyPermissionPolicy.ask,
+      );
+      final now = DateTime.utc(2026, 11, 14, 12);
+      final fakes = <String, FakeUpstream>{};
+
+      Future<void> track(String sessionId) async {
+        await spool.create(sessionId: sessionId, cwd: '/work', meta: meta);
+        final upstream = FakeUpstream(sessionId: sessionId);
+        fakes[sessionId] = upstream;
+        upstreams[sessionId] = upstream;
+        book.attach(sessionId: sessionId, connectionId: 'c-$sessionId');
+        book.detach('c-$sessionId');
+        agent.disconnectedSince[sessionId] = now.subtract(
+          const Duration(minutes: 31),
+        );
+      }
+
+      await track('s-1');
+      await track('s-2');
+      spool.fail.add('s-1');
+      addTearDown(() async {
+        for (final upstream in fakes.values) {
+          if (!upstream.updateEvents.isClosed) {
+            await upstream.updateEvents.close();
+          }
+          if (!upstream.clientRequestEvents.isClosed) {
+            await upstream.clientRequestEvents.close();
+          }
+        }
+      });
+
+      await agent.reapIdle(now: now, idleTimeout: const Duration(minutes: 30));
+
+      expect(book.sessionIds, contains('s-1'));
+      expect(agent.disconnectedSince.containsKey('s-1'), isTrue);
+      expect(fakes['s-1']!.closeCount, 1);
+      final metaFile = File('${root.path}/acp-proxy/sessions/s-1/meta.json');
+      expect(metaFile.existsSync(), isTrue);
+      expect(metaFile.readAsStringSync(), contains('super-secret'));
+      expect(book.sessionIds, isNot(contains('s-2')));
+      expect(
+        Directory('${root.path}/acp-proxy/sessions/s-2').existsSync(),
+        isFalse,
+      );
+      expect(fakes['s-2']!.closeCount, 1);
+
+      spool.fail.clear();
+      await agent.reapIdle(now: now, idleTimeout: const Duration(minutes: 30));
+      expect(book.sessionIds, isNot(contains('s-1')));
+      expect(
+        Directory('${root.path}/acp-proxy/sessions/s-1').existsSync(),
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'upstream done cancels the open turn and drops held cursor questions',
+    () async {
+      final env = await _startEnv();
+      final phone = env.connect();
+      final sessionId = await env.openSession(phone);
+      final pending = phone.client.client.prompt(
+        PromptRequest.text(sessionId, 'hello'),
+      );
+      unawaited(
+        pending.then<void>((_) {}, onError: (Object _, StackTrace _) {}),
+      );
+      await _tick();
+      expect(env.book.turnInProgress(sessionId), isTrue);
+      await _dropPhone(phone);
+
+      env.fake.clientRequestEvents.add(
+        AcpClientRequest(
+          id: 'q-dead',
+          method: 'cursor/ask_question',
+          params: {
+            'sessionId': sessionId,
+            'questions': [
+              {
+                'prompt': 'Pick one',
+                'options': [
+                  {'id': 'a', 'label': 'A'},
+                ],
+              },
+            ],
+          },
+        ),
+      );
+      await _tick();
+      expect(env.agent.permissionPending(sessionId), isTrue);
+      expect(env.agent.idleClockRunning(sessionId), isFalse);
+
+      await env.fake.updateEvents.close();
+      await _tick();
+
+      expect(env.book.turnInProgress(sessionId), isFalse);
+      expect(env.agent.permissionPending(sessionId), isFalse);
+      expect(env.agent.idleClockRunning(sessionId), isTrue);
+      expect(env.fake.completions['q-dead'], {
+        'outcome': {'outcome': 'cancelled'},
+      });
+
+      final again = env.connect();
+      await again.client.client.loadSession(
+        LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+      );
+      final next = again.client.client.prompt(
+        PromptRequest.text(sessionId, 'other'),
+      );
+      await _tick();
+      expect(env.fake.promptCount, 2);
+      expect(env.book.turnInProgress(sessionId), isTrue);
+      await again.client.client.closeSession(
+        CloseSessionRequest(sessionId: sessionId),
+      );
+      expect((await next).stopReason, StopReason.cancelled);
+    },
+  );
+
+  test('load closes a dead upstream before starting the next one', () async {
+    final env = await _startEnv();
+    final phone = env.connect();
+    final sessionId = await env.openSession(phone);
+    await _dropPhone(phone);
+    env.fake.alive = false;
+
+    final revived = FakeUpstream(sessionId: sessionId);
+    addTearDown(() async {
+      if (!revived.updateEvents.isClosed) await revived.updateEvents.close();
+      if (!revived.clientRequestEvents.isClosed) {
+        await revived.clientRequestEvents.close();
+      }
+    });
+    var closeCountWhenConnecting = 0;
+    env.agent.connectNew =
+        ({
+          required AcpProxyLaunchMeta meta,
+          required String cwd,
+          required List<Map<String, Object?>> mcpServers,
+        }) async {
+          closeCountWhenConnecting = env.fake.closeCount;
+          return revived;
+        };
+
+    final again = env.connect();
+    await again.client.client.loadSession(
+      LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+    );
+
+    expect(closeCountWhenConnecting, 1);
+    expect(env.fake.closeCount, 1);
+    expect(revived.openLoadCount, 1);
+    expect(env.agent.upstreams[sessionId], same(revived));
+  });
+
+  test(
+    'disconnected cursor notifications are acked and replayed as updates',
+    () async {
+      final env = await _startEnv();
+      final phone = env.connect();
+      final sessionId = await env.openSession(phone);
+      await _dropPhone(phone);
+
+      env.fake.clientRequestEvents.add(
+        AcpClientRequest(
+          id: 'todos',
+          method: 'cursor/update_todos',
+          params: {
+            'todos': [
+              {'id': '1', 'content': 'A', 'status': 'pending'},
+            ],
+            'merge': true,
+          },
+        ),
+      );
+      env.fake.clientRequestEvents.add(
+        AcpClientRequest(
+          id: 'task',
+          method: 'cursor/task',
+          params: {
+            'toolCallId': 't1',
+            'description': 'Explore',
+            'subagentType': 'explore',
+            'agentId': 'ag-1',
+            'durationMs': 12,
+          },
+        ),
+      );
+      env.fake.clientRequestEvents.add(
+        AcpClientRequest(
+          id: 'image',
+          method: 'cursor/generate_image',
+          params: {
+            'toolCallId': 'img-1',
+            'description': 'icon',
+            'filePath': '/tmp/icon.png',
+          },
+        ),
+      );
+      env.fake.clientRequestEvents.add(
+        AcpClientRequest(
+          id: 'bad-todos',
+          method: 'cursor/update_todos',
+          params: const {'todos': 'nope'},
+        ),
+      );
+      env.fake.clientRequestEvents.add(
+        AcpClientRequest(
+          id: 'other',
+          method: 'fs/read_text_file',
+          params: const {'path': 'a.txt'},
+        ),
+      );
+      await _tick();
+
+      expect(env.fake.completions['todos'], {
+        'outcome': {
+          'outcome': 'accepted',
+          'todos': [
+            {'id': '1', 'content': 'A', 'status': 'pending'},
+          ],
+        },
+      });
+      expect(env.fake.completions['task'], {
+        'outcome': {
+          'outcome': 'completed',
+          'agentId': 'ag-1',
+          'durationMs': 12,
+        },
+      });
+      expect(env.fake.completions['image'], {
+        'outcome': {'outcome': 'generated', 'filePath': '/tmp/icon.png'},
+      });
+      expect(env.fake.completions['bad-todos'], {
+        'outcome': {'outcome': 'cancelled'},
+      });
+      expect(env.fake.completions['other'], isEmpty);
+
+      final stored = await env.spool.readAll(sessionId);
+      expect(stored.any((update) => update.containsKey('method')), isFalse);
+      expect(
+        stored.where((update) => update['title'] == 'TodoWrite'),
+        hasLength(1),
+      );
+      for (final update in stored) {
+        expect(update['sessionUpdate'], 'tool_call');
+        expect(() => SessionUpdate.fromJson(update), returnsNormally);
+      }
+
+      final again = env.connect();
+      await again.client.client.loadSession(
+        LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+      );
+      final tools = [
+        for (final notification in again.updates)
+          if (notification.update is ToolCallUpdateSession)
+            notification.update as ToolCallUpdateSession,
+      ];
+      expect(tools, hasLength(3));
+      expect(tools[0].toolCall.title, 'TodoWrite');
+      final todos = tools[0].toolCall.rawInput as Map;
+      expect(todos['merge'], isTrue);
+      expect(todos['todos'], [
+        {'id': '1', 'content': 'A', 'status': 'pending'},
+      ]);
+      expect(tools[1].toolCall.toolCallId, 't1');
+      expect(tools[1].toolCall.title, 'explore');
+      expect(tools[2].toolCall.title, 'generate_image');
+      expect((tools[2].toolCall.rawInput as Map)['filePath'], '/tmp/icon.png');
+    },
+  );
+
+  test(
+    'session close and a failed forward cancel ask and plan nested',
+    () async {
+      final env = await _startEnv();
+      final phone = env.connect();
+      final sessionId = await env.openSession(phone);
+
+      env.fake.clientRequestEvents.add(
+        AcpClientRequest(
+          id: 'ask-live',
+          method: 'cursor/ask_question',
+          params: {
+            'questions': [
+              {
+                'prompt': 'Pick one',
+                'options': [
+                  {'id': 'a', 'label': 'A'},
+                ],
+              },
+            ],
+          },
+        ),
+      );
+      await _until(() => env.fake.completions.containsKey('ask-live'));
+      expect(env.fake.completions['ask-live'], {
+        'outcome': {'outcome': 'cancelled'},
+      });
+
+      await _dropPhone(phone);
+      env.fake.clientRequestEvents.add(
+        AcpClientRequest(
+          id: 'plan-1',
+          method: 'cursor/create_plan',
+          params: {'plan': '# Ship', 'toolCallId': 'p1'},
+        ),
+      );
+      await _tick();
+      expect(env.agent.permissionPending(sessionId), isTrue);
+
+      final again = env.connect();
+      await again.client.client.closeSession(
+        CloseSessionRequest(sessionId: sessionId),
+      );
+      expect(env.fake.completions['plan-1'], {
+        'outcome': {'outcome': 'cancelled'},
+      });
+      expect(env.agent.permissionPending(sessionId), isFalse);
+    },
+  );
+
+  test('load rejects a session id that is not one path segment', () async {
+    final env = await _startEnv();
+    final phone = env.connect();
+    var connects = 0;
+    env.agent.connectNew =
+        ({
+          required AcpProxyLaunchMeta meta,
+          required String cwd,
+          required List<Map<String, Object?>> mcpServers,
+        }) async {
+          connects++;
+          return env.fake;
+        };
+
+    await expectLater(
+      phone.client.client.loadSession(
+        LoadSessionRequest(
+          sessionId: '../outside',
+          cwd: '/work',
+          meta: _meta(),
+        ),
+      ),
+      throwsA(
+        isA<RpcError>().having(
+          (error) => error.code,
+          'code',
+          ErrorCode.invalidParams.code,
+        ),
+      ),
+    );
+    expect(connects, 0);
+    expect(env.fake.openLoadCount, 0);
+    expect(
+      Directory('${env.root.path}/acp-proxy/outside').existsSync(),
+      isFalse,
+    );
+  });
+
+  test(
+    'a session directory without spool files is not treated as ready',
+    () async {
+      final env = await _startEnv();
+      final dir = Directory('${env.root.path}/acp-proxy/sessions/sess-1');
+      await dir.create(recursive: true);
+      env.fake.onOpenNew = () {
+        env.fake.updateEvents.add(_chunk('kept'));
+      };
+      final phone = env.connect();
+
+      await env.openSession(phone);
+
+      expect(File('${dir.path}/meta.json').existsSync(), isTrue);
+      expect(File('${dir.path}/updates.jsonl').existsSync(), isTrue);
+      final stored = await env.spool.readAll('sess-1');
+      expect(
+        stored.any((update) {
+          final content = update['content'];
+          return content is Map && content['text'] == 'kept';
+        }),
+        isTrue,
+      );
+    },
+  );
+
+  test('overlapping loads of one session share one upstream open', () async {
+    final env = await _startEnv();
+    final first = env.connect();
+    final sessionId = await env.openSession(first);
+    await _dropPhone(first);
+    env.fake.alive = false;
+
+    final gates = <Completer<void>>[];
+    final created = <FakeUpstream>[];
+    var opens = 0;
+    env.agent.connectNew =
+        ({
+          required AcpProxyLaunchMeta meta,
+          required String cwd,
+          required List<Map<String, Object?>> mcpServers,
+        }) async {
+          opens++;
+          final gate = Completer<void>();
+          gates.add(gate);
+          final upstream = FakeUpstream(sessionId: sessionId);
+          created.add(upstream);
+          await gate.future;
+          return upstream;
+        };
+    addTearDown(() async {
+      for (final gate in gates) {
+        if (!gate.isCompleted) gate.complete();
+      }
+      for (final upstream in created) {
+        if (!upstream.updateEvents.isClosed) {
+          await upstream.updateEvents.close();
+        }
+        if (!upstream.clientRequestEvents.isClosed) {
+          await upstream.clientRequestEvents.close();
+        }
+      }
+    });
+
+    final a = env.connect();
+    final b = env.connect();
+    final loadA = a.client.client.loadSession(
+      LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+    );
+    final loadB = b.client.client.loadSession(
+      LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+    );
+    try {
+      await _until(() => opens >= 1);
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(opens, 1);
+      for (final gate in gates) {
+        if (!gate.isCompleted) gate.complete();
+      }
+      await Future.wait([loadA, loadB]);
+      expect(
+        [a, b].where((phone) => !phone.served.connection.isClosed),
+        hasLength(1),
+      );
+      expect(env.book.connectionFor(sessionId), isNotNull);
+    } finally {
+      for (final gate in gates) {
+        if (!gate.isCompleted) gate.complete();
+      }
+    }
+  });
+
+  test('overlapping session new calls do not enter replay together', () async {
+    final root = await Directory.systemTemp.createTemp('acp-proxy-agent');
+    final gate = Completer<void>();
+    final spool = _BlockingReadSpool(root: root, gate: gate);
+    final env = await _startEnv(spool: spool);
+    final a = env.connect();
+    final b = env.connect();
+    await a.client.client.initialize(
+      const InitializeRequest(protocolVersion: ProtocolVersion.v1),
+    );
+    await b.client.client.initialize(
+      const InitializeRequest(protocolVersion: ProtocolVersion.v1),
+    );
+    final newA = a.client.client.newSession(
+      NewSessionRequest(cwd: '/work', meta: _meta()),
+    );
+    final newB = b.client.client.newSession(
+      NewSessionRequest(cwd: '/work', meta: _meta()),
+    );
+    try {
+      await _until(() => spool.reads >= 1);
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(spool.reads, 1);
+      gate.complete();
+      await Future.wait([newA, newB]);
+      expect(
+        [a, b].where((phone) => !phone.served.connection.isClosed),
+        hasLength(1),
+      );
+      expect(env.book.connectionFor(env.fake.sessionId), isNotNull);
+    } finally {
+      if (!gate.isCompleted) gate.complete();
+    }
+  });
+
+  test(
+    'close waits until the in-flight load of that session finishes',
+    () async {
+      final env = await _startEnv();
+      final phone = env.connect();
+      final gate = Completer<void>();
+      final revived = FakeUpstream(sessionId: 'sess-load');
+      var connectStarted = false;
+      addTearDown(() async {
+        if (!gate.isCompleted) gate.complete();
+        if (!revived.updateEvents.isClosed) await revived.updateEvents.close();
+        if (!revived.clientRequestEvents.isClosed) {
+          await revived.clientRequestEvents.close();
+        }
+      });
+      env.agent.connectNew =
+          ({
+            required AcpProxyLaunchMeta meta,
+            required String cwd,
+            required List<Map<String, Object?>> mcpServers,
+          }) async {
+            connectStarted = true;
+            await gate.future;
+            return revived;
+          };
+
+      final loading = phone.client.client.loadSession(
+        LoadSessionRequest(sessionId: 'sess-load', cwd: '/work', meta: _meta()),
+      );
+      await _until(() => connectStarted);
+      var closeDone = false;
+      final closing = phone.client.client.closeSession(
+        const CloseSessionRequest(sessionId: 'sess-load'),
+      );
+      unawaited(
+        closing.then<void>((_) {}, onError: (Object _, StackTrace _) {}),
+      );
+      closing.whenComplete(() => closeDone = true);
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      try {
+        expect(closeDone, isFalse);
+        expect(
+          Directory(
+            '${env.root.path}/acp-proxy/sessions/sess-load',
+          ).existsSync(),
+          isFalse,
+        );
+        gate.complete();
+        await loading;
+        await closing;
+        expect(env.book.sessionIds, isNot(contains('sess-load')));
+        expect(
+          Directory(
+            '${env.root.path}/acp-proxy/sessions/sess-load',
+          ).existsSync(),
+          isFalse,
+        );
+        expect(revived.closeCount, 1);
+      } finally {
+        if (!gate.isCompleted) gate.complete();
+      }
+    },
+  );
 }
 
 Map<String, Object?> _meta({String permissionPolicy = 'fullAccess'}) => {
@@ -684,6 +1257,13 @@ List<String> _texts(_Phone phone) => [
 ];
 
 Future<void> _tick() => Future<void>.delayed(Duration.zero);
+
+Future<void> _until(bool Function() done) async {
+  for (var i = 0; i < 50; i++) {
+    if (done()) return;
+    await Future<void>.delayed(const Duration(milliseconds: 2));
+  }
+}
 
 Future<void> _dropPhone(_Phone phone) async {
   await phone.pair.left.close();
@@ -759,16 +1339,20 @@ class _Phone {
 Future<_Env> _startEnv({
   Duration? permissionTimeout,
   FakeUpstream? fake,
+  AcpProxySpool? spool,
 }) async {
-  final root = await Directory.systemTemp.createTemp('acp-proxy-agent');
-  addTearDown(() => root.delete(recursive: true));
+  final root =
+      spool?.root ?? await Directory.systemTemp.createTemp('acp-proxy-agent');
+  addTearDown(() async {
+    if (root.existsSync()) await root.delete(recursive: true);
+  });
   final upstream = fake ?? FakeUpstream();
   final book = AcpProxySessionBook();
-  final spool = AcpProxySpool(root: root);
+  final sessionSpool = spool ?? AcpProxySpool(root: root);
   final agent = AcpProxyAgent(
     endpointCli: 'claude',
     book: book,
-    spool: spool,
+    spool: sessionSpool,
     upstreams: {},
     permissionTimeout: permissionTimeout ?? acpProxyPermissionTimeout,
   );
@@ -781,14 +1365,16 @@ Future<_Env> _startEnv({
         return upstream;
       };
   addTearDown(() async {
-    await upstream.updateEvents.close();
-    await upstream.clientRequestEvents.close();
+    if (!upstream.updateEvents.isClosed) await upstream.updateEvents.close();
+    if (!upstream.clientRequestEvents.isClosed) {
+      await upstream.clientRequestEvents.close();
+    }
   });
   return _Env(
     root: root,
     agent: agent,
     book: book,
-    spool: spool,
+    spool: sessionSpool,
     fake: upstream,
   );
 }
@@ -955,5 +1541,31 @@ class _FileGrowthLimit {
       if (previous != null) _signal(_sigxfsz, previous);
     }
     _free(_limit.cast());
+  }
+}
+
+class _FailingDeleteSpool extends AcpProxySpool {
+  _FailingDeleteSpool({required super.root});
+
+  final fail = <String>{};
+
+  @override
+  Future<void> delete(String sessionId) async {
+    if (fail.contains(sessionId)) throw StateError('delete failed');
+    await super.delete(sessionId);
+  }
+}
+
+class _BlockingReadSpool extends AcpProxySpool {
+  _BlockingReadSpool({required super.root, required this.gate});
+
+  final Completer<void> gate;
+  var reads = 0;
+
+  @override
+  Future<List<Map<String, Object?>>> readAll(String sessionId) async {
+    reads++;
+    if (reads == 1) await gate.future;
+    return super.readAll(sessionId);
   }
 }

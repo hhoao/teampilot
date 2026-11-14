@@ -61,4 +61,63 @@ void main() {
       expect(sessionDir.existsSync(), isFalse);
     },
   );
+
+  test('rejects session ids that are not one path segment', () async {
+    final root = await Directory.systemTemp.createTemp('acp-proxy-spool');
+    addTearDown(() => root.delete(recursive: true));
+    final spool = AcpProxySpool(root: root);
+    final outside = Directory('${root.path}/acp-proxy/outside');
+    await outside.create(recursive: true);
+    const meta = AcpProxyLaunchMeta(
+      cli: 'claude',
+      executable: '/usr/local/bin/claude',
+      args: ['--acp'],
+      env: {'TOKEN': 'super-secret'},
+      permissionPolicy: AcpProxyPermissionPolicy.ask,
+    );
+
+    for (final id in ['../outside', '..', '.', '', 'a/b', r'a\b', 'foo..bar']) {
+      await expectLater(
+        spool.create(sessionId: id, cwd: '/work', meta: meta),
+        throwsFormatException,
+      );
+      expect(() => spool.appendUpdate(id, {'n': 1}), throwsFormatException);
+      await expectLater(spool.readAll(id), throwsFormatException);
+      await expectLater(spool.delete(id), throwsFormatException);
+    }
+
+    expect(outside.existsSync(), isTrue);
+    expect(File('${outside.path}/meta.json').existsSync(), isFalse);
+    expect(
+      Directory('${root.path}/acp-proxy/sessions/a').existsSync(),
+      isFalse,
+    );
+  });
+
+  test(
+    'create removes the session directory when writing the spool fails',
+    () async {
+      final root = await Directory.systemTemp.createTemp('acp-proxy-spool');
+      addTearDown(() => root.delete(recursive: true));
+      final spool = AcpProxySpool(root: root);
+      final session = Directory('${root.path}/acp-proxy/sessions/s1');
+      await Directory('${session.path}/meta.json').create(recursive: true);
+
+      await expectLater(
+        spool.create(
+          sessionId: 's1',
+          cwd: '/work',
+          meta: const AcpProxyLaunchMeta(
+            cli: 'claude',
+            executable: '/usr/local/bin/claude',
+            args: ['--acp'],
+            env: {},
+            permissionPolicy: AcpProxyPermissionPolicy.ask,
+          ),
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
+      expect(session.existsSync(), isFalse);
+    },
+  );
 }

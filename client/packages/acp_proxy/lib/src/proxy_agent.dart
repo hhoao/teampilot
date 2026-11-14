@@ -58,6 +58,9 @@ class AcpProxyAgent {
   final Map<String, StreamSubscription<AcpClientRequest>> _requestSubs = {};
   final Map<String, _ReplayGate> _gates = {};
 
+  /// Serializes load, new, and close for one session id.
+  final Map<String, Future<void>> _sessionTails = {};
+
   /// CLI history captured before a spool read failed. The next load merges it.
   final Map<String, List<Map<String, Object?>>> _retainedCli = {};
   final Map<String, List<Completer<PromptResponse>>> _promptWaiters = {};
@@ -157,54 +160,79 @@ class AcpProxyAgent {
       mcpServers: mcpServers,
     );
     final capture = _capture(upstream);
-    String? sessionId;
+    final String sessionId;
     try {
       sessionId = await upstream.openNew(
         meta: meta,
         cwd: request.cwd,
         mcpServers: mcpServers,
       );
-      final cliHistory = capture.takeUpdates();
-      await _remember(
-        sessionId: sessionId,
-        meta: meta,
-        cwd: request.cwd,
-        upstream: upstream,
-      );
-      await _playAndAttach(
-        context: connection.agent,
-        sessionId: sessionId,
-        leg: _legFor(connection),
-        cliHistory: cliHistory,
-        capture: capture,
-        upstream: upstream,
-      );
-      return NewSessionResponse(sessionId: sessionId);
     } catch (error) {
-      final id = sessionId;
-      if (id != null && book.connectionFor(id) == null) {
-        await _stopWatching(id);
-        if (identical(upstreams[id], upstream)) {
-          upstreams.remove(id);
-          await _closeQuiet(upstream);
-        }
-        _metas.remove(id);
-        _sessionIds.remove(id);
-        _sessionLeg.remove(id);
-        disconnectedSince.remove(id);
-        _gates.remove(id);
-        _retainedCli.remove(id);
-        try {
-          await spool.delete(id);
-        } on Object {
-          // The session never became visible to the phone.
-        }
-      } else if (id == null) {
-        await _closeQuiet(upstream);
-      }
+      await _closeQuiet(upstream);
       await capture.cancel();
       throw _surface(error);
     }
+    if (!isSafeAcpProxySessionId(sessionId)) {
+      await _closeQuiet(upstream);
+      await capture.cancel();
+      throw RpcError.fromCode(
+        ErrorCode.invalidParams,
+        data: 'session id must be one path segment',
+      );
+    }
+    try {
+      return await _withSessionLock(sessionId, () async {
+        try {
+          final cliHistory = capture.takeUpdates();
+          await _remember(
+            sessionId: sessionId,
+            meta: meta,
+            cwd: request.cwd,
+            upstream: upstream,
+          );
+          await _playAndAttach(
+            context: connection.agent,
+            sessionId: sessionId,
+            leg: _legFor(connection),
+            cliHistory: cliHistory,
+            capture: capture,
+            upstream: upstream,
+          );
+          return NewSessionResponse(sessionId: sessionId);
+        } catch (error) {
+          await _cleanupUnattached(sessionId, upstream, capture);
+          throw _surface(error);
+        }
+      });
+    } catch (error) {
+      throw _surface(error);
+    }
+  }
+
+  Future<void> _cleanupUnattached(
+    String sessionId,
+    AcpUpstream upstream,
+    _Capture capture,
+  ) async {
+    if (book.connectionFor(sessionId) == null) {
+      await _stopWatching(sessionId);
+      if (identical(upstreams[sessionId], upstream)) {
+        upstreams.remove(sessionId);
+        await _closeQuiet(upstream);
+      }
+      _metas.remove(sessionId);
+      _sessionIds.remove(sessionId);
+      _sessionLeg.remove(sessionId);
+      disconnectedSince.remove(sessionId);
+      _gates.remove(sessionId);
+      _retainedCli.remove(sessionId);
+      try {
+        await spool.delete(sessionId);
+      } on Object {
+        // The session never became visible to the phone.
+      }
+    }
+    await capture.cancel();
   }
 
   Future<LoadSessionResponse> _onLoad(
@@ -244,6 +272,33 @@ class AcpProxyAgent {
     required String cwd,
     required List<McpServer> mcpServers,
     required Map<String, Object?> meta,
+  }) {
+    if (!isSafeAcpProxySessionId(sessionId)) {
+      throw RpcError.fromCode(
+        ErrorCode.invalidParams,
+        data: 'session id must be one path segment',
+      );
+    }
+    return _withSessionLock(
+      sessionId,
+      () => _loadLocked(
+        connection: connection,
+        context: context,
+        sessionId: sessionId,
+        cwd: cwd,
+        mcpServers: mcpServers,
+        meta: meta,
+      ),
+    );
+  }
+
+  Future<LoadSessionResponse> _loadLocked({
+    required AgentConnection connection,
+    required AgentContext context,
+    required String sessionId,
+    required String cwd,
+    required List<McpServer> mcpServers,
+    required Map<String, Object?> meta,
   }) async {
     final existing = upstreams[sessionId];
     if (existing != null && existing.alive) {
@@ -254,6 +309,13 @@ class AcpProxyAgent {
         cliHistory: const [],
       );
       return const LoadSessionResponse();
+    }
+    if (existing != null) {
+      await _stopWatching(sessionId);
+      if (identical(upstreams[sessionId], existing)) {
+        upstreams.remove(sessionId);
+      }
+      await _closeQuiet(existing);
     }
 
     final AcpProxyLaunchMeta launch;
@@ -339,29 +401,46 @@ class AcpProxyAgent {
   }
 
   /// `session/close` and idle expiry share this cleanup.
-  Future<void> _closeKeptSession(String sessionId) async {
+  Future<void> _closeKeptSession(String sessionId) {
+    return _withSessionLock(
+      sessionId,
+      () => _closeKeptSessionLocked(sessionId),
+    );
+  }
+
+  Future<void> _closeKeptSessionLocked(String sessionId) async {
+    requireSafeAcpProxySessionId(sessionId);
     await _stopWatching(sessionId);
     final upstream = upstreams.remove(sessionId);
-    _releaseHeld(sessionId, const {'outcome': 'cancelled'});
-    final waiters = _promptWaiters.remove(sessionId);
-    if (waiters != null) {
-      for (final waiter in waiters) {
-        if (!waiter.isCompleted) {
-          waiter.complete(
-            const PromptResponse(stopReason: StopReason.cancelled),
-          );
-        }
-      }
-    }
+    _releaseHeld(sessionId);
+    _cancelOpenTurn(sessionId);
     if (upstream != null) await _closeQuiet(upstream);
-    book.finishTurn(sessionId);
-    book.forget(sessionId);
     await spool.delete(sessionId);
+    book.forget(sessionId);
     _metas.remove(sessionId);
     _sessionLeg.remove(sessionId);
     _sessionIds.remove(sessionId);
     disconnectedSince.remove(sessionId);
     _retainedCli.remove(sessionId);
+    _gates.remove(sessionId);
+  }
+
+  Future<T> _withSessionLock<T>(
+    String sessionId,
+    Future<T> Function() body,
+  ) async {
+    final previous = _sessionTails[sessionId] ?? Future<void>.value();
+    final gate = Completer<void>();
+    _sessionTails[sessionId] = gate.future;
+    try {
+      await previous.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+      return await body();
+    } finally {
+      if (!gate.isCompleted) gate.complete();
+      if (identical(_sessionTails[sessionId], gate.future)) {
+        _sessionTails.remove(sessionId);
+      }
+    }
   }
 
   Future<void> _remember({
@@ -435,21 +514,59 @@ class AcpProxyAgent {
 
   _Capture _capture(AcpUpstream upstream) {
     final capture = _Capture();
-    capture.updateSub = upstream.updates.listen((update) {
-      if (capture.hold || capture.sessionId == null) {
-        capture.updates.add(update);
-        return;
-      }
-      _onUpstreamUpdate(capture.sessionId!, update);
-    });
-    capture.requestSub = upstream.clientRequests.listen((request) {
-      if (capture.hold || capture.sessionId == null) {
-        capture.requests.add(request);
-        return;
-      }
-      _onClientRequest(capture.sessionId!, upstream, request);
-    });
+    void end() => _onUpstreamEnded(capture, upstream);
+    capture.updateSub = upstream.updates.listen(
+      (update) {
+        if (capture.hold || capture.sessionId == null) {
+          capture.updates.add(update);
+          return;
+        }
+        _onUpstreamUpdate(capture.sessionId!, update);
+      },
+      onError: (Object _, StackTrace _) => end(),
+      onDone: end,
+      cancelOnError: true,
+    );
+    capture.requestSub = upstream.clientRequests.listen(
+      (request) {
+        if (capture.hold || capture.sessionId == null) {
+          capture.requests.add(request);
+          return;
+        }
+        _onClientRequest(capture.sessionId!, upstream, request);
+      },
+      onError: (Object _, StackTrace _) => end(),
+      onDone: end,
+      cancelOnError: true,
+    );
     return capture;
+  }
+
+  /// CLI stdout closed without a stop. End the turn so idle and the next
+  /// prompt are not stuck waiting.
+  void _onUpstreamEnded(_Capture capture, AcpUpstream upstream) {
+    if (capture.ended) return;
+    capture.ended = true;
+    final sessionId = capture.sessionId;
+    if (sessionId == null || !identical(_watched[sessionId], upstream)) {
+      return;
+    }
+    _cancelOpenTurn(sessionId);
+    _releaseHeld(sessionId);
+  }
+
+  void _cancelOpenTurn(String sessionId) {
+    final waiters = _promptWaiters.remove(sessionId);
+    if (waiters != null) {
+      for (final waiter in waiters) {
+        if (!waiter.isCompleted) {
+          waiter.complete(
+            const PromptResponse(stopReason: StopReason.cancelled),
+          );
+        }
+      }
+    }
+    book.finishTurn(sessionId);
   }
 
   void _bindCapture(String sessionId, AcpUpstream upstream, _Capture capture) {
@@ -466,6 +583,10 @@ class AcpProxyAgent {
     _watched[sessionId] = upstream;
     _updateSubs[sessionId] = capture.updateSub!;
     _requestSubs[sessionId] = capture.requestSub!;
+    if (capture.ended) {
+      _cancelOpenTurn(sessionId);
+      _releaseHeld(sessionId);
+    }
   }
 
   /// Sends CLI history, then spool lines it does not include, then the live
@@ -684,8 +805,12 @@ class AcpProxyAgent {
     return updates;
   }
 
-  File _updatesFile(String sessionId) =>
-      File('${spool.root.path}/acp-proxy/sessions/$sessionId/updates.jsonl');
+  File _updatesFile(String sessionId) {
+    requireSafeAcpProxySessionId(sessionId);
+    return File(
+      '${spool.root.path}/acp-proxy/sessions/$sessionId/updates.jsonl',
+    );
+  }
 
   void _abandonReplay(String sessionId, _ReplayGate gate) {
     if (identical(_gates[sessionId], gate)) _gates.remove(sessionId);
@@ -850,7 +975,7 @@ class AcpProxyAgent {
     (_held[sessionId] ??= []).add(held);
     _bumpPending(sessionId, 1);
     held.timer = Timer(permissionTimeout, () {
-      _settle(sessionId, held, const {'outcome': 'cancelled'});
+      _settle(sessionId, held, _terminalOutcome(held.request.method));
     });
   }
 
@@ -872,7 +997,7 @@ class AcpProxyAgent {
       if (held.settled) return;
       if (book.connectionFor(sessionId) == null) {
         held.timer = Timer(permissionTimeout, () {
-          _settle(sessionId, held, const {'outcome': 'cancelled'});
+          _settle(sessionId, held, _terminalOutcome(held.request.method));
         });
         return;
       }
@@ -889,11 +1014,11 @@ class AcpProxyAgent {
     held.upstream.completeClientRequest(held.request.id, result);
   }
 
-  void _releaseHeld(String sessionId, Map<String, Object?> result) {
+  void _releaseHeld(String sessionId) {
     final pending = _held.remove(sessionId);
     if (pending == null) return;
     for (final held in pending) {
-      _settle(sessionId, held, result);
+      _settle(sessionId, held, _terminalOutcome(held.request.method));
     }
   }
 
@@ -902,15 +1027,15 @@ class AcpProxyAgent {
     AcpUpstream upstream,
     AcpClientRequest request,
   ) {
-    try {
-      spool.appendUpdate(sessionId, {
-        'method': request.method,
-        'params': request.params,
-      });
-    } on Object {
-      // A session without a spool still must not leave the CLI waiting.
+    final update = _cursorNotificationUpdate(request);
+    if (update != null) {
+      try {
+        spool.appendUpdate(sessionId, update);
+      } on Object {
+        // A session without a spool still must not leave the CLI waiting.
+      }
     }
-    upstream.completeClientRequest(request.id, const {});
+    upstream.completeClientRequest(request.id, _disconnectedResult(request));
   }
 
   Future<Map<String, Object?>> _requestPhone(
@@ -947,9 +1072,10 @@ class AcpProxyAgent {
   }
 
   bool _spoolReady(String sessionId) {
-    return Directory(
-      '${spool.root.path}/acp-proxy/sessions/$sessionId',
-    ).existsSync();
+    requireSafeAcpProxySessionId(sessionId);
+    final dir = '${spool.root.path}/acp-proxy/sessions/$sessionId';
+    return File('$dir/meta.json').existsSync() &&
+        File('$dir/updates.jsonl').existsSync();
   }
 }
 
@@ -962,6 +1088,7 @@ class _Capture {
   String? sessionId;
   var hold = true;
   var bound = false;
+  var ended = false;
   final updates = <Map<String, Object?>>[];
   final requests = <AcpClientRequest>[];
   StreamSubscription<Map<String, Object?>>? updateSub;
@@ -1030,14 +1157,168 @@ StopReason _stopReason(Map<String, Object?> update) {
   }
 }
 
+const _updateTodosMethod = 'cursor/update_todos';
+const _taskMethod = 'cursor/task';
+const _generateImageMethod = 'cursor/generate_image';
+
 Map<String, Object?> _terminalOutcome(String method) {
-  if (method == _permissionMethod ||
-      method == _askQuestionMethod ||
-      method == _createPlanMethod) {
+  if (method == _permissionMethod) {
     return const {'outcome': 'cancelled'};
+  }
+  if (method == _askQuestionMethod || method == _createPlanMethod) {
+    return _nestedCancelled;
   }
   return const {};
 }
+
+Map<String, Object?> _disconnectedResult(AcpClientRequest request) {
+  if (_isCursorNotification(request.method)) {
+    return _cursorNotificationAck(request.method, request.params);
+  }
+  return _terminalOutcome(request.method);
+}
+
+bool _isCursorNotification(String method) {
+  return method == _updateTodosMethod ||
+      method == _taskMethod ||
+      method == _generateImageMethod;
+}
+
+/// Ack cursor-agent already accepts for a notification sent as a request.
+Map<String, Object?> _cursorNotificationAck(
+  String method,
+  Map<String, Object?> params,
+) {
+  switch (method) {
+    case _updateTodosMethod:
+      final todos = _todoItems(params['todos']);
+      if (todos == null) return _nestedCancelled;
+      return {
+        'outcome': {'outcome': 'accepted', 'todos': todos},
+      };
+    case _taskMethod:
+      if (_taskUpdate(params) == null) return _nestedCancelled;
+      final agentId = _nonEmpty(params['agentId']);
+      return {
+        'outcome': {
+          'outcome': 'completed',
+          if (agentId != null) 'agentId': agentId,
+          if (params['durationMs'] is num) 'durationMs': params['durationMs'],
+        },
+      };
+    case _generateImageMethod:
+      if (_imageUpdate(params) == null) return _nestedCancelled;
+      final filePath = _nonEmpty(params['filePath']);
+      if (filePath == null) return _nestedCancelled;
+      return {
+        'outcome': {'outcome': 'generated', 'filePath': filePath},
+      };
+    default:
+      return _nestedCancelled;
+  }
+}
+
+/// Session update the phone can replay. `{method, params}` is not one.
+Map<String, Object?>? _cursorNotificationUpdate(AcpClientRequest request) {
+  switch (request.method) {
+    case _updateTodosMethod:
+      final todos = _todoItems(request.params['todos']);
+      if (todos == null) return null;
+      return {
+        'sessionUpdate': 'tool_call',
+        'toolCallId': _nonEmpty(request.params['toolCallId']) ?? 'TodoWrite',
+        'title': 'TodoWrite',
+        'status': 'completed',
+        'kind': 'other',
+        'rawInput': {'todos': todos, 'merge': request.params['merge'] == true},
+      };
+    case _taskMethod:
+      return _taskUpdate(request.params);
+    case _generateImageMethod:
+      return _imageUpdate(request.params);
+    default:
+      return null;
+  }
+}
+
+Map<String, Object?>? _taskUpdate(Map<String, Object?> params) {
+  final toolCallId = _nonEmpty(params['toolCallId']);
+  final description = _nonEmpty(params['description']);
+  if (toolCallId == null || description == null) return null;
+  final subagent = _cursorSubagentType(params['subagentType']);
+  return {
+    'sessionUpdate': 'tool_call',
+    'toolCallId': toolCallId,
+    'title': (subagent == null || subagent.isEmpty) ? 'task' : subagent,
+    'status': 'completed',
+    'kind': 'other',
+    'rawInput': {
+      'description': description,
+      if (subagent != null) 'subagentType': subagent,
+    },
+  };
+}
+
+Map<String, Object?>? _imageUpdate(Map<String, Object?> params) {
+  final toolCallId = _nonEmpty(params['toolCallId']);
+  final description = _nonEmpty(params['description']);
+  if (toolCallId == null || description == null) return null;
+  final filePath = _nonEmpty(params['filePath']);
+  return {
+    'sessionUpdate': 'tool_call',
+    'toolCallId': toolCallId,
+    'title': 'generate_image',
+    'status': 'completed',
+    'kind': 'other',
+    'rawInput': {
+      'description': description,
+      if (filePath != null) 'filePath': filePath,
+    },
+  };
+}
+
+List<Map<String, Object?>>? _todoItems(Object? raw) {
+  if (raw is! List) return null;
+  return [
+    for (final item in raw)
+      if (item is Map)
+        {
+          'id': _asString(item['id']),
+          'content': _asString(item['content']),
+          'status': _asString(item['status']),
+        },
+  ];
+}
+
+String? _cursorSubagentType(Object? raw) {
+  if (raw is String) return _nonEmpty(raw);
+  if (raw is! Map) return null;
+  final custom = raw['custom'];
+  if (custom is String) return _nonEmpty(custom);
+  for (final value in raw.values) {
+    if (value is String) {
+      final trimmed = _nonEmpty(value);
+      if (trimmed != null) return trimmed;
+    }
+  }
+  return null;
+}
+
+String? _nonEmpty(Object? value) {
+  if (value is! String) return null;
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? null : trimmed;
+}
+
+String _asString(Object? value) {
+  if (value == null) return '';
+  if (value is String) return value;
+  return value.toString();
+}
+
+final _nestedCancelled = <String, Object?>{
+  'outcome': <String, Object?>{'outcome': 'cancelled'},
+};
 
 String _updateKey(Map<String, Object?> update) =>
     jsonEncode(_normalizeMap(update));

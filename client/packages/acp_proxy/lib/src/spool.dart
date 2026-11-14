@@ -3,6 +3,25 @@ import 'dart:io';
 
 import 'launch_meta.dart';
 
+/// True when [sessionId] is a single path segment.
+///
+/// Rejects empty ids, `.`, `..`, separators, and any embedded `..` so a
+/// phone-supplied id cannot write or delete outside the spool.
+bool isSafeAcpProxySessionId(String sessionId) {
+  if (sessionId.isEmpty || sessionId == '.' || sessionId == '..') {
+    return false;
+  }
+  if (sessionId.contains('..')) return false;
+  if (sessionId.contains('/') || sessionId.contains('\\')) return false;
+  if (sessionId.contains('\u0000')) return false;
+  return true;
+}
+
+void requireSafeAcpProxySessionId(String sessionId) {
+  if (isSafeAcpProxySessionId(sessionId)) return;
+  throw const FormatException('session id must be one path segment');
+}
+
 /// Disk spool `<root>/acp-proxy/sessions/<sessionId>/` and its memory tail.
 ///
 /// `meta.json` is the only file that stores launch `env`. `updates.jsonl` is
@@ -22,26 +41,37 @@ class AcpProxySpool {
     required String cwd,
     required AcpProxyLaunchMeta meta,
   }) async {
+    requireSafeAcpProxySessionId(sessionId);
     final dir = _sessionDirectory(sessionId);
-    await dir.create(recursive: true);
-    await _chmod(dir, _directoryMode);
+    try {
+      await dir.create(recursive: true);
+      await _chmod(dir, _directoryMode);
 
-    final metaFile = _metaFile(sessionId);
-    final encoded = jsonEncode({
-      'cwd': cwd,
-      'cli': meta.cli,
-      'executable': meta.executable,
-      'args': meta.args,
-      'env': meta.env,
-      'permissionPolicy': meta.permissionPolicy.name,
-    });
-    await metaFile.writeAsString('$encoded\n', flush: true);
-    await _chmod(metaFile, _fileMode);
+      final metaFile = _metaFile(sessionId);
+      final encoded = jsonEncode({
+        'cwd': cwd,
+        'cli': meta.cli,
+        'executable': meta.executable,
+        'args': meta.args,
+        'env': meta.env,
+        'permissionPolicy': meta.permissionPolicy.name,
+      });
+      await metaFile.writeAsString('$encoded\n', flush: true);
+      await _chmod(metaFile, _fileMode);
 
-    final updates = _updatesFile(sessionId);
-    await updates.writeAsString('', flush: true);
-    await _chmod(updates, _fileMode);
-    _tails[sessionId] = _Tail();
+      final updates = _updatesFile(sessionId);
+      await updates.writeAsString('', flush: true);
+      await _chmod(updates, _fileMode);
+      _tails[sessionId] = _Tail();
+    } on Object {
+      try {
+        _tails.remove(sessionId);
+        if (dir.existsSync()) await dir.delete(recursive: true);
+      } on Object {
+        // Callers handle the original create error.
+      }
+      rethrow;
+    }
   }
 
   /// Appends [update] to `updates.jsonl`. Does not write launch `env`.
@@ -81,6 +111,7 @@ class AcpProxySpool {
   }
 
   Future<void> delete(String sessionId) async {
+    requireSafeAcpProxySessionId(sessionId);
     _tails.remove(sessionId);
     final dir = _sessionDirectory(sessionId);
     if (dir.existsSync()) {
@@ -89,6 +120,7 @@ class AcpProxySpool {
   }
 
   Directory _sessionDirectory(String sessionId) {
+    requireSafeAcpProxySessionId(sessionId);
     return Directory('${root.path}/acp-proxy/sessions/$sessionId');
   }
 
