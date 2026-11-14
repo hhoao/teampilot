@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 
 import '../../models/credential_lease.dart';
+import '../../utils/logging/logger_utils.dart';
 import '../io/filesystem.dart';
 
 /// Injected IdP refresh call. Production implementation posts to
@@ -36,7 +38,9 @@ final class RefreshRejected extends CredentialRefreshOutcome {
 ///
 /// INVARIANT: refresh tokens never leave this class's on-disk store. Sessions
 /// receive only [CredentialLease] values. All refreshes for a provider are
-/// serialized through [_inFlight] and guarded by a monotonic [epoch].
+/// serialized through [_inFlight] and guarded by a monotonic generation
+/// counter, so a late refresh can never overwrite a newer login or resurrect
+/// a revoked credential.
 final class OAuthCredentialAuthority {
   OAuthCredentialAuthority({
     required this.fs,
@@ -54,6 +58,12 @@ final class OAuthCredentialAuthority {
 
   final Map<String, Future<CredentialLease>> _inFlight = {};
   final Set<String> _rejected = {};
+
+  /// Highest epoch ever allocated for a provider in this process. Imports and
+  /// refreshes both draw from it, so an in-flight refresh started at epoch N
+  /// can never commit once a login (or revoke) advanced the provider past N.
+  final Map<String, int> _generation = {};
+
   final ValueNotifier<Map<String, CredentialHealth>> _healthChanges =
       ValueNotifier<Map<String, CredentialHealth>>(const {});
 
@@ -75,14 +85,28 @@ final class OAuthCredentialAuthority {
 
   /// Imports the `auth.json` produced by an isolated `grok login` /
   /// `importGlobal`. Returns false when it contains no usable tokens.
+  ///
+  /// The persisted epoch is always newer than whatever is on disk, so a
+  /// refresh still in flight for the previous login cannot clobber it.
   Future<bool> importFromLogin(String providerId, List<int> bytes) async {
-    _CredentialState? state;
+    _CredentialState? parsed;
     try {
-      state = _parseAuthJson(providerId, utf8.decode(bytes));
-    } on Object {
+      parsed = _parseAuthJson(providerId, utf8.decode(bytes));
+    } on Object catch (error) {
+      _logUnreadable(providerId, 'imported auth.json', error);
       return false;
     }
-    if (state == null) return false;
+    if (parsed == null) {
+      AppLogger.instance.w(
+        'OAuthCredentialAuthority: imported auth.json for provider '
+        '$providerId has no usable tokens',
+      );
+      return false;
+    }
+    final current = await _load(providerId);
+    final state = parsed.withEpoch(
+      _allocateEpoch(providerId, current?.epoch ?? -1),
+    );
     await _persist(providerId, state);
     _rejected.remove(providerId);
     _emitHealth(providerId, _healthOf(state, _now()));
@@ -91,9 +115,13 @@ final class OAuthCredentialAuthority {
 
   /// One-time migration from the pre-Authority provider store. Deletes the
   /// old file only after a successful import.
+  ///
+  /// A corrupt-but-present `credential.json` counts as absent, so a broken
+  /// store is recoverable from the legacy file; a valid credential still
+  /// blocks the migration.
   Future<bool> importLegacyAuthJson(String providerId) async {
-    final current = await fs.readString(credentialPath(providerId));
-    if (current != null && current.trim().isNotEmpty) return false;
+    final current = await _load(providerId);
+    if (current != null) return false;
     final bytes = await fs.readBytes(legacyAuthPath(providerId));
     if (bytes == null || bytes.isEmpty) return false;
     final ok = await importFromLogin(providerId, bytes);
@@ -146,6 +174,9 @@ final class OAuthCredentialAuthority {
   Future<void> revoke(String providerId) async {
     _rejected.remove(providerId);
     _inFlight.remove(providerId);
+    // Advance the generation so any refresh already running for the deleted
+    // credential fails its commit check instead of validating a stale epoch.
+    _generation[providerId] = (_generation[providerId] ?? -1) + 1;
     final path = credentialPath(providerId);
     if ((await fs.stat(path)).exists) await fs.removeRecursive(path);
     _emitHealth(providerId, CredentialHealth.missing);
@@ -157,11 +188,22 @@ final class OAuthCredentialAuthority {
   ) {
     final existing = _inFlight[providerId];
     if (existing != null) return existing;
-    final future = _doRefresh(providerId, state).whenComplete(() {
-      _inFlight.remove(providerId);
-    });
+    final future = _doRefresh(providerId, state);
     _inFlight[providerId] = future;
+    // Clear on both success and error, but only when this future is still the
+    // registered one: revoke or a newer refresh may have replaced it.
+    future.then<void>(
+      (_) => _clearInFlight(providerId, future),
+      onError: (Object error, StackTrace stackTrace) =>
+          _clearInFlight(providerId, future),
+    );
     return future;
+  }
+
+  void _clearInFlight(String providerId, Future<CredentialLease> future) {
+    if (identical(_inFlight[providerId], future)) {
+      _inFlight.remove(providerId);
+    }
   }
 
   Future<CredentialLease> _doRefresh(
@@ -179,9 +221,18 @@ final class OAuthCredentialAuthority {
           :final refreshToken,
           :final expiresAt,
         ):
-        // A newer refresh already won: discard this late result.
         final current = await _load(providerId);
-        if (current != null && current.epoch > state.epoch) {
+        // Revoked / removed while the IdP call was in flight: deletion is
+        // final, so discard the result rather than resurrecting the store.
+        if (current == null) {
+          throw CredentialUnavailableException(
+            _rejected.contains(providerId)
+                ? CredentialHealth.rejected
+                : CredentialHealth.missing,
+          );
+        }
+        // A newer login or refresh already won: discard this late result.
+        if (current.epoch > state.epoch) {
           return _leaseFrom(current);
         }
         final next = _CredentialState(
@@ -189,7 +240,7 @@ final class OAuthCredentialAuthority {
           refreshToken: refreshToken,
           accessToken: accessToken,
           expiresAt: expiresAt,
-          epoch: state.epoch + 1,
+          epoch: _allocateEpoch(providerId, state.epoch),
         );
         await _persist(providerId, next);
         _rejected.remove(providerId);
@@ -210,14 +261,25 @@ final class OAuthCredentialAuthority {
   Future<_CredentialState?> _load(String providerId) async {
     final raw = await fs.readString(credentialPath(providerId));
     if (raw == null || raw.trim().isEmpty) return null;
+    _CredentialState? state;
     try {
-      return _CredentialState.fromDiskJson(
+      state = _CredentialState.fromDiskJson(
         providerId,
         jsonDecode(raw) as Map<String, Object?>,
       );
-    } on Object {
+    } on Object catch (error) {
+      _logUnreadable(providerId, 'credential.json', error);
       return null;
     }
+    if (state == null) {
+      AppLogger.instance.w(
+        'OAuthCredentialAuthority: credential.json for provider $providerId '
+        'is missing required fields',
+      );
+      return null;
+    }
+    _observeEpoch(providerId, state.epoch);
+    return state;
   }
 
   Future<void> _persist(String providerId, _CredentialState state) async {
@@ -248,6 +310,30 @@ final class OAuthCredentialAuthority {
       ..._healthChanges.value,
       providerId: health,
     };
+  }
+
+  /// Monotonic epoch allocation. [floor] is the epoch of the state being
+  /// replaced (-1 when there is none), so a first import gets epoch 0.
+  int _allocateEpoch(String providerId, int floor) {
+    final next = math.max(_generation[providerId] ?? -1, floor) + 1;
+    _generation[providerId] = next;
+    return next;
+  }
+
+  void _observeEpoch(String providerId, int epoch) {
+    if (epoch > (_generation[providerId] ?? -1)) {
+      _generation[providerId] = epoch;
+    }
+  }
+
+  /// Diagnostics only: provider id and failure class. The error object is
+  /// deliberately not logged — JSON decode errors quote the source text,
+  /// which may contain token material.
+  void _logUnreadable(String providerId, String what, Object error) {
+    AppLogger.instance.w(
+      'OAuthCredentialAuthority: unreadable $what for provider $providerId '
+      '(${error.runtimeType})',
+    );
   }
 
   static _CredentialState? _parseAuthJson(String providerId, String raw) {
@@ -293,6 +379,14 @@ final class _CredentialState {
   final String accessToken;
   final DateTime expiresAt;
   final int epoch;
+
+  _CredentialState withEpoch(int nextEpoch) => _CredentialState(
+        providerId: providerId,
+        refreshToken: refreshToken,
+        accessToken: accessToken,
+        expiresAt: expiresAt,
+        epoch: nextEpoch,
+      );
 
   Map<String, Object?> toDiskJson() => {
         'provider_id': providerId,

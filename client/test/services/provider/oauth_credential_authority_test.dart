@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -26,6 +27,25 @@ final class _FakeRefresher implements CredentialRefresher {
   }
 }
 
+/// Refresh call that stays in flight until the test completes it, so
+/// interleavings (re-login, revoke, a newer refresh) are deterministic.
+final class _ControlledRefresher implements CredentialRefresher {
+  final List<Completer<CredentialRefreshOutcome>> pending = [];
+  final List<String> refreshTokens = [];
+
+  int get calls => pending.length;
+
+  @override
+  Future<CredentialRefreshOutcome> refresh(String refreshToken) {
+    refreshTokens.add(refreshToken);
+    final completer = Completer<CredentialRefreshOutcome>();
+    pending.add(completer);
+    return completer.future;
+  }
+}
+
+Future<void> _pump() => Future<void>.delayed(Duration.zero);
+
 String _authJson({
   String key = 'access-old',
   String refreshToken = 'rt-old',
@@ -45,7 +65,7 @@ void main() {
 
   OAuthCredentialAuthority build(
     InMemoryFilesystem fs,
-    _FakeRefresher refresher,
+    CredentialRefresher refresher,
   ) =>
       OAuthCredentialAuthority(
         fs: fs,
@@ -186,5 +206,154 @@ void main() {
     );
 
     expect(await authority.status('xai'), CredentialHealth.expiring);
+  });
+
+  test('re-login during an in-flight refresh is not clobbered', () async {
+    final fs = InMemoryFilesystem();
+    final refresher = _ControlledRefresher();
+    final authority = build(fs, refresher);
+    await authority.importFromLogin(
+      'xai',
+      utf8.encode(_authJson(expiresAt: '2026-11-14T10:00:00Z')),
+    );
+
+    final staleLease = authority.lease(providerId: 'xai', sessionId: 's1');
+    await _pump();
+    expect(refresher.pending, hasLength(1));
+
+    expect(
+      await authority.importFromLogin(
+        'xai',
+        utf8.encode(_authJson(key: 'access-new', refreshToken: 'rt-new')),
+      ),
+      isTrue,
+    );
+
+    refresher.pending.single.complete(
+      RefreshSucceeded(
+        accessToken: 'stale-access',
+        refreshToken: 'rt-stale',
+        expiresAt: DateTime.utc(2026, 11, 14, 12, 0, 0),
+      ),
+    );
+    final lease = await staleLease;
+
+    final raw = await fs.readString('/tp/providers/grok/xai/credential.json');
+    expect(raw, contains('rt-new'));
+    expect(raw, isNot(contains('rt-stale')));
+    expect(lease.accessToken, 'access-new');
+    expect(lease.epoch, 1);
+    expect(await authority.status('xai'), CredentialHealth.ready);
+  });
+
+  test('a late refresh cannot resurrect a revoked credential', () async {
+    final fs = InMemoryFilesystem();
+    final refresher = _ControlledRefresher();
+    final authority = build(fs, refresher);
+    await authority.importFromLogin(
+      'xai',
+      utf8.encode(_authJson(expiresAt: '2026-11-14T10:00:00Z')),
+    );
+
+    final lease = authority.lease(providerId: 'xai', sessionId: 's1');
+    final rejection = expectLater(
+      lease,
+      throwsA(
+        isA<CredentialUnavailableException>().having(
+          (e) => e.health,
+          'health',
+          CredentialHealth.missing,
+        ),
+      ),
+    );
+    await _pump();
+    expect(refresher.pending, hasLength(1));
+
+    await authority.revoke('xai');
+    refresher.pending.single.complete(
+      RefreshSucceeded(
+        accessToken: 'stale-access',
+        refreshToken: 'rt-stale',
+        expiresAt: DateTime.utc(2026, 11, 14, 12, 0, 0),
+      ),
+    );
+    await rejection;
+
+    expect(await fs.readString('/tp/providers/grok/xai/credential.json'),
+        isNull);
+    expect(await authority.status('xai'), CredentialHealth.missing);
+  });
+
+  test('a completing refresh only clears its own in-flight entry', () async {
+    final fs = InMemoryFilesystem();
+    final refresher = _ControlledRefresher();
+    final authority = build(fs, refresher);
+    await authority.importFromLogin(
+      'xai',
+      utf8.encode(_authJson(expiresAt: '2026-11-14T10:00:00Z')),
+    );
+
+    final first = authority.lease(providerId: 'xai', sessionId: 's1');
+    await _pump();
+    expect(refresher.pending, hasLength(1));
+
+    await authority.revoke('xai');
+    await authority.importFromLogin(
+      'xai',
+      utf8.encode(_authJson(expiresAt: '2026-11-14T10:00:00Z')),
+    );
+    final second = authority.lease(providerId: 'xai', sessionId: 's2');
+    await _pump();
+    expect(refresher.pending, hasLength(2));
+
+    // Refresh #1 finishes while #2 is still the registered single flight.
+    refresher.pending[0].complete(
+      RefreshSucceeded(
+        accessToken: 'stale-1',
+        refreshToken: 'rt-1',
+        expiresAt: DateTime.utc(2026, 11, 14, 12, 0, 0),
+      ),
+    );
+    await first;
+    await _pump();
+
+    final third = authority.lease(providerId: 'xai', sessionId: 's3');
+    await _pump();
+    expect(
+      refresher.pending,
+      hasLength(2),
+      reason: 'refresh #2 must stay registered as the single flight',
+    );
+
+    refresher.pending[1].complete(
+      RefreshSucceeded(
+        accessToken: 'fresh-2',
+        refreshToken: 'rt-2',
+        expiresAt: DateTime.utc(2026, 11, 14, 12, 0, 0),
+      ),
+    );
+    expect((await second).accessToken, 'fresh-2');
+    expect((await third).accessToken, 'fresh-2');
+    expect(refresher.calls, 2);
+  });
+
+  test('corrupt credential is recoverable via legacy auth.json migration',
+      () async {
+    final fs = InMemoryFilesystem();
+    await fs.ensureDir('/tp/providers/grok/xai');
+    await fs.atomicWrite(
+      '/tp/providers/grok/xai/credential.json',
+      '{"refresh_token": ',
+    );
+    await fs.atomicWrite('/tp/providers/grok/xai/auth.json', _authJson());
+    final authority = build(fs, _FakeRefresher());
+
+    expect(await authority.status('xai'), CredentialHealth.missing);
+
+    expect(await authority.importLegacyAuthJson('xai'), isTrue);
+    expect(await fs.readString('/tp/providers/grok/xai/auth.json'), isNull);
+    expect(await authority.status('xai'), CredentialHealth.ready);
+    final raw = await fs.readString('/tp/providers/grok/xai/credential.json');
+    expect(raw, contains('rt-old'));
   });
 }
