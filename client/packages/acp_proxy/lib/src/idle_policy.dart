@@ -18,13 +18,14 @@ bool shouldRunIdleTimer({
   return !phoneConnected && !turnInProgress && !permissionPending;
 }
 
-/// Closes and deletes sessions whose idle clock has run past [idleTimeout].
+/// Closes sessions whose idle clock has run past [idleTimeout].
 ///
 /// Eligible only when [shouldRunIdleTimer] is true and [disconnectedSince]
-/// is strictly older than [idleTimeout]. The phone, an open turn, or a
-/// pending permission keeps the session. After a successful close, the
-/// session is dropped from [upstreams] and [disconnectedSince] so the next
-/// tick does not close it again.
+/// is strictly older than [idleTimeout]. While the predicate is false, the
+/// stamp is moved to [now] so the 30 minutes start when the session becomes
+/// idle, not when the phone first disconnected. [closeSession], when set,
+/// performs that close. Otherwise the upstream is closed, the spool is
+/// deleted, and the book row is dropped.
 Future<void> reapIdleSessions({
   required AcpProxySessionBook book,
   required AcpProxySpool spool,
@@ -33,6 +34,7 @@ Future<void> reapIdleSessions({
   required DateTime now,
   required Duration idleTimeout,
   required bool Function(String sessionId) permissionPending,
+  Future<void> Function(String sessionId)? closeSession,
 }) async {
   for (final sessionId in book.sessionIds.toList()) {
     final since = disconnectedSince[sessionId];
@@ -42,8 +44,16 @@ Future<void> reapIdleSessions({
       turnInProgress: book.turnInProgress(sessionId),
       permissionPending: permissionPending(sessionId),
     );
-    if (!idle) continue;
+    if (!idle) {
+      disconnectedSince[sessionId] = now;
+      continue;
+    }
     if (now.difference(since) <= idleTimeout) continue;
+    final close = closeSession;
+    if (close != null) {
+      await close(sessionId);
+      continue;
+    }
     final upstream = upstreams[sessionId];
     if (upstream != null) {
       await upstream.close();
@@ -51,5 +61,6 @@ Future<void> reapIdleSessions({
     }
     await spool.delete(sessionId);
     disconnectedSince.remove(sessionId);
+    book.forget(sessionId);
   }
 }

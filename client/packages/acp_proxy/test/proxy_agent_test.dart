@@ -295,6 +295,70 @@ void main() {
   });
 
   test(
+    'idle reap matches session close and drops the installed upstream',
+    () async {
+      final env = await _startEnv();
+      final phone = env.connect();
+      final sessionId = await env.openSession(phone);
+      expect(env.fake.updateEvents.hasListener, isTrue);
+      expect(env.fake.clientRequestEvents.hasListener, isTrue);
+      await _dropPhone(phone);
+
+      final disconnectedAt = env.agent.disconnectedSince[sessionId];
+      expect(disconnectedAt, isNotNull);
+      await env.agent.reapIdle(
+        now: disconnectedAt!.add(const Duration(minutes: 31)),
+        idleTimeout: const Duration(minutes: 30),
+      );
+
+      expect(env.fake.closeCount, 1);
+      expect(env.fake.alive, isFalse);
+      expect(env.agent.upstreams.containsKey(sessionId), isFalse);
+      expect(env.agent.disconnectedSince.containsKey(sessionId), isFalse);
+      expect(env.book.sessionIds, isNot(contains(sessionId)));
+      expect(env.book.turnInProgress(sessionId), isFalse);
+      expect(
+        Directory(
+          '${env.root.path}/acp-proxy/sessions/$sessionId',
+        ).existsSync(),
+        isFalse,
+      );
+      expect(env.fake.updateEvents.hasListener, isFalse);
+      expect(env.fake.clientRequestEvents.hasListener, isFalse);
+
+      final again = env.connect();
+      await expectLater(
+        again.client.client.loadSession(
+          LoadSessionRequest(sessionId: sessionId, cwd: '/work'),
+        ),
+        throwsA(isA<RpcError>()),
+      );
+      expect(env.fake.openLoadCount, 0);
+      expect(env.agent.upstreams.containsKey(sessionId), isFalse);
+
+      final replacement = FakeUpstream(sessionId: sessionId);
+      addTearDown(() async {
+        await replacement.updateEvents.close();
+        await replacement.clientRequestEvents.close();
+      });
+      env.agent.connectNew =
+          ({
+            required AcpProxyLaunchMeta meta,
+            required String cwd,
+            required List<Map<String, Object?>> mcpServers,
+          }) async {
+            return replacement;
+          };
+      await again.client.client.loadSession(
+        LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+      );
+      expect(env.fake.openLoadCount, 0);
+      expect(replacement.openLoadCount, 1);
+      expect(env.agent.upstreams[sessionId], same(replacement));
+    },
+  );
+
+  test(
     'cancel waits for the upstream stop and close deletes the spool',
     () async {
       final env = await _startEnv();

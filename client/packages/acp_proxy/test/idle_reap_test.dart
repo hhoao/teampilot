@@ -78,22 +78,84 @@ void main() {
       expect(fakes['busy']!.closed, isFalse);
       expect(_sessionDir(root, 'busy').existsSync(), isTrue);
       expect(book.turnInProgress('busy'), isTrue);
-      expect(disconnectedSince.containsKey('busy'), isTrue);
+      expect(disconnectedSince['busy'], now);
 
       expect(fakes['fresh']!.closed, isFalse);
       expect(_sessionDir(root, 'fresh').existsSync(), isTrue);
-      expect(disconnectedSince.containsKey('fresh'), isTrue);
+      expect(
+        disconnectedSince['fresh'],
+        now.subtract(const Duration(minutes: 1)),
+      );
 
       expect(fakes['asked']!.closed, isFalse);
       expect(_sessionDir(root, 'asked').existsSync(), isTrue);
-      expect(disconnectedSince.containsKey('asked'), isTrue);
+      expect(disconnectedSince['asked'], now);
 
       expect(fakes['live']!.closed, isFalse);
       expect(_sessionDir(root, 'live').existsSync(), isTrue);
       expect(book.phoneConnected('live'), isTrue);
-      expect(disconnectedSince.containsKey('live'), isTrue);
+      expect(disconnectedSince['live'], now);
+
+      expect(book.sessionIds, isNot(contains('gone')));
     },
   );
+
+  test('finishing a long turn restarts the idle clock', () async {
+    final root = await Directory.systemTemp.createTemp('acp-proxy-reap');
+    addTearDown(() => root.delete(recursive: true));
+
+    final book = AcpProxySessionBook();
+    final spool = AcpProxySpool(root: root);
+    final upstreams = <String, AcpUpstream>{};
+    final disconnectedSince = <String, DateTime>{};
+    final now = DateTime.utc(2026, 11, 14, 12);
+    const meta = AcpProxyLaunchMeta(
+      cli: 'claude',
+      executable: '/usr/local/bin/claude',
+      args: ['--acp'],
+      env: {},
+      permissionPolicy: AcpProxyPermissionPolicy.ask,
+    );
+
+    Future<_FakeUpstream> track(String sessionId, {bool turn = false}) async {
+      await spool.create(sessionId: sessionId, cwd: '/work', meta: meta);
+      final upstream = _FakeUpstream();
+      upstreams[sessionId] = upstream;
+      book.attach(sessionId: sessionId, connectionId: 'c-$sessionId');
+      book.detach('c-$sessionId');
+      if (turn) book.onPrompt(sessionId: sessionId, text: 'still running');
+      disconnectedSince[sessionId] = now.subtract(const Duration(minutes: 31));
+      return upstream;
+    }
+
+    final busy = await track('busy', turn: true);
+    final gone = await track('gone');
+
+    Future<void> reap() {
+      return reapIdleSessions(
+        book: book,
+        spool: spool,
+        upstreams: upstreams,
+        disconnectedSince: disconnectedSince,
+        now: now,
+        idleTimeout: const Duration(minutes: 30),
+        permissionPending: (_) => false,
+      );
+    }
+
+    await reap();
+    expect(busy.closed, isFalse);
+    expect(book.turnInProgress('busy'), isTrue);
+    expect(disconnectedSince['busy'], now);
+    expect(gone.closed, isTrue);
+    expect(_sessionDir(root, 'gone').existsSync(), isFalse);
+
+    book.finishTurn('busy');
+    await reap();
+    expect(busy.closed, isFalse);
+    expect(_sessionDir(root, 'busy').existsSync(), isTrue);
+    expect(disconnectedSince['busy'], now);
+  });
 }
 
 Directory _sessionDir(Directory root, String sessionId) {

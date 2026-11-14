@@ -9,11 +9,16 @@ import 'package:acp_proxy/acp_proxy.dart';
 Future<void> main(List<String> args) async {
   final parsed = parseAcpProxyArgs(args);
   if (parsed.detach) {
-    await Process.start(Platform.resolvedExecutable, [
-      ...Platform.executableArguments,
-      Platform.script.toFilePath(),
-      ..._withoutDetach(args),
-    ], mode: ProcessStartMode.detached);
+    await Process.start(
+      Platform.resolvedExecutable,
+      acpProxyDetachArguments(
+        executableArguments: Platform.executableArguments,
+        scriptPath: Platform.script.toFilePath(),
+        executable: Platform.resolvedExecutable,
+        args: args,
+      ),
+      mode: ProcessStartMode.detached,
+    );
     exit(0);
   }
 
@@ -63,15 +68,7 @@ class _RunningProxy {
     try {
       final now = DateTime.now();
       for (final agent in agents) {
-        await reapIdleSessions(
-          book: agent.book,
-          spool: agent.spool,
-          upstreams: agent.upstreams,
-          disconnectedSince: agent.disconnectedSince,
-          now: now,
-          idleTimeout: idleTimeout,
-          permissionPending: agent.permissionPending,
-        );
+        await agent.reapIdle(now: now, idleTimeout: idleTimeout);
       }
     } catch (error) {
       stderr.writeln('acp-proxy: idle reap failed: $error');
@@ -79,11 +76,4 @@ class _RunningProxy {
       _reaping = false;
     }
   }
-}
-
-List<String> _withoutDetach(List<String> args) {
-  return [
-    for (final arg in args)
-      if (arg != '--detach') arg,
-  ];
 }

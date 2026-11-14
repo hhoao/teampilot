@@ -47,4 +47,35 @@ void main() {
     expect(detached.root.path, Directory('/tmp/tp').path);
     expect(detached.cliIds, ['claude']);
   });
+
+  test('detach child args drop the script path for a compiled executable', () {
+    const userArgs = ['--root', '/tmp/tp', '--detach', '--cli', 'claude'];
+
+    expect(
+      acpProxyDetachArguments(
+        executableArguments: const ['--observe'],
+        scriptPath: '/opt/teampilot-acp-proxy',
+        executable: '/opt/teampilot-acp-proxy',
+        args: userArgs,
+      ),
+      ['--root', '/tmp/tp', '--cli', 'claude'],
+    );
+
+    expect(
+      acpProxyDetachArguments(
+        executableArguments: const ['--enable-asserts'],
+        scriptPath: '/work/bin/teampilot_acp_proxy.dart',
+        executable: '/usr/bin/dart',
+        args: userArgs,
+      ),
+      [
+        '--enable-asserts',
+        '/work/bin/teampilot_acp_proxy.dart',
+        '--root',
+        '/tmp/tp',
+        '--cli',
+        'claude',
+      ],
+    );
+  });
 }

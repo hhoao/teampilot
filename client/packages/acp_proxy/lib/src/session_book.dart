@@ -69,6 +69,11 @@ class AcpProxySessionBook {
 
   /// True when [sessionId]'s current connection id is non-null.
   bool phoneConnected(String sessionId) => connectionFor(sessionId) != null;
+
+  /// Drops [sessionId]. A missing id is ignored.
+  void forget(String sessionId) {
+    _sessions.remove(sessionId);
+  }
 }
 
 class _Session {

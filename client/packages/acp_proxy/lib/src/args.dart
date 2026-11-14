@@ -58,6 +58,25 @@ String _value(List<String> args, int index, String flag) {
   return args[index];
 }
 
+/// Arguments for the detached child process.
+///
+/// When [scriptPath] is the compiled executable, the child receives only
+/// [args] without `--detach`. A `dart` script path is different, so the
+/// child also receives [executableArguments] and [scriptPath].
+List<String> acpProxyDetachArguments({
+  required List<String> executableArguments,
+  required String scriptPath,
+  required String executable,
+  required List<String> args,
+}) {
+  final userArgs = [
+    for (final arg in args)
+      if (arg != '--detach') arg,
+  ];
+  if (scriptPath == executable) return userArgs;
+  return [...executableArguments, scriptPath, ...userArgs];
+}
+
 /// Minutes only, matching `--idle-timeout 30m`.
 Duration _idleTimeout(String raw) {
   final match = RegExp(r'^(\d+)m$').firstMatch(raw);

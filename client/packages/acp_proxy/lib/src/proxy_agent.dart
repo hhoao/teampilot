@@ -78,6 +78,25 @@ class AcpProxyAgent {
     );
   }
 
+  /// Closes sessions idle for [idleTimeout], using the same per-session
+  /// cleanup as `session/close`. A turn or permission wait restarts the clock
+  /// at [now] instead of closing.
+  Future<void> reapIdle({
+    required DateTime now,
+    required Duration idleTimeout,
+  }) {
+    return reapIdleSessions(
+      book: book,
+      spool: spool,
+      upstreams: upstreams,
+      disconnectedSince: disconnectedSince,
+      now: now,
+      idleTimeout: idleTimeout,
+      permissionPending: permissionPending,
+      closeSession: _closeKeptSession,
+    );
+  }
+
   /// Builds an [AgentRole] and connects it to [phone].
   AgentConnection serve(Transport phone) {
     late final AgentConnection connection;
@@ -315,7 +334,12 @@ class AcpProxyAgent {
   }
 
   Future<CloseSessionResponse> _onClose(CloseSessionRequest request) async {
-    final sessionId = request.sessionId;
+    await _closeKeptSession(request.sessionId);
+    return const CloseSessionResponse();
+  }
+
+  /// `session/close` and idle expiry share this cleanup.
+  Future<void> _closeKeptSession(String sessionId) async {
     await _stopWatching(sessionId);
     final upstream = upstreams.remove(sessionId);
     _releaseHeld(sessionId, const {'outcome': 'cancelled'});
@@ -331,13 +355,13 @@ class AcpProxyAgent {
     }
     if (upstream != null) await _closeQuiet(upstream);
     book.finishTurn(sessionId);
+    book.forget(sessionId);
     await spool.delete(sessionId);
     _metas.remove(sessionId);
     _sessionLeg.remove(sessionId);
     _sessionIds.remove(sessionId);
     disconnectedSince.remove(sessionId);
     _retainedCli.remove(sessionId);
-    return const CloseSessionResponse();
   }
 
   Future<void> _remember({
