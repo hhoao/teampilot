@@ -1238,7 +1238,6 @@ git commit -m "feat(attention): add device-local cursor store"
 ```dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/attention/attention_batch.dart';
-import 'package:teampilot/services/attention/attention_cursor.dart';
 import 'package:teampilot/services/attention/attention_cursor_store.dart';
 import 'package:teampilot/services/attention/attention_event.dart';
 import 'package:teampilot/services/attention/attention_inbox.dart';
@@ -1289,7 +1288,9 @@ void main() {
     await inbox.ingest('local', [_event(seq: 1), _event(seq: 2)]);
     await Future<void>.delayed(Duration.zero);
 
-    expect(seen.map((event) => event.seq), [1, 2, 3]);
+    // The first batch emits 3 immediately; the second emits 1,2 after it.
+    // Sorting is within a batch, not across batches.
+    expect(seen.map((event) => event.seq), [3, 1, 2]);
     expect(inbox.cursorFor('local')?.seq, 3);
     await sub.cancel();
     await inbox.dispose();
@@ -2542,10 +2543,11 @@ import '../attention/attention_inbox.dart';
   final AttentionInbox? attentionInbox;
 ```
 
-3. Add a home id field:
+3. Add a home id field and a per-controller attention queue:
 
 ```dart
   String _homeId = '';
+  Future<void> _attentionQueue = Future<void>.value();
 ```
 
 4. Replace `applyClient`:
@@ -2577,7 +2579,7 @@ import '../attention/attention_inbox.dart';
             'epoch=${batch.epoch} from=${batch.fromSeq} to=${batch.toSeq} '
             'count=${batch.events.length} gap=${batch.gap}',
           );
-          unawaited(_handleAttentionBatch(batch));
+          _enqueueAttentionBatch(batch);
         },
         onReady: () {
           appLogger.i('[$_tag] client ready');
@@ -2620,11 +2622,27 @@ Keep the existing bodies of the other callbacks unchanged.
     unawaited(inbox.clearCursor(_homeId));
   }
 
+  void _enqueueAttentionBatch(AttentionBatch batch) {
+    _attentionQueue = _attentionQueue
+        .catchError((Object _) {})
+        .then((_) => _handleAttentionBatch(batch))
+        .catchError((Object error, StackTrace stackTrace) {
+          appLogger.w(
+            '[$_tag] attention batch failed',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        });
+  }
+
   Future<void> _handleAttentionBatch(AttentionBatch batch) async {
+    // Capture the home before the first await: a reconnect can change _homeId
+    // while this batch is being persisted.
+    final homeId = _homeId;
     final inbox = attentionInbox;
-    if (inbox != null && _homeId.isNotEmpty) {
-      await inbox.ingest(_homeId, batch.events);
-      if (batch.gap) await inbox.skipGap(_homeId, batch);
+    if (inbox != null && homeId.isNotEmpty) {
+      await inbox.ingest(homeId, batch.events);
+      if (batch.gap) await inbox.skipGap(homeId, batch);
     }
     _client?.client?.sendAttentionAck(
       authorityId: batch.authorityId,
@@ -2634,7 +2652,12 @@ Keep the existing bodies of the other callbacks unchanged.
   }
 ```
 
-6. In `applyNone`, add `_homeId = '';`.
+6. In `applyNone`, await the queue before clearing the home:
+
+```dart
+  await _attentionQueue;
+  _homeId = '';
+```
 
 In `client/lib/app/session_protocol_home.dart`, change the client branch:
 
