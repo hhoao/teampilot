@@ -41,6 +41,8 @@ import '../cubits/seat_lease_cubit.dart';
 import '../cubits/session_remote_activity_cubit.dart';
 import '../services/event/dispatcher.dart' as event_bus;
 import '../services/event/session_lifecycle_event.dart';
+import '../services/attention/attention_event.dart';
+import '../services/attention/attention_inbox.dart';
 import '../services/session_protocol/session_authority.dart';
 import '../services/session_sync/chat_session_activity_source.dart';
 import '../services/session_sync/session_content_invalidation_bus.dart';
@@ -508,6 +510,8 @@ class AppShell {
   StreamSubscription<SessionRemoteActivityState>? _sessionRemoteRefreshSub;
   StreamSubscription<SessionContentInvalidation>? _contentInvalidationSub;
   StreamSubscription<SessionContentStreamChunk>? _contentStreamSub;
+  StreamSubscription<AttentionEvent>? _attentionSub;
+  AttentionInbox? _attentionInbox;
 
   /// Cancels the subscriptions [buildAppShell] attached to this shell.
   ///
@@ -522,6 +526,8 @@ class AppShell {
     unawaited(_sessionRemoteRefreshSub?.cancel());
     unawaited(_contentInvalidationSub?.cancel());
     unawaited(_contentStreamSub?.cancel());
+    unawaited(_attentionSub?.cancel());
+    unawaited(_attentionInbox?.dispose());
     // The workload catalog owns a HomeStorage.changes subscription; closing it
     // here keeps that subscription tied to the shell lifetime.
     unawaited(sshWorkloadProfileCubit.close());
@@ -1621,7 +1627,8 @@ Future<AppShell> buildAppShell({
     automationScheduler = automation.automationScheduler;
     final automationCatalogSub = automation.catalogSubscription;
 
-    final sessionRuntime = wireSessionRuntime(
+    final sessionRuntime = await wireSessionRuntime(
+      deviceStorage: deviceLocalHomeStorage(nativeAppDataPath),
       chat: () => chatCubit,
       cliPresets: () => cliPresetsCubit,
       lifecycle: () => sessionLifecycleService,
@@ -1647,6 +1654,8 @@ Future<AppShell> buildAppShell({
     final sessionRemoteRefreshSub = sessionRuntime.sessionRemoteRefreshSub;
     final contentInvalidationSub = sessionRuntime.contentInvalidationSub;
     final contentStreamSub = sessionRuntime.contentStreamSub;
+    final attentionInbox = sessionRuntime.attentionInbox;
+    final attentionSub = sessionRuntime.attentionSub;
     void reloadHistorySeat(String sessionId) {
       unawaited(aiHistoryCubit.softReloadIfSession(sessionId));
     }
@@ -2464,6 +2473,8 @@ Future<AppShell> buildAppShell({
     shell._sessionRemoteRefreshSub = sessionRemoteRefreshSub;
     shell._contentInvalidationSub = contentInvalidationSub;
     shell._contentStreamSub = contentStreamSub;
+    shell._attentionInbox = attentionInbox;
+    shell._attentionSub = attentionSub;
     managedProviderControlPlaneLease.transferOwnership();
     await applyHomeEventTransport();
     return shell;

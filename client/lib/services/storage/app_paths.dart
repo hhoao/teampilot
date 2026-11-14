@@ -26,6 +26,23 @@ class AppPaths {
   String get sessionProtocolJson =>
       sessionProtocolJsonForTeampilotRoot(basePath);
 
+  String attentionLogJsonForEpoch(int epoch) =>
+      attentionLogJsonForEpochAtTeampilotRoot(basePath, epoch);
+
+  static String attentionLogJsonForEpochAtTeampilotRoot(
+    String teampilotRoot,
+    int epoch,
+  ) => _pathUnderTeampilotRoot(
+    teampilotRoot,
+    'attention/log-$epoch.jsonl',
+  );
+
+  String get attentionCursorsJson =>
+      attentionCursorsJsonForTeampilotRoot(basePath);
+
+  static String attentionCursorsJsonForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'attention/cursors.json');
+
   String get cliPresetsJson => _ctx.join(basePath, 'cli-presets.json');
 
   /// Linux desktop / `path_provider` app-data id (e.g. `~/.local/share/com.hhoa.teampilot`).
