@@ -18,6 +18,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/automations/automation_editor_dialog.dart';
+import 'package:teampilot/pages/automations/automation_editor_form_body.dart';
 import 'package:teampilot/pages/automations/automation_schedule_picker.dart';
 import 'package:teampilot/widgets/cli/cli_preset_dropdown_field.dart';
 import 'package:teampilot/services/automation/automation_schedule_defaults.dart';
@@ -1252,6 +1253,71 @@ void main() {
       find.text(l10n.automations.commandWorkingDirectoryMain),
       findsOneWidget,
     );
+  });
+
+  testWidgets('runCommand fields use the shared inline form chrome', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          child: const AutomationEditorDialog(
+            kind: AutomationEditorKind.runCommand,
+            workspaceId: 'ws1',
+            defaultName: 'Nightly',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // The command is multiline: TpTextarea clears the global single-line
+    // InputDecorationTheme constraints instead of being squashed to 32px.
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('automationCommandField')),
+        matching: find.byType(TpTextarea),
+      ),
+      findsOneWidget,
+    );
+
+    final timeout = tester.widget<TpInputFormField>(
+      find.byKey(const Key('automationTimeoutField')),
+    );
+    expect(timeout.layoutStyle, TpFormFieldLayoutStyle.inline);
+    expect(timeout.labelWidth, kAutomationEditorFormLabelWidth);
+
+    // Labels belong to the inline form layout, never to InputDecoration:
+    // a floating labelText would sit on the outline border.
+    for (final key in const [
+      Key('automationCommandField'),
+      Key('automationTimeoutField'),
+    ]) {
+      final field = tester.widget<TextField>(
+        find
+            .descendant(of: find.byKey(key), matching: find.byType(TextField))
+            .first,
+      );
+      expect(field.decoration?.labelText, isNull);
+    }
+
+    // The command field clears the global single-line track height; a
+    // BoxConstraints.tightFor(height: 32) here is what crushed it to one line.
+    final commandField = tester.widget<TextField>(
+      find
+          .descendant(
+            of: find.byKey(const Key('automationCommandField')),
+            matching: find.byType(TextField),
+          )
+          .first,
+    );
+    expect(commandField.decoration?.constraints?.maxHeight, double.infinity);
   });
 
   testWidgets('runCommand timeout errors surface on the command field', (

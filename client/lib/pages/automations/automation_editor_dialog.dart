@@ -743,7 +743,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             maxRunCountController: _maxRunCountCtl,
             commandController: _commandCtl,
             commandError: _commandError,
-            onCommandChanged: (_) {
+            onCommandChanged: () {
               if (_commandError != null) {
                 setState(() => _commandError = null);
               }

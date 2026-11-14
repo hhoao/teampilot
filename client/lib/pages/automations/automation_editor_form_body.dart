@@ -38,15 +38,15 @@ class AutomationEditorFormBody extends StatelessWidget {
     this.boundSessionId,
     this.boundSession,
     this.boundCli,
-    this.onSwitchSession,
-    this.onUnbindSession,
-    this.commandController,
+    required this.onSwitchSession,
+    required this.onUnbindSession,
+    required this.commandController,
     this.commandError,
-    this.onCommandChanged,
-    this.timeoutController,
+    required this.onCommandChanged,
+    required this.timeoutController,
     this.catchUpOnce = false,
-    this.onCatchUpChanged,
-    this.onMaxRunCountChanged,
+    required this.onCatchUpChanged,
+    required this.onMaxRunCountChanged,
     this.workspace,
     this.isPersonal = true,
     this.projectFolderPath,
@@ -55,13 +55,13 @@ class AutomationEditorFormBody extends StatelessWidget {
     this.teamId,
     this.expertKey,
     this.targetMemberId = 'team-lead',
-    this.onIsPersonalChanged,
-    this.onProjectChanged,
-    this.onWorktreeChanged,
-    this.onPresetChanged,
-    this.onTeamChanged,
-    this.onExpertChanged,
-    this.onTargetMemberChanged,
+    required this.onIsPersonalChanged,
+    required this.onProjectChanged,
+    required this.onWorktreeChanged,
+    required this.onPresetChanged,
+    required this.onTeamChanged,
+    required this.onExpertChanged,
+    required this.onTargetMemberChanged,
     super.key,
   });
 
@@ -84,15 +84,15 @@ class AutomationEditorFormBody extends StatelessWidget {
   final String? boundSessionId;
   final AppSession? boundSession;
   final CliTool? boundCli;
-  final VoidCallback? onSwitchSession;
-  final VoidCallback? onUnbindSession;
-  final TextEditingController? commandController;
+  final VoidCallback onSwitchSession;
+  final VoidCallback onUnbindSession;
+  final TextEditingController commandController;
   final String? commandError;
-  final ValueChanged<String>? onCommandChanged;
-  final TextEditingController? timeoutController;
+  final VoidCallback onCommandChanged;
+  final TextEditingController timeoutController;
   final bool catchUpOnce;
-  final ValueChanged<bool>? onCatchUpChanged;
-  final VoidCallback? onMaxRunCountChanged;
+  final ValueChanged<bool> onCatchUpChanged;
+  final VoidCallback onMaxRunCountChanged;
   final Workspace? workspace;
   final bool isPersonal;
   final String? projectFolderPath;
@@ -101,13 +101,13 @@ class AutomationEditorFormBody extends StatelessWidget {
   final String? teamId;
   final String? expertKey;
   final String targetMemberId;
-  final ValueChanged<bool>? onIsPersonalChanged;
-  final ValueChanged<String?>? onProjectChanged;
-  final ValueChanged<String?>? onWorktreeChanged;
-  final ValueChanged<String?>? onPresetChanged;
-  final ValueChanged<String?>? onTeamChanged;
-  final ValueChanged<String?>? onExpertChanged;
-  final ValueChanged<String>? onTargetMemberChanged;
+  final ValueChanged<bool> onIsPersonalChanged;
+  final ValueChanged<String?> onProjectChanged;
+  final ValueChanged<String?> onWorktreeChanged;
+  final ValueChanged<String?> onPresetChanged;
+  final ValueChanged<String?> onTeamChanged;
+  final ValueChanged<String?> onExpertChanged;
+  final ValueChanged<String> onTargetMemberChanged;
 
   bool get isScheduledMessage => kind == AutomationEditorKind.scheduledMessage;
 
@@ -118,31 +118,21 @@ class AutomationEditorFormBody extends StatelessWidget {
     final monospaceStyle = Theme.of(
       context,
     ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace');
+    final commandErrorText = commandError;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TpFormField<String>(
+        TpInputFormField(
           id: 'name',
-          initialValue: nameController.text,
+          controller: nameController,
           label: Text(l10n.automations.name),
           layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kAutomationEditorFormLabelWidth,
           validator: (v) => (v == null || v.trim().isEmpty)
               ? l10n.automations.validationRequired
               : null,
-          builder: (state) {
-            return TextField(
-              controller: nameController,
-              focusNode: state.focusNode,
-              onChanged: state.didChange,
-              decoration: InputDecoration(
-                errorText: state.hasError ? '' : null,
-                errorStyle: const TextStyle(height: 0, fontSize: 0),
-              ),
-            );
-          },
         ),
         if (kind != AutomationEditorKind.runCommand) ...[
           const SizedBox(height: 12),
@@ -161,36 +151,38 @@ class AutomationEditorFormBody extends StatelessWidget {
         ],
         if (kind == AutomationEditorKind.launchPrompt) ...[
           const SizedBox(height: 12),
-          TpFormField<String>(
+          TpInputFormField(
+            key: const Key('automationSessionTitleField'),
             id: 'sessionTitle',
-            initialValue: sessionTitleController?.text ?? '',
+            controller: sessionTitleController,
             label: Text(l10n.automations.sessionTitle),
             description: Text(l10n.automations.sessionTitleHint),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: kAutomationEditorFormLabelWidth,
-            builder: (state) {
-              return TextField(
-                key: const Key('automationSessionTitleField'),
-                controller: sessionTitleController,
-                focusNode: state.focusNode,
-                onChanged: state.didChange,
-              );
-            },
           ),
         ],
         if (kind == AutomationEditorKind.runCommand) ...[
           const SizedBox(height: 12),
-          TextField(
+          TpFormFieldLayout(
             key: const Key('automationCommandField'),
-            controller: commandController,
-            minLines: 3,
-            maxLines: 8,
-            style: monospaceStyle,
-            onChanged: onCommandChanged,
-            decoration: InputDecoration(
-              labelText: l10n.automations.command,
-              helperText: l10n.automations.commandHelp,
-              errorText: commandError,
+            style: TpFormFieldLayoutStyle.inline,
+            labelWidth: kAutomationEditorFormLabelWidth,
+            label: Text(l10n.automations.command),
+            description: Text(l10n.automations.commandHelp),
+            error: commandErrorText == null ? null : Text(commandErrorText),
+            child: TpTextarea(
+              controller: commandController,
+              style: monospaceStyle,
+              minHeight: tpTextareaHeightForLines(bodyStyle, lines: 3),
+              maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 8),
+              onChanged: (_) => onCommandChanged(),
+              // Border-only error: the message is rendered by the layout, and
+              // an empty errorText keeps InputDecorator from reserving a row
+              // inside the fixed-height textarea shell.
+              decoration: InputDecoration(
+                errorText: commandErrorText == null ? null : '',
+                errorStyle: const TextStyle(height: 0, fontSize: 0),
+              ),
             ),
           ),
           if (workspace != null) ...[
@@ -199,33 +191,36 @@ class AutomationEditorFormBody extends StatelessWidget {
               workspace: workspace!,
               workingDirectoryPath: workingDirectoryPath,
               labelWidth: kAutomationEditorFormLabelWidth,
-              onChanged: onWorktreeChanged ?? (_) {},
+              onChanged: onWorktreeChanged,
             ),
           ],
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: TextField(
-                  key: const Key('automationTimeoutField'),
-                  controller: timeoutController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: l10n.automations.commandTimeout,
-                  ),
-                ),
+          TpInputFormField(
+            key: const Key('automationTimeoutField'),
+            id: 'commandTimeout',
+            controller: timeoutController,
+            label: Text(l10n.automations.commandTimeout),
+            layoutStyle: TpFormFieldLayoutStyle.inline,
+            labelWidth: kAutomationEditorFormLabelWidth,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 12),
+          TpFormField<bool>(
+            id: 'catchUpOnce',
+            initialValue: catchUpOnce,
+            label: Text(l10n.automations.catchUpOnce),
+            layoutStyle: TpFormFieldLayoutStyle.inline,
+            labelWidth: kAutomationEditorFormLabelWidth,
+            builder: (state) => Align(
+              alignment: Alignment.centerLeft,
+              child: Switch(
+                value: state.value!,
+                onChanged: (value) {
+                  state.didChange(value);
+                  onCatchUpChanged(value);
+                },
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 3,
-                child: SwitchListTile(
-                  value: catchUpOnce,
-                  onChanged: onCatchUpChanged,
-                  title: Text(l10n.automations.catchUpOnce),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
         if (kind == AutomationEditorKind.launchPrompt && workspace != null) ...[
@@ -241,13 +236,13 @@ class AutomationEditorFormBody extends StatelessWidget {
             expertKey: expertKey,
             targetMemberId: targetMemberId,
             labelWidth: kAutomationEditorFormLabelWidth,
-            onProjectChanged: onProjectChanged ?? (_) {},
-            onWorktreeChanged: onWorktreeChanged ?? (_) {},
-            onIsPersonalChanged: onIsPersonalChanged ?? (_) {},
-            onPresetChanged: onPresetChanged ?? (_) {},
-            onTeamChanged: onTeamChanged ?? (_) {},
-            onExpertChanged: onExpertChanged ?? (_) {},
-            onTargetMemberChanged: onTargetMemberChanged ?? (_) {},
+            onProjectChanged: onProjectChanged,
+            onWorktreeChanged: onWorktreeChanged,
+            onIsPersonalChanged: onIsPersonalChanged,
+            onPresetChanged: onPresetChanged,
+            onTeamChanged: onTeamChanged,
+            onExpertChanged: onExpertChanged,
+            onTargetMemberChanged: onTargetMemberChanged,
           ),
           const SizedBox(height: 12),
           TpFormField<bool>(
@@ -261,7 +256,7 @@ class AutomationEditorFormBody extends StatelessWidget {
               return Align(
                 alignment: Alignment.centerLeft,
                 child: Switch(
-                  value: state.value ?? false,
+                  value: state.value!,
                   onChanged: (v) {
                     state.didChange(v);
                     onReuseSessionChanged(v);
@@ -277,8 +272,8 @@ class AutomationEditorFormBody extends StatelessWidget {
               sessionId: boundSessionId,
               session: boundSession,
               cli: boundCli,
-              onSwitch: onSwitchSession ?? () {},
-              onUnbind: onUnbindSession ?? () {},
+              onSwitch: onSwitchSession,
+              onUnbind: onUnbindSession,
             ),
           ],
         ],
@@ -293,13 +288,16 @@ class AutomationEditorFormBody extends StatelessWidget {
         // nothing to configure — saving stores the implicit maxRunCount of 1.
         if (schedule.mode == AutomationScheduleMode.recurring) ...[
           const SizedBox(height: 12),
-          TpFormField<String>(
+          TpInputFormField(
             id: 'maxRunCount',
-            initialValue: maxRunCountController.text,
+            controller: maxRunCountController,
             label: Text(l10n.automations.maxRunCount),
             description: Text(l10n.automations.maxRunCountHint),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: kAutomationEditorFormLabelWidth,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onChanged: (_) => onMaxRunCountChanged(),
             validator: (v) {
               final raw = v?.trim() ?? '';
               if (raw.isEmpty) return null;
@@ -308,22 +306,6 @@ class AutomationEditorFormBody extends StatelessWidget {
                 return l10n.automations.invalidMaxRunCount;
               }
               return null;
-            },
-            builder: (state) {
-              return TextField(
-                controller: maxRunCountController,
-                focusNode: state.focusNode,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                onChanged: (value) {
-                  state.didChange(value);
-                  onMaxRunCountChanged?.call();
-                },
-                decoration: InputDecoration(
-                  errorText: state.hasError ? '' : null,
-                  errorStyle: const TextStyle(height: 0, fontSize: 0),
-                ),
-              );
             },
           ),
         ],
@@ -339,7 +321,7 @@ class AutomationEditorFormBody extends StatelessWidget {
             return Align(
               alignment: Alignment.centerLeft,
               child: Switch(
-                value: runLimitReached ? false : (state.value ?? false),
+                value: runLimitReached ? false : state.value!,
                 onChanged: runLimitReached
                     ? null
                     : (v) {
