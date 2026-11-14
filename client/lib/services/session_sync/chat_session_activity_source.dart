@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../cubits/chat_cubit.dart';
+import '../attention/attention_event.dart';
 import '../chat/rewind/edit/seat_edit_coordinator.dart';
 import '../session_protocol/session_authority.dart';
 import '../session_protocol/session_models.dart';
@@ -16,7 +17,6 @@ final class ChatSessionActivitySource {
   StreamSubscription<ChatState>? _subscription;
   Set<String> _known = const {};
   final Map<String, bool> _wasBusy = {};
-  int _attentionSeq = 0;
   final Map<String, SeatEditCoordinator> _edits = {};
   final Map<String, void Function()> _editListeners = {};
   final Map<String, String> _lastEditKey = {};
@@ -84,12 +84,14 @@ final class ChatSessionActivitySource {
         final key = '${seat.sessionId}|${seat.memberId}';
         final wasBusy = _wasBusy[key] ?? false;
         if (wasBusy && !seat.isBusy && seat.readyToChat) {
-          authority.publishAttention(
-            sessionId: sessionId,
-            kind: 'idle',
-            id: 'attention-${++_attentionSeq}',
-            memberId: seat.memberId,
-            turnId: seat.turnId,
+          unawaited(
+            authority.publishAttention(
+              sessionId: sessionId,
+              kind: AttentionKind.idle,
+              memberId: seat.memberId,
+              turnId: seat.turnId,
+              workspaceId: tab.persistedSession?.workspaceId ?? '',
+            ),
           );
         }
         _wasBusy[key] = seat.isBusy;

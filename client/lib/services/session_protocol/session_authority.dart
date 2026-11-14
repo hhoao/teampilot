@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../../utils/logging/logger.dart';
+import '../attention/attention_event.dart';
+import '../attention/attention_log.dart';
 import 'session_control_port.dart';
 import 'session_models.dart';
 
@@ -12,13 +14,37 @@ import 'session_models.dart';
 /// results. It never touches PTYs directly; control goes through
 /// [SessionControlPort].
 final class SessionAuthority {
-  SessionAuthority({
-    required this.authorityId,
+  factory SessionAuthority({
+    required String authorityId,
     required SessionControlPort controlPort,
     int? epoch,
+    AttentionLog? attentionLog,
+    DateTime Function()? clock,
+  }) {
+    final resolvedEpoch =
+        attentionLog?.epoch ?? epoch ?? DateTime.now().millisecondsSinceEpoch;
+    return SessionAuthority._(
+      authorityId: authorityId,
+      controlPort: controlPort,
+      epoch: resolvedEpoch,
+      attentionLog: attentionLog ??
+          AttentionLog(
+            authorityId: authorityId,
+            epoch: resolvedEpoch,
+            clock: clock,
+          ),
+      clock: clock,
+    );
+  }
+
+  SessionAuthority._({
+    required this.authorityId,
+    required SessionControlPort controlPort,
+    required this.epoch,
+    required AttentionLog attentionLog,
     DateTime Function()? clock,
   }) : _controlPort = controlPort,
-       epoch = epoch ?? DateTime.now().millisecondsSinceEpoch,
+       _attentionLog = attentionLog,
        _clock = clock ?? DateTime.now;
 
   final String authorityId;
@@ -46,14 +72,16 @@ final class SessionAuthority {
       StreamController<SessionContentDelta>.broadcast();
   final StreamController<SessionListDelta> _sessionLists =
       StreamController<SessionListDelta>.broadcast();
-  final StreamController<SessionAttention> _attention =
-      StreamController<SessionAttention>.broadcast();
+
+  final AttentionLog _attentionLog;
+
+  AttentionLog get attentionLog => _attentionLog;
 
   Stream<SessionDelta> get deltas => _deltas.stream;
   Stream<SessionContentInvalidated> get content => _content.stream;
   Stream<SessionContentDelta> get contentDeltas => _contentDeltas.stream;
   Stream<SessionListDelta> get sessionLists => _sessionLists.stream;
-  Stream<SessionAttention> get attention => _attention.stream;
+  Stream<AttentionEvent> get attention => _attentionLog.appended;
 
   List<SessionSnapshot> snapshots() {
     final ids = _sessions.keys.toList()..sort();
@@ -639,23 +667,26 @@ final class SessionAuthority {
     return event;
   }
 
-  SessionAttention publishAttention({
+  Future<AttentionEvent> publishAttention({
     required String sessionId,
-    required String kind,
-    required String id,
+    required AttentionKind kind,
     String memberId = '',
     String? turnId,
+    String workspaceId = '',
+    String title = '',
+    String message = '',
+    Map<String, Object?> payload = const {},
   }) {
-    final event = SessionAttention(
-      id: id,
+    return _attentionLog.append(
       sessionId: sessionId,
-      kind: kind,
-      createdAt: _clock().toUtc(),
       memberId: memberId,
+      kind: kind,
       turnId: turnId,
+      workspaceId: workspaceId,
+      title: title,
+      message: message,
+      payload: payload,
     );
-    if (!_attention.isClosed) _attention.add(event);
-    return event;
   }
 
   Future<void> dispose() async {
@@ -663,7 +694,7 @@ final class SessionAuthority {
     await _content.close();
     await _contentDeltas.close();
     await _sessionLists.close();
-    await _attention.close();
+    await _attentionLog.close();
   }
 
   Map<String, SessionSeatActivity> _normalize(

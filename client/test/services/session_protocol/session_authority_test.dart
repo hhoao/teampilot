@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/attention/attention_event.dart';
 import 'package:teampilot/services/session_protocol/session_authority.dart';
 import 'package:teampilot/services/session_protocol/session_control_port.dart';
 import 'package:teampilot/services/session_protocol/session_models.dart';
@@ -300,6 +301,29 @@ void main() {
     final second = authority.publishContentInvalidated(sessionId: 's1');
 
     expect(first.seq, 1);
+    expect(second.seq, 2);
+  });
+
+  test('publishAttention appends to the authority log', () async {
+    final event = await authority.publishAttention(
+      sessionId: 's1',
+      kind: AttentionKind.idle,
+      memberId: 'dev',
+      workspaceId: 'ws1',
+    );
+
+    expect(event.seq, 1);
+    expect(event.authorityId, 'desk');
+    expect(event.epoch, 7);
+    expect(event.workspaceId, 'ws1');
+    expect(authority.attentionLog.latestSeq, 1);
+    expect(authority.attentionLog.events.single.eventId, event.eventId);
+
+    final second = await authority.publishAttention(
+      sessionId: 's1',
+      kind: AttentionKind.idle,
+      memberId: 'dev',
+    );
     expect(second.seq, 2);
   });
 }
