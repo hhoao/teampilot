@@ -14,7 +14,8 @@ import 'attention_event.dart';
 /// `seq` is assigned here, in append order. With [fs] + [path] every event is
 /// persisted before it is emitted. A failed file write is logged and the event
 /// is still emitted: losing one notification is worse than losing durability
-/// for that one event.
+/// for that one event. The log then stays dirty until a compaction succeeds, so
+/// the next append rewrites the file with the events memory still holds.
 final class AttentionLog {
   AttentionLog({
     required this.authorityId,
@@ -47,6 +48,10 @@ final class AttentionLog {
   Future<void> _queue = Future<void>.value();
   int _nextSeq = 1;
   bool _closed = false;
+
+  /// Set when a write failed, so the next successful append/compaction
+  /// reconciles the file with the events memory holds.
+  bool _dirty = false;
 
   Stream<AttentionEvent> get appended => _appended.stream;
 
@@ -131,13 +136,14 @@ final class AttentionLog {
     Map<String, Object?> payload = const {},
     DateTime? occurredAt,
   }) {
+    if (_closed) {
+      return Future<AttentionEvent>.error(
+        StateError('attention log is closed'),
+      );
+    }
     final completer = Completer<AttentionEvent>();
     _queue = _queue.catchError((Object _) {}).then((_) async {
       try {
-        if (_closed) {
-          completer.completeError(StateError('attention log is closed'));
-          return;
-        }
         final now = (occurredAt ?? _clock()).toUtc();
         final event = AttentionEvent(
           eventId: _eventId(),
@@ -155,9 +161,12 @@ final class AttentionLog {
           message: message,
           payload: payload,
         );
-        await _persist(event);
+        final persisted = await _persist(event);
         _events.add(event);
-        if (_pruneMemory()) await _compact();
+        final pruned = _pruneMemory();
+        if (!persisted || _dirty || pruned) {
+          _dirty = !await _compact();
+        }
         if (!_appended.isClosed) _appended.add(event);
         completer.complete(event);
       } on Object catch (error, stackTrace) {
@@ -199,18 +208,22 @@ final class AttentionLog {
     );
   }
 
-  Future<void> _persist(AttentionEvent event) async {
+  /// Appends [event] to the file. Returns `false` when the write failed; the
+  /// caller keeps the event in memory and reconciles on the next compaction.
+  Future<bool> _persist(AttentionEvent event) async {
     final fs = _fs;
     final path = _path;
-    if (fs == null || path == null) return;
+    if (fs == null || path == null) return true;
     try {
       await fs.appendString(path, '${jsonEncode(event.toJson())}\n');
+      return true;
     } on Object catch (error, stackTrace) {
       appLogger.w(
         '[$tag] append failed path=$path',
         error: error,
         stackTrace: stackTrace,
       );
+      return false;
     }
   }
 
@@ -224,21 +237,24 @@ final class AttentionLog {
     return _events.length != before;
   }
 
-  Future<void> _compact() async {
+  /// Rewrites the file from memory. Returns `false` when the write failed.
+  Future<bool> _compact() async {
     final fs = _fs;
     final path = _path;
-    if (fs == null || path == null) return;
+    if (fs == null || path == null) return true;
     try {
       final content = _events.isEmpty
           ? ''
           : '${_events.map((event) => jsonEncode(event.toJson())).join('\n')}\n';
       await fs.atomicWrite(path, content);
+      return true;
     } on Object catch (error, stackTrace) {
       appLogger.w(
         '[$tag] compact failed path=$path',
         error: error,
         stackTrace: stackTrace,
       );
+      return false;
     }
   }
 

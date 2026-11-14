@@ -42,6 +42,34 @@ void main() {
     await log.close();
   });
 
+  test('an event is on disk before appended fires', () async {
+    final fs = InMemoryFilesystem();
+    const path = '/tp/attention/log-7.jsonl';
+    final log = await AttentionLog.open(
+      authorityId: 'desk',
+      epoch: 7,
+      fs: fs,
+      path: path,
+      clock: () => DateTime.utc(2026, 11, 14),
+      eventId: () => 'evt-${logSeq++}',
+    );
+    final onDisk = <String?>[];
+    final sub = log.appended.listen((event) => onDisk.add(fs.files[path]));
+
+    final event = await log.append(
+      sessionId: 's1',
+      memberId: 'dev',
+      kind: AttentionKind.idle,
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(onDisk, hasLength(1));
+    expect(onDisk.single, contains(event.eventId));
+
+    await sub.cancel();
+    await log.close();
+  });
+
   test('slice returns only events after the cursor', () async {
     final log = AttentionLog(
       authorityId: 'desk',
@@ -139,6 +167,103 @@ void main() {
     await second.close();
   });
 
+  test('a failed append still emits and the next append reconciles it',
+      () async {
+    final fs = _FlakyFilesystem();
+    const path = '/tp/attention/log-7.jsonl';
+    final log = await AttentionLog.open(
+      authorityId: 'desk',
+      epoch: 7,
+      fs: fs,
+      path: path,
+      clock: () => DateTime.utc(2026, 11, 14),
+      eventId: () => 'evt-${logSeq++}',
+    );
+    final seen = <AttentionEvent>[];
+    final sub = log.appended.listen(seen.add);
+
+    fs.fail = true;
+    final first = await log.append(
+      sessionId: 's1',
+      memberId: 'dev',
+      kind: AttentionKind.idle,
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(seen.map((event) => event.eventId), [first.eventId]);
+    expect(fs.files[path] ?? '', isNot(contains(first.eventId)));
+
+    fs.fail = false;
+    final second = await log.append(
+      sessionId: 's2',
+      memberId: 'dev',
+      kind: AttentionKind.idle,
+    );
+
+    final content = fs.files[path] ?? '';
+    expect(content, contains(first.eventId));
+    expect(content, contains(second.eventId));
+
+    await sub.cancel();
+    await log.close();
+  });
+
+  test('concurrent appends keep call order', () async {
+    final log = AttentionLog(
+      authorityId: 'desk',
+      epoch: 7,
+      clock: () => DateTime.utc(2026, 11, 14),
+      eventId: () => 'evt-${logSeq++}',
+    );
+
+    final events = await Future.wait([
+      for (var i = 0; i < 20; i++)
+        log.append(
+          sessionId: 's$i',
+          memberId: 'dev',
+          kind: AttentionKind.idle,
+        ),
+    ]);
+
+    expect(
+      events.map((event) => event.seq),
+      [for (var i = 1; i <= 20; i++) i],
+    );
+    expect(
+      events.map((event) => event.sessionId),
+      [for (var i = 0; i < 20; i++) 's$i'],
+    );
+    expect(log.latestSeq, 20);
+    await log.close();
+  });
+
+  test('an append queued before close still runs; later appends fail',
+      () async {
+    final log = AttentionLog(
+      authorityId: 'desk',
+      epoch: 7,
+      clock: () => DateTime.utc(2026, 11, 14),
+      eventId: () => 'evt-${logSeq++}',
+    );
+
+    final queued = log.append(
+      sessionId: 's1',
+      memberId: 'dev',
+      kind: AttentionKind.idle,
+    );
+    final closed = log.close();
+    await expectLater(
+      log.append(
+        sessionId: 's2',
+        memberId: 'dev',
+        kind: AttentionKind.idle,
+      ),
+      throwsStateError,
+    );
+
+    expect((await queued).seq, 1);
+    await closed;
+  });
+
   test('corrupt lines are skipped', () async {
     final fs = InMemoryFilesystem();
     final path = '/tp/attention/log-7.jsonl';
@@ -165,3 +290,20 @@ void main() {
 }
 
 var logSeq = 0;
+
+/// An [InMemoryFilesystem] whose writes can be made to fail on demand.
+final class _FlakyFilesystem extends InMemoryFilesystem {
+  bool fail = false;
+
+  @override
+  Future<void> appendString(String path, String content) async {
+    if (fail) throw StateError('append failed');
+    return super.appendString(path, content);
+  }
+
+  @override
+  Future<void> atomicWrite(String path, String content) async {
+    if (fail) throw StateError('atomic write failed');
+    return super.atomicWrite(path, content);
+  }
+}
