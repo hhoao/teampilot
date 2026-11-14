@@ -18,6 +18,46 @@ class SessionIdleNotificationService {
   final DesktopSystemNotifier _desktop;
   final NotificationRecorder? _recorder;
 
+  /// Records a remote authority's idle attention in the in-app center and,
+  /// when the app is not focused and the user enabled the OS notification
+  /// preference, shows a system notification.
+  ///
+  /// Unlike [notifySessionsBecameIdle], the in-app record is never skipped:
+  /// the remote session may not be an open tab on this device, so the center
+  /// is the only place the user can find the event after the fact.
+  Future<void> notifyRemoteSessionIdle({
+    required String title,
+    required String message,
+    required String badge,
+    required String payload,
+    bool systemNotificationEnabled = true,
+  }) async {
+    _recorder?.record(
+      title: title,
+      message: message,
+      variant: TpToastVariant.success,
+      payload: payload,
+    );
+
+    if (!systemNotificationEnabled) return;
+
+    try {
+      if (await _desktop.isAppFocused()) return;
+      await _desktop.showNotification(
+        title: title,
+        body: message,
+        subtitle: badge,
+        payload: payload,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[session-idle-notify] remote OS notification failed title=$title',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
   Future<void> notifySessionsBecameIdle({
     required Iterable<String> sessionIds,
     required List<AppSession> sessions,

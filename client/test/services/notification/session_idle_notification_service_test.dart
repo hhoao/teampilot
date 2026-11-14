@@ -226,6 +226,130 @@ void main() {
   });
 
   test(
+    'notifyRemoteSessionIdle records and shows the OS notification',
+    () async {
+      final recorder = _RecordingNotifier();
+      final shown = <_Shown>[];
+      final service = SessionIdleNotificationService(
+        recorder: recorder,
+        desktopNotifier: DesktopSystemNotifier(
+          isAppFocused: () async => false,
+          show: ({required title, required body, subtitle, payload}) async =>
+              shown.add((
+                title: title,
+                body: body,
+                subtitle: subtitle,
+                payload: payload,
+              )),
+        ),
+      );
+
+      await service.notifyRemoteSessionIdle(
+        title: 'Remote session',
+        message: 'Ready for your next message',
+        badge: 'Agent ready',
+        payload: '/home-v2/workspace/w1?session=s1',
+      );
+
+      expect(recorder.titles, ['Remote session']);
+      expect(recorder.messages, ['Ready for your next message']);
+      expect(recorder.payloads, ['/home-v2/workspace/w1?session=s1']);
+      expect(shown, [
+        (
+          title: 'Remote session',
+          body: 'Ready for your next message',
+          subtitle: 'Agent ready',
+          payload: '/home-v2/workspace/w1?session=s1',
+        ),
+      ]);
+    },
+  );
+
+  test(
+    'notifyRemoteSessionIdle records but skips the OS notification when disabled',
+    () async {
+      final recorder = _RecordingNotifier();
+      final shown = <_Shown>[];
+      final service = SessionIdleNotificationService(
+        recorder: recorder,
+        desktopNotifier: DesktopSystemNotifier(
+          isAppFocused: () async => false,
+          show: ({required title, required body, subtitle, payload}) async =>
+              shown.add((
+                title: title,
+                body: body,
+                subtitle: subtitle,
+                payload: payload,
+              )),
+        ),
+      );
+
+      await service.notifyRemoteSessionIdle(
+        title: 'Remote session',
+        message: 'Ready',
+        badge: 'Agent ready',
+        payload: '/p',
+        systemNotificationEnabled: false,
+      );
+
+      expect(recorder.titles, ['Remote session']);
+      expect(shown, isEmpty);
+    },
+  );
+
+  test(
+    'notifyRemoteSessionIdle records but skips the OS notification when focused',
+    () async {
+      final recorder = _RecordingNotifier();
+      final shown = <_Shown>[];
+      final service = SessionIdleNotificationService(
+        recorder: recorder,
+        desktopNotifier: DesktopSystemNotifier(
+          isAppFocused: () async => true,
+          show: ({required title, required body, subtitle, payload}) async =>
+              shown.add((
+                title: title,
+                body: body,
+                subtitle: subtitle,
+                payload: payload,
+              )),
+        ),
+      );
+
+      await service.notifyRemoteSessionIdle(
+        title: 'Remote session',
+        message: 'Ready',
+        badge: 'Agent ready',
+        payload: '/p',
+      );
+
+      expect(recorder.titles, ['Remote session']);
+      expect(shown, isEmpty);
+    },
+  );
+
+  test('notifyRemoteSessionIdle swallows OS notification failures', () async {
+    final recorder = _RecordingNotifier();
+    final service = SessionIdleNotificationService(
+      recorder: recorder,
+      desktopNotifier: DesktopSystemNotifier(
+        isAppFocused: () async => false,
+        show: ({required title, required body, subtitle, payload}) async =>
+            throw StateError('no permission'),
+      ),
+    );
+
+    await service.notifyRemoteSessionIdle(
+      title: 'Remote session',
+      message: 'Ready',
+      badge: 'Agent ready',
+      payload: '/p',
+    );
+
+    expect(recorder.titles, ['Remote session']);
+  });
+
+  test(
     'notifySessionsBecameIdle skips sessions whose tab is no longer open',
     () async {
       final recorder = _RecordingNotifier();

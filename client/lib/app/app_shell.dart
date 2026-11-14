@@ -1630,6 +1630,8 @@ Future<AppShell> buildAppShell({
       workbench: workbenchCubit,
       workspaceSearchIndexes: workspaceSearchIndexes,
       notificationCubit: notificationCubit,
+      notifyOnSessionIdle: () =>
+          sessionPreferencesCubit.state.preferences.notifyOnSessionIdle,
       isExpectedFailure: isSshProfileDown,
       waitForRecovery: waitForSshProfileRecovery,
       onHistoryLoaderCreated: (loader) => aiHistoryLoaderRef = loader,

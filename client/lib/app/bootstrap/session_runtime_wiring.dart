@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/widgets.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/ai_history_cubit.dart';
 import '../../cubits/board_cubit.dart';
@@ -19,7 +18,7 @@ import '../../services/chat/conversation/history/ai_history_loader.dart';
 import '../../services/chat/conversation/history/session_history_context_builder.dart';
 import '../../services/chat/session/session_lifecycle_service.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
-import '../../services/notification/desktop_system_notifier.dart';
+import '../../services/notification/session_idle_notification_service.dart';
 import '../../services/search/workspace_search_indexes.dart';
 import '../../services/session_protocol/session_authority.dart';
 import '../../services/session_protocol/session_models.dart';
@@ -66,6 +65,7 @@ SessionRuntimeWiring wireSessionRuntime({
   required WorkbenchCubit workbench,
   required WorkspaceSearchIndexes workspaceSearchIndexes,
   required NotificationCubit notificationCubit,
+  required bool Function() notifyOnSessionIdle,
   required bool Function(Object error) isExpectedFailure,
   required Future<bool> Function(Object error) waitForRecovery,
   required void Function(AiHistoryLoader loader) onHistoryLoaderCreated,
@@ -158,8 +158,21 @@ SessionRuntimeWiring wireSessionRuntime({
       unawaited(chatCubit.refreshSessionsForWorkspace(workspaceId));
     }
   });
+  final remoteIdleNotifications = SessionIdleNotificationService(
+    recorder: notificationCubit,
+  );
+  // The authority sends one attention per idle edge. The bounded set only
+  // guards against a duplicate frame within one connection lifetime.
+  final seenRemoteAttentionIds = <String>{};
   Future<void> notifyRemoteAttention(SessionAttention attention) async {
     if (attention.kind != 'idle') return;
+    if (attention.id.isNotEmpty &&
+        !seenRemoteAttentionIds.add(attention.id)) {
+      return;
+    }
+    if (seenRemoteAttentionIds.length > 256) {
+      seenRemoteAttentionIds.clear();
+    }
     final session = chatCubit.state.sessions
         .where((item) => item.sessionId == attention.sessionId)
         .firstOrNull;
@@ -174,19 +187,12 @@ SessionRuntimeWiring wireSessionRuntime({
       workspaceId: session?.workspaceId ?? '',
       sessionId: attention.sessionId,
     );
-    notificationCubit.record(
+    await remoteIdleNotifications.notifyRemoteSessionIdle(
       title: title,
       message: l10n.session.idleNotificationSubtitle,
-      variant: TpToastVariant.success,
+      badge: l10n.session.idleNotificationTitle,
       payload: payload,
-    );
-    final notifier = DesktopSystemNotifier.instance;
-    if (await notifier.isAppFocused()) return;
-    await notifier.showNotification(
-      title: title,
-      body: l10n.session.idleNotificationSubtitle,
-      subtitle: l10n.session.idleNotificationTitle,
-      payload: payload,
+      systemNotificationEnabled: notifyOnSessionIdle(),
     );
   }
 
