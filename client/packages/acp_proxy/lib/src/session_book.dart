@@ -63,6 +63,12 @@ class AcpProxySessionBook {
 
   bool turnInProgress(String sessionId) =>
       _sessions[sessionId]?.running ?? false;
+
+  /// Ids of sessions this book is tracking, in insertion order.
+  List<String> get sessionIds => _sessions.keys.toList(growable: false);
+
+  /// True when [sessionId]'s current connection id is non-null.
+  bool phoneConnected(String sessionId) => connectionFor(sessionId) != null;
 }
 
 class _Session {
