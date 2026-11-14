@@ -2104,6 +2104,36 @@ void main() {
     await server.stop();
     await authority.dispose();
   });
+
+  test('client cancel is a noop when the turn already ended', () async {
+    final pipe = _Pipe();
+    final control = _Control();
+    final authority = SessionAuthority(
+      authorityId: 'desk',
+      controlPort: control,
+      epoch: 7,
+    );
+    final server = SessionServer(
+      channel: pipe.server,
+      authority: authority,
+      deviceId: 'desk',
+    );
+    final client = SessionClient(channel: pipe.client, deviceId: 'phone');
+
+    await server.start();
+    await client.start();
+    await _waitFor(() => client.isReady);
+
+    authority.updateSeats('s1', [_seat(SessionSeatActivity.stateIdle)]);
+    final result = await client.cancelTurn(sessionId: 's1', memberId: 'dev');
+
+    expect(result.status, SessionIntentStatus.noop);
+    expect(control.cancels, 0);
+
+    await client.close();
+    await server.stop();
+    await authority.dispose();
+  });
 }
 ```
 
