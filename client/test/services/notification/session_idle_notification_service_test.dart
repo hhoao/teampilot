@@ -298,7 +298,39 @@ void main() {
   );
 
   test(
-    'notifyRemoteSessionIdle records but skips the OS notification when focused',
+    'notifyRemoteSessionIdle records but skips the OS notification when focused on the session',
+    () async {
+      final recorder = _RecordingNotifier();
+      final shown = <_Shown>[];
+      final service = SessionIdleNotificationService(
+        recorder: recorder,
+        desktopNotifier: DesktopSystemNotifier(
+          isAppFocused: () async => true,
+          show: ({required title, required body, subtitle, payload}) async =>
+              shown.add((
+                title: title,
+                body: body,
+                subtitle: subtitle,
+                payload: payload,
+              )),
+        ),
+      );
+
+      await service.notifyRemoteSessionIdle(
+        title: 'Remote session',
+        message: 'Ready',
+        badge: 'Agent ready',
+        payload: '/p',
+        isViewingSession: true,
+      );
+
+      expect(recorder.titles, ['Remote session']);
+      expect(shown, isEmpty);
+    },
+  );
+
+  test(
+    'notifyRemoteSessionIdle shows the OS notification when focused elsewhere',
     () async {
       final recorder = _RecordingNotifier();
       final shown = <_Shown>[];
@@ -324,7 +356,14 @@ void main() {
       );
 
       expect(recorder.titles, ['Remote session']);
-      expect(shown, isEmpty);
+      expect(shown, [
+        (
+          title: 'Remote session',
+          body: 'Ready',
+          subtitle: 'Agent ready',
+          payload: '/p',
+        ),
+      ]);
     },
   );
 

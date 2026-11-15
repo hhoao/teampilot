@@ -252,6 +252,7 @@ Future<SessionRuntimeWiring> wireSessionRuntime({
       badge: l10n.session.idleNotificationTitle,
       payload: payload,
       systemNotificationEnabled: notifyOnSessionIdle(),
+      isViewingSession: chatCubit.activeTab?.sessionId == attention.sessionId,
     );
   }
 

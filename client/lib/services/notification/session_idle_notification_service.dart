@@ -19,8 +19,8 @@ class SessionIdleNotificationService {
   final NotificationRecorder? _recorder;
 
   /// Records a remote authority's idle attention in the in-app center and,
-  /// when the app is not focused and the user enabled the OS notification
-  /// preference, shows a system notification.
+  /// when the user enabled the OS notification preference and is not looking
+  /// at that session, shows a system notification.
   ///
   /// Unlike [notifySessionsBecameIdle], the in-app record is never skipped:
   /// the remote session may not be an open tab on this device, so the center
@@ -31,6 +31,7 @@ class SessionIdleNotificationService {
     required String badge,
     required String payload,
     bool systemNotificationEnabled = true,
+    bool isViewingSession = false,
   }) async {
     _recorder?.record(
       title: title,
@@ -45,8 +46,9 @@ class SessionIdleNotificationService {
     }
 
     try {
-      if (await _desktop.isAppFocused()) {
-        appLogger.i('[session-idle-notify] remote skipped: focused');
+      final focused = await _desktop.isAppFocused();
+      if (focused && isViewingSession) {
+        appLogger.i('[session-idle-notify] remote skipped: focused on session');
         return;
       }
       await _desktop.showNotification(
@@ -55,7 +57,9 @@ class SessionIdleNotificationService {
         subtitle: badge,
         payload: payload,
       );
-      appLogger.i('[session-idle-notify] remote shown title=$title');
+      appLogger.i(
+        '[session-idle-notify] remote shown title=$title focused=$focused',
+      );
     } on Object catch (error, stackTrace) {
       appLogger.w(
         '[session-idle-notify] remote OS notification failed title=$title',
