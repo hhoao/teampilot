@@ -966,9 +966,10 @@ Future<AppShell> buildAppShell({
   StreamSubscription<SshHomeConnectivityState>? homeConnectivitySub;
   String? watchedHomeProfileConnectivityKey;
   // Declared outside the try so the wiring-failure path can tear down the
-  // subscriptions/inbox of a discarded shell.
+  // subscriptions/inbox/authority of a discarded shell.
   StreamSubscription<AttentionEvent>? attentionSub;
   AttentionInbox? attentionInbox;
+  SessionAuthority? sessionAuthority;
 
   try {
     connectionModeService = ConnectionModeService(
@@ -1652,7 +1653,7 @@ Future<AppShell> buildAppShell({
     final aiHistoryCubit = sessionRuntime.aiHistoryCubit;
     final sessionRemoteActivityCubit =
         sessionRuntime.sessionRemoteActivityCubit;
-    final sessionAuthority = sessionRuntime.sessionAuthority;
+    sessionAuthority = sessionRuntime.sessionAuthority;
     final sessionActivitySource = sessionRuntime.activitySource;
     final sessionProtocolController = sessionRuntime.protocolController;
     final sessionRemoteRefreshSub = sessionRuntime.sessionRemoteRefreshSub;
@@ -2359,7 +2360,7 @@ Future<AppShell> buildAppShell({
       sessionRemoteActivityCubit: sessionRemoteActivityCubit,
       sessionProtocolController: sessionProtocolController,
       sessionActivitySource: sessionActivitySource,
-      sessionAuthority: sessionAuthority,
+      sessionAuthority: sessionAuthority!,
       sessionLifecycleHandler: sessionLifecycleHandler,
       agentAttentionCubit: agentAttentionCubit,
       seatLeaseCubit: seatLeaseCubit,
@@ -2495,6 +2496,7 @@ Future<AppShell> buildAppShell({
     await homeConnectivitySub?.cancel();
     await attentionSub?.cancel();
     await attentionInbox?.dispose();
+    await sessionAuthority?.dispose();
     await memberPresenceCubit?.close();
     await catalogRuntime?.bus.close();
     await homeConnectionCubit?.close();

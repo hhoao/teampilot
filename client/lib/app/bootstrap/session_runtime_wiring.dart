@@ -32,6 +32,7 @@ import '../../services/session_sync/session_content_stream_bus.dart';
 import '../../services/session_sync/session_protocol_controller.dart';
 import '../../services/shared_state/shared_state_identity.dart';
 import '../../services/storage/home_storage.dart';
+import '../../utils/logging/logger.dart';
 import '../../utils/session/workspace_tab_session_scope.dart';
 
 /// The per-session runtime: mailbox/board cubits, the shared AI history store,
@@ -129,24 +130,57 @@ Future<SessionRuntimeWiring> wireSessionRuntime({
   );
   final sessionRemoteActivityCubit = SessionRemoteActivityCubit();
   final authorityEpoch = DateTime.now().millisecondsSinceEpoch;
-  final attentionLog = await AttentionLog.open(
-    authorityId: SharedStateIdentity.deviceId,
-    epoch: authorityEpoch,
-    fs: deviceStorage.fs,
-    path: deviceStorage.paths.attentionLogJsonForEpoch(authorityEpoch),
-  );
-  final attentionCursorStore = AttentionCursorStore(
-    fs: deviceStorage.fs,
-    path: deviceStorage.paths.attentionCursorsJson,
-  );
-  await attentionCursorStore.load();
-  final attentionInbox = AttentionInbox(store: attentionCursorStore);
-  final sessionAuthority = SessionAuthority(
-    authorityId: SharedStateIdentity.deviceId,
-    controlPort: ChatSessionControlPort(chatCubit),
-    epoch: authorityEpoch,
-    attentionLog: attentionLog,
-  );
+  AttentionLog? attentionLog;
+  AttentionInbox? attentionInbox;
+  StreamSubscription<AttentionEvent>? attentionSub;
+  SessionAuthority? sessionAuthority;
+  var attentionResourcesReady = false;
+  try {
+    final logPath = deviceStorage.paths.attentionLogJsonForEpoch(authorityEpoch);
+    try {
+      attentionLog = await AttentionLog.open(
+        authorityId: SharedStateIdentity.deviceId,
+        epoch: authorityEpoch,
+        fs: deviceStorage.fs,
+        path: logPath,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[attention] log open failed; falling back to in-memory log '
+        'epoch=$authorityEpoch path=$logPath',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      attentionLog = AttentionLog(
+        authorityId: SharedStateIdentity.deviceId,
+        epoch: authorityEpoch,
+      );
+    }
+    final attentionCursorStore = AttentionCursorStore(
+      fs: deviceStorage.fs,
+      path: deviceStorage.paths.attentionCursorsJson,
+    );
+    var cursorLoaded = false;
+    for (var attempt = 0; attempt < 3 && !cursorLoaded; attempt++) {
+      cursorLoaded = await attentionCursorStore.load();
+      if (!cursorLoaded && attempt < 2) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+    }
+    if (!cursorLoaded) {
+      throw StateError(
+        'attention cursor store unavailable; refusing to start live-only '
+        'without a durable cursor '
+        'path=${deviceStorage.paths.attentionCursorsJson}',
+      );
+    }
+    attentionInbox = AttentionInbox(store: attentionCursorStore);
+    sessionAuthority = SessionAuthority(
+      authorityId: SharedStateIdentity.deviceId,
+      controlPort: ChatSessionControlPort(chatCubit),
+      epoch: authorityEpoch,
+      attentionLog: attentionLog,
+    );
   final sessionActivitySource = ChatSessionActivitySource(chatCubit);
   final contentInvalidationSub = SessionContentInvalidationBus.stream.listen((
     event,
@@ -221,7 +255,7 @@ Future<SessionRuntimeWiring> wireSessionRuntime({
     );
   }
 
-  final attentionSub = attentionInbox.fresh.listen((event) {
+  attentionSub = attentionInbox.fresh.listen((event) {
     if (event.kind != AttentionKind.idle) return;
     unawaited(notifyRemoteAttention(event));
   });
@@ -268,6 +302,7 @@ Future<SessionRuntimeWiring> wireSessionRuntime({
             memberId: memberId,
           );
 
+  attentionResourcesReady = true;
   return (
     sessionRemoteActivityCubit: sessionRemoteActivityCubit,
     sessionAuthority: sessionAuthority,
@@ -282,4 +317,11 @@ Future<SessionRuntimeWiring> wireSessionRuntime({
     contentInvalidationSub: contentInvalidationSub,
     contentStreamSub: contentStreamSub,
   );
+  } finally {
+    if (!attentionResourcesReady) {
+      await attentionSub?.cancel();
+      await attentionInbox?.dispose();
+      await sessionAuthority?.dispose();
+    }
+  }
 }
