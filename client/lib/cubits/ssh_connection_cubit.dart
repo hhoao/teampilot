@@ -167,6 +167,15 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
     final profile = _profilesById[profileId];
     if (profile == null) return;
 
+    // Boot (bootstrapAppData) and hot recovery (onConnected) replay this
+    // command after every successful connect while the home storage lease is
+    // already live. Re-running the paired endpoint dial then republishes
+    // `connecting` and rewrites host/port per candidate; the storage pool
+    // reads the changed hostIdentifier as `profileInvalidated`, tears the
+    // live lease down and restarts the reconnect loop. A live lease already
+    // is the connected state, so leave it untouched.
+    if (_factory.hasLiveStorageClient(profileId)) return;
+
     _connectivity.publish(
       _connectivity.stateFor(profileId).copyWith(
         phase: SshPhase.connecting,

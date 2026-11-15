@@ -22,9 +22,15 @@ class SshHostKeyMismatch implements Exception {
       '${endpoint.host}:${endpoint.port})';
 }
 
-/// Dial candidates for a paired profile in try order: lan → extra → relay,
-/// preserving offer order within each kind. [ConnectPolicy.lanOnly] keeps
-/// lan candidates only.
+/// Dial candidates for a paired profile in try order: the kind of the last
+/// successful connect first, then lan → extra → relay, preserving offer order
+/// within each kind. [ConnectPolicy.lanOnly] keeps lan candidates only.
+///
+/// A paired profile has [SshProfile.host] / [SshProfile.port] rewritten to the
+/// last winning endpoint, so dialing a different kind first changes the
+/// hostIdentifier mid-connect: the storage pool treats that as a profile
+/// invalidation and tears down the live lease (and, off-LAN, burns the dial
+/// budget on a dead LAN address).
 List<SshReachabilityEndpoint> planEndpointDials(
   SshProfile profile, {
   ConnectPolicy policy = ConnectPolicy.automatic,
@@ -40,10 +46,11 @@ List<SshReachabilityEndpoint> planEndpointDials(
     }
     byKind[endpoint.kind]!.add(endpoint);
   }
+  final lastGood = profile.lastGoodKind;
   return [
-    ...byKind[SshEndpointKind.lan]!,
-    ...byKind[SshEndpointKind.extra]!,
-    ...byKind[SshEndpointKind.relay]!,
+    if (lastGood != null) ...byKind[lastGood]!,
+    for (final kind in SshEndpointKind.values)
+      if (kind != lastGood) ...byKind[kind]!,
   ];
 }
 

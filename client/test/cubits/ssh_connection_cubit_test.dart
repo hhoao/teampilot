@@ -630,6 +630,54 @@ void main() {
       },
     );
 
+    test(
+      'connect on a live paired home does not re-run endpoint dials',
+      () async {
+        final dialedHosts = <String>[];
+        final harness = _Harness(
+          connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+            dialedHosts.add(profile.host);
+            if (profile.host == _pairedLanHost) {
+              throw const SocketException('LAN down');
+            }
+            return _InstantAuthClient();
+          },
+        );
+        final cubit = harness.createCubit(
+          pairedConnectAttempt: PairedConnectAttempt(
+            saveLastGood: (_) async {},
+          ),
+        );
+        cubit.syncProfiles([_paired]);
+
+        await cubit.connect(_paired.id);
+        expect(harness.factory.hasLiveStorageClient(_paired.id), isTrue);
+        final dialsAfterConnect = List<String>.of(dialedHosts);
+
+        // Boot and hot recovery replay connect() while the home storage lease
+        // is still live. Re-running the paired endpoint dial rewrites the
+        // host identity, the pool retires the lease as profileInvalidated,
+        // and the home falls back to the retry page.
+        await cubit.connect(_paired.id);
+
+        expect(
+          dialedHosts,
+          dialsAfterConnect,
+          reason:
+              'a live storage lease must not be torn down by a redundant '
+              'paired endpoint dial',
+        );
+        expect(harness.factory.hasLiveStorageClient(_paired.id), isTrue);
+        expect(
+          cubit.state.hostsById[_paired.id]!.status,
+          SshHostUiStatus.connected,
+        );
+
+        await cubit.close();
+        harness.dispose();
+      },
+    );
+
     test('manual profiles connect directly without last-good saves', () async {
       final harness = _Harness();
       final saved = <SshProfile>[];

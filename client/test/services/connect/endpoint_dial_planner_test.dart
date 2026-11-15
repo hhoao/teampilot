@@ -53,6 +53,18 @@ void main() {
     },
   );
 
+  test('lastGoodKind promotes the winning endpoint kind to the front', () {
+    // A paired profile that already won on the extra endpoint has its
+    // host/port rewritten to that winner. Dialing lan first would use a
+    // different hostIdentifier, which the storage pool reads as a profile
+    // invalidation and tears down the live lease.
+    final profile = pairedProfile(
+      const [lanA, extraA, relayA],
+    ).copyWith(lastGoodKind: SshEndpointKind.extra);
+
+    expect(planEndpointDials(profile), const [extraA, lanA, relayA]);
+  });
+
   test('lanOnly policy drops extra and relay candidates', () {
     final plan = planEndpointDials(
       pairedProfile(const [relayA, extraA, lanA]),
