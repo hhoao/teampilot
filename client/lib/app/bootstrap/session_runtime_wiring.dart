@@ -186,14 +186,14 @@ Future<SessionRuntimeWiring> wireSessionRuntime({
     event,
   ) {
     if (!connectionModeService.isLocalMode) return;
-    sessionAuthority.publishContentInvalidated(
+    sessionAuthority?.publishContentInvalidated(
       sessionId: event.sessionId,
       memberId: event.memberId,
     );
   });
   final contentStreamSub = SessionContentStreamBus.stream.listen((chunk) {
     if (!connectionModeService.isLocalMode) return;
-    sessionAuthority.publishContentDelta(
+    sessionAuthority?.publishContentDelta(
       sessionId: chunk.sessionId,
       memberId: chunk.memberId,
       kind: 'acp.messages',

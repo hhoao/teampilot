@@ -1668,13 +1668,13 @@ Future<AppShell> buildAppShell({
     chatCubit.onSessionHistoryStale = (sessionId) {
       reloadHistorySeat(sessionId);
       if (connectionModeService.isLocalMode) {
-        sessionAuthority.publishContentInvalidated(sessionId: sessionId);
+        sessionAuthority!.publishContentInvalidated(sessionId: sessionId);
       }
     };
     chatCubit.onSessionCreated = (session) {
       final entry = SessionListEntry.fromSession(session).toJson();
       if (connectionModeService.isLocalMode) {
-        sessionAuthority.publishSessionList(
+        sessionAuthority!.publishSessionList(
           workspaceId: session.workspaceId,
           upserted: [entry],
         );
@@ -1690,7 +1690,7 @@ Future<AppShell> buildAppShell({
     };
     chatCubit.onSessionRemoved = (workspaceId, sessionId) {
       if (connectionModeService.isLocalMode) {
-        sessionAuthority.publishSessionList(
+        sessionAuthority!.publishSessionList(
           workspaceId: workspaceId,
           removed: [sessionId],
         );
@@ -2217,8 +2217,8 @@ Future<AppShell> buildAppShell({
         );
       }
       if (connectionModeService.isLocalMode) {
-        sessionAuthority.clear();
-        sessionActivitySource.start(sessionAuthority);
+        sessionAuthority!.clear();
+        sessionActivitySource.start(sessionAuthority!);
       } else {
         sessionActivitySource.stop();
       }
