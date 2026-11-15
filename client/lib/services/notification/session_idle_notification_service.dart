@@ -39,16 +39,23 @@ class SessionIdleNotificationService {
       payload: payload,
     );
 
-    if (!systemNotificationEnabled) return;
+    if (!systemNotificationEnabled) {
+      appLogger.i('[session-idle-notify] remote skipped: disabled');
+      return;
+    }
 
     try {
-      if (await _desktop.isAppFocused()) return;
+      if (await _desktop.isAppFocused()) {
+        appLogger.i('[session-idle-notify] remote skipped: focused');
+        return;
+      }
       await _desktop.showNotification(
         title: title,
         body: message,
         subtitle: badge,
         payload: payload,
       );
+      appLogger.i('[session-idle-notify] remote shown title=$title');
     } on Object catch (error, stackTrace) {
       appLogger.w(
         '[session-idle-notify] remote OS notification failed title=$title',

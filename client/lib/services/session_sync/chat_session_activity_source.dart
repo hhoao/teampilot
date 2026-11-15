@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../cubits/chat_cubit.dart';
+import '../../utils/logging/logger.dart';
 import '../attention/attention_event.dart';
 import '../chat/rewind/edit/seat_edit_coordinator.dart';
 import '../session_protocol/session_authority.dart';
@@ -95,6 +96,10 @@ final class ChatSessionActivitySource {
         final seat = seats.firstWhere(
           (candidate) => candidate.readyToChat && !candidate.isBusy,
           orElse: () => seats.first,
+        );
+        appLogger.i(
+          '[session-activity] idle attention session=$sessionId '
+          'member=${seat.memberId}',
         );
         unawaited(
           authority.publishAttention(
