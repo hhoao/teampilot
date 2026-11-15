@@ -255,6 +255,17 @@ final class SessionServer {
         break;
       }
       final batches = _splitAttentionSlice(slice);
+      if (batches.isEmpty) {
+        // Every event in this full slice was individually oversized and
+        // skipped. Advance past the slice so the backlog cannot spin forever.
+        next = AttentionCursor(
+          authorityId: slice.authorityId,
+          epoch: slice.epoch,
+          seq: slice.toSeq,
+        );
+        if (slice.events.length < 200) break;
+        continue;
+      }
       for (final batch in batches) {
         if (_closed) break;
         _sendAttentionBatch(batch);
