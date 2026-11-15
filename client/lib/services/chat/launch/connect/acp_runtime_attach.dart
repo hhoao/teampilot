@@ -24,6 +24,7 @@ import '../../../agent_status/seat_lease_port.dart';
 import '../../../cli/registry/capabilities/acp_background_liveness_capability.dart';
 import '../../../cli/registry/capabilities/acp_background_transcript_capability.dart';
 import '../../../cli/registry/capabilities/acp_capability.dart';
+import '../../../cli/registry/capabilities/session_credential_capability.dart';
 import '../../../cli/registry/cli_tool_registry.dart';
 import '../../../ssh/ssh_client_factory.dart';
 import '../../../ssh/ssh_member_session.dart';
@@ -756,6 +757,17 @@ class AcpRuntimeAttach {
               ?.translator
               .reportsOutOfTurnRunEnd ??
           false,
+      // `auth_required` from `session/new`: re-mint the launch lease through
+      // the CLI's credential capability, then retry the launch once.
+      authRecovery: (sessionId) async {
+        final capability = _host.cliRegistry
+            .capability<SessionCredentialCapability>(cli);
+        if (capability == null) return false;
+        return capability.onAuthRequired(
+          providerId: launchProvider.isNotEmpty ? launchProvider : 'xai',
+          sessionId: sessionId,
+        );
+      },
     )..ensureStrings(_host.acpChatStrings?.call(cli) ?? defaultAcpChatStrings);
   }
 

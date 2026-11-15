@@ -1,6 +1,11 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../models/app_provider_config.dart';
+import '../../models/credential_lease.dart';
 import '../../services/cli/antigravity/antigravity_bootstrap_entry.dart';
 import '../../services/cli/antigravity/capabilities/acp_adapter_installer.dart';
 import '../../services/cli/claude/claude_bootstrap_entry.dart';
@@ -12,6 +17,7 @@ import '../../services/cli/cursor/provider/cursor_agent_models_service.dart';
 import '../../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
 import '../../services/cli/gemini/gemini_bootstrap_entry.dart';
 import '../../services/cli/grok/grok_bootstrap_entry.dart';
+import '../../services/cli/grok/provider/grok_credential_adapter.dart';
 import '../../services/cli/opencode/opencode_bootstrap_entry.dart';
 import '../../services/cli/opencode/provider/opencode_models_service.dart';
 import '../../services/cli/registry/cli_bootstrap.dart';
@@ -20,6 +26,8 @@ import '../../services/cli/registry/installer/binary_archive_installer.dart';
 import '../../services/host/host_one_shot_runner_for_context.dart';
 import '../../services/host/host_process_starter_for_context.dart';
 import '../../services/provider/api_model_catalog_service.dart';
+import '../../services/provider/credential_lease_endpoint.dart';
+import '../../services/provider/oauth_credential_authority.dart';
 import '../../services/provider/provider_credential_host_runner.dart';
 import '../../services/remote_download/remote_downloader.dart';
 import '../../services/storage/home_storage.dart';
@@ -87,6 +95,30 @@ void wireCliBootstrap({
   // id for the sync ACP auth source; refreshed alongside Claude / Gemini.
   AppProviderConfig? cachedCodexProvider;
 
+  // Control-plane single owner of the xAI OAuth credential. Constructed here
+  // (not in the gateway) because the shell wires it before the bus gateway is
+  // created; sessions reach it through the lease endpoint instead.
+  final grokAuthority = OAuthCredentialAuthority(
+    fs: homeStorage.fs,
+    basePath: homeStorage.paths.basePath,
+    cliNamespace: 'grok',
+    refresher: XaiCredentialRefresher(),
+  );
+  final grokLeaseEndpoint = CredentialLeaseEndpoint(
+    authority: grokAuthority,
+    sessionProviderId: (sessionId) => 'xai',
+  );
+  final grokAdapter = GrokCredentialAdapter(
+    authority: grokAuthority,
+    sessionProviderId: (sessionId) => 'xai',
+  );
+  // One-time migration of the pre-Authority provider store.
+  unawaited(grokAuthority.importLegacyAuthJson('xai'));
+  // Provider UI reflects fine-grained Authority health (rejected/missing).
+  grokAuthority.healthChanges.addListener(() {
+    unawaited(appProviderCubit.reconcileCredentials());
+  });
+
   cliToolRegistry.configure(
     CliBootstrap({
       CliTool.claude: ClaudeBootstrapEntry(
@@ -124,6 +156,9 @@ void wireCliBootstrap({
       ),
       CliTool.grok: GrokBootstrapEntry(
         credentialSource: () => cachedGrokApiKey,
+        authority: grokAuthority,
+        adapter: grokAdapter,
+        leaseEndpoint: grokLeaseEndpoint,
       ),
       CliTool.antigravity: AntigravityBootstrapEntry(
         storage: homeStorage,
@@ -228,4 +263,138 @@ void wireCliBootstrap({
     refreshGeminiCredential();
     refreshGrokCredential();
   }, onDone: () {});
+}
+
+/// xAI OAuth refresh against the IdP discovered at [_xaiIssuer].
+///
+/// The token endpoint is resolved through OIDC discovery rather than a
+/// hard-coded path, so an IdP-side move does not break refresh.
+///
+/// Failure split matters: only a `400` / `401` whose OAuth `error` is
+/// `invalid_grant` / `invalid_token` means the refresh token itself was
+/// rejected (rotated away, revoked) and the Authority may delete it. Other
+/// 400/401 codes (`invalid_client`, `unsupported_grant_type`, …) are our own
+/// config errors, and network errors, timeouts, `429`, `5xx`, and unparsable
+/// bodies are outages — all raise [CredentialTransientException] so the stored
+/// refresh token survives.
+final class XaiCredentialRefresher implements CredentialRefresher {
+  XaiCredentialRefresher({HttpClient? client})
+    : _client = client ??
+          (HttpClient()..connectionTimeout = const Duration(seconds: 10));
+
+  static const _xaiIssuer = 'https://auth.x.ai';
+  static const _clientId = 'b1a00492-073a-47ea-816f-4c329264a828';
+
+  final HttpClient _client;
+  String? _tokenEndpoint;
+
+  /// Disposes the shared [HttpClient]. The owner can call this on teardown;
+  /// refresh reuses a single client for the lifetime of this refresher.
+  void close() => _client.close();
+
+  Future<String> _discoverTokenEndpoint() async {
+    final cached = _tokenEndpoint;
+    if (cached != null) return cached;
+    final HttpClientResponse response;
+    try {
+      final request = await _client.getUrl(
+        Uri.parse('$_xaiIssuer/.well-known/openid-configuration'),
+      );
+      response = await request.close();
+    } on Object catch (error) {
+      throw CredentialTransientException(error);
+    }
+    if (response.statusCode != 200) {
+      throw CredentialTransientException('discovery ${response.statusCode}');
+    }
+    final String value;
+    try {
+      final raw = await response.transform(utf8.decoder).join();
+      value =
+          (jsonDecode(raw) as Map<String, Object?>)['token_endpoint']
+              ?.toString() ??
+          '';
+    } on Object catch (error) {
+      throw CredentialTransientException(error);
+    }
+    if (value.isEmpty) {
+      throw const CredentialTransientException('discovery has no token_endpoint');
+    }
+    _tokenEndpoint = value;
+    return value;
+  }
+
+  @override
+  Future<CredentialRefreshOutcome> refresh(String refreshToken) =>
+      _refresh(refreshToken).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw const CredentialTransientException(
+          'refresh timeout',
+        ),
+      );
+
+  Future<CredentialRefreshOutcome> _refresh(String refreshToken) async {
+    final endpoint = await _discoverTokenEndpoint();
+    final HttpClientResponse response;
+    final String raw;
+    try {
+      final request = await _client.postUrl(Uri.parse(endpoint));
+      request.headers.contentType = ContentType.json;
+      request.write(
+        jsonEncode({
+          'grant_type': 'refresh_token',
+          'refresh_token': refreshToken,
+          'client_id': _clientId,
+        }),
+      );
+      response = await request.close();
+      raw = await response.transform(utf8.decoder).join();
+    } on Object catch (error) {
+      throw CredentialTransientException(error);
+    }
+    if (response.statusCode == 400 || response.statusCode == 401) {
+      // Only an OAuth error naming the refresh token itself may delete the
+      // shared RT. `invalid_client` / `unsupported_grant_type` are our own
+      // config errors (e.g. a rotated, hard-coded client_id); wiping the RT
+      // would sign every seat out for nothing. Treat those as transient so
+      // the stored credential survives until we fix the config.
+      final error = _oauthError(raw);
+      if (error == 'invalid_grant' || error == 'invalid_token') {
+        return const RefreshRejected();
+      }
+      throw CredentialTransientException('token ${response.statusCode}: $error');
+    }
+    if (response.statusCode != 200) {
+      throw CredentialTransientException('token ${response.statusCode}');
+    }
+    final Map<String, Object?> json;
+    try {
+      json = jsonDecode(raw) as Map<String, Object?>;
+    } on Object catch (error) {
+      throw CredentialTransientException(error);
+    }
+    final access = json['access_token']?.toString() ?? '';
+    if (access.isEmpty) {
+      throw const CredentialTransientException('empty access_token');
+    }
+    final next = json['refresh_token']?.toString() ?? refreshToken;
+    final seconds = (json['expires_in'] as num?)?.toInt() ?? 3600;
+    return RefreshSucceeded(
+      accessToken: access,
+      refreshToken: next,
+      expiresAt: DateTime.now().toUtc().add(Duration(seconds: seconds)),
+    );
+  }
+
+  /// Reads the OAuth `error` code from a 400/401 body. Returns null for an
+  /// empty or unparsable body, which is therefore treated as transient.
+  static String? _oauthError(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) return decoded['error']?.toString();
+    } on Object {
+      // Not a JSON OAuth error body.
+    }
+    return null;
+  }
 }

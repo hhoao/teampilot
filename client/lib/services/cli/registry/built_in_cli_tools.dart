@@ -149,8 +149,18 @@ void registerBuiltInCliTools(
       provider: GrokProviderCapability(
         storage: storage,
         fallbackCredentialSource: grokEntry?.credentialSource,
+        authority: grokEntry?.authority,
+        adapter: grokEntry?.adapter,
       ),
-      headless: GrokHeadlessCapability(storage: storage),
+      headless: GrokHeadlessCapability(
+        storage: storage,
+        authority: grokEntry?.authority,
+      ),
+      // Expose the control-plane adapter as a first-class capability so
+      // `auth_required` recovery (acp_runtime_attach) can find it. Formerly
+      // it was only a field on GrokProviderCapability, so capability<T>()
+      // never saw it and recovery was dead code in production.
+      sessionCredential: grokEntry?.adapter,
       acp: GrokAcpCapability(credentialSource: grokEntry?.credentialSource),
     ),
   );

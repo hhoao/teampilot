@@ -5,10 +5,12 @@ import 'dart:math';
 
 import 'package:meta/meta.dart';
 
+import '../../../../utils/logging/logger.dart';
 import '../../../agent_runtime/agent_event_gateway.dart';
 import '../../../agent_status/ask_user_answer_pending_store.dart';
 import '../../../catalog/catalog_mcp_constants.dart';
 import '../../../catalog/catalog_mcp_handler.dart';
+import '../../../provider/credential_lease_endpoint.dart';
 import '../../../ssh/mcp/session_ssh_mcp_constants.dart';
 import '../../../ssh/mcp/session_ssh_mcp_http.dart';
 import '../../team_generation/mcp/team_composer_mcp_constants.dart';
@@ -39,6 +41,7 @@ class TeammateBusMcpGateway implements TeammateBusMcpGatewayPort {
   AskUserAnswerPendingStore? _askUserAnswerStore;
   CatalogMcpHandler? _catalogHandler;
   Future<CatalogMcpSession?> Function(String sessionId)? _resolveCatalogSession;
+  CredentialLeaseEndpoint? _credentialLeaseEndpoint;
   SessionSshMcpHttpAdapter? _sessionSshMcp;
   TeamComposerMcpHandler? _teamComposerHandler;
   TeamGenerationAuthorizer? _teamGenerationAuthorizer;
@@ -123,6 +126,13 @@ class TeammateBusMcpGateway implements TeammateBusMcpGatewayPort {
     _catalogHandler = handler;
     _resolveCatalogSession = resolveSession;
   }
+
+  void attachCredentialLeaseEndpoint(CredentialLeaseEndpoint endpoint) {
+    _credentialLeaseEndpoint = endpoint;
+  }
+
+  CredentialLeaseEndpoint? get credentialLeaseEndpoint =>
+      _credentialLeaseEndpoint;
 
   /// Mounts mcp_dart Streamable HTTP at [sessionSshMcpPath] (`/ssh/mcp`).
   void attachSessionSshMcp(SessionSshMcpHttpAdapter adapter) {
@@ -233,6 +243,14 @@ class TeammateBusMcpGateway implements TeammateBusMcpGatewayPort {
       // missing X-Session is a JSON-RPC/tool error in HTTP 200, not 400.
       if (request.method == 'POST' && request.uri.path == catalogMcpPath) {
         await _handleCatalogMcp(request);
+        return;
+      }
+
+      // Credential lease is available for every session, including Simple
+      // (no TeamBus register). Route before the `_delegates` bail-out.
+      if (request.method == 'POST' &&
+          request.uri.path == CredentialLeaseEndpoint.path) {
+        await _handleCredentialLease(request);
         return;
       }
 
@@ -362,6 +380,73 @@ class TeammateBusMcpGateway implements TeammateBusMcpGatewayPort {
         charset: 'utf-8',
       )
       ..write('{}');
+    await request.response.close();
+  }
+
+  Future<void> _handleCredentialLease(HttpRequest request) async {
+    final endpoint = _credentialLeaseEndpoint;
+    if (endpoint == null) {
+      request.response.statusCode = HttpStatus.notFound;
+      await request.response.close();
+      return;
+    }
+    final sessionId = _resolveSessionId(request) ?? '';
+    final busToken = _headerValue(request.headers, teammateBusTokenHeader);
+    // Remote seats must present a bus token registered for that same session.
+    // Status-only seats live in `_agentStatusTokenToSession` rather than the
+    // TeamBus registry, so both maps are consulted. A token that merely echoes
+    // the request's own session id carries no extra identity (the shim sends
+    // `X-Bus-Token: <sessionId>` for local seats), so it is treated as absent;
+    // an independent token that resolves elsewhere or nowhere is rejected.
+    final effectiveToken =
+        (busToken.isEmpty || busToken == sessionId) ? null : busToken;
+    final tokenSession = effectiveToken == null
+        ? null
+        : (_registry.sessionForToken(effectiveToken) ??
+              _agentStatusTokenToSession[effectiveToken]);
+    if (effectiveToken != null && tokenSession != sessionId) {
+      request.response.statusCode = HttpStatus.unauthorized;
+      await request.response.close();
+      return;
+    }
+    Map<String, Object?> body;
+    try {
+      final raw = await utf8.decoder.bind(request).join();
+      final decoded = jsonDecode(raw);
+      body = decoded is Map
+          ? Map<String, Object?>.from(decoded)
+          : <String, Object?>{};
+    } on Object {
+      body = <String, Object?>{};
+    }
+    LeaseHttpResponse result;
+    try {
+      result = await endpoint.serve(
+        sessionId: sessionId,
+        // Local seats have no bus token; the session header is authoritative.
+        busToken: busToken.isNotEmpty ? busToken : sessionId,
+        providerId: body['providerId']?.toString() ?? '',
+        forceRefresh: body['forceRefresh'] == true,
+      );
+    } on Object catch (error, stackTrace) {
+      // Defense in depth: the endpoint maps its own exceptions, but any
+      // unexpected failure must be a logged 503 (retryable), not the silent
+      // 500 from the _onRequest catch-all. Log the failure class only.
+      appLogger.w(
+        'TeammateBusMcpGateway: credential lease failed '
+        '(${error.runtimeType})',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      request.response.statusCode = HttpStatus.serviceUnavailable;
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(jsonEncode({'error': 'temporarily_unavailable'}));
+      await request.response.close();
+      return;
+    }
+    request.response.statusCode = result.statusCode;
+    request.response.headers.contentType = ContentType.json;
+    request.response.write(jsonEncode(result.body));
     await request.response.close();
   }
 

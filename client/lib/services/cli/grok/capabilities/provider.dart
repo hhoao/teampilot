@@ -4,11 +4,13 @@ import 'package:flutter/widgets.dart';
 
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_action_result.dart';
+import '../../../../models/credential_lease.dart';
 import '../../../../models/credential_probe.dart';
-import '../../../../utils/logging/logger_utils.dart';
 import '../../../../widgets/home_storage_scope.dart';
+import '../../../../utils/logging/logger_utils.dart';
 import '../../../io/filesystem.dart';
 import '../../../provider/credential_binding.dart';
+import '../../../provider/oauth_credential_authority.dart';
 import '../../../provider/passthrough_provider_form_capability.dart';
 import '../../../chat/launch/staging/manifest/work_plane_paths.dart';
 import '../../../remote/remote_credential_materializer.dart';
@@ -20,6 +22,7 @@ import '../../registry/capabilities/provider_capability.dart';
 import '../grok_constants.dart';
 import '../grok_toml.dart';
 import '../provider/grok_auth_store.dart';
+import '../provider/grok_credential_adapter.dart';
 import '../provider/grok_login_dialog.dart';
 import '../provider/grok_provider_settings_resolver.dart';
 import '../provider_presets.dart';
@@ -64,22 +67,35 @@ final class _GrokCatalogSource implements ModelCatalogSource {
 /// Grok provider stack.
 ///
 /// Auth is either an xAI API key injected as `XAI_API_KEY` (never written to
-/// the isolated config dir) or an OAuth `auth.json` copied from an isolated
-/// `grok login` into the per-provider credential store.
+/// the isolated config dir) or an OAuth sign-in owned by
+/// [OAuthCredentialAuthority]. OAuth seats receive no token on disk; the
+/// per-seat shim requested by [GrokCredentialAdapter] mints a short-lived
+/// lease from the control plane.
 final class GrokProviderCapability extends CatalogModelCapability
     with PassthroughProviderFormDefaults
     implements
         ProviderCapability,
         InteractiveCliLoginCapability,
         ModelDisplayNameCapability {
-  const GrokProviderCapability({this.storage, this.fallbackCredentialSource});
+  const GrokProviderCapability({
+    this.storage,
+    this.fallbackCredentialSource,
+    this.authority,
+    this.adapter,
+  });
 
   final HomeStorage? storage;
 
   /// App-wide xAI API key used by the ACP capability when a seat has no
   /// provider-bound credential. This only suppresses the pre-launch warning;
-  /// headless provisioning still requires its own key or auth.json.
+  /// headless provisioning still requires its own key or a lease.
   final AcpCredentialSource? fallbackCredentialSource;
+
+  /// Control-plane single owner of the xAI refresh token.
+  final OAuthCredentialAuthority? authority;
+
+  /// Injects the lease shim into the session home.
+  final GrokCredentialAdapter? adapter;
 
   static const defaultProviderId = GrokConstants.defaultProviderId;
 
@@ -176,26 +192,24 @@ final class GrokProviderCapability extends CatalogModelCapability
 
   @override
   Future<CredentialProbe> probe(AppProviderConfig provider) async {
-    final store = _authStore;
-    if (store == null) {
-      return CredentialProbe(
-        providerId: provider.id,
-        status: provider.apiKey.trim().isNotEmpty
-            ? CredentialStatus.ready
-            : CredentialStatus.missing,
-        credentialPath: '',
-      );
-    }
+    // The Authority, not the presence of a legacy auth.json, owns readiness.
+    // `expiring` means the access token is stale but the RT can still mint a
+    // lease, so it must not read as "needs sign-in".
+    final health = provider.apiKey.trim().isNotEmpty
+        ? CredentialHealth.ready
+        : authority == null
+        ? CredentialHealth.missing
+        : await authority!.status(provider.id);
     final ready =
-        provider.apiKey.trim().isNotEmpty ||
-        await store.hasProviderAuth(provider.id);
-    final path = store.providerAuthDir(provider.id);
-    final stat = await store.fs.stat(path);
+        health != CredentialHealth.missing &&
+        health != CredentialHealth.rejected;
+    final path = _authStore?.providerAuthDir(provider.id) ?? '';
+    final stat = path.isEmpty ? null : await _authStore!.fs.stat(path);
     return CredentialProbe(
       providerId: provider.id,
       status: ready ? CredentialStatus.ready : CredentialStatus.missing,
       credentialPath: path,
-      updatedAt: stat.isDirectory ? stat.mtime : null,
+      updatedAt: stat != null && stat.isDirectory ? stat.mtime : null,
     );
   }
 
@@ -207,20 +221,32 @@ final class GrokProviderCapability extends CatalogModelCapability
   }) async {
     final store = _authStore;
     if (store == null) return CredentialActionResult.serviceUnavailable();
+    final target = authority;
     if (kind == ProviderCredentialActionKind.login) {
-      final written = await store.writeProviderAuthFromLogin(
-        providerId,
-        loginConfigDir: store.loginConfigDir(providerId),
-      );
-      return written
-          ? CredentialActionResult.success
-          : CredentialActionResult.failure(
-              const CredentialActionFailure(
-                code: CredentialActionFailureCode.verifyFailed,
-              ),
-            );
+      if (target == null) return CredentialActionResult.serviceUnavailable();
+      final bytes = await store.fs.readBytes(store.loginAuthPath(providerId));
+      if (bytes == null || bytes.isEmpty) {
+        return CredentialActionResult.failure(
+          const CredentialActionFailure(
+            code: CredentialActionFailureCode.verifyFailed,
+          ),
+        );
+      }
+      if (!await target.importFromLogin(providerId, bytes)) {
+        return CredentialActionResult.failure(
+          const CredentialActionFailure(
+            code: CredentialActionFailureCode.verifyFailed,
+          ),
+        );
+      }
+      // The isolated login auth.json still holds an RT copy; after a
+      // successful import the control-plane credential.json is the only
+      // place a refresh token may live.
+      await store.clearLoginAuth(providerId);
+      return CredentialActionResult.success;
     }
     if (kind == ProviderCredentialActionKind.importGlobal) {
+      if (target == null) return CredentialActionResult.serviceUnavailable();
       final home = input.homeDirectory?.trim() ?? '';
       final importer = home.isEmpty || home == storage?.home
           ? store
@@ -230,14 +256,26 @@ final class GrokProviderCapability extends CatalogModelCapability
               pathContext: store.pathContext,
               machineHome: home,
             );
-      final imported = await importer.importMachineAuth(providerId);
-      return imported
+      final bytes = await store.fs.readBytes(importer.machineAuthPath);
+      if (bytes == null || bytes.isEmpty) {
+        return CredentialActionResult.failure(
+          const CredentialActionFailure(
+            code: CredentialActionFailureCode.verifyFailed,
+          ),
+        );
+      }
+      return await target.importFromLogin(providerId, bytes)
           ? CredentialActionResult.success
           : CredentialActionResult.failure(
               const CredentialActionFailure(
                 code: CredentialActionFailureCode.verifyFailed,
               ),
             );
+    }
+    if (kind == ProviderCredentialActionKind.revoke) {
+      if (target == null) return CredentialActionResult.serviceUnavailable();
+      await target.revoke(providerId);
+      return CredentialActionResult.success;
     }
     return CredentialActionResult.unsupported();
   }
@@ -324,11 +362,14 @@ final class GrokProviderCapability extends CatalogModelCapability
     SessionHomeContext ctx,
   ) async {
     final delegate = ctx.paths;
+    // Must equal GrokCredentialAdapter's session-home dir: the adapter returns
+    // `GROK_HOME` from its own computation, and config.toml written anywhere
+    // else would be invisible to the agent.
     final configDir = delegate.sessionToolDir(
       ctx.scope.workspaceId,
       ctx.scope.sessionId,
       CliTool.grok.value,
-      memberId: ctx.scope.memberId,
+      memberId: ctx.memberId ?? ctx.scope.memberId,
     );
     await delegate.fs.ensureDir(configDir);
 
@@ -354,72 +395,49 @@ final class GrokProviderCapability extends CatalogModelCapability
         (memberProvider.isEmpty ? defaultProviderId : memberProvider);
     final apiKey = provider?.apiKey.trim() ?? '';
     final warnings = <String>[];
-    if (apiKey.isNotEmpty) {
-      // API-key seats must not inherit a stale OAuth token: Grok's credential
-      // resolution prefers a signed-in session token over `XAI_API_KEY`.
-      await _removeSessionAuth(delegate, configDir);
-    } else {
-      final store = _authStore;
-      if (store == null) {
-        warnings.add('grok_auth_store_unavailable');
+    final environment = <String, String>{
+      GrokConstants.homeEnvKey: configDir,
+      if (apiKey.isNotEmpty) GrokConstants.apiKeyEnvKey: apiKey,
+    };
+    // A new seat must not inherit a token from an earlier launch of the same
+    // config dir: grok prefers a signed-in session token over `XAI_API_KEY`,
+    // and an OAuth seat must resolve auth from the current lease only.
+    await _removeSessionAuth(delegate, configDir);
+    if (apiKey.isEmpty) {
+      final grokAdapter = adapter;
+      if (grokAdapter == null) {
+        warnings.add('grok_credentials_missing');
       } else {
-        final seeded = ctx.crossMachine
-            ? await _seedCrossMachineAuth(
-                ctx,
-                store: store,
-                configDir: configDir,
-                providerId: providerId,
-              )
-            : await store.seedSessionAuth(
-                providerId: providerId,
-                sessionFs: delegate.fs,
-                sessionPathContext: delegate.fs.pathContext,
-                sessionConfigDir: configDir,
-              );
-        if (!seeded) {
-          final fallback = fallbackCredentialSource?.call()?.trim() ?? '';
-          if (fallback.isEmpty) {
-            warnings.add('grok_credentials_missing');
-            AppLogger.instance.w(
-              'grok: session auth.json not seeded; the session will need '
-              'XAI_API_KEY or a sign-in (provider "$providerId")',
-            );
+        try {
+          final leaseContribution = await grokAdapter.materialize(
+            ctx,
+            providerId: providerId,
+          );
+          for (final entry in leaseContribution.environment.entries) {
+            environment[entry.key] = entry.value;
           }
+        } on CredentialUnavailableException catch (error) {
+          // Stage 1 pre-launch gate: fail before spawning an agent that would
+          // immediately report "not logged in".
+          throw GrokCredentialUnavailableException(providerId, error.health);
+        } on CredentialTransientException catch (error) {
+          // An IdP outage / timeout is not a sign-in problem. Fail the launch
+          // with a stable, non-leaking error instead of letting the raw
+          // transient (which may quote internal text / token material) reach
+          // the UI. The refresh token is intact, so a retry can succeed.
+          AppLogger.instance.w(
+            'GrokProviderCapability: credential refresh temporarily '
+            'unavailable for provider $providerId (${error.cause.runtimeType})',
+          );
+          throw GrokCredentialTransientException(providerId);
         }
       }
     }
 
     return SessionHomeContribution(
-      environment: {
-        GrokConstants.homeEnvKey: configDir,
-        if (apiKey.isNotEmpty) GrokConstants.apiKeyEnvKey: apiKey,
-      },
+      environment: environment,
       warnings: warnings,
     );
-  }
-
-  /// Copies the control-plane `auth.json` onto the work plane.
-  ///
-  /// The overlay cannot observe a remote marker, so every cross-machine
-  /// connect recopies the current source rather than trusting a stale seat.
-  Future<bool> _seedCrossMachineAuth(
-    SessionHomeContext ctx, {
-    required GrokAuthStore store,
-    required String configDir,
-    required String providerId,
-  }) async {
-    final source = await store.authSourcePath(providerId);
-    if (source == null) return false;
-    final target = ctx.paths.joinWork(configDir, GrokConstants.authFileName);
-    final fs = ctx.paths.fs;
-    await fs.ensureDir(fs.pathContext.dirname(target));
-    if (fs is OverlayFilesystem) {
-      await fs.copyFilePrivate(source, target);
-    } else {
-      await fs.copyFile(source, target);
-      store.restrictFile(target);
-    }
-    return true;
   }
 
   Future<void> _removeSessionAuth(
@@ -473,6 +491,34 @@ final class GrokProviderCapability extends CatalogModelCapability
 }
 
 final _emptyCatalogUpdates = _EmptyListenable();
+
+/// Launch-time failure: the seat's provider has no usable credential, so an
+/// agent must not be spawned. Propagates through `materializeSessionHome` as a
+/// session-connect failure; [health] drives the "needs sign-in" row.
+final class GrokCredentialUnavailableException implements Exception {
+  const GrokCredentialUnavailableException(this.providerId, this.health);
+
+  final String providerId;
+  final CredentialHealth health;
+
+  @override
+  String toString() =>
+      'Grok provider $providerId needs a sign-in (${health.name})';
+}
+
+/// Launch-time failure: the control-plane credential refresh is temporarily
+/// unavailable (IdP outage / timeout). The stored refresh token is intact, so
+/// this is a retry, not a sign-in. Deliberately carries no underlying error
+/// text, which must never leak into the session-connect failure UI.
+final class GrokCredentialTransientException implements Exception {
+  const GrokCredentialTransientException(this.providerId);
+
+  final String providerId;
+
+  @override
+  String toString() =>
+      'Grok provider $providerId credentials are temporarily unavailable';
+}
 
 final class _EmptyListenable implements Listenable {
   @override

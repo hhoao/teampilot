@@ -181,6 +181,7 @@ import '../services/floating_workspace/surfaces/run_floating_surface.dart';
 import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
+import '../services/cli/grok/grok_bootstrap_entry.dart';
 import '../services/host/host_shell_path_resolver.dart';
 import '../services/provider_usage/managed_provider_secret_store.dart';
 import '../services/provider_usage/managed_provider_usage_adapter.dart';
@@ -1285,6 +1286,14 @@ Future<AppShell> buildAppShell({
       catalogRuntime.handler,
       resolveSession: catalogRuntime.resolveSession,
     );
+    final grokBootstrap = cliToolRegistry.bootstrap?.entry<GrokBootstrapEntry>(
+      CliTool.grok,
+    );
+    if (grokBootstrap != null) {
+      teammateBusMcpGateway.attachCredentialLeaseEndpoint(
+        grokBootstrap.leaseEndpoint,
+      );
+    }
     teammateBusMcpGateway.attachSessionSshMcp(
       SessionSshMcpHttpAdapter(
         operations: SessionSshMcpOperations(

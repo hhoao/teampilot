@@ -116,84 +116,45 @@ void main() {
   });
 
   group('auth store', () {
-    test(
-      'seeds the session copy and respects a session-refreshed token',
-      () async {
-        final fs = InMemoryFilesystem();
-        final store = GrokAuthStore(
-          fs: fs,
-          basePath: '/tp',
-          pathContext: fs.pathContext,
-          machineHome: '/home/test',
-        );
-        await fs.ensureDir('/tp/providers/grok/xai');
-        await fs.atomicWrite('/tp/providers/grok/xai/auth.json', 'provider');
+    test('hasLoginAuth / hasProviderAuth detect non-empty files only',
+        () async {
+      final fs = InMemoryFilesystem();
+      final store = GrokAuthStore(
+        fs: fs,
+        basePath: '/tp',
+        pathContext: fs.pathContext,
+        machineHome: '/home/test',
+      );
+      expect(await store.hasLoginAuth('xai'), isFalse);
+      expect(await store.hasProviderAuth('xai'), isFalse);
 
-        Future<bool> seed() => store.seedSessionAuth(
-          providerId: 'xai',
-          sessionFs: fs,
-          sessionPathContext: fs.pathContext,
-          sessionConfigDir: '/session/grok',
-        );
+      await fs.ensureDir(store.loginConfigDir('xai'));
+      await fs.ensureDir(store.providerAuthDir('xai'));
+      await fs.atomicWrite(store.loginAuthPath('xai'), '{"k":1}');
+      await fs.atomicWrite(store.providerAuthPath('xai'), '');
 
-        expect(await seed(), isTrue);
-        expect(await fs.readString('/session/grok/auth.json'), 'provider');
+      expect(await store.hasLoginAuth('xai'), isTrue);
+      expect(await store.hasProviderAuth('xai'), isFalse);
+    });
 
-        // The session refreshes its own token; an unchanged provider store must
-        // not overwrite it on reconnect.
-        await fs.atomicWrite('/session/grok/auth.json', 'refreshed');
-        expect(await seed(), isTrue);
-        expect(await fs.readString('/session/grok/auth.json'), 'refreshed');
+    test('clearLoginAuth also removes the lock file', () async {
+      final fs = InMemoryFilesystem();
+      final store = GrokAuthStore(
+        fs: fs,
+        basePath: '/tp',
+        pathContext: fs.pathContext,
+        machineHome: '/home/test',
+      );
+      final authPath = store.loginAuthPath('xai');
+      await fs.ensureDir(store.loginConfigDir('xai'));
+      await fs.atomicWrite(authPath, '{"k":1}');
+      await fs.atomicWrite('$authPath.lock', '');
 
-        // A re-login changes the provider source fingerprint, so the seat is
-        // reseeded.
-        await fs.atomicWrite('/tp/providers/grok/xai/auth.json', 'relogin');
-        expect(await seed(), isTrue);
-        expect(await fs.readString('/session/grok/auth.json'), 'relogin');
-      },
-    );
+      await store.clearLoginAuth('xai');
 
-    test(
-      'falls back to the machine login only when no provider row exists',
-      () async {
-        final fs = InMemoryFilesystem();
-        final store = GrokAuthStore(
-          fs: fs,
-          basePath: '/tp',
-          pathContext: fs.pathContext,
-          machineHome: '/home/test',
-        );
-        await fs.ensureDir('/home/test/.grok');
-        await fs.atomicWrite('/home/test/.grok/auth.json', 'machine');
-
-        expect(
-          await store.seedSessionAuth(
-            providerId: 'xai',
-            sessionFs: fs,
-            sessionPathContext: fs.pathContext,
-            sessionConfigDir: '/session/grok',
-          ),
-          isTrue,
-        );
-        expect(await fs.readString('/session/grok/auth.json'), 'machine');
-
-        // A provider row that exists without auth must not silently borrow the
-        // machine account.
-        await fs.ensureDir('/tp/providers/grok/xai');
-        await fs.atomicWrite('/session/grok/auth.json', 'old');
-        await fs.removeRecursive('/session/grok');
-        expect(
-          await store.seedSessionAuth(
-            providerId: 'xai',
-            sessionFs: fs,
-            sessionPathContext: fs.pathContext,
-            sessionConfigDir: '/session/grok',
-          ),
-          isFalse,
-        );
-        expect((await fs.stat('/session/grok/auth.json')).exists, isFalse);
-      },
-    );
+      expect(await fs.readString(authPath), isNull);
+      expect((await fs.stat('$authPath.lock')).exists, isFalse);
+    });
   });
 
   group('usage', () {

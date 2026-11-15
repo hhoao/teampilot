@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../../../../models/credential_lease.dart';
 import '../../../../models/team_config.dart';
+import '../../../../utils/logging/logger_utils.dart';
+import '../../../provider/oauth_credential_authority.dart';
 import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
@@ -13,15 +16,24 @@ import '../grok_toml.dart';
 import '../provider/grok_auth_store.dart';
 import '../provider/grok_provider_settings_resolver.dart';
 
-/// Grok one-shot via `grok -p <prompt>`, plus seeding of an isolated
-/// `GROK_HOME` (config.toml model + auth.json or XAI_API_KEY).
+/// grok auth.json scope key (`<issuer>::<client_id>`) for the xAI OIDC login.
+const _xaiAuthScopeKey =
+    'https://auth.x.ai::b1a00492-073a-47ea-816f-4c329264a828';
+
+/// Grok one-shot via `grok -p <prompt>`, plus provisioning of an isolated
+/// `GROK_HOME` (config.toml model + access-token-only auth.json or
+/// XAI_API_KEY).
 final class GrokHeadlessCapability
     with HeadlessProvisionSupport
     implements HeadlessCapability {
-  const GrokHeadlessCapability({this.storage});
+  const GrokHeadlessCapability({this.storage, this.authority});
 
   @override
   final HomeStorage? storage;
+
+  /// Control-plane owner of the xAI refresh token. When present, an OAuth seat
+  /// receives only a short-lived access token on disk.
+  final OAuthCredentialAuthority? authority;
 
   @override
   bool get isSupported => true;
@@ -202,20 +214,9 @@ final class GrokHeadlessCapability
     if (apiKey.isNotEmpty) {
       extraEnvironment[GrokConstants.apiKeyEnvKey] = apiKey;
     } else {
-      final store = GrokAuthStore(
-        fs: fs,
-        basePath: basePath,
-        pathContext: fs.pathContext,
-        machineHome: home,
-      );
       final providerId = provider?.id.trim() ?? ctx.providerId.trim();
-      final seeded = await store.seedSessionAuth(
-        providerId: providerId,
-        sessionFs: fs,
-        sessionPathContext: fs.pathContext,
-        sessionConfigDir: ctx.configDir,
-      );
-      if (!seeded) {
+      final lease = await _leaseForHeadless(providerId);
+      if (lease == null) {
         warnings.add('grok_credentials_missing');
         return HeadlessProvisionResult(
           extraEnvironment: extraEnvironment,
@@ -223,11 +224,70 @@ final class GrokHeadlessCapability
           credentialsReady: false,
         );
       }
+      await _writeAccessOnlyAuth(ctx.configDir, lease);
     }
 
     return HeadlessProvisionResult(
       extraEnvironment: extraEnvironment,
       warnings: warnings,
     );
+  }
+
+  /// Mints a lease for a one-shot run. On the first run after upgrading, the
+  /// pre-Authority `providers/<ns>/<id>/auth.json` is migrated once so an
+  /// already-signed-in install keeps working.
+  Future<CredentialLease?> _leaseForHeadless(String providerId) async {
+    final target = authority;
+    if (target == null) return null;
+    // A transient IdP outage / timeout keeps the refresh token on the control
+    // plane. Treat it as "not ready" (the caller returns credentialsReady:
+    // false + a warning) instead of letting the raw exception escape. Log only
+    // the failure class — never the cause, which may quote token material.
+    try {
+      try {
+        return await target.lease(providerId: providerId, sessionId: 'headless');
+      } on CredentialUnavailableException {
+        if (!await target.importLegacyAuthJson(providerId)) return null;
+        try {
+          return await target.lease(
+            providerId: providerId,
+            sessionId: 'headless',
+          );
+        } on CredentialUnavailableException {
+          return null;
+        }
+      }
+    } on CredentialTransientException catch (error) {
+      AppLogger.instance.w(
+        'GrokHeadlessCapability: credential refresh temporarily unavailable '
+        'for provider $providerId (${error.cause.runtimeType})',
+      );
+      return null;
+    }
+  }
+
+  /// An access token is all a one-shot run needs; the refresh token never
+  /// leaves the control plane.
+  Future<void> _writeAccessOnlyAuth(
+    String configDir,
+    CredentialLease lease,
+  ) async {
+    final path = fs.pathContext.join(configDir, GrokConstants.authFileName);
+    await fs.atomicWrite(
+      path,
+      jsonEncode({
+        _xaiAuthScopeKey: {
+          'key': lease.accessToken,
+          'expires_at': lease.expiresAt.toUtc().toIso8601String(),
+          'auth_mode': 'Oidc',
+        },
+      }),
+    );
+    GrokAuthStore(
+      fs: fs,
+      basePath: basePath,
+      pathContext: fs.pathContext,
+      machineHome: home,
+    ).restrictFile(path);
   }
 }
