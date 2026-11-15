@@ -16,7 +16,7 @@ final class ChatSessionActivitySource {
   final ChatCubit _chat;
   StreamSubscription<ChatState>? _subscription;
   Set<String> _known = const {};
-  final Map<String, bool> _wasBusy = {};
+  final Map<String, bool> _wasReadyToChat = {};
   final Map<String, SeatEditCoordinator> _edits = {};
   final Map<String, void Function()> _editListeners = {};
   final Map<String, String> _lastEditKey = {};
@@ -38,7 +38,7 @@ final class ChatSessionActivitySource {
     _editListeners.clear();
     _lastEditKey.clear();
     _known = const {};
-    _wasBusy.clear();
+    _wasReadyToChat.clear();
   }
 
   void dispose() => stop();
@@ -80,27 +80,37 @@ final class ChatSessionActivitySource {
         workspaceId: tab.persistedSession?.workspaceId ?? '',
       );
       _bindSeatEdit(sessionId, authority);
-      for (final seat in seats) {
-        final key = '${seat.sessionId}|${seat.memberId}';
-        final wasBusy = _wasBusy[key] ?? false;
-        if (wasBusy && !seat.isBusy && seat.readyToChat) {
-          unawaited(
-            authority.publishAttention(
-              sessionId: sessionId,
-              kind: AttentionKind.idle,
-              memberId: seat.memberId,
-              turnId: seat.turnId,
-              workspaceId: tab.persistedSession?.workspaceId ?? '',
-            ),
-          );
-        }
-        _wasBusy[key] = seat.isBusy;
+      // Notification intent is session-level: one idle attention per completed
+      // turn, independent of which seat the user currently has selected.
+      //
+      // Do not gate on `isMemberWorking` going false. ACP runtimes flip
+      // `inTurn` before ChatCubit recomputes `sessionActivities`, so the
+      // intermediate idle/none state clears a busy latch and the following
+      // idle/completed state is missed. Seed instead: a session already ready
+      // when the source starts is old state, not a fresh turn end.
+      final readyToChat = activity?.isReadyToChat ?? false;
+      final wasReadyToChat = _wasReadyToChat[sessionId];
+      _wasReadyToChat[sessionId] = readyToChat;
+      if (wasReadyToChat == false && readyToChat) {
+        final seat = seats.firstWhere(
+          (candidate) => candidate.readyToChat && !candidate.isBusy,
+          orElse: () => seats.first,
+        );
+        unawaited(
+          authority.publishAttention(
+            sessionId: sessionId,
+            kind: AttentionKind.idle,
+            memberId: seat.memberId,
+            turnId: seat.turnId,
+            workspaceId: tab.persistedSession?.workspaceId ?? '',
+          ),
+        );
       }
     }
     for (final known in _known) {
       if (!open.contains(known)) {
         authority.removeSession(known);
-        _wasBusy.removeWhere((key, _) => key.startsWith('$known|'));
+        _wasReadyToChat.remove(known);
         _unbindSeatEdit(known);
       }
     }

@@ -1831,21 +1831,6 @@ class ChatCubit extends Cubit<ChatState>
   @visibleForTesting
   void debugRecomputeWorkingSessions() => _updateSessionActivities();
 
-  /// Clears [SessionActivity.isReadyToChat] after idle-notify consumes it.
-  void acknowledgeSessionReady(String sessionId) {
-    if (isClosed) return;
-    final current = state.sessionActivities[sessionId];
-    if (current == null || current == const SessionActivity()) return;
-    emit(
-      state.copyWith(
-        sessionActivities: {
-          ...state.sessionActivities,
-          sessionId: const SessionActivity(),
-        },
-      ),
-    );
-  }
-
   /// Seat-level working for compose stop button (mirrors members panel rules).
   bool isMemberWorking(String sessionId, String memberId) {
     final tab = _tabStore.getOpenTabBySessionId(sessionId);

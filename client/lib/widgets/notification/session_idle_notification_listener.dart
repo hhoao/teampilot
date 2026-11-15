@@ -61,9 +61,6 @@ class _SessionIdleNotificationListenerState
     if (l10nContext == null || !l10nContext.mounted) return;
     final l10n = l10nContext.l10n;
     final chat = context.read<ChatCubit>();
-    for (final id in sessionIds) {
-      chat.acknowledgeSessionReady(id);
-    }
     final notifyOnSessionIdle = l10nContext
         .read<SessionPreferencesCubit>()
         .state
