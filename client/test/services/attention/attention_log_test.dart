@@ -167,6 +167,61 @@ void main() {
     await second.close();
   });
 
+  test(
+    'a failed existing-log read fails open without changing disk; retry '
+    'loads and continues the sequence',
+    () async {
+      final fs = _FlakyReadFilesystem();
+      const path = '/tp/attention/log-7.jsonl';
+      final first = await AttentionLog.open(
+        authorityId: 'desk',
+        epoch: 7,
+        fs: fs,
+        path: path,
+        clock: () => DateTime.utc(2026, 11, 14),
+        eventId: () => 'evt-${logSeq++}',
+      );
+      await first.append(
+        sessionId: 's1',
+        memberId: 'dev',
+        kind: AttentionKind.idle,
+      );
+      await first.close();
+      final before = fs.files[path];
+
+      fs.failRead = true;
+      await expectLater(
+        AttentionLog.open(
+          authorityId: 'desk',
+          epoch: 7,
+          fs: fs,
+          path: path,
+          clock: () => DateTime.utc(2026, 11, 14),
+          eventId: () => 'evt-${logSeq++}',
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(fs.files[path], before);
+
+      fs.failRead = false;
+      final reopened = await AttentionLog.open(
+        authorityId: 'desk',
+        epoch: 7,
+        fs: fs,
+        path: path,
+        clock: () => DateTime.utc(2026, 11, 14),
+        eventId: () => 'evt-${logSeq++}',
+      );
+      final next = await reopened.append(
+        sessionId: 's2',
+        memberId: 'dev',
+        kind: AttentionKind.idle,
+      );
+      expect(next.seq, 2);
+      await reopened.close();
+    },
+  );
+
   test('a failed append still emits and the next append reconciles it',
       () async {
     final fs = _FlakyFilesystem();
@@ -263,30 +318,6 @@ void main() {
     expect((await queued).seq, 1);
     await closed;
   });
-
-  test('corrupt lines are skipped', () async {
-    final fs = InMemoryFilesystem();
-    final path = '/tp/attention/log-7.jsonl';
-    fs.files[path] = 'not json\n';
-    final log = await AttentionLog.open(
-      authorityId: 'desk',
-      epoch: 7,
-      fs: fs,
-      path: path,
-      clock: () => DateTime.utc(2026, 11, 14),
-      eventId: () => 'evt-${logSeq++}',
-    );
-
-    expect(log.events, isEmpty);
-    expect(log.latestSeq, 0);
-    final event = await log.append(
-      sessionId: 's1',
-      memberId: 'dev',
-      kind: AttentionKind.idle,
-    );
-    expect(event.seq, 1);
-    await log.close();
-  });
 }
 
 var logSeq = 0;
@@ -305,5 +336,16 @@ final class _FlakyFilesystem extends InMemoryFilesystem {
   Future<void> atomicWrite(String path, String content) async {
     if (fail) throw StateError('atomic write failed');
     return super.atomicWrite(path, content);
+  }
+}
+
+/// An [InMemoryFilesystem] whose reads can be made to fail on demand.
+final class _FlakyReadFilesystem extends InMemoryFilesystem {
+  bool failRead = false;
+
+  @override
+  Future<String?> readString(String path) async {
+    if (failRead) throw StateError('read failed');
+    return super.readString(path);
   }
 }

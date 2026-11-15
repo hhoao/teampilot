@@ -61,6 +61,12 @@ final class AttentionLog {
 
   int get latestSeq => _nextSeq - 1;
 
+  /// Opens a file-backed log.
+  ///
+  /// Throws when an existing on-disk log cannot be read or its directory cannot
+  /// be prepared, because assigning new sequence numbers without the loaded
+  /// contents would violate `(authorityId, epoch)` monotonicity. Corrupt
+  /// individual lines are skipped.
   static Future<AttentionLog> open({
     required String authorityId,
     required int epoch,
@@ -89,40 +95,32 @@ final class AttentionLog {
     final fs = _fs;
     final path = _path;
     if (fs == null || path == null) return;
-    try {
-      await fs.ensureDir(fs.pathContext.dirname(path));
-      final raw = await fs.readString(path);
-      if (raw == null || raw.trim().isEmpty) return;
-      var maxSeq = 0;
-      for (final line in const LineSplitter().convert(raw)) {
-        if (line.trim().isEmpty) continue;
-        try {
-          final event = AttentionEvent.fromJson(jsonDecode(line));
-          if (event == null ||
-              event.authorityId != authorityId ||
-              event.epoch != epoch) {
-            continue;
-          }
-          _events.add(event);
-          if (event.seq > maxSeq) maxSeq = event.seq;
-        } on Object catch (error, stackTrace) {
-          appLogger.w(
-            '[$tag] skipping corrupt log line path=$path',
-            error: error,
-            stackTrace: stackTrace,
-          );
+    await fs.ensureDir(fs.pathContext.dirname(path));
+    final raw = await fs.readString(path);
+    if (raw == null || raw.trim().isEmpty) return;
+    var maxSeq = 0;
+    for (final line in const LineSplitter().convert(raw)) {
+      if (line.trim().isEmpty) continue;
+      try {
+        final event = AttentionEvent.fromJson(jsonDecode(line));
+        if (event == null ||
+            event.authorityId != authorityId ||
+            event.epoch != epoch) {
+          continue;
         }
+        _events.add(event);
+        if (event.seq > maxSeq) maxSeq = event.seq;
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '[$tag] skipping corrupt log line path=$path',
+          error: error,
+          stackTrace: stackTrace,
+        );
       }
-      _events.sort((a, b) => a.seq.compareTo(b.seq));
-      _nextSeq = maxSeq + 1;
-      _pruneMemory();
-    } on Object catch (error, stackTrace) {
-      appLogger.w(
-        '[$tag] load failed path=$path',
-        error: error,
-        stackTrace: stackTrace,
-      );
     }
+    _events.sort((a, b) => a.seq.compareTo(b.seq));
+    _nextSeq = maxSeq + 1;
+    _pruneMemory();
   }
 
   Future<AttentionEvent> append({

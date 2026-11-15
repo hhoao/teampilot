@@ -51,6 +51,9 @@ final class AttentionBatch {
           invalid = true;
         }
       }
+    } else {
+      // Missing or malformed events must not be treated as a valid empty batch.
+      invalid = true;
     }
     return AttentionBatch(
       authorityId: authority,
@@ -58,7 +61,7 @@ final class AttentionBatch {
       fromSeq: fromSeq is num ? fromSeq.toInt() : 0,
       toSeq: toSeq is num ? toSeq.toInt() : 0,
       events: events,
-      // A dropped entry means the batch is no longer contiguous.
+      // A dropped or missing entry means the batch is no longer contiguous.
       gap: (gap is bool && gap) || invalid,
     );
   }

@@ -17,6 +17,17 @@ final class _FlakyReadFilesystem extends InMemoryFilesystem {
   }
 }
 
+/// [InMemoryFilesystem] whose atomic writes throw while [failWrite] is set.
+final class _FlakyWriteFilesystem extends InMemoryFilesystem {
+  bool failWrite = false;
+
+  @override
+  Future<void> atomicWrite(String path, String content) async {
+    if (failWrite) throw StateError('write failed for $path');
+    return super.atomicWrite(path, content);
+  }
+}
+
 /// Counts reads so a test can prove concurrent loads share one read.
 final class _CountingReadFilesystem extends InMemoryFilesystem {
   int reads = 0;
@@ -31,9 +42,13 @@ final class _CountingReadFilesystem extends InMemoryFilesystem {
 String _cursorFile({
   Map<String, Map<String, Object?>> cursors = const {},
   List<String> seenEventIds = const [],
-}) => const JsonEncoder.withIndent(
-  '  ',
-).convert({'version': 1, 'cursors': cursors, 'seenEventIds': seenEventIds});
+  List<String> evictedEventIds = const [],
+}) => const JsonEncoder.withIndent('  ').convert({
+  'version': 1,
+  'cursors': cursors,
+  'seenEventIds': seenEventIds,
+  'evictedEventIds': evictedEventIds,
+});
 
 void main() {
   test('remembers cursors and caps the seen event id list', () async {
@@ -43,17 +58,23 @@ void main() {
       path: '/tp/attention/cursors.json',
       maxSeenEventIds: 2,
     );
-    await store.load();
+    expect(await store.load(), isTrue);
 
-    await store.remember(
-      'local',
-      const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 2),
-      ['e1', 'e2'],
+    expect(
+      await store.remember(
+        'local',
+        const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 2),
+        ['e1', 'e2'],
+      ),
+      isTrue,
     );
-    await store.remember(
-      'local',
-      const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 3),
-      ['e3'],
+    expect(
+      await store.remember(
+        'local',
+        const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 3),
+        ['e3'],
+      ),
+      isTrue,
     );
 
     expect(store.cursorFor('local')?.seq, 3);
@@ -75,7 +96,7 @@ void main() {
     );
 
     final second = AttentionCursorStore(fs: fs, path: path);
-    await second.load();
+    expect(await second.load(), isTrue);
 
     expect(second.cursorFor('local')?.seq, 9);
     expect(second.hasSeen('e9'), isTrue);
@@ -99,7 +120,7 @@ void main() {
       const [],
     );
 
-    await store.clearCursor('local');
+    expect(await store.clearCursor('local'), isTrue);
 
     expect(store.cursorFor('local'), isNull);
     expect(store.cursorFor('ssh:p1')?.seq, 2);
@@ -119,34 +140,117 @@ void main() {
       fs.files[path] = original;
 
       final store = AttentionCursorStore(fs: fs, path: path);
-      await store.load();
+      expect(await store.load(), isFalse);
       expect(store.cursorFor('ssh:p1'), isNull);
       expect(store.hasSeen('e-old'), isFalse);
 
-      await store.remember(
-        'local',
-        const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 1),
-        ['e-new'],
+      expect(
+        await store.remember(
+          'local',
+          const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 1),
+          ['e-new'],
+        ),
+        isFalse,
       );
-      // The queued save retried the read, failed again, and must not write.
+      expect(store.cursorFor('local'), isNull);
+      expect(store.hasSeen('e-new'), isFalse);
       expect(fs.files[path], original);
 
       fs.failRead = false;
-      await store.load();
-      await store.remember(
-        'local',
-        const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 2),
-        const [],
+      expect(await store.load(), isTrue);
+      expect(
+        await store.remember(
+          'local',
+          const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 2),
+          const [],
+        ),
+        isTrue,
       );
 
       final saved = jsonDecode(fs.files[path]!) as Map;
       final cursors = saved['cursors'] as Map;
       expect(cursors['ssh:p1'], isA<Map>());
       expect((cursors['local'] as Map)['seq'], 2);
-      expect(saved['seenEventIds'], containsAll(['e-old', 'e-new']));
+      expect(saved['seenEventIds'], contains('e-old'));
       expect(store.cursorFor('ssh:p1')?.seq, 4);
     },
   );
+
+  test(
+    'a failed cursor read returns false and does not mark the store loaded; a '
+    'subsequent successful write/read persists the cursor',
+    () async {
+      final fs = _FlakyReadFilesystem()..failRead = true;
+      const path = '/tp/attention/cursors.json';
+      fs.files[path] = _cursorFile(
+        cursors: {
+          'local': {'authorityId': 'desk', 'epoch': 7, 'seq': 1},
+        },
+      );
+
+      final store = AttentionCursorStore(fs: fs, path: path);
+      expect(await store.load(), isFalse);
+      expect(
+        await store.remember(
+          'local',
+          const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 2),
+          const [],
+        ),
+        isFalse,
+      );
+
+      fs.failRead = false;
+      expect(await store.load(), isTrue);
+      expect(
+        await store.remember(
+          'local',
+          const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 3),
+          ['e3'],
+        ),
+        isTrue,
+      );
+
+      final saved = jsonDecode(fs.files[path]!) as Map;
+      final cursors = saved['cursors'] as Map;
+      expect((cursors['local'] as Map)['seq'], 3);
+
+      final reloaded = AttentionCursorStore(fs: fs, path: path);
+      expect(await reloaded.load(), isTrue);
+      expect(reloaded.cursorFor('local')?.seq, 3);
+      expect(reloaded.hasSeen('e3'), isTrue);
+    },
+  );
+
+  test('a failed atomicWrite leaves the previous durable cursor', () async {
+    final fs = _FlakyWriteFilesystem();
+    const path = '/tp/attention/cursors.json';
+    final store = AttentionCursorStore(fs: fs, path: path);
+    await store.load();
+    expect(
+      await store.remember(
+        'local',
+        const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 1),
+        ['e1'],
+      ),
+      isTrue,
+    );
+
+    fs.failWrite = true;
+    expect(
+      await store.remember(
+        'local',
+        const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 2),
+        ['e2'],
+      ),
+      isFalse,
+    );
+
+    expect(store.cursorFor('local')?.seq, 1);
+    expect(store.hasSeen('e2'), isFalse);
+    final saved = jsonDecode(fs.files[path]!) as Map;
+    final cursors = saved['cursors'] as Map;
+    expect((cursors['local'] as Map)['seq'], 1);
+  });
 
   test('loading caps an oversized legacy seen event id list', () async {
     final fs = InMemoryFilesystem();
@@ -156,7 +260,6 @@ void main() {
     final store = AttentionCursorStore(fs: fs, path: path, maxSeenEventIds: 3);
     await store.load();
 
-    // Oldest ids are dropped, newest kept.
     expect(store.hasSeen('e1'), isFalse);
     expect(store.hasSeen('e2'), isFalse);
     expect(store.hasSeen('e3'), isTrue);
@@ -177,7 +280,7 @@ void main() {
       );
 
       final store = AttentionCursorStore(fs: fs, path: path);
-      await store.clearCursor('local');
+      expect(await store.clearCursor('local'), isTrue);
 
       expect(store.cursorFor('local'), isNull);
       expect(store.cursorFor('ssh:p1')?.seq, 5);
@@ -215,13 +318,16 @@ void main() {
     fs.files[path] = 'not json';
 
     final store = AttentionCursorStore(fs: fs, path: path);
-    await store.load();
+    expect(await store.load(), isTrue);
     expect(store.cursorFor('local'), isNull);
 
-    await store.remember(
-      'local',
-      const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 4),
-      ['e4'],
+    expect(
+      await store.remember(
+        'local',
+        const AttentionCursor(authorityId: 'desk', epoch: 7, seq: 4),
+        ['e4'],
+      ),
+      isTrue,
     );
 
     final saved = jsonDecode(fs.files[path]!) as Map;
