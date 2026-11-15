@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/credential_lease.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/cli/grok/grok_constants.dart';
@@ -32,7 +34,8 @@ void main() {
   SessionHomeContext context(
     ConfigProfileService service, {
     MemberBusIdleEndpoint? busIdle,
-    bool withoutBusIdle = false,
+    MemberAgentStatusEndpoint? agentStatus,
+    bool includeDefaultBusIdle = true,
   }) => sessionHomeContextFromLaunch(
     ConfigProfileLaunchContext(
       workspaceId: 'workspace-1',
@@ -61,12 +64,13 @@ void main() {
       workingDirectory: '/workspace/workspace',
       paths: service,
       catalog: service,
-      busIdle: withoutBusIdle ? null : (busIdle ?? localBusIdle),
+      busIdle: includeDefaultBusIdle ? (busIdle ?? localBusIdle) : null,
+      agentStatus: agentStatus,
     ),
     CliTool.grok,
   );
 
-  Future<GrokCredentialAdapter> build() async {
+  Future<GrokCredentialAdapter> build({bool? isWindows}) async {
     final fs = InMemoryFilesystem();
     final authority = OAuthCredentialAuthority(
       fs: fs,
@@ -91,6 +95,7 @@ void main() {
       authority: authority,
       sessionProviderId: (_) => 'xai',
       now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
+      isWindows: isWindows,
     );
   }
 
@@ -100,6 +105,49 @@ void main() {
     layout: RuntimeLayout(teampilotRoot: '/tp', fs: fs),
     storage: fakeHomeStorage(filesystem: fs),
   );
+
+  Future<Map<String, Object?>> readLeaseConfig(
+    InMemoryFilesystem fs,
+    String configDir,
+  ) async =>
+      jsonDecode(
+            (await fs.readString(
+              p.posix.join(configDir, GrokConstants.leaseConfigFileName),
+            ))!,
+          )
+          as Map<String, Object?>;
+
+  /// Executes the generated shim in a real temp dir with a fake `curl` first
+  /// on PATH. Returns the process result and deletes the temp tree afterwards.
+  Future<ProcessResult> runShim({
+    required String shimBody,
+    required String curlStdout,
+  }) async {
+    final tmp = Directory.systemTemp.createTempSync('grok-shim-test-');
+    addTearDown(() {
+      if (tmp.existsSync()) tmp.deleteSync(recursive: true);
+    });
+    final binDir = Directory(p.join(tmp.path, 'bin'))..createSync();
+    final shimPath = p.join(binDir.path, GrokConstants.leaseShimFileName);
+    File(shimPath).writeAsStringSync(shimBody);
+    File(p.join(tmp.path, GrokConstants.leaseConfigFileName)).writeAsStringSync(
+      jsonEncode({
+        'providerId': 'xai',
+        'endpoint': 'http://127.0.0.1:35297/credentials/lease',
+        'sessionId': 'session-1',
+        'memberId': 'm1',
+        'busToken': 'session-1',
+      }),
+    );
+    final fakeBin = Directory(p.join(tmp.path, 'fakebin'))..createSync();
+    final fakeCurl = File(p.join(fakeBin.path, 'curl'));
+    fakeCurl.writeAsStringSync('#!/bin/sh\nprintf \'%s\' \'$curlStdout\'\n');
+    Process.runSync('chmod', ['755', fakeCurl.path]);
+
+    final env = Map<String, String>.from(Platform.environment);
+    env['PATH'] = '${fakeBin.path}:${env['PATH'] ?? ''}';
+    return Process.run('sh', [shimPath], environment: env);
+  }
 
   test(
     'injects GROK_AUTH_PROVIDER_COMMAND and writes shim + lease config',
@@ -114,9 +162,16 @@ void main() {
       );
 
       final configDir = contribution.environment[GrokConstants.homeEnvKey]!;
+      final shimPath = p.posix.join(
+        configDir,
+        'bin',
+        GrokConstants.leaseShimFileName,
+      );
+      // grok runs the command through `sh -c`; quoting keeps paths safe and
+      // does not rely on a remote flush preserving the executable bit.
       expect(
         contribution.environment[GrokConstants.authProviderCommandEnvKey],
-        p.posix.join(configDir, 'bin', GrokConstants.leaseShimFileName),
+        "sh '$shimPath'",
       );
       expect(
         contribution.environment,
@@ -124,19 +179,11 @@ void main() {
       );
       expect(contribution.warnings, isEmpty);
 
-      final shim = await fs.readString(
-        p.posix.join(configDir, 'bin', GrokConstants.leaseShimFileName),
-      );
+      final shim = await fs.readString(shimPath);
       expect(shim, contains('/credentials/lease'));
       expect(shim, contains('GROK_AUTH_EXPIRED'));
 
-      final leaseConfig =
-          jsonDecode(
-                (await fs.readString(
-                  p.posix.join(configDir, GrokConstants.leaseConfigFileName),
-                ))!,
-              )
-              as Map<String, Object?>;
+      final leaseConfig = await readLeaseConfig(fs, configDir);
       expect(leaseConfig['providerId'], 'xai');
       expect(
         leaseConfig['endpoint'],
@@ -144,6 +191,68 @@ void main() {
       );
       expect(jsonEncode(leaseConfig), isNot(contains('access-old')));
       expect(jsonEncode(leaseConfig), isNot(contains('rt-old')));
+    },
+  );
+
+  test(
+    'native/simple seat uses the agent-status endpoint without a bus idle',
+    () async {
+      final adapter = await build();
+      final fs = InMemoryFilesystem();
+      final service = serviceOn(fs);
+      const agentStatus = MemberAgentStatusEndpoint(
+        url: 'http://127.0.0.1:35297/agent-status',
+        sessionId: 'session-1',
+      );
+
+      final contribution = await adapter.materialize(
+        context(
+          service,
+          agentStatus: agentStatus,
+          includeDefaultBusIdle: false,
+        ),
+        providerId: 'xai',
+      );
+      final configDir = contribution.environment[GrokConstants.homeEnvKey]!;
+      final leaseConfig = await readLeaseConfig(fs, configDir);
+
+      expect(
+        leaseConfig['endpoint'],
+        'http://127.0.0.1:35297/credentials/lease',
+      );
+      expect(leaseConfig['sessionId'], 'session-1');
+      // Local seats echo the session id as the bus token.
+      expect(leaseConfig['busToken'], 'session-1');
+    },
+  );
+
+  test(
+    'agent-status takes precedence over the idle endpoint when both exist',
+    () async {
+      final adapter = await build();
+      final fs = InMemoryFilesystem();
+      final service = serviceOn(fs);
+      const agentStatus = MemberAgentStatusEndpoint(
+        url: 'http://127.0.0.1:44001/agent-status',
+        token: 'status-token',
+      );
+      const busIdle = MemberBusIdleEndpoint(
+        url: 'http://127.0.0.1:41001/idle',
+        token: 'bus-secret',
+      );
+
+      final contribution = await adapter.materialize(
+        context(service, agentStatus: agentStatus, busIdle: busIdle),
+        providerId: 'xai',
+      );
+      final configDir = contribution.environment[GrokConstants.homeEnvKey]!;
+      final leaseConfig = await readLeaseConfig(fs, configDir);
+
+      expect(
+        leaseConfig['endpoint'],
+        'http://127.0.0.1:44001/credentials/lease',
+      );
+      expect(leaseConfig['busToken'], 'status-token');
     },
   );
 
@@ -170,7 +279,40 @@ void main() {
         contains(r'''printf '{"access_token":"%s","expires_in":%s}\n' '''),
       );
       expect(shim, isNot(contains(r'''printf '%s\n' "$RESP"''')));
+
+      final result = await runShim(
+        shimBody: shim,
+        curlStdout: '{"access_token":"t","expires_in":900,"epoch":7}',
+      );
+      expect(result.exitCode, 0, reason: '${result.stderr}');
+      expect(result.stdout, '{"access_token":"t","expires_in":900}\n');
     },
+    skip: Platform.isWindows ? 'POSIX sh shim only' : false,
+  );
+
+  test(
+    'shim exits non-zero when the lease response has no access_token',
+    () async {
+      final adapter = await build();
+      final fs = InMemoryFilesystem();
+      final service = serviceOn(fs);
+      final contribution = await adapter.materialize(
+        context(service),
+        providerId: 'xai',
+      );
+      final configDir = contribution.environment[GrokConstants.homeEnvKey]!;
+      final shim = (await fs.readString(
+        p.posix.join(configDir, 'bin', GrokConstants.leaseShimFileName),
+      ))!;
+
+      final result = await runShim(
+        shimBody: shim,
+        curlStdout: '{"health":"missing"}',
+      );
+      expect(result.exitCode, isNot(0));
+      expect(result.stdout, isEmpty);
+    },
+    skip: Platform.isWindows ? 'POSIX sh shim only' : false,
   );
 
   test('no auth.json is seeded into the session home', () async {
@@ -203,13 +345,7 @@ void main() {
         providerId: 'xai',
       );
       final configDir = contribution.environment[GrokConstants.homeEnvKey]!;
-      final leaseConfig =
-          jsonDecode(
-                (await fs.readString(
-                  p.posix.join(configDir, GrokConstants.leaseConfigFileName),
-                ))!,
-              )
-              as Map<String, Object?>;
+      final leaseConfig = await readLeaseConfig(fs, configDir);
 
       expect(
         leaseConfig['endpoint'],
@@ -259,16 +395,30 @@ void main() {
     },
   );
 
-  test('no reachable lease endpoint fails before launch', () async {
-    final adapter = await build();
+  test(
+    'fails before launch when agent-status and idle are both missing',
+    () async {
+      final adapter = await build();
+      final fs = InMemoryFilesystem();
+      final service = serviceOn(fs);
+
+      expect(
+        () => adapter.materialize(
+          context(service, includeDefaultBusIdle: false),
+          providerId: 'xai',
+        ),
+        throwsA(isA<CredentialUnavailableException>()),
+      );
+    },
+  );
+
+  test('windows seats fail closed before spawn', () async {
+    final adapter = await build(isWindows: true);
     final fs = InMemoryFilesystem();
     final service = serviceOn(fs);
 
     expect(
-      () => adapter.materialize(
-        context(service, withoutBusIdle: true),
-        providerId: 'xai',
-      ),
+      () => adapter.materialize(context(service), providerId: 'xai'),
       throwsA(isA<CredentialUnavailableException>()),
     );
   });

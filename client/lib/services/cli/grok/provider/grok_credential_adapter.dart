@@ -7,6 +7,7 @@ import '../../../../services/cli/registry/capabilities/session_credential_capabi
 import '../../../../services/io/filesystem.dart';
 import '../../../../services/provider/credential_lease_endpoint.dart';
 import '../../../../services/provider/oauth_credential_authority.dart';
+import '../../../../utils/logging/logger_utils.dart';
 import '../grok_constants.dart';
 
 /// Grok implementation of [SessionCredentialCapability].
@@ -19,7 +20,9 @@ final class GrokCredentialAdapter implements SessionCredentialCapability {
     required this.authority,
     required this.sessionProviderId,
     DateTime Function()? now,
-  }) : _now = now ?? (() => DateTime.now().toUtc());
+    bool? isWindows,
+  }) : _now = now ?? (() => DateTime.now().toUtc()),
+       _isWindows = isWindows ?? Platform.isWindows;
 
   final OAuthCredentialAuthority authority;
 
@@ -27,6 +30,7 @@ final class GrokCredentialAdapter implements SessionCredentialCapability {
   /// "unknown session" and skips the provider-identity check.
   final String? Function(String sessionId) sessionProviderId;
   final DateTime Function() _now;
+  final bool _isWindows;
 
   @override
   Future<CredentialLease> leaseCredentials({
@@ -55,6 +59,14 @@ final class GrokCredentialAdapter implements SessionCredentialCapability {
     SessionHomeContext ctx, {
     required String providerId,
   }) async {
+    // The shim is POSIX sh only; a Windows seat must fail here rather than
+    // spawn an agent whose auth provider can never run.
+    if (_isWindows) {
+      AppLogger.instance.w(
+        'grok external auth provider unsupported on windows',
+      );
+      throw const CredentialUnavailableException(CredentialHealth.missing);
+    }
     // A seat may only request the provider it was launched with.
     final allowed = sessionProviderId(ctx.sessionId);
     if (allowed != null && allowed != providerId) {
@@ -70,8 +82,8 @@ final class GrokCredentialAdapter implements SessionCredentialCapability {
       throw const CredentialUnavailableException(CredentialHealth.expiring);
     }
 
-    // No reachable lease endpoint (missing idle binding): fail before spawning
-    // an agent that could never authenticate.
+    // No reachable control-plane endpoint (neither an agent-status nor an idle
+    // binding): fail before spawning an agent that could never authenticate.
     final endpoint = _endpointFor(ctx);
     if (endpoint.isEmpty) {
       throw const CredentialUnavailableException(CredentialHealth.missing);
@@ -81,7 +93,10 @@ final class GrokCredentialAdapter implements SessionCredentialCapability {
       ctx.scope.workspaceId,
       ctx.scope.sessionId,
       GrokConstants.executableName,
-      memberId: ctx.memberId,
+      // Must match GrokProviderCapability's session-home dir, otherwise
+      // `GROK_HOME` (this adapter) and config.toml (the provider capability)
+      // would land in different member trees.
+      memberId: ctx.memberId ?? ctx.scope.memberId,
     );
     final fs = ctx.paths.fs;
     await fs.ensureDir(configDir);
@@ -93,23 +108,28 @@ final class GrokCredentialAdapter implements SessionCredentialCapability {
       GrokConstants.leaseShimFileName,
     );
     await fs.atomicWrite(shimPath, _shimScript);
-    // grok runs the command via `sh -c`, so the shim needs the executable bit.
+    // Best effort locally; a remote flush does not preserve the mode, which is
+    // why the injected command below runs the shim through `sh`.
     _restrict(fs, shimPath, executable: true);
 
     final leaseConfigPath = fs.pathContext.join(
       configDir,
       GrokConstants.leaseConfigFileName,
     );
-    final memberId = ctx.memberId ?? ctx.member?.id ?? 'acp';
-    final busIdle = ctx.busIdle;
+    final memberId =
+        ctx.memberId ?? ctx.scope.memberId ?? ctx.member?.id ?? 'acp';
+    final sessionId =
+        ctx.agentStatus?.sessionId ?? ctx.busIdle?.sessionId ?? ctx.sessionId;
+    // A local seat's token is the session id, which the gateway treats as
+    // "no token"; a remote seat carries its real tunnel token here.
+    final busToken =
+        ctx.agentStatus?.token ?? ctx.busIdle?.token ?? ctx.sessionId;
     final body = <String, Object?>{
       'providerId': providerId,
       'endpoint': endpoint,
-      'sessionId': ctx.sessionId,
+      'sessionId': sessionId,
       'memberId': memberId,
-      // A local seat's bus token is the session id, which the gateway treats
-      // as "no token"; a remote seat carries its real tunnel token here.
-      'busToken': busIdle?.token ?? ctx.sessionId,
+      'busToken': busToken,
     };
     await fs.atomicWrite(leaseConfigPath, jsonEncode(body));
     _restrict(fs, leaseConfigPath);
@@ -117,22 +137,29 @@ final class GrokCredentialAdapter implements SessionCredentialCapability {
     return SessionHomeContribution(
       environment: {
         GrokConstants.homeEnvKey: configDir,
-        GrokConstants.authProviderCommandEnvKey: shimPath,
+        GrokConstants.authProviderCommandEnvKey: _shCommand(shimPath),
       },
     );
   }
 
-  /// Local seats use the in-process gateway loopback (`MemberBusIdleEndpoint
-  /// .local`); remote seats reuse the already-provisioned idle HTTP tunnel
-  /// port (`.remote`). No gateway port needs to be injected at construction,
-  /// so the adapter can be built before the gateway exists.
+  /// Prefer the agent-status endpoint: every seat gets one (native / simple /
+  /// mixed, local or SSH), while the idle endpoint only exists for mixed teams.
+  /// Both expose the same loopback shape (`MemberAgentStatusEndpoint.local`
+  /// and `MemberBusIdleEndpoint.local` share the gateway port), so the lease
+  /// path can be appended either way.
   String _endpointFor(SessionHomeContext ctx) {
-    final url = ctx.busIdle?.url ?? '';
+    final url = ctx.agentStatus?.url ?? ctx.busIdle?.url ?? '';
     if (url.isEmpty) return '';
     final base = _baseOf(url);
     if (base.isEmpty) return '';
     return '$base${CredentialLeaseEndpoint.path}';
   }
+
+  /// grok runs the env var through `sh -c`. Quoting the path keeps paths with
+  /// spaces or quotes intact and removes the dependency on an executable bit,
+  /// which a remote (SSH) flush does not preserve.
+  static String _shCommand(String path) =>
+      "sh '${path.replaceAll("'", r"'\''")}'";
 
   static String _baseOf(String url) {
     final uri = Uri.tryParse(url);
