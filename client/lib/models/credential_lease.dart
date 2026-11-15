@@ -43,3 +43,19 @@ class CredentialUnavailableException implements Exception {
   @override
   String toString() => 'CredentialUnavailableException($health)';
 }
+
+/// Refresh failed for a retryable reason: network error, timeout, 429/5xx, or
+/// an unparsable IdP response.
+///
+/// The stored refresh token is still valid, so the Authority must keep it. This
+/// deliberately does NOT extend [CredentialUnavailableException]: a transient
+/// outage is not "the user needs to sign in".
+class CredentialTransientException implements Exception {
+  const CredentialTransientException(this.cause);
+
+  /// Failure class or status, never token material.
+  final Object cause;
+
+  @override
+  String toString() => 'CredentialTransientException($cause)';
+}

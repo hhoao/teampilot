@@ -5,6 +5,7 @@ import 'dart:io';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../models/app_provider_config.dart';
+import '../../models/credential_lease.dart';
 import '../../services/cli/antigravity/antigravity_bootstrap_entry.dart';
 import '../../services/cli/antigravity/capabilities/acp_adapter_installer.dart';
 import '../../services/cli/claude/claude_bootstrap_entry.dart';
@@ -101,7 +102,7 @@ void wireCliBootstrap({
     fs: homeStorage.fs,
     basePath: homeStorage.paths.basePath,
     cliNamespace: 'grok',
-    refresher: _XaiCredentialRefresher(),
+    refresher: XaiCredentialRefresher(),
   );
   final grokLeaseEndpoint = CredentialLeaseEndpoint(
     authority: grokAuthority,
@@ -267,14 +268,19 @@ void wireCliBootstrap({
 /// xAI OAuth refresh against the IdP discovered at [_xaiIssuer].
 ///
 /// The token endpoint is resolved through OIDC discovery rather than a
-/// hard-coded path, so an IdP-side move does not break refresh. Any non-200
-/// (including `invalid_grant`) is permanent: the Authority clears the refresh
-/// token instead of retrying a rotated-away one.
-final class _XaiCredentialRefresher implements CredentialRefresher {
-  _XaiCredentialRefresher({HttpClient? client})
+/// hard-coded path, so an IdP-side move does not break refresh.
+///
+/// Failure split matters: only `400` / `401` mean the refresh token itself was
+/// rejected (rotated away, revoked) and the Authority may delete it. Network
+/// errors, timeouts, `429`, `5xx`, and unparsable bodies raise
+/// [CredentialTransientException] so the stored refresh token survives an IdP
+/// outage.
+final class XaiCredentialRefresher implements CredentialRefresher {
+  XaiCredentialRefresher({HttpClient? client})
     : _client = client ?? HttpClient();
 
   static const _xaiIssuer = 'https://auth.x.ai';
+  static const _clientId = 'b1a00492-073a-47ea-816f-4c329264a828';
 
   final HttpClient _client;
   String? _tokenEndpoint;
@@ -282,16 +288,31 @@ final class _XaiCredentialRefresher implements CredentialRefresher {
   Future<String> _discoverTokenEndpoint() async {
     final cached = _tokenEndpoint;
     if (cached != null) return cached;
-    final request = await _client.getUrl(
-      Uri.parse('$_xaiIssuer/.well-known/openid-configuration'),
-    );
-    final response = await request.close();
-    if (response.statusCode != 200) return '';
-    final raw = await response.transform(utf8.decoder).join();
-    final value =
-        (jsonDecode(raw) as Map<String, Object?>)['token_endpoint']
-            ?.toString() ??
-        '';
+    final HttpClientResponse response;
+    try {
+      final request = await _client.getUrl(
+        Uri.parse('$_xaiIssuer/.well-known/openid-configuration'),
+      );
+      response = await request.close();
+    } on Object catch (error) {
+      throw CredentialTransientException(error);
+    }
+    if (response.statusCode != 200) {
+      throw CredentialTransientException('discovery ${response.statusCode}');
+    }
+    final String value;
+    try {
+      final raw = await response.transform(utf8.decoder).join();
+      value =
+          (jsonDecode(raw) as Map<String, Object?>)['token_endpoint']
+              ?.toString() ??
+          '';
+    } on Object catch (error) {
+      throw CredentialTransientException(error);
+    }
+    if (value.isEmpty) {
+      throw const CredentialTransientException('discovery has no token_endpoint');
+    }
     _tokenEndpoint = value;
     return value;
   }
@@ -299,24 +320,41 @@ final class _XaiCredentialRefresher implements CredentialRefresher {
   @override
   Future<CredentialRefreshOutcome> refresh(String refreshToken) async {
     final endpoint = await _discoverTokenEndpoint();
-    if (endpoint.isEmpty) return const RefreshRejected();
-    final request = await _client.postUrl(Uri.parse(endpoint));
-    request.headers.contentType = ContentType.json;
-    request.write(
-      jsonEncode({
-        'grant_type': 'refresh_token',
-        'refresh_token': refreshToken,
-        'client_id': 'b1a00492-073a-47ea-816f-4c329264a828',
-      }),
-    );
-    final response = await request.close();
-    final raw = await response.transform(utf8.decoder).join();
-    if (response.statusCode != 200) return const RefreshRejected();
-    final json = jsonDecode(raw) as Map<String, Object?>;
+    final HttpClientResponse response;
+    final String raw;
+    try {
+      final request = await _client.postUrl(Uri.parse(endpoint));
+      request.headers.contentType = ContentType.json;
+      request.write(
+        jsonEncode({
+          'grant_type': 'refresh_token',
+          'refresh_token': refreshToken,
+          'client_id': _clientId,
+        }),
+      );
+      response = await request.close();
+      raw = await response.transform(utf8.decoder).join();
+    } on Object catch (error) {
+      throw CredentialTransientException(error);
+    }
+    if (response.statusCode == 400 || response.statusCode == 401) {
+      return const RefreshRejected();
+    }
+    if (response.statusCode != 200) {
+      throw CredentialTransientException('token ${response.statusCode}');
+    }
+    final Map<String, Object?> json;
+    try {
+      json = jsonDecode(raw) as Map<String, Object?>;
+    } on Object catch (error) {
+      throw CredentialTransientException(error);
+    }
     final access = json['access_token']?.toString() ?? '';
+    if (access.isEmpty) {
+      throw const CredentialTransientException('empty access_token');
+    }
     final next = json['refresh_token']?.toString() ?? refreshToken;
     final seconds = (json['expires_in'] as num?)?.toInt() ?? 3600;
-    if (access.isEmpty) return const RefreshRejected();
     return RefreshSucceeded(
       accessToken: access,
       refreshToken: next,

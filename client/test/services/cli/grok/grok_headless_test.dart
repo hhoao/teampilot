@@ -9,12 +9,36 @@ import 'package:teampilot/services/cli/grok/grok_constants.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_assembler.dart';
+import 'package:teampilot/services/provider/oauth_credential_authority.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:toml/toml.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 
 const _configDir = '/runtime/grok';
+
+String _authJson({
+  String key = 'provider',
+  String refreshToken = 'rt',
+  String expiresAt = '2026-11-14T11:30:00Z',
+}) => jsonEncode({
+  'https://auth.x.ai::b1a00492-073a-47ea-816f-4c329264a828': {
+    'key': key,
+    'refresh_token': refreshToken,
+    'expires_at': expiresAt,
+    'auth_mode': 'Oidc',
+  },
+});
+
+final class _TestRefresher implements CredentialRefresher {
+  @override
+  Future<CredentialRefreshOutcome> refresh(String refreshToken) async =>
+      RefreshSucceeded(
+        accessToken: 'refreshed',
+        refreshToken: 'rt-next',
+        expiresAt: DateTime.utc(2026, 11, 14, 11, 30, 0),
+      );
+}
 
 HeadlessLaunchContext _run({
   String prompt = 'P',
@@ -124,21 +148,26 @@ void main() {
   group('provisioning', () {
     late InMemoryFilesystem fs;
     late HomeStorage storage;
+    late OAuthCredentialAuthority authority;
     late GrokHeadlessCapability cap;
 
     setUp(() {
       fs = InMemoryFilesystem();
       storage = fakeHomeStorage(filesystem: fs);
-      cap = GrokHeadlessCapability(storage: storage);
+      authority = OAuthCredentialAuthority(
+        fs: fs,
+        basePath: '/tp',
+        cliNamespace: 'grok',
+        refresher: _TestRefresher(),
+        now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
+      );
+      cap = GrokHeadlessCapability(storage: storage, authority: authority);
     });
 
-    Future<void> seedProviderAuth() async {
-      await fs.ensureDir('/tp/providers/grok/xai');
-      await fs.atomicWrite(
-        '/tp/providers/grok/xai/auth.json',
-        '{"access_token":"token"}',
-      );
-    }
+    Future<void> seedAuthority() => authority.importFromLogin(
+      'xai',
+      utf8.encode(_authJson()),
+    );
 
     HeadlessProvisionContext provisionCtx({
       String providerId = 'xai',
@@ -156,8 +185,16 @@ void main() {
       (await fs.readString('$_configDir/config.toml'))!,
     ).toMap();
 
-    test('writes the default model and seeds auth.json', () async {
-      await seedProviderAuth();
+    Future<Map<String, Object?>> readSessionScope() async {
+      final raw = await fs.readString('$_configDir/auth.json');
+      expect(raw, isNotNull);
+      final auth = jsonDecode(raw!) as Map<String, Object?>;
+      return auth.values.single as Map<String, Object?>;
+    }
+
+    test('writes the default model and an access-token-only auth.json',
+        () async {
+      await seedAuthority();
       const provider = AppProviderConfig(
         id: 'xai',
         cli: CliTool.grok,
@@ -184,14 +221,36 @@ void main() {
       final compat = config['compat'] as Map;
       expect((compat['claude'] as Map)['mcps'], isFalse);
       expect((compat['cursor'] as Map)['hooks'], isFalse);
+
+      final scope = await readSessionScope();
+      expect(scope['key'], 'provider');
+      expect(scope['auth_mode'], 'Oidc');
+      // The refresh token must never cross to the per-run home.
+      expect(scope, isNot(contains('refresh_token')));
       expect(
         await fs.readString('$_configDir/auth.json'),
-        '{"access_token":"token"}',
+        isNot(contains('refresh_token')),
+      );
+    });
+
+    test('migrates the pre-Authority provider auth.json on the first run',
+        () async {
+      await fs.ensureDir('/tp/providers/grok/xai');
+      await fs.atomicWrite('/tp/providers/grok/xai/auth.json', _authJson());
+
+      final result = await cap.provision(provisionCtx());
+
+      expect(result.credentialsReady, isTrue);
+      expect(result.warnings, isEmpty);
+      expect((await readSessionScope())['key'], 'provider');
+      expect(
+        await fs.readString('/tp/providers/grok/xai/auth.json'),
+        isNull,
+        reason: 'migration must delete the legacy RT copy',
       );
     });
 
     test('an API key becomes XAI_API_KEY and skips auth.json', () async {
-      await seedProviderAuth();
       const provider = AppProviderConfig(
         id: 'xai',
         cli: CliTool.grok,
@@ -215,18 +274,25 @@ void main() {
       expect(result.credentialsReady, isFalse);
       expect(result.warnings, contains('grok_credentials_missing'));
       expect(result.extraEnvironment, isEmpty);
+      expect((await fs.stat('$_configDir/auth.json')).exists, isFalse);
     });
   });
 
-  test('json output survives a config dir with no provider row', () async {
+  test('no provider row still provisions from the authority credential',
+      () async {
     final fs = InMemoryFilesystem();
     final storage = fakeHomeStorage(filesystem: fs);
-    final cap = GrokHeadlessCapability(storage: storage);
-    await fs.ensureDir('/home/test/.grok');
-    await fs.atomicWrite(
-      '/home/test/.grok/auth.json',
-      jsonEncode({'access_token': 'machine'}),
+    final authority = OAuthCredentialAuthority(
+      fs: fs,
+      basePath: '/tp',
+      cliNamespace: 'grok',
+      refresher: _TestRefresher(),
+      now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
     );
+    // The provider UI's importGlobal action moves ~/.grok/auth.json into the
+    // Authority; headless no longer reads the machine home directly.
+    await authority.importFromLogin('xai', utf8.encode(_authJson()));
+    final cap = GrokHeadlessCapability(storage: storage, authority: authority);
 
     final result = await cap.provision(
       const HeadlessProvisionContext(
@@ -239,8 +305,10 @@ void main() {
     );
 
     expect(result.credentialsReady, isTrue);
-    expect(jsonDecode((await fs.readString('$_configDir/auth.json'))!), {
-      'access_token': 'machine',
-    });
+    final auth = jsonDecode((await fs.readString('$_configDir/auth.json'))!)
+        as Map<String, Object?>;
+    final scope = auth.values.single as Map<String, Object?>;
+    expect(scope['key'], 'provider');
+    expect(scope, isNot(contains('refresh_token')));
   });
 }

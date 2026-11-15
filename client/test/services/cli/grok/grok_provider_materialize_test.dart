@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/models/credential_lease.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/chat/launch/config_profile_service.dart';
@@ -41,6 +42,12 @@ final class _TestRefresher implements CredentialRefresher {
         refreshToken: 'rt',
         expiresAt: DateTime.utc(2026, 11, 14, 11, 30, 0),
       );
+}
+
+final class _RejectingRefresher implements CredentialRefresher {
+  @override
+  Future<CredentialRefreshOutcome> refresh(String refreshToken) async =>
+      const RefreshRejected();
 }
 
 const _agentStatus = MemberAgentStatusEndpoint(
@@ -503,6 +510,294 @@ void main() {
       apiKey: 'xai-key',
     );
     expect((await capability.probe(apiKeyRow)).isReady, isTrue);
+  });
+
+
+  test('an OAuth seat drops a stale session auth.json and injects the shim',
+      () async {
+    final fs = InMemoryFilesystem();
+    final storage = fakeHomeStorage(filesystem: fs);
+    final service = ConfigProfileService(
+      basePath: '/tp',
+      fs: fs,
+      layout: RuntimeLayout(teampilotRoot: '/tp', fs: fs),
+      storage: storage,
+    );
+    final authority = OAuthCredentialAuthority(
+      fs: fs,
+      basePath: '/tp',
+      cliNamespace: 'grok',
+      refresher: _TestRefresher(),
+      now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
+    );
+    await authority.importFromLogin(
+      'xai',
+      utf8.encode(jsonEncode(_authJsonPayload())),
+    );
+    final capability = GrokProviderCapability(
+      storage: storage,
+      authority: authority,
+      adapter: GrokCredentialAdapter(
+        authority: authority,
+        sessionProviderId: (_) => 'xai',
+        now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
+      ),
+    );
+
+    const member = TeamMemberConfig(id: 'm1', name: 'Member', provider: 'xai');
+    final scope = resolveLaunchProfileScope(
+      workspaceId: 'workspace-1',
+      teamId: 'team-a',
+      appSessionId: 'session-1',
+      cliTeamName: 'session-1',
+    );
+    final ctx = sessionHomeContextFromLaunch(
+      ConfigProfileLaunchContext(
+        workspaceId: 'workspace-1',
+        teamId: 'team-a',
+        sessionId: scope.sessionId,
+        scope: scope,
+        member: member,
+        members: const [member],
+        workingDirectory: '/workspace/workspace',
+        paths: service,
+        catalog: service,
+        agentStatus: _agentStatus,
+      ),
+      CliTool.grok,
+    );
+    final configDir = service.sessionToolDir(
+      'workspace-1',
+      scope.sessionId,
+      CliTool.grok.value,
+    );
+    await fs.ensureDir(configDir);
+    await fs.atomicWrite(p.posix.join(configDir, 'auth.json'), 'stale');
+    await fs.atomicWrite(
+      p.posix.join(configDir, GrokConstants.authMarkerFileName),
+      'stale',
+    );
+
+    final contribution = await capability.materializeSessionHome(ctx);
+
+    expect(
+      (await fs.stat(p.posix.join(configDir, 'auth.json'))).exists,
+      isFalse,
+      reason: 'an OAuth seat must not inherit a previous launch token',
+    );
+    expect(
+      (await fs.stat(
+        p.posix.join(configDir, GrokConstants.authMarkerFileName),
+      )).exists,
+      isFalse,
+    );
+    expect(
+      contribution.environment[GrokConstants.authProviderCommandEnvKey],
+      isNotNull,
+    );
+  });
+
+  test('probe is ready while the access token is only expiring', () async {
+    final fs = InMemoryFilesystem();
+    final storage = fakeHomeStorage(filesystem: fs);
+    final authority = OAuthCredentialAuthority(
+      fs: fs,
+      basePath: '/tp',
+      cliNamespace: 'grok',
+      refresher: _TestRefresher(),
+      now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
+    );
+    // Access token already expired, RT still present: a lease can refresh it.
+    await authority.importFromLogin(
+      'xai',
+      utf8.encode(
+        jsonEncode({
+          'scope': {
+            'key': 'stale',
+            'refresh_token': 'rt',
+            'expires_at': '2026-11-14T10:00:00Z',
+          },
+        }),
+      ),
+    );
+    expect(await authority.status('xai'), CredentialHealth.expiring);
+    final capability = GrokProviderCapability(
+      storage: storage,
+      authority: authority,
+    );
+
+    const row = AppProviderConfig(
+      id: 'xai',
+      cli: CliTool.grok,
+      name: 'xAI',
+      isOfficial: true,
+    );
+    expect((await capability.probe(row)).isReady, isTrue);
+  });
+
+  test('probe reports missing after the IdP rejects the refresh token',
+      () async {
+    final fs = InMemoryFilesystem();
+    final storage = fakeHomeStorage(filesystem: fs);
+    final authority = OAuthCredentialAuthority(
+      fs: fs,
+      basePath: '/tp',
+      cliNamespace: 'grok',
+      refresher: _RejectingRefresher(),
+      now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
+    );
+    await authority.importFromLogin(
+      'xai',
+      utf8.encode(
+        jsonEncode({
+          'scope': {
+            'key': 'stale',
+            'refresh_token': 'rt',
+            'expires_at': '2026-11-14T10:00:00Z',
+          },
+        }),
+      ),
+    );
+    await expectLater(
+      authority.lease(providerId: 'xai', sessionId: 's1'),
+      throwsA(isA<CredentialUnavailableException>()),
+    );
+    final capability = GrokProviderCapability(
+      storage: storage,
+      authority: authority,
+    );
+
+    const row = AppProviderConfig(
+      id: 'xai',
+      cli: CliTool.grok,
+      name: 'xAI',
+      isOfficial: true,
+    );
+    expect((await capability.probe(row)).isReady, isFalse);
+  });
+
+  group('credential actions', () {
+    late InMemoryFilesystem fs;
+    late OAuthCredentialAuthority authority;
+    late GrokProviderCapability capability;
+
+    setUp(() {
+      fs = InMemoryFilesystem();
+      final storage = fakeHomeStorage(filesystem: fs);
+      authority = OAuthCredentialAuthority(
+        fs: fs,
+        basePath: '/tp',
+        cliNamespace: 'grok',
+        refresher: _TestRefresher(),
+        now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
+      );
+      capability = GrokProviderCapability(
+        storage: storage,
+        authority: authority,
+        adapter: GrokCredentialAdapter(
+          authority: authority,
+          sessionProviderId: (_) => 'xai',
+          now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
+        ),
+      );
+    });
+
+    Future<String> readCredential() async =>
+        (await fs.readString('/tp/providers/grok/xai/credential.json')) ?? '';
+
+    test('login imports the isolated auth.json into the Authority', () async {
+      final loginPath = '/tp/cli-login/grok/xai/config/auth.json';
+      await fs.ensureDir(p.posix.dirname(loginPath));
+      await fs.atomicWrite(loginPath, jsonEncode(_authJsonPayload()));
+
+      final result = await capability.execute(
+        providerId: 'xai',
+        kind: ProviderCredentialActionKind.login,
+      );
+
+      expect(result.ok, isTrue);
+      expect(await readCredential(), contains('rt'));
+      expect(await authority.status('xai'), CredentialHealth.ready);
+    });
+
+    test('login fails without a completed login auth.json', () async {
+      final loginPath = '/tp/cli-login/grok/xai/config/auth.json';
+      await fs.ensureDir(p.posix.dirname(loginPath));
+      await fs.atomicWrite(loginPath, '');
+
+      final result = await capability.execute(
+        providerId: 'xai',
+        kind: ProviderCredentialActionKind.login,
+      );
+
+      expect(result.ok, isFalse);
+      expect(await fs.readString('/tp/providers/grok/xai/credential.json'),
+          isNull);
+    });
+
+    test('importGlobal imports the machine auth.json', () async {
+      await fs.ensureDir('/home/test/.grok');
+      await fs.atomicWrite(
+        '/home/test/.grok/auth.json',
+        jsonEncode(_authJsonPayload()),
+      );
+
+      final result = await capability.execute(
+        providerId: 'xai',
+        kind: ProviderCredentialActionKind.importGlobal,
+      );
+
+      expect(result.ok, isTrue);
+      expect(await readCredential(), contains('rt'));
+    });
+
+    test('materializeSessionHome fails before spawn without a credential',
+        () async {
+      final service = ConfigProfileService(
+        basePath: '/tp',
+        fs: fs,
+        layout: RuntimeLayout(teampilotRoot: '/tp', fs: fs),
+        storage: fakeHomeStorage(filesystem: fs),
+      );
+      const member = TeamMemberConfig(
+        id: 'm1',
+        name: 'Member',
+        provider: 'xai',
+      );
+      final scope = resolveLaunchProfileScope(
+        workspaceId: 'workspace-1',
+        teamId: 'team-a',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+      );
+
+      await expectLater(
+        capability.materializeSessionHome(
+          sessionHomeContextFromLaunch(
+            ConfigProfileLaunchContext(
+              workspaceId: 'workspace-1',
+              teamId: 'team-a',
+              sessionId: scope.sessionId,
+              scope: scope,
+              member: member,
+              members: const [member],
+              workingDirectory: '/workspace/workspace',
+              paths: service,
+              catalog: service,
+              agentStatus: _agentStatus,
+            ),
+            CliTool.grok,
+          ),
+        ),
+        throwsA(
+          isA<GrokCredentialUnavailableException>().having(
+            (error) => error.health,
+            'health',
+            CredentialHealth.missing,
+          ),
+        ),
+      );
+    });
   });
 
   group('ACP auth surface', () {

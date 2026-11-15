@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/credential_lease.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/oauth_credential_authority.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -45,6 +47,12 @@ final class _ControlledRefresher implements CredentialRefresher {
 }
 
 Future<void> _pump() => Future<void>.delayed(Duration.zero);
+
+final class _ThrowingRefresher implements CredentialRefresher {
+  @override
+  Future<CredentialRefreshOutcome> refresh(String refreshToken) async =>
+      throw const CredentialTransientException('503');
+}
 
 String _authJson({
   String key = 'access-old',
@@ -152,6 +160,47 @@ void main() {
         isNull);
     expect(authority.healthChanges.value['xai'], CredentialHealth.rejected);
   });
+
+  test('a transient refresh failure keeps the refresh token', () async {
+    final fs = InMemoryFilesystem();
+    final authority = build(fs, _ThrowingRefresher());
+    await authority.importFromLogin(
+      'xai',
+      utf8.encode(_authJson(expiresAt: '2026-11-14T10:00:00Z')),
+    );
+
+    await expectLater(
+      authority.lease(providerId: 'xai', sessionId: 's1'),
+      throwsA(isA<CredentialTransientException>()),
+    );
+
+    // An IdP outage is not a sign-in: the RT and its health must survive.
+    expect(await authority.status('xai'), CredentialHealth.expiring);
+    final raw = await fs.readString('/tp/providers/grok/xai/credential.json');
+    expect(raw, contains('rt-old'));
+  });
+
+  test(
+    'credential.json is stored owner-only on a real filesystem',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('tp-authority-');
+      addTearDown(() => dir.delete(recursive: true));
+      final authority = OAuthCredentialAuthority(
+        fs: LocalFilesystem(),
+        basePath: dir.path,
+        cliNamespace: 'grok',
+        refresher: _FakeRefresher(),
+        now: () => now,
+      );
+
+      await authority.importFromLogin('xai', utf8.encode(_authJson()));
+
+      final path = '${dir.path}/providers/grok/xai/credential.json';
+      // Low 9 bits are the POSIX permission mask; 0x180 == 0600.
+      expect(File(path).statSync().mode & 0x1FF, 0x180);
+    },
+    skip: Platform.isWindows,
+  );
 
   test('forceRefresh mints a new lease and bumps epoch', () async {
     final fs = InMemoryFilesystem();

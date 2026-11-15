@@ -64,7 +64,7 @@ final class GrokCliTool implements CliToolDefinition {
     this.hookWriter = const GrokHookWriter(),
     this.workspaceBaseInfo = const GrokWorkspaceBaseInfo(),
     this.launchSecurity = const AcpAskFullAccessCliLaunchSecurityCapability(),
-    this.headless = const GrokHeadlessCapability(),
+    GrokHeadlessCapability? headless,
     GrokAcpCapability? acp,
     this.acpSettings = const DefaultAcpSettingsCapability(
       usesSeparateAdapter: false,
@@ -72,7 +72,8 @@ final class GrokCliTool implements CliToolDefinition {
     this.transport = const CliTransportCapability(
       supported: {CliTransport.acp},
     ),
-  }) : acp = acp ?? const GrokAcpCapability();
+  }) : headless = headless ?? const GrokHeadlessCapability(),
+       acp = acp ?? const GrokAcpCapability();
 
   final TeamBehaviorCapability teamBehavior;
   final CliExecutableCapability executable;

@@ -191,12 +191,17 @@ final class GrokProviderCapability extends CatalogModelCapability
 
   @override
   Future<CredentialProbe> probe(AppProviderConfig provider) async {
-    // The Authority, not the presence of a legacy auth.json, owns readiness;
-    // a leftover file from the pre-Authority store must not read as ready.
+    // The Authority, not the presence of a legacy auth.json, owns readiness.
+    // `expiring` means the access token is stale but the RT can still mint a
+    // lease, so it must not read as "needs sign-in".
+    final health = provider.apiKey.trim().isNotEmpty
+        ? CredentialHealth.ready
+        : authority == null
+        ? CredentialHealth.missing
+        : await authority!.status(provider.id);
     final ready =
-        provider.apiKey.trim().isNotEmpty ||
-        (authority != null &&
-            await authority!.status(provider.id) == CredentialHealth.ready);
+        health != CredentialHealth.missing &&
+        health != CredentialHealth.rejected;
     final path = _authStore?.providerAuthDir(provider.id) ?? '';
     final stat = path.isEmpty ? null : await _authStore!.fs.stat(path);
     return CredentialProbe(
@@ -388,11 +393,11 @@ final class GrokProviderCapability extends CatalogModelCapability
       GrokConstants.homeEnvKey: configDir,
       if (apiKey.isNotEmpty) GrokConstants.apiKeyEnvKey: apiKey,
     };
-    if (apiKey.isNotEmpty) {
-      // API-key seats must not inherit a stale OAuth token: Grok's credential
-      // resolution prefers a signed-in session token over `XAI_API_KEY`.
-      await _removeSessionAuth(delegate, configDir);
-    } else {
+    // A new seat must not inherit a token from an earlier launch of the same
+    // config dir: grok prefers a signed-in session token over `XAI_API_KEY`,
+    // and an OAuth seat must resolve auth from the current lease only.
+    await _removeSessionAuth(delegate, configDir);
+    if (apiKey.isEmpty) {
       final grokAdapter = adapter;
       if (grokAdapter == null) {
         warnings.add('grok_credentials_missing');

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show File, Platform, Process;
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -284,10 +285,22 @@ final class OAuthCredentialAuthority {
 
   Future<void> _persist(String providerId, _CredentialState state) async {
     await fs.ensureDir(providerDir(providerId));
-    await fs.atomicWrite(
-      credentialPath(providerId),
-      jsonEncode(state.toDiskJson()),
-    );
+    final path = credentialPath(providerId);
+    await fs.atomicWrite(path, jsonEncode(state.toDiskJson()));
+    _restrict(path);
+  }
+
+  /// Best-effort `chmod 600`: the store holds the refresh token, so it must not
+  /// be group/world readable on a real disk. Overlay and in-memory planes have
+  /// no POSIX mode; Windows has no chmod.
+  void _restrict(String path) {
+    if (Platform.isWindows) return;
+    try {
+      if (!File(path).existsSync()) return;
+      Process.runSync('chmod', ['600', path]);
+    } on Object {
+      // Best effort.
+    }
   }
 
   CredentialLease _leaseFrom(_CredentialState state) => CredentialLease(

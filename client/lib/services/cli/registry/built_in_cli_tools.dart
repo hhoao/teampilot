@@ -152,7 +152,10 @@ void registerBuiltInCliTools(
         authority: grokEntry?.authority,
         adapter: grokEntry?.adapter,
       ),
-      headless: GrokHeadlessCapability(storage: storage),
+      headless: GrokHeadlessCapability(
+        storage: storage,
+        authority: grokEntry?.authority,
+      ),
       acp: GrokAcpCapability(credentialSource: grokEntry?.credentialSource),
     ),
   );
