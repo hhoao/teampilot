@@ -4570,6 +4570,37 @@ void main() {
     expect(cubit.state.error?.kind, AcpChatErrorKind.authRequired);
     await cubit.close();
   });
+
+  test('auth_required recovery that hangs times out and needs login', () {
+    fakeAsync((async) {
+      runtime.startError = acpd.RpcError(
+        code: acpd.ErrorCode.authRequired.code,
+        message: 'auth required',
+      );
+      // A hung IdP must not leave the seat stuck in launching forever.
+      final cubit = bootCubit(
+        authRecovery: (sessionId) => Completer<bool>().future,
+      );
+      unawaited(
+        cubit.start(
+          executable: 'grok',
+          sessionToolDir: '/tmp/grok',
+          workingDirectory: '/workspace',
+        ),
+      );
+      async.flushMicrotasks();
+      expect(cubit.state.phase, isNot(AcpChatPhase.ended));
+
+      // The 20s recovery timeout fires and ends the session cleanly.
+      async.elapse(const Duration(seconds: 21));
+      async.flushMicrotasks();
+
+      expect(cubit.state.phase, AcpChatPhase.ended);
+      expect(cubit.state.error?.kind, AcpChatErrorKind.authRequired);
+      unawaited(cubit.close());
+      async.flushMicrotasks();
+    });
+  });
 }
 
 /// Throws on [readString] for [throwPath] so hydrate fails without touching disk.

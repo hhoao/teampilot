@@ -68,6 +68,7 @@ void main() {
   Future<HttpClientResponse> postLease({
     required String sessionId,
     String? busToken,
+    bool forceRefresh = false,
   }) async {
     final req = await client.postUrl(
       Uri.parse(
@@ -78,7 +79,10 @@ void main() {
     if (busToken != null) {
       req.headers.set(teammateBusTokenHeader, busToken);
     }
-    req.write(jsonEncode({'providerId': 'xai', 'forceRefresh': false}));
+    req.write(jsonEncode({
+      'providerId': 'xai',
+      'forceRefresh': forceRefresh,
+    }));
     return req.close();
   }
 
@@ -117,4 +121,48 @@ void main() {
     expect(resp.statusCode, HttpStatus.unauthorized);
     await resp.drain<void>();
   });
+
+  test('an unexpected lease failure is a logged 503, not a silent 500',
+      () async {
+    final fs = InMemoryFilesystem();
+    final authority = OAuthCredentialAuthority(
+      fs: fs,
+      basePath: '/tp',
+      cliNamespace: 'grok',
+      refresher: _ExplodingRefresher(),
+      now: () => now,
+    );
+    await authority.importFromLogin(
+      'xai',
+      utf8.encode(jsonEncode({
+        'scope': {
+          'key': 'access-old',
+          'refresh_token': 'rt-old',
+          'expires_at': '2026-11-14T11:30:00Z',
+        }
+      })),
+    );
+    // Re-attach an endpoint whose lease path throws an exception the endpoint
+    // itself does not map, to exercise the gateway's catch-all fallback.
+    gateway.attachCredentialLeaseEndpoint(
+      CredentialLeaseEndpoint(
+        authority: authority,
+        sessionProviderId: (_) => 'xai',
+        now: () => now,
+      ),
+    );
+
+    final resp = await postLease(sessionId: 'sess-a', forceRefresh: true);
+    expect(resp.statusCode, HttpStatus.serviceUnavailable);
+    final body =
+        jsonDecode(await resp.transform(utf8.decoder).join())
+            as Map<String, Object?>;
+    expect(body['error'], 'temporarily_unavailable');
+  });
+}
+
+final class _ExplodingRefresher implements CredentialRefresher {
+  @override
+  Future<CredentialRefreshOutcome> refresh(String refreshToken) async =>
+      throw StateError('unexpected');
 }

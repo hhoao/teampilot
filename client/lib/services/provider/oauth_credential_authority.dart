@@ -38,10 +38,12 @@ final class RefreshRejected extends CredentialRefreshOutcome {
 /// Control-plane single owner of refresh tokens for one CLI namespace.
 ///
 /// INVARIANT: refresh tokens never leave this class's on-disk store. Sessions
-/// receive only [CredentialLease] values. All refreshes for a provider are
-/// serialized through [_inFlight] and guarded by a monotonic generation
-/// counter, so a late refresh can never overwrite a newer login or resurrect
-/// a revoked credential.
+/// receive only [CredentialLease] values. Refreshes for a provider are
+/// single-flighted through [_inFlight], and every state mutation (import,
+/// revoke, refresh commit) is serialized through a per-provider FIFO queue
+/// ([_stateQueues]) guarded by a monotonic generation counter, so a late
+/// refresh can never overwrite a newer login or resurrect a revoked
+/// credential.
 final class OAuthCredentialAuthority {
   OAuthCredentialAuthority({
     required this.fs,
@@ -64,6 +66,14 @@ final class OAuthCredentialAuthority {
   /// refreshes both draw from it, so an in-flight refresh started at epoch N
   /// can never commit once a login (or revoke) advanced the provider past N.
   final Map<String, int> _generation = {};
+
+  /// Per-provider FIFO serial queue for every credential state mutation
+  /// (import, revoke, refresh commit). Serializing the `_load` → `_persist`
+  /// window closes the check-then-write race and stops a stale in-flight
+  /// refresh from deleting a freshly imported credential. The stored tail
+  /// always completes successfully (errors are forwarded to the caller via a
+  /// [Completer]), so a failed action never blocks the next one.
+  final Map<String, Future<void>> _stateQueues = {};
 
   final ValueNotifier<Map<String, CredentialHealth>> _healthChanges =
       ValueNotifier<Map<String, CredentialHealth>>(const {});
@@ -97,15 +107,25 @@ final class OAuthCredentialAuthority {
       _logUnreadable(providerId, 'imported auth.json', error);
       return false;
     }
-    if (parsed == null) {
+    final imported = parsed;
+    if (imported == null) {
       AppLogger.instance.w(
         'OAuthCredentialAuthority: imported auth.json for provider '
         '$providerId has no usable tokens',
       );
       return false;
     }
+    return _serial(providerId, () => _commitImport(providerId, imported));
+  }
+
+  /// Serialized import: reads the live state and persists the new credential
+  /// without any other mutation interleaving between the two.
+  Future<bool> _commitImport(
+    String providerId,
+    _CredentialState imported,
+  ) async {
     final current = await _load(providerId);
-    final state = parsed.withEpoch(
+    final state = imported.withEpoch(
       _allocateEpoch(providerId, current?.epoch ?? -1),
     );
     await _persist(providerId, state);
@@ -172,7 +192,10 @@ final class OAuthCredentialAuthority {
     }
   }
 
-  Future<void> revoke(String providerId) async {
+  Future<void> revoke(String providerId) =>
+      _serial(providerId, () => _commitRevoke(providerId));
+
+  Future<void> _commitRevoke(String providerId) async {
     _rejected.remove(providerId);
     _inFlight.remove(providerId);
     // Advance the generation so any refresh already running for the deleted
@@ -207,14 +230,64 @@ final class OAuthCredentialAuthority {
     }
   }
 
+  /// Runs [body] after all earlier state mutations for [providerId] settle.
+  /// FIFO order is preserved by chaining onto the previous tail; the tail
+  /// never faults (its result/error goes to [completer]), so one failure does
+  /// not stall the queue.
+  Future<T> _serial<T>(String providerId, Future<T> Function() body) {
+    final previous = _stateQueues[providerId] ?? Future<void>.value();
+    final completer = Completer<T>();
+    final Future<void> tail = previous.then((_) async {
+      try {
+        completer.complete(await body());
+      } on Object catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
+      }
+    });
+    _stateQueues[providerId] = tail;
+    return completer.future;
+  }
+
   Future<CredentialLease> _doRefresh(
     String providerId,
     _CredentialState state,
   ) async {
+    // The IdP call stays OUTSIDE the per-provider lock so a login/revoke can
+    // proceed while it is slow; only the commit is serialized with the other
+    // state mutations. The refresher's own timeout bounds this call.
     final outcome = await refresher.refresh(state.refreshToken);
+    return _serial(
+      providerId,
+      () => _commitRefresh(providerId, state, outcome),
+    );
+  }
+
+  /// Serialized refresh commit. Reloads the live state under the lock, so a
+  /// newer login/revoke that landed while the IdP call was in flight always
+  /// wins and the `_load` → `_persist` window cannot be interleaved.
+  Future<CredentialLease> _commitRefresh(
+    String providerId,
+    _CredentialState state,
+    CredentialRefreshOutcome outcome,
+  ) async {
+    final current = await _load(providerId);
+    // Revoked / removed while the IdP call was in flight: deletion is final,
+    // so discard the result (rejected or succeeded) rather than resurrecting.
+    if (current == null) {
+      throw CredentialUnavailableException(
+        _rejected.contains(providerId)
+            ? CredentialHealth.rejected
+            : CredentialHealth.missing,
+      );
+    }
+    // A newer login or refresh already won: this result is stale — keep the
+    // newer credential, whatever outcome the old refresh produced.
+    if (current.epoch > state.epoch) {
+      return _leaseFrom(current);
+    }
     switch (outcome) {
       case RefreshRejected():
-        await _markRejected(providerId);
+        await _markRejected(providerId, expectedEpoch: state.epoch);
         throw const CredentialUnavailableException(CredentialHealth.rejected);
 
       case RefreshSucceeded(
@@ -222,20 +295,6 @@ final class OAuthCredentialAuthority {
           :final refreshToken,
           :final expiresAt,
         ):
-        final current = await _load(providerId);
-        // Revoked / removed while the IdP call was in flight: deletion is
-        // final, so discard the result rather than resurrecting the store.
-        if (current == null) {
-          throw CredentialUnavailableException(
-            _rejected.contains(providerId)
-                ? CredentialHealth.rejected
-                : CredentialHealth.missing,
-          );
-        }
-        // A newer login or refresh already won: discard this late result.
-        if (current.epoch > state.epoch) {
-          return _leaseFrom(current);
-        }
         final next = _CredentialState(
           providerId: providerId,
           refreshToken: refreshToken,
@@ -250,9 +309,22 @@ final class OAuthCredentialAuthority {
     }
   }
 
-  /// RT was rejected by the IdP. Delete it; NEVER write an empty credential
-  /// back (grok wipes its own auth.json on permanent failure).
-  Future<void> _markRejected(String providerId) async {
+  /// RT was rejected by the IdP. Delete it only when the live state still has
+  /// the epoch this refresh started from: a re-login during the in-flight
+  /// refresh must NOT have its brand-new credential.json wiped. NEVER write an
+  /// empty credential back (grok wipes its own auth.json on permanent failure).
+  Future<void> _markRejected(
+    String providerId, {
+    required int expectedEpoch,
+  }) async {
+    final current = await _load(providerId);
+    if (current == null || current.epoch != expectedEpoch) {
+      AppLogger.instance.w(
+        'OAuthCredentialAuthority: ignoring stale rejection for provider '
+        '$providerId (expected epoch $expectedEpoch)',
+      );
+      return;
+    }
     _rejected.add(providerId);
     final path = credentialPath(providerId);
     if ((await fs.stat(path)).exists) await fs.removeRecursive(path);

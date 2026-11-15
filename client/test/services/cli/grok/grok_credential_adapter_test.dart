@@ -36,6 +36,7 @@ void main() {
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
     bool includeDefaultBusIdle = true,
+    ConfigProfileService? catalog,
   }) => sessionHomeContextFromLaunch(
     ConfigProfileLaunchContext(
       workspaceId: 'workspace-1',
@@ -63,7 +64,9 @@ void main() {
       ],
       workingDirectory: '/workspace/workspace',
       paths: service,
-      catalog: service,
+      // A catalog with a different basePath makes crossMachine true (the
+      // work plane is remote relative to the control plane).
+      catalog: catalog ?? service,
       busIdle: includeDefaultBusIdle ? (busIdle ?? localBusIdle) : null,
       agentStatus: agentStatus,
     ),
@@ -99,10 +102,13 @@ void main() {
     );
   }
 
-  ConfigProfileService serviceOn(InMemoryFilesystem fs) => ConfigProfileService(
-    basePath: '/tp',
+  ConfigProfileService serviceOn(
+    InMemoryFilesystem fs, {
+    String basePath = '/tp',
+  }) => ConfigProfileService(
+    basePath: basePath,
     fs: fs,
-    layout: RuntimeLayout(teampilotRoot: '/tp', fs: fs),
+    layout: RuntimeLayout(teampilotRoot: basePath, fs: fs),
     storage: fakeHomeStorage(filesystem: fs),
   );
 
@@ -122,6 +128,7 @@ void main() {
   Future<ProcessResult> runShim({
     required String shimBody,
     required String curlStdout,
+    String curlStatus = '200',
   }) async {
     final tmp = Directory.systemTemp.createTempSync('grok-shim-test-');
     addTearDown(() {
@@ -141,7 +148,10 @@ void main() {
     );
     final fakeBin = Directory(p.join(tmp.path, 'fakebin'))..createSync();
     final fakeCurl = File(p.join(fakeBin.path, 'curl'));
-    fakeCurl.writeAsStringSync('#!/bin/sh\nprintf \'%s\' \'$curlStdout\'\n');
+    // Mimic `curl -w '\n%{http_code}'`: body followed by a newline + status.
+    fakeCurl.writeAsStringSync(
+      '#!/bin/sh\nprintf \'%s\\n%s\' \'$curlStdout\' \'$curlStatus\'\n',
+    );
     Process.runSync('chmod', ['755', fakeCurl.path]);
 
     final env = Map<String, String>.from(Platform.environment);
@@ -308,9 +318,48 @@ void main() {
       final result = await runShim(
         shimBody: shim,
         curlStdout: '{"health":"missing"}',
+        curlStatus: '409',
       );
       expect(result.exitCode, isNot(0));
       expect(result.stdout, isEmpty);
+      expect(result.stderr.toString(), contains('sign in'));
+    },
+    skip: Platform.isWindows ? 'POSIX sh shim only' : false,
+  );
+
+  test(
+    'shim distinguishes a transient 503 (retry) from a 409 (sign in)',
+    () async {
+      final adapter = await build();
+      final fs = InMemoryFilesystem();
+      final service = serviceOn(fs);
+      final contribution = await adapter.materialize(
+        context(service),
+        providerId: 'xai',
+      );
+      final configDir = contribution.environment[GrokConstants.homeEnvKey]!;
+      final shim = (await fs.readString(
+        p.posix.join(configDir, 'bin', GrokConstants.leaseShimFileName),
+      ))!;
+
+      final transient = await runShim(
+        shimBody: shim,
+        curlStdout: '{"error":"temporarily_unavailable"}',
+        curlStatus: '503',
+      );
+      expect(transient.exitCode, isNot(0));
+      expect(transient.stdout, isEmpty);
+      expect(transient.stderr.toString(), contains('retry'));
+
+      final rejected = await runShim(
+        shimBody: shim,
+        curlStdout: '{"health":"rejected"}',
+        curlStatus: '409',
+      );
+      expect(rejected.exitCode, isNot(0));
+      expect(rejected.stdout, isEmpty);
+      expect(rejected.stderr.toString(), contains('sign in'));
+      expect(rejected.stderr.toString(), isNot(contains('retry')));
     },
     skip: Platform.isWindows ? 'POSIX sh shim only' : false,
   );
@@ -412,7 +461,7 @@ void main() {
     },
   );
 
-  test('windows seats fail closed before spawn', () async {
+  test('a LOCAL windows seat fails closed before spawn', () async {
     final adapter = await build(isWindows: true);
     final fs = InMemoryFilesystem();
     final service = serviceOn(fs);
@@ -423,14 +472,65 @@ void main() {
     );
   });
 
-  test('a seat may only materialize the provider it launched with', () async {
-    final adapter = await build();
+  test('a windows HOST with a remote POSIX work plane is not blocked',
+      () async {
+    final adapter = await build(isWindows: true);
     final fs = InMemoryFilesystem();
     final service = serviceOn(fs);
+    // A different control-plane basePath means the work plane is remote; the
+    // shim runs on the POSIX remote, so the host OS must not fail the launch.
+    final remoteCatalog = serviceOn(fs, basePath: '/remote-control');
+    final ctx = context(service, catalog: remoteCatalog);
+    expect(ctx.crossMachine, isTrue);
 
+    final contribution = await adapter.materialize(ctx, providerId: 'xai');
     expect(
-      () => adapter.materialize(context(service), providerId: 'other'),
-      throwsA(isA<CredentialUnavailableException>()),
+      contribution.environment,
+      contains(GrokConstants.authProviderCommandEnvKey),
     );
+  });
+
+  test('a custom providerId is no longer rejected (multi-provider support)',
+      () async {
+    final fs = InMemoryFilesystem();
+    final authority = OAuthCredentialAuthority(
+      fs: fs,
+      basePath: '/tp',
+      cliNamespace: 'grok',
+      refresher: _OkRefresher(),
+      now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
+    );
+    await authority.importFromLogin(
+      'acme',
+      utf8.encode(
+        jsonEncode({
+          'scope': {
+            'key': 'access-old',
+            'refresh_token': 'rt-old',
+            'expires_at': '2026-11-14T11:30:00Z',
+          },
+        }),
+      ),
+    );
+    // The production sessionProviderId stub resolves 'xai' for every session;
+    // a seat launched with the real 'acme' id must still materialize.
+    final adapter = GrokCredentialAdapter(
+      authority: authority,
+      sessionProviderId: (_) => 'xai',
+      now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
+    );
+    final service = serviceOn(fs);
+
+    final contribution = await adapter.materialize(
+      context(service),
+      providerId: 'acme',
+    );
+    expect(
+      contribution.environment,
+      contains(GrokConstants.authProviderCommandEnvKey),
+    );
+    final configDir = contribution.environment[GrokConstants.homeEnvKey]!;
+    final leaseConfig = await readLeaseConfig(fs, configDir);
+    expect(leaseConfig['providerId'], 'acme');
   });
 }

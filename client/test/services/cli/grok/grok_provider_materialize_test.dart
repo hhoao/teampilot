@@ -50,6 +50,14 @@ final class _RejectingRefresher implements CredentialRefresher {
       const RefreshRejected();
 }
 
+/// Throws a transient whose cause deliberately contains internal text that
+/// must never reach the session-connect failure surfaced to the UI.
+final class _TransientRefresher implements CredentialRefresher {
+  @override
+  Future<CredentialRefreshOutcome> refresh(String refreshToken) async =>
+      throw const CredentialTransientException('SECRET_INTERNAL');
+}
+
 const _agentStatus = MemberAgentStatusEndpoint(
   url: 'http://127.0.0.1:35297/agent-status',
   sessionId: 'session-1',
@@ -799,6 +807,86 @@ void main() {
       );
     });
   });
+
+  test(
+    'materializeSessionHome maps a transient refresh failure without leaking it',
+    () async {
+      final fs = InMemoryFilesystem();
+      final storage = fakeHomeStorage(filesystem: fs);
+      final service = ConfigProfileService(
+        basePath: '/tp',
+        fs: fs,
+        layout: RuntimeLayout(teampilotRoot: '/tp', fs: fs),
+        storage: storage,
+      );
+      final now = DateTime.utc(2026, 11, 14, 11, 0, 0);
+      final authority = OAuthCredentialAuthority(
+        fs: fs,
+        basePath: '/tp',
+        cliNamespace: 'grok',
+        refresher: _TransientRefresher(),
+        now: () => now,
+      );
+      // Expired access token forces a refresh, which fails transiently.
+      await authority.importFromLogin(
+        'xai',
+        utf8.encode(
+          jsonEncode({
+            'scope': {
+              'key': 'stale',
+              'refresh_token': 'rt',
+              'expires_at': '2026-11-14T10:00:00Z',
+            },
+          }),
+        ),
+      );
+      final capability = GrokProviderCapability(
+        storage: storage,
+        authority: authority,
+        adapter: GrokCredentialAdapter(
+          authority: authority,
+          sessionProviderId: (_) => 'xai',
+          now: () => now,
+        ),
+      );
+      const member = TeamMemberConfig(
+        id: 'm1',
+        name: 'Member',
+        provider: 'xai',
+      );
+      final scope = resolveLaunchProfileScope(
+        workspaceId: 'workspace-1',
+        teamId: 'team-a',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+      );
+
+      try {
+        await capability.materializeSessionHome(
+          sessionHomeContextFromLaunch(
+            ConfigProfileLaunchContext(
+              workspaceId: 'workspace-1',
+              teamId: 'team-a',
+              sessionId: scope.sessionId,
+              scope: scope,
+              member: member,
+              members: const [member],
+              workingDirectory: '/workspace/workspace',
+              paths: service,
+              catalog: service,
+              agentStatus: _agentStatus,
+            ),
+            CliTool.grok,
+          ),
+        );
+        fail('expected a launch failure');
+      } on GrokCredentialTransientException catch (error) {
+        // The raw internal cause must not leak into the error text.
+        expect(error.toString(), isNot(contains('SECRET_INTERNAL')));
+        expect(error.toString(), isNot(contains('CredentialTransientException')));
+      }
+    },
+  );
 
   group('ACP auth surface', () {
     test('authenticate method is grok.com except for API-key seats', () async {

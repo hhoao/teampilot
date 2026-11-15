@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:meta/meta.dart';
 
+import '../../../../utils/logging/logger.dart';
 import '../../../agent_runtime/agent_event_gateway.dart';
 import '../../../agent_status/ask_user_answer_pending_store.dart';
 import '../../../catalog/catalog_mcp_constants.dart';
@@ -418,13 +419,31 @@ class TeammateBusMcpGateway implements TeammateBusMcpGatewayPort {
     } on Object {
       body = <String, Object?>{};
     }
-    final result = await endpoint.serve(
-      sessionId: sessionId,
-      // Local seats have no bus token; the session header is authoritative.
-      busToken: busToken.isNotEmpty ? busToken : sessionId,
-      providerId: body['providerId']?.toString() ?? '',
-      forceRefresh: body['forceRefresh'] == true,
-    );
+    LeaseHttpResponse result;
+    try {
+      result = await endpoint.serve(
+        sessionId: sessionId,
+        // Local seats have no bus token; the session header is authoritative.
+        busToken: busToken.isNotEmpty ? busToken : sessionId,
+        providerId: body['providerId']?.toString() ?? '',
+        forceRefresh: body['forceRefresh'] == true,
+      );
+    } on Object catch (error, stackTrace) {
+      // Defense in depth: the endpoint maps its own exceptions, but any
+      // unexpected failure must be a logged 503 (retryable), not the silent
+      // 500 from the _onRequest catch-all. Log the failure class only.
+      appLogger.w(
+        'TeammateBusMcpGateway: credential lease failed '
+        '(${error.runtimeType})',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      request.response.statusCode = HttpStatus.serviceUnavailable;
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(jsonEncode({'error': 'temporarily_unavailable'}));
+      await request.response.close();
+      return;
+    }
     request.response.statusCode = result.statusCode;
     request.response.headers.contentType = ContentType.json;
     request.response.write(jsonEncode(result.body));

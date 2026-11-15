@@ -7,6 +7,7 @@ import '../../../../models/credential_action_result.dart';
 import '../../../../models/credential_lease.dart';
 import '../../../../models/credential_probe.dart';
 import '../../../../widgets/home_storage_scope.dart';
+import '../../../../utils/logging/logger_utils.dart';
 import '../../../io/filesystem.dart';
 import '../../../provider/credential_binding.dart';
 import '../../../provider/oauth_credential_authority.dart';
@@ -231,13 +232,18 @@ final class GrokProviderCapability extends CatalogModelCapability
           ),
         );
       }
-      return await target.importFromLogin(providerId, bytes)
-          ? CredentialActionResult.success
-          : CredentialActionResult.failure(
-              const CredentialActionFailure(
-                code: CredentialActionFailureCode.verifyFailed,
-              ),
-            );
+      if (!await target.importFromLogin(providerId, bytes)) {
+        return CredentialActionResult.failure(
+          const CredentialActionFailure(
+            code: CredentialActionFailureCode.verifyFailed,
+          ),
+        );
+      }
+      // The isolated login auth.json still holds an RT copy; after a
+      // successful import the control-plane credential.json is the only
+      // place a refresh token may live.
+      await store.clearLoginAuth(providerId);
+      return CredentialActionResult.success;
     }
     if (kind == ProviderCredentialActionKind.importGlobal) {
       if (target == null) return CredentialActionResult.serviceUnavailable();
@@ -414,6 +420,16 @@ final class GrokProviderCapability extends CatalogModelCapability
           // Stage 1 pre-launch gate: fail before spawning an agent that would
           // immediately report "not logged in".
           throw GrokCredentialUnavailableException(providerId, error.health);
+        } on CredentialTransientException catch (error) {
+          // An IdP outage / timeout is not a sign-in problem. Fail the launch
+          // with a stable, non-leaking error instead of letting the raw
+          // transient (which may quote internal text / token material) reach
+          // the UI. The refresh token is intact, so a retry can succeed.
+          AppLogger.instance.w(
+            'GrokProviderCapability: credential refresh temporarily '
+            'unavailable for provider $providerId (${error.cause.runtimeType})',
+          );
+          throw GrokCredentialTransientException(providerId);
         }
       }
     }
@@ -488,6 +504,20 @@ final class GrokCredentialUnavailableException implements Exception {
   @override
   String toString() =>
       'Grok provider $providerId needs a sign-in (${health.name})';
+}
+
+/// Launch-time failure: the control-plane credential refresh is temporarily
+/// unavailable (IdP outage / timeout). The stored refresh token is intact, so
+/// this is a retry, not a sign-in. Deliberately carries no underlying error
+/// text, which must never leak into the session-connect failure UI.
+final class GrokCredentialTransientException implements Exception {
+  const GrokCredentialTransientException(this.providerId);
+
+  final String providerId;
+
+  @override
+  String toString() =>
+      'Grok provider $providerId credentials are temporarily unavailable';
 }
 
 final class _EmptyListenable implements Listenable {

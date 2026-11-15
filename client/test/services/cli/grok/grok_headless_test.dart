@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/models/credential_lease.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/grok/capabilities/headless.dart';
 import 'package:teampilot/services/cli/grok/grok_constants.dart';
@@ -38,6 +39,12 @@ final class _TestRefresher implements CredentialRefresher {
         refreshToken: 'rt-next',
         expiresAt: DateTime.utc(2026, 11, 14, 11, 30, 0),
       );
+}
+
+final class _TransientRefresher implements CredentialRefresher {
+  @override
+  Future<CredentialRefreshOutcome> refresh(String refreshToken) async =>
+      throw const CredentialTransientException('SECRET_INTERNAL');
 }
 
 HeadlessLaunchContext _run({
@@ -310,5 +317,40 @@ void main() {
     final scope = auth.values.single as Map<String, Object?>;
     expect(scope['key'], 'provider');
     expect(scope, isNot(contains('refresh_token')));
+  });
+
+  test('a transient refresh failure is not ready and does not leak the cause',
+      () async {
+    final fs = InMemoryFilesystem();
+    final storage = fakeHomeStorage(filesystem: fs);
+    final authority = OAuthCredentialAuthority(
+      fs: fs,
+      basePath: '/tp',
+      cliNamespace: 'grok',
+      refresher: _TransientRefresher(),
+      now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
+    );
+    // Expired access token forces a refresh, which fails transiently.
+    await authority.importFromLogin(
+      'xai',
+      utf8.encode(_authJson(expiresAt: '2026-11-14T10:00:00Z')),
+    );
+    final cap = GrokHeadlessCapability(storage: storage, authority: authority);
+
+    final result = await cap.provision(
+      const HeadlessProvisionContext(
+        provider: null,
+        providerId: 'xai',
+        model: '',
+        effort: '',
+        configDir: _configDir,
+      ),
+    );
+
+    expect(result.credentialsReady, isFalse);
+    expect(result.warnings, isNotEmpty);
+    // The raw internal cause must never reach the result / UI.
+    expect(result.warnings.join(' '), isNot(contains('SECRET_INTERNAL')));
+    expect(result.warnings.join(' '), isNot(contains('CredentialTransient')));
   });
 }

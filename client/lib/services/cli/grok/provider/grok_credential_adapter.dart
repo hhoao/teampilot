@@ -59,18 +59,25 @@ final class GrokCredentialAdapter implements SessionCredentialCapability {
     SessionHomeContext ctx, {
     required String providerId,
   }) async {
-    // The shim is POSIX sh only; a Windows seat must fail here rather than
-    // spawn an agent whose auth provider can never run.
-    if (_isWindows) {
+    // The shim is POSIX sh only. Fail fast only for a LOCAL Windows seat; a
+    // Windows host driving a POSIX work plane over SSH must not be blocked —
+    // the shim runs on the remote work plane, not on the host OS.
+    if (!ctx.crossMachine && _isWindows) {
       AppLogger.instance.w(
-        'grok external auth provider unsupported on windows',
+        'grok external auth provider unsupported on local windows',
       );
       throw const CredentialUnavailableException(CredentialHealth.missing);
     }
-    // A seat may only request the provider it was launched with.
+    // A custom (non-'xai') providerId is legitimate. The production
+    // sessionProviderId resolver is currently fixed to 'xai', so an equality
+    // rejection here would refuse every custom-provider seat. Keep it as a
+    // diagnostic only.
     final allowed = sessionProviderId(ctx.sessionId);
     if (allowed != null && allowed != providerId) {
-      throw const CredentialUnavailableException(CredentialHealth.missing);
+      AppLogger.instance.d(
+        'grok external auth provider: seat provider $providerId differs from '
+        'resolved session provider $allowed',
+      );
     }
     // Force one lease up front so a dead credential surfaces here, not as a
     // confusing mid-session "not logged in".
@@ -205,16 +212,29 @@ else
 fi
 
 BODY="{\"providerId\":\"$PROVIDER\",\"forceRefresh\":false}"
+# curl -w appends "\n<http_status>" so a transient 503 (retry) and a 409
+# (needs sign-in) can be told apart on stderr. grok only reads stdout.
 RESP=$(curl -sS --max-time "$TIMEOUT" \
+  -w '\n%{http_code}' \
   -H "Content-Type: application/json" \
   -H "X-Session: $SESSION" \
   -H "X-Bus-Token: $TOKEN" \
   -X POST -d "$BODY" "$ENDPOINT") || { echo "lease request failed" >&2; exit 1; }
 
-ACCESS=$(printf '%s' "$RESP" | sed -n 's/.*"access_token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-[ -n "$ACCESS" ] || { echo "lease rejected: $RESP" >&2; exit 1; }
+STATUS=$(printf '%s' "$RESP" | tail -n 1)
+BODY_RESP=$(printf '%s' "$RESP" | sed '$d')
 
-EXPIRES=$(printf '%s' "$RESP" | sed -n 's/.*"expires_in"[[:space:]]*:[[:space:]]*\(-\{0,1\}[0-9]\{1,\}\).*/\1/p' | head -1)
+ACCESS=$(printf '%s' "$BODY_RESP" | sed -n 's/.*"access_token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+if [ -z "$ACCESS" ]; then
+  case "$STATUS" in
+    503) echo "credential service temporarily unavailable, please retry later" >&2 ;;
+    409|401) echo "credentials rejected, please sign in again" >&2 ;;
+    *) echo "lease rejected (HTTP $STATUS)" >&2 ;;
+  esac
+  exit 1
+fi
+
+EXPIRES=$(printf '%s' "$BODY_RESP" | sed -n 's/.*"expires_in"[[:space:]]*:[[:space:]]*\(-\{0,1\}[0-9]\{1,\}\).*/\1/p' | head -1)
 [ -n "$EXPIRES" ] || EXPIRES=3600
 
 printf '{"access_token":"%s","expires_in":%s}\n' "$ACCESS" "$EXPIRES"

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/credential_lease.dart';
 import 'package:teampilot/services/provider/credential_lease_endpoint.dart';
 import 'package:teampilot/services/provider/oauth_credential_authority.dart';
 
@@ -138,10 +139,53 @@ void main() {
     expect(response.statusCode, 409);
     expect(response.body['health'], 'rejected');
   });
+
+  test('a transient refresh failure maps to 503, not a silent server error',
+      () async {
+    final fs = InMemoryFilesystem();
+    final authority = OAuthCredentialAuthority(
+      fs: fs,
+      basePath: '/tp',
+      cliNamespace: 'grok',
+      refresher: _TransientRefresher(),
+      now: () => now,
+    );
+    await authority.importFromLogin(
+      'xai',
+      utf8.encode(jsonEncode({
+        'scope': {
+          'key': 'access-old',
+          'refresh_token': 'rt-old',
+          'expires_at': '2026-11-14T11:30:00Z',
+        }
+      })),
+    );
+    final endpoint = CredentialLeaseEndpoint(
+      authority: authority,
+      sessionProviderId: (_) => 'xai',
+      now: () => now,
+    );
+
+    final response = await endpoint.serve(
+      sessionId: 's1',
+      busToken: 'bus-token',
+      providerId: 'xai',
+      forceRefresh: true,
+    );
+    expect(response.statusCode, 503);
+    expect(response.body['error'], 'temporarily_unavailable');
+    expect(jsonEncode(response.body), isNot(contains('rt-old')));
+  });
 }
 
 final class _RejectRefresher implements CredentialRefresher {
   @override
   Future<CredentialRefreshOutcome> refresh(String refreshToken) async =>
       const RefreshRejected();
+}
+
+final class _TransientRefresher implements CredentialRefresher {
+  @override
+  Future<CredentialRefreshOutcome> refresh(String refreshToken) async =>
+      throw const CredentialTransientException('idp outage');
 }

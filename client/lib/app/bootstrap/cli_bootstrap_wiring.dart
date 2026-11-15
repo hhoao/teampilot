@@ -270,20 +270,27 @@ void wireCliBootstrap({
 /// The token endpoint is resolved through OIDC discovery rather than a
 /// hard-coded path, so an IdP-side move does not break refresh.
 ///
-/// Failure split matters: only `400` / `401` mean the refresh token itself was
-/// rejected (rotated away, revoked) and the Authority may delete it. Network
-/// errors, timeouts, `429`, `5xx`, and unparsable bodies raise
-/// [CredentialTransientException] so the stored refresh token survives an IdP
-/// outage.
+/// Failure split matters: only a `400` / `401` whose OAuth `error` is
+/// `invalid_grant` / `invalid_token` means the refresh token itself was
+/// rejected (rotated away, revoked) and the Authority may delete it. Other
+/// 400/401 codes (`invalid_client`, `unsupported_grant_type`, …) are our own
+/// config errors, and network errors, timeouts, `429`, `5xx`, and unparsable
+/// bodies are outages — all raise [CredentialTransientException] so the stored
+/// refresh token survives.
 final class XaiCredentialRefresher implements CredentialRefresher {
   XaiCredentialRefresher({HttpClient? client})
-    : _client = client ?? HttpClient();
+    : _client = client ??
+          (HttpClient()..connectionTimeout = const Duration(seconds: 10));
 
   static const _xaiIssuer = 'https://auth.x.ai';
   static const _clientId = 'b1a00492-073a-47ea-816f-4c329264a828';
 
   final HttpClient _client;
   String? _tokenEndpoint;
+
+  /// Disposes the shared [HttpClient]. The owner can call this on teardown;
+  /// refresh reuses a single client for the lifetime of this refresher.
+  void close() => _client.close();
 
   Future<String> _discoverTokenEndpoint() async {
     final cached = _tokenEndpoint;
@@ -318,7 +325,15 @@ final class XaiCredentialRefresher implements CredentialRefresher {
   }
 
   @override
-  Future<CredentialRefreshOutcome> refresh(String refreshToken) async {
+  Future<CredentialRefreshOutcome> refresh(String refreshToken) =>
+      _refresh(refreshToken).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw const CredentialTransientException(
+          'refresh timeout',
+        ),
+      );
+
+  Future<CredentialRefreshOutcome> _refresh(String refreshToken) async {
     final endpoint = await _discoverTokenEndpoint();
     final HttpClientResponse response;
     final String raw;
@@ -338,7 +353,16 @@ final class XaiCredentialRefresher implements CredentialRefresher {
       throw CredentialTransientException(error);
     }
     if (response.statusCode == 400 || response.statusCode == 401) {
-      return const RefreshRejected();
+      // Only an OAuth error naming the refresh token itself may delete the
+      // shared RT. `invalid_client` / `unsupported_grant_type` are our own
+      // config errors (e.g. a rotated, hard-coded client_id); wiping the RT
+      // would sign every seat out for nothing. Treat those as transient so
+      // the stored credential survives until we fix the config.
+      final error = _oauthError(raw);
+      if (error == 'invalid_grant' || error == 'invalid_token') {
+        return const RefreshRejected();
+      }
+      throw CredentialTransientException('token ${response.statusCode}: $error');
     }
     if (response.statusCode != 200) {
       throw CredentialTransientException('token ${response.statusCode}');
@@ -360,5 +384,17 @@ final class XaiCredentialRefresher implements CredentialRefresher {
       refreshToken: next,
       expiresAt: DateTime.now().toUtc().add(Duration(seconds: seconds)),
     );
+  }
+
+  /// Reads the OAuth `error` code from a 400/401 body. Returns null for an
+  /// empty or unparsable body, which is therefore treated as transient.
+  static String? _oauthError(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) return decoded['error']?.toString();
+    } on Object {
+      // Not a JSON OAuth error body.
+    }
+    return null;
   }
 }

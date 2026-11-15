@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 /// Fine-grained credential health. Crosses the control-plane boundary;
 /// `CredentialProbe`'s binary `CredentialStatus` is derived from this.
@@ -23,7 +24,8 @@ class CredentialLease {
   bool isUsable(DateTime now) =>
       accessToken.isNotEmpty && expiresAt.isAfter(now);
 
-  int expiresInSeconds(DateTime now) => expiresAt.difference(now).inSeconds;
+  int expiresInSeconds(DateTime now) =>
+      math.max(0, expiresAt.difference(now).inSeconds);
 
   /// stdout contract for grok's external auth provider:
   /// `{"access_token": "...", "expires_in": <seconds>}`.

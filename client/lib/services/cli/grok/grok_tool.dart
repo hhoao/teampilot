@@ -16,6 +16,7 @@ import '../registry/capabilities/plugin_capability.dart';
 import '../registry/capabilities/prompt_capability.dart';
 import '../registry/capabilities/provider_capability.dart';
 import '../registry/capabilities/runtime_event_capability.dart';
+import '../registry/capabilities/session_credential_capability.dart';
 import '../registry/capabilities/skill_capability.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
 import '../registry/capabilities/terminal_behavior_capability.dart';
@@ -64,6 +65,7 @@ final class GrokCliTool implements CliToolDefinition {
     this.hookWriter = const GrokHookWriter(),
     this.workspaceBaseInfo = const GrokWorkspaceBaseInfo(),
     this.launchSecurity = const AcpAskFullAccessCliLaunchSecurityCapability(),
+    this.sessionCredential,
     GrokHeadlessCapability? headless,
     GrokAcpCapability? acp,
     this.acpSettings = const DefaultAcpSettingsCapability(
@@ -94,6 +96,7 @@ final class GrokCliTool implements CliToolDefinition {
   final HookCapability hookWriter;
   final WorkspaceBaseInfoCapability workspaceBaseInfo;
   final CliLaunchSecurityCapability launchSecurity;
+  final SessionCredentialCapability? sessionCredential;
   final HeadlessCapability headless;
   final AcpCapability acp;
   final AcpSettingsCapability acpSettings;
@@ -132,5 +135,8 @@ final class GrokCliTool implements CliToolDefinition {
     const GrokAcpNoPtyFallback(),
     const GrokAcpUsageLog(),
     transport,
+    // Real runtime assembly injects the control-plane adapter; the
+    // pre-configure registry (launch-arg assembly only) has none.
+    if (sessionCredential != null) sessionCredential!,
   ];
 }

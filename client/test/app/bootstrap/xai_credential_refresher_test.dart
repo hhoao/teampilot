@@ -2,10 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/app/bootstrap/cli_bootstrap_wiring.dart';
 import 'package:teampilot/models/credential_lease.dart';
 import 'package:teampilot/services/provider/oauth_credential_authority.dart';
+
+import '../../support/in_memory_filesystem.dart';
 
 /// Minimal `HttpClient` doubles: the refresher only calls `getUrl` (OIDC
 /// discovery) and `postUrl` (token exchange), sets `headers.contentType`,
@@ -96,8 +99,22 @@ final class _FakeHttpClient implements HttpClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Never completes its requests: drives the request-level timeout.
+final class _HangingHttpClient implements HttpClient {
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) =>
+      Completer<HttpClientRequest>().future;
+
+  @override
+  Future<HttpClientRequest> postUrl(Uri url) =>
+      Completer<HttpClientRequest>().future;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
-  XaiCredentialRefresher build(_FakeHttpClient client) =>
+  XaiCredentialRefresher build(HttpClient client) =>
       XaiCredentialRefresher(client: client);
 
   test('a rejected grant is permanent', () async {
@@ -114,11 +131,101 @@ void main() {
     expect(client.tokenRequests, 1);
   });
 
-  test('401 is also permanent', () async {
+  test('401 invalid_token is permanent', () async {
     expect(
-      await build(_FakeHttpClient(tokenStatus: 401)).refresh('rt'),
+      await build(
+        _FakeHttpClient(
+          tokenStatus: 401,
+          tokenBody: '{"error":"invalid_token"}',
+        ),
+      ).refresh('rt'),
       isA<RefreshRejected>(),
     );
+  });
+
+  test('400 invalid_client is our config error, not a bad RT (transient)',
+      () async {
+    await expectLater(
+      build(
+        _FakeHttpClient(
+          tokenStatus: 400,
+          tokenBody: '{"error":"invalid_client"}',
+        ),
+      ).refresh('rt'),
+      throwsA(isA<CredentialTransientException>()),
+    );
+  });
+
+  test('a 400/401 without invalid_grant/invalid_token is transient', () async {
+    // An empty or unsupported body (e.g. unsupported_grant_type) must not be
+    // read as a dead RT: the seat-shared credential survives.
+    await expectLater(
+      build(_FakeHttpClient(tokenStatus: 401)).refresh('rt'),
+      throwsA(isA<CredentialTransientException>()),
+    );
+    await expectLater(
+      build(
+        _FakeHttpClient(
+          tokenStatus: 400,
+          tokenBody: '{"error":"unsupported_grant_type"}',
+        ),
+      ).refresh('rt'),
+      throwsA(isA<CredentialTransientException>()),
+    );
+  });
+
+  test('invalid_client keeps credential.json on the control plane', () async {
+    final client = _FakeHttpClient(
+      tokenStatus: 400,
+      tokenBody: '{"error":"invalid_client"}',
+    );
+    final fs = InMemoryFilesystem();
+    final authority = OAuthCredentialAuthority(
+      fs: fs,
+      basePath: '/tp',
+      cliNamespace: 'grok',
+      refresher: build(client),
+      now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
+    );
+    final path = '/tp/providers/grok/xai/credential.json';
+    await fs.atomicWrite(
+      path,
+      jsonEncode({
+        'provider_id': 'xai',
+        'refresh_token': 'rt-old',
+        'access_token': 'access-old',
+        'expires_at': '2026-11-14T10:00:00Z', // expired -> forces refresh
+        'epoch': 0,
+      }),
+    );
+
+    await expectLater(
+      authority.lease(providerId: 'xai', sessionId: 's1'),
+      throwsA(isA<CredentialTransientException>()),
+    );
+
+    final raw = await fs.readString(path);
+    expect(raw, isNotNull, reason: 'invalid_client must not delete the shared RT');
+    expect(raw, contains('rt-old'));
+  });
+
+  test('a hanging IdP is bounded by the request timeout', () {
+    fakeAsync((async) {
+      Object? caught;
+      unawaited(() async {
+        try {
+          await build(_HangingHttpClient()).refresh('rt');
+        } on Object catch (error) {
+          caught = error;
+        }
+      }());
+      async.flushMicrotasks();
+      expect(caught, isNull, reason: 'request still in flight');
+
+      async.elapse(const Duration(seconds: 16));
+      async.flushMicrotasks();
+      expect(caught, isA<CredentialTransientException>());
+    });
   });
 
   test('5xx and 429 keep the refresh token (transient)', () async {

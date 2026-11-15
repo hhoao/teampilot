@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../../../../models/credential_lease.dart';
 import '../../../../models/team_config.dart';
+import '../../../../utils/logging/logger_utils.dart';
 import '../../../provider/oauth_credential_authority.dart';
 import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
@@ -238,18 +239,30 @@ final class GrokHeadlessCapability
   Future<CredentialLease?> _leaseForHeadless(String providerId) async {
     final target = authority;
     if (target == null) return null;
+    // A transient IdP outage / timeout keeps the refresh token on the control
+    // plane. Treat it as "not ready" (the caller returns credentialsReady:
+    // false + a warning) instead of letting the raw exception escape. Log only
+    // the failure class — never the cause, which may quote token material.
     try {
-      return await target.lease(providerId: providerId, sessionId: 'headless');
-    } on CredentialUnavailableException {
-      if (!await target.importLegacyAuthJson(providerId)) return null;
       try {
-        return await target.lease(
-          providerId: providerId,
-          sessionId: 'headless',
-        );
+        return await target.lease(providerId: providerId, sessionId: 'headless');
       } on CredentialUnavailableException {
-        return null;
+        if (!await target.importLegacyAuthJson(providerId)) return null;
+        try {
+          return await target.lease(
+            providerId: providerId,
+            sessionId: 'headless',
+          );
+        } on CredentialUnavailableException {
+          return null;
+        }
       }
+    } on CredentialTransientException catch (error) {
+      AppLogger.instance.w(
+        'GrokHeadlessCapability: credential refresh temporarily unavailable '
+        'for provider $providerId (${error.cause.runtimeType})',
+      );
+      return null;
     }
   }
 

@@ -2513,7 +2513,18 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     if (recovery == null) return _AuthRecoveryOutcome.needsLogin;
     final bool ok;
     try {
-      ok = await recovery(sessionId);
+      ok = await recovery(
+        sessionId,
+      ).timeout(const Duration(seconds: 20));
+    } on TimeoutException catch (error, stackTrace) {
+      // A hung IdP / recovery must not leave the seat stuck in launching
+      // forever; classify as a sign-in problem so the session ends cleanly.
+      appLogger.w(
+        '[acp-chat] session $sessionId auth recovery timed out',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return _AuthRecoveryOutcome.needsLogin;
     } on Object catch (error, stackTrace) {
       // CredentialUnavailableException lands here too: a lease that cannot be
       // minted is a sign-in problem, not a launch problem.

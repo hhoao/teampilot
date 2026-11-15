@@ -54,6 +54,35 @@ final class _ThrowingRefresher implements CredentialRefresher {
       throw const CredentialTransientException('503');
 }
 
+/// Pauses the next `credential.json` atomicWrite so a test can deterministically
+/// interleave a concurrent import with a refresh commit's check-then-write.
+final class _GatedCredentialFilesystem extends InMemoryFilesystem {
+  Completer<void>? _gate;
+  Completer<void>? _entered;
+  Completer<void>? _pending;
+
+  void armWriteGate() {
+    _gate = Completer<void>();
+    _pending = _gate;
+    _entered = Completer<void>();
+  }
+
+  Future<void> get writeEntered => _entered!.future;
+
+  void releaseWrite() => _pending?.complete();
+
+  @override
+  Future<void> atomicWrite(String path, String content) async {
+    final gate = _gate;
+    if (gate != null && path.endsWith('credential.json')) {
+      _gate = null; // gate exactly one write
+      _entered?.complete();
+      await gate.future;
+    }
+    return super.atomicWrite(path, content);
+  }
+}
+
 String _authJson({
   String key = 'access-old',
   String refreshToken = 'rt-old',
@@ -404,5 +433,87 @@ void main() {
     expect(await authority.status('xai'), CredentialHealth.ready);
     final raw = await fs.readString('/tp/providers/grok/xai/credential.json');
     expect(raw, contains('rt-old'));
+  });
+
+  test('a rejected old RT during re-login keeps the new credential', () async {
+    final fs = InMemoryFilesystem();
+    final refresher = _ControlledRefresher();
+    final authority = build(fs, refresher);
+    await authority.importFromLogin(
+      'xai',
+      utf8.encode(_authJson(expiresAt: '2026-11-14T10:00:00Z')),
+    );
+
+    final staleLease = authority.lease(providerId: 'xai', sessionId: 's1');
+    await _pump();
+    expect(refresher.pending, hasLength(1));
+
+    // Re-login while the OLD refresh token's refresh is in flight.
+    expect(
+      await authority.importFromLogin(
+        'xai',
+        utf8.encode(_authJson(key: 'access-new', refreshToken: 'rt-new')),
+      ),
+      isTrue,
+    );
+
+    // The old RT is rejected, but it must not delete the freshly imported
+    // credential.json (the pre-fix bug).
+    refresher.pending.single.complete(const RefreshRejected());
+    final lease = await staleLease;
+
+    final raw = await fs.readString('/tp/providers/grok/xai/credential.json');
+    expect(raw, contains('rt-new'), reason: 're-login must not be deleted');
+    expect(raw, isNot(contains('rt-old')));
+    expect(await authority.status('xai'), isNot(CredentialHealth.rejected));
+    expect(lease.accessToken, 'access-new');
+  });
+
+  test('refresh commit and import are serialized (no stale overwrite)',
+      () async {
+    final fs = _GatedCredentialFilesystem();
+    final refresher = _ControlledRefresher();
+    final authority = build(fs, refresher);
+    await authority.importFromLogin(
+      'xai',
+      utf8.encode(_authJson(expiresAt: '2026-11-14T10:00:00Z')),
+    );
+
+    final staleLease = authority.lease(providerId: 'xai', sessionId: 's1');
+    await _pump();
+    expect(refresher.pending, hasLength(1));
+
+    // Pause the refresh commit right at its credential.json write, then fire
+    // a concurrent import. With the serial queue the import cannot interleave
+    // into the load->persist window; without it the stale refresh persists
+    // last and clobbers the fresh login.
+    fs.armWriteGate();
+    refresher.pending.single.complete(
+      RefreshSucceeded(
+        accessToken: 'stale-access',
+        refreshToken: 'rt-stale',
+        expiresAt: DateTime.utc(2026, 11, 14, 12, 0, 0),
+      ),
+    );
+    await fs.writeEntered.timeout(const Duration(seconds: 2));
+
+    final importFuture = authority.importFromLogin(
+      'xai',
+      utf8.encode(_authJson(key: 'access-new', refreshToken: 'rt-new')),
+    );
+    await _pump();
+    fs.releaseWrite();
+
+    await staleLease;
+    expect(await importFuture, isTrue);
+    await _pump();
+
+    final raw = await fs.readString('/tp/providers/grok/xai/credential.json');
+    expect(raw, contains('rt-new'), reason: 'the fresh import must win');
+    expect(
+      raw,
+      isNot(contains('rt-stale')),
+      reason: 'the stale refresh must never overwrite the newer login',
+    );
   });
 }

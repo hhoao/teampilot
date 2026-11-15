@@ -1,4 +1,5 @@
 import '../../models/credential_lease.dart';
+import '../../utils/logging/logger_utils.dart';
 import 'oauth_credential_authority.dart';
 
 class LeaseHttpResponse {
@@ -35,10 +36,18 @@ final class CredentialLeaseEndpoint {
     if (sessionId.trim().isEmpty ||
         (busToken ?? '').trim().isEmpty ||
         providerId.trim().isEmpty) {
+      AppLogger.instance.w(
+        'CredentialLeaseEndpoint: 401 unauthorized (missing session/token/'
+        'provider) for provider=$providerId',
+      );
       return const LeaseHttpResponse(401, {'error': 'unauthorized'});
     }
     final allowed = sessionProviderId(sessionId);
     if (allowed == null || allowed != providerId) {
+      AppLogger.instance.w(
+        'CredentialLeaseEndpoint: 401 provider mismatch for '
+        'provider=$providerId',
+      );
       return const LeaseHttpResponse(401, {'error': 'unauthorized'});
     }
 
@@ -54,7 +63,22 @@ final class CredentialLeaseEndpoint {
         'epoch': lease.epoch,
       });
     } on CredentialUnavailableException catch (error) {
+      AppLogger.instance.w(
+        'CredentialLeaseEndpoint: 409 unavailable for provider=$providerId '
+        'health=${error.health.name}',
+      );
       return LeaseHttpResponse(409, {'health': error.health.name});
+    } on CredentialTransientException {
+      // IdP outage / timeout: the RT is intact, so tell the shim (and the
+      // cubit recovery path) to retry rather than sign in. Never log the
+      // cause (it may quote token material).
+      AppLogger.instance.w(
+        'CredentialLeaseEndpoint: 503 temporarily unavailable for '
+        'provider=$providerId',
+      );
+      return const LeaseHttpResponse(503, {
+        'error': 'temporarily_unavailable',
+      });
     }
   }
 }
