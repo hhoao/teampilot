@@ -55,6 +55,8 @@ class AcpProxySpool {
         'args': meta.args,
         'env': meta.env,
         'permissionPolicy': meta.permissionPolicy.name,
+        if (meta.authenticateMethodId != null)
+          'authenticateMethodId': meta.authenticateMethodId,
       });
       await metaFile.writeAsString('$encoded\n', flush: true);
       await _chmod(metaFile, _fileMode);

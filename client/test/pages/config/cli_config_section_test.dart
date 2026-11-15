@@ -348,6 +348,7 @@ void main() {
     expect(find.byKey(AppKeys.claudeCliUpgradeButton), findsNothing);
     expect(find.byKey(AppKeys.claudeAcpAdapterInstallButton), findsNothing);
     expect(find.byKey(AppKeys.claudeAcpAdapterUpgradeButton), findsNothing);
+    expect(find.byKey(AppKeys.acpProxyMachineCard), findsNothing);
   });
 
   testWidgets(

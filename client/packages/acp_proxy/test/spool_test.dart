@@ -120,4 +120,48 @@ void main() {
       expect(session.existsSync(), isFalse);
     },
   );
+
+  test(
+    'stores authenticateMethodId only when the launch meta has one',
+    () async {
+      final root = await Directory.systemTemp.createTemp('acp-proxy-spool');
+      addTearDown(() => root.delete(recursive: true));
+      final spool = AcpProxySpool(root: root);
+      const named = AcpProxyLaunchMeta(
+        cli: 'claude',
+        executable: '/usr/local/bin/claude',
+        args: ['--acp'],
+        env: {},
+        permissionPolicy: AcpProxyPermissionPolicy.ask,
+        authenticateMethodId: 'oauth',
+      );
+      const plain = AcpProxyLaunchMeta(
+        cli: 'claude',
+        executable: '/usr/local/bin/claude',
+        args: ['--acp'],
+        env: {},
+        permissionPolicy: AcpProxyPermissionPolicy.ask,
+      );
+
+      await spool.create(sessionId: 'named', cwd: '/work', meta: named);
+      await spool.create(sessionId: 'plain', cwd: '/work', meta: plain);
+
+      final namedMeta =
+          jsonDecode(
+                File(
+                  '${root.path}/acp-proxy/sessions/named/meta.json',
+                ).readAsStringSync(),
+              )
+              as Map;
+      final plainMeta =
+          jsonDecode(
+                File(
+                  '${root.path}/acp-proxy/sessions/plain/meta.json',
+                ).readAsStringSync(),
+              )
+              as Map;
+      expect(namedMeta['authenticateMethodId'], 'oauth');
+      expect(plainMeta.containsKey('authenticateMethodId'), isFalse);
+    },
+  );
 }

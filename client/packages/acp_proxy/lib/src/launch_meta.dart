@@ -9,6 +9,7 @@ class AcpProxyLaunchMeta {
     required this.args,
     required this.env,
     required this.permissionPolicy,
+    this.authenticateMethodId,
   });
 
   final String cli;
@@ -16,6 +17,9 @@ class AcpProxyLaunchMeta {
   final List<String> args;
   final Map<String, String> env;
   final AcpProxyPermissionPolicy permissionPolicy;
+
+  /// Optional ACP `authenticate` method. Absent or empty skips authenticate.
+  final String? authenticateMethodId;
 
   /// Reads only the `teampilot` map. [args] defaults to empty.
   ///
@@ -49,6 +53,7 @@ class AcpProxyLaunchMeta {
       args: _stringList(teampilot['args']),
       env: _stringMap(teampilot['env']),
       permissionPolicy: _permissionPolicy(teampilot['permissionPolicy']),
+      authenticateMethodId: _optionalMethod(teampilot['authenticateMethodId']),
     );
   }
 }
@@ -91,6 +96,17 @@ Map<String, String> _stringMap(Object? raw) {
     env[key] = value;
   }
   return Map<String, String>.unmodifiable(env);
+}
+
+String? _optionalMethod(Object? raw) {
+  if (raw == null) return null;
+  if (raw is! String) {
+    throw const FormatException(
+      'session/new _meta.teampilot.authenticateMethodId must be a string',
+    );
+  }
+  if (raw.isEmpty) return null;
+  return raw;
 }
 
 AcpProxyPermissionPolicy _permissionPolicy(Object? raw) {

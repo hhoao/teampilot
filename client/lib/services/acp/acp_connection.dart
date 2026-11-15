@@ -7,6 +7,7 @@ import '../../utils/logging/logger_utils.dart';
 import 'acp_agent_translator.dart';
 import 'acp_frame_logger.dart';
 import 'acp_host_mcp_permission.dart';
+import 'acp_proxy_forward_transport.dart';
 import 'acp_session.dart';
 import 'acp_session_runtime.dart';
 import 'acp_transport.dart';
@@ -155,6 +156,17 @@ class AcpAgentConnection {
 
   /// Negotiated capabilities, or null before [initialize] completes.
   AcpNegotiatedCapabilities? get negotiatedCapabilities => _capabilities;
+
+  /// Launch block for a proxy forward, set by the production spawner.
+  ///
+  /// Null when this connection speaks to the CLI directly.
+  AcpProxyLaunchCarry? get acpProxyLaunch => _acpProxyLaunch;
+  AcpProxyLaunchCarry? _acpProxyLaunch;
+
+  /// Records the argv and env the proxy should use for `session/new`.
+  void noteAcpProxyLaunch(AcpProxyLaunchCarry carry) {
+    _acpProxyLaunch = carry;
+  }
 
   /// Whether the connection is still usable.
   bool get isAlive =>

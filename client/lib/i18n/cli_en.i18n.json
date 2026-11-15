@@ -51,5 +51,15 @@
   "taskStatusUnknown": "Unknown",
   "transportDefaultChat": "New sessions default to chat (ACP)",
   "transportDefaultTerminal": "New sessions default to the terminal (PTY)",
-  "upgradeButton": "Upgrade"
+  "upgradeButton": "Upgrade",
+  "acpProxyTitle": "Cloud keep-alive",
+  "@acpProxyTitle": "Machine card for the ACP proxy on a remote SSH host",
+  "acpProxySubtitle": "Keeps a cloud-model turn running after this device disconnects. Install and start it on this machine. Sending a message does not install it.",
+  "acpProxyStart": "Start",
+  "acpProxyChecking": "Checking the remote machine…",
+  "acpProxyMissing": "Not installed",
+  "acpProxyStopped": "Installed, not running",
+  "acpProxyOutdated": "Update available",
+  "acpProxyRetry": "Retry",
+  "acpProxyNoSsh": "Select an SSH server before installing keep-alive."
 }

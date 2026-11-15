@@ -51,5 +51,15 @@
   "taskStatusUnknown": "未知",
   "transportDefaultChat": "新会话默认使用对话（ACP）",
   "transportDefaultTerminal": "新会话默认使用终端（PTY）",
-  "upgradeButton": "升级"
+  "upgradeButton": "升级",
+  "acpProxyTitle": "云端保活",
+  "@acpProxyTitle": "远程 SSH 机器上的 ACP 代理卡片",
+  "acpProxySubtitle": "手机断开后，云端模型的这一轮仍会跑完。在这台机器上安装并启动。发送消息不会安装它。",
+  "acpProxyStart": "启动",
+  "acpProxyChecking": "正在检查远程机器…",
+  "acpProxyMissing": "未安装",
+  "acpProxyStopped": "已安装，未运行",
+  "acpProxyOutdated": "有可用更新",
+  "acpProxyRetry": "重试",
+  "acpProxyNoSsh": "安装保活前请先选择 SSH 服务器。"
 }

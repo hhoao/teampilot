@@ -96,8 +96,29 @@ class AcpProxyAgent {
       now: now,
       idleTimeout: idleTimeout,
       permissionPending: permissionPending,
-      closeSession: _closeKeptSession,
+      closeSession: (sessionId) => _reapLocked(sessionId, now, idleTimeout),
     );
+  }
+
+  /// Closes [sessionId] only if it is still idle under the session lock.
+  ///
+  /// The eligibility check in [reapIdleSessions] happens before this lock.
+  /// A `session/load` that attaches while this waits must keep the session.
+  /// Do not call [_closeKeptSession] here: it takes the same lock.
+  Future<void> _reapLocked(
+    String sessionId,
+    DateTime now,
+    Duration idleTimeout,
+  ) {
+    return _withSessionLock(sessionId, () async {
+      final since = disconnectedSince[sessionId];
+      final idle = idleClockRunning(sessionId);
+      if (!idle || since == null || now.difference(since) <= idleTimeout) {
+        if (!idle && since != null) disconnectedSince[sessionId] = now;
+        return;
+      }
+      await _closeKeptSessionLocked(sessionId);
+    });
   }
 
   /// Builds an [AgentRole] and connects it to [phone].

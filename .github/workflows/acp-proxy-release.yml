@@ -1,0 +1,61 @@
+name: ACP proxy release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "acp-proxy-v*"
+
+jobs:
+  build:
+    name: Build Linux ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - run: git submodule update --init client/packages/acpd
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - name: Compile
+        working-directory: client/packages/acp_proxy
+        run: |
+          dart pub get
+          dart compile exe -o "$RUNNER_TEMP/teampilot-acp-proxy-linux-${{ matrix.arch }}" bin/teampilot_acp_proxy.dart
+          sha256sum "$RUNNER_TEMP/teampilot-acp-proxy-linux-${{ matrix.arch }}" | tee "$RUNNER_TEMP/teampilot-acp-proxy-linux-${{ matrix.arch }}.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: acp-proxy-${{ matrix.arch }}
+          path: |
+            ${{ runner.temp }}/teampilot-acp-proxy-linux-${{ matrix.arch }}
+            ${{ runner.temp }}/teampilot-acp-proxy-linux-${{ matrix.arch }}.sha256
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: acp-proxy-*
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="acp-proxy-v0.1.0"
+          fi
+          sha256sum teampilot-acp-proxy-linux-* > SHA256SUMS
+          gh release create "$tag" --title "$tag" --notes "TeamPilot ACP proxy. Pin the SHA-256 in acpProxySha256 before the app will install an architecture." teampilot-acp-proxy-linux-* SHA256SUMS || gh release upload "$tag" teampilot-acp-proxy-linux-* SHA256SUMS --clobber

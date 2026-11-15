@@ -35,6 +35,18 @@ Future<void> main(List<String> args) async {
         spool: spool,
         upstreams: <String, AcpUpstream>{},
       );
+      agent.connectNew =
+          ({
+            required AcpProxyLaunchMeta meta,
+            required String cwd,
+            required List<Map<String, Object?>> mcpServers,
+          }) {
+            return AcpProcessUpstream.start(
+              meta: meta,
+              cwd: cwd,
+              mcpServers: mcpServers,
+            );
+          };
       agents.add(agent);
       return agent;
     },

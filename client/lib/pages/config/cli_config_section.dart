@@ -6,10 +6,14 @@ import '../../cubits/session_preferences_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/session_preferences.dart';
 import '../../services/app/connection_mode_service.dart';
+import '../../services/acp/acp_proxy_install.dart';
+import '../../services/acp/acp_proxy_route.dart';
 import '../../services/cli/cli_version_probe.dart';
+import '../../services/cli/installer_types.dart';
 import '../../services/cli/registry/capabilities/cli_executable_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../utils/ui/app_keys.dart';
+import 'acp_proxy_machine_card.dart';
 import 'cli_readiness_card.dart';
 import 'toolchain_path_settings_row.dart';
 
@@ -17,6 +21,8 @@ class CliConfigWorkspace extends StatelessWidget {
   const CliConfigWorkspace({
     this.showHeading = true,
     this.versionProbe,
+    this.acpProxyStatus,
+    this.acpProxyAction,
     super.key,
   });
 
@@ -24,6 +30,13 @@ class CliConfigWorkspace extends StatelessWidget {
 
   /// Test seam: skip real `npm view` when pumping settings.
   final CliVersionProbe? versionProbe;
+
+  /// Test seam for the remote keep-alive card. Null uses SSH.
+  final Future<AcpProxyProbeSnapshot> Function()? acpProxyStatus;
+
+  /// Test seam for install, update, and start. Null uses SSH.
+  final Future<CliInstallResult> Function(AcpProxyCardAction action)?
+  acpProxyAction;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +51,13 @@ class CliConfigWorkspace extends StatelessWidget {
           ),
           const SizedBox(height: 16),
         ],
-        Expanded(child: _CliControls(versionProbe: versionProbe)),
+        Expanded(
+          child: _CliControls(
+            versionProbe: versionProbe,
+            acpProxyStatus: acpProxyStatus,
+            acpProxyAction: acpProxyAction,
+          ),
+        ),
       ],
     );
   }
@@ -65,9 +84,16 @@ class _CliHeading extends StatelessWidget {
 }
 
 class _CliControls extends StatelessWidget {
-  const _CliControls({this.versionProbe});
+  const _CliControls({
+    this.versionProbe,
+    this.acpProxyStatus,
+    this.acpProxyAction,
+  });
 
   final CliVersionProbe? versionProbe;
+  final Future<AcpProxyProbeSnapshot> Function()? acpProxyStatus;
+  final Future<CliInstallResult> Function(AcpProxyCardAction action)?
+  acpProxyAction;
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +110,13 @@ class _CliControls extends StatelessWidget {
         children: [
           TpSectionHeader(title: l10n.cli.configAiCliGroup),
           const SizedBox(height: 8),
+          if (isSshMode) ...[
+            AcpProxyMachineCard(
+              loadStatus: acpProxyStatus,
+              runAction: acpProxyAction,
+            ),
+            const SizedBox(height: 8),
+          ],
           for (final def in registry.launchable)
             if (registry.capability<CliExecutableCapability>(def.id) != null)
               Padding(

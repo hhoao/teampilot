@@ -954,6 +954,18 @@ class _AppLocalizations$cli$zh extends AppLocalizations$cli$en {
 	@override String get transportDefaultChat => '新会话默认使用对话（ACP）';
 	@override String get transportDefaultTerminal => '新会话默认使用终端（PTY）';
 	@override String get upgradeButton => '升级';
+
+	/// 远程 SSH 机器上的 ACP 代理卡片
+	@override String get acpProxyTitle => '云端保活';
+
+	@override String get acpProxySubtitle => '手机断开后，云端模型的这一轮仍会跑完。在这台机器上安装并启动。发送消息不会安装它。';
+	@override String get acpProxyStart => '启动';
+	@override String get acpProxyChecking => '正在检查远程机器…';
+	@override String get acpProxyMissing => '未安装';
+	@override String get acpProxyStopped => '已安装，未运行';
+	@override String get acpProxyOutdated => '有可用更新';
+	@override String get acpProxyRetry => '重试';
+	@override String get acpProxyNoSsh => '安装保活前请先选择 SSH 服务器。';
 }
 
 // Path: clone
@@ -4667,6 +4679,15 @@ extension on AppLocalizationsZh {
 			'cli.transportDefaultChat' => '新会话默认使用对话（ACP）',
 			'cli.transportDefaultTerminal' => '新会话默认使用终端（PTY）',
 			'cli.upgradeButton' => '升级',
+			'cli.acpProxyTitle' => '云端保活',
+			'cli.acpProxySubtitle' => '手机断开后，云端模型的这一轮仍会跑完。在这台机器上安装并启动。发送消息不会安装它。',
+			'cli.acpProxyStart' => '启动',
+			'cli.acpProxyChecking' => '正在检查远程机器…',
+			'cli.acpProxyMissing' => '未安装',
+			'cli.acpProxyStopped' => '已安装，未运行',
+			'cli.acpProxyOutdated' => '有可用更新',
+			'cli.acpProxyRetry' => '重试',
+			'cli.acpProxyNoSsh' => '安装保活前请先选择 SSH 服务器。',
 			'clone.repositoryAddToExistingSucceeded' => ({required Object repo, required Object workspace}) => '已将 ${repo} 加入工作区 ${workspace}',
 			'clone.repositoryAddToWorkspace' => '加入现有工作区…',
 			'clone.repositoryCancelled' => ({required Object repo}) => '已取消克隆：${repo}',
@@ -4992,6 +5013,8 @@ extension on AppLocalizationsZh {
 			'fileTree.fileCreated' => '已创建文件',
 			'fileTree.folderCreated' => '已创建文件夹',
 			'fileTree.hideFilter' => '隐藏筛选',
+			_ => null,
+		} ?? switch (path) {
 			'fileTree.importApplyRemaining' => '应用于剩余冲突',
 			'fileTree.importCancelAll' => '全部取消',
 			'fileTree.importConflictBody' => ({required String name}) => '目标位置已存在「${name}」。',
@@ -5001,8 +5024,6 @@ extension on AppLocalizationsZh {
 			'fileTree.importConflictTypeMismatch' => '文件和文件夹不能互相替换。',
 			'fileTree.importDropCopy' => '复制',
 			'fileTree.importDropMove' => '移动',
-			_ => null,
-		} ?? switch (path) {
 			'fileTree.importOverwrite' => '覆盖',
 			'fileTree.importProgressCancel' => '取消',
 			'fileTree.importProgressCurrent' => ({required String name}) => '${name}',
@@ -5506,6 +5527,8 @@ extension on AppLocalizationsZh {
 			'managedProviders.displaySectionTitle' => '余额与额度显示',
 			'managedProviders.dynamicCurrencyHelper' => '货币从响应映射读取。',
 			'managedProviders.edit' => '编辑',
+			_ => null,
+		} ?? switch (path) {
 			'managedProviders.editTitle' => '编辑管理 Provider',
 			'managedProviders.emptyHint' => '添加 Provider 以独立跟踪余额和配额。',
 			'managedProviders.emptyTitle' => '暂无管理 Provider',
@@ -5515,8 +5538,6 @@ extension on AppLocalizationsZh {
 			'managedProviders.enabledTitle' => '启用',
 			'managedProviders.endpoint' => '用量 API 地址',
 			'managedProviders.endpointError' => '此 HTTP 适配器需要 HTTPS 或回环地址。',
-			_ => null,
-		} ?? switch (path) {
 			'managedProviders.endpointHelper' => '获取用量数据的请求地址。',
 			'managedProviders.endpointHint' => 'https://api.example.com/usage',
 			'managedProviders.error' => '错误',
@@ -6020,6 +6041,8 @@ extension on AppLocalizationsZh {
 			'resource.managerTerminalsCount' => ({required int count}) => '${count} 个运行中会话',
 			'resource.managerTitle' => '资源管理器',
 			'resource.managerTooltip' => ({required int count}) => '资源管理器 - ${count} 个运行中会话',
+			_ => null,
+		} ?? switch (path) {
 			'resource.managerTooltipHint' => '跨所有工作区的运行中会话。',
 			'rtk.bashOnlyHint' => '仅作用于 Agent 的 Bash 工具调用；内置 Read、Grep、Glob 不会自动改写。',
 			'rtk.settingsDescription' => '在命令输出进入模型前压缩 Agent Bash 结果（需本机 PATH 中有 rtk 与 jq）。',
@@ -6029,8 +6052,6 @@ extension on AppLocalizationsZh {
 			'rtk.settingsTitle' => 'RTK 省 token',
 			'rtk.statusInstalled' => ({required String version}) => 'rtk ${version} 已就绪',
 			'rtk.statusInstalledGeneric' => 'rtk 已就绪',
-			_ => null,
-		} ?? switch (path) {
 			'rtk.statusJqMissing' => 'PATH 中未找到 jq',
 			'rtk.statusNotFound' => 'PATH 中未找到 rtk',
 			'rtk.statusVersionTooOld' => ({required String version}) => 'rtk ${version} 版本过低（需要 >= 0.23.0）',
@@ -6534,6 +6555,8 @@ extension on AppLocalizationsZh {
 			'sshProfile.delete' => '删除',
 			'sshProfile.disconnect' => '断开',
 			'sshProfile.edit' => '编辑',
+			_ => null,
+		} ?? switch (path) {
 			'sshProfile.formAuthChangeBody' => '保存后会清除该目标另一种认证方式已保存的凭据。',
 			'sshProfile.formAuthChangeConfirm' => '切换并保存',
 			'sshProfile.formAuthChangeTitle' => '切换认证方式？',
@@ -6543,8 +6566,6 @@ extension on AppLocalizationsZh {
 			'sshProfile.formCredentialSaveFailed' => '目标已保存，但无法写入凭据。请解锁系统钥匙环后编辑该目标并重新填写。',
 			'sshProfile.formFieldRequired' => '必填',
 			'sshProfile.formHost' => '主机或别名',
-			_ => null,
-		} ?? switch (path) {
 			'sshProfile.formHostHint' => 'server、deploy@server:2222',
 			'sshProfile.formIdentityFile' => '私钥内容',
 			'sshProfile.formIdentityFileHelper' => '可直接粘贴私钥，或从文件导入。',
@@ -7048,6 +7069,8 @@ extension on AppLocalizationsZh {
 			'workspace.skillsAssignedCount' => ({required int assigned, required int total}) => '已为本工作区启用 ${assigned}/${total}',
 			'workspace.skillsManage' => '管理 Skills',
 			'workspace.targetSubtitle' => '该工作区的目录所在并运行的机器。会话在此 target 上启动；切换不会移动文件。',
+			_ => null,
+		} ?? switch (path) {
 			'workspace.targetTitle' => '工作区所在机器',
 			'workspace.terminal' => '终端',
 			'workspace.terminalClose' => '关闭终端面板',
@@ -7057,8 +7080,6 @@ extension on AppLocalizationsZh {
 			'workspace.terminalNewSshSession' => '新建 SSH 会话…',
 			'workspace.terminalNoWorkingDirectory' => '请先连接会话以打开 Shell 终端',
 			'workspace.terminalRestoring' => '正在恢复终端…',
-			_ => null,
-		} ?? switch (path) {
 			'workspace.terminalSettings' => '设置',
 			'workspace.terminalSshConnectFailed' => 'SSH 配置未找到或连接失败',
 			'workspace.terminalThemeAdaptive' => '跟随主题',

@@ -1218,6 +1218,66 @@ void main() {
       }
     },
   );
+
+  test(
+    'idle reap does not close a session an in-flight load just attached',
+    () async {
+      final env = await _startEnv();
+      final phone = env.connect();
+      final sessionId = await env.openSession(phone);
+      await _dropPhone(phone);
+      final disconnectedAt = env.agent.disconnectedSince[sessionId];
+      expect(disconnectedAt, isNotNull);
+
+      env.fake.alive = false;
+      final gate = Completer<void>();
+      final revived = FakeUpstream(sessionId: sessionId)
+        ..holdOpenLoad = gate.future;
+      addTearDown(() async {
+        if (!gate.isCompleted) gate.complete();
+        if (!revived.updateEvents.isClosed) await revived.updateEvents.close();
+        if (!revived.clientRequestEvents.isClosed) {
+          await revived.clientRequestEvents.close();
+        }
+      });
+      env.agent.connectNew =
+          ({
+            required AcpProxyLaunchMeta meta,
+            required String cwd,
+            required List<Map<String, Object?>> mcpServers,
+          }) async {
+            return revived;
+          };
+
+      final again = env.connect();
+      await again.client.client.initialize(
+        const InitializeRequest(protocolVersion: ProtocolVersion.v1),
+      );
+      final loading = again.client.client.loadSession(
+        LoadSessionRequest(sessionId: sessionId, cwd: '/work', meta: _meta()),
+      );
+      await _until(() => revived.openLoadCount == 1);
+
+      final reaping = env.agent.reapIdle(
+        now: disconnectedAt!.add(const Duration(minutes: 31)),
+        idleTimeout: const Duration(minutes: 30),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      gate.complete();
+      await loading;
+      await reaping;
+
+      expect(env.book.connectionFor(sessionId), isNotNull);
+      expect(env.agent.upstreams[sessionId], same(revived));
+      expect(revived.closeCount, 0);
+      expect(
+        Directory(
+          '${env.root.path}/acp-proxy/sessions/$sessionId',
+        ).existsSync(),
+        isTrue,
+      );
+    },
+  );
 }
 
 Map<String, Object?> _meta({String permissionPolicy = 'fullAccess'}) => {
@@ -1401,6 +1461,7 @@ class FakeUpstream implements AcpUpstream {
     sync: true,
   );
   final completions = <Object, Map<String, Object?>>{};
+  Future<void>? holdOpenLoad;
 
   @override
   Future<String> openNew({
@@ -1423,6 +1484,8 @@ class FakeUpstream implements AcpUpstream {
     openLoadCount++;
     final error = openLoadError;
     if (error != null) throw error;
+    final hold = holdOpenLoad;
+    if (hold != null) await hold;
     onOpenLoad?.call();
   }
 

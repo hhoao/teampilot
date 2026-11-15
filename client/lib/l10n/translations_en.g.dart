@@ -2336,6 +2336,35 @@ class AppLocalizations$cli$en {
 
 	/// en: 'Upgrade'
 	String get upgradeButton => 'Upgrade';
+
+	/// Machine card for the ACP proxy on a remote SSH host
+	///
+	/// en: 'Cloud keep-alive'
+	String get acpProxyTitle => 'Cloud keep-alive';
+
+	/// en: 'Keeps a cloud-model turn running after this device disconnects. Install and start it on this machine. Sending a message does not install it.'
+	String get acpProxySubtitle => 'Keeps a cloud-model turn running after this device disconnects. Install and start it on this machine. Sending a message does not install it.';
+
+	/// en: 'Start'
+	String get acpProxyStart => 'Start';
+
+	/// en: 'Checking the remote machine…'
+	String get acpProxyChecking => 'Checking the remote machine…';
+
+	/// en: 'Not installed'
+	String get acpProxyMissing => 'Not installed';
+
+	/// en: 'Installed, not running'
+	String get acpProxyStopped => 'Installed, not running';
+
+	/// en: 'Update available'
+	String get acpProxyOutdated => 'Update available';
+
+	/// en: 'Retry'
+	String get acpProxyRetry => 'Retry';
+
+	/// en: 'Select an SSH server before installing keep-alive.'
+	String get acpProxyNoSsh => 'Select an SSH server before installing keep-alive.';
 }
 
 // Path: clone
@@ -10895,6 +10924,15 @@ extension on AppLocalizations {
 			'cli.transportDefaultChat' => 'New sessions default to chat (ACP)',
 			'cli.transportDefaultTerminal' => 'New sessions default to the terminal (PTY)',
 			'cli.upgradeButton' => 'Upgrade',
+			'cli.acpProxyTitle' => 'Cloud keep-alive',
+			'cli.acpProxySubtitle' => 'Keeps a cloud-model turn running after this device disconnects. Install and start it on this machine. Sending a message does not install it.',
+			'cli.acpProxyStart' => 'Start',
+			'cli.acpProxyChecking' => 'Checking the remote machine…',
+			'cli.acpProxyMissing' => 'Not installed',
+			'cli.acpProxyStopped' => 'Installed, not running',
+			'cli.acpProxyOutdated' => 'Update available',
+			'cli.acpProxyRetry' => 'Retry',
+			'cli.acpProxyNoSsh' => 'Select an SSH server before installing keep-alive.',
 			'clone.repositoryAddToExistingSucceeded' => ({required Object repo, required Object workspace}) => 'Added ${repo} to workspace ${workspace}',
 			'clone.repositoryAddToWorkspace' => 'Add to existing workspace…',
 			'clone.repositoryCancelled' => ({required Object repo}) => 'Clone cancelled: ${repo}',
@@ -11220,6 +11258,8 @@ extension on AppLocalizations {
 			'fileTree.fileCreated' => 'File created',
 			'fileTree.folderCreated' => 'Folder created',
 			'fileTree.hideFilter' => 'Hide file filter',
+			_ => null,
+		} ?? switch (path) {
 			'fileTree.importApplyRemaining' => 'Apply to remaining conflicts',
 			'fileTree.importCancelAll' => 'Cancel all',
 			'fileTree.importConflictBody' => ({required String name}) => '"${name}" already exists at the destination.',
@@ -11229,8 +11269,6 @@ extension on AppLocalizations {
 			'fileTree.importConflictTypeMismatch' => 'A file and a folder cannot replace each other.',
 			'fileTree.importDropCopy' => 'Copy',
 			'fileTree.importDropMove' => 'Move',
-			_ => null,
-		} ?? switch (path) {
 			'fileTree.importOverwrite' => 'Overwrite',
 			'fileTree.importProgressCancel' => 'Cancel',
 			'fileTree.importProgressCurrent' => ({required String name}) => '${name}',
@@ -11734,6 +11772,8 @@ extension on AppLocalizations {
 			'managedProviders.displaySectionTitle' => 'Balance and quota display',
 			'managedProviders.dynamicCurrencyHelper' => 'Currency comes from the response mapping.',
 			'managedProviders.edit' => 'Edit',
+			_ => null,
+		} ?? switch (path) {
 			'managedProviders.editTitle' => 'Edit Managed Provider',
 			'managedProviders.emptyHint' => 'Add a provider to track balances and quotas independently from CLI providers.',
 			'managedProviders.emptyTitle' => 'No managed providers',
@@ -11743,8 +11783,6 @@ extension on AppLocalizations {
 			'managedProviders.enabledTitle' => 'Enabled',
 			'managedProviders.endpoint' => 'Usage API URL',
 			'managedProviders.endpointError' => 'Enter an HTTPS or loopback endpoint for this HTTP adapter.',
-			_ => null,
-		} ?? switch (path) {
 			'managedProviders.endpointHelper' => 'URL used to fetch usage data.',
 			'managedProviders.endpointHint' => 'https://api.example.com/usage',
 			'managedProviders.error' => 'Error',
@@ -12248,6 +12286,8 @@ extension on AppLocalizations {
 			'resource.managerTerminalsCount' => ({required int count}) => '${count} running sessions',
 			'resource.managerTitle' => 'Resource Manager',
 			'resource.managerTooltip' => ({required int count}) => 'Resource Manager - ${count} running sessions',
+			_ => null,
+		} ?? switch (path) {
 			'resource.managerTooltipHint' => 'Running sessions across all workspaces.',
 			'rtk.bashOnlyHint' => 'Only applies to Agent Bash tool calls. Built-in Read, Grep, and Glob are not rewritten.',
 			'rtk.settingsDescription' => 'Compress Agent Bash command output before it reaches the model (requires rtk and jq on PATH).',
@@ -12257,8 +12297,6 @@ extension on AppLocalizations {
 			'rtk.settingsTitle' => 'RTK token savings',
 			'rtk.statusInstalled' => ({required String version}) => 'rtk ${version} ready',
 			'rtk.statusInstalledGeneric' => 'rtk ready',
-			_ => null,
-		} ?? switch (path) {
 			'rtk.statusJqMissing' => 'jq not found on PATH',
 			'rtk.statusNotFound' => 'rtk not found on PATH',
 			'rtk.statusVersionTooOld' => ({required String version}) => 'rtk ${version} is too old (need >= 0.23.0)',
@@ -12762,6 +12800,8 @@ extension on AppLocalizations {
 			'sshProfile.delete' => 'Delete',
 			'sshProfile.disconnect' => 'Disconnect',
 			'sshProfile.edit' => 'Edit',
+			_ => null,
+		} ?? switch (path) {
 			'sshProfile.formAuthChangeBody' => 'Saving will remove the credential stored for the other authentication method.',
 			'sshProfile.formAuthChangeConfirm' => 'Switch and save',
 			'sshProfile.formAuthChangeTitle' => 'Switch authentication?',
@@ -12771,8 +12811,6 @@ extension on AppLocalizations {
 			'sshProfile.formCredentialSaveFailed' => 'Target saved, but credentials could not be stored. Unlock the system keyring and edit the target to re-enter them.',
 			'sshProfile.formFieldRequired' => 'Required',
 			'sshProfile.formHost' => 'Host or alias',
-			_ => null,
-		} ?? switch (path) {
 			'sshProfile.formHostHint' => 'server, deploy@server:2222',
 			'sshProfile.formIdentityFile' => 'Private key',
 			'sshProfile.formIdentityFileHelper' => 'Paste the private key, or import it from a file.',
@@ -13276,6 +13314,8 @@ extension on AppLocalizations {
 			'workspace.skillsAssignedCount' => ({required int assigned, required int total}) => '${assigned} of ${total} enabled for this workspace',
 			'workspace.skillsManage' => 'Manage skills',
 			'workspace.targetSubtitle' => 'The machine this workspace\'s folders live and run on. Sessions launch on this target; switching does not move files.',
+			_ => null,
+		} ?? switch (path) {
 			'workspace.targetTitle' => 'Workspace machine',
 			'workspace.terminal' => 'Terminal',
 			'workspace.terminalClose' => 'Close terminal panel',
@@ -13285,8 +13325,6 @@ extension on AppLocalizations {
 			'workspace.terminalNewSshSession' => 'New SSH Session…',
 			'workspace.terminalNoWorkingDirectory' => 'Connect a session to open the shell terminal',
 			'workspace.terminalRestoring' => 'Restoring terminal…',
-			_ => null,
-		} ?? switch (path) {
 			'workspace.terminalSettings' => 'Settings',
 			'workspace.terminalSshConnectFailed' => 'SSH profile not found or connection failed',
 			'workspace.terminalThemeAdaptive' => 'Match app theme',

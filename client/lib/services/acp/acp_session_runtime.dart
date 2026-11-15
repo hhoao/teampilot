@@ -9,6 +9,7 @@ import '../agent_status/agent_permission_request.dart';
 import 'acp_client_extensions.dart';
 import 'acp_connection.dart';
 import 'acp_frame_logger.dart';
+import 'acp_proxy_session_meta.dart';
 import 'acp_session.dart';
 
 /// l10n key surfaced when no ACP flag candidate produced a usable agent.
@@ -361,7 +362,13 @@ class AcpSessionRuntime
           resumeSessionId: resumeSessionId,
           cwd: workingDirectory,
           mcpServers: sessionMcp,
-          meta: plan.sessionNewMeta?.call(env) ?? const {},
+          meta: _sessionOpenMeta(
+            plan: plan,
+            env: env,
+            connection: connection,
+            cli: tool.value,
+            permissionPolicy: permissionPolicy,
+          ),
           timeout: plan.startupTimeout,
         );
         _connection = connection;
@@ -391,6 +398,29 @@ class AcpSessionRuntime
 
   /// Upper bound on `session/list` pages walked while recovering a resume cwd.
   static const int _maxSessionListPages = 20;
+
+  /// CLI meta plus, on a proxy forward, the launch block the proxy spawns with.
+  ///
+  /// Direct SSH exec leaves [base] unchanged and does not send `_meta.teampilot`.
+  Map<String, Object?> _sessionOpenMeta({
+    required AcpLaunchPlan plan,
+    required Map<String, String> env,
+    required AcpAgentConnection connection,
+    required String cli,
+    required LaunchSecurityPolicy permissionPolicy,
+  }) {
+    final base = plan.sessionNewMeta?.call(env) ?? const <String, Object?>{};
+    final carry = connection.acpProxyLaunch;
+    if (carry == null) return base;
+    return mergeAcpProxySessionMeta(
+      base: base,
+      cli: cli,
+      argv: carry.argv,
+      env: carry.env,
+      permissionPolicy: permissionPolicy,
+      authenticateMethodId: carry.authenticateMethodId,
+    );
+  }
 
   /// Opens the session, resuming [resumeSessionId] when the agent negotiated
   /// support.

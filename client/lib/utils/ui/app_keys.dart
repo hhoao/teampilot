@@ -226,6 +226,8 @@ class AppKeys {
   static const claudeCliInstallButton = Key('claude-cli-install-button');
   static const claudeCliUpgradeButton = Key('claude-cli-upgrade-button');
   static const claudePersonalAcpSwitch = Key('claude-personal-acp-switch');
+  static const acpProxyMachineCard = Key('acp-proxy-machine-card');
+  static const acpProxyActionButton = Key('acp-proxy-action-button');
   static const claudeAcpAdapterInstallButton = Key(
     'claude-acp-adapter-install-button',
   );

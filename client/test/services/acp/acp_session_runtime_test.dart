@@ -10,6 +10,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_connection.dart';
+import 'package:teampilot/services/acp/acp_proxy_forward_transport.dart';
 import 'package:teampilot/services/acp/acp_frame_logger.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
@@ -307,6 +308,65 @@ void main() {
         'disallowedTools': ['ListAgents'],
       },
     });
+    expect(seenNew!.meta.containsKey('teampilot'), isFalse);
+    await runtime.close();
+  });
+
+  test('start merges a proxy launch into session/new meta', () async {
+    acpd.NewSessionRequest? seenNew;
+    agent.connection.onRequest('session/new', (params) {
+      seenNew = acpd.NewSessionRequest.fromJson(
+        (params! as Map).cast<String, Object?>(),
+      );
+      return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+    });
+
+    const capability = GeminiAcpCapability();
+    final runtime = makeRuntime(
+      (argv, env) async {
+        conn.noteAcpProxyLaunch(
+          AcpProxyLaunchCarry(
+            argv: argv,
+            env: env,
+            authenticateMethodId: 'oauth',
+          ),
+        );
+        return conn;
+      },
+      launchPlanFor: (_) => AcpLaunchPlan(
+        launchArgCandidates: capability.launchArgCandidates,
+        buildEnvironment: capability.buildEnvironment,
+        agentExecutable: capability.agentExecutable,
+        sessionNewMeta: (env) => {
+          'claudeCode': {
+            'options': {
+              'disallowedTools': ['ListAgents'],
+            },
+          },
+        },
+      ),
+    );
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'gemini',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+      permissionPolicy: LaunchSecurityPolicy.ask,
+      baseEnv: const {'PATH': '/usr/bin'},
+    );
+
+    expect(seenNew!.meta['claudeCode'], {
+      'options': {
+        'disallowedTools': ['ListAgents'],
+      },
+    });
+    final teampilot = seenNew!.meta['teampilot']! as Map<Object?, Object?>;
+    expect(teampilot['cli'], 'gemini');
+    expect(teampilot['executable'], 'gemini');
+    expect(teampilot['args'], ['--acp']);
+    expect(teampilot['permissionPolicy'], 'ask');
+    expect(teampilot['authenticateMethodId'], 'oauth');
+    expect(teampilot['env'], containsPair('PATH', '/usr/bin'));
     await runtime.close();
   });
 

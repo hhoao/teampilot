@@ -5,6 +5,7 @@ import '../../../models/team_config.dart';
 import '../../../services/acp/acp_agent_translator.dart';
 import '../../../services/acp/acp_connection.dart';
 import '../../../services/acp/acp_frame_logger.dart';
+import '../../../services/acp/acp_proxy_forward_transport.dart';
 import '../../../services/acp/acp_session_runtime.dart';
 import '../../../services/cli/registry/capabilities/acp_capability.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
@@ -145,7 +146,13 @@ AcpConnectionSpawner productionAcpSpawner({
         processExitCode,
         authenticating: false,
       );
-      if (authenticateMethodId != null) {
+      // The proxy authenticates to the CLI. The phone must not send
+      // `authenticate` on the forward, or the proxy (which has no such
+      // method) rejects the handshake.
+      final proxy = started.transport is AcpProxyForwardTransport
+          ? started.transport as AcpProxyForwardTransport
+          : null;
+      if (authenticateMethodId != null && proxy == null) {
         // Authenticate race uses authenticating: true — exit after
         // initialize succeeded is not-logged-in, not a bad flag.
         await raceHandshake(
@@ -153,6 +160,10 @@ AcpConnectionSpawner productionAcpSpawner({
           processExitCode,
           authenticating: true,
         );
+      }
+      if (proxy != null) {
+        proxy.authenticateMethodId = authenticateMethodId;
+        connection.noteAcpProxyLaunch(proxy.launch);
       }
       return connection;
     } on Object {

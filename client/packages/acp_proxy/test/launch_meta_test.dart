@@ -13,14 +13,39 @@ void main() {
   };
 
   test('parses a matching endpoint', () {
-    final launch = AcpProxyLaunchMeta.parse(
-      endpointCli: 'claude',
-      meta: meta,
-    );
+    final launch = AcpProxyLaunchMeta.parse(endpointCli: 'claude', meta: meta);
     expect(launch.executable, '/usr/local/bin/claude');
     expect(launch.args, ['--acp']);
     expect(launch.env['HOME'], '/home/runner');
     expect(launch.permissionPolicy, AcpProxyPermissionPolicy.fullAccess);
+    expect(launch.authenticateMethodId, isNull);
+  });
+
+  test('reads an optional authenticate method and skips an empty one', () {
+    final named = {
+      'teampilot': {
+        ...(meta['teampilot']! as Map),
+        'authenticateMethodId': 'oauth',
+      },
+    };
+    expect(
+      AcpProxyLaunchMeta.parse(
+        endpointCli: 'claude',
+        meta: named,
+      ).authenticateMethodId,
+      'oauth',
+    );
+
+    final empty = {
+      'teampilot': {...(meta['teampilot']! as Map), 'authenticateMethodId': ''},
+    };
+    expect(
+      AcpProxyLaunchMeta.parse(
+        endpointCli: 'claude',
+        meta: empty,
+      ).authenticateMethodId,
+      isNull,
+    );
   });
 
   test('rejects a different cli than the port', () {

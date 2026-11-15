@@ -15,6 +15,8 @@ import '../../../acp/acp_background_transcript.dart';
 import '../../../acp/acp_frame_logger.dart';
 import '../../../acp/acp_mcp_servers.dart';
 import '../../../acp/acp_session_files.dart';
+import '../../../acp/acp_proxy_install.dart';
+import '../../../acp/acp_proxy_route.dart';
 import '../../../acp/acp_session_runtime.dart';
 import '../../../acp/acp_ssh_transport.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
@@ -23,6 +25,7 @@ import '../../../cli/registry/capabilities/acp_background_liveness_capability.da
 import '../../../cli/registry/capabilities/acp_background_transcript_capability.dart';
 import '../../../cli/registry/capabilities/acp_capability.dart';
 import '../../../cli/registry/cli_tool_registry.dart';
+import '../../../ssh/ssh_client_factory.dart';
 import '../../../ssh/ssh_member_session.dart';
 import '../../../storage/home_storage.dart';
 import '../../../storage/runtime_context.dart';
@@ -219,6 +222,13 @@ class AcpRuntimeAttach {
             launchTarget: launchTarget,
           )
         : null;
+    final proxyHooks = remote
+        ? _acpProxyHooks(
+            session: session,
+            launchTarget: launchTarget,
+            cliId: cli.value,
+          )
+        : null;
 
     final remoteAdapterPath = remote
         ? await _resolveRemoteAdapterPath(cli, launchTarget)
@@ -230,6 +240,8 @@ class AcpRuntimeAttach {
       memberId: null,
       launchTarget: launchTarget,
       sshLaunch: sshLaunch,
+      probeProxy: proxyHooks?.probe,
+      openForward: proxyHooks?.openForward,
       remoteAdapterPath: remoteAdapterPath,
       processWorkingDirectory: workingDirectory,
       launchProvider: session.provider,
@@ -310,6 +322,31 @@ class AcpRuntimeAttach {
     required RuntimeTarget launchTarget,
     String? memberId,
   }) {
+    final profile = _host.shellFactory.profileFor(launchTarget);
+    if (_host.shellFactory.sshClientFactory == null || profile == null) {
+      throw StateError(
+        'ACP remote session requires an SSH profile and client factory',
+      );
+    }
+    return (
+      profile: profile,
+      openChannel: (command) async {
+        final memberSession = await _memberSession(
+          session: session,
+          launchTarget: launchTarget,
+          memberId: memberId,
+        );
+        return DartSsh2AcpChannel.worker(await memberSession.openExec(command));
+      },
+    );
+  }
+
+  /// Shared member session for the exec channel and the proxy probe.
+  Future<SshMemberSession> _memberSession({
+    required AppSession session,
+    required RuntimeTarget launchTarget,
+    String? memberId,
+  }) async {
     final factory = _host.shellFactory.sshClientFactory;
     final profile = _host.shellFactory.profileFor(launchTarget);
     if (factory == null || profile == null) {
@@ -317,23 +354,76 @@ class AcpRuntimeAttach {
         'ACP remote session requires an SSH profile and client factory',
       );
     }
+    final tab = _host.tabStore.getOpenTabBySessionId(session.sessionId);
+    if (tab == null) {
+      throw StateError(
+        'ACP remote session tab missing session=${session.sessionId}',
+      );
+    }
     final key = memberId ?? session.sessionId;
+    final existing = tab.memberSshSessions[key];
+    if (existing != null) return existing;
+    final opened = await SshMemberSession.open(factory, profile);
+    tab.memberSshSessions[key] = opened;
+    return opened;
+  }
+
+  /// Production-only proxy probe. An injected [sshLaunchFactory] keeps exec.
+  ({AcpProxyRouteProbe probe, AcpProxyForwardOpener openForward})?
+  _acpProxyHooks({
+    required AppSession session,
+    required RuntimeTarget launchTarget,
+    required String cliId,
+    String? memberId,
+  }) {
+    if (sshLaunchFactory != null) return null;
     return (
-      profile: profile,
-      openChannel: (command) async {
-        final tab = _host.tabStore.getOpenTabBySessionId(session.sessionId);
-        if (tab == null) {
-          throw StateError(
-            'ACP remote session tab missing session=${session.sessionId}',
-          );
-        }
-        final memberSession =
-            tab.memberSshSessions[key] ??
-            await SshMemberSession.open(factory, profile);
-        tab.memberSshSessions[key] = memberSession;
-        return DartSsh2AcpChannel.worker(await memberSession.openExec(command));
-      },
+      probe: () => _probeAcpProxy(
+        session: session,
+        launchTarget: launchTarget,
+        memberId: memberId,
+        cliId: cliId,
+      ),
+      openForward: (port) => _openAcpProxyForward(launchTarget, port),
     );
+  }
+
+  Future<AcpProxyRoute> _probeAcpProxy({
+    required AppSession session,
+    required RuntimeTarget launchTarget,
+    required String cliId,
+    String? memberId,
+  }) async {
+    try {
+      final member = await _memberSession(
+        session: session,
+        launchTarget: launchTarget,
+        memberId: memberId,
+      );
+      final output = await member.run(acpProxyProbeScript());
+      return decideAcpProxyRouteFromProbe(
+        output: output,
+        pinnedVersion: acpProxyPinnedVersion,
+        cliId: cliId,
+      );
+    } on Object catch (error) {
+      appLogger.w('[acp-proxy] probe failed: $error');
+      return const AcpProxyExecRoute(acpProxyRouteProbeFailed);
+    }
+  }
+
+  Future<SshForwardByteChannel> _openAcpProxyForward(
+    RuntimeTarget launchTarget,
+    int port,
+  ) {
+    final factory = _host.shellFactory.sshClientFactory;
+    final profile = _host.shellFactory.profileFor(launchTarget);
+    if (factory == null || profile == null) {
+      throw StateError(
+        'ACP proxy forward requires an SSH profile and client factory',
+      );
+    }
+    return factory.openForwardChannel(profile, '127.0.0.1', port);
   }
 
   /// Mixed-seat ACP. False lets the caller fall through to PTY.
@@ -468,6 +558,14 @@ class AcpRuntimeAttach {
                 memberId: member.id,
               )
         : null;
+    final proxyHooks = remote
+        ? _acpProxyHooks(
+            session: session,
+            launchTarget: launchTarget,
+            cliId: cli.value,
+            memberId: member.id,
+          )
+        : null;
     final remoteAdapterPath = remote
         ? await _resolveRemoteAdapterPath(cli, launchTarget)
         : null;
@@ -478,6 +576,8 @@ class AcpRuntimeAttach {
       memberId: member.id,
       launchTarget: launchTarget,
       sshLaunch: sshLaunch,
+      probeProxy: proxyHooks?.probe,
+      openForward: proxyHooks?.openForward,
       remoteAdapterPath: remoteAdapterPath,
       processWorkingDirectory: staged.workingDirectory,
       launchProvider: member.provider,
@@ -576,6 +676,8 @@ class AcpRuntimeAttach {
     String launchProvider = '',
     String launchModel = '',
     AcpSshLaunch? sshLaunch,
+    AcpProxyRouteProbe? probeProxy,
+    AcpProxyForwardOpener? openForward,
     String? remoteAdapterPath,
     Future<void> Function(String messageId, String userMessageId)?
     onTurnCheckpoint,
@@ -593,6 +695,13 @@ class AcpRuntimeAttach {
             transportStarter: acpStarterForTarget(
               launchTarget: launchTarget,
               sshLaunch: sshLaunch,
+              probeProxy: probeProxy,
+              openForward: openForward,
+              onKeepAliveUnavailable: (reason) {
+                appLogger.i(
+                  '[acp-proxy] keep-alive unavailable: $reason cli=${cli.value}',
+                );
+              },
             ),
           ),
           logger: logger,

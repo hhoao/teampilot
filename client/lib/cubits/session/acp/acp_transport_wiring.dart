@@ -2,9 +2,12 @@ import '../../../models/app_session.dart';
 import '../../../models/runtime_target.dart';
 import '../../../models/ssh_profile.dart';
 import '../../../services/acp/acp_process_transport.dart';
+import '../../../services/acp/acp_proxy_forward_transport.dart';
+import '../../../services/acp/acp_proxy_route.dart';
 import '../../../services/acp/acp_ssh_transport.dart';
 import '../../../services/acp/acp_transport.dart';
 import '../../../services/chat/launch/connect/chat_session_shell_factory.dart';
+import '../../../services/ssh/ssh_forward_channel.dart';
 
 /// One started ACP transport plus the exit future the handshake race needs.
 ///
@@ -86,10 +89,25 @@ String buildAcpRemoteCommand({
 /// `SshMemberSession.openExec` in [DartSsh2AcpChannel]; tests inject a fake.
 typedef AcpSshChannelOpener = Future<AcpSshChannel> Function(String command);
 
+/// Reads `acp-proxy.json` on the remote machine and decides the route.
+typedef AcpProxyRouteProbe = Future<AcpProxyRoute> Function();
+
+/// Opens `forwardLocal('127.0.0.1', port)` for a live proxy.
+typedef AcpProxyForwardOpener =
+    Future<SshForwardByteChannel> Function(int port);
+
 /// Remote transport over one SSH member session.
+///
+/// [probeProxy] and [openForward] are both required before a forward is used.
+/// When either is absent, or the probe says exec, the starter keeps today's
+/// SSH exec. A probe failure also keeps exec. The forward's [close] does not
+/// signal the proxy.
 AcpTransportStarter sshAcpTransportStarter({
   required SshProfile profile,
   required AcpSshChannelOpener openChannel,
+  AcpProxyRouteProbe? probeProxy,
+  AcpProxyForwardOpener? openForward,
+  void Function(String reason)? onKeepAliveUnavailable,
 }) =>
     ({
       required List<String> argv,
@@ -97,6 +115,33 @@ AcpTransportStarter sshAcpTransportStarter({
       required String workingDirectory,
       void Function(List<int>)? onStderr,
     }) async {
+      final probe = probeProxy;
+      final forward = openForward;
+      if (probe != null && forward != null) {
+        // A chosen forward that fails to open must fail the turn. Falling
+        // through to SSH exec would start a CLI the proxy is also holding.
+        AcpProxyRoute? route;
+        try {
+          route = await probe();
+        } on Object {
+          onKeepAliveUnavailable?.call(acpProxyRouteProbeFailed);
+        }
+        if (route is AcpProxyForwardRoute) {
+          final channel = await forward(route.port);
+          return (
+            transport: AcpProxyForwardTransport(
+              channel: channel,
+              argv: argv,
+              env: env,
+            ),
+            processExitCode: null,
+            pid: null,
+          );
+        }
+        if (route is AcpProxyExecRoute) {
+          onKeepAliveUnavailable?.call(route.reason);
+        }
+      }
       final command = buildAcpRemoteCommand(
         profile: profile,
         argv: argv,
@@ -132,6 +177,9 @@ typedef AcpSshLaunchFactory =
 AcpTransportStarter? acpStarterForTarget({
   required RuntimeTarget launchTarget,
   AcpSshLaunch? sshLaunch,
+  AcpProxyRouteProbe? probeProxy,
+  AcpProxyForwardOpener? openForward,
+  void Function(String reason)? onKeepAliveUnavailable,
 }) {
   if (!usesSshTransport(launchTarget.kind)) return null;
   final launch = sshLaunch;
@@ -143,5 +191,8 @@ AcpTransportStarter? acpStarterForTarget({
   return sshAcpTransportStarter(
     profile: launch.profile,
     openChannel: launch.openChannel,
+    probeProxy: probeProxy,
+    openForward: openForward,
+    onKeepAliveUnavailable: onKeepAliveUnavailable,
   );
 }

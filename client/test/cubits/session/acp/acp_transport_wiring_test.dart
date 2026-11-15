@@ -7,7 +7,21 @@ import 'package:teampilot/cubits/session/acp/acp_transport_wiring.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/services/acp/acp_process_transport.dart';
+import 'package:teampilot/services/acp/acp_proxy_forward_transport.dart';
+import 'package:teampilot/services/acp/acp_proxy_route.dart';
 import 'package:teampilot/services/acp/acp_ssh_transport.dart';
+import 'package:teampilot/services/ssh/ssh_forward_channel.dart';
+
+class _MemForward implements SshForwardByteChannel {
+  @override
+  Stream<List<int>> get incoming => const Stream.empty();
+
+  @override
+  void add(List<int> data) {}
+
+  @override
+  Future<void> close() async {}
+}
 
 class _FakeChannel implements AcpSshChannel {
   final exit = Completer<int>();
@@ -176,5 +190,102 @@ void main() {
     expect(seenCommand, contains("export 'HOME'='/home/u'"));
     // Non-login-shell encoding (no `bash -lc` wrapper).
     expect(seenCommand, isNot(contains('bash -lc')));
+  });
+
+  test('a live proxy forward does not open an exec channel', () async {
+    var opened = 0;
+    var forwardedPort = 0;
+    final starter = sshAcpTransportStarter(
+      profile: _profile,
+      openChannel: (_) async {
+        opened++;
+        return _FakeChannel();
+      },
+      probeProxy: () async => const AcpProxyForwardRoute(8080),
+      openForward: (port) async {
+        forwardedPort = port;
+        return _MemForward();
+      },
+    );
+
+    final started = await starter(
+      argv: const ['gemini', '--acp'],
+      env: const {'HOME': '/home/u'},
+      workingDirectory: '/work/proj',
+    );
+
+    expect(opened, 0);
+    expect(forwardedPort, 8080);
+    expect(started.transport, isA<AcpProxyForwardTransport>());
+    expect(started.processExitCode, isNull);
+    expect(started.pid, isNull);
+    final proxy = started.transport as AcpProxyForwardTransport;
+    expect(proxy.launch.argv, const ['gemini', '--acp']);
+    await started.transport.close();
+  });
+
+  test('an exec route keeps SSH exec and reports why', () async {
+    String? reason;
+    String? command;
+    final starter = sshAcpTransportStarter(
+      profile: _profile,
+      openChannel: (value) async {
+        command = value;
+        return _FakeChannel();
+      },
+      probeProxy: () async => const AcpProxyExecRoute(acpProxyRouteMissing),
+      openForward: (_) async => _MemForward(),
+      onKeepAliveUnavailable: (value) => reason = value,
+    );
+
+    final started = await starter(
+      argv: const ['opencode', 'acp'],
+      env: const {},
+      workingDirectory: '/work/proj',
+    );
+
+    expect(reason, acpProxyRouteMissing);
+    expect(started.transport, isA<AcpSshTransport>());
+    expect(command, contains('opencode'));
+  });
+
+  test('a probe failure keeps SSH exec', () async {
+    String? reason;
+    final starter = sshAcpTransportStarter(
+      profile: _profile,
+      openChannel: (_) async => _FakeChannel(),
+      probeProxy: () async => throw StateError('ssh'),
+      openForward: (_) async => _MemForward(),
+      onKeepAliveUnavailable: (value) => reason = value,
+    );
+
+    final started = await starter(
+      argv: const ['opencode', 'acp'],
+      env: const {},
+      workingDirectory: '/work/proj',
+    );
+
+    expect(reason, acpProxyRouteProbeFailed);
+    expect(started.transport, isA<AcpSshTransport>());
+  });
+
+  test('a chosen forward that fails to open fails the turn', () async {
+    final starter = sshAcpTransportStarter(
+      profile: _profile,
+      openChannel: (_) async {
+        fail('must not fall back to SSH exec');
+      },
+      probeProxy: () async => const AcpProxyForwardRoute(9),
+      openForward: (_) async => throw StateError('refused'),
+    );
+
+    await expectLater(
+      starter(
+        argv: const ['gemini', '--acp'],
+        env: const {},
+        workingDirectory: '/work/proj',
+      ),
+      throwsA(isA<StateError>()),
+    );
   });
 }
