@@ -9,6 +9,8 @@ import 'package:teampilot/services/session_protocol/session_authority.dart';
 import 'package:teampilot/services/session_protocol/session_channel.dart';
 import 'package:teampilot/services/session_protocol/session_client.dart';
 import 'package:teampilot/services/session_protocol/session_control_port.dart';
+import 'package:teampilot/services/session_protocol/session_envelope.dart';
+import 'package:teampilot/services/session_protocol/session_frame_codec.dart';
 import 'package:teampilot/services/session_protocol/session_models.dart';
 import 'package:teampilot/services/session_protocol/session_server.dart';
 
@@ -441,4 +443,68 @@ void main() {
     await server.stop();
     await authority.dispose();
   });
+
+  test(
+    'large backlogs are split below the frame limit and all events arrive once',
+    () async {
+      final log = AttentionLog(authorityId: 'desk', epoch: 7);
+      final authority = SessionAuthority(
+        authorityId: 'desk',
+        controlPort: _Control(),
+        epoch: 7,
+        attentionLog: log,
+      );
+      final payload = 'x' * 8192;
+      for (var i = 0; i < 180; i++) {
+        await authority.publishAttention(
+          sessionId: 's$i',
+          kind: AttentionKind.idle,
+          memberId: 'dev',
+          title: payload,
+          message: payload,
+        );
+      }
+
+      final pipe = _Pipe();
+      final batches = <AttentionBatch>[];
+      final server = SessionServer(
+        channel: pipe.server,
+        authority: authority,
+        deviceId: 'desk',
+      );
+      final client = SessionClient(
+        channel: pipe.client,
+        deviceId: 'phone',
+        attentionCursors: () => const {
+          'desk': AttentionCursor(authorityId: 'desk', epoch: 7, seq: 0),
+        },
+        callbacks: SessionClientCallbacks(onAttentionBatch: batches.add),
+      );
+      await server.start();
+      await client.start();
+      await _waitFor(
+        () => batches.expand((b) => b.events).length == 180,
+        timeout: const Duration(seconds: 10),
+      );
+
+      final seqs = batches.expand((b) => b.events).map((e) => e.seq).toList();
+      expect(seqs, List<int>.generate(180, (i) => i + 1));
+      expect(batches.length, greaterThan(1));
+      for (final batch in batches) {
+        final size = encodeSessionFrame(
+          SessionEnvelope(
+            type: SessionMessageType.events,
+            channel: SessionChannel.events,
+            seq: 1,
+            body: batch.toJson(),
+          ),
+        ).length;
+        expect(size, lessThanOrEqualTo(sessionMaxFrameBytes));
+      }
+
+      await client.close();
+      await server.stop();
+      await authority.dispose();
+    },
+  );
 }

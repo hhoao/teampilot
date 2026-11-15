@@ -67,6 +67,8 @@ final class SessionProtocolController {
   SessionProtocolRole _role = SessionProtocolRole.none;
   String _homeId = '';
   Future<void> _attentionQueue = Future<void>.value();
+  int _attentionConnectionGeneration = 0;
+  bool _attentionPaused = false;
   ServerSocket? _socket;
   SessionProtocolServerConfig? _serverConfig;
   final Set<SessionServer> _servers = {};
@@ -344,9 +346,12 @@ final class SessionProtocolController {
   }) async {
     await applyNone();
     _homeId = homeId.trim();
+    _attentionConnectionGeneration++;
+    _attentionPaused = false;
     _role = SessionProtocolRole.client;
     appLogger.i('[$_tag] role=client device=$deviceId home=$_homeId');
-    final client = SessionClientConnection(
+    late final SessionClientConnection client;
+    client = SessionClientConnection(
       open: open,
       deviceId: deviceId,
       attentionCursors: _attentionCursors,
@@ -396,7 +401,7 @@ final class SessionProtocolController {
             'epoch=${batch.epoch} from=${batch.fromSeq} to=${batch.toSeq} '
             'count=${batch.events.length} gap=${batch.gap}',
           );
-          _enqueueAttentionBatch(batch);
+          _enqueueAttentionBatch(batch, client: client);
         },
         onReady: () {
           appLogger.i('[$_tag] client ready');
@@ -438,10 +443,22 @@ final class SessionProtocolController {
     unawaited(inbox.clearCursor(_homeId));
   }
 
-  void _enqueueAttentionBatch(AttentionBatch batch) {
+  void _enqueueAttentionBatch(
+    AttentionBatch batch, {
+    required SessionClientConnection client,
+  }) {
+    final capturedHomeId = _homeId;
+    final generation = _attentionConnectionGeneration;
     _attentionQueue = _attentionQueue
         .catchError((Object _) {})
-        .then((_) => _handleAttentionBatch(batch))
+        .then(
+          (_) => _handleAttentionBatch(
+            batch,
+            homeId: capturedHomeId,
+            client: client,
+            generation: generation,
+          ),
+        )
         .catchError((Object error, StackTrace stackTrace) {
           appLogger.w(
             '[$_tag] attention batch failed',
@@ -451,16 +468,35 @@ final class SessionProtocolController {
         });
   }
 
-  Future<void> _handleAttentionBatch(AttentionBatch batch) async {
-    // Capture the home before the first await: a reconnect can change _homeId
-    // while this batch is being persisted.
-    final homeId = _homeId;
+  Future<void> _handleAttentionBatch(
+    AttentionBatch batch, {
+    required String homeId,
+    required SessionClientConnection client,
+    required int generation,
+  }) async {
+    if (_attentionPaused) return;
+    if (generation != _attentionConnectionGeneration) return;
+    if (!identical(_client, client) || homeId.isEmpty) return;
     final inbox = attentionInbox;
-    if (inbox != null && homeId.isNotEmpty) {
+    if (inbox == null) return;
+    try {
       await inbox.ingest(homeId, batch.events);
       if (batch.gap) await inbox.skipGap(homeId, batch);
+    } on AttentionPersistenceException catch (error, stackTrace) {
+      appLogger.w(
+        '[$_tag] attention persistence failed; pausing until reconnect '
+        'home=$homeId authority=${batch.authorityId} epoch=${batch.epoch} '
+        'to=${batch.toSeq}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _attentionPaused = true;
+      return;
     }
-    _client?.client?.sendAttentionAck(
+    if (_attentionPaused) return;
+    if (generation != _attentionConnectionGeneration) return;
+    if (!identical(_client, client)) return;
+    client.client?.sendAttentionAck(
       authorityId: batch.authorityId,
       epoch: batch.epoch,
       seq: batch.toSeq,
@@ -496,11 +532,12 @@ final class SessionProtocolController {
     _advertisementTimer?.cancel();
     _advertisementTimer = null;
     _role = SessionProtocolRole.none;
-    await _attentionQueue;
-    _homeId = '';
     final client = _client;
     _client = null;
+    _attentionConnectionGeneration++;
     await client?.stop();
+    await _attentionQueue;
+    _homeId = '';
     final socket = _socket;
     _socket = null;
     await socket?.close();

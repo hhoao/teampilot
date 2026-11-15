@@ -243,21 +243,30 @@ final class SessionServer {
     }
   }
 
+  // Leave headroom for frame/JSON envelope overhead below the codec limit.
+  static const int _maxAttentionFrameBytes = sessionMaxFrameBytes - 4096;
+
   Future<void> _sendAttentionBacklog(AttentionCursor cursor) async {
     var next = cursor;
     while (!_closed) {
-      final batch = _authority.attentionLog.slice(cursor: next, limit: 200);
-      if (batch.events.isEmpty) {
-        if (batch.gap) _sendAttentionBatch(batch);
+      final slice = _authority.attentionLog.slice(cursor: next, limit: 200);
+      if (slice.events.isEmpty) {
+        if (slice.gap) _sendAttentionBatch(slice);
         break;
       }
-      _sendAttentionBatch(batch);
-      next = AttentionCursor(
-        authorityId: batch.authorityId,
-        epoch: batch.epoch,
-        seq: batch.toSeq,
-      );
-      if (batch.events.length < 200) break;
+      final batches = _splitAttentionSlice(slice);
+      for (final batch in batches) {
+        if (_closed) break;
+        _sendAttentionBatch(batch);
+        if (batch.toSeq > next.seq) {
+          next = AttentionCursor(
+            authorityId: batch.authorityId,
+            epoch: batch.epoch,
+            seq: batch.toSeq,
+          );
+        }
+      }
+      if (slice.events.length < 200) break;
     }
     _attentionBacklogDone = true;
     final pending = List<AttentionEvent>.of(_pendingLiveAttention)
@@ -266,6 +275,87 @@ final class SessionServer {
     for (final event in pending) {
       if (event.seq > _lastSentAttentionSeq) _sendAttentionEvent(event);
     }
+  }
+
+  List<AttentionBatch> _splitAttentionSlice(AttentionBatch slice) {
+    final out = <AttentionBatch>[];
+    var chunk = <AttentionEvent>[];
+    for (final event in slice.events) {
+      final candidate = [...chunk, event];
+      final batch = AttentionBatch(
+        authorityId: slice.authorityId,
+        epoch: slice.epoch,
+        fromSeq: candidate.first.seq,
+        toSeq: candidate.last.seq,
+        events: candidate,
+        gap: chunk.isEmpty && slice.gap,
+      );
+      if (_encodedEventsSize(batch) <= _maxAttentionFrameBytes) {
+        chunk = candidate;
+        continue;
+      }
+      if (chunk.isNotEmpty) {
+        out.add(
+          AttentionBatch(
+            authorityId: slice.authorityId,
+            epoch: slice.epoch,
+            fromSeq: chunk.first.seq,
+            toSeq: chunk.last.seq,
+            events: List<AttentionEvent>.unmodifiable(chunk),
+            gap: slice.gap && out.isEmpty,
+          ),
+        );
+        chunk = [event];
+        final single = AttentionBatch(
+          authorityId: slice.authorityId,
+          epoch: slice.epoch,
+          fromSeq: event.seq,
+          toSeq: event.seq,
+          events: [event],
+        );
+        if (_encodedEventsSize(single) > _maxAttentionFrameBytes) {
+          // Oversized single event: skip it to avoid an endless reconnect loop
+          // on the same cursor. The cursor advances past it in the backlog.
+          appLogger.w(
+            '[session-server] skipping oversized attention event '
+            'authority=${event.authorityId} epoch=${event.epoch} seq=${event.seq}',
+          );
+          chunk = [];
+        }
+      } else {
+        appLogger.w(
+          '[session-server] skipping oversized attention event '
+          'authority=${event.authorityId} epoch=${event.epoch} seq=${event.seq}',
+        );
+      }
+    }
+    if (chunk.isNotEmpty) {
+      out.add(
+        AttentionBatch(
+          authorityId: slice.authorityId,
+          epoch: slice.epoch,
+          fromSeq: chunk.first.seq,
+          toSeq: chunk.last.seq,
+          events: List<AttentionEvent>.unmodifiable(chunk),
+          gap: slice.gap && out.isEmpty,
+        ),
+      );
+    } else if (out.isEmpty && slice.gap) {
+      out.add(slice);
+    }
+    return out;
+  }
+
+  int _encodedEventsSize(AttentionBatch batch) {
+    // Use a stable seq so size measurement is deterministic.
+    return encodeSessionFrame(
+      SessionEnvelope(
+        type: SessionMessageType.events,
+        channel: SessionChannel.events,
+        seq: 1,
+        body: batch.toJson(),
+      ),
+    ).length;
   }
 
   void _sendAttentionBatch(AttentionBatch batch) {
