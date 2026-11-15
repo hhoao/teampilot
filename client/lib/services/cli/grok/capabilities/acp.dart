@@ -69,7 +69,7 @@ final class GrokAcpCapability implements AcpCapability {
   Duration get startupTimeout => const Duration(seconds: 30);
 
   @override
-  String? get authenticateMethodId => null;
+  String? get authenticateMethodId => GrokConstants.oauthMethodId;
 
   @override
   // Grok reads the assembled set from `$GROK_HOME/config.toml` (written by
@@ -87,8 +87,13 @@ final class GrokAcpCapability implements AcpCapability {
   Map<String, Object?> sessionNewMeta(Map<String, String> env) => const {};
 
   @override
+  // Grok requires an explicit `authenticate` before `session/new`, even when
+  // the seat carries a lease-backed external auth provider. An API-key seat
+  // already injected `XAI_API_KEY`; asking it to sign in would be wrong.
   Future<String?> resolveAuthenticateMethodId(Map<String, String> env) async =>
-      authenticateMethodId;
+      (env[GrokConstants.apiKeyEnvKey] ?? '').trim().isNotEmpty
+      ? null
+      : GrokConstants.oauthMethodId;
 
   @override
   Map<String, String> buildEnvironment({
@@ -107,8 +112,16 @@ final class GrokAcpCapability implements AcpCapability {
     env[GrokConstants.homeEnvKey] = sessionToolDir;
     env['GROK_DISABLE_AUTOUPDATER'] = '1';
     // Provider-bound API keys are injected by materializeSessionHome; only
-    // fall back to the app-wide cached key when the seat has none.
-    if ((env[GrokConstants.apiKeyEnvKey] ?? '').trim().isEmpty) {
+    // fall back to the app-wide cached key for an API-key seat. An OAuth seat
+    // (shim present) must never degrade to a deployment key when its lease is
+    // rejected: that would silently mask the "needs sign-in" state.
+    final hasSeatKey = (env[GrokConstants.apiKeyEnvKey] ?? '')
+        .trim()
+        .isNotEmpty;
+    final hasAuthProvider = (env[GrokConstants.authProviderCommandEnvKey] ?? '')
+        .trim()
+        .isNotEmpty;
+    if (!hasSeatKey && !hasAuthProvider) {
       final key = _credentialSource?.call()?.trim() ?? '';
       if (key.isNotEmpty) env[GrokConstants.apiKeyEnvKey] = key;
     }

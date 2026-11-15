@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../models/app_provider_config.dart';
@@ -12,6 +16,7 @@ import '../../services/cli/cursor/provider/cursor_agent_models_service.dart';
 import '../../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
 import '../../services/cli/gemini/gemini_bootstrap_entry.dart';
 import '../../services/cli/grok/grok_bootstrap_entry.dart';
+import '../../services/cli/grok/provider/grok_credential_adapter.dart';
 import '../../services/cli/opencode/opencode_bootstrap_entry.dart';
 import '../../services/cli/opencode/provider/opencode_models_service.dart';
 import '../../services/cli/registry/cli_bootstrap.dart';
@@ -20,6 +25,8 @@ import '../../services/cli/registry/installer/binary_archive_installer.dart';
 import '../../services/host/host_one_shot_runner_for_context.dart';
 import '../../services/host/host_process_starter_for_context.dart';
 import '../../services/provider/api_model_catalog_service.dart';
+import '../../services/provider/credential_lease_endpoint.dart';
+import '../../services/provider/oauth_credential_authority.dart';
 import '../../services/provider/provider_credential_host_runner.dart';
 import '../../services/remote_download/remote_downloader.dart';
 import '../../services/storage/home_storage.dart';
@@ -87,6 +94,30 @@ void wireCliBootstrap({
   // id for the sync ACP auth source; refreshed alongside Claude / Gemini.
   AppProviderConfig? cachedCodexProvider;
 
+  // Control-plane single owner of the xAI OAuth credential. Constructed here
+  // (not in the gateway) because the shell wires it before the bus gateway is
+  // created; sessions reach it through the lease endpoint instead.
+  final grokAuthority = OAuthCredentialAuthority(
+    fs: homeStorage.fs,
+    basePath: homeStorage.paths.basePath,
+    cliNamespace: 'grok',
+    refresher: _XaiCredentialRefresher(),
+  );
+  final grokLeaseEndpoint = CredentialLeaseEndpoint(
+    authority: grokAuthority,
+    sessionProviderId: (sessionId) => 'xai',
+  );
+  final grokAdapter = GrokCredentialAdapter(
+    authority: grokAuthority,
+    sessionProviderId: (sessionId) => 'xai',
+  );
+  // One-time migration of the pre-Authority provider store.
+  unawaited(grokAuthority.importLegacyAuthJson('xai'));
+  // Provider UI reflects fine-grained Authority health (rejected/missing).
+  grokAuthority.healthChanges.addListener(() {
+    unawaited(appProviderCubit.reconcileCredentials());
+  });
+
   cliToolRegistry.configure(
     CliBootstrap({
       CliTool.claude: ClaudeBootstrapEntry(
@@ -124,6 +155,9 @@ void wireCliBootstrap({
       ),
       CliTool.grok: GrokBootstrapEntry(
         credentialSource: () => cachedGrokApiKey,
+        authority: grokAuthority,
+        adapter: grokAdapter,
+        leaseEndpoint: grokLeaseEndpoint,
       ),
       CliTool.antigravity: AntigravityBootstrapEntry(
         storage: homeStorage,
@@ -228,4 +262,65 @@ void wireCliBootstrap({
     refreshGeminiCredential();
     refreshGrokCredential();
   }, onDone: () {});
+}
+
+/// xAI OAuth refresh against the IdP discovered at [_xaiIssuer].
+///
+/// The token endpoint is resolved through OIDC discovery rather than a
+/// hard-coded path, so an IdP-side move does not break refresh. Any non-200
+/// (including `invalid_grant`) is permanent: the Authority clears the refresh
+/// token instead of retrying a rotated-away one.
+final class _XaiCredentialRefresher implements CredentialRefresher {
+  _XaiCredentialRefresher({HttpClient? client})
+    : _client = client ?? HttpClient();
+
+  static const _xaiIssuer = 'https://auth.x.ai';
+
+  final HttpClient _client;
+  String? _tokenEndpoint;
+
+  Future<String> _discoverTokenEndpoint() async {
+    final cached = _tokenEndpoint;
+    if (cached != null) return cached;
+    final request = await _client.getUrl(
+      Uri.parse('$_xaiIssuer/.well-known/openid-configuration'),
+    );
+    final response = await request.close();
+    if (response.statusCode != 200) return '';
+    final raw = await response.transform(utf8.decoder).join();
+    final value =
+        (jsonDecode(raw) as Map<String, Object?>)['token_endpoint']
+            ?.toString() ??
+        '';
+    _tokenEndpoint = value;
+    return value;
+  }
+
+  @override
+  Future<CredentialRefreshOutcome> refresh(String refreshToken) async {
+    final endpoint = await _discoverTokenEndpoint();
+    if (endpoint.isEmpty) return const RefreshRejected();
+    final request = await _client.postUrl(Uri.parse(endpoint));
+    request.headers.contentType = ContentType.json;
+    request.write(
+      jsonEncode({
+        'grant_type': 'refresh_token',
+        'refresh_token': refreshToken,
+        'client_id': 'b1a00492-073a-47ea-816f-4c329264a828',
+      }),
+    );
+    final response = await request.close();
+    final raw = await response.transform(utf8.decoder).join();
+    if (response.statusCode != 200) return const RefreshRejected();
+    final json = jsonDecode(raw) as Map<String, Object?>;
+    final access = json['access_token']?.toString() ?? '';
+    final next = json['refresh_token']?.toString() ?? refreshToken;
+    final seconds = (json['expires_in'] as num?)?.toInt() ?? 3600;
+    if (access.isEmpty) return const RefreshRejected();
+    return RefreshSucceeded(
+      accessToken: access,
+      refreshToken: next,
+      expiresAt: DateTime.now().toUtc().add(Duration(seconds: seconds)),
+    );
+  }
 }

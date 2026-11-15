@@ -7,14 +7,12 @@ import '../../../../utils/logging/logger_utils.dart';
 import '../../../io/filesystem.dart';
 import '../grok_constants.dart';
 
-/// Grok credential isolation.
+/// Grok login-home and provider-directory path helpers.
 ///
-/// Grok stores OAuth credentials in `$GROK_HOME/auth.json`. A per-session
-/// `GROK_HOME` would therefore lose the user's login, so TeamPilot runs
-/// `grok login` with an isolated `GROK_HOME`, copies the resulting `auth.json`
-/// into a per-provider store, and seeds every session home from it (or from
-/// `~/.grok/auth.json` when the provider row was never created). Sessions that
-/// refresh their own token keep it until the provider store changes.
+/// ACP session homes no longer copy `auth.json`: credentials are owned by
+/// `OAuthCredentialAuthority` and sessions receive a lease through
+/// `GrokCredentialAdapter`. [seedSessionAuth] remains only for the headless
+/// one-shot (`grok -p`) path, which has no control-plane lease endpoint.
 class GrokAuthStore {
   GrokAuthStore({
     required this.fs,
@@ -43,7 +41,6 @@ class GrokAuthStore {
 
   static const authFileName = GrokConstants.authFileName;
   static const markerFileName = GrokConstants.authMarkerFileName;
-  static const machineMarkerValue = 'machine';
 
   String loginRoot(String providerId) =>
       pathContext.join(basePath, 'cli-login', namespace, _safe(providerId));
@@ -81,34 +78,6 @@ class GrokAuthStore {
 
   Future<bool> hasProviderAuth(String providerId) async =>
       _isNonEmptyFile(fs, providerAuthPath(providerId));
-
-  /// Copies the isolated login's `auth.json` into the provider store.
-  /// Returns false when the login did not complete.
-  Future<bool> writeProviderAuthFromLogin(
-    String providerId, {
-    required String loginConfigDir,
-  }) async {
-    final source = pathContext.join(loginConfigDir, authFileName);
-    final bytes = await fs.readBytes(source);
-    if (bytes == null || bytes.isEmpty) return false;
-    final target = providerAuthPath(providerId);
-    await fs.ensureDir(pathContext.dirname(target));
-    await fs.writeBytes(target, bytes);
-    restrictFile(target);
-    return true;
-  }
-
-  /// Imports the user's existing global `~/.grok/auth.json` into the provider
-  /// store, so an already-signed-in machine keeps working under isolation.
-  Future<bool> importMachineAuth(String providerId) async {
-    final bytes = await fs.readBytes(machineAuthPath);
-    if (bytes == null || bytes.isEmpty) return false;
-    final target = providerAuthPath(providerId);
-    await fs.ensureDir(pathContext.dirname(target));
-    await fs.writeBytes(target, bytes);
-    restrictFile(target);
-    return true;
-  }
 
   /// Seeds `<sessionConfigDir>/auth.json` from the provider store (or the
   /// machine login). The first seed records a marker fingerprint of the source

@@ -149,6 +149,8 @@ void registerBuiltInCliTools(
       provider: GrokProviderCapability(
         storage: storage,
         fallbackCredentialSource: grokEntry?.credentialSource,
+        authority: grokEntry?.authority,
+        adapter: grokEntry?.adapter,
       ),
       headless: GrokHeadlessCapability(storage: storage),
       acp: GrokAcpCapability(credentialSource: grokEntry?.credentialSource),
