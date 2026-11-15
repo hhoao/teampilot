@@ -1,8 +1,8 @@
 /// Protocol version carried in every envelope.
-const sessionProtocolVersion = 1;
+const sessionProtocolVersion = 2;
 
 /// Logical channels multiplexed on one byte stream.
-enum SessionChannel { control, state, content, attention, bulk }
+enum SessionChannel { control, state, content, events, bulk }
 
 /// Message type names. Unknown names are ignored unless they arrive on the
 /// control channel, where the receiver answers `error` instead of silently
@@ -19,8 +19,8 @@ abstract final class SessionMessageType {
   static const sessionList = 'sessionList';
   static const intent = 'intent';
   static const intentResult = 'intentResult';
-  static const attention = 'attention';
-  static const attentionAck = 'attentionAck';
+  static const events = 'events';
+  static const ack = 'ack';
   static const resync = 'resync';
   static const ping = 'ping';
   static const pong = 'pong';

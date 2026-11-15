@@ -3,6 +3,9 @@ import 'dart:io';
 
 import '../../cubits/session_remote_activity_cubit.dart';
 import '../../utils/logging/logger.dart';
+import '../attention/attention_batch.dart';
+import '../attention/attention_cursor.dart';
+import '../attention/attention_inbox.dart';
 import '../chat/rewind/edit/edit_transport.dart';
 import 'remote_seat_edit_transport.dart';
 import 'session_edit_executor.dart';
@@ -41,7 +44,7 @@ final class SessionProtocolController {
     this.onContentInvalidated,
     this.onContentDelta,
     this.onSessionList,
-    this.onAttention,
+    this.attentionInbox,
     this.isExpectedFailure,
     this.waitForRecovery,
     int Function()? pid,
@@ -56,12 +59,16 @@ final class SessionProtocolController {
   onContentInvalidated;
   final void Function(SessionContentDelta delta)? onContentDelta;
   final void Function(SessionListDelta delta)? onSessionList;
-  final void Function(SessionAttention attention)? onAttention;
+  final AttentionInbox? attentionInbox;
   final bool Function(Object error)? isExpectedFailure;
   final Future<bool> Function(Object error)? waitForRecovery;
   final int Function() _pid;
 
   SessionProtocolRole _role = SessionProtocolRole.none;
+  String _homeId = '';
+  Future<void> _attentionQueue = Future<void>.value();
+  int _attentionConnectionGeneration = 0;
+  bool _attentionPaused = false;
   ServerSocket? _socket;
   SessionProtocolServerConfig? _serverConfig;
   final Set<SessionServer> _servers = {};
@@ -335,13 +342,19 @@ final class SessionProtocolController {
 
   Future<void> applyClient({
     required Future<SessionByteChannel> Function() open,
+    required String homeId,
   }) async {
     await applyNone();
+    _homeId = homeId.trim();
+    _attentionConnectionGeneration++;
+    _attentionPaused = false;
     _role = SessionProtocolRole.client;
-    appLogger.i('[$_tag] role=client device=$deviceId');
-    final client = SessionClientConnection(
+    appLogger.i('[$_tag] role=client device=$deviceId home=$_homeId');
+    late final SessionClientConnection client;
+    client = SessionClientConnection(
       open: open,
       deviceId: deviceId,
+      attentionCursors: _attentionCursors,
       isExpectedFailure: isExpectedFailure,
       waitForRecovery: waitForRecovery,
       callbacks: SessionClientCallbacks(
@@ -382,15 +395,17 @@ final class SessionProtocolController {
           );
           onSessionList?.call(delta);
         },
-        onAttention: (attention) {
+        onAttentionBatch: (batch) {
           appLogger.i(
-            '[$_tag] client attention session=${attention.sessionId} '
-            'kind=${attention.kind}',
+            '[$_tag] client attention authority=${batch.authorityId} '
+            'epoch=${batch.epoch} from=${batch.fromSeq} to=${batch.toSeq} '
+            'count=${batch.events.length} gap=${batch.gap}',
           );
-          onAttention?.call(attention);
+          _enqueueAttentionBatch(batch, client: client);
         },
         onReady: () {
           appLogger.i('[$_tag] client ready');
+          _resetAttentionCursorIfEpochMoved();
           unawaited(_flushPendingRefreshes());
           unawaited(_flushPendingCreates());
           unawaited(_flushPendingRemoves());
@@ -406,6 +421,86 @@ final class SessionProtocolController {
     );
     _client = client;
     await client.start();
+  }
+
+  Map<String, AttentionCursor> _attentionCursors() {
+    final inbox = attentionInbox;
+    if (inbox == null || _homeId.isEmpty) return const {};
+    final cursor = inbox.cursorFor(_homeId);
+    return cursor == null ? const {} : {cursor.authorityId: cursor};
+  }
+
+  void _resetAttentionCursorIfEpochMoved() {
+    final inbox = attentionInbox;
+    final cursor = inbox?.cursorFor(_homeId);
+    final epoch = _client?.client?.epoch;
+    if (inbox == null ||
+        cursor == null ||
+        epoch == null ||
+        cursor.epoch == epoch) {
+      return;
+    }
+    unawaited(inbox.clearCursor(_homeId));
+  }
+
+  void _enqueueAttentionBatch(
+    AttentionBatch batch, {
+    required SessionClientConnection client,
+  }) {
+    final capturedHomeId = _homeId;
+    final generation = _attentionConnectionGeneration;
+    _attentionQueue = _attentionQueue
+        .catchError((Object _) {})
+        .then(
+          (_) => _handleAttentionBatch(
+            batch,
+            homeId: capturedHomeId,
+            client: client,
+            generation: generation,
+          ),
+        )
+        .catchError((Object error, StackTrace stackTrace) {
+          appLogger.w(
+            '[$_tag] attention batch failed',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        });
+  }
+
+  Future<void> _handleAttentionBatch(
+    AttentionBatch batch, {
+    required String homeId,
+    required SessionClientConnection client,
+    required int generation,
+  }) async {
+    if (_attentionPaused) return;
+    if (generation != _attentionConnectionGeneration) return;
+    if (!identical(_client, client) || homeId.isEmpty) return;
+    final inbox = attentionInbox;
+    if (inbox == null) return;
+    try {
+      await inbox.ingest(homeId, batch.events);
+      if (batch.gap) await inbox.skipGap(homeId, batch);
+    } on AttentionPersistenceException catch (error, stackTrace) {
+      appLogger.w(
+        '[$_tag] attention persistence failed; pausing until reconnect '
+        'home=$homeId authority=${batch.authorityId} epoch=${batch.epoch} '
+        'to=${batch.toSeq}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _attentionPaused = true;
+      return;
+    }
+    if (_attentionPaused) return;
+    if (generation != _attentionConnectionGeneration) return;
+    if (!identical(_client, client)) return;
+    client.client?.sendAttentionAck(
+      authorityId: batch.authorityId,
+      epoch: batch.epoch,
+      seq: batch.toSeq,
+    );
   }
 
   Future<void> _ensureAdvertisement(
@@ -439,7 +534,10 @@ final class SessionProtocolController {
     _role = SessionProtocolRole.none;
     final client = _client;
     _client = null;
+    _attentionConnectionGeneration++;
     await client?.stop();
+    await _attentionQueue;
+    _homeId = '';
     final socket = _socket;
     _socket = null;
     await socket?.close();

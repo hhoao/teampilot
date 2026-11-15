@@ -26,6 +26,7 @@ Future<void> applySessionProtocolForHome({
       );
     } else if (connectionMode.isSshMode) {
       await controller.applyClient(
+        homeId: homeStorage.context.target.id,
         open: () => openSshSessionProtocolChannel(
           homeStorage: homeStorage,
           sshClientFactory: sshClientFactory,

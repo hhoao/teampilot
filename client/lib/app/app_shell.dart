@@ -41,6 +41,8 @@ import '../cubits/seat_lease_cubit.dart';
 import '../cubits/session_remote_activity_cubit.dart';
 import '../services/event/dispatcher.dart' as event_bus;
 import '../services/event/session_lifecycle_event.dart';
+import '../services/attention/attention_event.dart';
+import '../services/attention/attention_inbox.dart';
 import '../services/session_protocol/session_authority.dart';
 import '../services/session_sync/chat_session_activity_source.dart';
 import '../services/session_sync/session_content_invalidation_bus.dart';
@@ -508,6 +510,8 @@ class AppShell {
   StreamSubscription<SessionRemoteActivityState>? _sessionRemoteRefreshSub;
   StreamSubscription<SessionContentInvalidation>? _contentInvalidationSub;
   StreamSubscription<SessionContentStreamChunk>? _contentStreamSub;
+  StreamSubscription<AttentionEvent>? _attentionSub;
+  AttentionInbox? _attentionInbox;
 
   /// Cancels the subscriptions [buildAppShell] attached to this shell.
   ///
@@ -522,6 +526,8 @@ class AppShell {
     unawaited(_sessionRemoteRefreshSub?.cancel());
     unawaited(_contentInvalidationSub?.cancel());
     unawaited(_contentStreamSub?.cancel());
+    unawaited(_attentionSub?.cancel());
+    unawaited(_attentionInbox?.dispose());
     // The workload catalog owns a HomeStorage.changes subscription; closing it
     // here keeps that subscription tied to the shell lifetime.
     unawaited(sshWorkloadProfileCubit.close());
@@ -959,6 +965,11 @@ Future<AppShell> buildAppShell({
   StreamSubscription<SshProfileState>? homeProfileWatchSub;
   StreamSubscription<SshHomeConnectivityState>? homeConnectivitySub;
   String? watchedHomeProfileConnectivityKey;
+  // Declared outside the try so the wiring-failure path can tear down the
+  // subscriptions/inbox/authority of a discarded shell.
+  StreamSubscription<AttentionEvent>? attentionSub;
+  AttentionInbox? attentionInbox;
+  SessionAuthority? sessionAuthority;
 
   try {
     connectionModeService = ConnectionModeService(
@@ -1621,7 +1632,8 @@ Future<AppShell> buildAppShell({
     automationScheduler = automation.automationScheduler;
     final automationCatalogSub = automation.catalogSubscription;
 
-    final sessionRuntime = wireSessionRuntime(
+    final sessionRuntime = await wireSessionRuntime(
+      deviceStorage: deviceLocalHomeStorage(nativeAppDataPath),
       chat: () => chatCubit,
       cliPresets: () => cliPresetsCubit,
       lifecycle: () => sessionLifecycleService,
@@ -1641,12 +1653,14 @@ Future<AppShell> buildAppShell({
     final aiHistoryCubit = sessionRuntime.aiHistoryCubit;
     final sessionRemoteActivityCubit =
         sessionRuntime.sessionRemoteActivityCubit;
-    final sessionAuthority = sessionRuntime.sessionAuthority;
+    sessionAuthority = sessionRuntime.sessionAuthority;
     final sessionActivitySource = sessionRuntime.activitySource;
     final sessionProtocolController = sessionRuntime.protocolController;
     final sessionRemoteRefreshSub = sessionRuntime.sessionRemoteRefreshSub;
     final contentInvalidationSub = sessionRuntime.contentInvalidationSub;
     final contentStreamSub = sessionRuntime.contentStreamSub;
+    attentionInbox = sessionRuntime.attentionInbox;
+    attentionSub = sessionRuntime.attentionSub;
     void reloadHistorySeat(String sessionId) {
       unawaited(aiHistoryCubit.softReloadIfSession(sessionId));
     }
@@ -1654,13 +1668,13 @@ Future<AppShell> buildAppShell({
     chatCubit.onSessionHistoryStale = (sessionId) {
       reloadHistorySeat(sessionId);
       if (connectionModeService.isLocalMode) {
-        sessionAuthority.publishContentInvalidated(sessionId: sessionId);
+        sessionAuthority!.publishContentInvalidated(sessionId: sessionId);
       }
     };
     chatCubit.onSessionCreated = (session) {
       final entry = SessionListEntry.fromSession(session).toJson();
       if (connectionModeService.isLocalMode) {
-        sessionAuthority.publishSessionList(
+        sessionAuthority!.publishSessionList(
           workspaceId: session.workspaceId,
           upserted: [entry],
         );
@@ -1676,7 +1690,7 @@ Future<AppShell> buildAppShell({
     };
     chatCubit.onSessionRemoved = (workspaceId, sessionId) {
       if (connectionModeService.isLocalMode) {
-        sessionAuthority.publishSessionList(
+        sessionAuthority!.publishSessionList(
           workspaceId: workspaceId,
           removed: [sessionId],
         );
@@ -2203,8 +2217,8 @@ Future<AppShell> buildAppShell({
         );
       }
       if (connectionModeService.isLocalMode) {
-        sessionAuthority.clear();
-        sessionActivitySource.start(sessionAuthority);
+        sessionAuthority!.clear();
+        sessionActivitySource.start(sessionAuthority!);
       } else {
         sessionActivitySource.stop();
       }
@@ -2346,7 +2360,7 @@ Future<AppShell> buildAppShell({
       sessionRemoteActivityCubit: sessionRemoteActivityCubit,
       sessionProtocolController: sessionProtocolController,
       sessionActivitySource: sessionActivitySource,
-      sessionAuthority: sessionAuthority,
+      sessionAuthority: sessionAuthority!,
       sessionLifecycleHandler: sessionLifecycleHandler,
       agentAttentionCubit: agentAttentionCubit,
       seatLeaseCubit: seatLeaseCubit,
@@ -2464,6 +2478,8 @@ Future<AppShell> buildAppShell({
     shell._sessionRemoteRefreshSub = sessionRemoteRefreshSub;
     shell._contentInvalidationSub = contentInvalidationSub;
     shell._contentStreamSub = contentStreamSub;
+    shell._attentionInbox = attentionInbox;
+    shell._attentionSub = attentionSub;
     managedProviderControlPlaneLease.transferOwnership();
     await applyHomeEventTransport();
     return shell;
@@ -2478,6 +2494,9 @@ Future<AppShell> buildAppShell({
     await eventTransportController?.apply(EventTransportRole.none);
     await homeProfileWatchSub?.cancel();
     await homeConnectivitySub?.cancel();
+    await attentionSub?.cancel();
+    await attentionInbox?.dispose();
+    await sessionAuthority?.dispose();
     await memberPresenceCubit?.close();
     await catalogRuntime?.bus.close();
     await homeConnectionCubit?.close();

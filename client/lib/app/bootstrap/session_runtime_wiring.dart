@@ -14,6 +14,10 @@ import '../../cubits/workbench/workbench_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../pages/home_workspace/home_workspace_route.dart';
 import '../../services/app/connection_mode_service.dart';
+import '../../services/attention/attention_cursor_store.dart';
+import '../../services/attention/attention_event.dart';
+import '../../services/attention/attention_inbox.dart';
+import '../../services/attention/attention_log.dart';
 import '../../services/chat/conversation/history/ai_history_loader.dart';
 import '../../services/chat/conversation/history/session_history_context_builder.dart';
 import '../../services/chat/session/session_lifecycle_service.dart';
@@ -21,25 +25,29 @@ import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/notification/session_idle_notification_service.dart';
 import '../../services/search/workspace_search_indexes.dart';
 import '../../services/session_protocol/session_authority.dart';
-import '../../services/session_protocol/session_models.dart';
 import '../../services/session_sync/chat_session_activity_source.dart';
 import '../../services/session_sync/chat_session_control_port.dart';
 import '../../services/session_sync/session_content_invalidation_bus.dart';
 import '../../services/session_sync/session_content_stream_bus.dart';
 import '../../services/session_sync/session_protocol_controller.dart';
 import '../../services/shared_state/shared_state_identity.dart';
+import '../../services/storage/home_storage.dart';
+import '../../utils/logging/logger.dart';
 import '../../utils/session/workspace_tab_session_scope.dart';
 
 /// The per-session runtime: mailbox/board cubits, the shared AI history store,
 /// the session authority and its remote-activity projections.
 ///
-/// The three subscriptions are returned so the shell keeps owning them for its
-/// bootstrap teardown (`cancelShellSubscriptions`).
+/// The subscriptions are returned so the shell keeps owning them, together with
+/// the attention inbox, for its bootstrap teardown
+/// (`cancelShellSubscriptions`).
 typedef SessionRuntimeWiring = ({
   SessionRemoteActivityCubit sessionRemoteActivityCubit,
   SessionAuthority sessionAuthority,
   ChatSessionActivitySource activitySource,
   SessionProtocolController protocolController,
+  AttentionInbox attentionInbox,
+  StreamSubscription<AttentionEvent> attentionSub,
   AiHistoryCubit aiHistoryCubit,
   MailboxCubit mailboxCubit,
   BoardCubit boardCubit,
@@ -56,7 +64,12 @@ typedef SessionRuntimeWiring = ({
 /// entry. [onHistoryLoaderCreated] publishes the new loader to the shell's
 /// late-bound `aiHistoryLoaderRef` at the same point the assignment used to
 /// run inline (runtime-context eviction clears its cache).
-SessionRuntimeWiring wireSessionRuntime({
+///
+/// [deviceStorage] pins the attention log and its cursor store to the
+/// device-local app-data root, so an SSH home never owns this device's
+/// notification state.
+Future<SessionRuntimeWiring> wireSessionRuntime({
+  required HomeStorage deviceStorage,
   required ChatCubit Function() chat,
   required CliPresetsCubit Function() cliPresets,
   required SessionLifecycleService Function() lifecycle,
@@ -69,7 +82,7 @@ SessionRuntimeWiring wireSessionRuntime({
   required bool Function(Object error) isExpectedFailure,
   required Future<bool> Function(Object error) waitForRecovery,
   required void Function(AiHistoryLoader loader) onHistoryLoaderCreated,
-}) {
+}) async {
   // Shell-local names so the construction below stays identical to the call it
   // was moved out of.
   final chatCubit = chat();
@@ -116,23 +129,71 @@ SessionRuntimeWiring wireSessionRuntime({
     },
   );
   final sessionRemoteActivityCubit = SessionRemoteActivityCubit();
-  final sessionAuthority = SessionAuthority(
-    authorityId: SharedStateIdentity.deviceId,
-    controlPort: ChatSessionControlPort(chatCubit),
-  );
+  final authorityEpoch = DateTime.now().millisecondsSinceEpoch;
+  AttentionLog? attentionLog;
+  AttentionInbox? attentionInbox;
+  StreamSubscription<AttentionEvent>? attentionSub;
+  SessionAuthority? sessionAuthority;
+  var attentionResourcesReady = false;
+  try {
+    final logPath = deviceStorage.paths.attentionLogJsonForEpoch(authorityEpoch);
+    try {
+      attentionLog = await AttentionLog.open(
+        authorityId: SharedStateIdentity.deviceId,
+        epoch: authorityEpoch,
+        fs: deviceStorage.fs,
+        path: logPath,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[attention] log open failed; falling back to in-memory log '
+        'epoch=$authorityEpoch path=$logPath',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      attentionLog = AttentionLog(
+        authorityId: SharedStateIdentity.deviceId,
+        epoch: authorityEpoch,
+      );
+    }
+    final attentionCursorStore = AttentionCursorStore(
+      fs: deviceStorage.fs,
+      path: deviceStorage.paths.attentionCursorsJson,
+    );
+    var cursorLoaded = false;
+    for (var attempt = 0; attempt < 3 && !cursorLoaded; attempt++) {
+      cursorLoaded = await attentionCursorStore.load();
+      if (!cursorLoaded && attempt < 2) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+    }
+    if (!cursorLoaded) {
+      throw StateError(
+        'attention cursor store unavailable; refusing to start live-only '
+        'without a durable cursor '
+        'path=${deviceStorage.paths.attentionCursorsJson}',
+      );
+    }
+    attentionInbox = AttentionInbox(store: attentionCursorStore);
+    sessionAuthority = SessionAuthority(
+      authorityId: SharedStateIdentity.deviceId,
+      controlPort: ChatSessionControlPort(chatCubit),
+      epoch: authorityEpoch,
+      attentionLog: attentionLog,
+    );
   final sessionActivitySource = ChatSessionActivitySource(chatCubit);
   final contentInvalidationSub = SessionContentInvalidationBus.stream.listen((
     event,
   ) {
     if (!connectionModeService.isLocalMode) return;
-    sessionAuthority.publishContentInvalidated(
+    sessionAuthority?.publishContentInvalidated(
       sessionId: event.sessionId,
       memberId: event.memberId,
     );
   });
   final contentStreamSub = SessionContentStreamBus.stream.listen((chunk) {
     if (!connectionModeService.isLocalMode) return;
-    sessionAuthority.publishContentDelta(
+    sessionAuthority?.publishContentDelta(
       sessionId: chunk.sessionId,
       memberId: chunk.memberId,
       kind: 'acp.messages',
@@ -161,45 +222,49 @@ SessionRuntimeWiring wireSessionRuntime({
   final remoteIdleNotifications = SessionIdleNotificationService(
     recorder: notificationCubit,
   );
-  // The authority sends one attention per idle edge. The bounded set only
-  // guards against a duplicate frame within one connection lifetime.
-  final seenRemoteAttentionIds = <String>{};
-  Future<void> notifyRemoteAttention(SessionAttention attention) async {
-    if (attention.kind != 'idle') return;
-    if (attention.id.isNotEmpty &&
-        !seenRemoteAttentionIds.add(attention.id)) {
-      return;
-    }
-    if (seenRemoteAttentionIds.length > 256) {
-      seenRemoteAttentionIds.clear();
-    }
+  // Dedupe belongs to the inbox: it persists seen event ids on this device and
+  // only emits events this process has not consumed yet.
+  Future<void> notifyRemoteAttention(AttentionEvent attention) async {
     final session = chatCubit.state.sessions
         .where((item) => item.sessionId == attention.sessionId)
         .firstOrNull;
-    final title = (session?.display.trim().isNotEmpty ?? false)
+    final title = attention.title.trim().isNotEmpty
+        ? attention.title.trim()
+        : (session?.display.trim().isNotEmpty ?? false)
         ? session!.display.trim()
         : attention.sessionId;
     final locale = PlatformDispatcher.instance.locale;
     final l10n = lookupAppLocalizations(
       basicLocaleListResolution([locale], appLocalizationsSupportedLocales),
     );
+    final workspaceId = attention.workspaceId.isNotEmpty
+        ? attention.workspaceId
+        : session?.workspaceId ?? '';
     final payload = HomeWorkspaceRoute.sessionLocation(
-      workspaceId: session?.workspaceId ?? '',
+      workspaceId: workspaceId,
       sessionId: attention.sessionId,
     );
     await remoteIdleNotifications.notifyRemoteSessionIdle(
       title: title,
-      message: l10n.session.idleNotificationSubtitle,
+      message: attention.message.isNotEmpty
+          ? attention.message
+          : l10n.session.idleNotificationSubtitle,
       badge: l10n.session.idleNotificationTitle,
       payload: payload,
       systemNotificationEnabled: notifyOnSessionIdle(),
     );
   }
 
+  attentionSub = attentionInbox.fresh.listen((event) {
+    if (event.kind != AttentionKind.idle) return;
+    unawaited(notifyRemoteAttention(event));
+  });
+
   final sessionProtocolController = SessionProtocolController(
     deviceId: SharedStateIdentity.deviceId,
     remoteCubit: sessionRemoteActivityCubit,
     authority: sessionAuthority,
+    attentionInbox: attentionInbox,
     isExpectedFailure: isExpectedFailure,
     waitForRecovery: waitForRecovery,
     onContentInvalidated: (invalidation) {
@@ -226,9 +291,6 @@ SessionRuntimeWiring wireSessionRuntime({
         removed: delta.removed,
       );
     },
-    onAttention: (attention) {
-      unawaited(notifyRemoteAttention(attention));
-    },
   );
 
   // Edits run on the runtime owner: when this process is a connected client,
@@ -240,11 +302,14 @@ SessionRuntimeWiring wireSessionRuntime({
             memberId: memberId,
           );
 
+  attentionResourcesReady = true;
   return (
     sessionRemoteActivityCubit: sessionRemoteActivityCubit,
     sessionAuthority: sessionAuthority,
     activitySource: sessionActivitySource,
     protocolController: sessionProtocolController,
+    attentionInbox: attentionInbox,
+    attentionSub: attentionSub,
     aiHistoryCubit: aiHistoryCubit,
     mailboxCubit: mailboxCubit,
     boardCubit: boardCubit,
@@ -252,4 +317,11 @@ SessionRuntimeWiring wireSessionRuntime({
     contentInvalidationSub: contentInvalidationSub,
     contentStreamSub: contentStreamSub,
   );
+  } finally {
+    if (!attentionResourcesReady) {
+      await attentionSub?.cancel();
+      await attentionInbox?.dispose();
+      await sessionAuthority?.dispose();
+    }
+  }
 }

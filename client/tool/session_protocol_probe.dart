@@ -134,8 +134,8 @@ Future<void> main(List<String> args) async {
                 'kind=${delta.kind} bytes=${delta.payload.length}',
               );
             }
-          case SessionMessageType.attention:
-            stdout.writeln('attention ${jsonEncode(envelope.body)}');
+          case SessionMessageType.events:
+            stdout.writeln('events ${jsonEncode(envelope.body)}');
           case SessionMessageType.intentResult:
             final parsed = SessionIntentResult.fromJson(envelope.body);
             if (parsed != null) {

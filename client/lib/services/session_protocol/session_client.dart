@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import '../../utils/logging/logger.dart';
+import '../attention/attention_batch.dart';
+import '../attention/attention_cursor.dart';
 import 'session_channel.dart';
 import 'session_envelope.dart';
 import 'session_frame_codec.dart';
@@ -13,7 +15,7 @@ typedef SessionContentHandler =
     void Function(SessionContentInvalidated invalidation);
 typedef SessionContentDeltaHandler = void Function(SessionContentDelta delta);
 typedef SessionListHandler = void Function(SessionListDelta delta);
-typedef SessionAttentionHandler = void Function(SessionAttention attention);
+typedef SessionAttentionBatchHandler = void Function(AttentionBatch batch);
 typedef SessionErrorHandler = void Function(String code, String message);
 typedef SessionVoidHandler = void Function();
 
@@ -26,7 +28,7 @@ final class SessionClientCallbacks {
     this.onContent,
     this.onContentDelta,
     this.onSessionList,
-    this.onAttention,
+    this.onAttentionBatch,
     this.onError,
     this.onReady,
     this.onClosed,
@@ -37,7 +39,7 @@ final class SessionClientCallbacks {
   final SessionContentHandler? onContent;
   final SessionContentDeltaHandler? onContentDelta;
   final SessionListHandler? onSessionList;
-  final SessionAttentionHandler? onAttention;
+  final SessionAttentionBatchHandler? onAttentionBatch;
   final SessionErrorHandler? onError;
   final SessionVoidHandler? onReady;
   final SessionVoidHandler? onClosed;
@@ -51,6 +53,7 @@ final class SessionClient {
   SessionClient({
     required SessionByteChannel channel,
     required this.deviceId,
+    this.attentionCursors,
     this.callbacks = const SessionClientCallbacks(),
     this.helloTimeout = const Duration(seconds: 5),
     this.intentTimeout = const Duration(seconds: 5),
@@ -58,6 +61,7 @@ final class SessionClient {
 
   final SessionByteChannel _channel;
   final String deviceId;
+  final Map<String, AttentionCursor> Function()? attentionCursors;
   final SessionClientCallbacks callbacks;
   final Duration helloTimeout;
   final Duration intentTimeout;
@@ -74,8 +78,11 @@ final class SessionClient {
   bool _closed = false;
 
   int? _epoch;
+  String? _authorityId;
 
   int? get epoch => _epoch;
+
+  String? get authorityId => _authorityId;
 
   bool get isReady => _ready;
 
@@ -113,8 +120,14 @@ final class SessionClient {
           'intent.turn.cancel',
           'intent.turn.edit',
           'op.state',
-          'attention',
+          'attention.log.v1',
         ],
+        'cursors': {
+          for (final entry
+              in (attentionCursors?.call() ?? const <String, AttentionCursor>{})
+                  .entries)
+            entry.key: entry.value.toJson(),
+        },
       },
     );
   }
@@ -292,6 +305,18 @@ final class SessionClient {
     );
   }
 
+  void sendAttentionAck({
+    required String authorityId,
+    required int epoch,
+    required int seq,
+  }) {
+    _send(
+      SessionMessageType.ack,
+      channel: SessionChannel.control,
+      body: {'authority': authorityId, 'epoch': epoch, 'seq': seq},
+    );
+  }
+
   void _onData(List<int> data) {
     for (final envelope in _decoder.add(data)) {
       _onEnvelope(envelope);
@@ -308,6 +333,8 @@ final class SessionClient {
       case SessionMessageType.helloAck:
         _ready = true;
         _helloTimer?.cancel();
+        final authority = envelope.body['authority'];
+        _authorityId = authority is String ? authority : null;
         final epoch = envelope.body['epoch'];
         _epoch = epoch is num ? epoch.toInt() : null;
         callbacks.onReady?.call();
@@ -339,9 +366,11 @@ final class SessionClient {
         final delta = SessionListDelta.fromJson(envelope.body);
         if (delta != null) callbacks.onSessionList?.call(delta);
         break;
-      case SessionMessageType.attention:
-        final attention = SessionAttention.fromJson(envelope.body);
-        if (attention != null) callbacks.onAttention?.call(attention);
+      case SessionMessageType.events:
+        final batch = AttentionBatch.fromJson(envelope.body);
+        if (batch != null) callbacks.onAttentionBatch?.call(batch);
+        break;
+      case SessionMessageType.ack:
         break;
       case SessionMessageType.intentResult:
         final result = SessionIntentResult.fromJson(envelope.body);
@@ -406,6 +435,7 @@ final class SessionClientConnection {
   SessionClientConnection({
     required Future<SessionByteChannel> Function() open,
     required this.deviceId,
+    this.attentionCursors,
     this.callbacks = const SessionClientCallbacks(),
     Duration Function(int attempt)? backoff,
     bool Function(Object error)? isExpectedFailure,
@@ -417,6 +447,7 @@ final class SessionClientConnection {
 
   final Future<SessionByteChannel> Function() _open;
   final String deviceId;
+  final Map<String, AttentionCursor> Function()? attentionCursors;
   final SessionClientCallbacks callbacks;
   final Duration Function(int attempt) _backoff;
   final bool Function(Object error)? _isExpectedFailure;
@@ -612,13 +643,14 @@ final class SessionClientConnection {
         client = SessionClient(
           channel: channel,
           deviceId: deviceId,
+          attentionCursors: attentionCursors,
           callbacks: SessionClientCallbacks(
             onSnapshot: callbacks.onSnapshot,
             onDelta: callbacks.onDelta,
             onContent: callbacks.onContent,
             onContentDelta: callbacks.onContentDelta,
             onSessionList: callbacks.onSessionList,
-            onAttention: callbacks.onAttention,
+            onAttentionBatch: callbacks.onAttentionBatch,
             onError: callbacks.onError,
             onReady: () {
               attempt = 0;

@@ -603,55 +603,6 @@ final class SessionListDelta {
   }
 }
 
-/// Durable notification fact; the receiving client decides whether to show it.
-final class SessionAttention {
-  const SessionAttention({
-    required this.id,
-    required this.sessionId,
-    required this.kind,
-    required this.createdAt,
-    this.memberId = '',
-    this.turnId,
-  });
-
-  final String id;
-  final String sessionId;
-  final String kind;
-  final DateTime createdAt;
-  final String memberId;
-  final String? turnId;
-
-  Map<String, Object?> toJson() => {
-    'id': id,
-    'sessionId': sessionId,
-    'kind': kind,
-    'createdAt': createdAt.toUtc().toIso8601String(),
-    if (memberId.isNotEmpty) 'memberId': memberId,
-    if (turnId != null) 'turnId': turnId,
-  };
-
-  static SessionAttention? fromJson(Object? json) {
-    if (json is! Map) return null;
-    final id = json['id'];
-    final sessionId = json['sessionId'];
-    final kind = json['kind'];
-    if (id is! String || sessionId is! String || kind is! String) return null;
-    final createdAt = json['createdAt'];
-    final memberId = json['memberId'];
-    final turnId = json['turnId'];
-    return SessionAttention(
-      id: id,
-      sessionId: sessionId,
-      kind: kind,
-      createdAt: createdAt is String
-          ? DateTime.tryParse(createdAt) ?? DateTime.now().toUtc()
-          : DateTime.now().toUtc(),
-      memberId: memberId is String ? memberId : '',
-      turnId: turnId is String ? turnId : null,
-    );
-  }
-}
-
 /// JSON helpers shared by the envelope and tests.
 Map<String, Object?> asJsonMap(Object? value) {
   if (value is! Map) return const {};
