@@ -70,6 +70,10 @@ enum AcpChatErrorKind {
 
   /// The agent process exited before the session was closed.
   processExited,
+
+  /// The agent reported ACP `auth_required` (-32000) and no fresh lease
+  /// could be minted; the user must sign in under Settings → Providers.
+  authRequired,
 }
 
 /// Terminal error surfaced with [AcpChatPhase.ended].
@@ -190,6 +194,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     this.holdsLeaseForOutOfTurnRun = false,
     this.chunkCoalesceWindow = defaultChunkCoalesceWindow,
     this.onTurnCheckpoint,
+    this.authRecovery,
   }) : _runtime = runtime,
        _attention = attention,
        _transcript = transcript,
@@ -244,6 +249,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// the conversation list's relative time and `recentlyUpdated` order move
   /// like the PTY path (which touches on every user line). Null in tests.
   final void Function(String sessionId)? onUserActivity;
+
+  /// Re-mints the launch credentials on ACP `auth_required`. Returns true when
+  /// a fresh lease is available and the launch may be retried once. Null when
+  /// the CLI has no credential capability (the failure is then terminal).
+  final Future<bool> Function(String sessionId)? authRecovery;
 
   /// Snapshots the local seat after a real turn's transcript flush. Null when
   /// the runtime is remote, git is missing, or tests do not inject a hook.
@@ -530,7 +540,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// [AcpAuthenticateException] and authenticate [TimeoutException] use
   /// not-logged-in copy. [acpd.RpcError] from `session/new` uses
   /// session-open-failed copy plus the agent's nested reason when present,
-  /// except auth-required (`-32000`) which uses not-logged-in copy.
+  /// except auth-required (`-32000`), which re-mints the launch credentials
+  /// via [authRecovery] and retries once before ending with
+  /// [AcpChatErrorKind.authRequired] and not-logged-in copy.
   /// Any other failure is logged and ends the session.
   Future<void> start({
     required String executable,
@@ -614,12 +626,22 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         error: error,
         stackTrace: stackTrace,
       );
-      // AUTH-required from `session/new` is a sign-in problem, not a broken
-      // session: surface the same copy as a failed `authenticate` (all ACP
-      // CLIs share -32000).
+      // AUTH-required from `session/new` is a credential problem, not a broken
+      // session (all ACP CLIs share -32000). Re-mint the launch credentials
+      // and retry once before falling back to the not-logged-in end state.
       if (error.code == acpd.ErrorCode.authRequired.code) {
+        final recovered = await _recoverAuth(
+          executable: executable,
+          sessionToolDir: sessionToolDir,
+          workingDirectory: effectiveWorkingDirectory,
+          baseEnv: baseEnv,
+          mcpServers: mcpServers,
+          permissionPolicy: permissionPolicy,
+          resumeSessionId: resumeId,
+        );
+        if (recovered) return;
         _endWith(
-          AcpChatErrorKind.launchFailed,
+          AcpChatErrorKind.authRequired,
           _strings?.notLoggedIn ?? defaultAcpChatStrings.notLoggedIn,
         );
         return;
@@ -2451,6 +2473,45 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         memberId: seatMemberId,
       );
     });
+  }
+
+  /// Re-mints a lease and retries the launch exactly once. `authRequired`
+  /// from `session/new` is a recoverable credential problem, not a dead
+  /// session — only a rejected refresh token ends the session.
+  Future<bool> _recoverAuth({
+    required String executable,
+    required String sessionToolDir,
+    required String workingDirectory,
+    required Map<String, String> baseEnv,
+    required List<acpd.McpServer> mcpServers,
+    required LaunchSecurityPolicy permissionPolicy,
+    required String? resumeSessionId,
+  }) async {
+    final recovery = authRecovery;
+    if (recovery == null) return false;
+    try {
+      final ok = await recovery(sessionId);
+      if (!ok) return false;
+      if (_closing || isClosed) return false;
+      await _runtime.start(
+        tool: tool,
+        executable: executable,
+        sessionToolDir: sessionToolDir,
+        workingDirectory: workingDirectory,
+        baseEnv: baseEnv,
+        mcpServers: mcpServers,
+        permissionPolicy: permissionPolicy,
+        resumeSessionId: resumeSessionId,
+      );
+      return true;
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        '[acp-chat] session $sessionId auth recovery failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
   }
 
   void _endWith(AcpChatErrorKind kind, String message) {

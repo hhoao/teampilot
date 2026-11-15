@@ -346,6 +346,7 @@ void main() {
     void Function(String sessionId)? onUserActivity,
     Future<void> Function(String messageId, String userMessageId)?
     onTurnCheckpoint,
+    Future<bool> Function(String sessionId)? authRecovery,
   }) {
     final cubit = AcpChatRuntimeCubit(
       runtime: runtime,
@@ -356,6 +357,7 @@ void main() {
       chunkCoalesceWindow: chunkCoalesceWindow,
       onUserActivity: onUserActivity,
       onTurnCheckpoint: onTurnCheckpoint,
+      authRecovery: authRecovery,
       attention: attention,
       transcript: transcript,
       agentSession: agentSession,
@@ -2394,7 +2396,10 @@ void main() {
     );
 
     expect(cubit.state.phase, AcpChatPhase.ended);
-    expect(cubit.state.error?.kind, AcpChatErrorKind.launchFailed);
+    // No credential capability is injected here, so the recovery cannot mint
+    // a lease and the failure is terminal — but it is its own kind, because
+    // the remedy is signing in rather than retrying the launch.
+    expect(cubit.state.error?.kind, AcpChatErrorKind.authRequired);
     expect(
       (cubit.state.messages.single.parts.single as AiTextPart).text,
       'Not logged in',
@@ -4435,6 +4440,52 @@ void main() {
       cubit.state.availableCommands.single.descriptionText,
       'Deploy the app',
     );
+    await cubit.close();
+  });
+
+  test('auth_required recovers once when a fresh lease is available', () async {
+    var recoveryCalls = 0;
+    runtime.startError = acpd.RpcError(
+      code: acpd.ErrorCode.authRequired.code,
+      message: 'auth required',
+    );
+    final cubit = bootCubit(
+      authRecovery: (sessionId) async {
+        recoveryCalls++;
+        // The recovery re-runs start(); clear the injected error so the
+        // retry succeeds.
+        runtime.startError = null;
+        return true;
+      },
+    );
+
+    await cubit.start(
+      executable: 'grok',
+      sessionToolDir: '/tmp/grok',
+      workingDirectory: '/workspace',
+    );
+
+    expect(recoveryCalls, 1);
+    expect(runtime.started, isTrue);
+    expect(cubit.state.phase, isNot(AcpChatPhase.ended));
+    await cubit.close();
+  });
+
+  test('auth_required ends with authRequired when login is needed', () async {
+    runtime.startError = acpd.RpcError(
+      code: acpd.ErrorCode.authRequired.code,
+      message: 'auth required',
+    );
+    final cubit = bootCubit(authRecovery: (sessionId) async => false);
+
+    await cubit.start(
+      executable: 'grok',
+      sessionToolDir: '/tmp/grok',
+      workingDirectory: '/workspace',
+    );
+
+    expect(cubit.state.phase, AcpChatPhase.ended);
+    expect(cubit.state.error?.kind, AcpChatErrorKind.authRequired);
     await cubit.close();
   });
 }
