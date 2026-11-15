@@ -392,10 +392,14 @@ class TeammateBusMcpGateway implements TeammateBusMcpGatewayPort {
     final sessionId = _resolveSessionId(request) ?? '';
     final busToken = _headerValue(request.headers, teammateBusTokenHeader);
     // Remote seats must present a bus token registered for that same session.
-    final tokenSession = busToken.isNotEmpty
-        ? _registry.sessionForToken(busToken)
-        : null;
-    if (tokenSession != null && tokenSession != sessionId) {
+    // Status-only seats live in `_agentStatusTokenToSession` rather than the
+    // TeamBus registry, so both maps are consulted; a token that resolves to
+    // no session is rejected instead of riding on a borrowed `X-Session`.
+    final tokenSession = busToken.isEmpty
+        ? null
+        : (_registry.sessionForToken(busToken) ??
+              _agentStatusTokenToSession[busToken]);
+    if (busToken.isNotEmpty && tokenSession != sessionId) {
       request.response.statusCode = HttpStatus.unauthorized;
       await request.response.close();
       return;

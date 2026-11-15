@@ -61,6 +61,22 @@ void main() {
     expect(jsonEncode(response.body), isNot(contains('refresh_token')));
   });
 
+  test('forceRefresh mints a new access token without leaking the new RT',
+      () async {
+    final endpoint = await build();
+    final response = await endpoint.serve(
+      sessionId: 's1',
+      busToken: 'bus-token',
+      providerId: 'xai',
+      forceRefresh: true,
+    );
+
+    expect(response.statusCode, 200);
+    expect(response.body['access_token'], 'fresh');
+    expect(response.body['expires_in'], 3600);
+    expect(jsonEncode(response.body), isNot(contains('rt-fresh')));
+  });
+
   test('rejects a missing session or bus token', () async {
     final endpoint = await build();
     expect(
