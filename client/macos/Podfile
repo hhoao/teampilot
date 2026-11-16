@@ -39,4 +39,27 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
   end
+
+  # Homebrew OpenSSL 3 is one architecture. Drop the slice its static
+  # libcrypto does not contain, or the universal macOS link fails.
+  openssl_prefix = `brew --prefix openssl@3 2>/dev/null`.strip
+  next if openssl_prefix.empty?
+
+  openssl_lib = File.join(openssl_prefix, 'lib', 'libcrypto.a')
+  next unless File.file?(openssl_lib)
+
+  present = `lipo -archs "#{openssl_lib}" 2>/dev/null`.split
+  excluded = (%w[arm64 x86_64] - present).join(' ')
+  next if excluded.empty?
+
+  projects = [installer.pods_project]
+  installer.aggregate_targets.each { |aggregate| projects << aggregate.user_project }
+  projects.uniq.each do |project|
+    project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['EXCLUDED_ARCHS[sdk=macosx*]'] = excluded
+      end
+    end
+    project.save
+  end
 end
