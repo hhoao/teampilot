@@ -31,9 +31,13 @@ subprojects {
                 method.parameterCount == 1 &&
                 method.parameterTypes[0].name == "org.gradle.api.Action"
         } ?: error("${path}: finalizeDsl(Action) missing on ${components.javaClass.name}")
+        val projectPath = path
+        // Gradle Kotlin DSL compiles Action as a receiver lambda, not a parameter.
         finalize.invoke(
             components,
-            org.gradle.api.Action<Any> { android -> raiseLibraryCompileSdk(path, android) },
+            org.gradle.api.Action<Any> {
+                raiseLibraryCompileSdk(projectPath, this)
+            },
         )
     }
 }
@@ -44,10 +48,11 @@ fun raiseLibraryCompileSdk(projectPath: String, android: Any) {
         ?.invoke(android) as? Int
     if (current != null && current >= 36) return
     val setter = android.javaClass.methods.firstOrNull { method ->
-        method.name == "setCompileSdk" &&
-            method.parameterCount == 1 &&
-            (method.parameterTypes[0] == Integer::class.java ||
-                method.parameterTypes[0] == Int::class.javaPrimitiveType)
+        if (method.name != "setCompileSdk" || method.parameterCount != 1) {
+            return@firstOrNull false
+        }
+        val typeName = method.parameterTypes[0].name
+        typeName == "int" || typeName == "java.lang.Integer"
     } ?: error("$projectPath: setCompileSdk(Int) missing on ${android.javaClass.name}")
     setter.invoke(android, 36)
 }
