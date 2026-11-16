@@ -599,6 +599,39 @@ void main() {
     );
   });
 
+  testWidgets('a failed persisted-draft clear still delivers the message', (
+    tester,
+  ) async {
+    installTestHomeStorage(
+      filesystem: _FailingDraftClearFilesystem(),
+      paths: const AppPaths('/compose-draft-test'),
+      home: '/compose-draft-test',
+      cwd: '/compose-draft-test',
+    );
+    final session = _session('s-clear-fails');
+    var submitted = 0;
+    await pumpSession(
+      tester,
+      session: session,
+      onSubmit: (_) async {
+        submitted++;
+        return const HistoryContinueSubmitResult(
+          ok: true,
+          channel: HistoryContinueChannel.pty,
+        );
+      },
+    );
+
+    await enterComposeText(tester, 'send even if cleanup fails');
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.pumpAndSettle();
+
+    expect(submitted, 1);
+    expect(_composeField(tester).controller!.text, isEmpty);
+    expect(composeDraftCache.sessionDraft(session.sessionId), isNull);
+  });
+
   testWidgets('Retry redelivers a failed bubble through the session callback', (
     tester,
   ) async {
@@ -775,6 +808,19 @@ AppSession _session(String sessionId) => AppSession(
   cli: CliTool.claude,
   createdAt: 1,
 );
+
+/// Fails only the empty-document write that a draft clear produces, so typing
+/// still persists and the submit-time persistent clear throws.
+class _FailingDraftClearFilesystem extends InMemoryFilesystem {
+  @override
+  Future<void> atomicWrite(String path, String content) {
+    if (path.endsWith('compose-drafts.json') &&
+        content.contains('"sessions":{}')) {
+      throw StateError('draft clear failed');
+    }
+    return super.atomicWrite(path, content);
+  }
+}
 
 ExtendedTextField _composeField(WidgetTester tester) =>
     composeFieldWidget(tester);

@@ -675,15 +675,26 @@ class _SessionChatViewState extends State<SessionChatView> {
   void _onComposeChanged() {
     if (_suppressComposeDraftPersistence) return;
     unawaited(
-      composeDraftCache.saveSession(
-        widget.session.workspaceId,
-        widget.session.sessionId,
-        ComposeDraft(
-          text: _controller.text,
-          tokens: _controller.document.tokens,
-        ),
-        storage: homeStorageOf(context),
-      ),
+      composeDraftCache
+          .saveSession(
+            widget.session.workspaceId,
+            widget.session.sessionId,
+            ComposeDraft(
+              text: _controller.text,
+              tokens: _controller.document.tokens,
+            ),
+            storage: homeStorageOf(context),
+          )
+          .catchError((Object error, StackTrace stackTrace) {
+            // Best-effort persistence: an unawaited save must not surface as an
+            // unhandled async error.
+            appLogger.w(
+              '[compose] persisted draft save failed '
+              'session=${widget.session.sessionId}',
+              error: error,
+              stackTrace: stackTrace,
+            );
+          }),
     );
   }
 
@@ -726,11 +737,21 @@ class _SessionChatViewState extends State<SessionChatView> {
     _composeDraftSeedGeneration++;
     _suppressComposeDraftPersistence = true;
     composeDraftCache.clearSessionDraft(widget.session.sessionId);
-    await composeDraftCache.clearSessionPersistent(
-      widget.session.workspaceId,
-      widget.session.sessionId,
-      storage: homeStorageOf(context),
-    );
+    try {
+      await composeDraftCache.clearSessionPersistent(
+        widget.session.workspaceId,
+        widget.session.sessionId,
+        storage: homeStorageOf(context),
+      );
+    } on Object catch (error, stackTrace) {
+      // Best-effort cleanup: a failed disk clear must not block the delivery.
+      appLogger.w(
+        '[compose] persisted draft clear failed '
+        'session=${widget.session.sessionId}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
     if (!mounted) return;
     _controller.clear();
     _clip.clear();
