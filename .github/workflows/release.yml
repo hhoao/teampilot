@@ -159,6 +159,9 @@ jobs:
 
       - uses: ./.github/actions/apply-flutter-patches
 
+      - name: Install OpenSSL 3
+        run: brew install openssl@3
+
       - name: Install fastforge + appdmg
         working-directory: .
         run: |
@@ -278,6 +281,21 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:TEAMPILOT_GITHUB_OAUTH_CLIENT_ID)) {
             throw 'Missing repository secret TEAMPILOT_GITHUB_OAUTH_CLIENT_ID'
           }
+
+      # The Windows crypto shim links a static OpenSSL. The runner image has
+      # vcpkg, but not this triplet, until we install it.
+      - name: Install OpenSSL (vcpkg static)
+        shell: pwsh
+        run: |
+          $root = if ($env:VCPKG_INSTALLATION_ROOT) { $env:VCPKG_INSTALLATION_ROOT } else { 'C:\vcpkg' }
+          & "$root\vcpkg.exe" install openssl:x64-windows-static
+          $prefix = Join-Path $root 'installed\x64-windows-static'
+          $header = Join-Path $prefix 'include\openssl\evp.h'
+          if (-not (Test-Path -LiteralPath $header)) {
+            throw "OpenSSL headers missing: $header"
+          }
+          "OPENSSL_ROOT_DIR=$prefix" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "OPENSSL_USE_STATIC_LIBS=TRUE" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       # Use pwsh (not bash): dart pub global shims are fastforge.bat on Windows;
       # Git Bash does not resolve .bat → "fastforge: command not found".

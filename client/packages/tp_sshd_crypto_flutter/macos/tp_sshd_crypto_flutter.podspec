@@ -23,12 +23,20 @@ the dartssh2 package; this lane only compiles it into the macOS build.
   s.source_files     = 'Classes/**/*'
   s.dependency 'FlutterMacOS'
 
-  # The shim's only external dependency: like the linux lane, macOS links the
-  # system libcrypto (LibreSSL from the SDK) rather than a vendored OpenSSL
-  # (native/prebuilt/README.md documents that link policy per lane).
-  s.libraries = 'crypto'
+  # Current macOS SDKs do not ship LibreSSL headers. Compile against Homebrew
+  # OpenSSL 3 and link its static libcrypto, so the app does not need Homebrew
+  # at runtime. CI and local builds both need `brew install openssl@3`.
+  openssl_prefix = `brew --prefix openssl@3 2>/dev/null`.strip
+  openssl_lib = File.join(openssl_prefix, 'lib', 'libcrypto.a')
+  unless File.file?(openssl_lib)
+    raise "tp_sshd_crypto_flutter: Homebrew OpenSSL 3 is required (brew install openssl@3); missing #{openssl_lib}"
+  end
 
   s.platform = :osx, '10.14'
-  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
+  s.pod_target_xcconfig = {
+    'DEFINES_MODULE' => 'YES',
+    'HEADER_SEARCH_PATHS' => "\"#{openssl_prefix}/include\"",
+    'OTHER_LDFLAGS' => "\"#{openssl_lib}\""
+  }
   s.swift_version = '5.0'
 end
