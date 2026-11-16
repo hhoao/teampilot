@@ -1,0 +1,6 @@
+<resources>
+    <string name="background_attention_channel_name">Background listening</string>
+    <string name="background_attention_channel_description">Keeps the session connection alive so agent completion alerts arrive while TeamPilot is in the background.</string>
+    <string name="background_attention_title">TeamPilot is listening</string>
+    <string name="background_attention_text">You will be notified when an agent finishes.</string>
+</resources>

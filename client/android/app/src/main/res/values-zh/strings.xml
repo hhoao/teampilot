@@ -1,0 +1,6 @@
+<resources>
+    <string name="background_attention_channel_name">后台监听</string>
+    <string name="background_attention_channel_description">保持会话连接，让 TeamPilot 在后台时也能收到 Agent 完成提醒。</string>
+    <string name="background_attention_title">TeamPilot 正在后台监听</string>
+    <string name="background_attention_text">Agent 完成一轮工作时会通知你。</string>
+</resources>

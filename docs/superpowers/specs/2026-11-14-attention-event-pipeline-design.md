@@ -452,6 +452,9 @@ offline ──connect──▶ connecting ──ok──▶ connected
   - 删除旧 `attention` / `attentionAck`。
 - **Phase 2 — ConnectionSupervisor 与 Android 前台服务**
   - 新偏好、状态机、原生 service、常驻通知、push-only 降级。
+  - 当前实现（2026-11-16）：先落简化版——复用 `notifyOnSessionIdle` 作为开关；
+    `AttentionKeepAliveService` 在 Activity `onPause` / `onUserLeaveHint` 启动、
+    `onResume` 停止，仅 Android；App 被杀仍由 Phase 3 push 覆盖。
 - **Phase 3 — relay push gateway**
   - 设备注册、`POST /events`、FCM `PushProvider`、在线抑制、E2EE 预留。
 - **Phase 4 — 多设备与体验**

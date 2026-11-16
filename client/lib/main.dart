@@ -93,6 +93,7 @@ import 'services/terminal/workspace_terminal_run_service.dart';
 import 'services/notification/desktop_system_notifier.dart';
 import 'services/notification/notification_recorder.dart';
 import 'services/notification/session_idle_notification_tap.dart';
+import 'widgets/notification/background_attention_keeper.dart';
 import 'widgets/notification/session_idle_notification_listener.dart';
 import 'widgets/ssh/ssh_connection_binder.dart';
 import 'widgets/termux/termux_work_ops_message_binder.dart';
@@ -801,8 +802,12 @@ void main() async {
                     child: CliToolRegistryScope(
                       registry: shell.cliToolRegistry,
                       child: SshConnectionBinder(
-                        child: const SessionIdleNotificationListener(
-                          child: ShortcutDispatcherHost(child: TeamPilotApp()),
+                        child: BackgroundAttentionKeeper(
+                          child: const SessionIdleNotificationListener(
+                            child: ShortcutDispatcherHost(
+                              child: TeamPilotApp(),
+                            ),
+                          ),
                         ),
                       ),
                     ),
