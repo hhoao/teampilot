@@ -464,6 +464,126 @@ void main() {
         expect(Link(d).existsSync(), isFalse);
         expect(Directory(d).existsSync(), isTrue);
       });
+
+      String unregisteredClone(String tool, String session, String name) =>
+          p.join(
+            teampilotRoot,
+            'workspace',
+            'workspaces',
+            'proj-1',
+            'sessions',
+            session,
+            'runtime',
+            tool,
+            'plugins',
+            'marketplaces',
+            name,
+          );
+
+      String localFlavor(String tool, String name) => p.join(
+        teampilotRoot,
+        'plugins',
+        'marketplace-flavors',
+        tool,
+        '_local',
+        name,
+      );
+
+      void createUnregisteredClone(
+        String tool,
+        String session,
+        String name, {
+        String body = '{}',
+        bool stamped = false,
+      }) {
+        final d = unregisteredClone(tool, session, name);
+        File(
+          p.join(d, '.codebuddy-plugin', 'marketplace.json'),
+        ).createSync(recursive: true);
+        File(p.join(d, 'payload.txt')).writeAsStringSync(body);
+        if (stamped) {
+          File(
+            p.join(d, '.teampilot-marketplace-source-stamp.json'),
+          ).writeAsStringSync('{}');
+        }
+      }
+
+      test(
+        'adopts unregistered marketplace clones into one shared flavor',
+        () async {
+          writeMarketplaceConfig();
+          createUnregisteredClone(
+            'codebuddy',
+            'sess-a',
+            'cb_teams_marketplace',
+            body: 'from-a',
+          );
+          createUnregisteredClone(
+            'codebuddy',
+            'sess-b',
+            'cb_teams_marketplace',
+            body: 'from-b',
+          );
+
+          await store.sweepAll(workspaceIds: const ['proj-1']);
+
+          final shared = localFlavor('codebuddy', 'cb_teams_marketplace');
+          expect(Directory(shared).existsSync(), isTrue);
+          expect(
+            File(p.join(shared, 'payload.txt')).existsSync(),
+            isTrue,
+            reason: 'one clone becomes the shared artifact',
+          );
+
+          for (final session in ['sess-a', 'sess-b']) {
+            final link = unregisteredClone(
+              'codebuddy',
+              session,
+              'cb_teams_marketplace',
+            );
+            expect(Link(link).existsSync(), isTrue, reason: session);
+            expect(Link(link).targetSync(), shared, reason: session);
+          }
+        },
+      );
+
+      test('never adopts the synthesized local marketplace', () async {
+        writeMarketplaceConfig();
+        createUnregisteredClone('claude', 'sess-local', 'local');
+
+        await store.sweepAll(workspaceIds: const ['proj-1']);
+
+        final d = unregisteredClone('claude', 'sess-local', 'local');
+        expect(Link(d).existsSync(), isFalse);
+        expect(Directory(d).existsSync(), isTrue);
+        expect(
+          Directory(
+            localFlavor('claude', 'local'),
+          ).existsSync(),
+          isFalse,
+          reason: 'each session owns its own local plugin catalog',
+        );
+      });
+
+      test('keeps stamped unregistered clones', () async {
+        writeMarketplaceConfig();
+        createUnregisteredClone(
+          'codebuddy',
+          'sess-stamped',
+          'cb_teams_marketplace',
+          stamped: true,
+        );
+
+        await store.sweepAll(workspaceIds: const ['proj-1']);
+
+        final d = unregisteredClone(
+          'codebuddy',
+          'sess-stamped',
+          'cb_teams_marketplace',
+        );
+        expect(Link(d).existsSync(), isFalse);
+        expect(Directory(d).existsSync(), isTrue);
+      });
     });
   });
 }

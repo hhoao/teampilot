@@ -50,6 +50,13 @@ class MarketplaceSharedStore {
 
   static final LockPool _locks = LockPool();
 
+  /// TeamPilot synthesizes a per-session `local` marketplace listing that
+  /// session's own plugins, so it must never be shared across sessions.
+  static const localMarketplaceName = 'local';
+
+  /// Owner segment for flavors adopted from a CLI-managed (non-git) clone.
+  static const localFlavorOwner = '_local';
+
   p.Context get _ctx => fs.pathContext;
 
   /// Cache root for [teampilotRoot], e.g. `{root}/plugins/marketplace-cache`.
@@ -73,6 +80,15 @@ class MarketplaceSharedStore {
     tool.value,
     m.owner.trim(),
     '${m.name.trim()}@${m.branch.trim()}',
+  );
+
+  /// Shared dir for a marketplace TeamPilot never registered (e.g. a CLI's
+  /// built-in zip source). Seeded from the first session clone found.
+  String localFlavorDirFor(CliTool tool, String name) => _ctx.join(
+    flavorRoot,
+    tool.value,
+    localFlavorOwner,
+    name.trim(),
   );
 
   static String _flavorLockKey(CliTool tool, PluginMarketplace m) =>
@@ -288,12 +304,22 @@ class MarketplaceSharedStore {
         );
       }
     }
+    final adoptable = <String, List<_MarketplaceCandidate>>{};
     for (final candidate in candidates) {
+      final marketplace = candidate.marketplace;
+      if (marketplace == null) {
+        if (_isAdoptableName(candidate.name)) {
+          adoptable
+              .putIfAbsent('${candidate.tool.value}|${candidate.name}', () => [])
+              .add(candidate);
+        }
+        continue;
+      }
       final paths = pluginCapabilityForTool(candidate.tool)?.manifestPaths;
       if (paths == null) continue;
       final shared = await ensureShared(
         tool: candidate.tool,
-        marketplace: candidate.marketplace,
+        marketplace: marketplace,
         paths: paths,
       );
       if (shared == null) continue;
@@ -302,6 +328,51 @@ class MarketplaceSharedStore {
         () => _sweepOne(dest: candidate.dest, shared: shared),
       );
     }
+    for (final group in adoptable.values) {
+      await _adoptLocalGroup(group);
+    }
+  }
+
+  /// A CLI-managed marketplace is adoptable when TeamPilot does not own a
+  /// marketplace of that name; the synthesized `local` catalog is per-session.
+  static bool _isAdoptableName(String name) {
+    final trimmed = name.trim();
+    return trimmed.isNotEmpty && trimmed != localMarketplaceName;
+  }
+
+  /// Moves the first clone into the shared flavor dir and links the rest to it.
+  /// Idempotent: an existing shared dir is reused as-is.
+  Future<void> _adoptLocalGroup(List<_MarketplaceCandidate> group) async {
+    final first = group.first;
+    final shared = localFlavorDirFor(first.tool, first.name);
+    await _locks.synchronized(_linkLockKey(shared), () async {
+      if (!(await fs.lstat(shared)).exists) {
+        await _seedLocalFlavor(shared: shared, source: first.dest);
+      }
+      for (final candidate in group) {
+        await _sweepOne(dest: candidate.dest, shared: shared);
+      }
+    });
+  }
+
+  Future<void> _seedLocalFlavor({
+    required String shared,
+    required String source,
+  }) async {
+    await fs.ensureDir(_ctx.dirname(shared));
+    try {
+      await fs.rename(source, shared);
+    } on Object catch (e) {
+      appLogger.d(
+        '[MarketplaceSharedStore] rename ${_ctx.basename(source)} failed '
+        '($e); copying instead',
+      );
+      await fs.copyTree(source: source, destination: shared);
+      await fs.removeRecursive(source);
+    }
+    appLogger.d(
+      '[MarketplaceSharedStore] adopted ${_ctx.basename(shared)} → $shared',
+    );
   }
 
   Future<void> _collectSessionMarketplaceCandidates({
@@ -336,8 +407,6 @@ class MarketplaceSharedStore {
       if (!(await fs.stat(marketsDir)).isDirectory) continue;
       for (final entry in await fs.listDir(marketsDir)) {
         if (!entry.isDirectory) continue;
-        final marketplace = byNameMatch(marketsByName, entry.name);
-        if (marketplace == null) continue;
         final dest = _ctx.join(marketsDir, entry.name);
         final stamp = _ctx.join(
           dest,
@@ -350,7 +419,8 @@ class MarketplaceSharedStore {
           _MarketplaceCandidate(
             dest: dest,
             tool: tool,
-            marketplace: marketplace,
+            name: entry.name,
+            marketplace: byNameMatch(marketsByName, entry.name),
           ),
         );
       }
@@ -377,30 +447,40 @@ class MarketplaceSharedStore {
 
   Future<void> _sweepOne({required String dest, required String shared}) async {
     final stat = await fs.lstat(dest);
-    if (!stat.isDirectory || stat.isSymlink) return;
-    final stamp = _ctx.join(
-      dest,
-      CliPluginProvisionCache.marketplaceSourceStampFileName,
-    );
-    if ((await fs.stat(stamp)).exists) return;
+    if (stat.isSymlink) {
+      final target = await fs.readSymlinkTarget(dest);
+      if (target != null && _samePath(target, shared)) return;
+    } else if (stat.exists) {
+      if (!stat.isDirectory) return;
+      final stamp = _ctx.join(
+        dest,
+        CliPluginProvisionCache.marketplaceSourceStampFileName,
+      );
+      if ((await fs.stat(stamp)).exists) return;
+      await fs.removeRecursive(dest);
+    }
 
-    await fs.removeRecursive(dest);
     await fs.ensureDir(_ctx.dirname(dest));
     final linked = await fs.createSymlink(target: shared, linkPath: dest);
     if (!linked) {
       await fs.copyTree(source: shared, destination: dest);
     }
   }
+
+  bool _samePath(String a, String b) =>
+      _ctx.normalize(_ctx.absolute(a)) == _ctx.normalize(_ctx.absolute(b));
 }
 
 class _MarketplaceCandidate {
   const _MarketplaceCandidate({
     required this.dest,
     required this.tool,
-    required this.marketplace,
+    required this.name,
+    this.marketplace,
   });
 
   final String dest;
   final CliTool tool;
-  final PluginMarketplace marketplace;
+  final String name;
+  final PluginMarketplace? marketplace;
 }
