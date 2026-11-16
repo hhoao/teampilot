@@ -3,6 +3,9 @@
 # dispatch release.yml afterward. Manual tag pushes (user PAT) still trigger
 # release.yml via on.push.tags. Release notes come from git-cliff (Conventional
 # Commits since the previous tag).
+#
+# A stable version (4.0.0) becomes the Latest release. A prerelease version
+# (4.0.0-preview.1) is published as a GitHub prerelease and does not replace it.
 
 name: Auto Tag on Version Bump
 

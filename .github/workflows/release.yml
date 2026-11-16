@@ -10,6 +10,11 @@ on:
         description: "Git ref to build (branch / tag / sha). Leave empty for current."
         required: false
         default: ""
+      preview:
+        description: "Publish a prerelease. Does not replace the Latest release."
+        required: false
+        type: boolean
+        default: false
 
 defaults:
   run:
@@ -21,8 +26,44 @@ env:
   TEAMPILOT_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.TEAMPILOT_GITHUB_OAUTH_CLIENT_ID }}
 
 jobs:
+  plan:
+    name: Decide release channel
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.channel.outputs.tag }}
+      prerelease: ${{ steps.channel.outputs.prerelease }}
+      make_latest: ${{ steps.channel.outputs.make_latest }}
+      publish: ${{ steps.channel.outputs.publish }}
+      sha: ${{ steps.channel.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+          fetch-depth: 0
+          submodules: false
+
+      - name: Resolve tag and channel
+        id: channel
+        env:
+          RELEASE_EVENT: ${{ github.event_name }}
+          RELEASE_REF: ${{ github.ref }}
+          RELEASE_REF_NAME: ${{ github.ref_name }}
+          RELEASE_INPUT_REF: ${{ github.event.inputs.ref }}
+          RELEASE_PREVIEW: ${{ github.event.inputs.preview }}
+        run: |
+          set -euo pipefail
+          version=$(grep -E '^version:' client/pubspec.yaml | head -1 | sed 's/version:[[:space:]]*//')
+          export PUBSPEC_VERSION="$version"
+          export TAGS
+          TAGS="$(git tag -l)"
+          bash .github/scripts/release_channel.sh >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "Resolved release channel:"
+          cat "$GITHUB_OUTPUT"
+
   build-linux:
     name: Build Linux (deb + AppImage)
+    needs: plan
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -93,6 +134,7 @@ jobs:
 
   build-macos:
     name: Build macOS (DMG)
+    needs: plan
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -156,6 +198,7 @@ jobs:
 
   build-windows:
     name: Build Windows (MSIX + EXE + ZIP)
+    needs: plan
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -286,6 +329,7 @@ jobs:
 
   build-android:
     name: Build Android (APK arm + arm64)
+    needs: plan
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -353,11 +397,8 @@ jobs:
 
   release:
     name: Publish GitHub Release
-    needs: [build-linux, build-macos, build-windows, build-android]
-    if: >-
-      startsWith(github.ref, 'refs/tags/') ||
-      (github.event_name == 'workflow_dispatch' &&
-       startsWith(github.event.inputs.ref, 'v'))
+    needs: [plan, build-linux, build-macos, build-windows, build-android]
+    if: needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -367,6 +408,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ needs.plan.outputs.sha }}
           fetch-depth: 0
 
       - uses: actions/download-artifact@v4
@@ -430,6 +472,17 @@ jobs:
               sys.exit(1)
           PY
 
+      - name: Point notes at this release tag
+        run: |
+          set -euo pipefail
+          tag="${{ needs.plan.outputs.tag }}"
+          sha="${{ needs.plan.outputs.sha }}"
+          if ! git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$tag" -m "Release $tag" "$sha"
+          fi
+
       - name: Generate release notes (Conventional Commits)
         id: git-cliff
         uses: orhun/git-cliff-action@v4
@@ -442,7 +495,10 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.ref_name }}
+          tag_name: ${{ needs.plan.outputs.tag }}
+          target_commitish: ${{ needs.plan.outputs.sha }}
+          prerelease: ${{ needs.plan.outputs.prerelease == 'true' }}
+          make_latest: ${{ needs.plan.outputs.make_latest }}
           files: release-files/*
           body_path: ${{ steps.git-cliff.outputs.changelog }}
           fail_on_unmatched_files: true
