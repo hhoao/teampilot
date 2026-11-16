@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/credential_lease.dart';
 import 'package:teampilot/services/provider/credential_lease_endpoint.dart';
 import 'package:teampilot/services/provider/oauth_credential_authority.dart';
+import 'package:teampilot/services/provider/session_provider_registry.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -39,9 +40,11 @@ void main() {
         }
       })),
     );
+    final registry = SessionProviderRegistry();
+    registry.register('s1', 'xai');
     return CredentialLeaseEndpoint(
       authority: authority,
-      sessionProviderId: (sessionId) => 'xai',
+      sessionProviderId: registry.providerFor,
       now: () => now,
     );
   }
@@ -175,6 +178,60 @@ void main() {
     expect(response.statusCode, 503);
     expect(response.body['error'], 'temporarily_unavailable');
     expect(jsonEncode(response.body), isNot(contains('rt-old')));
+  });
+
+  test('rejects a session that was never materialized', () async {
+    final endpoint = await build();
+    expect(
+      (await endpoint.serve(
+        sessionId: 'unknown-session',
+        busToken: 'bus-token',
+        providerId: 'xai',
+        forceRefresh: false,
+      )).statusCode,
+      401,
+    );
+  });
+
+  test('resolves provider per session instead of a hardcoded id', () async {
+    final fs = InMemoryFilesystem();
+    final authority = OAuthCredentialAuthority(
+      fs: fs,
+      basePath: '/tp',
+      cliNamespace: 'grok',
+      refresher: _OkRefresher(),
+      now: () => now,
+    );
+    // A second provider row is a legitimate multi-account seat.
+    await authority.importFromLogin(
+      'work',
+      utf8.encode(jsonEncode({
+        'scope': {
+          'key': 'access-old',
+          'refresh_token': 'rt-old',
+          'expires_at': '2026-11-14T11:30:00Z',
+        }
+      })),
+    );
+    final registry = SessionProviderRegistry();
+    registry.register('s2', 'work');
+    final endpoint = CredentialLeaseEndpoint(
+      authority: authority,
+      sessionProviderId: registry.providerFor,
+      now: () => now,
+    );
+
+    Future<int> status(String sessionId, String providerId) async =>
+        (await endpoint.serve(
+          sessionId: sessionId,
+          busToken: 'bus-token',
+          providerId: providerId,
+          forceRefresh: false,
+        )).statusCode;
+
+    expect(await status('s2', 'work'), 200);
+    expect(await status('s2', 'xai'), 401);
+    expect(await status('unknown', 'work'), 401);
   });
 }
 

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/credential_lease.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/chat/launch/config_profile_service.dart';
@@ -37,6 +38,7 @@ void main() {
     MemberAgentStatusEndpoint? agentStatus,
     bool includeDefaultBusIdle = true,
     ConfigProfileService? catalog,
+    RemoteOs? workPlaneOs,
   }) => sessionHomeContextFromLaunch(
     ConfigProfileLaunchContext(
       workspaceId: 'workspace-1',
@@ -69,11 +71,15 @@ void main() {
       catalog: catalog ?? service,
       busIdle: includeDefaultBusIdle ? (busIdle ?? localBusIdle) : null,
       agentStatus: agentStatus,
+      workPlaneOs: workPlaneOs,
     ),
     CliTool.grok,
   );
 
-  Future<GrokCredentialAdapter> build({bool? isWindows}) async {
+  Future<GrokCredentialAdapter> build({
+    bool? isWindows,
+    void Function(String sessionId, String providerId)? onSessionMaterialized,
+  }) async {
     final fs = InMemoryFilesystem();
     final authority = OAuthCredentialAuthority(
       fs: fs,
@@ -97,6 +103,7 @@ void main() {
     return GrokCredentialAdapter(
       authority: authority,
       sessionProviderId: (_) => 'xai',
+      onSessionMaterialized: onSessionMaterialized,
       now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
       isWindows: isWindows,
     );
@@ -512,8 +519,9 @@ void main() {
         }),
       ),
     );
-    // The production sessionProviderId stub resolves 'xai' for every session;
-    // a seat launched with the real 'acme' id must still materialize.
+    // A seat launched with a real custom id must still materialize: the
+    // authoritative provider check now lives on the lease endpoint, backed by
+    // the session->provider registry, not a hardcoded id.
     final adapter = GrokCredentialAdapter(
       authority: authority,
       sessionProviderId: (_) => 'xai',
@@ -532,5 +540,78 @@ void main() {
     final configDir = contribution.environment[GrokConstants.homeEnvKey]!;
     final leaseConfig = await readLeaseConfig(fs, configDir);
     expect(leaseConfig['providerId'], 'acme');
+  });
+
+  test('registers the seat provider once materialization succeeds', () async {
+    final registrations = <String>[];
+    final adapter = await build(
+      onSessionMaterialized: (sessionId, providerId) =>
+          registrations.add('$sessionId:$providerId'),
+    );
+    final fs = InMemoryFilesystem();
+    final service = serviceOn(fs);
+
+    await adapter.materialize(context(service), providerId: 'xai');
+
+    expect(registrations, ['session-1:xai']);
+  });
+
+  test('does not register a seat that failed the pre-launch gate', () async {
+    final registrations = <String>[];
+    final adapter = await build(
+      onSessionMaterialized: (sessionId, _) => registrations.add(sessionId),
+    );
+    final fs = InMemoryFilesystem();
+    final service = serviceOn(fs);
+
+    // No agent-status / idle binding -> no lease endpoint -> fail closed
+    // before any files are staged, so the endpoint must not learn this seat.
+    expect(
+      () => adapter.materialize(
+        context(service, includeDefaultBusIdle: false),
+        providerId: 'xai',
+      ),
+      throwsA(isA<CredentialUnavailableException>()),
+    );
+    expect(registrations, isEmpty);
+  });
+
+  test('a WINDOWS work plane fails closed even from a POSIX host', () async {
+    final adapter = await build(isWindows: false);
+    final fs = InMemoryFilesystem();
+    final service = serviceOn(fs);
+    final remoteCatalog = serviceOn(fs, basePath: '/remote-control');
+
+    expect(
+      () => adapter.materialize(
+        context(
+          service,
+          catalog: remoteCatalog,
+          workPlaneOs: RemoteOs.windows,
+        ),
+        providerId: 'xai',
+      ),
+      throwsA(isA<CredentialUnavailableException>()),
+    );
+  });
+
+  test('a WINDOWS host with a POSIX work plane is not blocked', () async {
+    final adapter = await build(isWindows: true);
+    final fs = InMemoryFilesystem();
+    final service = serviceOn(fs);
+    final remoteCatalog = serviceOn(fs, basePath: '/remote-control');
+
+    final contribution = await adapter.materialize(
+      context(
+        service,
+        catalog: remoteCatalog,
+        workPlaneOs: RemoteOs.posix,
+      ),
+      providerId: 'xai',
+    );
+    expect(
+      contribution.environment,
+      contains(GrokConstants.authProviderCommandEnvKey),
+    );
   });
 }

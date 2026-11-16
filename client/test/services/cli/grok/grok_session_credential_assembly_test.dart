@@ -10,6 +10,7 @@ import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/provider/credential_lease_endpoint.dart';
 import 'package:teampilot/services/provider/oauth_credential_authority.dart';
+import 'package:teampilot/services/provider/session_provider_registry.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 
@@ -56,9 +57,13 @@ void main() {
           }),
         ),
       );
+      // Mirrors wireCliBootstrap: adapter writes the session->provider record
+      // at materialize time, endpoint reads it on every lease request.
+      final sessionProviderRegistry = SessionProviderRegistry();
       final adapter = GrokCredentialAdapter(
         authority: authority,
-        sessionProviderId: (_) => 'xai',
+        sessionProviderId: sessionProviderRegistry.providerFor,
+        onSessionMaterialized: sessionProviderRegistry.register,
         now: () => now,
       );
       final entry = GrokBootstrapEntry(
@@ -67,7 +72,7 @@ void main() {
         adapter: adapter,
         leaseEndpoint: CredentialLeaseEndpoint(
           authority: authority,
-          sessionProviderId: (_) => 'xai',
+          sessionProviderId: sessionProviderRegistry.providerFor,
         ),
       );
 
@@ -92,6 +97,18 @@ void main() {
       expect(capability, same(adapter));
 
       // onAuthRequired -> recover(forceRefresh: true) -> lease -> refresh.
+      // The endpoint is no longer backed by a hardcoded 'xai' stub: a session
+      // that never went through materialize is unknown and must be refused.
+      expect(
+        (await entry.leaseEndpoint.serve(
+          sessionId: 'never-launched',
+          busToken: 'bus-token',
+          providerId: 'xai',
+          forceRefresh: false,
+        )).statusCode,
+        401,
+      );
+
       expect(refresher.calls, 0);
       final recovered = await capability!.onAuthRequired(
         providerId: 'xai',

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io' show File, Platform, Process;
 
 import '../../../../models/credential_lease.dart';
+import '../../../../models/runtime_target.dart';
 import '../../../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../../../services/cli/registry/capabilities/session_credential_capability.dart';
 import '../../../../services/io/filesystem.dart';
@@ -19,6 +20,7 @@ final class GrokCredentialAdapter implements SessionCredentialCapability {
   GrokCredentialAdapter({
     required this.authority,
     required this.sessionProviderId,
+    this.onSessionMaterialized,
     DateTime Function()? now,
     bool? isWindows,
   }) : _now = now ?? (() => DateTime.now().toUtc()),
@@ -26,9 +28,15 @@ final class GrokCredentialAdapter implements SessionCredentialCapability {
 
   final OAuthCredentialAuthority authority;
 
-  /// Maps a session id to the provider id it was launched with; null means
-  /// "unknown session" and skips the provider-identity check.
+  /// Resolves the provider a session may request credentials for. The lease
+  /// endpoint owns the authoritative check; this is diagnostics only.
   final String? Function(String sessionId) sessionProviderId;
+
+  /// Records the session -> provider mapping after a successful materialize.
+  /// The lease endpoint reads the same registry, so a seat that never ran
+  /// through materialize is rejected as an unknown session.
+  final void Function(String sessionId, String providerId)?
+      onSessionMaterialized;
   final DateTime Function() _now;
   final bool _isWindows;
 
@@ -59,19 +67,21 @@ final class GrokCredentialAdapter implements SessionCredentialCapability {
     SessionHomeContext ctx, {
     required String providerId,
   }) async {
-    // The shim is POSIX sh only. Fail fast only for a LOCAL Windows seat; a
-    // Windows host driving a POSIX work plane over SSH must not be blocked —
-    // the shim runs on the remote work plane, not on the host OS.
-    if (!ctx.crossMachine && _isWindows) {
+    // The shim is POSIX sh only. Decide from the WORK PLANE's OS, not the
+    // host's: a Windows host driving a POSIX SSH work plane must not be
+    // blocked, while a POSIX host driving a Windows remote must fail before
+    // spawning an agent that could never authenticate.
+    final workPlaneIsWindows = ctx.workPlaneOs == RemoteOs.windows ||
+        (!ctx.crossMachine && _isWindows);
+    if (workPlaneIsWindows) {
       AppLogger.instance.w(
-        'grok external auth provider unsupported on local windows',
+        'grok external auth provider unsupported on windows work plane',
       );
       throw const CredentialUnavailableException(CredentialHealth.missing);
     }
-    // A custom (non-'xai') providerId is legitimate. The production
-    // sessionProviderId resolver is currently fixed to 'xai', so an equality
-    // rejection here would refuse every custom-provider seat. Keep it as a
-    // diagnostic only.
+    // The lease endpoint performs the authoritative provider-identity
+    // check; here a mismatch is diagnostic only (the registry is populated
+    // below, so a custom providerId is legitimate).
     final allowed = sessionProviderId(ctx.sessionId);
     if (allowed != null && allowed != providerId) {
       AppLogger.instance.d(
@@ -140,6 +150,12 @@ final class GrokCredentialAdapter implements SessionCredentialCapability {
     };
     await fs.atomicWrite(leaseConfigPath, jsonEncode(body));
     _restrict(fs, leaseConfigPath);
+
+    // Only a fully staged seat becomes eligible to request a lease. Register
+    // under the same sessionId the shim sends (see `sessionId` above), which
+    // is what the gateway resolves and the endpoint looks up. Failed
+    // materialization never registers, so the endpoint 401s it.
+    onSessionMaterialized?.call(sessionId, providerId);
 
     return SessionHomeContribution(
       environment: {

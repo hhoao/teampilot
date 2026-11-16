@@ -28,6 +28,7 @@ import '../../services/host/host_process_starter_for_context.dart';
 import '../../services/provider/api_model_catalog_service.dart';
 import '../../services/provider/credential_lease_endpoint.dart';
 import '../../services/provider/oauth_credential_authority.dart';
+import '../../services/provider/session_provider_registry.dart';
 import '../../services/provider/provider_credential_host_runner.dart';
 import '../../services/remote_download/remote_downloader.dart';
 import '../../services/storage/home_storage.dart';
@@ -104,13 +105,20 @@ void wireCliBootstrap({
     cliNamespace: 'grok',
     refresher: XaiCredentialRefresher(),
   );
+  // Shared control-plane record of "which provider each live seat uses".
+  // The adapter writes an entry at materialize time and the endpoint reads it
+  // on every lease request, so provider identity is checked against the real
+  // session rather than a hardcoded id. No gateway dependency here: the gateway
+  // is created later in app_shell, after wireCliBootstrap returns.
+  final sessionProviderRegistry = SessionProviderRegistry();
   final grokLeaseEndpoint = CredentialLeaseEndpoint(
     authority: grokAuthority,
-    sessionProviderId: (sessionId) => 'xai',
+    sessionProviderId: sessionProviderRegistry.providerFor,
   );
   final grokAdapter = GrokCredentialAdapter(
     authority: grokAuthority,
-    sessionProviderId: (sessionId) => 'xai',
+    sessionProviderId: sessionProviderRegistry.providerFor,
+    onSessionMaterialized: sessionProviderRegistry.register,
   );
   // One-time migration of the pre-Authority provider store.
   unawaited(grokAuthority.importLegacyAuthJson('xai'));

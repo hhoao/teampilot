@@ -2,6 +2,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../../models/cli_preset.dart';
 import '../../../../models/discoverable_member.dart';
+import '../../../../models/runtime_target.dart';
 import '../../../../models/team_config.dart';
 import '../../../extension/extension_provisioner.dart';
 import '../../../io/filesystem.dart';
@@ -162,6 +163,7 @@ class ConfigProfileLaunchContext {
     this.resourceProviders = ResourceProviderSet.empty,
     this.promptAlreadyMaterialized = false,
     this.hooksAlreadyMaterialized = false,
+    this.workPlaneOs,
   });
 
   final String workspaceId;
@@ -200,6 +202,10 @@ class ConfigProfileLaunchContext {
   /// True when the staged resource coordinator already assembled and wrote
   /// this member's hooks. Legacy session-home callers leave this false.
   final bool hooksAlreadyMaterialized;
+
+  /// OS of the work plane the agent binary actually runs on (probed for SSH
+  /// targets). Null when unknown/unprobed; local seats fall back to the host OS.
+  final RemoteOs? workPlaneOs;
 
   bool get crossMachine => configProfileCrossMachine(catalog, paths);
 

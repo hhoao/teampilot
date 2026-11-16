@@ -6,6 +6,7 @@ import '../../../../models/credential_action_result.dart';
 import '../../../../models/credential_probe.dart';
 import '../../../../models/discoverable_member.dart';
 import '../../../../models/hook_entry.dart';
+import '../../../../models/runtime_target.dart';
 import '../../../../models/team_config.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../io/filesystem.dart';
@@ -455,6 +456,7 @@ class SessionHomeContext {
     this.resolvedProviderId,
     this.credentialBasePath,
     this.isSimple = false,
+    this.workPlaneOs,
   });
 
   final String workspaceId;
@@ -510,6 +512,10 @@ class SessionHomeContext {
   /// True when launching Simple (unteamed). Team launches always pass a
   /// non-empty [teamId] even when the [TeamProfile] object is omitted.
   final bool isSimple;
+
+  /// OS of the work plane the agent binary runs on (probed for SSH targets).
+  /// Null when unknown; local seats fall back to the host OS.
+  final RemoteOs? workPlaneOs;
 }
 
 /// Environment + warnings produced by [ProviderCapability.materializeSessionHome].
@@ -559,6 +565,7 @@ SessionHomeContext sessionHomeContextFromLaunch(
     resolvedProviderId: resolvedProviderId,
     credentialBasePath: credentialBasePath,
     isSimple: ctx.isSimple,
+    workPlaneOs: ctx.workPlaneOs,
   );
 }
 
