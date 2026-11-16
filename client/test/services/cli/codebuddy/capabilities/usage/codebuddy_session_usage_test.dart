@@ -8,6 +8,7 @@ import 'package:teampilot/services/cli/codebuddy/capabilities/usage/session_usag
 import 'package:teampilot/services/cli/registry/capabilities/session_usage_capability.dart';
 
 import '../../../../../support/in_memory_filesystem.dart';
+import '../../../../../support/posix_path.dart';
 
 const _root = '/tp/cli-defaults/codebuddy';
 
@@ -54,7 +55,7 @@ void main() {
   test('discovers project JSONL under CODEBUDDY_CONFIG_DIR', () async {
     final ctx = _ctx();
     await ctx.fs.writeString(
-      p.join(_root, 'projects', 'proj', 's1.jsonl'),
+      posixPath.join(_root, 'projects', 'proj', 's1.jsonl'),
       '${_assistantLine()}\n',
     );
 
@@ -67,7 +68,7 @@ void main() {
 
   test('parses rawUsage with cache and dedupes one request id', () async {
     final ctx = _ctx();
-    final path = p.join(_root, 'projects', 'proj', 's1.jsonl');
+    final path = posixPath.join(_root, 'projects', 'proj', 's1.jsonl');
     await ctx.fs.writeString(
       path,
       '${[
@@ -107,7 +108,7 @@ void main() {
 
   test('keeps the largest snapshot for one message id', () async {
     final ctx = _ctx();
-    final path = p.join(_root, 'projects', 'proj', 's3.jsonl');
+    final path = posixPath.join(_root, 'projects', 'proj', 's3.jsonl');
     await ctx.fs.writeString(
       path,
       '${[_assistantLine(messageId: 'partial', prompt: 10, completion: 1), _assistantLine(messageId: 'partial', prompt: 10, completion: 5)].join('\n')}\n',
@@ -127,7 +128,7 @@ void main() {
 
   test('falls back to message.usage and skips missing request ids', () async {
     final ctx = _ctx();
-    final path = p.join(_root, 'projects', 'proj', 's2.jsonl');
+    final path = posixPath.join(_root, 'projects', 'proj', 's2.jsonl');
     await ctx.fs.writeString(
       path,
       '${[

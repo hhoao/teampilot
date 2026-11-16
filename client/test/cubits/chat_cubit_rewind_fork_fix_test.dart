@@ -192,7 +192,7 @@ void main() {
         memberId: env.session.sessionId,
         commit: seeded.first.commit,
       );
-      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await _until(() => acp.closeCalls == 1);
 
       expect(acp.closeCalls, 1);
       expect(await seeded.liveFile.readAsString(), 'two');
@@ -259,7 +259,7 @@ void main() {
       );
       var completed = false;
       unawaited(rewind.whenComplete(() => completed = true));
-      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await _until(() => shell.disconnectCalls == 1);
 
       expect(shell.disconnectCalls, 1);
       expect(shell.isRunning, isTrue);
@@ -742,6 +742,16 @@ final class _ThrowingForkRepo extends SessionRepository {
       nativeId: nativeId,
       rosterMemberId: rosterMemberId,
     );
+  }
+}
+
+/// CI load can push snapshot/branch past a fixed 80ms. Close must still
+/// start before the live file is restored.
+Future<void> _until(bool Function() done) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 5));
+  while (!done()) {
+    if (DateTime.now().isAfter(deadline)) return;
+    await Future<void>.delayed(const Duration(milliseconds: 20));
   }
 }
 

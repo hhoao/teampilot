@@ -12,6 +12,7 @@ import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_title_bar.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell_tabs.dart';
+import 'package:teampilot/services/app/platform_utils.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 import 'package:teampilot/widgets/notification/notification_bell_button.dart';
@@ -572,14 +573,21 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.crop_square_outlined), findsOneWidget);
+    // macOS draws traffic lights, not the Windows glyphs. Both must flip
+    // before the OS reports the new window state.
+    final maximize = useMacWindowChromeStyle
+        ? find.byKey(const Key('mac_traffic_light_maximize_glyph'))
+        : find.byIcon(Icons.crop_square_outlined);
+    final restore = useMacWindowChromeStyle
+        ? find.byKey(const Key('mac_traffic_light_restore_glyph'))
+        : find.byIcon(Icons.filter_none);
 
-    // No platform reply arrives in a widget test: the control must still show
-    // the restored state immediately instead of waiting for the OS event.
-    await tester.tap(find.byIcon(Icons.crop_square_outlined));
+    expect(maximize, findsOneWidget);
+
+    await tester.tap(maximize);
     await tester.pump();
 
-    expect(find.byIcon(Icons.filter_none), findsOneWidget);
-    expect(find.byIcon(Icons.crop_square_outlined), findsNothing);
+    expect(restore, findsOneWidget);
+    expect(maximize, findsNothing);
   });
 }

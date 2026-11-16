@@ -8,6 +8,7 @@ import 'package:teampilot/services/cli/claude/capabilities/usage/session_usage.d
 import 'package:teampilot/services/cli/registry/capabilities/session_usage_capability.dart';
 
 import '../../../../../support/in_memory_filesystem.dart';
+import '../../../../../support/posix_path.dart';
 
 const _root = '/tp/cli-defaults/claude';
 
@@ -57,11 +58,11 @@ void main() {
   test('discovers the seat transcript and its subagent children', () async {
     final ctx = _ctx();
     await ctx.fs.writeString(
-      p.join(_root, 'projects', '-home-me-proj', 'native-1.jsonl'),
+      posixPath.join(_root, 'projects', '-home-me-proj', 'native-1.jsonl'),
       '',
     );
     await ctx.fs.writeString(
-      p.join(
+      posixPath.join(
         _root,
         'projects',
         '-home-me-proj',
@@ -72,7 +73,7 @@ void main() {
       '',
     );
     await ctx.fs.writeString(
-      p.join(_root, 'projects', '-home-me-proj', 'other.jsonl'),
+      posixPath.join(_root, 'projects', '-home-me-proj', 'other.jsonl'),
       '',
     );
 
@@ -85,7 +86,12 @@ void main() {
 
   test('parses usage, finality, cache, and 1h cache', () async {
     final ctx = _ctx();
-    final path = p.join(_root, 'projects', '-home-me-proj', 'native-1.jsonl');
+    final path = posixPath.join(
+      _root,
+      'projects',
+      '-home-me-proj',
+      'native-1.jsonl',
+    );
     await ctx.fs.writeString(
       path,
       '${_line(id: 'm1', input: 100, output: 20, cacheRead: 30, cacheCreate: 10, cache1h: 5)}\n',
@@ -119,7 +125,12 @@ void main() {
 
   test('non-final message stays importable and is replaced later', () async {
     final ctx = _ctx();
-    final path = p.join(_root, 'projects', '-home-me-proj', 'native-1.jsonl');
+    final path = posixPath.join(
+      _root,
+      'projects',
+      '-home-me-proj',
+      'native-1.jsonl',
+    );
     await ctx.fs.writeString(
       path,
       '${_line(id: 'm1', output: 1, stopReason: null)}\n',
@@ -153,7 +164,12 @@ void main() {
 
   test('skips zero-usage and malformed lines', () async {
     final ctx = _ctx();
-    final path = p.join(_root, 'projects', '-home-me-proj', 'native-1.jsonl');
+    final path = posixPath.join(
+      _root,
+      'projects',
+      '-home-me-proj',
+      'native-1.jsonl',
+    );
     await ctx.fs.writeString(
       path,
       'not-json\n${_line(id: 'm1', input: 0, output: 0)}\n${_line(id: 'm2')}\n',

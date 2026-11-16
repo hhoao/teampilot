@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart' show listEquals, setEquals;
 import 'package:uuid/uuid.dart';
@@ -306,21 +307,27 @@ class SessionRepository {
     List<Workspace> snapshot,
     HomeRuntimeIdentity plane,
   ) async {
-    final validateSw = Stopwatch()..start();
-    final diskIds = await fs.listWorkspaceIds();
-    final validateMs = validateSw.elapsedMilliseconds;
-    if (_sameWorkspaceIds(diskIds, snapshot)) {
-      appLogger.i('[boot] loadWorkspacesIndex validate ok +${validateMs}ms');
-      return;
+    // The snapshot is returned before this runs. A home that disappears
+    // (test temp dir, or a swap) must not surface as an unhandled async error.
+    try {
+      final validateSw = Stopwatch()..start();
+      final diskIds = await fs.listWorkspaceIds();
+      final validateMs = validateSw.elapsedMilliseconds;
+      if (_sameWorkspaceIds(diskIds, snapshot)) {
+        appLogger.i('[boot] loadWorkspacesIndex validate ok +${validateMs}ms');
+        return;
+      }
+      appLogger.i(
+        '[boot] loadWorkspacesIndex snapshot stale '
+        'disk=${diskIds.length} index=${snapshot.length} '
+        'validate=${validateMs}ms',
+      );
+      final workspaces = await _loadWorkspaces(indexOnly: true, fs: fs);
+      await store.writeAll(workspaces);
+      _rememberWorkspacesIndex(workspaces, forPlane: plane);
+    } on FileSystemException catch (error) {
+      appLogger.w('[boot] loadWorkspacesIndex validate skipped: $error');
     }
-    appLogger.i(
-      '[boot] loadWorkspacesIndex snapshot stale '
-      'disk=${diskIds.length} index=${snapshot.length} '
-      'validate=${validateMs}ms',
-    );
-    final workspaces = await _loadWorkspaces(indexOnly: true, fs: fs);
-    await store.writeAll(workspaces);
-    _rememberWorkspacesIndex(workspaces, forPlane: plane);
   }
 
   /// Scans workspace manifests on [fs].

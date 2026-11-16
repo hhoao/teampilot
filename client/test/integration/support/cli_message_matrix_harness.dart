@@ -477,6 +477,9 @@ final class CliMessageMatrixHarness {
         sessionTeam: builtTeam.id,
         rosterMembers: builtTeam.members,
         memberClis: {for (final m in builtTeam.members) m.id: profile.tool},
+        // Claude matrix cells boot real PTYs. Leave the seat on the shell
+        // path; ACP is a separate launch and has no PTY to compose into.
+        seedClaudeMemberAcp: false,
       )).session;
       session = created;
       await chat.requestOpenSession(

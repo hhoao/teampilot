@@ -8,6 +8,7 @@ import 'package:teampilot/services/cli/codex/capabilities/usage/session_usage.da
 import 'package:teampilot/services/cli/registry/capabilities/session_usage_capability.dart';
 
 import '../../../../../support/in_memory_filesystem.dart';
+import '../../../../../support/posix_path.dart';
 
 const _home = '/tp/runtime/codex';
 const _thread = '11111111-1111-1111-1111-111111111111';
@@ -53,7 +54,7 @@ Map<String, Object?> _usage({
 void main() {
   test('discovers rollouts under CODEX_HOME', () async {
     final ctx = _ctx();
-    final path = p.join(
+    final path = posixPath.join(
       _home,
       'sessions',
       '2026',
@@ -72,7 +73,7 @@ void main() {
 
   test('uses last_token_usage and keeps the cumulative baseline', () async {
     final ctx = _ctx();
-    final path = p.join(
+    final path = posixPath.join(
       _home,
       'sessions',
       '2026',
@@ -121,7 +122,7 @@ void main() {
 
   test('derives a delta when only total_token_usage is present', () async {
     final ctx = _ctx();
-    final path = p.join(
+    final path = posixPath.join(
       _home,
       'sessions',
       '2026',
@@ -160,7 +161,7 @@ void main() {
 
   test('clamps cache counters to input', () async {
     final ctx = _ctx();
-    final path = p.join(
+    final path = posixPath.join(
       _home,
       'sessions',
       '2026',
@@ -188,7 +189,7 @@ void main() {
 
   test('reads the model from turn_context for later token events', () async {
     final ctx = _ctx();
-    final path = p.join(
+    final path = posixPath.join(
       _home,
       'sessions',
       '2026',

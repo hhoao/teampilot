@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_usage_auth_resolver.dart';
 
 import '../../../../support/in_memory_filesystem.dart';
@@ -31,12 +32,7 @@ void main() {
       }),
     );
 
-    final auth = await CursorUsageAuthResolver(
-      fs: fs,
-      basePath: '/tp',
-      home: '/home/test',
-      now: () => now,
-    ).resolve();
+    final auth = await _resolver(fs, now).resolve();
 
     expect(auth, isNotNull);
     expect(auth!.userId, 'provider-user');
@@ -53,12 +49,7 @@ void main() {
       jsonEncode({'accessToken': _jwt(sub: 'user|old', exp: nowSeconds - 1)}),
     );
 
-    final auth = await CursorUsageAuthResolver(
-      fs: fs,
-      basePath: '/tp',
-      home: '/home/test',
-      now: () => now,
-    ).resolve();
+    final auth = await _resolver(fs, now).resolve();
 
     expect(auth, isNull);
   });
@@ -72,12 +63,7 @@ void main() {
       }),
     );
 
-    final resolver = CursorUsageAuthResolver(
-      fs: fs,
-      basePath: '/tp',
-      home: '/home/test',
-      now: () => now,
-    );
+    final resolver = _resolver(fs, now);
 
     expect(await resolver.resolveAll(), isEmpty);
     final all = await resolver.resolveAll(includeExpired: true);
@@ -102,14 +88,24 @@ void main() {
         jsonEncode({'accessToken': _jwt(sub: 'user|a', exp: nowSeconds + 60)}),
       );
 
-      final all = await CursorUsageAuthResolver(
-        fs: fs,
-        basePath: '/tp',
-        home: '/home/test',
-        now: () => now,
-      ).resolveAll(includeExpired: true);
+      final all = await _resolver(fs, now).resolveAll(includeExpired: true);
 
       expect(all.single.expiresAtMs, (nowSeconds + 60) * 1000);
     },
+  );
+}
+
+/// Fixtures are Linux `~/.config/cursor` paths. Pin that layout so macOS
+/// (`.cursor`) and Windows (`AppData`) runners read the same files.
+CursorUsageAuthResolver _resolver(InMemoryFilesystem fs, DateTime now) {
+  return CursorUsageAuthResolver(
+    fs: fs,
+    basePath: '/tp',
+    home: '/home/test',
+    layout: CursorHomeLayout(
+      pathContext: fs.pathContext,
+      platform: CursorHomePlatform.linux,
+    ),
+    now: () => now,
   );
 }

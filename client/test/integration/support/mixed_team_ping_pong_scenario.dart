@@ -38,6 +38,9 @@ abstract final class MixedTeamPingPongScenario {
         memberClis: {
           for (final m in kItMixedClaudeTeam.members) m.id: CliTool.claude,
         },
+        // These scenarios drive real Claude PTYs. The repository default
+        // stamps Claude seats as ACP, which never opens a PTY.
+        seedClaudeMemberAcp: false,
       )).session;
 
       await cubit.requestOpenSession(
@@ -123,6 +126,9 @@ abstract final class MixedTeamPingPongScenario {
         memberClis: {
           for (final m in kItMixedClaudeTeam.members) m.id: CliTool.claude,
         },
+        // These scenarios drive real Claude PTYs. The repository default
+        // stamps Claude seats as ACP, which never opens a PTY.
+        seedClaudeMemberAcp: false,
       )).session;
       session = (await repo.loadSessions()).firstWhere(
         (s) => s.sessionId == session!.sessionId,

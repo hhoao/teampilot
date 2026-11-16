@@ -8,6 +8,7 @@ import 'package:teampilot/services/cli/gemini/capabilities/usage/session_usage.d
 import 'package:teampilot/services/cli/registry/capabilities/session_usage_capability.dart';
 
 import '../../../../../support/in_memory_filesystem.dart';
+import '../../../../../support/posix_path.dart';
 
 const _root = '/tp/cli-defaults/gemini';
 
@@ -50,7 +51,7 @@ void main() {
   test('discovers session JSONL under GEMINI_CONFIG_DIR', () async {
     final ctx = _ctx();
     await ctx.fs.writeString(
-      p.join(_root, 'tmp', 'proj', 'chats', 'session-1.jsonl'),
+      posixPath.join(_root, 'tmp', 'proj', 'chats', 'session-1.jsonl'),
       _jsonlSession(),
     );
 
@@ -63,7 +64,13 @@ void main() {
 
   test('parses tokens, cache, and thoughts', () async {
     final ctx = _ctx();
-    final path = p.join(_root, 'tmp', 'proj', 'chats', 'session-1.jsonl');
+    final path = posixPath.join(
+      _root,
+      'tmp',
+      'proj',
+      'chats',
+      'session-1.jsonl',
+    );
     await ctx.fs.writeString(path, _jsonlSession());
     final capability = const GeminiSessionUsageCapability();
     final source = (await capability.discoverUsageSources(ctx)).single;
@@ -95,7 +102,13 @@ void main() {
 
   test('re-reads a JSONL session after a rewrite', () async {
     final ctx = _ctx();
-    final path = p.join(_root, 'tmp', 'proj', 'chats', 'session-3.jsonl');
+    final path = posixPath.join(
+      _root,
+      'tmp',
+      'proj',
+      'chats',
+      'session-3.jsonl',
+    );
     final header = jsonEncode({
       'sessionId': 'gemini-3',
       'startTime': '2026-10-26T10:00:00.000Z',
@@ -149,7 +162,13 @@ void main() {
 
   test('reads older single-JSON sessions', () async {
     final ctx = _ctx();
-    final path = p.join(_root, 'tmp', 'proj', 'chats', 'session-2.json');
+    final path = posixPath.join(
+      _root,
+      'tmp',
+      'proj',
+      'chats',
+      'session-2.json',
+    );
     await ctx.fs.writeString(
       path,
       jsonEncode({

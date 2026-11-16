@@ -9,6 +9,7 @@ import 'package:teampilot/services/cli/qoder/qoder_flavor.dart';
 import 'package:teampilot/services/cli/registry/capabilities/session_usage_capability.dart';
 
 import '../../../../../support/in_memory_filesystem.dart';
+import '../../../../../support/posix_path.dart';
 
 const _root = '/tp/cli-defaults/qoder';
 
@@ -59,7 +60,7 @@ void main() {
   test('discovers project JSONL under QODER_CONFIG_DIR', () async {
     final ctx = _ctx();
     await ctx.fs.writeString(
-      p.join(_root, 'projects', 'proj', 's1.jsonl'),
+      posixPath.join(_root, 'projects', 'proj', 's1.jsonl'),
       '${_assistantLine()}\n',
     );
 
@@ -69,7 +70,10 @@ void main() {
     expect(sources, hasLength(1));
     expect(sources.single.id, startsWith('qoder-jsonl:'));
     expect(sources.single.kind, UsageSourceKind.jsonl);
-    expect(sources.single.path, p.join(_root, 'projects', 'proj', 's1.jsonl'));
+    expect(
+      sources.single.path,
+      posixPath.join(_root, 'projects', 'proj', 's1.jsonl'),
+    );
   });
 
   test('CN reads the config dir from QODERCN_CONFIG_DIR', () async {
@@ -88,7 +92,7 @@ void main() {
       appDataRoot: '/tp',
     );
     await ctx.fs.writeString(
-      p.join(root, 'projects', 'proj', 's1.jsonl'),
+      posixPath.join(root, 'projects', 'proj', 's1.jsonl'),
       '${_assistantLine()}\n',
     );
 
@@ -103,7 +107,7 @@ void main() {
   test('ignores non-JSONL files and a missing projects dir', () async {
     final ctx = _ctx();
     await ctx.fs.writeString(
-      p.join(_root, 'projects', 'proj', 'notes.txt'),
+      posixPath.join(_root, 'projects', 'proj', 'notes.txt'),
       'ignore me\n',
     );
 
@@ -133,7 +137,7 @@ void main() {
 
   test('parses message.usage and dedupes by message id', () async {
     final ctx = _ctx();
-    final path = p.join(_root, 'projects', 'proj', 's1.jsonl');
+    final path = posixPath.join(_root, 'projects', 'proj', 's1.jsonl');
     await ctx.fs.writeString(
       path,
       '${[
@@ -180,7 +184,7 @@ void main() {
 
   test('keeps the largest snapshot for one message id', () async {
     final ctx = _ctx();
-    final path = p.join(_root, 'projects', 'proj', 's3.jsonl');
+    final path = posixPath.join(_root, 'projects', 'proj', 's3.jsonl');
     await ctx.fs.writeString(
       path,
       '${[_assistantLine(messageId: 'partial', input: 10, output: 1), _assistantLine(messageId: 'partial', input: 10, output: 5)].join('\n')}\n',
@@ -200,7 +204,7 @@ void main() {
 
   test('skips zero-token records', () async {
     final ctx = _ctx();
-    final path = p.join(_root, 'projects', 'proj', 's4.jsonl');
+    final path = posixPath.join(_root, 'projects', 'proj', 's4.jsonl');
     await ctx.fs.writeString(
       path,
       '${[_assistantLine(messageId: 'empty', input: 0, output: 0), _assistantLine(messageId: 'real', input: 7, output: 3)].join('\n')}\n',
@@ -220,7 +224,7 @@ void main() {
 
   test('skips malformed lines and records without a message id', () async {
     final ctx = _ctx();
-    final path = p.join(_root, 'projects', 'proj', 's5.jsonl');
+    final path = posixPath.join(_root, 'projects', 'proj', 's5.jsonl');
     await ctx.fs.writeString(
       path,
       '${[
@@ -265,7 +269,7 @@ void main() {
       env: const {'QODERCN_CONFIG_DIR': _root},
     );
     const capability = QoderSessionUsageCapability(flavor: QoderFlavor.cn);
-    final path = p.join(_root, 'projects', 'proj', 'cn.jsonl');
+    final path = posixPath.join(_root, 'projects', 'proj', 'cn.jsonl');
     await ctx.fs.writeString(path, '${_assistantLine()}\n');
 
     final source = (await capability.discoverUsageSources(ctx)).single;

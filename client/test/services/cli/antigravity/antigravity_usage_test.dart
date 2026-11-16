@@ -10,6 +10,7 @@ import 'package:teampilot/services/cli/registry/capabilities/session_usage_capab
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 import '../../../support/in_memory_filesystem.dart';
+import '../../../support/posix_path.dart';
 
 const _toolDir = '/tp/runtime/s1/dev/antigravity';
 
@@ -48,7 +49,7 @@ String _record({
 void main() {
   test('discovers the usage JSONL beside the isolated HOME', () async {
     final ctx = _ctx();
-    await ctx.fs.writeString(p.join(_toolDir, 'acp-usage.jsonl'), '');
+    await ctx.fs.writeString(posixPath.join(_toolDir, 'acp-usage.jsonl'), '');
 
     final sources = await const AntigravitySessionUsageCapability()
         .discoverUsageSources(ctx);
@@ -56,22 +57,22 @@ void main() {
     expect(sources, hasLength(1));
     expect(
       sources.single.path,
-      p.join(_toolDir, AntigravitySessionUsageCapability.usageFileName),
+      posixPath.join(_toolDir, AntigravitySessionUsageCapability.usageFileName),
     );
     expect(sources.single.id, startsWith('antigravity-jsonl:'));
     expect(sources.single.kind, UsageSourceKind.jsonl);
   });
 
   test('falls back to transcript roots without an isolated HOME', () async {
-    final root = p.join('/tp', 'cli-defaults', 'antigravity');
+    final root = posixPath.join('/tp', 'cli-defaults', 'antigravity');
     final ctx = _ctx(env: const {}, transcriptRoots: [root]);
-    await ctx.fs.writeString(p.join(root, 'acp-usage.jsonl'), '');
+    await ctx.fs.writeString(posixPath.join(root, 'acp-usage.jsonl'), '');
 
     final sources = await const AntigravitySessionUsageCapability()
         .discoverUsageSources(ctx);
 
     expect(sources, hasLength(1));
-    expect(sources.single.path, p.join(root, 'acp-usage.jsonl'));
+    expect(sources.single.path, posixPath.join(root, 'acp-usage.jsonl'));
   });
 
   test('returns no source when the usage file is missing', () async {
@@ -88,7 +89,7 @@ void main() {
 
   test('maps used to input tokens without inventing output or cost', () async {
     final ctx = _ctx();
-    final path = p.join(_toolDir, 'acp-usage.jsonl');
+    final path = posixPath.join(_toolDir, 'acp-usage.jsonl');
     await ctx.fs.writeString(
       path,
       '${[
@@ -133,7 +134,7 @@ void main() {
 
   test('incremental scan does not replay consumed records', () async {
     final ctx = _ctx();
-    final path = p.join(_toolDir, 'acp-usage.jsonl');
+    final path = posixPath.join(_toolDir, 'acp-usage.jsonl');
     await ctx.fs.writeString(path, '${_record()}\n');
     final capability = const AntigravitySessionUsageCapability();
     final source = (await capability.discoverUsageSources(ctx)).single;
@@ -155,7 +156,7 @@ void main() {
 
   test('skips malformed lines', () async {
     final ctx = _ctx();
-    final path = p.join(_toolDir, 'acp-usage.jsonl');
+    final path = posixPath.join(_toolDir, 'acp-usage.jsonl');
     await ctx.fs.writeString(path, 'not-json\n${_record()}\n');
     final capability = const AntigravitySessionUsageCapability();
     final source = (await capability.discoverUsageSources(ctx)).single;

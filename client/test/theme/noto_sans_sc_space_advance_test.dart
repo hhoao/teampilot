@@ -24,6 +24,9 @@ void main() {
     final loader = FontLoader(family);
     loader.addFont(rootBundle.load('google_fonts/NotoSansSC-Regular.ttf'));
     await loader.load();
+    // FontLoader notifies system fonts on a later turn. Flutter 3.50 then
+    // schedules a frame; pump it before the test binding disposes the tree.
+    await tester.pump();
 
     final style = const TextStyle(fontFamily: family, fontSize: size);
     final without = TextPainter(
