@@ -371,10 +371,11 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      # AGP 9.3 lint calls List.removeLast. JDK 17 does not have that method.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - uses: subosito/flutter-action@v2
         with:
