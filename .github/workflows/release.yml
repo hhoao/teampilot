@@ -44,6 +44,8 @@ jobs:
 
       - name: Resolve tag and channel
         id: channel
+        # Workflow defaults run inside client/. This step reads the repo root.
+        working-directory: ${{ github.workspace }}
         env:
           RELEASE_EVENT: ${{ github.event_name }}
           RELEASE_REF: ${{ github.ref }}
