@@ -59,7 +59,13 @@ final class GrokCredentialAdapter implements SessionCredentialCapability {
   Future<bool> onAuthRequired({
     required String providerId,
     required String sessionId,
-  }) => authority.recover(providerId, sessionId);
+  }) {
+    // auth_required recovery arrives with the seat's model provider name,
+    // which for a custom row is not necessarily the credential row id. Prefer
+    // the id this seat registered at materialize time.
+    final resolved = sessionProviderId(sessionId) ?? providerId;
+    return authority.recover(resolved, sessionId);
+  }
 
   /// Launch-time materialization. Fails before the agent is spawned when the
   /// provider needs a login (pre-launch credential gate).

@@ -16,10 +16,12 @@ import '../../../support/in_memory_filesystem.dart';
 
 final class _CountingRefresher implements CredentialRefresher {
   int calls = 0;
+  String? lastRefreshToken;
 
   @override
   Future<CredentialRefreshOutcome> refresh(String refreshToken) async {
     calls++;
+    lastRefreshToken = refreshToken;
     return RefreshSucceeded(
       accessToken: 'fresh-$calls',
       refreshToken: 'rt-$calls',
@@ -120,6 +122,30 @@ void main() {
         1,
         reason: 'forceRefresh must reach the refresher via the real assembly',
       );
+
+      // A custom provider row: recovery arrives with the model provider name
+      // ('xai') but must refresh the credential id this seat registered
+      // ('work'), otherwise multi-account seats recover the wrong account.
+      await authority.importFromLogin(
+        'work',
+        utf8.encode(
+          jsonEncode({
+            'scope': {
+              'key': 'access-work',
+              'refresh_token': 'rt-work',
+              'expires_at': '2026-11-14T11:30:00Z',
+            },
+          }),
+        ),
+      );
+      sessionProviderRegistry.register('session-1', 'work');
+      final recoveredCustom = await capability.onAuthRequired(
+        providerId: 'xai',
+        sessionId: 'session-1',
+      );
+      expect(recoveredCustom, isTrue);
+      expect(refresher.calls, 2);
+      expect(refresher.lastRefreshToken, 'rt-work');
     },
   );
 }
