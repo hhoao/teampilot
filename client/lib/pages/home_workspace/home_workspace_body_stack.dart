@@ -149,12 +149,13 @@ class _WorkspaceTabSlot extends StatefulWidget {
 }
 
 /// Route-derived inputs that determine what the tab slot renders. Background
-/// slots force [view] / [configSection] to null so their inputs stay stable
-/// across sibling-tab navigation.
+/// slots force [view] / [configSection] / [session] to null so their inputs
+/// stay stable across sibling-tab navigation.
 typedef _RouteInputs = ({
   bool active,
   String? view,
   WorkspaceConfigSection? configSection,
+  String? session,
 });
 
 class _WorkspaceTabSlotState extends State<_WorkspaceTabSlot> {
@@ -166,8 +167,8 @@ class _WorkspaceTabSlotState extends State<_WorkspaceTabSlot> {
   /// dirty when a sibling tab activates.
   late final ValueNotifier<bool> _active;
 
-  /// Route-resync signal: activation plus `view` / `configSection` changes for
-  /// the foreground slot. Background slots keep stable inputs.
+  /// Route-resync signal: activation plus `view` / `configSection` / `session`
+  /// changes for the foreground slot. Background slots keep stable inputs.
   late final ValueNotifier<int> _routeRevision;
 
   _RouteInputs? _publishedInputs;
@@ -183,6 +184,7 @@ class _WorkspaceTabSlotState extends State<_WorkspaceTabSlot> {
       configSection: active
           ? HomeWorkspaceRoute.workspaceConfigSection(widget.location)
           : null,
+      session: active ? HomeWorkspaceRoute.session(widget.location) : null,
     );
   }
 

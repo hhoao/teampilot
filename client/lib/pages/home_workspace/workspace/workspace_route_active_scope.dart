@@ -32,11 +32,12 @@ class WorkspaceRouteActiveScope extends InheritedWidget {
   final ValueListenable<bool>? activeListenable;
 
   /// Bumped when this slot's activation or route inputs ([view],
-  /// [configSection]) change while it stays in the foreground.
+  /// [configSection], `session`) change while it stays in the foreground.
   ///
-  /// Query-only navigation inside the same tab (e.g. `view=manage`) must
-  /// resync the page even though no tab switch happens. Background tabs keep
-  /// stable inputs, so they are never notified.
+  /// Query-only navigation inside the same tab (e.g. `view=manage` or a
+  /// notification tap's `?session=`) must resync the page even though no tab
+  /// switch happens. Background tabs keep stable inputs, so they are never
+  /// notified.
   final ValueListenable<int>? routeRevisionListenable;
 
   /// Registers a dependency so callers in `build` / `didChangeDependencies`

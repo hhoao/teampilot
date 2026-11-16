@@ -138,6 +138,42 @@ void main() {
     );
   });
 
+  testWidgets('same-tab session deep link resyncs the workspace route', (
+    tester,
+  ) async {
+    final workspace = await pumpSingleWorkspace(tester);
+
+    appRouter.go('/home-v2/workspace/${workspace.workspaceId}');
+    await tester.pump();
+    await pumpPhaseTransitions(tester);
+    expect(
+      appRouter.routerDelegate.currentConfiguration.uri.queryParameters,
+      isNot(contains('session')),
+    );
+
+    // A missing session id is enough to prove the route resync ran: the page
+    // clears the query only after `_applySessionFromRoute` resolves it.
+    appRouter.go(
+      '/home-v2/workspace/${workspace.workspaceId}?session=missing-session',
+    );
+    await tester.pump();
+    await pumpPhaseTransitions(tester);
+    for (var i = 0; i < 10; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(
+      appRouter.routerDelegate.currentConfiguration.uri.queryParameters,
+      isNot(contains('session')),
+      reason:
+          'a same-tab ?session= change (notification tap) must bump the '
+          'route revision so the workspace page applies the deep link',
+    );
+  });
+
   testWidgets(
     'background workspace does not rebuild when another tab activates',
     (tester) async {
