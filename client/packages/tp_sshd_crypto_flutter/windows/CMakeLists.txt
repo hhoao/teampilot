@@ -44,8 +44,12 @@ target_compile_options(tp_sshd_crypto PRIVATE $<$<NOT:$<CONFIG:Debug>>:-O2>)
 # that way, precisely so the shipped DLL carries no libcrypto dependency). A
 # `flutter build windows` without vcpkg's OpenSSL fails here — that is the
 # documented assumption of this lane, not a wiring bug.
+# Prefer the static lib. FindOpenSSL only pulls Winsock and Crypt32 when this
+# is a CMake variable; an environment variable is not enough, and the static
+# libcrypto then fails to link those Windows imports.
+set(OPENSSL_USE_STATIC_LIBS TRUE)
 find_package(OpenSSL REQUIRED)
-target_link_libraries(tp_sshd_crypto PRIVATE OpenSSL::Crypto)
+target_link_libraries(tp_sshd_crypto PRIVATE OpenSSL::Crypto ws2_32 crypt32)
 
 set(tp_sshd_crypto_flutter_bundled_libraries
   $<TARGET_FILE:tp_sshd_crypto>
