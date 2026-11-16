@@ -33,4 +33,11 @@ void main() {
     ).singleWhere((b) => b.cacheRel == WorkspaceCliCache.cursorPluginsCacheRel);
     expect(binding.toolRel, 'home/.cursor/plugins/cache');
   });
+
+  test('codex binds the remote plugin catalog cache', () {
+    final binding = WorkspaceCliCache.bindingFor(CliTool.codex).singleWhere(
+      (b) => b.cacheRel == WorkspaceCliCache.codexRemoteCatalogCacheRel,
+    );
+    expect(binding.toolRel, 'cache/remote_plugin_catalog');
+  });
 }

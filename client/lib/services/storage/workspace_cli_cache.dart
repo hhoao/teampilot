@@ -25,6 +25,7 @@ final class WorkspaceCliCache {
   static const cursorStatsigRel = 'statsig-cache.json';
   static const codexTmpPluginsCacheRel = 'tmp-plugins';
   static const codexPluginsCacheRel = 'plugins-cache';
+  static const codexRemoteCatalogCacheRel = 'remote-plugin-catalog';
 
   static String providerKey(String? providerId) {
     final trimmed = providerId?.trim() ?? '';
@@ -85,6 +86,10 @@ final class WorkspaceCliCache {
         toolRel: '.tmp/plugins',
       ),
       CliCacheBinding(cacheRel: codexPluginsCacheRel, toolRel: 'plugins/cache'),
+      CliCacheBinding(
+        cacheRel: codexRemoteCatalogCacheRel,
+        toolRel: 'cache/remote_plugin_catalog',
+      ),
     ],
     // gemini needs no shared-cache mirror: its ACP sessions run terminal-less
     // with an isolated sessionToolDir and read no global cache dir.

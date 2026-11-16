@@ -240,6 +240,35 @@ void main() {
       expect(await fs.readString(p.join(sessionPlugins, 'stale.json')), isNull);
     });
 
+    test('Codex session remote catalog inherits workspace cache', () async {
+      final fs = InMemoryFilesystem();
+      final layout = RuntimeLayout(teampilotRoot: '/tp', fs: fs);
+      final cache = WorkspaceCliCache(layout: layout);
+      final global = cache.globalEntryPath(
+        tool: 'codex',
+        providerId: null,
+        cacheRel: WorkspaceCliCache.codexRemoteCatalogCacheRel,
+      );
+      await fs.writeString(p.join(global, 'catalog.json'), '{"v":1}');
+
+      await layout.ensureSessionOwnsCodexTmpPlugins(workspaceId, 'sess-1');
+
+      final sessionCatalog = fs.pathContext.join(
+        layout.sessionRuntimeToolDir(workspaceId, 'sess-1', 'codex'),
+        'cache',
+        'remote_plugin_catalog',
+      );
+      final workspace = cache.workspaceToolRelPath(
+        workspaceId: workspaceId,
+        tool: 'codex',
+        toolRel: 'cache/remote_plugin_catalog',
+      );
+      expect(await fs.readSymlinkTarget(sessionCatalog), workspace);
+      expect(await fs.readSymlinkTarget(workspace), global);
+      expect((await fs.stat(global)).isDirectory, isTrue);
+      expect(await fs.readString(p.join(global, 'catalog.json')), '{"v":1}');
+    });
+
     tearDown(() async {
       if (await base.exists()) {
         await base.delete(recursive: true);
