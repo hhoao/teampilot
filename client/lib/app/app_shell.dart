@@ -1180,6 +1180,7 @@ Future<AppShell> buildAppShell({
       appUpdateService: appUpdateService,
       appSettings: appSettings,
       deferHomePlaneLoads: deferHomePlaneLoads,
+      appLogRoot: nativeAppDataPath,
       // CLI install jobs probe/install binaries on work-plane hosts.
       sshProfileById: combinedProfileById,
     );

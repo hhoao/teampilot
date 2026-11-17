@@ -15,6 +15,7 @@ import '../../services/file_tree_import/workspace_import_service.dart';
 import '../../services/host/process_run_handle.dart';
 import '../../services/install/install_job_registry.dart';
 import '../../services/install/install_job_runner_registry.dart';
+import '../../services/install/job_log_store.dart';
 import '../../services/install/runners/app_update_install_job_runner.dart';
 import '../../services/install/runners/cli_install_job_runner.dart';
 import '../../services/install/runners/file_tree_import_install_job_runner.dart';
@@ -56,6 +57,7 @@ Future<InstallWiring> wireInstallJobs({
   required AppUpdateService appUpdateService,
   required AppSettingsRepository appSettings,
   required bool deferHomePlaneLoads,
+  required String appLogRoot,
   required SshProfile? Function(String id) sshProfileById,
 }) async {
   // Repo clone executor: one shared SSH exec spawner for both the clone
@@ -116,9 +118,11 @@ Future<InstallWiring> wireInstallJobs({
       AppUpdateInstallJobRunner(service: appUpdateService),
     ],
   );
+  final jobLogs = JobLogStore(appDataRoot: appLogRoot);
   final installJobRegistry = InstallJobRegistry(
     progressCubit: progressActivity,
     runnerRegistry: installJobRunnerRegistry,
+    logs: jobLogs,
   );
 
   final skillRegistryConfigService = SkillRegistryConfigService(

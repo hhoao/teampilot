@@ -9,12 +9,17 @@ import 'package:teampilot/models/install_job/install_job_key.dart';
 import 'package:teampilot/models/install_job/install_job_snapshot.dart';
 import 'package:teampilot/models/install_job/install_job_spec.dart';
 import 'package:teampilot/services/install/install_job_registry.dart';
+import 'package:teampilot/services/install/job_log_store.dart';
 import 'package:teampilot/services/notification/notification_recorder.dart';
 
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _FakeNotificationRecorder implements NotificationRecorder {
-  final records = <({String message, TpToastVariant variant, String title})>[];
+  final records =
+      <
+        ({String message, TpToastVariant variant, String title, String payload})
+      >[];
 
   @override
   void record({
@@ -23,7 +28,12 @@ class _FakeNotificationRecorder implements NotificationRecorder {
     String title = '',
     String payload = '',
   }) {
-    records.add((message: message, variant: variant, title: title));
+    records.add((
+      message: message,
+      variant: variant,
+      title: title,
+      payload: payload,
+    ));
   }
 }
 
@@ -175,6 +185,94 @@ void main() {
       expect(countB, 1);
       expect(registry.isRunning(keyA), isFalse);
       expect(registry.isRunning(keyB), isFalse);
+    });
+  });
+
+  group('InstallJobRegistry logs', () {
+    late _FakeNotificationRecorder recorder;
+    late ProgressActivityCubit progressCubit;
+    late InMemoryFilesystem fs;
+    late JobLogStore logs;
+    late InstallJobRegistry registry;
+
+    setUp(() {
+      recorder = _FakeNotificationRecorder();
+      progressCubit = ProgressActivityCubit(historyRecorder: recorder);
+      fs = InMemoryFilesystem();
+      logs = JobLogStore(appDataRoot: '/tp', fs: fs);
+      registry = InstallJobRegistry(progressCubit: progressCubit, logs: logs);
+    });
+
+    tearDown(() {
+      registry.dispose();
+      progressCubit.close();
+    });
+
+    const key = InstallJobKey(
+      kind: InstallJobKind.cliExecutable,
+      target: 'claude',
+    );
+
+    test('writes start, phase, output and ok lines, then closes', () async {
+      final token = logs.tokenFor(key);
+      final spec = InstallJobSpec<String>(
+        key: key,
+        title: 'Install Claude',
+        cancelPolicy: InstallCancelPolicy.cooperative,
+        run: (ctx) async {
+          ctx.reportPhase('Installing CLI', detail: 'npm install');
+          ctx.appendLog?.call('added 1 package');
+          return 'done';
+        },
+      );
+
+      await registry.enqueue(spec);
+
+      expect(logs.isLive(token), isFalse);
+      final lines = await logs.read(token);
+      expect(lines.first, startsWith('[start]'));
+      expect(lines, contains('[phase] Installing CLI — npm install'));
+      expect(lines, contains('added 1 package'));
+      expect(lines.last, startsWith('[ok]'));
+      expect(recorder.records.single.payload, 'install-log:$token');
+    });
+
+    test('writes fail line with the error message', () async {
+      final token = logs.tokenFor(key);
+      final spec = InstallJobSpec<void>(
+        key: key,
+        title: 'Install Claude',
+        cancelPolicy: InstallCancelPolicy.cooperative,
+        run: (ctx) async => throw StateError('boom'),
+      );
+
+      await expectLater(registry.enqueue(spec), throwsStateError);
+
+      final lines = await logs.read(token);
+      expect(lines.last, '[fail] Bad state: boom');
+      expect(recorder.records.single.payload, 'install-log:$token');
+    });
+
+    test('writes cancel line on cooperative cancel', () async {
+      final token = logs.tokenFor(key);
+      final spec = InstallJobSpec<void>(
+        key: key,
+        title: 'Install Claude',
+        cancelPolicy: InstallCancelPolicy.cooperative,
+        run: (ctx) async {
+          while (!ctx.isCancelled) {
+            await Future<void>.delayed(const Duration(milliseconds: 5));
+          }
+        },
+      );
+
+      final future = registry.enqueue(spec);
+      final expectation = expectLater(future, throwsA(isA<Exception>()));
+      registry.requestCancel(key);
+      await expectation;
+
+      final lines = await logs.read(token);
+      expect(lines.last, '[cancel]');
     });
   });
 }

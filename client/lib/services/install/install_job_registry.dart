@@ -10,17 +10,22 @@ import '../../models/install_job/install_job_spec.dart';
 import '../../models/progress_activity.dart';
 import 'install_job_activity_kind.dart';
 import 'install_job_runner_registry.dart';
+import 'job_log_store.dart';
 
 final class InstallJobRegistry {
   InstallJobRegistry({
     required ProgressActivityCubit progressCubit,
     InstallJobRunnerRegistry? runnerRegistry,
+    JobLogStore? logs,
   }) : _progressCubit = progressCubit,
-       _runnerRegistry = runnerRegistry;
+       _runnerRegistry = runnerRegistry,
+       _logs = logs;
 
   final ProgressActivityCubit _progressCubit;
   final InstallJobRunnerRegistry? _runnerRegistry;
+  final JobLogStore? _logs;
 
+  JobLogStore? get logs => _logs;
   InstallJobRunnerRegistry? get runnerRegistry => _runnerRegistry;
   final Map<InstallJobKey, _ActiveJob> _active = {};
   final Map<InstallJobKey, StreamController<InstallJobSnapshot>> _watchers = {};
@@ -33,9 +38,13 @@ final class InstallJobRegistry {
 
     final completer = Completer<Object?>();
     final activityId = spec.key.activityId;
+    final token = _logs?.tokenFor(spec.key);
+    final writer = _logs?.begin(key: spec.key, title: spec.title);
+    final payload = token == null ? '' : 'install-log:$token';
     final ctx = InstallJobContext(
       reportPhase: (label, {detail, fraction}) {
         final subtitle = detail == null ? label : '$label — $detail';
+        writer?.line('[phase] $subtitle');
         _progressCubit.update(
           activityId,
           subtitle: subtitle,
@@ -58,6 +67,7 @@ final class InstallJobRegistry {
         );
         _emitSnapshot(spec.key, InstallJobPhase.running, fraction: fraction);
       },
+      appendLog: writer?.line,
     );
 
     final job = _ActiveJob(
@@ -66,6 +76,8 @@ final class InstallJobRegistry {
       completer: completer,
       cancelPolicy: spec.cancelPolicy,
       historyTitle: spec.historyTitle,
+      writer: writer,
+      payload: payload,
       run: (ctx) => spec.run(ctx),
       onSucceeded: spec.onSucceeded == null
           ? null
@@ -85,6 +97,7 @@ final class InstallJobRegistry {
       subtitle: spec.subtitle,
       workspaceId: spec.workspaceId,
       kind: activityKindForInstall(spec.key.kind),
+      logToken: token,
       onCancelRequested: () => _handleCancelRequest(spec.key),
     );
     _emitSnapshot(spec.key, InstallJobPhase.running, subtitle: spec.subtitle);
@@ -137,11 +150,15 @@ final class InstallJobRegistry {
       }
 
       await job.onSucceeded?.call(result);
+      final message = job.historyMessageFor?.call(result);
+      job.writer?.line(message == null ? '[ok]' : '[ok] $message');
+      await job.writer?.close();
       _progressCubit.complete(
         activityId,
         outcome: ProgressActivityPhase.succeeded,
         historyTitle: job.historyTitle,
-        historyMessage: job.historyMessageFor?.call(result),
+        historyMessage: message,
+        historyPayload: job.payload,
       );
       _emitSnapshot(job.key, InstallJobPhase.succeeded);
       job.markTerminal();
@@ -150,11 +167,14 @@ final class InstallJobRegistry {
       await _completeCancelled(job);
     } catch (error, stackTrace) {
       await job.onFailed?.call(error);
+      job.writer?.line('[fail] $error');
+      await job.writer?.close();
       _progressCubit.complete(
         activityId,
         outcome: ProgressActivityPhase.failed,
         errorMessage: error.toString(),
         historyTitle: job.historyTitle,
+        historyPayload: job.payload,
       );
       _emitSnapshot(job.key, InstallJobPhase.failed);
       job.markTerminal();
@@ -165,10 +185,13 @@ final class InstallJobRegistry {
   }
 
   Future<void> _completeCancelled(_ActiveJob job) async {
+    job.writer?.line('[cancel]');
+    await job.writer?.close();
     _progressCubit.complete(
       job.key.activityId,
       outcome: ProgressActivityPhase.cancelled,
       historyTitle: job.historyTitle,
+      historyPayload: job.payload,
     );
     _emitSnapshot(job.key, InstallJobPhase.cancelled);
     job.markTerminal();
@@ -208,6 +231,8 @@ final class _ActiveJob {
     required this.completer,
     required this.cancelPolicy,
     required this.historyTitle,
+    required this.writer,
+    required this.payload,
     required this.run,
     required this.onSucceeded,
     required this.onFailed,
@@ -219,6 +244,8 @@ final class _ActiveJob {
   final Completer<Object?> completer;
   final InstallCancelPolicy cancelPolicy;
   final String? historyTitle;
+  final JobLogWriter? writer;
+  final String payload;
   final Future<Object?> Function(InstallJobContext ctx) run;
   final FutureOr<void> Function(Object? result)? onSucceeded;
   final FutureOr<void> Function(Object error)? onFailed;
