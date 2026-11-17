@@ -9,6 +9,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/progress_activity.dart';
 import '../../services/install/install_job_registry.dart';
 import '../../services/progress_activity/progress_fraction.dart';
+import '../install/job_log_dialog.dart';
 import '../notification/progress_activity_tile.dart';
 
 Future<void> showProgressActivityDetailDialog(
@@ -181,6 +182,15 @@ class _ProgressActivityDetailBody extends StatelessWidget {
           ),
           TpDialogActions(
             children: [
+              if (activity.logToken != null)
+                TextButton(
+                  onPressed: () => showInstallJobLogDialog(
+                    context,
+                    token: activity.logToken!,
+                    title: activity.title,
+                  ),
+                  child: Text(l10n.log.installJobViewLog),
+                ),
               TextButton(
                 onPressed: onClose,
                 child: Text(l10n.windowControlClose),

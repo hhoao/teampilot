@@ -212,5 +212,37 @@ void main() {
       expect(find.byType(Dialog), findsNothing);
       expect(cubit.state.activities, isEmpty);
     });
+
+    testWidgets('shows the view log action only when logToken is set', (
+      tester,
+    ) async {
+      final cubit = ProgressActivityCubit(
+        historyRecorder: _FakeNotificationRecorder(),
+      );
+      addTearDown(cubit.close);
+      final activity = ProgressActivity(
+        id: 'a1',
+        kind: ProgressActivityKind.cliProvision,
+        title: 'Install Claude',
+        phase: ProgressActivityPhase.running,
+        logToken: 'tok-1',
+        createdAt: DateTime(2026, 7, 30),
+        updatedAt: DateTime(2026, 7, 30),
+      );
+      cubit.start(activity);
+      await tester.pumpWidget(_host(cubit: cubit, child: const SizedBox()));
+      unawaited(
+        showProgressActivityDetailDialog(
+          tester.element(find.byType(Scaffold)),
+          activityId: 'a1',
+        ),
+      );
+      // The detail dialog shows an indeterminate progress bar while the
+      // activity is running, so `pumpAndSettle` would never settle.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('View log'), findsOneWidget);
+    });
   });
 }
