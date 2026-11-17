@@ -13,6 +13,7 @@ import 'registry/installer/acp_adapter_installer.dart';
 import 'registry/installer/installer_context.dart';
 import 'registry/installer/teampilot_node_install.dart';
 import 'registry/installer/termux_remote_detect.dart';
+import 'remote_install_task.dart';
 import '../host/host_executable_locator.dart';
 import '../host/host_execution_environment.dart';
 import '../host/host_login_shell_lookup.dart';
@@ -32,7 +33,8 @@ class CliInstallerService {
     CliToolRegistry? cliToolRegistry,
     String? Function()? preferredNodePath,
   }) : _localRunner = localRunner ?? _runLocal,
-       _sshRunner = sshRunner ?? _SshCommandRunner(sshClientFactory).run,
+       _sshRunnerOverride = sshRunner,
+       _sshClientFactory = sshClientFactory,
        _hostEnvironment =
            hostEnvironment ??
            HostExecutionEnvironment.resolve(
@@ -47,7 +49,10 @@ class CliInstallerService {
   }();
 
   final LocalCliInstallRunner _localRunner;
-  final SshCliInstallRunner _sshRunner;
+  final SshCliInstallRunner? _sshRunnerOverride;
+  final SshClientFactory? _sshClientFactory;
+  late SshCliInstallRunner _sshRunner =
+      _sshRunnerOverride ?? _SshCommandRunner(_sshClientFactory).run;
   final HostExecutionEnvironment _hostEnvironment;
   final CliToolRegistry _cliToolRegistry;
   final String? Function()? _preferredNodePath;
@@ -114,7 +119,16 @@ class CliInstallerService {
     _onProgress = onProgress;
     _isCancelled = isCancelled;
     _onProcessStarted = onProcessStarted;
+    final profile = sshProfile;
+    RemoteInstallTask? task;
     try {
+      if (mode == CliInstallMode.ssh &&
+          profile != null &&
+          _sshRunnerOverride == null &&
+          _sshClientFactory != null) {
+        task = await RemoteInstallTask.open(_sshClientFactory, profile);
+        _sshRunner = installRunnerForRemoteTask(task);
+      }
       return await install(
         CliInstallContext(
           mode: mode,
@@ -128,6 +142,10 @@ class CliInstallerService {
       _onProgress = null;
       _isCancelled = null;
       _onProcessStarted = null;
+      if (task != null) {
+        _sshRunner = _SshCommandRunner(_sshClientFactory).run;
+        await task.close();
+      }
     }
   }
 
