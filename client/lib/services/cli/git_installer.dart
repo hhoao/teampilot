@@ -55,6 +55,10 @@ typedef GitInstallProgressCallback = void Function(GitInstallProgress progress);
 typedef GitProcessRunner =
     Future<ProcessResult> Function(String executable, List<String> arguments);
 
+/// Injection point so tests can replace [Process.start] with a fake process.
+typedef GitProcessStarter =
+    Future<Process> Function(String executable, List<String> arguments);
+
 typedef GitInstallOutputLine = void Function(String line);
 
 typedef GitStreamingProcessRunner =
@@ -69,32 +73,63 @@ Future<ProcessResult> _defaultProcessRunner(
   List<String> arguments,
 ) => Process.run(executable, arguments);
 
+Future<Process> _defaultProcessStarter(
+  String executable,
+  List<String> arguments,
+) => Process.start(executable, arguments);
+
+/// Streams a child process's output line by line, forwarding each line to
+/// [onOutput] while collecting it for the returned [ProcessResult].
+///
+/// Decoding tolerates malformed UTF-8 (package managers on legacy console code
+/// pages) and a throwing [onOutput] sink can never abort the drains. Any other
+/// error kills the child and rethrows, so no process is left orphaned with an
+/// abandoned pipe.
 Future<ProcessResult> _defaultStreamingRunner(
   String executable,
   List<String> arguments,
   void Function(String line) onOutput,
+  GitProcessStarter starter,
 ) async {
-  final process = await Process.start(executable, arguments);
+  final process = await starter(executable, arguments);
   final stdoutLines = <String>[];
   final stderrLines = <String>[];
+
+  void emit(String line, List<String> sink) {
+    sink.add(line);
+    try {
+      onOutput(line);
+    } catch (_) {
+      // A throwing log sink must not break the drain of the child's output.
+    }
+  }
+
   Future<void> drain(Stream<List<int>> stream, List<String> sink) => stream
-      .transform(utf8.decoder)
+      .transform(const Utf8Decoder(allowMalformed: true))
       .transform(const LineSplitter())
-      .forEach((line) {
-        sink.add(line);
-        onOutput(line);
-      });
-  await Future.wait([
-    drain(process.stdout, stdoutLines),
-    drain(process.stderr, stderrLines),
-  ]);
-  final exitCode = await process.exitCode;
-  return ProcessResult(
-    process.pid,
-    exitCode,
-    stdoutLines.join('\n'),
-    stderrLines.join('\n'),
-  );
+      .forEach((line) => emit(line, sink));
+
+  try {
+    await Future.wait([
+      drain(process.stdout, stdoutLines),
+      drain(process.stderr, stderrLines),
+    ]);
+    final exitCode = await process.exitCode;
+    return ProcessResult(
+      process.pid,
+      exitCode,
+      stdoutLines.join('\n'),
+      stderrLines.join('\n'),
+    );
+  } catch (_) {
+    process.kill();
+    try {
+      await process.exitCode;
+    } catch (_) {
+      // The exit code is irrelevant once we are unwinding an error.
+    }
+    rethrow;
+  }
 }
 
 /// Detects and optionally installs git on the local host.
@@ -106,13 +141,16 @@ final class GitInstaller {
   const GitInstaller({
     GitProcessRunner? processRunner,
     GitStreamingProcessRunner? streamingRunner,
+    GitProcessStarter? processStarter,
     bool? isWindowsOverride,
   }) : _processRunner = processRunner ?? _defaultProcessRunner,
-       _streamingRunner = streamingRunner ?? _defaultStreamingRunner,
+       _streamingRunner = streamingRunner,
+       _processStarter = processStarter ?? _defaultProcessStarter,
        _isWindowsOverride = isWindowsOverride;
 
   final GitProcessRunner _processRunner;
   final GitStreamingProcessRunner? _streamingRunner;
+  final GitProcessStarter _processStarter;
   final bool? _isWindowsOverride;
 
   // ---- guide URLs -----------------------------------------------------------
@@ -355,12 +393,19 @@ final class GitInstaller {
     List<String> arguments,
     GitInstallOutputLine? onOutputLine,
   ) {
-    final streaming = _streamingRunner;
-    if (onOutputLine == null || streaming == null) {
+    if (onOutputLine == null) {
       return _processRunner(executable, arguments);
     }
+    final streaming = _streamingRunner ?? _streamingWithDefaultRunner;
     return streaming(executable, arguments, onOutputLine);
   }
+
+  Future<ProcessResult> _streamingWithDefaultRunner(
+    String executable,
+    List<String> arguments,
+    void Function(String line) onOutput,
+  ) =>
+      _defaultStreamingRunner(executable, arguments, onOutput, _processStarter);
 
   /// Quick check whether [executable] is on PATH.
   Future<bool> _canRun(String executable) async {
