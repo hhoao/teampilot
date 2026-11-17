@@ -9,6 +9,7 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/cli_binary_kind.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/install_job/install_cancel_policy.dart';
+import '../../../models/install_job/install_job_cancelled_exception.dart';
 import '../../../models/install_job/install_job_scope.dart';
 import '../../../models/install_job/install_job_spec.dart';
 import '../../../models/runtime_target.dart';
@@ -25,6 +26,7 @@ import '../../../services/install/install_job_keys.dart';
 import '../../../services/install/install_job_registry.dart';
 import '../../../services/remote/remote_cli_readiness.dart';
 import '../../../services/remote/remote_cli_requirements.dart';
+import '../../../utils/logging/logger.dart';
 
 /// Per-SSH-host CLI locate status and user-driven install for Machines placement.
 class RemoteCliMachineReadinessPanel extends StatefulWidget {
@@ -229,6 +231,29 @@ class _RemoteCliMachineReadinessPanelState
       if (!mounted) return;
       setState(() => _readinessByKey[requirement.cacheKey] = result);
       widget.onReadinessChanged?.call();
+    } on InstallJobCancelledException {
+      // A user cancel is not an install failure: keep the previous readiness.
+      appLogger.i(
+        '[remote-cli] install cancelled '
+        'target=${requirement.target.id} cli=${requirement.cli.value}',
+      );
+    } on Object catch (error) {
+      final message = error is StateError ? error.message : '$error';
+      appLogger.w(
+        '[remote-cli] install failed '
+        'target=${requirement.target.id} cli=${requirement.cli.value}: '
+        '$message',
+        error: error,
+      );
+      if (mounted) {
+        setState(() {
+          _readinessByKey[requirement.cacheKey] = RemoteCliFailed(
+            targetId: requirement.target.id,
+            cli: requirement.cli,
+            message: message,
+          );
+        });
+      }
     } finally {
       if (mounted) {
         setState(() => _installingKey = null);
