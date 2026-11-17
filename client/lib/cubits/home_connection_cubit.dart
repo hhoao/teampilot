@@ -14,6 +14,7 @@ class HomeConnectionState extends Equatable {
     this.port,
     this.attempt = 0,
     this.lastErrorKind,
+    this.hasConnectedOnce = false,
   });
 
   final HomeConnectionStatus status;
@@ -22,6 +23,11 @@ class HomeConnectionState extends Equatable {
   final int? port;
   final int attempt;
   final HomeErrorKind? lastErrorKind;
+
+  /// Whether this home target has been reachable at least once since it was
+  /// bound. A drop after that point belongs to the shell (banner + inline
+  /// retries), not to the full connection page.
+  final bool hasConnectedOnce;
 
   bool get canCancelRetry => status == HomeConnectionStatus.reconnecting;
   bool get canRetryNow =>
@@ -37,6 +43,7 @@ class HomeConnectionState extends Equatable {
     int? port,
     int? attempt,
     Object? lastErrorKind = _unset,
+    bool? hasConnectedOnce,
   }) => HomeConnectionState(
     status: status ?? this.status,
     profileId: profileId ?? this.profileId,
@@ -46,6 +53,7 @@ class HomeConnectionState extends Equatable {
     lastErrorKind: identical(lastErrorKind, _unset)
         ? this.lastErrorKind
         : lastErrorKind as HomeErrorKind?,
+    hasConnectedOnce: hasConnectedOnce ?? this.hasConnectedOnce,
   );
 
   @override
@@ -56,6 +64,7 @@ class HomeConnectionState extends Equatable {
     port,
     attempt,
     lastErrorKind,
+    hasConnectedOnce,
   ];
 }
 
@@ -105,6 +114,7 @@ class HomeConnectionCubit extends Cubit<HomeConnectionState> {
           status: HomeConnectionStatus.connected,
           attempt: 0,
           lastErrorKind: null,
+          hasConnectedOnce: true,
         ),
       );
       _onConnected();
@@ -177,6 +187,7 @@ class HomeConnectionCubit extends Cubit<HomeConnectionState> {
         status: HomeConnectionStatus.connected,
         attempt: 0,
         lastErrorKind: null,
+        hasConnectedOnce: true,
       ),
     );
     _onConnected();
@@ -198,6 +209,7 @@ class HomeConnectionCubit extends Cubit<HomeConnectionState> {
         status: HomeConnectionStatus.connected,
         attempt: 0,
         lastErrorKind: null,
+        hasConnectedOnce: true,
       ),
     );
   }
@@ -220,6 +232,7 @@ class HomeConnectionCubit extends Cubit<HomeConnectionState> {
         port: port,
         attempt: identityChanged ? 0 : state.attempt,
         lastErrorKind: identityChanged ? null : state.lastErrorKind,
+        hasConnectedOnce: identityChanged ? false : state.hasConnectedOnce,
       ),
     );
   }
@@ -235,6 +248,7 @@ class HomeConnectionCubit extends Cubit<HomeConnectionState> {
             : HomeConnectionStatus.unreachable,
         attempt: 0,
         lastErrorKind: result.errorKind,
+        hasConnectedOnce: result.reachable || state.hasConnectedOnce,
       ),
     );
   }

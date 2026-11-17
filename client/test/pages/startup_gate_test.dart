@@ -780,4 +780,86 @@ void main() {
     expect(find.text('APP_CHILD'), findsOneWidget);
     expect(find.text(l10n.home.connectionRetryNow), findsNothing);
   });
+
+  testWidgets('a transient drop after a healthy session keeps the shell', (
+    tester,
+  ) async {
+    final homeCubit = HomeConnectionCubit(
+      connect: () async =>
+          const HomeConnectResult.unreachable(HomeErrorKind.unknown),
+      cancelRetry: () async {},
+      resumeRetry: () async {},
+      onConnected: () {},
+      profileId: 'p1',
+      host: 'example.com',
+      port: 22,
+    );
+    addTearDown(homeCubit.close);
+    homeCubit.markReconnected();
+    // A drop that lands while the plane is rebinding takes the surface off
+    // `connected` first; the supervisor's next retry tick then publishes
+    // `reconnecting` (a `connected` surface early-returns in the cubit).
+    homeCubit.markPlaneRebinding();
+    homeCubit.markBackgroundAttempt(2);
+
+    await tester.pumpWidget(
+      await _gateHost(
+        mode: ConnectionModeService(
+          defaultTargetResolver: () => RuntimeTarget.ssh('p1', label: 'box'),
+          hasSshProfiles: () => true,
+        ),
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
+        homeConnectionCubit: homeCubit,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('APP_CHILD'), findsOneWidget);
+    expect(find.byType(RemoteConnectionsPage), findsNothing);
+  });
+
+  testWidgets('a permanent failure after a healthy session shows the page', (
+    tester,
+  ) async {
+    final homeCubit = HomeConnectionCubit(
+      connect: () async =>
+          const HomeConnectResult.unreachable(HomeErrorKind.unknown),
+      cancelRetry: () async {},
+      resumeRetry: () async {},
+      onConnected: () {},
+      profileId: 'p1',
+      host: 'example.com',
+      port: 22,
+    );
+    addTearDown(homeCubit.close);
+    homeCubit.markReconnected();
+    homeCubit.markUnreachable(HomeErrorKind.hostIdentityChanged);
+
+    await tester.pumpWidget(
+      await _gateHost(
+        mode: ConnectionModeService(
+          defaultTargetResolver: () => RuntimeTarget.ssh('p1', label: 'box'),
+          hasSshProfiles: () => true,
+        ),
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
+        homeConnectionCubit: homeCubit,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('APP_CHILD'), findsNothing);
+    expect(find.byType(RemoteConnectionsPage), findsOneWidget);
+  });
 }

@@ -43,13 +43,23 @@ class StartupGate extends StatelessWidget {
     // through to the setup branch, and renders the target list instead of a
     // progress view. Handled first, `connecting` shows progress and `connected`
     // opens the app even if the catalog is momentarily empty.
+    var keepShellDuringDrop = false;
     if (homeConn != null) {
       switch (homeConn.status) {
         case HomeConnectionStatus.connecting:
           return _HomeConnectingPage(state: homeConn);
         case HomeConnectionStatus.unreachable:
         case HomeConnectionStatus.reconnecting:
-          return const RemoteConnectionsPage();
+          // A successful session already rendered the shell; a transient drop
+          // is owned by the banner + inline retries. Permanent failures
+          // (host identity, auth) still need the full connection page.
+          // `SshHomeDisconnectedBanner` reads `SshConnectionCubit`, which keeps
+          // reporting reconnecting during the coordinator's retry loop.
+          if (homeConn.hasConnectedOnce && homeConn.lastErrorKind == null) {
+            keepShellDuringDrop = true;
+          } else {
+            return const RemoteConnectionsPage();
+          }
         case HomeConnectionStatus.connected:
           break;
       }
@@ -57,7 +67,7 @@ class StartupGate extends StatelessWidget {
 
     final homeConnected = homeConn?.status == HomeConnectionStatus.connected;
 
-    if (!homeConnected && mode.requiresSshProfileSetup) {
+    if (!homeConnected && !keepShellDuringDrop && mode.requiresSshProfileSetup) {
       return const RemoteConnectionsPage();
     }
 
