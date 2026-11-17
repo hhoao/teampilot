@@ -204,15 +204,27 @@ final class SshWorkerDartStorageBackend implements SshWorkerStorageBackend {
 
   @override
   void cancelRun() {
-    final runs = _activeRuns.toList(growable: false);
-    _activeRuns.clear();
-    for (final session in runs) {
-      try {
-        session.close();
-      } on Object {
-        // The socket teardown is best effort; the caller already timed out.
-      }
+    for (final session in _activeRuns.toList(growable: false)) {
+      unawaited(_closeCancelledRun(session));
     }
+  }
+
+  /// Closes one cancelled exec session and stops tracking it only once the
+  /// channel is confirmed closed.
+  ///
+  /// A failed close stays tracked on purpose: the remote channel may still be
+  /// alive, and dropping it here would leak it for the rest of this worker
+  /// generation. A later [cancelRun] or [close] retries the close instead.
+  Future<void> _closeCancelledRun(SSHSession session) async {
+    try {
+      // `SSHSession.close()` is synchronous and discards the channel's close
+      // future, so await the channel directly: a failure is observed here and
+      // swallowed rather than escaping as an unhandled zone error.
+      await session.channel.close();
+    } on Object {
+      return;
+    }
+    _activeRuns.remove(session);
   }
 
   @override

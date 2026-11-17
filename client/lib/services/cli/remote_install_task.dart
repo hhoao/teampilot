@@ -21,6 +21,13 @@ final class RemoteInstallTask {
   /// Closing must never outlive the install outcome on a wedged worker.
   static const _closeTimeout = Duration(seconds: 10);
 
+  /// Reply grace over the worker's own open timeout.
+  ///
+  /// `transport.open` is a worker request whose only bound is the worker's
+  /// `timeoutMs`; a wedged isolate that never answers would otherwise leave the
+  /// install job non-terminal, so the client bounds the wait itself.
+  static const _openGrace = Duration(seconds: 5);
+
   static Future<RemoteInstallTask> open(
     SshClientFactory factory,
     SshProfile profile, {
@@ -32,9 +39,15 @@ final class RemoteInstallTask {
       timeout: connectTimeout,
     );
     try {
-      await transport.open(profile, timeout: connectTimeout);
+      await transport
+          .open(profile, timeout: connectTimeout)
+          .timeout(connectTimeout + _openGrace);
     } on Object {
-      await transport.close();
+      try {
+        await transport.close().timeout(_closeTimeout);
+      } on Object {
+        // The channel may already be gone; never mask the connect failure.
+      }
       rethrow;
     }
     return RemoteInstallTask._(transport, commandTimeout: commandTimeout);

@@ -52,6 +52,24 @@ void main() {
     );
     expect(transport.closed, 1);
   });
+
+  test('a wedged worker open is bounded client-side', () async {
+    final transport = _FakeMemberTransport(
+      (command) async =>
+          SshWorkerRunResult(stdout: Uint8List(0), stderr: Uint8List(0)),
+      onOpen: () => Completer<void>().future,
+    );
+
+    await expectLater(
+      RemoteInstallTask.open(
+        _FakeFactory(transport),
+        _profile,
+        connectTimeout: const Duration(milliseconds: 20),
+      ),
+      throwsA(isA<TimeoutException>()),
+    );
+    expect(transport.closed, 1);
+  }, timeout: const Timeout(Duration(seconds: 30)));
 }
 
 final class _FakeFactory implements SshClientFactory {
@@ -69,15 +87,16 @@ final class _FakeFactory implements SshClientFactory {
 }
 
 final class _FakeMemberTransport implements SshWorkerMemberTransport {
-  _FakeMemberTransport(this._onRun);
+  _FakeMemberTransport(this._onRun, {this.onOpen});
   final Future<SshWorkerRunResult> Function(String command) _onRun;
+  final Future<void> Function()? onOpen;
   var closed = 0;
 
   @override
   Future<void> open(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
-  }) async {}
+  }) => onOpen?.call() ?? Future.value();
 
   @override
   Future<SshWorkerRunResult> run(String command, {bool stderr = true}) =>
