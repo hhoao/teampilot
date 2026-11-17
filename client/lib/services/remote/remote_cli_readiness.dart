@@ -10,6 +10,7 @@ import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/installer/acp_adapter_installer.dart';
 import '../cli/remote_cli_installer.dart';
 import '../cli/remote_cli_locator.dart';
+import '../cli/remote_install_task.dart';
 import '../ssh/ssh_client_factory.dart';
 import '../ssh/ssh_connection_gate.dart';
 import '../ssh/ssh_storage_io.dart';
@@ -151,6 +152,31 @@ class RemoteCliReadinessService {
       includeStderr: includeStderr,
       timeout: timeout,
     );
+  }
+
+  /// Runs [body] over the short-lived member-plane install channel.
+  ///
+  /// Installs can take minutes; the storage plane carries a worker command
+  /// timeout whose expiry would drop the home shell. The task channel has no
+  /// worker-side timeout — it closes itself when [body] settles.
+  Future<T> _withInstallRunner<T>(
+    SshProfile profile,
+    Future<T> Function(SshCommandRunner run) body,
+  ) async {
+    final override = _remoteRunnerFor;
+    if (override != null) {
+      return body(override(profile, includeStderr: true));
+    }
+    final task = await RemoteInstallTask.open(
+      sshClientFactory,
+      profile,
+      commandTimeout: SshStorageIo.provisionPhaseTimeout,
+    );
+    try {
+      return await body(task.runner);
+    } finally {
+      await task.close();
+    }
   }
 
   /// Locate only. Never installs.
@@ -300,28 +326,25 @@ class RemoteCliReadinessService {
     }
 
     try {
-      final run = await _runnerFor(
-        profile,
-        includeStderr: true,
-        timeout: SshStorageIo.provisionPhaseTimeout,
-      );
       final storedPath = (await cliPathOverride(target.id, cli.value) ?? '')
           .trim();
-      final path = await _installer.ensure(
-        cli: cli,
-        run: run,
-        optIn: true,
-        supportsInstaller: true,
-        install:
-            _installActionBuilder?.call(cli, profile, run) ??
-            buildRemotePreflightCliInstall(
-              registry: registry,
-              profile: profile,
-              cli: cli,
-            ),
-        manualPathOverride: storedPath,
-        onProgress: onProgress,
-      );
+      final path = await _withInstallRunner(profile, (run) {
+        return _installer.ensure(
+          cli: cli,
+          run: run,
+          optIn: true,
+          supportsInstaller: true,
+          install:
+              _installActionBuilder?.call(cli, profile, run) ??
+              buildRemotePreflightCliInstall(
+                registry: registry,
+                profile: profile,
+                cli: cli,
+              ),
+          manualPathOverride: storedPath,
+          onProgress: onProgress,
+        );
+      });
       await rememberRemoteCliPathIfNeeded(
         targetId: target.id,
         cli: cli,
@@ -374,23 +397,23 @@ class RemoteCliReadinessService {
     }
 
     try {
-      final run = await _runnerFor(
-        profile,
-        includeStderr: true,
-        timeout: SshStorageIo.provisionPhaseTimeout,
-      );
-      final existing = await _locateAdapterWithRun(
-        target: target,
-        cli: cli,
-        run: run,
-      );
-      final path =
-          existing ??
-          await (_adapterInstallActionBuilder?.call(installer, profile, run) ??
-              buildRemotePreflightAdapterInstall(
-                installer: installer,
-                profile: profile,
-              ))(run: run, onProgress: onProgress ?? (_) {});
+      final path = await _withInstallRunner(profile, (run) async {
+        final existing = await _locateAdapterWithRun(
+          target: target,
+          cli: cli,
+          run: run,
+        );
+        return existing ??
+            await (_adapterInstallActionBuilder?.call(
+                      installer,
+                      profile,
+                      run,
+                    ) ??
+                    buildRemotePreflightAdapterInstall(
+                      installer: installer,
+                      profile: profile,
+                    ))(run: run, onProgress: onProgress ?? (_) {});
+      });
       await rememberRemoteAcpAdapterPathIfNeeded(
         targetId: target.id,
         cli: cli,
