@@ -170,7 +170,7 @@ class RemoteCliReadinessService {
     final task = await RemoteInstallTask.open(
       sshClientFactory,
       profile,
-      commandTimeout: SshStorageIo.provisionPhaseTimeout,
+      commandTimeout: RemoteInstallTask.defaultCommandTimeout,
     );
     try {
       return await body(task.runner);
