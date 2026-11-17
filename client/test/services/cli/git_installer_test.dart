@@ -380,6 +380,26 @@ void main() {
       expect(phases[0], GitInstallPhase.installing);
       expect(phases[1], GitInstallPhase.locating);
     });
+
+    test(
+      'forwards install command output through the streaming runner',
+      () async {
+        final lines = <String>[];
+        final installer = GitInstaller(
+          isWindowsOverride: true,
+          processRunner: (exe, args) async => ProcessResult(0, 0, '', ''),
+          streamingRunner: (exe, args, onOutput) async {
+            onOutput('installing $exe');
+            return ProcessResult(0, 0, '', '');
+          },
+        );
+
+        final result = await installer.install(onOutputLine: lines.add);
+
+        expect(result.success, isTrue);
+        expect(lines, contains('installing winget'));
+      },
+    );
   });
 
   group('GitInstallProgress', () {

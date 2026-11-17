@@ -47,7 +47,7 @@ void main() {
       bool Function()? capturedCancelled;
 
       final runner = ToolchainInstallJobRunner(
-        installOverride: ({onProgress, isCancelled}) async {
+        installOverride: ({onProgress, isCancelled, onOutputLine}) async {
           installCalls++;
           capturedCancelled = isCancelled;
           onProgress?.call(
@@ -73,7 +73,7 @@ void main() {
       final reported = <String>[];
 
       final runner = ToolchainInstallJobRunner(
-        installOverride: ({onProgress, isCancelled}) async {
+        installOverride: ({onProgress, isCancelled, onOutputLine}) async {
           onProgress?.call(
             const GitInstallProgress(phase: GitInstallPhase.checking),
           );
@@ -112,7 +112,7 @@ void main() {
 
     test('run throws StateError when install fails', () async {
       final runner = ToolchainInstallJobRunner(
-        installOverride: ({onProgress, isCancelled}) async {
+        installOverride: ({onProgress, isCancelled, onOutputLine}) async {
           return const GitInstallResult.failed('brew not found');
         },
       );
@@ -131,6 +131,24 @@ void main() {
           ),
         ),
       );
+    });
+
+    test('forwards ctx.appendLog to the installer', () async {
+      final lines = <String>[];
+      final runner = ToolchainInstallJobRunner(
+        installOverride: ({onProgress, isCancelled, onOutputLine}) async {
+          onOutputLine?.call('git line');
+          return const GitInstallResult.installed('/usr/bin/git');
+        },
+      );
+      final key = InstallJobKeys.toolchain(
+        'git',
+        scope: const InstallJobScopeLocal(),
+      );
+
+      await runner.run(_spec(key), InstallJobContext(appendLog: lines.add));
+
+      expect(lines, ['git line']);
     });
   });
 }

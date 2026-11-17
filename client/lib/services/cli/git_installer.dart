@@ -54,6 +54,15 @@ typedef GitInstallProgressCallback = void Function(GitInstallProgress progress);
 typedef GitProcessRunner =
     Future<ProcessResult> Function(String executable, List<String> arguments);
 
+typedef GitInstallOutputLine = void Function(String line);
+
+typedef GitStreamingProcessRunner =
+    Future<ProcessResult> Function(
+      String executable,
+      List<String> arguments,
+      void Function(String line) onOutput,
+    );
+
 Future<ProcessResult> _defaultProcessRunner(
   String executable,
   List<String> arguments,
@@ -65,11 +74,16 @@ Future<ProcessResult> _defaultProcessRunner(
 /// the appropriate package manager (`winget` on Windows, `brew` on macOS).
 /// Linux always returns a guide URL — no `sudo` is ever invoked.
 final class GitInstaller {
-  const GitInstaller({GitProcessRunner? processRunner, bool? isWindowsOverride})
-    : _processRunner = processRunner ?? _defaultProcessRunner,
-      _isWindowsOverride = isWindowsOverride;
+  const GitInstaller({
+    GitProcessRunner? processRunner,
+    GitStreamingProcessRunner? streamingRunner,
+    bool? isWindowsOverride,
+  }) : _processRunner = processRunner ?? _defaultProcessRunner,
+       _streamingRunner = streamingRunner,
+       _isWindowsOverride = isWindowsOverride;
 
   final GitProcessRunner _processRunner;
+  final GitStreamingProcessRunner? _streamingRunner;
   final bool? _isWindowsOverride;
 
   // ---- guide URLs -----------------------------------------------------------
@@ -146,13 +160,22 @@ final class GitInstaller {
   /// * Linux:   guide URL only — never runs `sudo` or any system command.
   Future<GitInstallResult> install({
     GitInstallProgressCallback? onProgress,
+    GitInstallOutputLine? onOutputLine,
     bool Function()? isCancelled,
   }) async {
     if (_isWindows) {
-      return _installWindows(onProgress: onProgress, isCancelled: isCancelled);
+      return _installWindows(
+        onProgress: onProgress,
+        onOutputLine: onOutputLine,
+        isCancelled: isCancelled,
+      );
     }
     if (_isMacOS) {
-      return _installMacOS(onProgress: onProgress, isCancelled: isCancelled);
+      return _installMacOS(
+        onProgress: onProgress,
+        onOutputLine: onOutputLine,
+        isCancelled: isCancelled,
+      );
     }
     // Linux or any other platform — guide only, no sudo.
     return GitInstallResult.failed(
@@ -165,6 +188,7 @@ final class GitInstaller {
 
   Future<GitInstallResult> _installWindows({
     GitInstallProgressCallback? onProgress,
+    GitInstallOutputLine? onOutputLine,
     bool Function()? isCancelled,
   }) async {
     // Prefer winget; it ships on Windows 10 1709+ and Windows 11.
@@ -185,7 +209,7 @@ final class GitInstaller {
     );
 
     try {
-      final result = await _processRunner('winget', [
+      final result = await _runInstallCommand('winget', [
         'install',
         '--id',
         'Git.Git',
@@ -193,7 +217,7 @@ final class GitInstaller {
         '--silent',
         '--accept-source-agreements',
         '--accept-package-agreements',
-      ]);
+      ], onOutputLine);
 
       if (result.exitCode != 0) {
         final stderr = (result.stderr as String).trim();
@@ -234,6 +258,7 @@ final class GitInstaller {
 
   Future<GitInstallResult> _installMacOS({
     GitInstallProgressCallback? onProgress,
+    GitInstallOutputLine? onOutputLine,
     bool Function()? isCancelled,
   }) async {
     final hasBrew = await _canRun('brew');
@@ -254,7 +279,10 @@ final class GitInstaller {
     );
 
     try {
-      final result = await _processRunner('brew', ['install', 'git']);
+      final result = await _runInstallCommand('brew', [
+        'install',
+        'git',
+      ], onOutputLine);
 
       if (result.exitCode != 0) {
         final stderr = (result.stderr as String).trim();
@@ -292,6 +320,18 @@ final class GitInstaller {
   }
 
   // ---- helpers --------------------------------------------------------------
+
+  Future<ProcessResult> _runInstallCommand(
+    String executable,
+    List<String> arguments,
+    GitInstallOutputLine? onOutputLine,
+  ) {
+    final streaming = _streamingRunner;
+    if (onOutputLine == null || streaming == null) {
+      return _processRunner(executable, arguments);
+    }
+    return streaming(executable, arguments, onOutputLine);
+  }
 
   /// Quick check whether [executable] is on PATH.
   Future<bool> _canRun(String executable) async {

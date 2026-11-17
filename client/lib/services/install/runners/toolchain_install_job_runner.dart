@@ -11,6 +11,7 @@ typedef GitInstallInvoke =
     Future<GitInstallResult> Function({
       GitInstallProgressCallback? onProgress,
       bool Function()? isCancelled,
+      GitInstallOutputLine? onOutputLine,
     });
 
 final class ToolchainInstallJobRunner implements InstallJobRunner {
@@ -40,6 +41,7 @@ final class ToolchainInstallJobRunner implements InstallJobRunner {
     final result = await _install(
       onProgress: (progress) => _reportGitProgress(ctx, progress),
       isCancelled: () => ctx.isCancelled,
+      onOutputLine: ctx.appendLog,
     );
 
     if (!result.success) {
@@ -51,14 +53,20 @@ final class ToolchainInstallJobRunner implements InstallJobRunner {
   Future<GitInstallResult> _install({
     GitInstallProgressCallback? onProgress,
     bool Function()? isCancelled,
+    GitInstallOutputLine? onOutputLine,
   }) {
     final override = _installOverride;
     if (override != null) {
-      return override(onProgress: onProgress, isCancelled: isCancelled);
+      return override(
+        onProgress: onProgress,
+        isCancelled: isCancelled,
+        onOutputLine: onOutputLine,
+      );
     }
     return _installerFactory().install(
       onProgress: onProgress,
       isCancelled: isCancelled,
+      onOutputLine: onOutputLine,
     );
   }
 }
