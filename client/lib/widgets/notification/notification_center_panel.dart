@@ -11,6 +11,7 @@ import '../../router/app_router.dart';
 import '../../services/notification/notification_center_open.dart';
 import 'notification_list_tile.dart';
 import 'progress_activity_tile.dart';
+import '../install/job_log_dialog.dart';
 import '../progress_activity/progress_activity_detail_dialog.dart';
 
 const notificationCenterPanelWidth = 560.0;
@@ -133,6 +134,16 @@ class NotificationCenterPanel extends StatelessWidget {
                                 go: (location) {
                                   onClose();
                                   appRouter.go(location);
+                                },
+                                showInstallLog: (token) {
+                                  unawaited(
+                                    showInstallJobLogDialog(
+                                      context,
+                                      token: token,
+                                      title: item.title,
+                                    ),
+                                  );
+                                  onClose();
                                 },
                               ),
                             );
