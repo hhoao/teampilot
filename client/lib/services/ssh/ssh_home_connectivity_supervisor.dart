@@ -6,6 +6,7 @@ import 'ssh_client_factory.dart';
 import 'ssh_connection_events.dart';
 import 'ssh_connection_failure.dart';
 import 'ssh_connection_gate.dart';
+import 'ssh_home_connectivity_derive.dart';
 import 'ssh_home_connectivity_state.dart';
 import 'ssh_profile_connection_coordinator.dart';
 import 'ssh_profile_reconnect_policy.dart';
@@ -18,8 +19,10 @@ export 'ssh_home_connectivity_state.dart'
 ///
 /// State priority mirrors the connection cubit's former _resolveStatus:
 /// a live storage lease (up) > an in-flight dial (connecting) > a monitor
-/// reconnecting > a sticky connect failure > unreachable. A live lease wins
-/// over monitor noise, so heartbeat churn never blanks a healthy home.
+/// reconnecting > a sticky connect failure > a suspended gate > a healthy
+/// gate+link with only the storage lease retired (degraded) > unreachable.
+/// A live lease wins over monitor noise, so heartbeat churn never blanks a
+/// healthy home. The table itself is [deriveSshHomeConnectivityState].
 class SshHomeConnectivitySupervisor implements SshConnectivitySource {
   SshHomeConnectivitySupervisor({
     required SshClientFactory factory,
@@ -250,43 +253,15 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
 
   void _emit(String id) => publish(_derive(id));
 
+  /// The phase table itself lives in [deriveSshHomeConnectivityState] (pure,
+  /// unit-tested). This only gathers the four live signals for one home.
   SshHomeConnectivityState _derive(String id) {
-    final previous = stateFor(id);
-    final live = _factory.hasLiveStorageClient(id);
-    final monitor = _coordinator.monitorFor(id).state.status;
-
-    // The durable truth is the live lease, not the dial-permission gate: a
-    // gate left `up` after the lease was evicted must not claim connected.
-    // A live lease beats a connecting dial, monitor noise and any sticky
-    // failure, and the `up` value clears them atomically (invariant 3).
-    if (live) {
-      return SshHomeConnectivityState.up(id).copyWith(
-        planeRebinding: _planeRebinding && id == _activeHomeId,
-      );
-    }
-    // An in-flight dial keeps the connecting surface until success/failure.
-    if (previous.phase == SshPhase.connecting) {
-      return previous.copyWith(storageLive: false);
-    }
-    if (monitor == RemoteConnectionStatus.reconnecting) {
-      return previous.copyWith(
-        phase: SshPhase.reconnecting,
-        storageLive: false,
-      );
-    }
-    // Sticky connect failure survives cold-pool events until a real `up`.
-    if (previous.phase == SshPhase.failed) {
-      return previous.copyWith(storageLive: false);
-    }
-    if (_gate.stateOf(id) == SshConnectionGateState.suspended) {
-      return previous.copyWith(
-        phase: SshPhase.suspended,
-        storageLive: false,
-      );
-    }
-    return previous.copyWith(
-      phase: SshPhase.unreachable,
-      storageLive: false,
+    return deriveSshHomeConnectivityState(
+      previous: stateFor(id),
+      storageLive: _factory.hasLiveStorageClient(id),
+      monitorStatus: _coordinator.monitorFor(id).state.status,
+      gateState: _gate.stateOf(id),
+      planeRebinding: _planeRebinding && id == _activeHomeId,
     );
   }
 
