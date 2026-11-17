@@ -19,7 +19,6 @@ import '../../services/storage/home_storage.dart';
 import '../../services/storage/runtime_context_registry.dart';
 import '../../services/storage/runtime_context_resolver.dart';
 import '../../services/storage/runtime_target_registry.dart';
-import '../../services/storage/targets_repository.dart';
 import '../../services/termux/termux_config.dart';
 import '../../services/termux/termux_config_store.dart';
 import '../../services/vault/home_vault_service.dart';
@@ -28,7 +27,7 @@ import '../../services/vault/home_vault_service.dart';
 /// the home connect result the shell seeds its cubit with, the home [HomeStorage]
 /// facade, and the home-plane vault scope.
 typedef HomePlaneWiring = ({
-  RuntimeTargetRegistry runtimeTargetRegistry,
+  RuntimeTargetRegistry homeTargetRegistry,
   RuntimeContextRegistry runtimeContextRegistry,
   HomeConnectAttempt homeAttempt,
   HomeConnectResult initialHome,
@@ -52,9 +51,9 @@ typedef HomePlaneWiring = ({
 /// [boot] is the shell's phase logger; each call stays at the point it used to
 /// log inline, so the stopwatch phases report the same order.
 Future<HomePlaneWiring> wireHomePlane({
-  required TargetsRepository targetsRepo,
   required SshProfileRepository sshProfileRepo,
   required SshProfile? Function(String profileId) sshProfileById,
+  SshProfile? Function(String profileId)? workProfileById,
   required RuntimeTarget Function(String id) homeTargetFromId,
   required RuntimeTarget Function() homeTarget,
   required TermuxConfigStore termuxConfigStore,
@@ -66,8 +65,10 @@ Future<HomePlaneWiring> wireHomePlane({
   required String defaultWorkspaceDirectory,
   required void Function(String phase) boot,
 }) async {
-  final runtimeTargetRegistry = RuntimeTargetRegistry(
-    repo: targetsRepo,
+  // Home-target palette: device-local home-binding catalog (A source),
+  // read-only. It must never reconcile the workload `targets.json` — that file
+  // belongs to the workspace registry bound to the B source in buildAppShell.
+  final homeTargetRegistry = RuntimeTargetRegistry(
     sshProfileRepo: sshProfileRepo,
     isWindows: Platform.isWindows,
     isAndroid: Platform.isAndroid,
@@ -87,7 +88,11 @@ Future<HomePlaneWiring> wireHomePlane({
   final runtimeContextRegistry = RuntimeContextRegistry(
     resolver: runtimeContextResolver,
     homeTarget: homeTarget(),
+    // Home binding resolves from the device-local A source; work-plane
+    // `ssh:<id>` contexts resolve from the combined B-first + A-fallback
+    // resolver so home-plane workload hosts get an SSH transport.
     sshProfileById: sshProfileById,
+    workProfileById: workProfileById,
     termuxPathCache: () {
       final cfg = termuxConfig();
       if (cfg == null) {
@@ -192,7 +197,7 @@ Future<HomePlaneWiring> wireHomePlane({
   );
 
   return (
-    runtimeTargetRegistry: runtimeTargetRegistry,
+    homeTargetRegistry: homeTargetRegistry,
     runtimeContextRegistry: runtimeContextRegistry,
     homeAttempt: homeAttempt,
     initialHome: initialHome,

@@ -122,6 +122,12 @@ class _RecordingHomeTargetController implements HomeTargetController {
       [current];
 
   @override
+  Future<List<RuntimeTarget>> listWorkspaceTargets({
+    String wslDistro = '',
+  }) =>
+      listSelectable(wslDistro: wslDistro);
+
+  @override
   Future<void> select(String id) async => selected.add(id);
 }
 

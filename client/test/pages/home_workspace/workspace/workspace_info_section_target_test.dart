@@ -12,6 +12,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_info_section.dart';
+import 'package:teampilot/repositories/combined_ssh_profile_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -212,6 +213,13 @@ Future<void> _pumpWorkspaceInfo(
         providers: [
           RepositoryProvider<HomeTargetController>.value(value: controller),
           RepositoryProvider<SshProfileRepository>.value(value: sshRepo),
+          RepositoryProvider<CombinedSshProfileRepository>.value(
+            value: CombinedSshProfileRepository(
+              storage: testHomeStorage,
+              workload: sshRepo,
+              home: sshRepo,
+            ),
+          ),
           RepositoryProvider<SessionRepository>.value(
             value: SessionRepository(
               rootDir: tmp.path,

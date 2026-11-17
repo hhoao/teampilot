@@ -23,7 +23,7 @@ import '../models/workspace.dart';
 import '../models/workspace_launch_context.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
-import '../repositories/ssh_profile_repository.dart';
+import '../repositories/combined_ssh_profile_repository.dart';
 import '../services/storage/home_target_controller.dart';
 import '../services/io/filesystem.dart';
 import '../services/terminal/terminal_session.dart';
@@ -167,7 +167,9 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   }
 
   TargetLiveness _targetLiveness(BuildContext context) =>
-      DefaultTargetLiveness(sshProfiles: context.read<SshProfileRepository>());
+      DefaultTargetLiveness(
+        sshProfiles: context.read<CombinedSshProfileRepository>(),
+      );
 
   Future<void> _remapDeadTargetFromLaunch({
     required String launchError,
@@ -187,7 +189,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     final homeTarget = context.read<HomeTargetController>();
     final repo = context.read<SessionRepository>();
     try {
-      final selectable = await homeTarget.listSelectable();
+      final selectable = await homeTarget.listWorkspaceTargets();
       if (!mounted) return;
       final to = await showWorkspaceDeadTargetRemapDialog(
         context: context,

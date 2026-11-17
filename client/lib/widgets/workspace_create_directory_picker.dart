@@ -44,7 +44,7 @@ class _WorkspaceCreateDirectoryPickerState
   }
 
   Future<List<RuntimeTarget>> _loadTargets() =>
-      context.read<HomeTargetController>().listSelectable();
+      context.read<HomeTargetController>().listWorkspaceTargets();
 
   Future<void> _addDirectory() async {
     final picked = await pickWorkspaceDirectoryPath(

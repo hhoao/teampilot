@@ -431,7 +431,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     try {
       final targets = await context
           .read<HomeTargetController>()
-          .listSelectable();
+          .listWorkspaceTargets();
       if (!mounted) return;
       setState(() => _runtimeTargets = targets);
       _scheduleTeamLaunchReadinessCheck();

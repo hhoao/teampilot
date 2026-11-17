@@ -16,17 +16,27 @@ class RuntimeContextRegistry {
     required RuntimeContextResolver resolver,
     required RuntimeTarget homeTarget,
     SshProfile? Function(String id)? sshProfileById,
+    SshProfile? Function(String id)? workProfileById,
     TermuxPathCache Function()? termuxPathCache,
     Future<void> Function(String targetId)? onEvict,
   }) : _resolver = resolver,
        _homeTarget = homeTarget,
        _sshProfileById = sshProfileById,
+       _workProfileById = workProfileById,
        _termuxPathCache = termuxPathCache,
        _onEvict = onEvict;
 
   final RuntimeContextResolver _resolver;
   RuntimeTarget _homeTarget;
+  /// Device-local home-binding catalog (A source). Resolves the current SSH
+  /// home target and its cached paths. Home binding must never read from the
+  /// home-plane workload catalog (B source).
   final SshProfile? Function(String id)? _sshProfileById;
+  /// Work-plane resolver (combined B-first + A-fallback). Resolves `ssh:<id>`
+  /// folder/workspace targets, which name home-plane workload hosts (B), with
+  /// an A-source fallback for SSH-home / offline binding. When omitted, falls
+  /// back to [_sshProfileById] so standalone/test registries keep working.
+  final SshProfile? Function(String id)? _workProfileById;
   final TermuxPathCache Function()? _termuxPathCache;
   final Future<void> Function(String targetId)? _onEvict;
 
@@ -39,8 +49,21 @@ class RuntimeContextRegistry {
   Future<void> ensureHome() async {
     final target = _homeTarget;
     await _withTargetOperation(target.id, () async {
-      _home = await _resolve(target, cache: true);
+      _home = await _resolve(target, cache: true, isHome: true);
     });
+  }
+
+  /// Pick the profile resolver for [target]: the home target resolves from the
+  /// device-local A source (home binding), every work-plane target resolves
+  /// from the combined B-first + A-fallback resolver. This is the single point
+  /// where the two SSH profile sources are kept apart for context resolution.
+  SshProfile? _profileFor(RuntimeTarget target, {required bool isHome}) {
+    final profileId = target.sshProfileId;
+    if (profileId == null) return null;
+    final resolver = isHome
+        ? _sshProfileById
+        : (_workProfileById ?? _sshProfileById);
+    return resolver?.call(profileId);
   }
 
   /// Materialize + publish a cached home context without any network I/O.
@@ -56,10 +79,10 @@ class RuntimeContextRegistry {
   /// avoid. A live resolve that finishes later overwrites this value.
   Future<RuntimeContext> ensureHomeCached() async {
     final target = _homeTarget;
-    final profileId = target.sshProfileId;
     final cached = await _resolver.resolveCached(
       target,
-      sshProfile: profileId == null ? null : _sshProfileById?.call(profileId),
+      // Cached home paths come from the device-local A source home profile.
+      sshProfile: _profileFor(target, isHome: true),
     );
     _home ??= cached;
     return _home!;
@@ -75,18 +98,16 @@ class RuntimeContextRegistry {
     return _withTargetOperation(target.id, () async {
       final cached = _cache[target.id];
       if (cached != null) return cached;
-      return _resolve(target, cache: true);
+      return _resolve(target, cache: true, isHome: false);
     });
   }
 
   Future<RuntimeContext> _resolve(
     RuntimeTarget target, {
     required bool cache,
+    required bool isHome,
   }) async {
-    final profileId = target.sshProfileId;
-    final sshProfile = profileId != null
-        ? _sshProfileById?.call(profileId)
-        : null;
+    final sshProfile = _profileFor(target, isHome: isHome);
     final termuxCache = target.kind == RuntimeKind.termux
         ? _termuxPathCache?.call()
         : null;
@@ -155,7 +176,7 @@ class RuntimeContextRegistry {
     return _withTargetOperation(homeTarget.id, () async {
       final previousHome = _home;
       final previous = _cache[homeTarget.id];
-      final next = await _resolve(homeTarget, cache: false);
+      final next = await _resolve(homeTarget, cache: false, isHome: true);
 
       if (previous != null && !identical(previousHome, previous)) {
         await _notifyEvicted(previous);

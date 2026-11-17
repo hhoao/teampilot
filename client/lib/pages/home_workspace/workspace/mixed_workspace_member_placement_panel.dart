@@ -13,7 +13,7 @@ import '../../../models/workspace.dart';
 import '../../../models/workspace_folder.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../repositories/session_repository.dart';
-import '../../../repositories/ssh_profile_repository.dart';
+import '../../../repositories/combined_ssh_profile_repository.dart';
 import '../../../services/remote/remote_cli_readiness.dart';
 import '../../../services/storage/home_target_controller.dart';
 import '../../../services/workspace/target_liveness.dart';
@@ -91,7 +91,9 @@ class _MixedWorkspaceMemberPlacementPanelState
   List<String>? _deadCheckKey;
 
   TargetLiveness _liveness(BuildContext context) =>
-      DefaultTargetLiveness(sshProfiles: context.read<SshProfileRepository>());
+      DefaultTargetLiveness(
+        sshProfiles: context.read<CombinedSshProfileRepository>(),
+      );
 
   void _ensureDeadTargetsChecked(List<String> targetIds) {
     if (_deadCheckKey != null && listEquals(_deadCheckKey, targetIds)) return;
@@ -104,7 +106,7 @@ class _MixedWorkspaceMemberPlacementPanelState
     try {
       liveness = _liveness(context);
     } on Object {
-      // SshProfileRepository unavailable in lightweight widget tests.
+      // CombinedSshProfileRepository unavailable in lightweight widget tests.
       return;
     }
     final dead = <String>{};
@@ -140,7 +142,7 @@ class _MixedWorkspaceMemberPlacementPanelState
     try {
       final targets = await context
           .read<HomeTargetController>()
-          .listSelectable();
+          .listWorkspaceTargets();
       if (!mounted) return;
       setState(() => _selectableTargets = targets);
     } on Object {
@@ -192,7 +194,7 @@ class _MixedWorkspaceMemberPlacementPanelState
     final repo = context.read<SessionRepository>();
     final chat = context.read<ChatCubit>();
     try {
-      final selectable = await homeTarget.listSelectable();
+      final selectable = await homeTarget.listWorkspaceTargets();
       if (!mounted) return;
       final to = await showWorkspaceDeadTargetRemapDialog(
         context: context,
@@ -253,7 +255,7 @@ class _MixedWorkspaceMemberPlacementPanelState
               SizedBox(
                 width: 220,
                 child: FutureBuilder<List<RuntimeTarget>>(
-                  future: controller.listSelectable(),
+                  future: controller.listWorkspaceTargets(),
                   builder: (context, snapshot) {
                     final labels = {
                       for (final t in snapshot.data ?? const <RuntimeTarget>[])

@@ -31,6 +31,7 @@ class _FakeResolver extends RuntimeContextResolver {
 
   final resolveCount = <String, int>{};
   final offline = <String>{};
+  final resolvedProfiles = <String, SshProfile?>{};
 
   @override
   Future<RuntimeContext> resolve(
@@ -40,6 +41,7 @@ class _FakeResolver extends RuntimeContextResolver {
     String? cachedAppDataRoot,
   }) async {
     resolveCount[target.id] = (resolveCount[target.id] ?? 0) + 1;
+    resolvedProfiles[target.id] = sshProfile;
     if (offline.contains(target.id)) {
       throw StateError('offline: ${target.id}');
     }
@@ -299,4 +301,76 @@ void main() {
     await reg.rebindHome(RuntimeTarget.wsl('Ubuntu'));
     expect(reg.home().appDataRoot, '/tp-wsl:Ubuntu');
   });
+
+  test(
+    'home target resolves from A source; work targets use combined resolver',
+    () async {
+      const aHome = SshProfile(
+        id: 'home',
+        name: 'A home',
+        host: 'a.home',
+        username: 'u',
+      );
+      const bHome = SshProfile(
+        id: 'home',
+        name: 'B home',
+        host: 'b.home',
+        username: 'u',
+      );
+      const aWork = SshProfile(
+        id: 'work',
+        name: 'A work',
+        host: 'a.work',
+        username: 'u',
+      );
+      const bWork = SshProfile(
+        id: 'work',
+        name: 'B work',
+        host: 'b.work',
+        username: 'u',
+      );
+      final resolver = _FakeResolver();
+      final reg = RuntimeContextRegistry(
+        resolver: resolver,
+        homeTarget: RuntimeTarget.ssh('home', label: 'Home'),
+        // Device-local home-binding catalog (A).
+        sshProfileById: (id) => {'home': aHome, 'work': aWork}[id],
+        // Combined B-first + A-fallback resolver (work plane).
+        workProfileById: (id) => {'home': bHome, 'work': bWork}[id],
+      );
+
+      await reg.ensureHome();
+      // Home binding must use the A source, even when the combined resolver
+      // exposes a same-id B row — otherwise an SSH home would bind to a
+      // workload host from the home plane.
+      expect(resolver.resolvedProfiles['ssh:home']?.name, 'A home');
+
+      await reg.forTarget(RuntimeTarget.ssh('work', label: 'Work'));
+      // A work-plane `ssh:<id>` target resolves through the combined resolver,
+      // so the B workload row wins over the A row with the same id.
+      expect(resolver.resolvedProfiles['ssh:work']?.name, 'B work');
+    },
+  );
+
+  test(
+    'work targets fall back to the A resolver when combined is omitted',
+    () async {
+      const aWork = SshProfile(
+        id: 'work',
+        name: 'A work',
+        host: 'a.work',
+        username: 'u',
+      );
+      final resolver = _FakeResolver();
+      final reg = RuntimeContextRegistry(
+        resolver: resolver,
+        homeTarget: RuntimeTarget.local(),
+        sshProfileById: (id) => id == 'work' ? aWork : null,
+      );
+
+      await reg.forTarget(RuntimeTarget.ssh('work', label: 'Work'));
+
+      expect(resolver.resolvedProfiles['ssh:work']?.name, 'A work');
+    },
+  );
 }

@@ -10,7 +10,7 @@ import '../../../../models/workspace.dart';
 import '../../../../models/workspace_folder.dart';
 import '../../../../models/workspace_topology.dart';
 import '../../../../repositories/session_repository.dart';
-import '../../../../repositories/ssh_profile_repository.dart';
+import '../../../../repositories/combined_ssh_profile_repository.dart';
 import '../../../../services/storage/home_target_controller.dart';
 import '../../../../services/storage/work_target_canonicalizer.dart';
 import '../../../../services/workspace/target_liveness.dart';
@@ -41,7 +41,9 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
   List<String>? _deadCheckKey;
 
   TargetLiveness _liveness(BuildContext context) =>
-      DefaultTargetLiveness(sshProfiles: context.read<SshProfileRepository>());
+      DefaultTargetLiveness(
+        sshProfiles: context.read<CombinedSshProfileRepository>(),
+      );
 
   void _ensureDeadTargetsChecked(List<WorkspaceFolder> folders) {
     final key = workspaceTargetIds(folders);
@@ -99,7 +101,7 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
     final repo = context.read<SessionRepository>();
     final chat = context.read<ChatCubit>();
     try {
-      final selectable = await homeTarget.listSelectable();
+      final selectable = await homeTarget.listWorkspaceTargets();
       if (!mounted) return;
       final to = await showWorkspaceDeadTargetRemapDialog(
         context: context,

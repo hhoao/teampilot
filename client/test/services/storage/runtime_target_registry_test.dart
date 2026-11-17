@@ -95,4 +95,47 @@ void main() {
     final ids = (await reg.listTargets()).map((t) => t.id);
     expect(ids, isNot(contains('termux:default')));
   });
+
+  test('read-only palette (repo == null) derives ssh from profiles and never '
+      'writes targets.json', () async {
+    // A stale persisted target that the read-only palette must ignore.
+    await targetsRepo.save(
+      TargetsRegistryFile(
+        targets: [RuntimeTarget.ssh('stale', label: 'stale')],
+      ),
+    );
+    await sshRepo.saveAll([profile('a')]);
+    final reg = RuntimeTargetRegistry(
+      // no repo: home-target palette (A source), read-only.
+      sshProfileRepo: sshRepo,
+      isWindows: false,
+      isAndroid: false,
+    );
+    final ids = (await reg.listTargets()).map((t) => t.id).toSet();
+    expect(ids, contains('ssh:a')); // derived straight from the live profiles
+    expect(ids, isNot(contains('ssh:stale'))); // persisted file is ignored
+    // Persistence is untouched: the palette never reads or writes it.
+    final persisted = (await targetsRepo.load()).targets.map((t) => t.id);
+    expect(persisted, ['ssh:stale']);
+  });
+
+  test('empty workload catalog keeps persisted targets verbatim (offline '
+      'guard)', () async {
+    await targetsRepo.save(
+      TargetsRegistryFile(
+        targets: [
+          RuntimeTarget.ssh('p1', label: 'one'),
+          RuntimeTarget.ssh('p2', label: 'two'),
+        ],
+      ),
+    );
+    // sshRepo stays empty: simulates an unreachable / empty B source.
+    final reg = build();
+    final ids = (await reg.listTargets()).map((t) => t.id).toSet();
+    expect(ids, containsAll(['local', 'ssh:p1', 'ssh:p2']));
+    // Persisted targets must NOT be pruned and NOT rewritten.
+    final persisted =
+        (await targetsRepo.load()).targets.map((t) => t.id).toSet();
+    expect(persisted, {'ssh:p1', 'ssh:p2'});
+  });
 }

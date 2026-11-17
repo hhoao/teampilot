@@ -37,7 +37,7 @@ Future<void> showCloneRepositoryDialog(BuildContext context) async {
 /// Centered modal collecting a git URL + destination for `git clone`.
 ///
 /// Modeled on [HomeNewWorkspaceDialog]: [TpDialog] + [TpForm] shell, target
-/// selector fed by [HomeTargetController.listSelectable], and a
+/// selector fed by [HomeTargetController.listWorkspaceTargets], and a
 /// [WorkspaceCreateNameField] for the clone folder name.
 class HomeCloneRepositoryDialog extends StatefulWidget {
   const HomeCloneRepositoryDialog({super.key, this.picker});
@@ -221,7 +221,7 @@ class _HomeCloneRepositoryDialogState extends State<HomeCloneRepositoryDialog> {
   }
 }
 
-/// Machine dropdown fed by [HomeTargetController.listSelectable], following the
+/// Machine dropdown fed by [HomeTargetController.listWorkspaceTargets], following the
 /// target-row shape of [WorkspaceCreateDirectoryPicker].
 class _TargetRow extends StatefulWidget {
   const _TargetRow({required this.targetId, required this.onChanged});
@@ -239,7 +239,7 @@ class _TargetRowState extends State<_TargetRow> {
   @override
   void initState() {
     super.initState();
-    _targets = context.read<HomeTargetController>().listSelectable();
+    _targets = context.read<HomeTargetController>().listWorkspaceTargets();
   }
 
   @override

@@ -110,7 +110,7 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
   }
 
   Future<List<RuntimeTarget>> _loadTargets() =>
-      context.read<HomeTargetController>().listSelectable();
+      context.read<HomeTargetController>().listWorkspaceTargets();
 
   void _emit(List<WorkspaceFolder> next) {
     setState(() => _folders = next);

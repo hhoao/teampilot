@@ -136,6 +136,7 @@ import '../repositories/session_repository.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
+import '../repositories/combined_ssh_profile_repository.dart';
 import '../repositories/plane_ssh_profile_repository.dart';
 import '../repositories/ssh_server_profile_repository.dart';
 import '../repositories/workspace_project_config_repository.dart';
@@ -198,6 +199,7 @@ import '../services/storage/home_target_controller.dart';
 import '../services/storage/home_storage.dart';
 import '../services/storage/workspace_directory_picker.dart';
 import '../services/storage/home_target_store.dart';
+import '../services/storage/runtime_target_registry.dart';
 import '../services/termux/termux_config.dart';
 import '../services/termux/termux_transport_profile.dart';
 import '../services/termux/termux_work_ops_message.dart';
@@ -272,6 +274,7 @@ class AppShell {
     required this.sessionRepo,
     required this.workspaceProjectConfigRepository,
     required this.sshProfileRepo,
+    required this.combinedSshProfileRepo,
     required this.sshCredentialStore,
     required this.sshKnownHostRepo,
     required this.transportFactory,
@@ -396,6 +399,12 @@ class AppShell {
   final SessionRepository sessionRepo;
   final WorkspaceProjectConfigRepository workspaceProjectConfigRepository;
   final SshProfileRepository sshProfileRepo;
+  /// Combined B-first + A-fallback point-lookup repository for work-plane
+  /// execution chains (workspace terminals, folder liveness). Provided to the
+  /// widget tree under its own type so workspace consumers get B hosts while
+  /// the [SshProfileRepository] provider stays device-local A source for
+  /// Remote Connections / onboarding / pairing.
+  final CombinedSshProfileRepository combinedSshProfileRepo;
   final SshCredentialStore sshCredentialStore;
   final SshKnownHostRepository sshKnownHostRepo;
   final TerminalTransportFactory transportFactory;
@@ -782,6 +791,20 @@ Future<AppShell> buildAppShell({
     return null;
   }
 
+  // Work-plane point resolver (combined B-first + A-fallback) for every
+  // execution chain that resolves a `ssh:<id>` machine: terminals, run/clone
+  // spawners, CLI readiness, and work-plane runtime contexts. The B-source
+  // workload cubit is only built after wireHomePlane produces homeStorage, so
+  // the real combined resolver is installed into this ref below. Consumers
+  // created before that point (RemoteCliReadinessService, wireHomePlane's
+  // RuntimeContextRegistry) hold this stable forward closure; all lookups are
+  // lazy (runtime), long after the ref is set. Until then it falls back to the
+  // A-source home resolver — correct for home binding and never consulted for
+  // B-only workload hosts at bootstrap.
+  SshProfile? Function(String id)? workPlaneResolverRef;
+  SshProfile? Function(String id) combinedProfileById =
+      (id) => (workPlaneResolverRef ?? sshProfileById)(id);
+
   /// Identity fields that decide how an SSH home is reached. Deliberately
   /// excludes `updatedAt` and the persisted path cache: a successful connect
   /// writes those back and must not look like a user edit.
@@ -792,7 +815,9 @@ Future<AppShell> buildAppShell({
   final remoteCliReadiness = RemoteCliReadinessService(
     registry: cliToolRegistry,
     sshClientFactory: sshClientFactory,
-    profileById: sshProfileById,
+    // Work-plane machines are B-source workload hosts; the combined resolver
+    // (installed below) resolves them, with an A fallback for SSH homes.
+    profileById: combinedProfileById,
     cliPathOverride: targetsRepo.cliPathOverride,
     setCliPathOverride: targetsRepo.setCliPathOverride,
     acpAdapterPathOverride: targetsRepo.acpAdapterPathOverride,
@@ -802,9 +827,11 @@ Future<AppShell> buildAppShell({
   // history memory cache when a work-plane target is disposed.
   AiHistoryLoader? aiHistoryLoaderRef;
   final homePlane = await wireHomePlane(
-    targetsRepo: targetsRepo,
     sshProfileRepo: sshProfileRepo,
     sshProfileById: sshProfileById,
+    // Work-plane runtime contexts resolve `ssh:<id>` workload hosts via the
+    // combined resolver; home binding stays on the A-source sshProfileById.
+    workProfileById: combinedProfileById,
     homeTargetFromId: homeTargetFromId,
     homeTarget: defaultTargetResolver,
     termuxConfigStore: termuxConfigStore,
@@ -816,7 +843,9 @@ Future<AppShell> buildAppShell({
     defaultWorkspaceDirectory: defaultWorkspaceDirectory,
     boot: boot,
   );
-  final runtimeTargetRegistry = homePlane.runtimeTargetRegistry;
+  // Home-target palette (A source, read-only): used only by the home-target
+  // picker. The workspace machine lists use [workspaceTargetRegistry] below.
+  final homeTargetRegistry = homePlane.homeTargetRegistry;
   final runtimeContextRegistry = homePlane.runtimeContextRegistry;
   final homeAttempt = homePlane.homeAttempt;
   final initialHome = homePlane.initialHome;
@@ -861,6 +890,35 @@ Future<AppShell> buildAppShell({
   final sessionProfileById = combinedSshProfileResolver(
     workloadById: planeProfileById,
     homeById: sshProfileById,
+  );
+  // Install the real combined resolver into the forward ref declared above the
+  // home plane. From here on, combinedProfileById (held by RemoteCliReadiness
+  // and the work-plane runtime-context registry) resolves B-first + A-fallback.
+  // Kept as one resolver with the remote-session chain (sessionProfileById).
+  workPlaneResolverRef = sessionProfileById;
+  // Read-oriented point-lookup repository for work-plane execution chains
+  // (terminals, run/clone SSH spawners, folder liveness). findById checks the
+  // B workload catalog first, then the A home-binding catalog; loadAll is
+  // B-only so machine lists never merge the two independent catalogs. Machine
+  // enumeration stays with workspaceTargetRegistry (B, targets.json).
+  final combinedSshProfileRepo = CombinedSshProfileRepository(
+    storage: homeStorage,
+    workload: planeSshProfileRepo,
+    home: sshProfileRepo,
+  );
+  // Workspace machine catalog (B source). All workspace/mixed-workspace
+  // machine pickers, the directory picker, and the team-generation target
+  // probe resolve through this registry, so they list the home-plane workload
+  // hosts (SSH 服务器页) — never the device-local home-binding profiles
+  // (远程连接页). It reconciles the persisted `targets.json` (CLI path /
+  // ACP adapter overrides live there) against the B catalog. The home-target
+  // picker deliberately does NOT use it; that palette is [homeTargetRegistry].
+  final workspaceTargetRegistry = RuntimeTargetRegistry(
+    repo: targetsRepo,
+    sshProfileRepo: planeSshProfileRepo,
+    isWindows: Platform.isWindows,
+    isAndroid: Platform.isAndroid,
+    hasTermuxConfig: () => termuxConfigCache != null,
   );
   final scope = homePlane.scope;
   homeWorkspaceUiCache = homePlane.homeWorkspaceUiCache;
@@ -1108,7 +1166,10 @@ Future<AppShell> buildAppShell({
 
     final installWiring = await wireInstallJobs(
       storage: homeStorage,
-      sshProfiles: sshProfileRepo,
+      // Repo clone / CLI install run on work-plane `ssh:<id>` targets (B
+      // source). findById resolves the B workload host first, with the A home
+      // binding as fallback; loadAll stays B-only.
+      sshProfiles: combinedSshProfileRepo,
       sshClientFactory: sshClientFactory,
       runtimeContexts: runtimeContextRegistry,
       homeTarget: defaultTargetResolver,
@@ -1119,7 +1180,8 @@ Future<AppShell> buildAppShell({
       appUpdateService: appUpdateService,
       appSettings: appSettings,
       deferHomePlaneLoads: deferHomePlaneLoads,
-      sshProfileById: sshProfileById,
+      // CLI install jobs probe/install binaries on work-plane hosts.
+      sshProfileById: combinedProfileById,
     );
     final repoCloneSshSpawner = installWiring.repoCloneSshSpawner;
     final repoCloneCubit = installWiring.repoCloneCubit;
@@ -1191,7 +1253,8 @@ Future<AppShell> buildAppShell({
       extensionRepository: extensionRepository,
       workspaceConfig: workspaceProjectConfigRepository,
       sessionLifecycleService: () => sessionLifecycleService,
-      sshProfiles: sshProfileRepo,
+      // Workspace run targets are `ssh:<id>` workload hosts (B source).
+      sshProfiles: combinedSshProfileRepo,
       sshClientFactory: sshClientFactory,
       homeTarget: defaultTargetResolver,
       chatCubit: () => chatCubit,
@@ -1220,13 +1283,15 @@ Future<AppShell> buildAppShell({
     PairedDeviceStore? connectDeviceStore = connect.connectDeviceStore;
     final commands = wireCommands(
       storage: homeStorage,
-      sshProfileRepo: sshProfileRepo,
+      // Workspace terminal transports / shells connect to work-plane `ssh:<id>`
+      // workload hosts (B source), with the A home binding as fallback.
+      sshProfileRepo: combinedSshProfileRepo,
       sshCredentialStore: sshCredentialStore,
       sshKnownHostRepo: sshKnownHostRepo,
       sshClientFactory: sshClientFactory,
       sessionPreferencesCubit: sessionPreferencesCubit,
       homeTarget: defaultTargetResolver,
-      sshProfileById: sshProfileById,
+      sshProfileById: combinedProfileById,
     );
     final commandBus = commands.commandBus;
     final shortcutCubit = commands.shortcutCubit;
@@ -1480,7 +1545,7 @@ Future<AppShell> buildAppShell({
         sessionRepo: sessionRepo,
         identityRepository: identityRepository,
         cliToolRegistry: cliToolRegistry,
-        targetRegistry: runtimeTargetRegistry,
+        targetRegistry: workspaceTargetRegistry,
         remoteCliReadiness: remoteCliReadiness,
         storage: homeStorage,
         catalogRegistry: catalogRuntime.registry,
@@ -2293,7 +2358,11 @@ Future<AppShell> buildAppShell({
     final homeStorageInvalidator = homeInvalidationService.invalidator;
 
     homeTargetController = HomeTargetController(
-      registry: runtimeTargetRegistry,
+      // Home selection reads the device-local home-binding palette (A source).
+      registry: homeTargetRegistry,
+      // Workspace machine pickers read the home-plane workload catalog
+      // (B source, persisted in targets.json).
+      workloadRegistry: workspaceTargetRegistry,
       current: defaultTargetResolver,
       switchTo: homePlaneSwitch.switchHomeTarget,
     );
@@ -2340,10 +2409,11 @@ Future<AppShell> buildAppShell({
     termuxGateCubit = termuxCubit;
 
     // Target-aware directory picker for workspace dialogs: resolves the chosen
-    // target's filesystem (real SSH connect for ssh targets) and lists targets.
+    // target's filesystem (real SSH connect for ssh targets) and lists the
+    // home-plane workload targets (B source).
     final directoryPicker = WorkspaceDirectoryPicker(
       resolveContext: runtimeContextRegistry.forTarget,
-      listTargets: () => runtimeTargetRegistry.listTargets(),
+      listTargets: () => workspaceTargetRegistry.listTargets(),
     );
 
     final sessionLifecycleHandler = eventDispatcher == null
@@ -2393,6 +2463,7 @@ Future<AppShell> buildAppShell({
       sessionRepo: sessionRepo,
       workspaceProjectConfigRepository: workspaceProjectConfigRepository,
       sshProfileRepo: sshProfileRepo,
+      combinedSshProfileRepo: combinedSshProfileRepo,
       sshCredentialStore: sshCredentialStore,
       sshKnownHostRepo: sshKnownHostRepo,
       transportFactory: transportFactory,

@@ -697,7 +697,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
     try {
       final targets = await context
           .read<HomeTargetController>()
-          .listSelectable();
+          .listWorkspaceTargets();
       if (!mounted) return;
       setState(() => _runtimeTargets = targets);
     } on Object {
