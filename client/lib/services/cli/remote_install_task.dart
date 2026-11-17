@@ -18,6 +18,9 @@ final class RemoteInstallTask {
   /// Long enough for npm/Node bootstrap/downloads, short enough to end a wedge.
   static const defaultCommandTimeout = Duration(minutes: 10);
 
+  /// Closing must never outlive the install outcome on a wedged worker.
+  static const _closeTimeout = Duration(seconds: 10);
+
   static Future<RemoteInstallTask> open(
     SshClientFactory factory,
     SshProfile profile, {
@@ -62,7 +65,7 @@ final class RemoteInstallTask {
 
   Future<void> _close() async {
     try {
-      await _transport.close();
+      await _transport.close().timeout(_closeTimeout);
     } on Object {
       // The channel may already be gone; a close failure must never mask the
       // install outcome or the timeout that triggered it.
