@@ -285,6 +285,38 @@ void main() {
     );
     expect(reply.error?.code, 'transport_error');
   });
+
+  test('a timed-out storage exec cancels only that command', () async {
+    final events = <SshWorkerEvent>[];
+    final backend = _FakeBackend()..hangRun = true;
+    final core = SshWorkerStorageCore(backend: backend, sendEvent: events.add);
+    await core.handle(_request(SshWorkerOperation.connectStorage));
+
+    final reply = await core.handle(
+      SshWorkerRequest(
+        requestId: 'run-timeout',
+        operation: SshWorkerOperation.runStorage,
+        args: const {'command': 'sleep 600', 'stderr': true, 'timeoutMs': 10},
+      ),
+    );
+
+    expect(reply.error?.code, 'command_timeout');
+    expect(backend.cancelRunCalls, 1);
+    expect(
+      events.where((event) => event.kind == SshWorkerEventKind.transportClose),
+      isEmpty,
+    );
+
+    backend.hangRun = false;
+    final next = await core.handle(
+      SshWorkerRequest(
+        requestId: 'run-ok',
+        operation: SshWorkerOperation.runStorage,
+        args: const {'command': 'true', 'stderr': true},
+      ),
+    );
+    expect(next.kind, SshWorkerReplyKind.success);
+  });
 }
 
 SshWorkerRequest _request(
@@ -307,6 +339,9 @@ final class _FakeBackend implements SshWorkerStorageBackend {
   var failWrites = false;
   var failReads = false;
   var failCloses = false;
+  var hangRun = false;
+  var cancelRunCalls = 0;
+  final _pendingRuns = <Completer<SshWorkerRunResult>>[];
 
   @override
   Future<void> connect(SshWorkerRequest request) async {}
@@ -316,7 +351,33 @@ final class _FakeBackend implements SshWorkerStorageBackend {
     String command, {
     required bool stderr,
     Uint8List? stdin,
-  }) => throw UnimplementedError();
+  }) {
+    if (!hangRun) {
+      return Future.value(
+        SshWorkerRunResult(
+          stdout: Uint8List(0),
+          stderr: Uint8List(0),
+          exitCode: 0,
+        ),
+      );
+    }
+    final pending = Completer<SshWorkerRunResult>();
+    _pendingRuns.add(pending);
+    return pending.future;
+  }
+
+  @override
+  void cancelRun() {
+    cancelRunCalls++;
+    for (final pending in _pendingRuns) {
+      if (!pending.isCompleted) {
+        pending.completeError(
+          const SshWorkerTransportException('cancelled', code: 'cancelled'),
+        );
+      }
+    }
+    _pendingRuns.clear();
+  }
 
   @override
   Future<Map<String, Object?>> metadata(

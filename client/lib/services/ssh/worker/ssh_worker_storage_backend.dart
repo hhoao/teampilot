@@ -14,6 +14,10 @@ abstract interface class SshWorkerStorageBackend {
     required bool stderr,
     Uint8List? stdin,
   });
+
+  /// Closes in-flight exec sessions without touching the shared transport.
+  /// A stdin-backed run cannot be listed here (see `run`).
+  void cancelRun();
   Future<Map<String, Object?>> metadata(
     SshWorkerOperation operation,
     String path, {
@@ -45,6 +49,7 @@ final class SshWorkerDartStorageBackend implements SshWorkerStorageBackend {
   final void Function() onClosed;
   SSHClient? _client;
   SftpClient? _sftp;
+  final Set<SSHSession> _activeRuns = {};
   var _epoch = 0;
 
   @override
@@ -103,6 +108,7 @@ final class SshWorkerDartStorageBackend implements SshWorkerStorageBackend {
       );
     }
     final session = await _client!.execute(command);
+    _activeRuns.add(session);
     final stdoutBytes = BytesBuilder(copy: false);
     final stderrBytes = BytesBuilder(copy: false);
     var total = 0;
@@ -139,6 +145,7 @@ final class SshWorkerDartStorageBackend implements SshWorkerStorageBackend {
         maxOutputBytes: sshWorkerMaxStorageExecOutput,
       );
     } finally {
+      _activeRuns.remove(session);
       session.close();
     }
   }
@@ -196,7 +203,21 @@ final class SshWorkerDartStorageBackend implements SshWorkerStorageBackend {
   }
 
   @override
+  void cancelRun() {
+    final runs = _activeRuns.toList(growable: false);
+    _activeRuns.clear();
+    for (final session in runs) {
+      try {
+        session.close();
+      } on Object {
+        // The socket teardown is best effort; the caller already timed out.
+      }
+    }
+  }
+
+  @override
   void close() {
+    cancelRun();
     _epoch++;
     _client = null;
     final sftp = _sftp;

@@ -46,8 +46,22 @@ final class SshWorkerStorageCore {
       ]).timeout(timeout);
       return SshWorkerReply.success(request.requestId, result: result);
     } on TimeoutException {
-      invalidate(SshTransportCloseReason.transportError);
-      return _error(request, 'transport_timeout');
+      if (request.operation == SshWorkerOperation.runStorage &&
+          request.payload == null) {
+        backend.cancelRun();
+        return _error(request, 'command_timeout');
+      }
+      invalidate(
+        request.operation == SshWorkerOperation.runStorage
+            ? SshTransportCloseReason.commandTimeout
+            : SshTransportCloseReason.transportError,
+      );
+      return _error(
+        request,
+        request.operation == SshWorkerOperation.runStorage
+            ? 'command_timeout'
+            : 'transport_timeout',
+      );
     } on SftpStatusError catch (error) {
       return _error(
         request,
