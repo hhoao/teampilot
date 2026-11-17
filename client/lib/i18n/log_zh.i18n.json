@@ -1,4 +1,12 @@
 {
+  "installJobCopy": "复制",
+  "installJobEmpty": "暂无输出。",
+  "installJobPaused": "已暂停",
+  "installJobResume": "跟随",
+  "installJobTitle": "安装日志",
+  "installJobTruncated": "输出已截断",
+  "installJobUnavailable": "日志不可用——文件已被清理。",
+  "installJobViewLog": "查看日志",
   "viewerAcpFrames": "ACP 协议帧日志（默认关闭）",
   "viewerActionsMenu": "更多操作",
   "viewerAllCopied": "已复制全部过滤后的日志",

@@ -4921,6 +4921,30 @@ class AppLocalizations$log$en {
 
 	// Translations
 
+	/// en: 'Copy'
+	String get installJobCopy => 'Copy';
+
+	/// en: 'No output yet.'
+	String get installJobEmpty => 'No output yet.';
+
+	/// en: 'Paused'
+	String get installJobPaused => 'Paused';
+
+	/// en: 'Follow'
+	String get installJobResume => 'Follow';
+
+	/// en: 'Install log'
+	String get installJobTitle => 'Install log';
+
+	/// en: 'Output truncated'
+	String get installJobTruncated => 'Output truncated';
+
+	/// en: 'Log unavailable — the file was cleaned up.'
+	String get installJobUnavailable => 'Log unavailable — the file was cleaned up.';
+
+	/// en: 'View log'
+	String get installJobViewLog => 'View log';
+
 	/// en: 'ACP protocol frames (off by default)'
 	String get viewerAcpFrames => 'ACP protocol frames (off by default)';
 
@@ -11687,6 +11711,14 @@ extension on AppLocalizations {
 			'llm.configPathSessionCardDescription' => 'Absolute path to the LLM config file (llm_config.json). Leave empty to use the default path next to the CLI install.',
 			'llm.configPathSessionCardDescriptionSsh' => 'Absolute path to llm_config.json on the remote SSH host. Leave empty to use the default path next to the remote CLI install.',
 			'llm.configSubtitle' => 'providers and models',
+			'log.installJobCopy' => 'Copy',
+			'log.installJobEmpty' => 'No output yet.',
+			'log.installJobPaused' => 'Paused',
+			'log.installJobResume' => 'Follow',
+			'log.installJobTitle' => 'Install log',
+			'log.installJobTruncated' => 'Output truncated',
+			'log.installJobUnavailable' => 'Log unavailable — the file was cleaned up.',
+			'log.installJobViewLog' => 'View log',
 			'log.viewerAcpFrames' => 'ACP protocol frames (off by default)',
 			'log.viewerActionsMenu' => 'More actions',
 			'log.viewerAllCopied' => 'All filtered logs copied',
@@ -11764,6 +11796,8 @@ extension on AppLocalizations {
 			'managedProviders.delete' => 'Delete',
 			'managedProviders.deleteContent' => ({required Object name}) => 'Delete “${name}” and its cached usage?',
 			'managedProviders.deleteFailed' => 'Unable to delete managed provider.',
+			_ => null,
+		} ?? switch (path) {
 			'managedProviders.deleteTitle' => 'Delete managed provider?',
 			'managedProviders.disable' => 'Disable',
 			'managedProviders.disabled' => 'Disabled',
@@ -11772,8 +11806,6 @@ extension on AppLocalizations {
 			'managedProviders.displaySectionTitle' => 'Balance and quota display',
 			'managedProviders.dynamicCurrencyHelper' => 'Currency comes from the response mapping.',
 			'managedProviders.edit' => 'Edit',
-			_ => null,
-		} ?? switch (path) {
 			'managedProviders.editTitle' => 'Edit Managed Provider',
 			'managedProviders.emptyHint' => 'Add a provider to track balances and quotas independently from CLI providers.',
 			'managedProviders.emptyTitle' => 'No managed providers',
@@ -12278,6 +12310,8 @@ extension on AppLocalizations {
 			'resource.managerKillFailed' => 'Could not kill session.',
 			'resource.managerMetricsError' => 'Could not refresh process metrics.',
 			'resource.managerPanelTitle' => 'Resource Manager - Sessions',
+			_ => null,
+		} ?? switch (path) {
 			'resource.managerRefresh' => 'Refresh',
 			'resource.managerSpace' => 'Space',
 			'resource.managerSpaceBeta' => 'Beta',
@@ -12286,8 +12320,6 @@ extension on AppLocalizations {
 			'resource.managerTerminalsCount' => ({required int count}) => '${count} running sessions',
 			'resource.managerTitle' => 'Resource Manager',
 			'resource.managerTooltip' => ({required int count}) => 'Resource Manager - ${count} running sessions',
-			_ => null,
-		} ?? switch (path) {
 			'resource.managerTooltipHint' => 'Running sessions across all workspaces.',
 			'rtk.bashOnlyHint' => 'Only applies to Agent Bash tool calls. Built-in Read, Grep, and Glob are not rewritten.',
 			'rtk.settingsDescription' => 'Compress Agent Bash command output before it reaches the model (requires rtk and jq on PATH).',
@@ -12792,6 +12824,8 @@ extension on AppLocalizations {
 			'ssh.saveToVault' => 'Save to vault',
 			'ssh.serversEmpty' => 'No SSH servers saved on this host yet.',
 			'ssh.serversLoadError' => 'Could not load the SSH servers. Check the connection and try again.',
+			_ => null,
+		} ?? switch (path) {
 			'ssh.serversNotConnected' => 'Not connected to a remote host.',
 			'ssh.serversTitle' => 'SSH servers',
 			'ssh.vaultBadge' => 'Vault',
@@ -12800,8 +12834,6 @@ extension on AppLocalizations {
 			'sshProfile.delete' => 'Delete',
 			'sshProfile.disconnect' => 'Disconnect',
 			'sshProfile.edit' => 'Edit',
-			_ => null,
-		} ?? switch (path) {
 			'sshProfile.formAuthChangeBody' => 'Saving will remove the credential stored for the other authentication method.',
 			'sshProfile.formAuthChangeConfirm' => 'Switch and save',
 			'sshProfile.formAuthChangeTitle' => 'Switch authentication?',
@@ -13306,6 +13338,8 @@ extension on AppLocalizations {
 			'workspace.searchSliceError' => ({required String directory}) => 'Search failed in "${directory}"',
 			'workspace.searchTitle' => 'Search',
 			'workspace.searchToggleDetails' => 'Toggle search details',
+			_ => null,
+		} ?? switch (path) {
 			'workspace.searchTruncated' => 'Results truncated — refine your query',
 			'workspace.searchUseGitignore' => 'Use .gitignore settings',
 			'workspace.sessionCount' => 'Sessions',
@@ -13314,8 +13348,6 @@ extension on AppLocalizations {
 			'workspace.skillsAssignedCount' => ({required int assigned, required int total}) => '${assigned} of ${total} enabled for this workspace',
 			'workspace.skillsManage' => 'Manage skills',
 			'workspace.targetSubtitle' => 'The machine this workspace\'s folders live and run on. Sessions launch on this target; switching does not move files.',
-			_ => null,
-		} ?? switch (path) {
 			'workspace.targetTitle' => 'Workspace machine',
 			'workspace.terminal' => 'Terminal',
 			'workspace.terminalClose' => 'Close terminal panel',

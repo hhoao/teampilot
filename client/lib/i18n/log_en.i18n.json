@@ -1,4 +1,12 @@
 {
+  "installJobCopy": "Copy",
+  "installJobEmpty": "No output yet.",
+  "installJobPaused": "Paused",
+  "installJobResume": "Follow",
+  "installJobTitle": "Install log",
+  "installJobTruncated": "Output truncated",
+  "installJobUnavailable": "Log unavailable — the file was cleaned up.",
+  "installJobViewLog": "View log",
   "viewerAcpFrames": "ACP protocol frames (off by default)",
   "viewerActionsMenu": "More actions",
   "viewerAllCopied": "All filtered logs copied",
