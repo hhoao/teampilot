@@ -70,7 +70,7 @@ final class JobLogStore {
     log.controller.add(header);
     final chunk = '$header\n';
     log.bytes = chunk.length;
-    log.fileChain = _fs.appendBytes(log.path, utf8.encode(chunk)).catchError((
+    log.fileChain = _fs.writeBytes(log.path, utf8.encode(chunk)).catchError((
       Object _,
     ) {
       log.dropped = true;
@@ -170,7 +170,8 @@ final class _LiveJobLog {
 
   final String path;
   final List<String> lines = <String>[];
-  final StreamController<String> controller = StreamController<String>.broadcast();
+  final StreamController<String> controller =
+      StreamController<String>.broadcast();
   Future<void> fileChain = Future<void>.value();
   int bytes = 0;
   bool dropped = false;

@@ -16,10 +16,7 @@ const _key = InstallJobKey(
 void main() {
   group('JobLogStore tokens', () {
     test('sanitizes unsafe characters and stays deterministic', () {
-      final store = JobLogStore(
-        appDataRoot: '/tp',
-        fs: InMemoryFilesystem(),
-      );
+      final store = JobLogStore(appDataRoot: '/tp', fs: InMemoryFilesystem());
       final token = store.tokenFor(_key);
       expect(token, matches(RegExp(r'^[A-Za-z0-9._-]+$')));
       expect(store.tokenFor(_key), token);
@@ -37,47 +34,52 @@ void main() {
   });
 
   group('JobLogStore writing', () {
-    test('writes header and lines in order and closes the live stream', () async {
-      final fs = InMemoryFilesystem();
-      final store = JobLogStore(appDataRoot: '/tp', fs: fs);
-      final token = store.tokenFor(_key);
-      final writer = store.begin(key: _key, title: 'Install Claude');
-      final events = <String>[];
-      final sub = store.follow(token).listen(events.add);
+    test(
+      'writes header and lines in order and closes the live stream',
+      () async {
+        final fs = InMemoryFilesystem();
+        final store = JobLogStore(appDataRoot: '/tp', fs: fs);
+        final token = store.tokenFor(_key);
+        final writer = store.begin(key: _key, title: 'Install Claude');
+        final events = <String>[];
+        final sub = store.follow(token).listen(events.add);
 
-      writer.line('first');
-      writer.line('second');
-      await writer.close();
-      await Future<void>.delayed(Duration.zero);
-      await sub.cancel();
+        writer.line('first');
+        writer.line('second');
+        await writer.close();
+        await Future<void>.delayed(Duration.zero);
+        await sub.cancel();
 
-      expect(store.isLive(token), isFalse);
-      expect(events.length, 3);
-      expect(events[0], startsWith('[start]'));
-      expect(events[1], 'first');
-      expect(events[2], 'second');
+        expect(store.isLive(token), isFalse);
+        expect(events.length, 3);
+        expect(events[0], startsWith('[start]'));
+        expect(events[1], 'first');
+        expect(events[2], 'second');
 
-      final file = p.join('/tp', 'logs', 'install-jobs', '$token.log');
-      final onDisk = utf8.decode(fs.byteFiles[file]!);
-      expect(onDisk.split('\n')[1], 'first');
-      expect(await store.read(token), isNotEmpty);
-    });
+        final file = p.join('/tp', 'logs', 'install-jobs', '$token.log');
+        final onDisk = utf8.decode(fs.byteFiles[file]!);
+        expect(onDisk.split('\n')[1], 'first');
+        expect(await store.read(token), isNotEmpty);
+      },
+    );
 
-    test('strips ANSI escapes and keeps the last carriage-return render',
-        () async {
-      final fs = InMemoryFilesystem();
-      final store = JobLogStore(appDataRoot: '/tp', fs: fs);
-      final token = store.tokenFor(_key);
-      final writer = store.begin(key: _key, title: 't');
-      writer.line('\u001b[32m50%\u001b[0m progress');
-      writer.line('10%\rdone');
-      await writer.close();
+    test(
+      'strips ANSI escapes and keeps the last carriage-return render',
+      () async {
+        final fs = InMemoryFilesystem();
+        final store = JobLogStore(appDataRoot: '/tp', fs: fs);
+        final token = store.tokenFor(_key);
+        final writer = store.begin(key: _key, title: 't');
+        writer.line('\u001b[32m50%\u001b[0m progress');
+        writer.line('10%\rdone');
+        await writer.close();
 
-      final lines = await store.read(token);
-      expect(lines[1], '50% progress');
-      expect(lines[2], 'done');
-      expect(lines.join('\n'), isNot(contains('\u001b')));
-    });
+        final lines = await store.read(token);
+        expect(lines[1], '50% progress');
+        expect(lines[2], 'done');
+        expect(lines.join('\n'), isNot(contains('\u001b')));
+      },
+    );
 
     test('caps a single line at 4096 characters', () async {
       final fs = InMemoryFilesystem();
@@ -110,6 +112,24 @@ void main() {
       expect(replayed.first, 'line 100');
       expect(replayed.last, 'line 2099');
       expect((await store.read(token)).length, 2101);
+    });
+
+    test('a second begin for the same key replaces the previous run', () async {
+      final fs = InMemoryFilesystem();
+      final store = JobLogStore(appDataRoot: '/tp', fs: fs);
+
+      final first = store.begin(key: _key, title: 'first run');
+      first.line('old line');
+      await first.close();
+
+      final second = store.begin(key: _key, title: 'second run');
+      second.line('new line');
+      await second.close();
+
+      final lines = await store.read(store.tokenFor(_key));
+      expect(lines.where((l) => l.startsWith('[start]')).length, 1);
+      expect(lines, contains('new line'));
+      expect(lines, isNot(contains('old line')));
     });
 
     test('returns empty for an unknown token', () async {
