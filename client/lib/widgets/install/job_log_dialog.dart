@@ -123,30 +123,33 @@ class _JobLogDialogState extends State<JobLogDialog> {
           const SizedBox(height: 8),
           Text(widget.title, style: styles.mutedSm),
           const SizedBox(height: 8),
-          Container(
-            height: 420,
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            padding: const EdgeInsets.all(8),
-            child: _unavailable
-                ? Center(
-                    child: Text(
-                      l10n.installJobUnavailable,
-                      style: styles.mutedMd,
+          Flexible(
+            fit: FlexFit.loose,
+            child: Container(
+              height: 420,
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              padding: const EdgeInsets.all(8),
+              child: _unavailable
+                  ? Center(
+                      child: Text(
+                        l10n.installJobUnavailable,
+                        style: styles.mutedMd,
+                      ),
+                    )
+                  : _lines.isEmpty
+                  ? Center(
+                      child: Text(l10n.installJobEmpty, style: styles.mutedMd),
+                    )
+                  : ListView.builder(
+                      controller: _scroll,
+                      itemCount: _lines.length,
+                      itemBuilder: (context, index) =>
+                          SelectableText(_lines[index], style: logStyle),
                     ),
-                  )
-                : _lines.isEmpty
-                ? Center(
-                    child: Text(l10n.installJobEmpty, style: styles.mutedMd),
-                  )
-                : ListView.builder(
-                    controller: _scroll,
-                    itemCount: _lines.length,
-                    itemBuilder: (context, index) =>
-                        SelectableText(_lines[index], style: logStyle),
-                  ),
+            ),
           ),
           TpDialogActions(
             children: [

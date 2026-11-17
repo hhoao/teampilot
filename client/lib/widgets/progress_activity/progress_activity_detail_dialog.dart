@@ -51,7 +51,15 @@ class _ProgressActivityDetailDialog extends StatelessWidget {
       },
       listener: (context, state) {
         if (!context.mounted) return;
-        Navigator.of(context).pop();
+        final route = ModalRoute.of(context);
+        final navigator = Navigator.of(context);
+        if (route != null && !route.isCurrent) {
+          // Covered by a route above (e.g. the install log dialog): remove
+          // only this dialog so the covering route stays alive.
+          navigator.removeRoute(route);
+          return;
+        }
+        navigator.pop();
       },
       child: BlocBuilder<ProgressActivityCubit, ProgressActivityState>(
         buildWhen: (previous, current) {

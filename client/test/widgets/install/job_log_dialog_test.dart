@@ -90,4 +90,33 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('fits a short window without overflowing', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 600);
+    addTearDown(tester.view.reset);
+
+    final store = JobLogStore(appDataRoot: '/tp', fs: InMemoryFilesystem());
+    final registry = _registry(store);
+    addTearDown(registry.dispose);
+    final token = store.tokenFor(_key);
+    final writer = store.begin(key: _key, title: 'Install Claude');
+    for (var i = 0; i < 12; i++) {
+      writer.line('npm line $i');
+    }
+    await writer.close();
+
+    await tester.pumpWidget(_host(registry, const SizedBox.shrink()));
+    unawaited(
+      showInstallJobLogDialog(
+        tester.element(find.byType(Scaffold)),
+        token: token,
+        title: 'Install Claude',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('npm line 0'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

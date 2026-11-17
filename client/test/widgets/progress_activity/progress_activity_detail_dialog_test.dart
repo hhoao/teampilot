@@ -11,8 +11,11 @@ import 'package:teampilot/models/install_job/install_job_key.dart';
 import 'package:teampilot/models/install_job/install_job_spec.dart';
 import 'package:teampilot/models/progress_activity.dart';
 import 'package:teampilot/services/install/install_job_registry.dart';
+import 'package:teampilot/services/install/job_log_store.dart';
 import 'package:teampilot/services/notification/notification_recorder.dart';
 import 'package:teampilot/widgets/progress_activity/progress_activity_detail_dialog.dart';
+
+import '../../support/in_memory_filesystem.dart';
 
 class _FakeNotificationRecorder implements NotificationRecorder {
   @override
@@ -243,6 +246,81 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('View log'), findsOneWidget);
+    });
+
+    testWidgets('keeps the log dialog open when the activity completes', (
+      tester,
+    ) async {
+      final cubit = ProgressActivityCubit(
+        historyRecorder: _FakeNotificationRecorder(),
+      );
+      addTearDown(cubit.close);
+      final store = JobLogStore(appDataRoot: '/tp', fs: InMemoryFilesystem());
+      final registry = InstallJobRegistry(progressCubit: cubit, logs: store);
+      addTearDown(registry.dispose);
+      const key = InstallJobKey(
+        kind: InstallJobKind.cliExecutable,
+        target: 'claude',
+      );
+      final writer = store.begin(key: key, title: 'Install Claude');
+      writer.line('npm install claude -g');
+      final token = store.tokenFor(key);
+      final at = DateTime(2026, 7, 30, 12);
+      cubit.start(
+        ProgressActivity(
+          id: 'activity-1',
+          kind: ProgressActivityKind.cliProvision,
+          title: 'Install Claude',
+          phase: ProgressActivityPhase.running,
+          detailOpen: true,
+          logToken: token,
+          createdAt: at,
+          updatedAt: at,
+        ),
+      );
+
+      await tester.pumpWidget(
+        _host(
+          cubit: cubit,
+          installJobRegistry: registry,
+          child: Builder(
+            builder: (context) => TextButton(
+              onPressed: () {
+                showProgressActivityDetailDialog(
+                  context,
+                  activityId: 'activity-1',
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      await tester.tap(find.text('View log'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.textContaining('npm install claude -g'), findsOneWidget);
+
+      cubit.complete('activity-1', outcome: ProgressActivityPhase.succeeded);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // The log dialog is the route above the detail dialog: it must survive
+      // the completion, while only the detail dialog underneath goes away.
+      expect(find.textContaining('npm install claude -g'), findsOneWidget);
+      expect(find.text('View log'), findsNothing);
+      expect(find.byType(Dialog), findsOneWidget);
+
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      expect(find.byType(Dialog), findsNothing);
+
+      await writer.close();
+      expect(cubit.state.activities, isEmpty);
     });
   });
 }
