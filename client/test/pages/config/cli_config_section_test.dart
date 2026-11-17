@@ -56,6 +56,7 @@ class _AdapterInstallerService extends CliInstallerService {
     onProgress,
     isCancelled,
     onProcessStarted,
+    onOutputLine,
   }) async {
     installs.add(installer.executableName);
     return const CliInstallResult(
@@ -77,6 +78,7 @@ class _DelayedCliInstallerService extends CliInstallerService {
     onProgress,
     isCancelled,
     onProcessStarted,
+    onOutputLine,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 80));
     return CliInstallResult(

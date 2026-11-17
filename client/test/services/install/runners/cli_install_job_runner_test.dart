@@ -25,6 +25,7 @@ class _FakeCliInstallerService extends CliInstallerService {
     CliInstallProgressCallback? onProgress,
     bool Function()? isCancelled,
     void Function(Process process)? onProcessStarted,
+    CliInstallOutputLine? onOutputLine,
   })
   _handler;
 
@@ -36,6 +37,7 @@ class _FakeCliInstallerService extends CliInstallerService {
     CliInstallProgressCallback? onProgress,
     bool Function()? isCancelled,
     void Function(Process process)? onProcessStarted,
+    CliInstallOutputLine? onOutputLine,
   }) {
     return _handler(
       cli: cli,
@@ -44,6 +46,7 @@ class _FakeCliInstallerService extends CliInstallerService {
       onProgress: onProgress,
       isCancelled: isCancelled,
       onProcessStarted: onProcessStarted,
+      onOutputLine: onOutputLine,
     );
   }
 }
@@ -70,6 +73,7 @@ class _AdapterRecordingService extends CliInstallerService {
     CliInstallProgressCallback? onProgress,
     bool Function()? isCancelled,
     void Function(Process process)? onProcessStarted,
+    CliInstallOutputLine? onOutputLine,
   }) async {
     cliInstallCalls++;
     return const CliInstallResult(success: true, message: 'cli');
@@ -83,6 +87,7 @@ class _AdapterRecordingService extends CliInstallerService {
     CliInstallProgressCallback? onProgress,
     bool Function()? isCancelled,
     void Function(Process process)? onProcessStarted,
+    CliInstallOutputLine? onOutputLine,
   }) async {
     this.installer = installer;
     this.mode = mode;
@@ -134,6 +139,7 @@ void main() {
           onProgress,
           isCancelled,
           onProcessStarted,
+          onOutputLine,
         }) async {
           return const CliInstallResult(success: true, message: 'ok');
         }),
@@ -173,6 +179,7 @@ void main() {
           onProgress,
           isCancelled,
           onProcessStarted,
+          onOutputLine,
         }) async {
           capturedCli = cli;
           capturedMode = mode;
@@ -214,6 +221,7 @@ void main() {
           onProgress,
           isCancelled,
           onProcessStarted,
+          onOutputLine,
         }) async {
           capturedMode = mode;
           capturedProfile = sshProfile;
@@ -244,6 +252,7 @@ void main() {
           onProgress,
           isCancelled,
           onProcessStarted,
+          onOutputLine,
         }) async {
           capturedCancelled = isCancelled;
           capturedOnProcessStarted = onProcessStarted;
@@ -268,6 +277,34 @@ void main() {
       await process.exitCode;
     });
 
+    test('forwards ctx.appendLog as onOutputLine', () async {
+      String? received;
+      final service = _FakeCliInstallerService(({
+        required cli,
+        required mode,
+        sshProfile,
+        onProgress,
+        isCancelled,
+        onProcessStarted,
+        onOutputLine,
+      }) async {
+        received = 'seen';
+        onOutputLine?.call('hello');
+        return const CliInstallResult(success: true, message: 'ok');
+      });
+      final runner = CliInstallJobRunner(installerFactory: () => service);
+      final key = const InstallJobKey(
+        kind: InstallJobKind.cliExecutable,
+        target: 'claude',
+      );
+      final lines = <String>[];
+
+      await runner.run(_spec(key), InstallJobContext(appendLog: lines.add));
+
+      expect(received, 'seen');
+      expect(lines, ['hello']);
+    });
+
     test('run maps CliInstallProgress to reportPhase labels', () async {
       final reported = <String>[];
       final runner = CliInstallJobRunner(
@@ -278,6 +315,7 @@ void main() {
           onProgress,
           isCancelled,
           onProcessStarted,
+          onOutputLine,
         }) async {
           onProgress?.call(
             const CliInstallProgress(phase: CliInstallPhase.checkingNpm),
@@ -327,6 +365,7 @@ void main() {
           onProgress,
           isCancelled,
           onProcessStarted,
+          onOutputLine,
         }) async {
           return const CliInstallResult(
             success: false,

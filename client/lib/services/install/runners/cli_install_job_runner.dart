@@ -52,6 +52,7 @@ final class CliInstallJobRunner implements InstallJobRunner {
             mode: mode,
             sshProfile: sshProfile,
             onProgress: onProgress,
+            onOutputLine: ctx.appendLog,
             isCancelled: () => ctx.isCancelled,
             onProcessStarted: ctx.registerProcess,
           )
@@ -60,6 +61,7 @@ final class CliInstallJobRunner implements InstallJobRunner {
             mode: mode,
             sshProfile: sshProfile,
             onProgress: onProgress,
+            onOutputLine: ctx.appendLog,
             isCancelled: () => ctx.isCancelled,
             onProcessStarted: ctx.registerProcess,
           );
