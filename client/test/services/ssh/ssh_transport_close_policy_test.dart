@@ -107,5 +107,20 @@ void main() {
       expect(d.affectsDurableHome, isTrue);
       expect(d.scheduleStorageReconnect, isTrue);
     });
+
+    test('a command timeout never moves durable home state', () {
+      for (final plane in SshTransportPlane.values) {
+        final decision = SshTransportClosePolicy.evaluate(
+          SshTransportClosed(
+            reason: SshTransportCloseReason.commandTimeout,
+            plane: plane,
+          ),
+        );
+        expect(decision, SshTransportCloseDecision.ignore);
+        expect(decision.affectsDurableHome, isFalse);
+        expect(decision.emitDisconnectNotification, isFalse);
+        expect(decision.scheduleStorageReconnect, isFalse);
+      }
+    });
   });
 }

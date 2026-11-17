@@ -41,6 +41,9 @@ abstract final class SshTransportClosePolicy {
   SshTransportClosePolicy._();
 
   static SshTransportCloseDecision evaluate(SshTransportClosed closed) {
+    if (closed.reason == SshTransportCloseReason.commandTimeout) {
+      return SshTransportCloseDecision.ignore;
+    }
     if (closed.plane == SshTransportPlane.member) {
       if (isExpectedLocalSshTransportClose(closed)) {
         return SshTransportCloseDecision.ignore;

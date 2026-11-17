@@ -11,6 +11,10 @@ enum SshTransportCloseReason {
   memberSessionClosed,
   remotePeerClosed,
   transportError,
+
+  /// One command exceeded its own budget. The transport may still be healthy,
+  /// so this must never move durable home state (see policy).
+  commandTimeout,
 }
 
 /// Which connection plane closed (storage pool vs per-member session).
@@ -68,6 +72,7 @@ bool isExpectedLocalSshTransportClose(SshTransportClosed closed) {
     case SshTransportCloseReason.disconnectAll:
     case SshTransportCloseReason.remoteFileStoreDisconnect:
     case SshTransportCloseReason.memberSessionClosed:
+    case SshTransportCloseReason.commandTimeout:
       return true;
     case SshTransportCloseReason.hostIdentityChanged:
     case SshTransportCloseReason.authFailed:
