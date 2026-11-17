@@ -20,7 +20,7 @@ extension SshClientFactoryLegacyStorage on SshClientFactory {
       _evictLegacyProfile(
         profile.id,
         closePooled: true,
-        reason: SshTransportCloseReason.transportError,
+        reason: SshTransportCloseReason.commandTimeout,
       );
       rethrow;
     }

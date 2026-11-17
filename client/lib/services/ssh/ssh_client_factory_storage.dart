@@ -193,7 +193,7 @@ final class _SshWorkerStoragePool {
             _retireConnection(
               profile.id,
               connection,
-              reason: SshTransportCloseReason.transportError,
+              reason: SshTransportCloseReason.commandTimeout,
             );
           }
         },

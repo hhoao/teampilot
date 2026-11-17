@@ -320,10 +320,15 @@ class SshClientFactory {
       )).run(command, stderr: stderr, timeout: timeout);
       return _toSshRunResult(result);
     } on SshWorkerTransportException catch (error) {
+      if (error.code == 'command_timeout') {
+        throw TimeoutException('storage exec', timeout);
+      }
       if (error.code != 'transport_timeout') rethrow;
+      // The worker stopped answering: rebuild the lease, but as a command-scoped
+      // fault so home state, monitor and gate stay up.
       _workerStoragePool.disconnectStorage(
         profile.id,
-        reason: SshTransportCloseReason.transportError,
+        reason: SshTransportCloseReason.commandTimeout,
       );
       throw TimeoutException('storage exec', timeout);
     }
@@ -358,7 +363,7 @@ class SshClientFactory {
           _evictLegacyProfile(
             profile.id,
             closePooled: true,
-            reason: SshTransportCloseReason.transportError,
+            reason: SshTransportCloseReason.commandTimeout,
           );
           rethrow;
         }
@@ -372,10 +377,15 @@ class SshClientFactory {
         );
         return _toSshRunResult(result);
       } on SshWorkerTransportException catch (error) {
+        if (error.code == 'command_timeout') {
+          throw TimeoutException('storage exec stdin', timeout);
+        }
         if (error.code != 'transport_timeout') rethrow;
+        // Same command-scoped classification as the non-stdin path: the stdin
+        // exec may have retired the plane, but the fault stays retryable.
         _workerStoragePool.disconnectStorage(
           profile.id,
-          reason: SshTransportCloseReason.transportError,
+          reason: SshTransportCloseReason.commandTimeout,
         );
         throw TimeoutException('storage exec stdin', timeout);
       }

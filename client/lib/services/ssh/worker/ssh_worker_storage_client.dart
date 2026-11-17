@@ -66,6 +66,11 @@ typedef SshWorkerRequestSender =
 
 const _sshWorkerStorageCleanupTimeout = Duration(seconds: 5);
 
+/// The worker runs its own budget (`timeoutMs`) and answers `command_timeout`
+/// or `transport_timeout`. The client must give that reply a round-trip window
+/// instead of racing it with an identical deadline.
+const _sshWorkerReplyGrace = Duration(seconds: 5);
+
 final class SshWorkerLeaseStorageTransport
     implements SshWorkerStorageTransport {
   factory SshWorkerLeaseStorageTransport(
@@ -370,7 +375,9 @@ final class SshWorkerLeaseStorageTransport
     );
     final SshWorkerReply reply;
     try {
-      reply = await _send(request).timeout(effectiveTimeout);
+      reply = await _send(
+        request,
+      ).timeout(effectiveTimeout + _sshWorkerReplyGrace);
     } on TimeoutException catch (_, stackTrace) {
       onTimeout?.call();
       if (streamIdForCancellation != null) {
