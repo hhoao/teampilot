@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import '../host/host_executable_locator.dart';
@@ -68,6 +69,34 @@ Future<ProcessResult> _defaultProcessRunner(
   List<String> arguments,
 ) => Process.run(executable, arguments);
 
+Future<ProcessResult> _defaultStreamingRunner(
+  String executable,
+  List<String> arguments,
+  void Function(String line) onOutput,
+) async {
+  final process = await Process.start(executable, arguments);
+  final stdoutLines = <String>[];
+  final stderrLines = <String>[];
+  Future<void> drain(Stream<List<int>> stream, List<String> sink) => stream
+      .transform(utf8.decoder)
+      .transform(const LineSplitter())
+      .forEach((line) {
+        sink.add(line);
+        onOutput(line);
+      });
+  await Future.wait([
+    drain(process.stdout, stdoutLines),
+    drain(process.stderr, stderrLines),
+  ]);
+  final exitCode = await process.exitCode;
+  return ProcessResult(
+    process.pid,
+    exitCode,
+    stdoutLines.join('\n'),
+    stderrLines.join('\n'),
+  );
+}
+
 /// Detects and optionally installs git on the local host.
 ///
 /// Uses [HostExecutionEnvironment] for platform detection and dispatches to
@@ -79,7 +108,7 @@ final class GitInstaller {
     GitStreamingProcessRunner? streamingRunner,
     bool? isWindowsOverride,
   }) : _processRunner = processRunner ?? _defaultProcessRunner,
-       _streamingRunner = streamingRunner,
+       _streamingRunner = streamingRunner ?? _defaultStreamingRunner,
        _isWindowsOverride = isWindowsOverride;
 
   final GitProcessRunner _processRunner;
