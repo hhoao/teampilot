@@ -413,9 +413,15 @@ void main() {
   test(
     'worker exec timeout preserves TimeoutException and evicts storage',
     () async {
+      final events = SshConnectionEvents();
+      final closes = <SshTransportClosed>[];
+      events.onTransportClosed = (_, error, _) {
+        if (error is SshTransportClosed) closes.add(error);
+      };
       final factory = SshClientFactory(
         credentialStore: InMemorySshCredentialStore(),
         knownHostRepository: InMemorySshKnownHostRepository(),
+        events: events,
         workerManager: SshProfileWorkerManager(
           launcher: _StorageWorkerLauncher(runErrorCode: 'transport_timeout'),
         ),
@@ -432,6 +438,47 @@ void main() {
         throwsA(isA<TimeoutException>()),
       );
       expect(factory.hasLiveStorageClient(profile.id), isFalse);
+      // The lease is rebuilt, but the close must be command-scoped: a merely
+      // timed-out command is not home-down, so the reason cannot fall back to
+      // `transportError`.
+      expect(closes, hasLength(1));
+      expect(closes.single.plane, SshTransportPlane.storage);
+      expect(closes.single.reason, SshTransportCloseReason.commandTimeout);
+    },
+  );
+
+  test(
+    'worker command_timeout preserves TimeoutException and keeps the plane',
+    () async {
+      final events = SshConnectionEvents();
+      final closes = <SshTransportClosed>[];
+      events.onTransportClosed = (_, error, _) {
+        if (error is SshTransportClosed) closes.add(error);
+      };
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        events: events,
+        workerManager: SshProfileWorkerManager(
+          launcher: _StorageWorkerLauncher(runErrorCode: 'command_timeout'),
+        ),
+      );
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'test',
+        host: 'example.test',
+        username: 'tester',
+      );
+
+      await expectLater(
+        factory.runOnStorage(profile, 'slow'),
+        throwsA(isA<TimeoutException>()),
+      );
+      // The worker answered `command_timeout`: only the command ran out of
+      // budget, the plane is healthy and must not be reported as closed.
+      expect(factory.hasLiveStorageClient(profile.id), isTrue);
+      expect(closes, isEmpty);
+      await factory.close();
     },
   );
 
