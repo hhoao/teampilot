@@ -36,12 +36,19 @@ final class SshStreamingCommandRunner {
     final stderrTail = _TailBuffer(maxCapturedChars);
 
     Future<void> drain(Stream<List<int>> stream, _TailBuffer tail) async {
+      // Legacy-locale hosts emit non-UTF-8 bytes; decode leniently (as the
+      // one-shot path and `git_installer.dart` do) instead of failing the
+      // whole install on a single bad byte.
       await stream
-          .transform(utf8.decoder)
+          .transform(const Utf8Decoder(allowMalformed: true))
           .transform(const LineSplitter())
           .forEach((line) {
             tail.add(line);
-            onOutput?.call(line);
+            try {
+              onOutput?.call(line);
+            } on Object {
+              // A throwing log sink must not abort the drain or the command.
+            }
           });
     }
 

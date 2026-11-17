@@ -4936,9 +4936,6 @@ class AppLocalizations$log$en {
 	/// en: 'Install log'
 	String get installJobTitle => 'Install log';
 
-	/// en: 'Output truncated'
-	String get installJobTruncated => 'Output truncated';
-
 	/// en: 'Log unavailable — the file was cleaned up.'
 	String get installJobUnavailable => 'Log unavailable — the file was cleaned up.';
 
@@ -11716,7 +11713,6 @@ extension on AppLocalizations {
 			'log.installJobPaused' => 'Paused',
 			'log.installJobResume' => 'Follow',
 			'log.installJobTitle' => 'Install log',
-			'log.installJobTruncated' => 'Output truncated',
 			'log.installJobUnavailable' => 'Log unavailable — the file was cleaned up.',
 			'log.installJobViewLog' => 'View log',
 			'log.viewerAcpFrames' => 'ACP protocol frames (off by default)',
@@ -11796,9 +11792,9 @@ extension on AppLocalizations {
 			'managedProviders.delete' => 'Delete',
 			'managedProviders.deleteContent' => ({required Object name}) => 'Delete “${name}” and its cached usage?',
 			'managedProviders.deleteFailed' => 'Unable to delete managed provider.',
+			'managedProviders.deleteTitle' => 'Delete managed provider?',
 			_ => null,
 		} ?? switch (path) {
-			'managedProviders.deleteTitle' => 'Delete managed provider?',
 			'managedProviders.disable' => 'Disable',
 			'managedProviders.disabled' => 'Disabled',
 			'managedProviders.display' => 'Display configuration',
@@ -12310,9 +12306,9 @@ extension on AppLocalizations {
 			'resource.managerKillFailed' => 'Could not kill session.',
 			'resource.managerMetricsError' => 'Could not refresh process metrics.',
 			'resource.managerPanelTitle' => 'Resource Manager - Sessions',
+			'resource.managerRefresh' => 'Refresh',
 			_ => null,
 		} ?? switch (path) {
-			'resource.managerRefresh' => 'Refresh',
 			'resource.managerSpace' => 'Space',
 			'resource.managerSpaceBeta' => 'Beta',
 			'resource.managerSpaceNotScanned' => 'Does not scan workspace disk usage.',
@@ -12824,9 +12820,9 @@ extension on AppLocalizations {
 			'ssh.saveToVault' => 'Save to vault',
 			'ssh.serversEmpty' => 'No SSH servers saved on this host yet.',
 			'ssh.serversLoadError' => 'Could not load the SSH servers. Check the connection and try again.',
+			'ssh.serversNotConnected' => 'Not connected to a remote host.',
 			_ => null,
 		} ?? switch (path) {
-			'ssh.serversNotConnected' => 'Not connected to a remote host.',
 			'ssh.serversTitle' => 'SSH servers',
 			'ssh.vaultBadge' => 'Vault',
 			'sshProfile.connect' => 'Connect',
@@ -13338,9 +13334,9 @@ extension on AppLocalizations {
 			'workspace.searchSliceError' => ({required String directory}) => 'Search failed in "${directory}"',
 			'workspace.searchTitle' => 'Search',
 			'workspace.searchToggleDetails' => 'Toggle search details',
+			'workspace.searchTruncated' => 'Results truncated — refine your query',
 			_ => null,
 		} ?? switch (path) {
-			'workspace.searchTruncated' => 'Results truncated — refine your query',
 			'workspace.searchUseGitignore' => 'Use .gitignore settings',
 			'workspace.sessionCount' => 'Sessions',
 			'workspace.sidebarGroupsView' => 'Groups',

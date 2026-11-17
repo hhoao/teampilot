@@ -2018,7 +2018,6 @@ class _AppLocalizations$log$zh extends AppLocalizations$log$en {
 	@override String get installJobPaused => '已暂停';
 	@override String get installJobResume => '跟随';
 	@override String get installJobTitle => '安装日志';
-	@override String get installJobTruncated => '输出已截断';
 	@override String get installJobUnavailable => '日志不可用——文件已被清理。';
 	@override String get installJobViewLog => '查看日志';
 	@override String get viewerAcpFrames => 'ACP 协议帧日志（默认关闭）';
@@ -5455,7 +5454,6 @@ extension on AppLocalizationsZh {
 			'log.installJobPaused' => '已暂停',
 			'log.installJobResume' => '跟随',
 			'log.installJobTitle' => '安装日志',
-			'log.installJobTruncated' => '输出已截断',
 			'log.installJobUnavailable' => '日志不可用——文件已被清理。',
 			'log.installJobViewLog' => '查看日志',
 			'log.viewerAcpFrames' => 'ACP 协议帧日志（默认关闭）',
@@ -5535,9 +5533,9 @@ extension on AppLocalizationsZh {
 			'managedProviders.delete' => '删除',
 			'managedProviders.deleteContent' => ({required Object name}) => '删除“${name}”及其缓存用量？',
 			'managedProviders.deleteFailed' => '无法删除管理 Provider。',
+			'managedProviders.deleteTitle' => '删除管理 Provider？',
 			_ => null,
 		} ?? switch (path) {
-			'managedProviders.deleteTitle' => '删除管理 Provider？',
 			'managedProviders.disable' => '禁用',
 			'managedProviders.disabled' => '已禁用',
 			'managedProviders.display' => '显示配置',
@@ -6049,9 +6047,9 @@ extension on AppLocalizationsZh {
 			'resource.managerKillFailed' => '无法结束会话。',
 			'resource.managerMetricsError' => '无法刷新进程指标。',
 			'resource.managerPanelTitle' => '资源管理器 - 会话',
+			'resource.managerRefresh' => '刷新',
 			_ => null,
 		} ?? switch (path) {
-			'resource.managerRefresh' => '刷新',
 			'resource.managerSpace' => '空间',
 			'resource.managerSpaceBeta' => 'Beta',
 			'resource.managerSpaceNotScanned' => '不会扫描工作区磁盘占用。',
@@ -6563,9 +6561,9 @@ extension on AppLocalizationsZh {
 			'ssh.serversEmpty' => '此主机上还没有保存的 SSH 服务器。',
 			'ssh.serversLoadError' => '无法加载 SSH 服务器，请检查连接后重试。',
 			'ssh.serversNotConnected' => '未连接远程主机。',
+			'ssh.serversTitle' => 'SSH 服务器',
 			_ => null,
 		} ?? switch (path) {
-			'ssh.serversTitle' => 'SSH 服务器',
 			'ssh.vaultBadge' => '保险库',
 			'ssh.hostsPillCount' => ({required int count}) => '${count} 台主机',
 			'sshProfile.connect' => '连接',
@@ -7077,9 +7075,9 @@ extension on AppLocalizationsZh {
 			'workspace.searchSliceError' => ({required String directory}) => '「${directory}」目录搜索失败',
 			'workspace.searchTitle' => '搜索',
 			'workspace.searchToggleDetails' => '展开搜索选项',
+			'workspace.searchTruncated' => '结果过多已截断——请细化查询',
 			_ => null,
 		} ?? switch (path) {
-			'workspace.searchTruncated' => '结果过多已截断——请细化查询',
 			'workspace.searchUseGitignore' => '使用 .gitignore 设置',
 			'workspace.sessionCount' => '会话数',
 			'workspace.sidebarGroupsView' => '分组',

@@ -8,6 +8,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/install/install_job_registry.dart';
 import '../../services/install/job_log_store.dart';
+import '../../theme/app_fonts.dart';
 
 Future<void> showInstallJobLogDialog(
   BuildContext context, {
@@ -102,11 +103,11 @@ class _JobLogDialogState extends State<JobLogDialog> {
     final l10n = context.l10n.log;
     final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
-    final logStyle = TextStyle(
-      color: cs.onSurfaceVariant,
-      fontFamily: 'monospace',
-      fontSize: 12,
+    final logStyle = appMonoTextStyle(
+      context,
+      base: styles.sm,
       height: 1.35,
+      color: cs.onSurfaceVariant,
     );
 
     return TpDialog(

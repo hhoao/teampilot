@@ -221,6 +221,7 @@ void main() {
         cancelPolicy: InstallCancelPolicy.cooperative,
         run: (ctx) async {
           ctx.reportPhase('Installing CLI', detail: 'npm install');
+          ctx.reportPhase('Installing CLI', detail: 'added 1 package');
           ctx.appendLog?.call('added 1 package');
           return 'done';
         },
@@ -231,7 +232,10 @@ void main() {
       expect(logs.isLive(token), isFalse);
       final lines = await logs.read(token);
       expect(lines.first, startsWith('[start]'));
-      expect(lines, contains('[phase] Installing CLI — npm install'));
+      expect(lines, contains('[phase] Installing CLI'));
+      expect(lines.where((line) => line.startsWith('[phase]')), [
+        '[phase] Installing CLI',
+      ]);
       expect(lines, contains('added 1 package'));
       expect(lines.last, startsWith('[ok]'));
       expect(recorder.records.single.payload, 'install-log:$token');

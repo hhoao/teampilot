@@ -104,4 +104,66 @@ void main() {
     expect(result.stdout.length, lessThanOrEqualTo(50));
     expect(result.stdout, contains('bbb'));
   });
+
+  test(
+    'decodes invalid UTF-8 leniently and keeps the real exit code',
+    () async {
+      final handle = _FakeHandle(exit: 3);
+      final lines = <String>[];
+      final runner = SshStreamingCommandRunner(
+        startProcess: (profile, command) async => handle,
+      );
+
+      final future = runner.run(
+        _profile(),
+        CliInstallerCommand.unixShellScript('cat legacy.txt'),
+        onOutput: lines.add,
+      );
+      // 0xFF is never valid UTF-8; a strict decoder would throw here.
+      handle.stdoutController.add(<int>[0xff, 0x0a]);
+      handle.stdoutController.add(utf8.encode('install done\n'));
+      await handle.close();
+      final result = await future;
+
+      expect(result.exitCode, 3);
+      expect(lines, hasLength(2));
+      expect(lines.first, contains('\uFFFD'));
+      expect(lines.last, 'install done');
+      expect(result.stdout, contains('install done'));
+    },
+  );
+
+  test('a throwing onOutput sink cannot abort the drain', () async {
+    final handle = _FakeHandle(exit: 0);
+    final runner = SshStreamingCommandRunner(
+      startProcess: (profile, command) async => handle,
+    );
+
+    final future = runner.run(
+      _profile(),
+      CliInstallerCommand.unixShellScript('npm i -g x'),
+      onOutput: (_) => throw StateError('sink blew up'),
+    );
+    handle.stdoutController.add(utf8.encode('one\ntwo\n'));
+    await handle.close();
+    final result = await future;
+
+    expect(result.exitCode, 0);
+    expect(result.stdout, contains('two'));
+  });
+
+  test('reports a start failure as a failed result', () async {
+    final runner = SshStreamingCommandRunner(
+      startProcess: (profile, command) async =>
+          throw StateError('cannot connect'),
+    );
+
+    final result = await runner.run(
+      _profile(),
+      CliInstallerCommand.unixShellScript('npm i -g x'),
+    );
+
+    expect(result.exitCode, 1);
+    expect(result.stderr, contains('cannot connect'));
+  });
 }

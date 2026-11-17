@@ -41,10 +41,17 @@ final class InstallJobRegistry {
     final token = _logs?.tokenFor(spec.key);
     final writer = _logs?.begin(key: spec.key, title: spec.title);
     final payload = token == null ? '' : 'install-log:$token';
+    // The log records the phase timeline only: streamed output is already
+    // appended raw by the installers, so a `detail` line would duplicate it,
+    // and per-chunk progress details would flood the ring and the file.
+    String? lastLoggedPhaseLabel;
     final ctx = InstallJobContext(
       reportPhase: (label, {detail, fraction}) {
         final subtitle = detail == null ? label : '$label — $detail';
-        writer?.line('[phase] $subtitle');
+        if (lastLoggedPhaseLabel != label) {
+          lastLoggedPhaseLabel = label;
+          writer?.line('[phase] $label');
+        }
         _progressCubit.update(
           activityId,
           subtitle: subtitle,

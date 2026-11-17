@@ -57,7 +57,7 @@ Future<InstallWiring> wireInstallJobs({
   required AppUpdateService appUpdateService,
   required AppSettingsRepository appSettings,
   required bool deferHomePlaneLoads,
-  required String appLogRoot,
+  required String appDataRoot,
   required SshProfile? Function(String id) sshProfileById,
 }) async {
   // Repo clone executor: one shared SSH exec spawner for both the clone
@@ -118,7 +118,7 @@ Future<InstallWiring> wireInstallJobs({
       AppUpdateInstallJobRunner(service: appUpdateService),
     ],
   );
-  final jobLogs = JobLogStore(appDataRoot: appLogRoot);
+  final jobLogs = JobLogStore(appDataRoot: appDataRoot);
   final installJobRegistry = InstallJobRegistry(
     progressCubit: progressActivity,
     runnerRegistry: installJobRunnerRegistry,

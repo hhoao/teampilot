@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 import '../../models/install_job/install_job_key.dart';
+import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
 
@@ -69,11 +70,16 @@ final class JobLogStore {
     log.lines.add(header);
     log.controller.add(header);
     final chunk = '$header\n';
-    log.bytes = chunk.length;
-    log.fileChain = _fs.writeBytes(log.path, utf8.encode(chunk)).catchError((
-      Object _,
+    final headerBytes = utf8.encode(chunk);
+    log.bytes = headerBytes.length;
+    log.fileChain = _fs.writeBytes(log.path, headerBytes).catchError((
+      Object error,
     ) {
       log.dropped = true;
+      AppLogger.instance.w(
+        '[job-log] write failed for ${log.path}',
+        error: error,
+      );
     });
     return JobLogWriter._(this, token);
   }
@@ -142,18 +148,25 @@ final class JobLogStore {
 
     if (log.dropped) return;
     final chunk = '$lineText\n';
-    if (log.bytes + chunk.length > jobLogMaxFileBytes) {
+    // Encode once: the budget is in bytes, not UTF-16 code units, so CJK
+    // output cannot overshoot the 5 MB cap by the encoding ratio.
+    final bytes = utf8.encode(chunk);
+    if (log.bytes + bytes.length > jobLogMaxFileBytes) {
       log.dropped = true;
       log.fileChain = log.fileChain
           .then((_) => _fs.appendBytes(log.path, utf8.encode('[truncated]\n')))
           .catchError((Object _) {});
       return;
     }
-    log.bytes += chunk.length;
+    log.bytes += bytes.length;
     log.fileChain = log.fileChain
-        .then((_) => _fs.appendBytes(log.path, utf8.encode(chunk)))
-        .catchError((Object _) {
+        .then((_) => _fs.appendBytes(log.path, bytes))
+        .catchError((Object error) {
           log.dropped = true;
+          AppLogger.instance.w(
+            '[job-log] write failed for ${log.path}',
+            error: error,
+          );
         });
   }
 

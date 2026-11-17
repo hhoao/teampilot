@@ -741,6 +741,126 @@ void main() {
   });
 
   test(
+    'streams SSH install output through the streaming runner when asked',
+    () async {
+      var sshRunnerCalls = 0;
+      final streamedCommands = <String>[];
+      final streamed = <String>[];
+      void Function(String line)? receivedOnOutput;
+
+      final installer = CliInstallerService(
+        sshRunner: (profile, command) async {
+          sshRunnerCalls++;
+          return const CliInstallerCommandResult(
+            exitCode: 1,
+            stderr: 'unexpected non-streaming call',
+          );
+        },
+        sshStreamingRunner: (profile, command, {onOutput}) async {
+          streamedCommands.add(command.commandLine);
+          receivedOnOutput = onOutput;
+          if (_isTermuxProbe(command.commandLine)) {
+            return _termuxProbeNotTermux();
+          }
+          if (_isGlibcProbe(command.commandLine)) {
+            return const CliInstallerCommandResult(
+              exitCode: 0,
+              stdout: 'GLIBC=2.31\n',
+            );
+          }
+          if (command.commandLine.contains(
+            'curl https://cursor.com/install -fsS | bash',
+          )) {
+            onOutput?.call('downloading cursor-agent');
+            return const CliInstallerCommandResult(exitCode: 0);
+          }
+          if (command.commandLine.startsWith('sh -c') &&
+              command.commandLine.contains('command -v cursor-agent')) {
+            return const CliInstallerCommandResult(
+              exitCode: 0,
+              stdout: '/home/alice/.local/bin/cursor-agent\n',
+            );
+          }
+          return const CliInstallerCommandResult(exitCode: 127);
+        },
+      );
+
+      final result = await installer.install(
+        cli: CliTool.cursor,
+        mode: CliInstallMode.ssh,
+        sshProfile: _profile,
+        onOutputLine: streamed.add,
+      );
+
+      expect(result.success, isTrue, reason: result.message);
+      expect(result.executablePath, '/home/alice/.local/bin/cursor-agent');
+      expect(sshRunnerCalls, 0);
+      expect(streamedCommands.length, 4);
+      expect(
+        streamedCommands.any(
+          (c) => c.contains('curl https://cursor.com/install'),
+        ),
+        isTrue,
+      );
+      expect(receivedOnOutput, isNotNull);
+      expect(streamed, contains('downloading cursor-agent'));
+    },
+  );
+
+  test(
+    'falls back to the one-shot SSH runner without an output sink',
+    () async {
+      var sshRunnerCalls = 0;
+      var streamingCalls = 0;
+
+      CliInstallerCommandResult respond(CliInstallerCommand command) {
+        if (_isTermuxProbe(command.commandLine)) return _termuxProbeNotTermux();
+        if (_isGlibcProbe(command.commandLine)) {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: 'GLIBC=2.31\n',
+          );
+        }
+        if (command.commandLine.contains(
+          'curl https://cursor.com/install -fsS | bash',
+        )) {
+          return const CliInstallerCommandResult(exitCode: 0);
+        }
+        if (command.commandLine.startsWith('sh -c') &&
+            command.commandLine.contains('command -v cursor-agent')) {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/home/alice/.local/bin/cursor-agent\n',
+          );
+        }
+        return const CliInstallerCommandResult(exitCode: 127);
+      }
+
+      final installer = CliInstallerService(
+        sshRunner: (profile, command) async {
+          sshRunnerCalls++;
+          return respond(command);
+        },
+        sshStreamingRunner: (profile, command, {onOutput}) async {
+          streamingCalls++;
+          return respond(command);
+        },
+      );
+
+      final result = await installer.install(
+        cli: CliTool.cursor,
+        mode: CliInstallMode.ssh,
+        sshProfile: _profile,
+      );
+
+      expect(result.success, isTrue, reason: result.message);
+      expect(result.executablePath, '/home/alice/.local/bin/cursor-agent');
+      expect(sshRunnerCalls, 4);
+      expect(streamingCalls, 0);
+    },
+  );
+
+  test(
     'installs OpenCode locally on Unix via official v2 curl script',
     () async {
       final commands = <String>[];
