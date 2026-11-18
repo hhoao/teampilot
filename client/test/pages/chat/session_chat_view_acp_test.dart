@@ -148,6 +148,9 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
       StreamController<AgentPermissionRequest>.broadcast();
   final clientRequestsController =
       StreamController<AcpPendingClientRequest>.broadcast();
+  final updatesController = StreamController<AcpSessionUpdate>.broadcast();
+
+  void emit(AcpSessionUpdate update) => updatesController.add(update);
 
   ({AgentPermissionReplyKind kind, AgentPermissionAlwaysOption? always})?
   lastAnswer;
@@ -182,7 +185,7 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   final prompts = <String>[];
 
   @override
-  Stream<AcpSessionUpdate> get updates => const Stream.empty();
+  Stream<AcpSessionUpdate> get updates => updatesController.stream;
 
   @override
   Stream<AgentPermissionRequest> get permissionRequests =>
@@ -356,6 +359,8 @@ void main() {
     bool memberWorking = false,
     InMemoryFollowUpQueueStore? followUpQueueStore,
     AppSession? hydratedSession,
+    bool routeActive = true,
+    ValueNotifier<bool>? routeActiveNotifier,
   }) async {
     final workspace = Workspace(
       workspaceId: 'ws-1',
@@ -429,6 +434,19 @@ void main() {
     ).thenReturn(seat);
 
     final theme = buildDarkTheme();
+    Widget buildView(bool active) => SessionChatView(
+      session: session,
+      workspace: workspace,
+      selectedMemberId: selectedMemberId,
+      acpRuntime: acpRuntime,
+      routeActive: active,
+      onSubmit:
+          onSubmit ??
+          (_) async => const HistoryContinueSubmitResult(
+            ok: true,
+            channel: HistoryContinueChannel.pty,
+          ),
+    );
     await tester.pumpWidget(
       MultiRepositoryProvider(
         providers: [
@@ -464,18 +482,12 @@ void main() {
               home: TpTheme(
                 data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1),
                 child: Scaffold(
-                  body: SessionChatView(
-                    session: session,
-                    workspace: workspace,
-                    selectedMemberId: selectedMemberId,
-                    acpRuntime: acpRuntime,
-                    onSubmit:
-                        onSubmit ??
-                        (_) async => const HistoryContinueSubmitResult(
-                          ok: true,
-                          channel: HistoryContinueChannel.pty,
+                  body: routeActiveNotifier == null
+                      ? buildView(routeActive)
+                      : ValueListenableBuilder<bool>(
+                          valueListenable: routeActiveNotifier,
+                          builder: (_, active, _) => buildView(active),
                         ),
-                  ),
                 ),
               ),
             ),
@@ -1316,6 +1328,68 @@ void main() {
     );
     expect(tester.takeException(), isNull);
     expect(loads, isNotEmpty);
+  });
+
+  testWidgets('an inactive ACP route defers runtime publishing to the seat', (
+    tester,
+  ) async {
+    final runtime = _FakeAcpRuntime();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.gemini,
+    );
+    addTearDown(() async {
+      await cubit.close();
+      await runtime.permissionsController.close();
+      await runtime.clientRequestsController.close();
+      await runtime.updatesController.close();
+    });
+    await tester.runAsync(() async {
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+    });
+
+    final active = ValueNotifier<bool>(false);
+    addTearDown(active.dispose);
+    await pumpSession(
+      tester,
+      session: session('s1'),
+      acpRuntime: cubit,
+      routeActiveNotifier: active,
+    );
+    clearInteractions(seat);
+
+    await tester.runAsync(() async {
+      runtime.emit(
+        const AcpToolCallUpdate(
+          toolCallId: 't-bg',
+          title: 'Bash',
+          status: AcpToolCallStatus.inProgress,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+    });
+    await tester.pump();
+
+    expect(cubit.state.messages, isNotEmpty, reason: 'the turn did stream');
+    verifyNever(() => seat.markExternalLoading());
+    verifyNever(() => seat.adoptExternalMessages(any()));
+    verifyNever(() => seat.adoptExternalMessages(any(), dropPendings: false));
+    verifyNever(() => seat.setAwaitingAssistant(any()));
+
+    active.value = true;
+    await tester.pumpAndSettle();
+
+    expect(
+      cubit.state.messages,
+      isNotEmpty,
+      reason: 'the activation catch-up publishes the missed state',
+    );
+    verify(() => seat.adoptExternalMessages(any())).called(greaterThan(0));
   });
 }
 

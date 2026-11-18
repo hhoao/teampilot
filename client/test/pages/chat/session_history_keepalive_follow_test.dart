@@ -18,6 +18,19 @@ List<AiMessage> _messages(int count) {
   );
 }
 
+/// Alternating roles: consecutive assistant messages coalesce into one turn,
+/// so a same-role list would mount as a single giant turn body.
+List<AiMessage> _turnMessages(int count) {
+  return List.generate(
+    count,
+    (i) => AiMessage(
+      id: 'm$i',
+      role: i.isEven ? AiRole.user : AiRole.assistant,
+      parts: [AiTextPart(text: 'msg $i')],
+    ),
+  );
+}
+
 /// Mirrors how the workbench stacks open sessions: every host stays mounted,
 /// and the one that is not in front is wrapped in [TpKeepAliveLayer] +
 /// `TickerMode(enabled: false)` (see `KeepAliveSessionStack`).
@@ -64,6 +77,10 @@ Future<void> _pumpFrames(WidgetTester tester, {int frames = 40}) async {
 ScrollPosition _position(WidgetTester tester) {
   return tester.state<ScrollableState>(find.byType(Scrollable).first).position;
 }
+
+/// Messages currently mounted in the viewport, foreground or not.
+int _mountedMessages(WidgetTester tester) =>
+    find.byType(AiMessageView, skipOffstage: false).evaluate().length;
 
 void main() {
   testWidgets('backgrounded thread re-sticks to the tip when the tab returns', (
@@ -188,5 +205,53 @@ void main() {
     await _pumpFrames(tester);
 
     expect(_position(tester).pixels, closeTo(before, 2));
+  });
+
+  testWidgets('a backgrounded thread does not grow its mounted window', (
+    tester,
+  ) async {
+    final runtime = ExternalStoreAiThreadRuntime()
+      ..setMessages(_turnMessages(40));
+    await tester.pumpWidget(_harness(runtime: runtime, active: true));
+    await _pumpFrames(tester);
+
+    await tester.pumpWidget(_harness(runtime: runtime, active: false));
+    await _pumpFrames(tester);
+    final away = _mountedMessages(tester);
+
+    runtime.setMessages(_turnMessages(200));
+    await _pumpFrames(tester);
+
+    expect(
+      _mountedMessages(tester),
+      lessThanOrEqualTo(away + 16),
+      reason: 'a thread that is not in front cannot lay out or paint, so '
+          'mounting more turns only accumulates work for the return frame '
+          '(bounded by the retained window plus overscan on one edge)',
+    );
+  });
+
+  testWidgets('returning to the tab resumes growing the mounted window', (
+    tester,
+  ) async {
+    final runtime = ExternalStoreAiThreadRuntime()
+      ..setMessages(_turnMessages(40));
+    await tester.pumpWidget(_harness(runtime: runtime, active: true));
+    await _pumpFrames(tester);
+    await tester.pumpWidget(_harness(runtime: runtime, active: false));
+    await _pumpFrames(tester);
+    final away = _mountedMessages(tester);
+
+    runtime.setMessages(_turnMessages(200));
+    await _pumpFrames(tester);
+
+    await tester.pumpWidget(_harness(runtime: runtime, active: true));
+    await _pumpFrames(tester, frames: 160);
+
+    expect(
+      _mountedMessages(tester),
+      greaterThan(away + 20),
+      reason: 'the gate must only defer while offstage',
+    );
   });
 }

@@ -1353,6 +1353,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                         // scrolling; mobile stays bounded to visible/overscan turns.
                         retainMountedTurns: !mobile,
                         fillDataWindow: !mobile,
+                        // Offstage hosts never lay out or paint, so growing the
+                        // window there only makes the return frame bigger.
+                        allowFill: _foreground,
                         mountTurns: _mountTurns,
                         // Rebuild turn bodies when the highlight target changes
                         // so the ring moves even though the message list

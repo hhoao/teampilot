@@ -43,6 +43,12 @@ class VirtualThreadViewport extends StatefulWidget {
     /// [messages] is mounted (pagination already bounds the data window).
     this.fillDataWindow = false,
 
+    /// When false, [fillDataWindow] stops growing the mount window. Hosts pass
+    /// false while the viewport is offstage: it cannot lay out or paint there,
+    /// so extra mounted turns are pure deferred work for the return frame.
+    /// Growth resumes on the next build with `allowFill: true`.
+    this.allowFill = true,
+
     /// Injectable clock (tests); defaults to [DateTime.now].
     this.clock,
 
@@ -80,6 +86,7 @@ class VirtualThreadViewport extends StatefulWidget {
   final int keepAliveMaxExtra;
   final bool retainMountedTurns;
   final bool fillDataWindow;
+  final bool allowFill;
   final DateTime Function()? clock;
 
   /// See constructor docs.
@@ -546,7 +553,9 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   }
 
   void _scheduleFillDataWindow() {
-    if (!widget.fillDataWindow || !widget.mountTurns) return;
+    if (!widget.fillDataWindow || !widget.mountTurns || !widget.allowFill) {
+      return;
+    }
     if (_turns.isEmpty) return;
     if (_lastIndex >= _firstIndex &&
         _firstIndex <= 0 &&
@@ -557,7 +566,12 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     _fillScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fillScheduled = false;
-      if (!mounted || !widget.fillDataWindow || !widget.mountTurns) return;
+      if (!mounted ||
+          !widget.fillDataWindow ||
+          !widget.mountTurns ||
+          !widget.allowFill) {
+        return;
+      }
       if (_turns.isEmpty) return;
 
       var first = _firstIndex;

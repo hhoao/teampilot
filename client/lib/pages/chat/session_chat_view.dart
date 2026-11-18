@@ -344,9 +344,12 @@ class _SessionChatViewState extends State<SessionChatView> {
   void _bindAcpRuntime() {
     final runtime = widget.acpRuntime;
     if (runtime == null) return;
-    _syncAcpMessages(runtime);
+    // Kept-alive tabs stay mounted behind the active one; republishing the seat
+    // on every stream event rebuilds a transcript nobody can see. The
+    // routeActive transition re-syncs once on return (_refreshWhenHot).
+    if (widget.routeActive) _syncAcpMessages(runtime);
     _acpRuntimeSub = runtime.stream.listen((_) {
-      if (!mounted) return;
+      if (!mounted || !widget.routeActive) return;
       _syncAcpMessages(runtime);
     });
   }
