@@ -135,6 +135,12 @@ dev_dependencies:
   vm_service: ^15.2.0
 
 flutter:
+  # Keep macOS release/profile builds universal (x86_64 + arm64).
+  # Flutter is deprecating Intel Macs and plans to flip this flag to enabled
+  # by default; an arm64-only DMG cannot launch on Intel Macs. Project-level
+  # config takes precedence over CI global config and the FLUTTER_* env var.
+  config:
+    enable-macos-arm64-only: false
   uses-material-design: true
   assets:
     - google_fonts/
