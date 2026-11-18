@@ -2013,6 +2013,13 @@ class _AppLocalizations$log$zh extends AppLocalizations$log$en {
 	final AppLocalizationsZh _root; // ignore: unused_field
 
 	// Translations
+	@override String get installJobCopy => '复制';
+	@override String get installJobEmpty => '暂无输出。';
+	@override String get installJobPaused => '已暂停';
+	@override String get installJobResume => '跟随';
+	@override String get installJobTitle => '安装日志';
+	@override String get installJobUnavailable => '日志不可用——文件已被清理。';
+	@override String get installJobViewLog => '查看日志';
 	@override String get viewerAcpFrames => 'ACP 协议帧日志（默认关闭）';
 	@override String get viewerActionsMenu => '更多操作';
 	@override String get viewerAllCopied => '已复制全部过滤后的日志';
@@ -5442,6 +5449,13 @@ extension on AppLocalizationsZh {
 			'llm.configPathSessionCardDescription' => 'LLM 配置文件（llm_config.json）的绝对路径。留空则使用 CLI 安装目录旁的默认路径。',
 			'llm.configPathSessionCardDescriptionSsh' => 'SSH 远端主机上 llm_config.json 的绝对路径。留空则使用远端 CLI 安装目录旁的默认路径。',
 			'llm.configSubtitle' => '提供商和模型',
+			'log.installJobCopy' => '复制',
+			'log.installJobEmpty' => '暂无输出。',
+			'log.installJobPaused' => '已暂停',
+			'log.installJobResume' => '跟随',
+			'log.installJobTitle' => '安装日志',
+			'log.installJobUnavailable' => '日志不可用——文件已被清理。',
+			'log.installJobViewLog' => '查看日志',
 			'log.viewerAcpFrames' => 'ACP 协议帧日志（默认关闭）',
 			'log.viewerActionsMenu' => '更多操作',
 			'log.viewerAllCopied' => '已复制全部过滤后的日志',
@@ -5520,6 +5534,8 @@ extension on AppLocalizationsZh {
 			'managedProviders.deleteContent' => ({required Object name}) => '删除“${name}”及其缓存用量？',
 			'managedProviders.deleteFailed' => '无法删除管理 Provider。',
 			'managedProviders.deleteTitle' => '删除管理 Provider？',
+			_ => null,
+		} ?? switch (path) {
 			'managedProviders.disable' => '禁用',
 			'managedProviders.disabled' => '已禁用',
 			'managedProviders.display' => '显示配置',
@@ -5527,8 +5543,6 @@ extension on AppLocalizationsZh {
 			'managedProviders.displaySectionTitle' => '余额与额度显示',
 			'managedProviders.dynamicCurrencyHelper' => '货币从响应映射读取。',
 			'managedProviders.edit' => '编辑',
-			_ => null,
-		} ?? switch (path) {
 			'managedProviders.editTitle' => '编辑管理 Provider',
 			'managedProviders.emptyHint' => '添加 Provider 以独立跟踪余额和配额。',
 			'managedProviders.emptyTitle' => '暂无管理 Provider',
@@ -6034,6 +6048,8 @@ extension on AppLocalizationsZh {
 			'resource.managerMetricsError' => '无法刷新进程指标。',
 			'resource.managerPanelTitle' => '资源管理器 - 会话',
 			'resource.managerRefresh' => '刷新',
+			_ => null,
+		} ?? switch (path) {
 			'resource.managerSpace' => '空间',
 			'resource.managerSpaceBeta' => 'Beta',
 			'resource.managerSpaceNotScanned' => '不会扫描工作区磁盘占用。',
@@ -6041,8 +6057,6 @@ extension on AppLocalizationsZh {
 			'resource.managerTerminalsCount' => ({required int count}) => '${count} 个运行中会话',
 			'resource.managerTitle' => '资源管理器',
 			'resource.managerTooltip' => ({required int count}) => '资源管理器 - ${count} 个运行中会话',
-			_ => null,
-		} ?? switch (path) {
 			'resource.managerTooltipHint' => '跨所有工作区的运行中会话。',
 			'rtk.bashOnlyHint' => '仅作用于 Agent 的 Bash 工具调用；内置 Read、Grep、Glob 不会自动改写。',
 			'rtk.settingsDescription' => '在命令输出进入模型前压缩 Agent Bash 结果（需本机 PATH 中有 rtk 与 jq）。',
@@ -6548,6 +6562,8 @@ extension on AppLocalizationsZh {
 			'ssh.serversLoadError' => '无法加载 SSH 服务器，请检查连接后重试。',
 			'ssh.serversNotConnected' => '未连接远程主机。',
 			'ssh.serversTitle' => 'SSH 服务器',
+			_ => null,
+		} ?? switch (path) {
 			'ssh.vaultBadge' => '保险库',
 			'ssh.hostsPillCount' => ({required int count}) => '${count} 台主机',
 			'sshProfile.connect' => '连接',
@@ -6555,8 +6571,6 @@ extension on AppLocalizationsZh {
 			'sshProfile.delete' => '删除',
 			'sshProfile.disconnect' => '断开',
 			'sshProfile.edit' => '编辑',
-			_ => null,
-		} ?? switch (path) {
 			'sshProfile.formAuthChangeBody' => '保存后会清除该目标另一种认证方式已保存的凭据。',
 			'sshProfile.formAuthChangeConfirm' => '切换并保存',
 			'sshProfile.formAuthChangeTitle' => '切换认证方式？',
@@ -7062,6 +7076,8 @@ extension on AppLocalizationsZh {
 			'workspace.searchTitle' => '搜索',
 			'workspace.searchToggleDetails' => '展开搜索选项',
 			'workspace.searchTruncated' => '结果过多已截断——请细化查询',
+			_ => null,
+		} ?? switch (path) {
 			'workspace.searchUseGitignore' => '使用 .gitignore 设置',
 			'workspace.sessionCount' => '会话数',
 			'workspace.sidebarGroupsView' => '分组',
@@ -7069,8 +7085,6 @@ extension on AppLocalizationsZh {
 			'workspace.skillsAssignedCount' => ({required int assigned, required int total}) => '已为本工作区启用 ${assigned}/${total}',
 			'workspace.skillsManage' => '管理 Skills',
 			'workspace.targetSubtitle' => '该工作区的目录所在并运行的机器。会话在此 target 上启动；切换不会移动文件。',
-			_ => null,
-		} ?? switch (path) {
 			'workspace.targetTitle' => '工作区所在机器',
 			'workspace.terminal' => '终端',
 			'workspace.terminalClose' => '关闭终端面板',

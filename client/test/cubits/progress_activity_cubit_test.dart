@@ -2,11 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/progress_activity_cubit.dart';
+import 'package:teampilot/models/install_job/install_job_key.dart';
 import 'package:teampilot/models/progress_activity.dart';
 import 'package:teampilot/services/notification/notification_recorder.dart';
 
 class _FakeNotificationRecorder implements NotificationRecorder {
-  final records = <({String message, TpToastVariant variant, String title})>[];
+  final records =
+      <
+        ({String message, TpToastVariant variant, String title, String payload})
+      >[];
 
   @override
   void record({
@@ -15,7 +19,12 @@ class _FakeNotificationRecorder implements NotificationRecorder {
     String title = '',
     String payload = '',
   }) {
-    records.add((message: message, variant: variant, title: title));
+    records.add((
+      message: message,
+      variant: variant,
+      title: title,
+      payload: payload,
+    ));
   }
 }
 
@@ -240,6 +249,37 @@ void main() {
         ProgressActivityPhase.running,
       );
       expect(cancelCount, 0);
+    });
+  });
+
+  group('install log token', () {
+    test('install activity carries logToken and completes with payload', () {
+      final recorder = _FakeNotificationRecorder();
+      final cubit = ProgressActivityCubit(historyRecorder: recorder);
+      addTearDown(cubit.close);
+      const key = InstallJobKey(
+        kind: InstallJobKind.cliExecutable,
+        target: 'claude',
+      );
+
+      cubit.startForInstallJob(
+        jobKey: key,
+        title: 'Install Claude',
+        kind: ProgressActivityKind.cliProvision,
+        logToken: 'tok-1',
+      );
+
+      expect(cubit.state.activities.single.logToken, 'tok-1');
+
+      cubit.complete(
+        key.activityId,
+        outcome: ProgressActivityPhase.succeeded,
+        historyTitle: 'Install Claude',
+        historyPayload: 'install-log:tok-1',
+      );
+
+      expect(cubit.state.activities, isEmpty);
+      expect(recorder.records.single.payload, 'install-log:tok-1');
     });
   });
 }

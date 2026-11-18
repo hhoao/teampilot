@@ -1,7 +1,59 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/git_installer.dart';
+
+/// A hermetic fake [Process] for the default streaming runner tests.
+///
+/// Never spawns a real subprocess; records [kill] calls so tests can assert the
+/// runner does not orphan a child when draining fails.
+class _FakeProcess implements Process {
+  _FakeProcess({
+    this.stdoutBytes = const <int>[],
+    this.stderrBytes = const <int>[],
+    this.exitCodeValue = 0,
+    this.errorOnDrain = false,
+  });
+
+  final List<int> stdoutBytes;
+  final List<int> stderrBytes;
+  final int exitCodeValue;
+  final bool errorOnDrain;
+
+  final List<ProcessSignal> kills = <ProcessSignal>[];
+
+  @override
+  int get pid => 4242;
+
+  @override
+  Future<int> get exitCode => Future<int>.value(exitCodeValue);
+
+  @override
+  Stream<List<int>> get stdout => errorOnDrain
+      ? Stream<List<int>>.error(StateError('stdout failed'))
+      : Stream<List<int>>.value(stdoutBytes);
+
+  @override
+  Stream<List<int>> get stderr => errorOnDrain
+      ? Stream<List<int>>.error(StateError('stderr failed'))
+      : Stream<List<int>>.value(stderrBytes);
+
+  @override
+  IOSink get stdin => throw UnimplementedError('stdin is unused');
+
+  @override
+  bool kill([ProcessSignal signal = ProcessSignal.sigterm]) {
+    kills.add(signal);
+    return true;
+  }
+}
+
+GitInstaller _installerWithStarter(GitProcessStarter starter) => GitInstaller(
+  isWindowsOverride: true,
+  processRunner: (exe, args) async => ProcessResult(0, 0, '', ''),
+  processStarter: starter,
+);
 
 /// A fake [ProcessResult] that tests can construct without spawning a process.
 ProcessResult _fakeResult({
@@ -379,6 +431,107 @@ void main() {
 
       expect(phases[0], GitInstallPhase.installing);
       expect(phases[1], GitInstallPhase.locating);
+    });
+
+    test(
+      'forwards install command output through the streaming runner',
+      () async {
+        final lines = <String>[];
+        final installer = GitInstaller(
+          isWindowsOverride: true,
+          processRunner: (exe, args) async => ProcessResult(0, 0, '', ''),
+          streamingRunner: (exe, args, onOutput) async {
+            onOutput('installing $exe');
+            return ProcessResult(0, 0, '', '');
+          },
+        );
+
+        final result = await installer.install(onOutputLine: lines.add);
+
+        expect(result.success, isTrue);
+        expect(lines, contains('installing winget'));
+      },
+    );
+  });
+
+  group('default streaming runner', () {
+    test('tolerates invalid UTF-8 bytes and forwards the line', () async {
+      final lines = <String>[];
+      final started = <String>[];
+      final installer = _installerWithStarter((exe, args) async {
+        started.add('$exe ${args.join(' ')}');
+        return _FakeProcess(
+          // "installing " followed by two bytes that are invalid UTF-8.
+          stdoutBytes: <int>[...utf8.encode('installing '), 0xFF, 0xFE, 0x0A],
+        );
+      });
+
+      final result = await installer.install(onOutputLine: lines.add);
+
+      expect(result.success, isTrue);
+      expect(started.single, startsWith('winget install'));
+      expect(lines, hasLength(1));
+      expect(lines.single, startsWith('installing '));
+      expect(lines.single, contains('\uFFFD'));
+    });
+
+    test('propagates a non-zero exit code with stderr detail', () async {
+      final installer = _installerWithStarter(
+        (exe, args) async => _FakeProcess(
+          stdoutBytes: utf8.encode('installing\n'),
+          stderrBytes: utf8.encode('access denied\n'),
+          exitCodeValue: 1,
+        ),
+      );
+
+      final result = await installer.install(onOutputLine: (_) {});
+
+      expect(result.success, isFalse);
+      expect(result.message, contains('access denied'));
+      expect(result.message, contains('https://git-scm.com'));
+    });
+
+    test('a starter that throws ProcessException fails the install', () async {
+      final installer = _installerWithStarter(
+        (exe, args) async => throw ProcessException(exe, args, 'not found'),
+      );
+
+      final result = await installer.install(onOutputLine: (_) {});
+
+      expect(result.success, isFalse);
+      expect(result.message, contains('Failed to run winget'));
+    });
+
+    test('a throwing onOutput sink does not break the drain', () async {
+      final lines = <String>[];
+      final installer = _installerWithStarter(
+        (exe, args) async =>
+            _FakeProcess(stdoutBytes: utf8.encode('first\nsecond\n')),
+      );
+
+      final result = await installer.install(
+        onOutputLine: (line) {
+          lines.add(line);
+          throw const FormatException('sink exploded');
+        },
+      );
+
+      expect(result.success, isTrue);
+      expect(lines, ['first', 'second']);
+    });
+
+    test('kills the child before rethrowing a drain error', () async {
+      late _FakeProcess process;
+      final installer = _installerWithStarter((exe, args) async {
+        process = _FakeProcess(errorOnDrain: true);
+        return process;
+      });
+
+      await expectLater(
+        installer.install(onOutputLine: (_) {}),
+        throwsA(isA<StateError>()),
+      );
+      expect(process.kills, isNotEmpty);
     });
   });
 

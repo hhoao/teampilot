@@ -6,9 +6,11 @@ final class InstallJobContext {
     void Function(String label, {String? detail, double? fraction})?
     reportPhase,
     void Function({required int completed, required int total})? reportItems,
+    this.appendLog,
   }) : _reportPhase = reportPhase,
        _reportItems = reportItems;
 
+  final void Function(String line)? appendLog;
   final void Function(String label, {String? detail, double? fraction})?
   _reportPhase;
   final void Function({required int completed, required int total})?

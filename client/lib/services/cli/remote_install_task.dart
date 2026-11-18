@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../../models/ssh_profile.dart';
+import '../host/process_run_handle.dart';
 import '../ssh/ssh_client_factory.dart';
 import '../ssh/worker/ssh_worker_member_session.dart';
 import '../ssh/worker/ssh_worker_storage_types.dart';
 import 'installer_types.dart';
 import 'registry/capabilities/cli_executable_capability.dart';
+import 'ssh_streaming_command_runner.dart';
 
 /// One short-lived member-plane exec channel for long install/provision work.
 ///
@@ -60,9 +62,9 @@ final class RemoteInstallTask {
   SshCommandRunner get runner => (command) async {
     final SshWorkerRunResult result;
     try {
-      result = await _transport.run(command, stderr: true).timeout(
-        commandTimeout,
-      );
+      result = await _transport
+          .run(command, stderr: true)
+          .timeout(commandTimeout);
     } on TimeoutException {
       await close();
       rethrow;
@@ -76,6 +78,13 @@ final class RemoteInstallTask {
 
   Future<void> close() => _closeFuture ??= _close();
 
+  /// Starts one command whose output streams as the worker delivers it.
+  ///
+  /// The caller owns the returned handle; killing it ends only this exec
+  /// channel, not the task channel.
+  Future<ProcessRunHandle> startStreaming(String command) async =>
+      _MemberExecRunHandle(await _transport.startProcess(command));
+
   Future<void> _close() async {
     try {
       await _transport.close().timeout(_closeTimeout);
@@ -84,6 +93,27 @@ final class RemoteInstallTask {
       // install outcome or the timeout that triggered it.
     }
   }
+}
+
+/// Adapts a streamed worker exec channel to [ProcessRunHandle].
+final class _MemberExecRunHandle implements ProcessRunHandle {
+  _MemberExecRunHandle(this._channel);
+
+  final SshWorkerExecChannel _channel;
+
+  @override
+  Future<int> get exitCode => _channel.done;
+
+  // Widening matters: `Utf8Decoder.transform` checks the reified element type,
+  // and rejects a `Stream<Uint8List>` at runtime.
+  @override
+  Stream<List<int>> get stdout => _channel.stdout.cast<List<int>>();
+
+  @override
+  Stream<List<int>> get stderr => _channel.stderr.cast<List<int>>();
+
+  @override
+  void kill() => _channel.kill();
 }
 
 /// Adapts a [RemoteInstallTask] to `CliInstallerService`'s SSH runner.
@@ -96,3 +126,16 @@ SshCliInstallRunner installRunnerForRemoteTask(RemoteInstallTask task) =>
         stderr: result.stderr,
       );
     };
+
+/// Streaming variant of [installRunnerForRemoteTask].
+///
+/// Output is emitted line by line from the member exec channel, bounded by the
+/// task's command budget. A timed-out command closes the task channel, matching
+/// [RemoteInstallTask.runner]'s behavior.
+SshStreamingInstallRunner installStreamingRunnerForRemoteTask(
+  RemoteInstallTask task,
+) => SshStreamingCommandRunner(
+  startProcess: (profile, command) => task.startStreaming(command),
+  timeout: task.commandTimeout,
+  onTimeout: () => unawaited(task.close()),
+).run;

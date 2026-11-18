@@ -72,4 +72,51 @@ void main() {
       expect(navigated, isEmpty);
     },
   );
+
+  test(
+    'openNotificationCenterItem opens install logs instead of navigating',
+    () async {
+      final marked = <String>[];
+      final navigated = <String>[];
+      final logs = <String>[];
+      final notification = AppNotification(
+        id: 'n4',
+        variant: TpToastVariant.error,
+        title: 'Install Claude',
+        message: 'Failed',
+        createdAt: DateTime(2026, 7, 19),
+        payload: 'install-log:tok-1',
+      );
+
+      await openNotificationCenterItem(
+        notification: notification,
+        markRead: (id) async => marked.add(id),
+        go: navigated.add,
+        showInstallLog: logs.add,
+      );
+
+      expect(marked, ['n4']);
+      expect(logs, ['tok-1']);
+      expect(navigated, isEmpty);
+    },
+  );
+
+  test('install-log payload without a callback is ignored', () async {
+    final navigated = <String>[];
+    final notification = AppNotification(
+      id: 'n5',
+      variant: TpToastVariant.success,
+      message: 'Done',
+      createdAt: DateTime(2026, 7, 19),
+      payload: 'install-log:tok-1',
+    );
+
+    await openNotificationCenterItem(
+      notification: notification,
+      markRead: (id) async {},
+      go: navigated.add,
+    );
+
+    expect(navigated, isEmpty);
+  });
 }
