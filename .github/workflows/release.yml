@@ -201,6 +201,114 @@ jobs:
           fastforge package --platform macos --targets dmg
           --build-dart-define=GITHUB_OAUTH_CLIENT_ID=${TEAMPILOT_GITHUB_OAUTH_CLIENT_ID}
 
+      # Guard against a silent regression to arm64-only builds. Flutter plans to
+      # default the macOSArm64Only flag to enabled, and CI pulls the latest stable,
+      # so an arm64-only DMG can slip in and refuse to launch on Intel Macs.
+      # client/pubspec.yaml pins enable-macos-arm64-only: false; this check makes
+      # sure the main DMG actually is universal.
+      - name: Verify main DMG is universal (x86_64 + arm64)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dmg=$(find dist -type f -name '*-macos.dmg' -print -quit)
+          if [ -z "$dmg" ]; then
+            echo "No *-macos.dmg found under dist/" >&2
+            exit 1
+          fi
+          echo "Verifying $dmg (must be universal)"
+          mount_point=""
+          trap 'if [ -n "$mount_point" ]; then hdiutil detach "$mount_point" -quiet 2>/dev/null || true; fi' EXIT
+          mount_point=$(hdiutil attach -nobrowse -readonly "$dmg" | grep -o '/Volumes/.*' | head -1 | sed 's/[[:space:]]*$//')
+          app=$(find "$mount_point" -maxdepth 1 -name 'TeamPilot.app' -print -quit)
+          if [ -z "$app" ]; then
+            echo "TeamPilot.app not found in DMG" >&2
+            exit 1
+          fi
+          required=(
+            "Contents/MacOS/TeamPilot"
+            "Contents/Frameworks/App.framework/Versions/A/App"
+            "Contents/Frameworks/FlutterMacOS.framework/Versions/A/FlutterMacOS"
+          )
+          failed=0
+          for rel in "${required[@]}"; do
+            bin="$app/$rel"
+            if [ ! -f "$bin" ]; then
+              echo "MISSING: $rel" >&2
+              failed=1
+              continue
+            fi
+            arches=$(lipo -info "$bin" 2>/dev/null | sed -E 's/.*are: //;s/.*architecture: //')
+            echo "  $rel -> $arches"
+            for needed in x86_64 arm64; do
+              if ! echo "$arches" | grep -qw "$needed"; then
+                echo "ERROR: $rel is missing the $needed slice" >&2
+                failed=1
+              fi
+            done
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo "Main macOS DMG is not universal; refusing to publish." >&2
+            echo "Ensure flutter.config.enable-macos-arm64-only stays false in client/pubspec.yaml." >&2
+            exit 1
+          fi
+          echo "OK: main macOS DMG is universal (x86_64 + arm64)"
+
+      # Also ship an arm64-only DMG for Apple Silicon users (smaller download).
+      # Derived from the same universal .app via lipo -thin, so only one Flutter
+      # build is needed. Re-sign ad-hoc after slicing (the original signature
+      # no longer matches the binaries) and reuse the dmg packager spec.
+      - name: Build arm64-only DMG from universal app
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(grep -E '^version:' pubspec.yaml | head -1 | sed 's/version:[[:space:]]*//')
+          universal_dmg=$(find dist -type f -name '*-macos.dmg' -print -quit)
+          out_dir=$(dirname "$universal_dmg")
+          work=$(mktemp -d)
+          trap 'rm -rf "$work"' EXIT
+
+          # Locate the mounted volume via the attach output, robust to spaces in the name.
+          mount_point=$(hdiutil attach -nobrowse -readonly "$universal_dmg" | grep -o '/Volumes/.*' | head -1 | sed 's/[[:space:]]*$//')
+          cp -R "$mount_point/TeamPilot.app" "$work/TeamPilot.app"
+          hdiutil detach "$mount_point" -quiet 2>/dev/null || true
+
+          app="$work/TeamPilot.app"
+          # Thin every universal Mach-O inside the bundle to arm64.
+          find "$app/Contents/MacOS" "$app/Contents/Frameworks" -type f -print0 2>/dev/null \
+            | xargs -0 -P 8 -I{} sh -c '
+                file -b "$1" | grep -q "Mach-O universal binary" || exit 0
+                tmp="$1.thin.$$"
+                if lipo -thin arm64 "$1" -o "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+                  mode=$(stat -f "%Lp" "$1")
+                  mv -f "$tmp" "$1"; chmod "$mode" "$1"
+                else
+                  rm -f "$tmp"; echo "lipo -thin arm64 failed: $1" >&2; exit 1
+                fi
+              ' _ {}
+          for rel in "Contents/MacOS/TeamPilot" \
+                     "Contents/Frameworks/App.framework/Versions/A/App" \
+                     "Contents/Frameworks/FlutterMacOS.framework/Versions/A/FlutterMacOS"; do
+            arches=$(lipo -info "$app/$rel" 2>/dev/null | sed -E 's/.*are: //;s/.*architecture: //')
+            echo "  arm64 slice $rel -> $arches"
+            echo "$arches" | grep -qw arm64 || { echo "ERROR: $rel has no arm64 slice" >&2; exit 1; }
+            echo "$arches" | grep -qw x86_64 && { echo "ERROR: $rel still has x86_64 slice" >&2; exit 1; }
+          done
+          codesign --force --deep --sign - "$app"
+
+          # appdmg spec: reuse the committed make_config.yaml contents layout.
+          cat > "$work/dmg.json" <<JSON
+          {
+            "title": "TeamPilot",
+            "contents": [
+              { "x": 480, "y": 170, "type": "link", "path": "/Applications" },
+              { "x": 180, "y": 170, "type": "file", "path": "TeamPilot.app" }
+            ]
+          }
+          JSON
+          arm_dmg="$out_dir/teampilot-${version}-macos-arm64.dmg"
+          (cd "$work" && appdmg dmg.json "$arm_dmg" --quiet)
+          echo "Built $arm_dmg"
+
       - uses: actions/upload-artifact@v4
         with:
           name: macos-packages
@@ -459,7 +567,7 @@ jobs:
           suffixes = (".deb", ".appimage", ".dmg", ".msix", ".exe", ".zip", ".apk")
           # flutter_app_packager 临时目录：…/teampilot-*-windows-setup_exe/TeamPilot.exe 等，不是发布物
           staging_suffixes = ("_exe", "_msix", "_zip", "_deb", "_dmg", "_appimage", "_apk")
-          expected_release_files = 8  # linux×2 + macos×1 + windows×3 + android×2
+          expected_release_files = 9  # linux×2 + macos×2 (universal + arm64) + windows×3 + android×2
 
           def is_inside_packaging_staging(path: pathlib.Path) -> bool:
               return any(

@@ -112,9 +112,15 @@ chmod +x teampilot-*-linux.AppImage
 
 ### macOS
 
-1. 下载 `teampilot-*-macos.dmg`。
-2. 打开 DMG，将 **TeamPilot** 拖入「应用程序」。
-3. 首次启动若被 Gatekeeper 拦截：「系统设置 → 隐私与安全性」中允许，或右键应用 →「打开」。
+同一个 Release 提供两个 DMG，按你的芯片选择：
+
+| 文件 | 适用 |
+|------|------|
+| `teampilot-*-macos.dmg` | **通用包**：Intel 与 Apple Silicon 都能运行 |
+| `teampilot-*-macos-arm64.dmg` | **Apple Silicon 专用**：体积更小，仅 M 系列芯片 |
+
+1. 下载对应 DMG，打开后将 **TeamPilot** 拖入「应用程序」。
+2. 首次启动若被 Gatekeeper 拦截：「系统设置 → 隐私与安全性」中允许，或右键应用 →「打开」。
 
 ### Windows
 

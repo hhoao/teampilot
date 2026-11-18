@@ -111,9 +111,15 @@ chmod +x teampilot-*-linux.AppImage
 
 ### macOS
 
-1. Download `teampilot-*-macos.dmg`.
-2. Open the DMG and drag **TeamPilot** into **Applications**.
-3. If Gatekeeper blocks the first launch: allow it under **System Settings → Privacy & Security**, or right-click the app → **Open**.
+Each release ships two DMGs — pick the one for your chip:
+
+| File | For |
+|------|-----|
+| `teampilot-*-macos.dmg` | **Universal**: runs on both Intel and Apple Silicon |
+| `teampilot-*-macos-arm64.dmg` | **Apple Silicon only**: smaller download, M-series Macs |
+
+1. Download the matching DMG and drag **TeamPilot** into **Applications**.
+2. If Gatekeeper blocks the first launch: allow it under **System Settings → Privacy & Security**, or right-click the app → **Open**.
 
 ### Windows
 
