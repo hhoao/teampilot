@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,6 +15,8 @@ import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/cli_binary_kind.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -23,8 +27,11 @@ import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
+import 'package:teampilot/services/remote/remote_cli_readiness.dart';
+import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/theme/app_theme.dart';
+import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 
 import '../../../support/post_frame_test_harness.dart';
 import '../../../support/compose_field_test_utils.dart';
@@ -67,6 +74,7 @@ Future<void> _pumpLanding(
   required Workspace workspace,
   required SessionPreferencesCubit sessionPreferencesCubit,
   required void Function() onSubmit,
+  RemoteCliReadinessService? readiness,
 }) async {
   final chatCubit = _MockChatCubit();
   final appProviderCubit = _MockAppProviderCubit();
@@ -77,6 +85,7 @@ Future<void> _pumpLanding(
   final worktreeCubit = _MockWorktreeCubit();
 
   _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
+  when(() => chatCubit.remoteCliReadiness).thenReturn(readiness);
   _stubCubit(appProviderCubit, const AppProviderState());
   _stubCubit(cliPresetsCubit, const CliPresetsState());
   _stubCubit(launchProfileCubit, const LaunchProfileState());
@@ -132,6 +141,32 @@ Future<void> _pumpLanding(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+/// Remote readiness probe that never resolves until the test releases it.
+class _BlockingReadiness extends RemoteCliReadinessService {
+  _BlockingReadiness()
+    : super(
+        registry: CliToolRegistry.builtIn(),
+        sshClientFactory: _ThrowingSshClientFactory(),
+        profileById: (_) => null,
+        cliPathOverride: (_, __) async => null,
+        setCliPathOverride: (_, __, ___) async {},
+      );
+
+  final release = Completer<RemoteCliReadiness>();
+
+  @override
+  Future<RemoteCliReadiness> probe({
+    required RuntimeTarget target,
+    required CliTool cli,
+    CliBinaryKind kind = CliBinaryKind.cli,
+  }) => release.future;
+}
+
+class _ThrowingSshClientFactory implements SshClientFactory {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
 
 Workspace _localWorkspace() => Workspace(
@@ -192,4 +227,62 @@ void main() {
 
     expect(submitted, 1);
   });
+
+  testWidgets(
+    'send shows the submitting state before the remote readiness probe returns',
+    (tester) async {
+      final workspace = Workspace(
+        workspaceId: 'workspace-1',
+        folders: const [
+          WorkspaceFolder(path: '/remote', targetId: 'ssh:host-a'),
+        ],
+        createdAt: 1,
+      );
+      final readiness = _BlockingReadiness();
+      var submitted = 0;
+
+      await _pumpLanding(
+        tester,
+        workspace: workspace,
+        sessionPreferencesCubit: await _prefsCubit(
+          locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
+        ),
+        readiness: readiness,
+        onSubmit: () => submitted++,
+      );
+
+      await enterComposeText(tester, 'hello');
+      await tester.pump();
+      await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+      await tester.pump();
+
+      // The tap must flip the button into its submitting state immediately,
+      // while the (network-backed) readiness probe is still in flight.
+      expect(
+        tester
+            .widget<WorkspaceComposeCard>(find.byType(WorkspaceComposeCard))
+            .isSubmitting,
+        isTrue,
+      );
+      expect(submitted, 0);
+
+      readiness.release.complete(
+        RemoteCliReady(
+          targetId: 'ssh:host-a',
+          cli: CliTool.claude,
+          path: '/usr/local/bin/claude',
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(submitted, 1);
+      expect(
+        tester
+            .widget<WorkspaceComposeCard>(find.byType(WorkspaceComposeCard))
+            .isSubmitting,
+        isFalse,
+      );
+    },
+  );
 }

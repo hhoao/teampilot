@@ -303,7 +303,7 @@ class WorkspaceComposeCard extends StatelessWidget {
         onStop: chrome.onStop!,
       );
     }
-    if (hasText) {
+    if (hasText || isSubmitting) {
       return _SendButton(
         palette: palette,
         canSubmit: _effectiveCanSubmit,

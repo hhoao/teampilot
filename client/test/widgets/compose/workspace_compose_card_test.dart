@@ -33,6 +33,7 @@ void main() {
     ValueChanged<String>? onOpenAtFile,
     ComposeClip? clip,
     bool canSubmit = false,
+    bool isSubmitting = false,
     VoidCallback? onSubmit,
   }) {
     final resolvedController = controller ?? ComposeTextController();
@@ -76,6 +77,7 @@ void main() {
           deferFieldMount: deferFieldMount,
           onOpenAtFile: onOpenAtFile,
           clip: clip,
+          isSubmitting: isSubmitting,
         ),
       ),
     );
@@ -430,6 +432,31 @@ void main() {
 
     expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
     expect(find.byIcon(Icons.mic_none_outlined), findsNothing);
+  });
+
+  testWidgets('submitting with an empty field keeps the send spinner visible', (
+    tester,
+  ) async {
+    final controller = ComposeTextController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(
+          chrome: unboundChrome,
+          controller: controller,
+          isSubmitting: true,
+        ),
+      ),
+    );
+    // The progress indicator animates forever — never pumpAndSettle here.
+    await tester.pump();
+
+    // The compose field is cleared as soon as the send starts; the trailing
+    // slot must keep the send control (spinner), not the idle voice mic.
+    expect(find.byIcon(Icons.mic_none_outlined), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 
   testWidgets(

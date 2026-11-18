@@ -135,6 +135,13 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   late final ComposeVoiceInput _voiceInput;
   var _suppressDraftSync = false;
 
+  /// Set on the tap frame so the send control reacts before the async launch
+  /// gate (remote CLI probes, config reads) returns. Reset by the submit
+  /// wrapper once the launch is handed off or the gate blocks it.
+  var _submitInFlight = false;
+
+  bool get _isSubmitting => widget.isSubmitting || _submitInFlight;
+
   var _conversationMode = _LandingConversationMode.simple;
   var _generateLaunch = false;
   String? _selectedPresetId;
@@ -480,7 +487,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   Future<void> _attachFiles() async {
-    if (widget.isSubmitting) return;
+    if (_isSubmitting) return;
     await pickAndInsertComposeFileReferences(
       controller: _controller,
       workspaceRoot: _activeLaunchDirectory(),
@@ -508,7 +515,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   Future<bool> _pasteComposeImage() async {
-    if (widget.isSubmitting) return false;
+    if (_isSubmitting) return false;
     final pasted = await pasteComposeImageAttachment(
       controller: _controller,
       workspaceRoot: _activeLaunchDirectory(),
@@ -519,7 +526,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   Future<void> _toggleVoice() async {
-    if (widget.isSubmitting) return;
+    if (_isSubmitting) return;
 
     final available = await _voiceInput.initialize();
     if (!mounted) return;
@@ -1026,7 +1033,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   bool get _canSubmit {
-    if (widget.disabled || widget.isSubmitting) return false;
+    if (widget.disabled || _isSubmitting) return false;
     if (_launchWarningBlock is RemoteCliMissingLaunchBlock) return false;
     // Generation mode skips concrete-team gates (mirrors the submit branch):
     // the builder session resolves the generator itself, so no team selection
@@ -1054,11 +1061,26 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   void _submit() {
+    if (_isSubmitting) return;
+    // Paint the submitting state on the tap frame — the launch gate below may
+    // await remote CLI probes, and a silent button reads as an ignored tap.
+    setState(() => _submitInFlight = true);
     unawaited(_submitAfterLaunchGate());
   }
 
   Future<void> _submitAfterLaunchGate() async {
+    try {
+      await _runLaunchGateSubmit();
+    } finally {
+      if (mounted && _submitInFlight) {
+        setState(() => _submitInFlight = false);
+      }
+    }
+  }
+
+  Future<void> _runLaunchGateSubmit() async {
     final text = _clip.composeMessage(_controller.text.trim());
+    // Uses the parent flag only: [_submitInFlight] is already set here.
     if (text.isEmpty || widget.disabled || widget.isSubmitting) return;
 
     // Generation mode branches before concrete-team readiness/machine gates:
@@ -1703,7 +1725,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       clip: _clip,
       focusNode: _focusNode,
       hint: l10n.workspace.chatLandingInputHint,
-      isSubmitting: widget.isSubmitting,
+      isSubmitting: _isSubmitting,
       canSubmit: _canSubmit && localCliBlock == null,
       onSubmit: _submit,
       onChanged: (_) {},
