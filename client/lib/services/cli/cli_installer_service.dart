@@ -20,20 +20,25 @@ import '../host/host_login_shell_lookup.dart';
 import '../host/host_script_runner.dart';
 import '../host/macos_npm_path_candidates.dart';
 import '../ssh/ssh_client_factory.dart';
+import 'ssh_streaming_command_runner.dart';
 
 export 'installer_types.dart';
+
+typedef CliInstallOutputLine = void Function(String line);
 
 class CliInstallerService {
   CliInstallerService({
     LocalCliInstallRunner? localRunner,
     SshCliInstallRunner? sshRunner,
     SshClientFactory? sshClientFactory,
+    SshStreamingInstallRunner? sshStreamingRunner,
     bool? isWindowsOverride,
     HostExecutionEnvironment? hostEnvironment,
     CliToolRegistry? cliToolRegistry,
     String? Function()? preferredNodePath,
   }) : _localRunner = localRunner ?? _runLocal,
        _sshRunnerOverride = sshRunner,
+       _sshStreamingRunnerOverride = sshStreamingRunner,
        _sshClientFactory = sshClientFactory,
        _hostEnvironment =
            hostEnvironment ??
@@ -50,21 +55,30 @@ class CliInstallerService {
 
   final LocalCliInstallRunner _localRunner;
   final SshCliInstallRunner? _sshRunnerOverride;
+  final SshStreamingInstallRunner? _sshStreamingRunnerOverride;
   final SshClientFactory? _sshClientFactory;
   late SshCliInstallRunner _sshRunner =
       _sshRunnerOverride ?? _SshCommandRunner(_sshClientFactory).run;
+
+  /// Set while a member-plane [RemoteInstallTask] is open.
+  SshStreamingInstallRunner? _taskStreamingRunner;
   final HostExecutionEnvironment _hostEnvironment;
   final CliToolRegistry _cliToolRegistry;
   final String? Function()? _preferredNodePath;
   CliInstallProgressCallback? _onProgress;
+  CliInstallOutputLine? _onOutputLine;
   bool Function()? _isCancelled;
   void Function(Process process)? _onProcessStarted;
+
+  SshStreamingInstallRunner? get _resolvedStreamingRunner =>
+      _sshStreamingRunnerOverride ?? _taskStreamingRunner;
 
   Future<CliInstallResult> install({
     required CliTool cli,
     required CliInstallMode mode,
     SshProfile? sshProfile,
     CliInstallProgressCallback? onProgress,
+    CliInstallOutputLine? onOutputLine,
     bool Function()? isCancelled,
     void Function(Process process)? onProcessStarted,
   }) async {
@@ -83,6 +97,7 @@ class CliInstallerService {
       mode: mode,
       sshProfile: sshProfile,
       onProgress: onProgress,
+      onOutputLine: onOutputLine,
       isCancelled: isCancelled,
       onProcessStarted: onProcessStarted,
     );
@@ -95,6 +110,7 @@ class CliInstallerService {
     required CliInstallMode mode,
     SshProfile? sshProfile,
     CliInstallProgressCallback? onProgress,
+    CliInstallOutputLine? onOutputLine,
     bool Function()? isCancelled,
     void Function(Process process)? onProcessStarted,
   }) {
@@ -103,6 +119,7 @@ class CliInstallerService {
       mode: mode,
       sshProfile: sshProfile,
       onProgress: onProgress,
+      onOutputLine: onOutputLine,
       isCancelled: isCancelled,
       onProcessStarted: onProcessStarted,
     );
@@ -113,10 +130,12 @@ class CliInstallerService {
     required CliInstallMode mode,
     SshProfile? sshProfile,
     CliInstallProgressCallback? onProgress,
+    CliInstallOutputLine? onOutputLine,
     bool Function()? isCancelled,
     void Function(Process process)? onProcessStarted,
   }) async {
     _onProgress = onProgress;
+    _onOutputLine = onOutputLine;
     _isCancelled = isCancelled;
     _onProcessStarted = onProcessStarted;
     final profile = sshProfile;
@@ -128,6 +147,7 @@ class CliInstallerService {
           _sshClientFactory != null) {
         task = await RemoteInstallTask.open(_sshClientFactory, profile);
         _sshRunner = installRunnerForRemoteTask(task);
+        _taskStreamingRunner = installStreamingRunnerForRemoteTask(task);
       }
       return await install(
         CliInstallContext(
@@ -140,9 +160,11 @@ class CliInstallerService {
       );
     } finally {
       _onProgress = null;
+      _onOutputLine = null;
       _isCancelled = null;
       _onProcessStarted = null;
       if (task != null) {
+        _taskStreamingRunner = null;
         _sshRunner = _SshCommandRunner(_sshClientFactory).run;
         await task.close();
       }
@@ -160,13 +182,15 @@ class CliInstallerService {
   }) async {
     _report(phase);
     final useStreaming =
-        streamOutput &&
-        _onProgress != null &&
+        (streamOutput || _onOutputLine != null) &&
         identical(_localRunner, _runLocal);
     if (useStreaming) {
       return _runLocalStreaming(
         command,
-        onOutput: (line) => _report(phase, detail: line),
+        onOutput: (line) {
+          if (streamOutput) _report(phase, detail: line);
+          _onOutputLine?.call(line);
+        },
         onProcessStarted: _onProcessStarted,
       );
     }
@@ -457,7 +481,14 @@ final class _CliInstallerHost implements CliInstallerHost {
   Future<CliInstallerCommandResult> runSsh(
     SshProfile profile,
     CliInstallerCommand command,
-  ) => _service._sshRunner(profile, command);
+  ) {
+    final onOutput = _service._onOutputLine;
+    final streaming = _service._resolvedStreamingRunner;
+    if (onOutput == null || streaming == null) {
+      return _service._sshRunner(profile, command);
+    }
+    return streaming(profile, command, onOutput: onOutput);
+  }
 
   @override
   Future<String?> locateExecutable(String name) =>

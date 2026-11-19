@@ -50,11 +50,19 @@ Typical `<teampilotRoot>` paths:
   session-protocol.json          # loopback session protocol advertisement (desktop authority)
   logs/
     errors.jsonl                 # ErrorLogService structured errors
+    install-jobs/{token}.log     # one file per install job (live log dialog + notification entry)
     error/latest.log             # AppLogger error lines
     warn/latest.log              # warn + error
     info/latest.log              # info + warn + error
     debug/latest.log             # full timeline (debug builds only)
 ```
+
+Install job logs live under the native app data root alongside the other
+`logs/` files. Each install job gets one `logs/install-jobs/{token}.log`
+(`{token}` derived from the job key, sanitized and hash-suffixed). Retention:
+newest 20 files, 7 days, and 5 MB per file — the file stops growing past the
+cap (the in-memory live view keeps the newest 2000 lines) and is purged on
+boot.
 
 Credentials are **split by ownership**:
 

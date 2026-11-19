@@ -41,6 +41,7 @@ class ProgressActivity extends Equatable {
     this.detailOpen = false,
     this.errorMessage,
     this.jobKey,
+    this.logToken,
   });
 
   final String id;
@@ -60,6 +61,7 @@ class ProgressActivity extends Equatable {
   final bool detailOpen;
   final String? errorMessage;
   final InstallJobKey? jobKey;
+  final String? logToken;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -79,6 +81,7 @@ class ProgressActivity extends Equatable {
     bool? detailOpen,
     String? errorMessage,
     InstallJobKey? jobKey,
+    String? logToken,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -98,6 +101,7 @@ class ProgressActivity extends Equatable {
       detailOpen: detailOpen ?? this.detailOpen,
       errorMessage: errorMessage ?? this.errorMessage,
       jobKey: jobKey ?? this.jobKey,
+      logToken: logToken ?? this.logToken,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -120,6 +124,7 @@ class ProgressActivity extends Equatable {
     detailOpen,
     errorMessage,
     jobKey,
+    logToken,
     createdAt,
     updatedAt,
   ];

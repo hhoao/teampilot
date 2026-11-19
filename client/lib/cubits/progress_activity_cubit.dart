@@ -69,6 +69,7 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
     String? workspaceId,
     required ProgressActivityKind kind,
     bool cancellable = true,
+    String? logToken,
     FutureOr<void> Function()? onCancelRequested,
   }) {
     final now = DateTime.now();
@@ -82,6 +83,7 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
         phase: ProgressActivityPhase.running,
         cancellable: cancellable,
         jobKey: jobKey,
+        logToken: logToken,
         createdAt: now,
         updatedAt: now,
       ),
@@ -133,6 +135,7 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
           ? null
           : (errorMessage ?? current.errorMessage),
       jobKey: current.jobKey,
+      logToken: current.logToken,
       createdAt: current.createdAt,
       updatedAt: DateTime.now(),
     );
@@ -197,6 +200,7 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
     String? errorMessage,
     String? historyTitle,
     String? historyMessage,
+    String? historyPayload,
     bool recordHistory = true,
   }) {
     assert(
@@ -232,7 +236,12 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
         current.title;
     final title = historyTitle ?? current.title;
 
-    _historyRecorder.record(message: message, variant: variant, title: title);
+    _historyRecorder.record(
+      message: message,
+      variant: variant,
+      title: title,
+      payload: historyPayload ?? '',
+    );
   }
 
   @override

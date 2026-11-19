@@ -9,6 +9,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/progress_activity.dart';
 import '../../services/install/install_job_registry.dart';
 import '../../services/progress_activity/progress_fraction.dart';
+import '../install/job_log_dialog.dart';
 import '../notification/progress_activity_tile.dart';
 
 Future<void> showProgressActivityDetailDialog(
@@ -50,7 +51,15 @@ class _ProgressActivityDetailDialog extends StatelessWidget {
       },
       listener: (context, state) {
         if (!context.mounted) return;
-        Navigator.of(context).pop();
+        final route = ModalRoute.of(context);
+        final navigator = Navigator.of(context);
+        if (route != null && !route.isCurrent) {
+          // Covered by a route above (e.g. the install log dialog): remove
+          // only this dialog so the covering route stays alive.
+          navigator.removeRoute(route);
+          return;
+        }
+        navigator.pop();
       },
       child: BlocBuilder<ProgressActivityCubit, ProgressActivityState>(
         buildWhen: (previous, current) {
@@ -181,6 +190,15 @@ class _ProgressActivityDetailBody extends StatelessWidget {
           ),
           TpDialogActions(
             children: [
+              if (activity.logToken != null)
+                TextButton(
+                  onPressed: () => showInstallJobLogDialog(
+                    context,
+                    token: activity.logToken!,
+                    title: activity.title,
+                  ),
+                  child: Text(l10n.log.installJobViewLog),
+                ),
               TextButton(
                 onPressed: onClose,
                 child: Text(l10n.windowControlClose),
