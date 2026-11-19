@@ -104,6 +104,17 @@ dependencies:
   slang: ^4.19.0
   slang_flutter: ^4.19.0
 dependency_overrides:
+  # shared_preferences_android 2.5.5 needs jni >= 1.1.0, and
+  # path_provider_android 2.3.1 ships JNI bindings that expose only the
+  # descriptor (`Landroid/content/Context;`) and rely on Jni.findClass
+  # unwrapping it. jni 1.2.0 removed that unwrap, so
+  # getApplicationSupportDirectory() throws ClassNotFoundException at startup on
+  # Android. jni 1.1.x satisfies both; keep it until path_provider_android
+  # regenerates its bindings against jni 1.2+.
+  jni: 1.1.2
+  # jni_flutter 1.1.0 requires jni ^1.2.0; 1.0.4+1 is the newest that accepts
+  # the pinned 1.1.x ABI.
+  jni_flutter: 1.0.4+1
   html: 0.15.6
   acpd:
     path: packages/acpd/packages/acpd
