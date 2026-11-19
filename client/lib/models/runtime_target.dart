@@ -1,28 +1,25 @@
 import 'package:flutter/foundation.dart';
 
-/// Where files live and processes run for a unit of work. P0: one global
-/// default target reproduces today's behavior; P2 attaches targets per folder.
-enum RuntimeKind { local, wsl, ssh, termux }
+import 'runtime_target_id.dart';
+
+export 'runtime_target_id.dart'
+    show
+        LocalTargetId,
+        RuntimeKind,
+        RuntimeTargetId,
+        SshTargetId,
+        TermuxTargetId,
+        WslTargetId,
+        usesSshTransport;
 
 /// Probed for ssh targets at connect (P3). P0 always null.
 enum RemoteOs { posix, windows }
 
-RuntimeKind runtimeKindOfId(String id) {
-  if (id.startsWith('wsl:')) return RuntimeKind.wsl;
-  if (id.startsWith('ssh:')) return RuntimeKind.ssh;
-  if (id.startsWith('termux:')) return RuntimeKind.termux;
-  return RuntimeKind.local;
-}
+RuntimeKind runtimeKindOfId(String id) => RuntimeTargetId.decode(id).kind;
 
-String? wslDistroOfId(String id) =>
-    id.startsWith('wsl:') ? id.substring(4) : null;
+String? wslDistroOfId(String id) => RuntimeTargetId.decode(id).wslDistro;
 
-String? sshProfileIdOfId(String id) =>
-    id.startsWith('ssh:') ? id.substring(4) : null;
-
-/// SSH transport targets (catalog SSH + synthetic Termux loopback profile).
-bool usesSshTransport(RuntimeKind kind) =>
-    kind == RuntimeKind.ssh || kind == RuntimeKind.termux;
+String? sshProfileIdOfId(String id) => RuntimeTargetId.decode(id).sshProfileId;
 
 @immutable
 class RuntimeTarget {
@@ -69,6 +66,11 @@ class RuntimeTarget {
   final String? sshProfileId;
   final String? wslDistro;
   final RemoteOs? remoteOs;
+
+  /// The typed view of [id]. Decoding happens in exactly one place
+  /// (`RuntimeTargetId.decode`); callers that need to dispatch on the kind of
+  /// an id string should go through this instead of re-implementing prefixes.
+  RuntimeTargetId get targetId => RuntimeTargetId.decode(id);
 
   factory RuntimeTarget.fromJson(Map<String, Object?> json) {
     final id = json['id'] as String? ?? localId;

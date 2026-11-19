@@ -3,6 +3,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/member_remote_provision_progress.dart';
+import '../../models/runtime_target.dart';
 import '../../services/cli/installer_types.dart';
 import '../../widgets/cli_install_progress_panel.dart';
 
@@ -84,7 +85,8 @@ class ChatWorkbenchRemoteProvisionView extends StatelessWidget {
   static String _friendlyHostLabel(String raw) {
     final host = raw.trim();
     if (host.isEmpty) return '';
-    if (host.startsWith('ssh:') || host.startsWith('termux:')) return '';
+    final id = RuntimeTargetId.decode(host);
+    if (id is SshTargetId || id is TermuxTargetId) return '';
     if (_looksLikeUuid(host)) return '';
     return host;
   }

@@ -30,7 +30,6 @@ class DefaultTargetLiveness implements TargetLiveness {
         if (profileId == null || profileId.isEmpty) return false;
         return (await _sshProfiles.findById(profileId)) != null;
       case RuntimeKind.termux:
-        if (!id.startsWith('termux:')) return false;
         return _hasTermuxConfig?.call() ?? true;
     }
   }

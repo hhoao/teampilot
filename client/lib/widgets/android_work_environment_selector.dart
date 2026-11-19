@@ -176,7 +176,7 @@ class AndroidWorkEnvironmentSelector extends StatelessWidget {
       await context.read<TermuxCubit>().connect();
       return;
     }
-    if (value.startsWith('ssh:')) {
+    if (RuntimeTargetId.decode(value) is SshTargetId) {
       homeController.select(value);
     }
   }

@@ -46,8 +46,9 @@ class RuntimeTargetRegistry {
         (_hasTermuxConfig?.call() ?? false)) {
       return RuntimeTarget.termux();
     }
-    if (isWindows && normalized.startsWith('wsl:')) {
-      final distro = wslDistroOfId(normalized) ?? '';
+    final decodedId = RuntimeTargetId.decode(normalized);
+    if (isWindows && decodedId is WslTargetId) {
+      final distro = decodedId.distro;
       if (distro.isNotEmpty &&
           (wslDistro.trim().isEmpty || distro == wslDistro.trim())) {
         return RuntimeTarget.wsl(distro);

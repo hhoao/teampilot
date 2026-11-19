@@ -1076,7 +1076,7 @@ class SessionShellConnector implements SessionShellConnectPort {
     final label = launchTarget.label.trim();
     if (label.isNotEmpty &&
         label != launchTarget.id &&
-        !label.startsWith('ssh:')) {
+        RuntimeTargetId.decode(label) is! SshTargetId) {
       return label;
     }
     return '';

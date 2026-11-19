@@ -96,6 +96,21 @@ void main() {
     );
   });
 
+  test('target ids are decoded in exactly one place', () {
+    final offenders = <String>[];
+    final prefixes = ["startsWith('ssh:')", "startsWith('wsl:')", "startsWith('termux:')"];
+    for (final entity in Directory('lib').listSync(recursive: true)) {
+      if (entity is! File || !entity.path.endsWith('.dart')) continue;
+      if (entity.path.endsWith('runtime_target_id.dart')) continue;
+      // Parses lines printed by the WSL CLI, not target ids.
+      if (entity.path.endsWith('host_login_shell_lookup.dart')) continue;
+      final source = entity.readAsStringSync();
+      if (prefixes.any(source.contains)) offenders.add(entity.path);
+    }
+
+    expect(offenders, isEmpty);
+  });
+
   test('the plane catalog carries no reachability fields', () {
     final source = File(
       'lib/models/connection/catalog_entry.dart',
