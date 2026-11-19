@@ -252,4 +252,63 @@ void main() {
     );
     expect(find.text('Open'), findsOneWidget);
   });
+
+  testWidgets('open sessions strip is capped so history keeps a viewport', (
+    tester,
+  ) async {
+    final ids = [for (var i = 0; i < 24; i++) 's$i'];
+    chatCubit.emit(
+      chatCubit.state.copyWith(
+        sessions: [
+          for (final id in ids) _session(id: id, display: id.toUpperCase()),
+        ],
+      ),
+    );
+    for (final id in ids) {
+      workbenchCubit.openSession(_workspace.workspaceId, id);
+    }
+
+    await pumpSidebar(tester);
+
+    final slot = tester.getSize(
+      find.byKey(const ValueKey('workspace-sidebar-running-sessions-slot')),
+    );
+    expect(
+      slot.height,
+      lessThanOrEqualTo(360.0),
+      reason: 'open sessions strip must not exceed its max height',
+    );
+    expect(
+      slot.height,
+      greaterThan(0.0),
+      reason: 'the strip must still render when tabs are open',
+    );
+    expect(
+      tester.getSize(find.byType(ReorderableListView)).height,
+      greaterThan(0.0),
+      reason: 'conversation history must keep a viewport below the strip',
+    );
+
+    // The section title must stay pinned while the rows scroll inside the cap.
+    final titleFinder = find.text('Open');
+    final slotRect = tester.getRect(
+      find.byKey(const ValueKey('workspace-sidebar-running-sessions-slot')),
+    );
+    final titleTopBefore = tester.getTopLeft(titleFinder).dy;
+    expect(titleTopBefore, greaterThanOrEqualTo(slotRect.top));
+
+    await tester.drag(
+      find.byKey(const ValueKey('workspace-running-sessions-scroll')),
+      const Offset(0, -160),
+    );
+    await tester.pump();
+
+    final titleRectAfter = tester.getRect(titleFinder);
+    expect(
+      titleRectAfter.top,
+      closeTo(titleTopBefore, 0.01),
+      reason: 'section title must not scroll with the open session rows',
+    );
+    expect(titleRectAfter.bottom, lessThanOrEqualTo(slotRect.bottom));
+  });
 }

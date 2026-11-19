@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show immutable, listEquals;
 import 'package:flutter/material.dart';
@@ -100,6 +101,13 @@ const _normalConversationHeaderHeight =
 const _archiveConversationHeaderHeight =
     TpIconButton.kCompactSize + _conversationHeaderBottomPadding;
 
+/// Absolute ceiling for the "Open" sessions strip, and the share of the
+/// sidebar it may ever occupy. Without a cap a long open-tab list (startup
+/// restore especially) starves the conversation history below it — that
+/// history lives in the `Expanded` after this section and collapses to zero.
+const _runningSessionsMaxHeight = 360.0;
+const _runningSessionsViewportFraction = 0.45;
+
 /// Workspace conversation sidebar.
 class WorkspaceSidebar extends StatefulWidget {
   const WorkspaceSidebar({
@@ -176,16 +184,24 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                 final headerHeight = _showingArchive
                     ? _archiveConversationHeaderHeight
                     : _normalConversationHeaderHeight;
-                final maxRunningHeight =
-                    (constraints.maxHeight -
-                            _conversationSectionGap -
-                            headerHeight)
-                        .clamp(0.0, double.infinity)
-                        .toDouble();
+                final maxRunningHeight = math.min(
+                  (constraints.maxHeight -
+                          _conversationSectionGap -
+                          headerHeight)
+                      .clamp(0.0, double.infinity)
+                      .toDouble(),
+                  math.min(
+                    _runningSessionsMaxHeight,
+                    constraints.maxHeight * _runningSessionsViewportFraction,
+                  ),
+                );
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     ConstrainedBox(
+                      key: const ValueKey(
+                        'workspace-sidebar-running-sessions-slot',
+                      ),
                       constraints: BoxConstraints(maxHeight: maxRunningHeight),
                       child: _RunningSessionsHost(
                         workspace: widget.workspace,
@@ -548,22 +564,15 @@ class _RunningSessionsHost extends StatelessWidget {
           child: const SizedBox.shrink(),
         );
       }
-      return ListView(
-        primary: false,
-        shrinkWrap: true,
-        padding: EdgeInsets.zero,
-        children: [
-          SidebarRebuildProbe(
-            key: const Key('workspace-sidebar-running-host-probe'),
-            child: _RunningSplitGroupsSection(
-              groups: splitGroups.groups,
-              knownIds: running.ids.toSet(),
-              extraSessionIds: remoteOpenIds,
-              workspace: workspace,
-              tabScopeId: tabScopeId,
-            ),
-          ),
-        ],
+      return SidebarRebuildProbe(
+        key: const Key('workspace-sidebar-running-host-probe'),
+        child: _RunningSplitGroupsSection(
+          groups: splitGroups.groups,
+          knownIds: running.ids.toSet(),
+          extraSessionIds: remoteOpenIds,
+          workspace: workspace,
+          tabScopeId: tabScopeId,
+        ),
       );
     }
     final openTabIds = context.select<WorkbenchCubit, OpenSessionTabIds>((c) {
@@ -596,24 +605,17 @@ class _RunningSessionsHost extends StatelessWidget {
         child: const SizedBox.shrink(),
       );
     }
-    return ListView(
-      primary: false,
-      shrinkWrap: true,
-      padding: EdgeInsets.zero,
-      children: [
-        SidebarRebuildProbe(
-          key: const Key('workspace-sidebar-running-host-probe'),
-          child: _RunningSessionsSection(
-            sessionIds: running.ids,
-            workspace: workspace,
-            tabScopeId: tabScopeId,
-            groupId: centerLayout.focusedGroupId,
-            groupLocked: centerLayout.lockedGroupIds.contains(
-              centerLayout.focusedGroupId,
-            ),
-          ),
+    return SidebarRebuildProbe(
+      key: const Key('workspace-sidebar-running-host-probe'),
+      child: _RunningSessionsSection(
+        sessionIds: running.ids,
+        workspace: workspace,
+        tabScopeId: tabScopeId,
+        groupId: centerLayout.focusedGroupId,
+        groupLocked: centerLayout.lockedGroupIds.contains(
+          centerLayout.focusedGroupId,
         ),
-      ],
+      ),
     );
   }
 }
@@ -974,7 +976,31 @@ class _RunningSessionsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final chatState = context.read<ChatCubit>().state;
+    final rows = <Widget>[
+      for (final sessionId in sessionIds)
+        if (_sessionById(chatState, sessionId) case final session?)
+          SidebarSessionTile(
+            key: ValueKey('workspace-running-session-$sessionId'),
+            session: session,
+            highlightSessionId: scopedActiveSessionId(
+              context.read<WorkbenchCubit>(),
+              tabScopeId,
+            ),
+            tapThrottleKeyPrefix: 'workspace_running_session',
+            onTap: () => openWorkspaceSessionTab(
+              context,
+              workspace,
+              session,
+              tabScopeId: tabScopeId,
+            ),
+            workbenchGroupLocked: groupLocked,
+            onToggleWorkbenchGroupLock: () => context
+                .read<WorkbenchCubit>()
+                .toggleGroupLock(tabScopeId, groupId),
+          ),
+    ];
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
@@ -984,27 +1010,19 @@ class _RunningSessionsSection extends StatelessWidget {
             style: TpTextStyles.of(context).mutedSm,
           ),
         ),
-        for (final sessionId in sessionIds)
-          if (_sessionById(chatState, sessionId) case final session?)
-            SidebarSessionTile(
-              key: ValueKey('workspace-running-session-$sessionId'),
-              session: session,
-              highlightSessionId: scopedActiveSessionId(
-                context.read<WorkbenchCubit>(),
-                tabScopeId,
-              ),
-              tapThrottleKeyPrefix: 'workspace_running_session',
-              onTap: () => openWorkspaceSessionTab(
-                context,
-                workspace,
-                session,
-                tabScopeId: tabScopeId,
-              ),
-              workbenchGroupLocked: groupLocked,
-              onToggleWorkbenchGroupLock: () => context
-                  .read<WorkbenchCubit>()
-                  .toggleGroupLock(tabScopeId, groupId),
+        // Only the rows scroll once the strip hits its max height — the
+        // section title stays pinned above the scroll view.
+        Flexible(
+          child: SingleChildScrollView(
+            key: const ValueKey('workspace-running-sessions-scroll'),
+            primary: false,
+            padding: EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: rows,
             ),
+          ),
+        ),
       ],
     );
   }
@@ -1044,7 +1062,44 @@ class _RunningSplitGroupsSection extends StatelessWidget {
       for (final id in extraSessionIds)
         if (!groupedIds.contains(id)) id,
     ];
+    final body = <Widget>[
+      for (final (index, group) in groups.indexed)
+        Column(
+          key: ValueKey('workspace-running-split-${group.groupId}'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (index > 0) const SizedBox(height: 6),
+            ..._splitGroupSessionRows(
+              context: context,
+              group: group,
+              knownIds: knownIds,
+              chatState: chatState,
+              workspace: workspace,
+              tabScopeId: tabScopeId,
+              workbench: workbench,
+            ),
+          ],
+        ),
+      if (extras.isNotEmpty) ...[
+        if (groups.isNotEmpty) const SizedBox(height: 6),
+        for (final sessionId in extras)
+          if (_sessionById(chatState, sessionId) case final session?)
+            SidebarSessionTile(
+              key: ValueKey('workspace-running-session-$sessionId'),
+              session: session,
+              highlightSessionId: scopedActiveSessionId(workbench, tabScopeId),
+              tapThrottleKeyPrefix: 'workspace_running_session',
+              onTap: () => openWorkspaceSessionTab(
+                context,
+                workspace,
+                session,
+                tabScopeId: tabScopeId,
+              ),
+            ),
+      ],
+    ];
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
@@ -1054,43 +1109,19 @@ class _RunningSplitGroupsSection extends StatelessWidget {
             style: TpTextStyles.of(context).mutedSm,
           ),
         ),
-        for (final (index, group) in groups.indexed)
-          Column(
-            key: ValueKey('workspace-running-split-${group.groupId}'),
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (index > 0) const SizedBox(height: 6),
-              ..._splitGroupSessionRows(
-                context: context,
-                group: group,
-                knownIds: knownIds,
-                chatState: chatState,
-                workspace: workspace,
-                tabScopeId: tabScopeId,
-                workbench: workbench,
-              ),
-            ],
+        // Only the rows scroll once the strip hits its max height — the
+        // section title stays pinned above the scroll view.
+        Flexible(
+          child: SingleChildScrollView(
+            key: const ValueKey('workspace-running-sessions-scroll'),
+            primary: false,
+            padding: EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: body,
+            ),
           ),
-        if (extras.isNotEmpty) ...[
-          if (groups.isNotEmpty) const SizedBox(height: 6),
-          for (final sessionId in extras)
-            if (_sessionById(chatState, sessionId) case final session?)
-              SidebarSessionTile(
-                key: ValueKey('workspace-running-session-$sessionId'),
-                session: session,
-                highlightSessionId: scopedActiveSessionId(
-                  workbench,
-                  tabScopeId,
-                ),
-                tapThrottleKeyPrefix: 'workspace_running_session',
-                onTap: () => openWorkspaceSessionTab(
-                  context,
-                  workspace,
-                  session,
-                  tabScopeId: tabScopeId,
-                ),
-              ),
-        ],
+        ),
       ],
     );
   }
