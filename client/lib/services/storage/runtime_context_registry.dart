@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
+import '../connect/profile_connection_mapping.dart';
 import 'runtime_context.dart';
 import 'runtime_context_resolver.dart';
 
@@ -9,38 +10,38 @@ typedef TermuxPathCache = ({String? home, String? appDataRoot});
 
 /// Owns the live runtime contexts. The home context (control plane) is
 /// materialized once at bootstrap and cached; work-plane contexts are
-/// materialized lazily per target id and cached so multiple workspaces/sessions
-/// on the same machine reuse one context (and its SSHClient).
+/// materialized lazily per target id.
+///
+/// Resolution and cache validity are both keyed by the machine's **plan
+/// generation**: a context wraps a store bound to one dial plan, so when that
+/// plan changes (address, account or trust edit) the cached wrapper is stale
+/// and must be rebuilt. Display-name, path-cache and last-good writes leave the
+/// generation untouched, so they never churn contexts.
 class RuntimeContextRegistry {
   RuntimeContextRegistry({
     required RuntimeContextResolver resolver,
     required RuntimeTarget homeTarget,
     SshProfile? Function(String id)? sshProfileById,
-    SshProfile? Function(String id)? workProfileById,
     TermuxPathCache Function()? termuxPathCache,
     Future<void> Function(String targetId)? onEvict,
   }) : _resolver = resolver,
        _homeTarget = homeTarget,
        _sshProfileById = sshProfileById,
-       _workProfileById = workProfileById,
        _termuxPathCache = termuxPathCache,
        _onEvict = onEvict;
 
   final RuntimeContextResolver _resolver;
   RuntimeTarget _homeTarget;
-  /// Device-local home-binding catalog (A source). Resolves the current SSH
-  /// home target and its cached paths. Home binding must never read from the
-  /// home-plane workload catalog (B source).
+
+  /// This device's connections. The only source of a dial plan: a target with
+  /// no connection here is not reachable and never resolves.
   final SshProfile? Function(String id)? _sshProfileById;
-  /// Work-plane resolver (combined B-first + A-fallback). Resolves `ssh:<id>`
-  /// folder/workspace targets, which name home-plane workload hosts (B), with
-  /// an A-source fallback for SSH-home / offline binding. When omitted, falls
-  /// back to [_sshProfileById] so standalone/test registries keep working.
-  final SshProfile? Function(String id)? _workProfileById;
+
   final TermuxPathCache Function()? _termuxPathCache;
   final Future<void> Function(String targetId)? _onEvict;
 
   final _cache = <String, RuntimeContext>{};
+  final _cacheGeneration = <String, int>{};
   final _retiredHomeContexts = <String, Set<RuntimeContext>>{};
   final _targetOperations = <String, Future<void>>{};
   RuntimeContext? _home;
@@ -49,22 +50,18 @@ class RuntimeContextRegistry {
   Future<void> ensureHome() async {
     final target = _homeTarget;
     await _withTargetOperation(target.id, () async {
-      _home = await _resolve(target, cache: true, isHome: true);
+      _home = await _resolve(target, profile: _profileFor(target), cache: true);
     });
   }
 
-  /// Pick the profile resolver for [target]: the home target resolves from the
-  /// device-local A source (home binding), every work-plane target resolves
-  /// from the combined B-first + A-fallback resolver. This is the single point
-  /// where the two SSH profile sources are kept apart for context resolution.
-  SshProfile? _profileFor(RuntimeTarget target, {required bool isHome}) {
+  SshProfile? _profileFor(RuntimeTarget target) {
     final profileId = target.sshProfileId;
     if (profileId == null) return null;
-    final resolver = isHome
-        ? _sshProfileById
-        : (_workProfileById ?? _sshProfileById);
-    return resolver?.call(profileId);
+    return _sshProfileById?.call(profileId);
   }
+
+  int _generationOf(SshProfile? profile) =>
+      profile == null ? 0 : planGenerationOf(profile);
 
   /// Materialize + publish a cached home context without any network I/O.
   ///
@@ -81,8 +78,7 @@ class RuntimeContextRegistry {
     final target = _homeTarget;
     final cached = await _resolver.resolveCached(
       target,
-      // Cached home paths come from the device-local A source home profile.
-      sshProfile: _profileFor(target, isHome: true),
+      sshProfile: _profileFor(target),
     );
     _home ??= cached;
     return _home!;
@@ -94,32 +90,41 @@ class RuntimeContextRegistry {
       (throw StateError('home context not initialised; call ensureHome()'));
 
   /// Work-plane context for [target], materialized lazily and cached by id.
+  ///
+  /// A cached wrapper is returned only while the target's plan generation is
+  /// unchanged; otherwise it is replaced (the old wrapper is retired through
+  /// [onEvict] by the caller of [disposeContext]).
   Future<RuntimeContext> forTarget(RuntimeTarget target) {
     return _withTargetOperation(target.id, () async {
+      final profile = _profileFor(target);
+      final generation = _generationOf(profile);
       final cached = _cache[target.id];
-      if (cached != null) return cached;
-      return _resolve(target, cache: true, isHome: false);
+      if (cached != null && _cacheGeneration[target.id] == generation) {
+        return cached;
+      }
+      return _resolve(target, profile: profile, cache: true);
     });
   }
 
   Future<RuntimeContext> _resolve(
     RuntimeTarget target, {
+    required SshProfile? profile,
     required bool cache,
-    required bool isHome,
   }) async {
-    final sshProfile = _profileFor(target, isHome: isHome);
     final termuxCache = target.kind == RuntimeKind.termux
         ? _termuxPathCache?.call()
         : null;
-    final ctx = await _resolver.resolve(
+    final context = await _resolver.resolve(
       target,
-      sshProfile: sshProfile,
-      cachedHome: termuxCache?.home ?? sshProfile?.lastHome,
-      cachedAppDataRoot:
-          termuxCache?.appDataRoot ?? sshProfile?.lastAppDataRoot,
+      sshProfile: profile,
+      cachedHome: termuxCache?.home ?? profile?.lastHome,
+      cachedAppDataRoot: termuxCache?.appDataRoot ?? profile?.lastAppDataRoot,
     );
-    if (cache) _cache[target.id] = ctx;
-    return ctx;
+    if (cache) {
+      _cache[target.id] = context;
+      _cacheGeneration[target.id] = _generationOf(profile);
+    }
+    return context;
   }
 
   /// Evict a cached context.
@@ -132,6 +137,7 @@ class RuntimeContextRegistry {
   Future<void> dispose(String targetId, {bool notifyEvict = true}) {
     return _withTargetOperation(targetId, () async {
       final ctx = _cache.remove(targetId);
+      _cacheGeneration.remove(targetId);
       final retired = _retiredHomeContexts.remove(targetId);
       if (ctx == null && (retired == null || retired.isEmpty)) return;
       if (identical(_home, ctx)) _home = null;
@@ -155,6 +161,7 @@ class RuntimeContextRegistry {
     return _withTargetOperation(context.target.id, () async {
       if (identical(_cache[context.target.id], context)) {
         _cache.remove(context.target.id);
+        _cacheGeneration.remove(context.target.id);
         if (identical(_home, context)) _home = null;
         if (notifyEvict) await _notifyEvicted(context);
         return;
@@ -176,12 +183,19 @@ class RuntimeContextRegistry {
     return _withTargetOperation(homeTarget.id, () async {
       final previousHome = _home;
       final previous = _cache[homeTarget.id];
-      final next = await _resolve(homeTarget, cache: false, isHome: true);
+      final next = await _resolve(
+        homeTarget,
+        profile: _profileFor(homeTarget),
+        cache: false,
+      );
 
       if (previous != null && !identical(previousHome, previous)) {
         await _notifyEvicted(previous);
       }
       _cache[homeTarget.id] = next;
+      _cacheGeneration[homeTarget.id] = _generationOf(
+        _profileFor(homeTarget),
+      );
       if (identical(previousHome, previous) && previous != null) {
         (_retiredHomeContexts[homeTarget.id] ??= <RuntimeContext>{}).add(
           previous,

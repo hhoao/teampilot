@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/services/remote/remote_connection_monitor.dart';
@@ -664,6 +665,122 @@ void main() {
       await coordinator.dispose();
     },
   );
+  test(
+    'a last-good endpoint switch reuses the lease and never trips the gate',
+    () async {
+      const lan = SshReachabilityEndpoint(
+        kind: SshEndpointKind.lan,
+        host: '10.0.0.5',
+        port: 22,
+      );
+      const extra = SshReachabilityEndpoint(
+        kind: SshEndpointKind.extra,
+        host: '203.0.113.9',
+        port: 22,
+      );
+      const lanWin = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: '10.0.0.5',
+        username: 'alice',
+        endpoints: [lan, extra],
+        lastGoodKind: SshEndpointKind.lan,
+      );
+      const extraWin = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: '203.0.113.9',
+        username: 'alice',
+        endpoints: [lan, extra],
+        lastGoodKind: SshEndpointKind.extra,
+      );
+      var dials = 0;
+      var current = lanWin;
+      final events = SshConnectionEvents();
+      final gate = SshConnectionGate();
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        events: events,
+        ioGuard: gate.beforeIo,
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          dials++;
+          return _ClosableClient();
+        },
+      );
+      final coordinator = SshProfileConnectionCoordinator(
+        factory: factory,
+        events: events,
+        profileResolver: (_) => current,
+        gate: gate,
+      );
+
+      await coordinator.userConnect(lanWin);
+
+      // The address set is unchanged, so the plan generation is too: the pool
+      // must keep the live lease instead of retiring and re-dialing.
+      current = extraWin;
+      await coordinator.userConnect(extraWin);
+
+      expect(dials, 1, reason: 'same plan must not re-dial');
+      expect(gate.isDown('p1'), isFalse);
+      expect(() => gate.beforeIo('p1'), returnsNormally);
+
+      await coordinator.dispose();
+      await factory.close();
+    },
+  );
+
+  test('a plan change re-dials without tripping the gate', () async {
+    const original = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: '10.0.0.5',
+      username: 'alice',
+    );
+    const moved = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: '10.0.0.9',
+      username: 'alice',
+    );
+    var dials = 0;
+    var current = original;
+    final notifications = <String>[];
+    final events = SshConnectionEvents();
+    final gate = SshConnectionGate();
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      events: events,
+      ioGuard: gate.beforeIo,
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        dials++;
+        return _ClosableClient();
+      },
+    );
+    final coordinator = SshProfileConnectionCoordinator(
+      factory: factory,
+      events: events,
+      profileResolver: (_) => current,
+      gate: gate,
+      onDisconnect: (profileId, error, _) => notifications.add(profileId),
+    );
+
+    await coordinator.userConnect(original);
+    current = moved;
+    await coordinator.userConnect(moved);
+
+    // A local re-target is not a connection failure: it re-dials under the new
+    // plan and must never turn into a down gate or a disconnect wave.
+    expect(dials, 2);
+    expect(gate.isDown('p1'), isFalse);
+    expect(() => gate.beforeIo('p1'), returnsNormally);
+    expect(notifications, isEmpty);
+
+    await coordinator.dispose();
+    await factory.close();
+  });
 }
 
 class _InstantAuthClient extends SSHClient {

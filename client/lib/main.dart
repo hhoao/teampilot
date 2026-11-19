@@ -48,7 +48,6 @@ import 'repositories/session_repository.dart';
 import 'repositories/workspace_project_config_repository.dart';
 import 'repositories/ssh_credential_store.dart';
 import 'repositories/ssh_known_host_repository.dart';
-import 'repositories/combined_ssh_profile_repository.dart';
 import 'repositories/ssh_profile_repository.dart';
 import 'router/app_router.dart';
 import 'services/cli/registry/cli_tool_registry_scope.dart';
@@ -622,9 +621,6 @@ void main() async {
                     // `ssh:<id>` workload hosts through this; the A provider
                     // above stays the device-local home-binding catalog for
                     // Remote Connections / onboarding / pairing / the + menu.
-                    RepositoryProvider<CombinedSshProfileRepository>.value(
-                      value: shell.combinedSshProfileRepo,
-                    ),
                     RepositoryProvider<VaultService>.value(
                       value: shell.vaultService,
                     ),

@@ -8439,6 +8439,12 @@ class AppLocalizations$ssh$en {
 	/// en: 'No SSH servers saved on this host yet.'
 	String get serversEmpty => 'No SSH servers saved on this host yet.';
 
+	/// en: 'Listed on this host, not set up on this device'
+	String get serversNeedsConnectionHint => 'Listed on this host, not set up on this device';
+
+	/// en: 'No connection from this device yet'
+	String get serversNotConnectedOnDevice => 'No connection from this device yet';
+
 	/// en: 'Could not load the SSH servers. Check the connection and try again.'
 	String get serversLoadError => 'Could not load the SSH servers. Check the connection and try again.';
 
@@ -12819,10 +12825,12 @@ extension on AppLocalizations {
 			'ssh.penaltyRefused' => 'The server temporarily refused the connection (its anti-brute-force protection was triggered). Wait about a minute and try again.',
 			'ssh.saveToVault' => 'Save to vault',
 			'ssh.serversEmpty' => 'No SSH servers saved on this host yet.',
-			'ssh.serversLoadError' => 'Could not load the SSH servers. Check the connection and try again.',
-			'ssh.serversNotConnected' => 'Not connected to a remote host.',
+			'ssh.serversNeedsConnectionHint' => 'Listed on this host, not set up on this device',
+			'ssh.serversNotConnectedOnDevice' => 'No connection from this device yet',
 			_ => null,
 		} ?? switch (path) {
+			'ssh.serversLoadError' => 'Could not load the SSH servers. Check the connection and try again.',
+			'ssh.serversNotConnected' => 'Not connected to a remote host.',
 			'ssh.serversTitle' => 'SSH servers',
 			'ssh.vaultBadge' => 'Vault',
 			'sshProfile.connect' => 'Connect',
@@ -13333,10 +13341,10 @@ extension on AppLocalizations {
 			'workspace.searchShowMore' => 'Show more results',
 			'workspace.searchSliceError' => ({required String directory}) => 'Search failed in "${directory}"',
 			'workspace.searchTitle' => 'Search',
-			'workspace.searchToggleDetails' => 'Toggle search details',
-			'workspace.searchTruncated' => 'Results truncated — refine your query',
 			_ => null,
 		} ?? switch (path) {
+			'workspace.searchToggleDetails' => 'Toggle search details',
+			'workspace.searchTruncated' => 'Results truncated — refine your query',
 			'workspace.searchUseGitignore' => 'Use .gitignore settings',
 			'workspace.sessionCount' => 'Sessions',
 			'workspace.sidebarGroupsView' => 'Groups',

@@ -50,7 +50,7 @@ import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
-import 'package:teampilot/repositories/combined_ssh_profile_repository.dart';
+import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/repositories/workspace_project_config_repository.dart';
 import 'package:teampilot/router/app_router.dart';
@@ -349,8 +349,8 @@ Widget buildTestApp({
       RepositoryProvider<SshProfileRepository>(
         create: (_) => SshProfileRepository(storage: fakeHomeStorage()),
       ),
-      RepositoryProvider<CombinedSshProfileRepository>(
-        create: (_) => testCombinedSshProfileRepository(),
+      RepositoryProvider<SshProfileRepository>(
+        create: (_) => testSshProfileRepository(),
       ),
       RepositoryProvider<SshProfileConnectionCoordinator>.value(
         value: sshCoordinator,

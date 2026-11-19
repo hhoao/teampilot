@@ -9,6 +9,7 @@ import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_known_host_repository.dart';
 import '../../utils/logging/logger.dart';
+import '../connect/profile_connection_mapping.dart';
 import '../host/process_run_handle.dart';
 import '../chat/team_bus/remote/reverse_tunnel.dart';
 import 'ssh_connection_events.dart';
@@ -57,17 +58,22 @@ class _ClientLifecycle {
 class _PooledConnection {
   _PooledConnection({
     required this.client,
-    required this.hostIdentifier,
+    required this.generation,
     required this.ready,
   });
 
   final SSHClient client;
-  final String hostIdentifier;
+
+  /// Content generation of the dial plan that produced this client.
+  final int generation;
   final Future<void> ready;
   bool readyCompleted = false;
 }
 
 class SshClientFactory {
+  /// [connector] is a **test-only** seam: it hands the factory a raw
+  /// `SSHClient` instead of driving the profile worker. No production wiring
+  /// may pass it — the worker path is the only shipping transport.
   SshClientFactory({
     required SshCredentialStore credentialStore,
     required SshKnownHostRepository knownHostRepository,
@@ -673,7 +679,7 @@ class SshClientFactory {
         'Raw SSH clients are test-only; inject a connector or use worker APIs',
       );
     }
-    final key = profile.hostIdentifier;
+    final key = profile.id;
     await _handshakeGate.acquire(key);
     try {
       final client = await connector(profile, timeout: timeout);
@@ -718,7 +724,7 @@ class SshClientFactory {
         'Raw SSH clients are test-only; inject a connector or use worker APIs',
       );
     }
-    final key = profile.hostIdentifier;
+    final key = profile.id;
     await _handshakeGate.acquire(key);
     final SSHClient client;
     try {

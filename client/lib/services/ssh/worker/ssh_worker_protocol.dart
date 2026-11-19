@@ -1,11 +1,13 @@
 import 'dart:isolate';
 import 'dart:typed_data';
 
+import '../../../models/ssh_auth_type.dart';
+import '../../../models/ssh_profile.dart';
 import '../ssh_transport_close.dart';
 
 /// The version of the isolate protocol. It is deliberately independent of
 /// persisted profile schema versions.
-const int sshWorkerProtocolVersion = 1;
+const int sshWorkerProtocolVersion = 2;
 
 /// Payloads crossing the worker boundary may not contain SSH library objects.
 const int sshWorkerMaxChunkSize = 1024 * 1024;
@@ -676,6 +678,66 @@ class SshWorkerEvent {
       errorCode: errorCode,
     );
   }
+}
+
+/// Identity and account of the connection a worker request acts on.
+///
+/// The wire never carries a profile copy. A request names a machine and the
+/// plan generation it was issued under; the address travels separately as an
+/// endpoint attempt ([SshWorkerDialTarget]), because picking an endpoint is a
+/// dial-time decision, not part of the connection's identity.
+final class SshWorkerConnectionRef {
+  const SshWorkerConnectionRef({
+    required this.machineId,
+    required this.generation,
+    required this.username,
+    required this.authType,
+  });
+
+  factory SshWorkerConnectionRef.fromArgs(Map<String, Object?> args) {
+    final machineId = args['machineId'];
+    final generation = args['generation'];
+    final username = args['username'];
+    final authTypeRaw = args['authType'];
+    if (machineId is! String || machineId.isEmpty) throw _malformed();
+    if (generation is! int || generation < 1) throw _malformed();
+    if (username is! String || username.isEmpty) throw _malformed();
+    SshAuthType? authType;
+    for (final value in SshAuthType.values) {
+      if (value.name == authTypeRaw) authType = value;
+    }
+    if (authType == null) throw _malformed();
+    return SshWorkerConnectionRef(
+      machineId: machineId,
+      generation: generation,
+      username: username,
+      authType: authType,
+    );
+  }
+
+  final String machineId;
+  final int generation;
+  final String username;
+  final SshAuthType authType;
+
+  Map<String, Object?> toArgs() => {
+    'machineId': machineId,
+    'generation': generation,
+    'username': username,
+    'authType': authType.name,
+  };
+
+  /// The domain view the worker dialer still speaks. [target] is this request's
+  /// endpoint attempt; it is deliberately not part of the identity.
+  SshProfile profileFor(SshWorkerDialTarget target) => SshProfile(
+    id: machineId,
+    name: machineId,
+    host: target.host,
+    port: target.port,
+    username: username,
+    authType: authType,
+    hostKeyFingerprints: target.hostKeyFingerprints,
+  );
 }
 
 class SshWorkerDialTarget {

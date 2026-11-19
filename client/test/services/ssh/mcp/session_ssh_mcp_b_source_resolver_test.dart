@@ -7,20 +7,17 @@ import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/plane_ssh_profile_repository.dart';
-import 'package:teampilot/repositories/remote_target_repository.dart';
-import 'package:teampilot/repositories/ssh_server_profile_repository.dart';
+import 'package:teampilot/repositories/connection_store.dart';
+import 'package:teampilot/repositories/catalog_store.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_resolver.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_targets.dart';
-import 'package:teampilot/services/ssh/plane_ssh_profile_resolver.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
+import '../../../support/connection_fixtures.dart';
 import '../../../support/in_memory_filesystem.dart';
 import '../../../support/post_frame_test_harness.dart';
 import '../../../support/test_runtime_context.dart';
-
-SshProfile _profile(String id) =>
-    SshProfile(id: id, name: id, host: '$id.example', username: 'alice');
 
 Future<void> _writeJson(
   Filesystem fs,
@@ -48,34 +45,6 @@ Map<String, Object?> _row({
 };
 
 void main() {
-  group('planeSshProfileResolver', () {
-    test('resolves only the supplied B-source entries', () {
-      final plane = _profile('plane-1');
-      final profileOf = planeSshProfileResolver(() => [plane]);
-
-      expect(profileOf('plane-1'), same(plane));
-      // An id that exists only in the device-local A source must not resolve.
-      expect(profileOf('device-only'), isNull);
-    });
-
-    test('empty B source resolves every id to null (no A fallback)', () {
-      final profileOf = planeSshProfileResolver(() => const []);
-
-      expect(profileOf('plane-1'), isNull);
-      expect(profileOf('device-only'), isNull);
-    });
-
-    test('reads the live getter on every call (home-plane swap aware)', () {
-      var profiles = <SshProfile>[_profile('plane-1')];
-      final profileOf = planeSshProfileResolver(() => profiles);
-
-      expect(profileOf('plane-1'), isNotNull);
-      profiles = [_profile('plane-2')];
-      expect(profileOf('plane-1'), isNull);
-      expect(profileOf('plane-2'), isNotNull);
-    });
-  });
-
   group('B-source profileOf through the SSH MCP chain', () {
     late Directory planeDir;
     late HomeStorage planeStorage;
@@ -93,25 +62,23 @@ void main() {
 
     PlaneSshProfileRepository buildPlaneRepo() => PlaneSshProfileRepository(
       storage: planeStorage,
-      servers: SshServerProfileRepository(storage: planeStorage),
-      deviceTargets: RemoteTargetRepository(
+      catalog: CatalogStore(storage: planeStorage),
+      connections: ConnectionStore(
         rootDir: testHomeStorage.appDataRoot,
         fs: testHomeStorage.fs,
       ),
     );
 
     Future<void> seedCatalogs() async {
-      final deviceFs = testHomeStorage.fs;
-      await _writeJson(
-        deviceFs,
-        deviceFs.pathContext.join(
-          testHomeStorage.appDataRoot,
-          'remote-targets.json',
-        ),
-        [
-          _row(id: 'plane-1', name: 'shared', vaultEntryId: 'vault-1'),
-          _row(id: 'device-only', name: 'device only'),
-        ],
+      final deviceStore = ConnectionStore(
+        rootDir: testHomeStorage.appDataRoot,
+        fs: testHomeStorage.fs,
+      );
+      await deviceStore.save(
+        deviceConnection(machineId: 'plane-1', credentialRef: 'vault-1'),
+      );
+      await deviceStore.save(
+        deviceConnection(machineId: 'device-only', displayName: 'device only'),
       );
       final planeFs = planeStorage.fs;
       await _writeJson(
@@ -129,7 +96,7 @@ void main() {
       () async {
         await seedCatalogs();
         final planeProfiles = await buildPlaneRepo().loadAll();
-        final profileOf = planeSshProfileResolver(() => planeProfiles);
+        final profileOf = _resolverOf(planeProfiles);
 
         // The plane row is present and borrowed the device's vault reference,
         // which is required for the subsequent connect.
@@ -147,7 +114,7 @@ void main() {
       () async {
         await seedCatalogs();
         final planeProfiles = await buildPlaneRepo().loadAll();
-        final profileOf = planeSshProfileResolver(() => planeProfiles);
+        final profileOf = _resolverOf(planeProfiles);
 
         final targets = sessionSshMcpTargetsFromFolders(
           folders: const [
@@ -167,7 +134,7 @@ void main() {
       () async {
         await seedCatalogs();
         final planeProfiles = await buildPlaneRepo().loadAll();
-        final profileOf = planeSshProfileResolver(() => planeProfiles);
+        final profileOf = _resolverOf(planeProfiles);
         final session = AppSession(
           sessionId: 'sess-1',
           workspaceId: 'ws',
@@ -199,17 +166,12 @@ void main() {
       'empty plane catalog resolves no targets (no error, no A fallback)',
       () async {
         // Device A source has an entry; the plane B source has none.
-        final deviceFs = testHomeStorage.fs;
-        await _writeJson(
-          deviceFs,
-          deviceFs.pathContext.join(
-            testHomeStorage.appDataRoot,
-            'remote-targets.json',
-          ),
-          [_row(id: 'device-only', name: 'device only')],
-        );
+        await ConnectionStore(
+          rootDir: testHomeStorage.appDataRoot,
+          fs: testHomeStorage.fs,
+        ).save(deviceConnection(machineId: 'device-only'));
         final planeProfiles = await buildPlaneRepo().loadAll();
-        final profileOf = planeSshProfileResolver(() => planeProfiles);
+        final profileOf = _resolverOf(planeProfiles);
 
         expect(planeProfiles, isEmpty);
         expect(profileOf('device-only'), isNull);
@@ -224,3 +186,11 @@ void main() {
     );
   });
 }
+
+SshProfile? Function(String id) _resolverOf(List<SshProfile> profiles) =>
+    (id) {
+      for (final profile in profiles) {
+        if (profile.id == id) return profile;
+      }
+      return null;
+    };

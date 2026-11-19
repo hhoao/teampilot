@@ -93,8 +93,8 @@ final class SshWorkerMemberCore {
     if (_members.containsKey(memberId)) {
       throw const _MemberFailure('member_exists');
     }
-    final profile = _profile(request);
     final target = SshWorkerDialTarget.fromWire(request.args['target']);
+    final profile = _profile(request, target);
     final client = await openClient(
       profile: profile,
       target: target,
@@ -330,18 +330,13 @@ final class SshWorkerMemberCore {
     return exec;
   }
 
-  SshProfile _profile(SshWorkerRequest request) {
-    final raw = request.args['profile'];
-    if (raw is! Map) throw const FormatException();
-    final profile = SshProfile.fromJson(raw.cast<String, Object?>());
-    if (profile.id != profileId ||
-        profile.host.isEmpty ||
-        profile.username.isEmpty ||
-        profile.port < 1 ||
-        profile.port > 65535) {
-      throw const FormatException();
-    }
-    return profile;
+  SshProfile _profile(
+    SshWorkerRequest request,
+    SshWorkerDialTarget target,
+  ) {
+    final ref = SshWorkerConnectionRef.fromArgs(request.args);
+    if (ref.machineId != profileId) throw const FormatException();
+    return ref.profileFor(target);
   }
 
   Duration _timeout(SshWorkerRequest request) => Duration(

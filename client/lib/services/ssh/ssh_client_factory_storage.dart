@@ -62,20 +62,14 @@ final class _SshWorkerStoragePool {
     required Duration timeout,
     required bool probeCached,
   }) {
+    final generation = planGenerationOf(profile);
     final pending = _openings[profile.id];
-    if (pending != null && pending.hostIdentifier == profile.hostIdentifier) {
-      return pending.future;
-    }
     if (pending != null) {
-      // The pending dial targets a stale hostIdentifier because the user
-      // edited the profile. This is a local re-target, not a server host-key
-      // change: it must stay retryable (the coordinator redials the current
-      // profile) instead of latching/suspending the home as
-      // `hostIdentityChanged` would.
-      disconnectProfile(
-        profile.id,
-        reason: SshTransportCloseReason.profileInvalidated,
-      );
+      if (pending.generation == generation) return pending.future;
+      // The pending dial belongs to a superseded plan. Drop it: its opener will
+      // see the token is no longer current and retry under the new plan.
+      _openings.remove(profile.id);
+      _retireForPlanChange(profile.id);
     }
 
     final token = Object();
@@ -85,7 +79,7 @@ final class _SshWorkerStoragePool {
     final completer = Completer<SshWorkerStorageClient>();
     _openings[profile.id] = _WorkerStorageOpening(
       token: token,
-      hostIdentifier: profile.hostIdentifier,
+      generation: generation,
       future: completer.future,
     );
     unawaited(() async {
@@ -94,6 +88,7 @@ final class _SshWorkerStoragePool {
           await _open(
             profile,
             token: token,
+            generation: generation,
             timeout: timeout,
             probeCached: probeCached,
           ),
@@ -113,12 +108,13 @@ final class _SshWorkerStoragePool {
   Future<SshWorkerStorageClient> _open(
     SshProfile profile, {
     required Object token,
+    required int generation,
     required Duration timeout,
     required bool probeCached,
   }) async {
     final cached = _connections[profile.id];
     if (cached != null) {
-      if (cached.hostIdentifier == profile.hostIdentifier && !cached.closed) {
+      if (cached.generation == generation && !cached.closed) {
         final probeDue =
             cached.lastProbedAt == null ||
             DateTime.now().difference(cached.lastProbedAt!) >= probeInterval;
@@ -150,17 +146,11 @@ final class _SshWorkerStoragePool {
           cached,
           reason: SshTransportCloseReason.transportError,
         );
-      } else {
-        // Same local re-target as above: the cached lease belongs to the old
-        // hostIdentifier. Never report it as `hostIdentityChanged` — that
-        // non-retryable reason makes the coordinator mark the home
-        // unreachable and suspend every later storage read.
-        _retireConnection(
-          profile.id,
-          cached,
-          reason: SshTransportCloseReason.profileInvalidated,
-          shutdownWorker: true,
-        );
+      } else if (!cached.closed) {
+        // The dial plan changed. This is local intent, not a transport
+        // failure: retire the old lease, keep the worker (member planes stay
+        // up) and start no cooldown, so the caller re-dials immediately.
+        _retireForPlanChange(profile.id);
       }
     }
 
@@ -203,7 +193,7 @@ final class _SshWorkerStoragePool {
     connection = _WorkerStorageConnection(
       lease: lease,
       storage: storage,
-      hostIdentifier: profile.hostIdentifier,
+      generation: generation,
     );
     _connections[profile.id] = connection;
     connection.eventsSubscription = lease.events.listen(
@@ -351,6 +341,27 @@ final class _SshWorkerStoragePool {
     }
   }
 
+  /// Retires the live lease because its plan was superseded.
+  ///
+  /// Deliberately silent: no transport-close event, because this is local
+  /// intent and must not trip the shared I/O breaker. The worker is recycled
+  /// because one worker owns one SSH connection: an address, account or trust
+  /// change invalidates every plane riding it, so member/PTY sessions cannot
+  /// survive that change. A last-good endpoint switch never reaches here — it
+  /// leaves the address set (and therefore the generation) untouched.
+  void _retireForPlanChange(String profileId) {
+    final connection = _connections[profileId];
+    if (connection == null) return;
+    _retireConnection(
+      profileId,
+      connection,
+      reason: SshTransportCloseReason.profileInvalidated,
+      notifyTransportClose: false,
+      shutdownWorker: true,
+      cooldown: false,
+    );
+  }
+
   Future<void> _disconnectStoragePlane(
     _WorkerStorageConnection connection,
   ) async {
@@ -406,12 +417,12 @@ final class _SshWorkerStoragePool {
 final class _WorkerStorageOpening {
   const _WorkerStorageOpening({
     required this.token,
-    required this.hostIdentifier,
+    required this.generation,
     required this.future,
   });
 
   final Object token;
-  final String hostIdentifier;
+  final int generation;
   final Future<SshWorkerStorageClient> future;
 }
 
@@ -419,12 +430,14 @@ final class _WorkerStorageConnection {
   _WorkerStorageConnection({
     required this.lease,
     required this.storage,
-    required this.hostIdentifier,
+    required this.generation,
   });
 
   final SshProfileWorkerLease lease;
   final SshWorkerStorageClient storage;
-  final String hostIdentifier;
+
+  /// Content generation of the dial plan this lease was opened under.
+  final int generation;
   StreamSubscription<SshWorkerEvent>? eventsSubscription;
   DateTime? lastProbedAt;
   var readyCompleted = false;

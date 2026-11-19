@@ -84,7 +84,7 @@ void main() {
     );
     final args = {
       'forwardId': 'forward-production-race',
-      'profile': _profile.toJson(),
+      ..._connectionArgs(_profile),
       'target': const SshWorkerDialTarget(host: '127.0.0.1', port: 22).toWire(),
       'timeoutMs': 1000,
       'bindHost': '127.0.0.1',
@@ -141,7 +141,7 @@ void main() {
         operation: SshWorkerOperation.openForwardRemote,
         args: {
           'forwardId': 'forward-production-shutdown-race',
-          'profile': _profile.toJson(),
+          ..._connectionArgs(_profile),
           'target': const SshWorkerDialTarget(
             host: '127.0.0.1',
             port: 22,
@@ -207,7 +207,7 @@ void main() {
         operation: SshWorkerOperation.openForwardLocal,
         args: {
           'forwardId': 'forward-ordering',
-          'profile': _profile.toJson(),
+          ..._connectionArgs(_profile),
           'target': const SshWorkerDialTarget(
             host: '127.0.0.1',
             port: 22,
@@ -732,3 +732,10 @@ final class _InjectedReverseTunnel implements ReverseTunnel {
   @override
   Future<void> close() async {}
 }
+
+Map<String, Object?> _connectionArgs(SshProfile profile) => {
+  'machineId': profile.id,
+  'generation': 1,
+  'username': profile.username,
+  'authType': profile.authType.name,
+};

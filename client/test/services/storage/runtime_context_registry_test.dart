@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/services/io/sftp_filesystem.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
@@ -302,75 +303,231 @@ void main() {
     expect(reg.home().appDataRoot, '/tp-wsl:Ubuntu');
   });
 
-  test(
-    'home target resolves from A source; work targets use combined resolver',
-    () async {
+  test('every work target resolves from the device catalog', () async {
+    const aHome = SshProfile(
+      id: 'home',
+      name: 'A home',
+      host: 'a.home',
+      username: 'u',
+    );
+    const aWork = SshProfile(
+      id: 'work',
+      name: 'A work',
+      host: 'a.work',
+      username: 'u',
+    );
+    final resolver = _FakeResolver();
+    final reg = RuntimeContextRegistry(
+      resolver: resolver,
+      homeTarget: RuntimeTarget.ssh('home', label: 'Home'),
+      sshProfileById: (id) => {'home': aHome, 'work': aWork}[id],
+    );
+
+    await reg.ensureHome();
+    await reg.forTarget(RuntimeTarget.ssh('work', label: 'Work'));
+
+    expect(resolver.resolvedProfiles['ssh:home']?.host, 'a.home');
+    expect(resolver.resolvedProfiles['ssh:work']?.host, 'a.work');
+  });
+
+  group('profile-source contract', () {
+    test('a local home never consults the SSH catalog', () async {
+      var calls = 0;
+      final resolver = _FakeResolver();
+      final reg = RuntimeContextRegistry(
+        resolver: resolver,
+        homeTarget: RuntimeTarget.local(),
+        sshProfileById: (id) {
+          calls++;
+          return null;
+        },
+      );
+
+      await reg.ensureHome();
+
+      expect(calls, 0);
+      expect(resolver.resolvedProfiles.containsKey('local'), isTrue);
+      expect(resolver.resolvedProfiles['local'], isNull);
+    });
+
+    test('the home id used as a work target reuses the home context', () async {
       const aHome = SshProfile(
         id: 'home',
         name: 'A home',
         host: 'a.home',
         username: 'u',
       );
-      const bHome = SshProfile(
-        id: 'home',
-        name: 'B home',
-        host: 'b.home',
-        username: 'u',
-      );
-      const aWork = SshProfile(
-        id: 'work',
-        name: 'A work',
-        host: 'a.work',
-        username: 'u',
-      );
-      const bWork = SshProfile(
-        id: 'work',
-        name: 'B work',
-        host: 'b.work',
-        username: 'u',
-      );
       final resolver = _FakeResolver();
+      final homeTarget = RuntimeTarget.ssh('home', label: 'Home');
       final reg = RuntimeContextRegistry(
         resolver: resolver,
-        homeTarget: RuntimeTarget.ssh('home', label: 'Home'),
-        // Device-local home-binding catalog (A).
-        sshProfileById: (id) => {'home': aHome, 'work': aWork}[id],
-        // Combined B-first + A-fallback resolver (work plane).
-        workProfileById: (id) => {'home': bHome, 'work': bWork}[id],
+        homeTarget: homeTarget,
+        sshProfileById: (id) => id == 'home' ? aHome : null,
       );
 
       await reg.ensureHome();
-      // Home binding must use the A source, even when the combined resolver
-      // exposes a same-id B row — otherwise an SSH home would bind to a
-      // workload host from the home plane.
-      expect(resolver.resolvedProfiles['ssh:home']?.name, 'A home');
+      final viaWork = await reg.forTarget(homeTarget);
 
-      await reg.forTarget(RuntimeTarget.ssh('work', label: 'Work'));
-      // A work-plane `ssh:<id>` target resolves through the combined resolver,
-      // so the B workload row wins over the A row with the same id.
-      expect(resolver.resolvedProfiles['ssh:work']?.name, 'B work');
-    },
-  );
+      expect(identical(viaWork, reg.home()), isTrue);
+      expect(resolver.resolveCount['ssh:home'], 1);
+    });
 
-  test(
-    'work targets fall back to the A resolver when combined is omitted',
-    () async {
-      const aWork = SshProfile(
+    test('a plan change rebuilds the cached work context', () async {
+      const first = SshProfile(
         id: 'work',
-        name: 'A work',
-        host: 'a.work',
+        name: 'Work',
+        host: 'first.work',
         username: 'u',
       );
+      const rewritten = SshProfile(
+        id: 'work',
+        name: 'Work',
+        host: 'second.work',
+        username: 'u',
+      );
+      var current = first;
       final resolver = _FakeResolver();
       final reg = RuntimeContextRegistry(
         resolver: resolver,
         homeTarget: RuntimeTarget.local(),
-        sshProfileById: (id) => id == 'work' ? aWork : null,
+        sshProfileById: (id) => id == 'work' ? current : null,
+      );
+      final target = RuntimeTarget.ssh('work', label: 'Work');
+
+      final before = await reg.forTarget(target);
+      current = rewritten;
+      final after = await reg.forTarget(target);
+
+      expect(identical(before, after), isFalse);
+      expect(resolver.resolveCount['ssh:work'], 2);
+      expect(resolver.resolvedProfiles['ssh:work']?.host, 'second.work');
+    });
+
+    test('last-good preference changes keep the cached context', () async {
+      const lan = SshReachabilityEndpoint(
+        kind: SshEndpointKind.lan,
+        host: 'h',
+        port: 22,
+      );
+      const extra = SshReachabilityEndpoint(
+        kind: SshEndpointKind.extra,
+        host: '203.0.113.9',
+        port: 22,
+      );
+      const lanWin = SshProfile(
+        id: 'work',
+        name: 'Work',
+        host: 'h',
+        username: 'u',
+        endpoints: [lan, extra],
+        lastGoodKind: SshEndpointKind.lan,
+      );
+      const extraWin = SshProfile(
+        id: 'work',
+        name: 'Work',
+        host: '203.0.113.9',
+        username: 'u',
+        endpoints: [lan, extra],
+        lastGoodKind: SshEndpointKind.extra,
+      );
+      var current = lanWin;
+      final resolver = _FakeResolver();
+      final reg = RuntimeContextRegistry(
+        resolver: resolver,
+        homeTarget: RuntimeTarget.local(),
+        sshProfileById: (id) => id == 'work' ? current : null,
+      );
+      final target = RuntimeTarget.ssh('work', label: 'Work');
+
+      final before = await reg.forTarget(target);
+      current = extraWin;
+      final after = await reg.forTarget(target);
+
+      expect(identical(before, after), isTrue);
+      expect(resolver.resolveCount['ssh:work'], 1);
+    });
+
+    test('a name-only change keeps the cached context', () async {
+      const original = SshProfile(
+        id: 'work',
+        name: 'Work',
+        host: 'h',
+        username: 'u',
+      );
+      const renamed = SshProfile(
+        id: 'work',
+        name: 'Renamed',
+        host: 'h',
+        username: 'u',
+      );
+      var current = original;
+      final resolver = _FakeResolver();
+      final reg = RuntimeContextRegistry(
+        resolver: resolver,
+        homeTarget: RuntimeTarget.local(),
+        sshProfileById: (id) => id == 'work' ? current : null,
       );
 
       await reg.forTarget(RuntimeTarget.ssh('work', label: 'Work'));
+      current = renamed;
+      await reg.forTarget(RuntimeTarget.ssh('work', label: 'Work'));
 
-      expect(resolver.resolvedProfiles['ssh:work']?.name, 'A work');
-    },
-  );
+      expect(resolver.resolveCount['ssh:work'], 1);
+    });
+
+    test('an unknown id resolves with no profile (no guess)', () async {
+      final resolver = _FakeResolver();
+      final reg = RuntimeContextRegistry(
+        resolver: resolver,
+        homeTarget: RuntimeTarget.local(),
+        sshProfileById: (id) => null,
+      );
+
+      await reg.forTarget(RuntimeTarget.ssh('ghost', label: 'Ghost'));
+
+      expect(resolver.resolvedProfiles.containsKey('ssh:ghost'), isTrue);
+      expect(resolver.resolvedProfiles['ssh:ghost'], isNull);
+    });
+
+    test('work resolution does not depend on the home target kind', () async {
+      const workProfile = SshProfile(
+        id: 'work',
+        name: 'Work',
+        host: 'w',
+        username: 'u',
+      );
+
+      Future<String?> resolvedHost(RuntimeTarget homeTarget) async {
+        final resolver = _FakeResolver();
+        final reg = RuntimeContextRegistry(
+          resolver: resolver,
+          homeTarget: homeTarget,
+          sshProfileById: (id) => id == 'work' ? workProfile : null,
+        );
+        await reg.ensureHome();
+        await reg.forTarget(RuntimeTarget.ssh('work', label: 'Work'));
+        return resolver.resolvedProfiles['ssh:work']?.host;
+      }
+
+      // A desktop with a local home and an SSH workspace takes the same path
+      // as a device homed to SSH: home kind is a transport detail.
+      expect(await resolvedHost(RuntimeTarget.local()), 'w');
+      expect(
+        await resolvedHost(RuntimeTarget.ssh('home', label: 'Home')),
+        'w',
+      );
+    });
+
+    test(
+      'an ssh target without a connection is never degraded to the local FS',
+      () async {
+        await expectLater(
+          RuntimeContextResolver(
+            nativeAppDataPath: '/native',
+          ).resolve(RuntimeTarget.ssh('ghost', label: 'Ghost')),
+          throwsStateError,
+        );
+      },
+    );
+  });
 }

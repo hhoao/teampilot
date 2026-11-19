@@ -11,6 +11,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/cubits/ssh_workload_profile_cubit.dart';
+import 'package:teampilot/repositories/connection_store.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/pages/ssh_profiles/ssh_profile_connection_status.dart';
@@ -20,8 +21,9 @@ import 'package:teampilot/repositories/plane_ssh_profile_repository.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
-import 'package:teampilot/repositories/ssh_server_profile_repository.dart';
+import 'package:teampilot/repositories/catalog_store.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
@@ -598,11 +600,12 @@ void main() {
   ) async {
     connectionCubit.seed(_stateWithHost(status: SshHostUiStatus.disconnected));
     final storage = fakeHomeStorage();
-    final workloadCubit = SshWorkloadProfileCubit(storage: storage);
+    final workloadCubit = _workloadCubit(storage);
     addTearDown(workloadCubit.close);
     final planeRepository = PlaneSshProfileRepository(
       storage: storage,
-      servers: SshServerProfileRepository(storage: storage),
+      connections: ConnectionStore(rootDir: '/device', fs: storage.fs),
+      catalog: CatalogStore(storage: storage),
     );
 
     await tester.pumpWidget(
@@ -676,3 +679,10 @@ void main() {
     expect(deleted, [_profile.id]);
   });
 }
+
+
+SshWorkloadProfileCubit _workloadCubit(HomeStorage storage) =>
+    SshWorkloadProfileCubit(
+      storage: storage,
+      connections: ConnectionStore(rootDir: '/device', fs: storage.fs),
+    );

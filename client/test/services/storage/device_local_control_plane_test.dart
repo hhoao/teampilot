@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/remote_target.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/device_local_control_plane.dart';
 import 'package:teampilot/services/storage/targets_repository.dart';
+import '../../support/connection_fixtures.dart';
 import '../../support/test_runtime_context.dart';
 
 void main() {
@@ -64,13 +64,11 @@ void main() {
     expect((await repo.load()).targets.single.sshProfileId, 'p1');
   });
 
-  test('remote target repo is pinned to native app data', () async {
-    final root = Directory.systemTemp.createTempSync('remote_target_pin_');
+  test('connection store is pinned to native app data', () async {
+    final root = Directory.systemTemp.createTempSync('connection_pin_');
     addTearDown(() => root.deleteSync(recursive: true));
-    final repo = deviceLocalRemoteTargetRepository(root.path);
-    await repo.save(
-      const RemoteTarget(id: 't1', name: 'dev', host: 'h', username: 'u'),
-    );
+    final store = deviceLocalConnectionStore(root.path);
+    await store.save(deviceConnection(machineId: 't1'));
     expect(File('${root.path}/remote-targets.json').existsSync(), isTrue);
   });
 }

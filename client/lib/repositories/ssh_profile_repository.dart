@@ -1,53 +1,43 @@
 import 'dart:convert';
 
-import '../models/remote_target.dart';
+import '../models/connection/machine_id.dart';
 import '../models/ssh_profile.dart';
+import '../repositories/connection_store.dart';
+import '../services/connect/profile_connection_mapping.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/home_storage.dart';
 import '../services/storage/storage_failure.dart';
-import 'remote_target_repository.dart';
 
+/// Runtime view over the device's connections.
+///
+/// Production always injects a [ConnectionStore]; the legacy `profiles.json`
+/// mode only remains for tests that need a bare catalog.
 class SshProfileRepository {
-  /// When [targetRepo] is supplied this repository is a facade over the
-  /// device-local remote-target catalog: profiles are projected from/to
-  /// [RemoteTarget] records. Otherwise it keeps the legacy `profiles.json`
-  /// behavior on the home control plane ([storage]) so existing callers and
-  /// tests keep working unchanged.
-  ///
-  /// Defaults follow the home control plane ([storage], test convenience).
-  /// Production must use [deviceLocalSshProfileRepository] so the catalog
-  /// stays on-device when home is rebound to SSH.
   SshProfileRepository({
-    RemoteTargetRepository? targetRepo,
+    ConnectionStore? connections,
     String? rootDir,
     Filesystem? fs,
     required HomeStorage storage,
-  }) : _explicitTargetRepo = targetRepo,
+  }) : _connections = connections,
        _rootDirOverride = rootDir,
        _fsOverride = fs,
        _storage = storage;
 
-  final RemoteTargetRepository? _explicitTargetRepo;
+  final ConnectionStore? _connections;
   final String? _rootDirOverride;
   final Filesystem? _fsOverride;
   final HomeStorage _storage;
 
-  /// The injected device-local [RemoteTargetRepository] backing this facade.
-  /// Sync consumers (a later task) read this directly. It is unavailable in
-  /// legacy `profiles.json` mode, where accessing it throws a clear
-  /// [StateError] instead of returning a disconnected catalog. Task 7 injects
-  /// the device-local catalog for production.
-  RemoteTargetRepository get targetRepo {
-    final explicit = _explicitTargetRepo;
-    if (explicit == null) {
+  /// The injected device-local connection catalog.
+  ConnectionStore get connectionStore {
+    final connections = _connections;
+    if (connections == null) {
       throw StateError(
-        'SshProfileRepository.targetRepo is unavailable in legacy '
-        'profiles.json mode: no RemoteTargetRepository was injected. Inject '
-        'a device-local RemoteTargetRepository to use the target facade '
-        '(Task 7 wires this for production).',
+        'SshProfileRepository.connectionStore is unavailable in legacy '
+        'profiles.json mode: inject a ConnectionStore.',
       );
     }
-    return explicit;
+    return connections;
   }
 
   String get _root => _rootDirOverride ?? _storage.paths.sshProfilesDir;
@@ -60,18 +50,18 @@ class SshProfileRepository {
       _fs.pathContext.join(_root, 'selected_profile.txt');
 
   Future<List<SshProfile>> loadAll() async {
-    final repo = _explicitTargetRepo;
-    if (repo != null) {
-      final targets = await repo.loadAll();
-      return targets.map(SshProfile.fromTarget).toList();
+    final connections = _connections;
+    if (connections != null) {
+      final rows = await connections.loadAll();
+      return rows.map(profileFromConnection).toList();
     }
     return _loadAllLegacy();
   }
 
   Future<void> save(SshProfile profile) async {
-    final repo = _explicitTargetRepo;
-    if (repo != null) {
-      await _saveFacade(repo, profile);
+    final connections = _connections;
+    if (connections != null) {
+      await _saveConnection(connections, profile);
       return;
     }
     final profiles = await _loadAllLegacy();
@@ -85,7 +75,7 @@ class SshProfileRepository {
   }
 
   Future<void> saveAll(List<SshProfile> profiles) async {
-    if (_explicitTargetRepo != null) {
+    if (_connections != null) {
       for (final profile in profiles) {
         await save(profile);
       }
@@ -95,9 +85,9 @@ class SshProfileRepository {
   }
 
   Future<void> delete(String profileId) async {
-    final repo = _explicitTargetRepo;
-    if (repo != null) {
-      await repo.delete(profileId);
+    final connections = _connections;
+    if (connections != null) {
+      await connections.delete(MachineId(profileId));
       return;
     }
     final profiles = await _loadAllLegacy();
@@ -106,10 +96,10 @@ class SshProfileRepository {
   }
 
   Future<SshProfile?> findById(String profileId) async {
-    final repo = _explicitTargetRepo;
-    if (repo != null) {
-      final target = await repo.findById(profileId);
-      return target == null ? null : SshProfile.fromTarget(target);
+    final connections = _connections;
+    if (connections != null) {
+      final connection = await connections.findById(MachineId(profileId));
+      return connection == null ? null : profileFromConnection(connection);
     }
     final profiles = await _loadAllLegacy();
     try {
@@ -140,40 +130,24 @@ class SshProfileRepository {
     await _fs.atomicWrite(_selectedProfileFile, profileId.trim());
   }
 
-  /// Facade projection of an [SshProfile] into a [RemoteTarget]. Constructed
-  /// explicitly (not via `copyWith`) so cleared nullable fields — e.g. a
-  /// removed credential reference — propagate as null instead of silently
-  /// persisting a stale value from an existing target.
-  ///
-  /// `save()` is also the write path for local-only state (path cache, host-key
-  /// fingerprints, last-good endpoint, credential reference). Every save bumps
-  /// `updatedAt`; this catalog is device-local and no longer syncs anywhere.
-  Future<void> _saveFacade(
-    RemoteTargetRepository repo,
+  /// Write path for both dial-plan fields (address set, account, trust pins,
+  /// credential reference) and local-only state (path cache, display name,
+  /// last-good preference). Only the former can change the plan generation.
+  Future<void> _saveConnection(
+    ConnectionStore connections,
     SshProfile profile,
   ) async {
-    final target = RemoteTarget(
-      id: profile.id,
-      name: profile.name,
-      host: profile.host,
-      port: profile.port,
-      username: profile.username,
-      authType: profile.authType,
-      vaultEntryId: profile.vaultEntryId,
-      endpoints: profile.endpoints,
-      hostKeyFingerprints: profile.hostKeyFingerprints,
-      lastGoodKind: profile.lastGoodKind,
-      lastHome: profile.lastHome,
-      lastAppDataRoot: profile.lastAppDataRoot,
-      embeddedTarget: profile.embeddedTarget,
-      relayUrl: profile.relayUrl,
-      pairedDesktopId: profile.pairedDesktopId,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    final previous = await connections.findById(MachineId(profile.id));
+    await connections.save(
+      connectionFromProfile(
+        profile,
+        previous: previous,
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+      ),
     );
-    await repo.save(target);
   }
 
-  // ---- legacy `profiles.json` path, unchanged behavior ----
+  // ---- legacy `profiles.json` path, test-only ----
 
   Future<List<SshProfile>> _loadAllLegacy() async {
     if (!(await _fs.stat(_profilesFile)).isFile) return [];

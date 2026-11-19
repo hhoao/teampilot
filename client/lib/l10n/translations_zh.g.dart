@@ -3313,6 +3313,8 @@ class _AppLocalizations$ssh$zh extends AppLocalizations$ssh$en {
 	@override String get penaltyRefused => '服务器暂时拒绝了连接（触发了防暴力破解保护），请等待约一分钟后重试。';
 	@override String get saveToVault => '保存到保险库';
 	@override String get serversEmpty => '此主机上还没有保存的 SSH 服务器。';
+	@override String get serversNeedsConnectionHint => '本机清单中存在，但尚未在这台设备上建立连接';
+	@override String get serversNotConnectedOnDevice => '尚未在这台设备上建立连接';
 	@override String get serversLoadError => '无法加载 SSH 服务器，请检查连接后重试。';
 	@override String get serversNotConnected => '未连接远程主机。';
 	@override String get serversTitle => 'SSH 服务器';
@@ -6559,11 +6561,13 @@ extension on AppLocalizationsZh {
 			'ssh.penaltyRefused' => '服务器暂时拒绝了连接（触发了防暴力破解保护），请等待约一分钟后重试。',
 			'ssh.saveToVault' => '保存到保险库',
 			'ssh.serversEmpty' => '此主机上还没有保存的 SSH 服务器。',
+			'ssh.serversNeedsConnectionHint' => '本机清单中存在，但尚未在这台设备上建立连接',
+			'ssh.serversNotConnectedOnDevice' => '尚未在这台设备上建立连接',
 			'ssh.serversLoadError' => '无法加载 SSH 服务器，请检查连接后重试。',
-			'ssh.serversNotConnected' => '未连接远程主机。',
-			'ssh.serversTitle' => 'SSH 服务器',
 			_ => null,
 		} ?? switch (path) {
+			'ssh.serversNotConnected' => '未连接远程主机。',
+			'ssh.serversTitle' => 'SSH 服务器',
 			'ssh.vaultBadge' => '保险库',
 			'ssh.hostsPillCount' => ({required int count}) => '${count} 台主机',
 			'sshProfile.connect' => '连接',
@@ -7074,10 +7078,10 @@ extension on AppLocalizationsZh {
 			'workspace.searchShowMore' => '查看更多结果',
 			'workspace.searchSliceError' => ({required String directory}) => '「${directory}」目录搜索失败',
 			'workspace.searchTitle' => '搜索',
-			'workspace.searchToggleDetails' => '展开搜索选项',
-			'workspace.searchTruncated' => '结果过多已截断——请细化查询',
 			_ => null,
 		} ?? switch (path) {
+			'workspace.searchToggleDetails' => '展开搜索选项',
+			'workspace.searchTruncated' => '结果过多已截断——请细化查询',
 			'workspace.searchUseGitignore' => '使用 .gitignore 设置',
 			'workspace.sessionCount' => '会话数',
 			'workspace.sidebarGroupsView' => '分组',

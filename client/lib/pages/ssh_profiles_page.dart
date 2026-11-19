@@ -8,9 +8,9 @@ import '../cubits/ssh_profile_cubit.dart';
 import '../cubits/ssh_server_config_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/ssh_profile.dart';
-import '../models/ssh_server_profile.dart';
 import '../repositories/ssh_profile_repository.dart';
-import '../repositories/ssh_server_profile_repository.dart';
+import '../repositories/catalog_store.dart';
+import '../repositories/plane_ssh_profile_repository.dart';
 import '../services/storage/home_storage.dart';
 import 'ssh_profiles/ssh_profile_form_dialog.dart';
 
@@ -44,7 +44,11 @@ class _SshServersPageState extends State<SshServersPage> {
     _storage = context.read<HomeStorage>();
     _onRemoteHome = _storage.fs.isRemote;
     _cubit = SshServerConfigCubit(
-      repository: SshServerProfileRepository(storage: _storage),
+      repository: PlaneSshProfileRepository(
+        storage: _storage,
+        connections: context.read<SshProfileRepository>().connectionStore,
+        catalog: CatalogStore(storage: _storage),
+      ),
     )..load();
     // A home switch publishes a new plane; the catalog lives on that plane, so
     // re-evaluate the gate and reload instead of showing the previous host's
@@ -114,13 +118,28 @@ class _SshServersView extends StatelessWidget {
               ),
             );
           }
-          if (state.profiles.isEmpty) {
+          if (state.profiles.isEmpty && state.needsConnection.isEmpty) {
             return Center(child: Text(l10n.ssh.serversEmpty));
           }
           return ListView(
             children: [
               for (final profile in state.profiles)
                 SshServerProfileCard(profile: profile),
+              if (state.needsConnection.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+                  child: Text(
+                    l10n.ssh.serversNeedsConnectionHint,
+                    style: TpTextStyles.of(context).mutedSm,
+                  ),
+                ),
+                for (final entry in state.needsConnection)
+                  ListTile(
+                    leading: const Icon(Icons.link_off, size: 18),
+                    title: Text(entry.displayName),
+                    subtitle: Text(l10n.ssh.serversNotConnectedOnDevice),
+                  ),
+              ],
             ],
           );
         },
@@ -134,7 +153,8 @@ class _SshServersView extends StatelessWidget {
   }
 }
 
-/// Read-only presentation of a single remote [SshServerProfile].
+/// Read-only presentation of a machine the plane lists and this device can
+/// reach.
 ///
 /// Shows the full shared configuration (host:port, username, auth type, relay
 /// and pairing). It deliberately offers no editing: the record is read from the
@@ -142,7 +162,7 @@ class _SshServersView extends StatelessWidget {
 class SshServerProfileCard extends StatelessWidget {
   const SshServerProfileCard({super.key, required this.profile});
 
-  final SshServerProfile profile;
+  final SshProfile profile;
 
   @override
   Widget build(BuildContext context) {

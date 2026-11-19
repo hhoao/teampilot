@@ -129,7 +129,7 @@ void main() {
         const SshWorkerRequest(
           requestId: 'invalid-first-connect',
           operation: SshWorkerOperation.connectStorage,
-          args: {'profile': 'not-a-map', 'target': {}},
+          args: {'machineId': 42, 'target': {}},
         ).toWire(),
       );
       final invalid = await nextReply();
@@ -140,7 +140,7 @@ void main() {
           requestId: 'valid-connect',
           operation: SshWorkerOperation.connectStorage,
           args: {
-            'profile': _profile.toJson(),
+            ..._connectionArgs(_profile),
             'target': const SshWorkerDialTarget(
               host: '127.0.0.1',
               port: 1,
@@ -176,7 +176,7 @@ void main() {
         requestId: 'wrong-profile',
         operation: SshWorkerOperation.connectStorage,
         args: {
-          'profile': _profile.copyWith(id: 'other').toJson(),
+          ..._connectionArgs(_profile.copyWith(id: 'other')),
           'target': const SshWorkerDialTarget(
             host: '127.0.0.1',
             port: 1,
@@ -219,3 +219,10 @@ void main() {
     expect(replies.single.kind, SshWorkerReplyKind.success);
   });
 }
+
+Map<String, Object?> _connectionArgs(SshProfile profile) => {
+  'machineId': profile.id,
+  'generation': 1,
+  'username': profile.username,
+  'authType': profile.authType.name,
+};

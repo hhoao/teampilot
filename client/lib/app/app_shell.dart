@@ -136,9 +136,8 @@ import '../repositories/session_repository.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
-import '../repositories/combined_ssh_profile_repository.dart';
 import '../repositories/plane_ssh_profile_repository.dart';
-import '../repositories/ssh_server_profile_repository.dart';
+import '../repositories/catalog_store.dart';
 import '../repositories/workspace_project_config_repository.dart';
 import '../repositories/managed_provider_repository.dart';
 import '../repositories/managed_provider_usage_repository.dart';
@@ -148,7 +147,7 @@ import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
 import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
-import '../services/storage/remote_target_migration.dart';
+import '../services/connect/connection_bootstrap.dart';
 import '../services/vault/credential_capture.dart';
 import '../services/vault/home_vault_service.dart';
 import '../services/vault/legacy_import.dart';
@@ -217,8 +216,6 @@ import '../services/ssh/mcp/session_ssh_mcp_executor.dart';
 import '../services/ssh/mcp/session_ssh_mcp_http.dart';
 import '../services/ssh/mcp/session_ssh_mcp_operations.dart';
 import '../services/ssh/mcp/session_ssh_mcp_resolver.dart';
-import '../services/ssh/combined_ssh_profile_resolver.dart';
-import '../services/ssh/plane_ssh_profile_resolver.dart';
 import '../services/ssh/ssh_transport_close.dart';
 import '../services/ssh/android_ssh_connect_home.dart';
 import '../services/terminal/terminal_transport_factory.dart';
@@ -274,7 +271,6 @@ class AppShell {
     required this.sessionRepo,
     required this.workspaceProjectConfigRepository,
     required this.sshProfileRepo,
-    required this.combinedSshProfileRepo,
     required this.sshCredentialStore,
     required this.sshKnownHostRepo,
     required this.transportFactory,
@@ -404,7 +400,6 @@ class AppShell {
   /// widget tree under its own type so workspace consumers get B hosts while
   /// the [SshProfileRepository] provider stays device-local A source for
   /// Remote Connections / onboarding / pairing.
-  final CombinedSshProfileRepository combinedSshProfileRepo;
   final SshCredentialStore sshCredentialStore;
   final SshKnownHostRepository sshKnownHostRepo;
   final TerminalTransportFactory transportFactory;
@@ -654,23 +649,23 @@ Future<AppShell> buildAppShell({
   // follow the home context (Android Connect rebinds home onto SSH and would
   // otherwise reload an empty remote catalog → disconnect → gate again).
   final sshProfileRepo = deviceLocalSshProfileRepository(nativeAppDataPath);
-  // One-shot move of legacy `ssh_profiles/profiles.json` into the device-local
-  // remote-target catalog. Must finish before SshProfileCubit's first load()
-  // so the facade sees migrated targets on first render. This is a convenience
-  // migration: it must never gate startup. The marker is written only on
-  // success, so a failed attempt retries on the next launch.
+  // One-shot upgrade of every pre-v2 connection record (legacy `profiles.json`
+  // and `remote-targets.json` v1) into the device-local connection catalog.
+  // Must finish before SshProfileCubit's first load() so the facade sees the
+  // upgraded rows on first render. It must never gate startup; the marker is
+  // written only on success, so a failed attempt retries on the next launch.
   try {
-    await migrateSshProfiles(
+    await bootstrapConnections(
       nativeAppDataPath: nativeAppDataPath,
       localFs: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
       ),
-      targetRepo: deviceLocalRemoteTargetRepository(nativeAppDataPath),
+      connections: deviceLocalConnectionStore(nativeAppDataPath),
     );
   } on Object {
     // Content-free: never the caught error, no file bytes, no rethrow.
     appLogger.w(
-      '[boot] ssh profile migration failed; continuing with current targets',
+      '[boot] connection catalog upgrade failed; continuing with current rows',
     );
   }
   Future<Map<CliTool, String>> locateRemoteClis(SshProfile profile) async {
@@ -791,20 +786,6 @@ Future<AppShell> buildAppShell({
     return null;
   }
 
-  // Work-plane point resolver (combined B-first + A-fallback) for every
-  // execution chain that resolves a `ssh:<id>` machine: terminals, run/clone
-  // spawners, CLI readiness, and work-plane runtime contexts. The B-source
-  // workload cubit is only built after wireHomePlane produces homeStorage, so
-  // the real combined resolver is installed into this ref below. Consumers
-  // created before that point (RemoteCliReadinessService, wireHomePlane's
-  // RuntimeContextRegistry) hold this stable forward closure; all lookups are
-  // lazy (runtime), long after the ref is set. Until then it falls back to the
-  // A-source home resolver — correct for home binding and never consulted for
-  // B-only workload hosts at bootstrap.
-  SshProfile? Function(String id)? workPlaneResolverRef;
-  SshProfile? Function(String id) combinedProfileById =
-      (id) => (workPlaneResolverRef ?? sshProfileById)(id);
-
   /// Identity fields that decide how an SSH home is reached. Deliberately
   /// excludes `updatedAt` and the persisted path cache: a successful connect
   /// writes those back and must not look like a user edit.
@@ -815,9 +796,8 @@ Future<AppShell> buildAppShell({
   final remoteCliReadiness = RemoteCliReadinessService(
     registry: cliToolRegistry,
     sshClientFactory: sshClientFactory,
-    // Work-plane machines are B-source workload hosts; the combined resolver
-    // (installed below) resolves them, with an A fallback for SSH homes.
-    profileById: combinedProfileById,
+    // Every machine this device can reach is a device connection.
+    profileById: sshProfileById,
     cliPathOverride: targetsRepo.cliPathOverride,
     setCliPathOverride: targetsRepo.setCliPathOverride,
     acpAdapterPathOverride: targetsRepo.acpAdapterPathOverride,
@@ -829,9 +809,6 @@ Future<AppShell> buildAppShell({
   final homePlane = await wireHomePlane(
     sshProfileRepo: sshProfileRepo,
     sshProfileById: sshProfileById,
-    // Work-plane runtime contexts resolve `ssh:<id>` workload hosts via the
-    // combined resolver; home binding stays on the A-source sshProfileById.
-    workProfileById: combinedProfileById,
     homeTargetFromId: homeTargetFromId,
     homeTarget: defaultTargetResolver,
     termuxConfigStore: termuxConfigStore,
@@ -860,51 +837,21 @@ Future<AppShell> buildAppShell({
   // targets only lend vault references — they are never written to the plane.
   final sshWorkloadProfileCubit = SshWorkloadProfileCubit(
     storage: homeStorage,
-    deviceTargets: sshProfileRepo.targetRepo,
+    connections: sshProfileRepo.connectionStore,
   );
   unawaited(sshWorkloadProfileCubit.load());
   // One B-source repository instance for resolving workload hosts. Its `_fs` /
   // `_root` are lazy getters over [homeStorage], so a home-plane swap needs no
-  // rebuild. [deviceTargets] only lends device vault references to plane rows
+  // rebuild. [connections] only lends device vault references to plane rows
   // (via `_deviceVaultRefs`, required for the subsequent connect); it is read
   // only and never written to the plane.
   final planeSshProfileRepo = PlaneSshProfileRepository(
     storage: homeStorage,
-    servers: SshServerProfileRepository(storage: homeStorage),
-    deviceTargets: sshProfileRepo.targetRepo,
-  );
-  // Live B-source resolver threaded to every `profileOf` consumer. Reads the
-  // catalog cubit's state on each call, so an unreachable plane (empty emit)
-  // resolves to null with no error and never falls back to the A source.
-  final planeProfileById = planeSshProfileResolver(
-    () => sshWorkloadProfileCubit.state.profiles,
-  );
-  // Combined id resolver for the remote-session / provisioning chain
-  // (wireChatSession -> ChatCubit.sshProfileById and
-  // buildSessionConnectOrchestrator(profileById:)). B source first (so a
-  // B-only workload host can run a remote session), then the device-local A
-  // source home profile on a miss. This is a point lookup, NOT the
-  // assembleSshHostProfiles list assembler. The A fallback preserves SSH home
-  // mode / offline home binding, and ChatSessionShellFactory._profileFor keeps
-  // its selected-profile fallback as the last resort (no B-only replacement).
-  final sessionProfileById = combinedSshProfileResolver(
-    workloadById: planeProfileById,
-    homeById: sshProfileById,
-  );
-  // Install the real combined resolver into the forward ref declared above the
-  // home plane. From here on, combinedProfileById (held by RemoteCliReadiness
-  // and the work-plane runtime-context registry) resolves B-first + A-fallback.
-  // Kept as one resolver with the remote-session chain (sessionProfileById).
-  workPlaneResolverRef = sessionProfileById;
-  // Read-oriented point-lookup repository for work-plane execution chains
-  // (terminals, run/clone SSH spawners, folder liveness). findById checks the
-  // B workload catalog first, then the A home-binding catalog; loadAll is
-  // B-only so machine lists never merge the two independent catalogs. Machine
-  // enumeration stays with workspaceTargetRegistry (B, targets.json).
-  final combinedSshProfileRepo = CombinedSshProfileRepository(
-    storage: homeStorage,
-    workload: planeSshProfileRepo,
-    home: sshProfileRepo,
+    connections: sshProfileRepo.connectionStore,
+    catalog: CatalogStore(storage: homeStorage),
+    // Adopting a schema-1 plane catalog seeds device connections; reload the
+    // device catalog so those machines become resolvable immediately.
+    onConnectionsSeeded: () => unawaited(sshProfileCubit.load()),
   );
   // Workspace machine catalog (B source). All workspace/mixed-workspace
   // machine pickers, the directory picker, and the team-generation target
@@ -1097,7 +1044,7 @@ Future<AppShell> buildAppShell({
       cliPresetsCubit: () => cliPresetsCubit,
       // Workspace MCP / remote-session `profileOf` resolves from the home
       // plane (B source). The device-local A source stays for home binding.
-      sshProfileById: planeProfileById,
+      sshProfileById: sshProfileById,
       identityRepository: () => identityRepository,
     );
     sessionLifecycleService = sessionState.sessionLifecycleService;
@@ -1169,7 +1116,7 @@ Future<AppShell> buildAppShell({
       // Repo clone / CLI install run on work-plane `ssh:<id>` targets (B
       // source). findById resolves the B workload host first, with the A home
       // binding as fallback; loadAll stays B-only.
-      sshProfiles: combinedSshProfileRepo,
+      sshProfiles: sshProfileRepo,
       sshClientFactory: sshClientFactory,
       runtimeContexts: runtimeContextRegistry,
       homeTarget: defaultTargetResolver,
@@ -1182,7 +1129,7 @@ Future<AppShell> buildAppShell({
       deferHomePlaneLoads: deferHomePlaneLoads,
       appDataRoot: nativeAppDataPath,
       // CLI install jobs probe/install binaries on work-plane hosts.
-      sshProfileById: combinedProfileById,
+      sshProfileById: sshProfileById,
     );
     final repoCloneSshSpawner = installWiring.repoCloneSshSpawner;
     final repoCloneCubit = installWiring.repoCloneCubit;
@@ -1255,7 +1202,7 @@ Future<AppShell> buildAppShell({
       workspaceConfig: workspaceProjectConfigRepository,
       sessionLifecycleService: () => sessionLifecycleService,
       // Workspace run targets are `ssh:<id>` workload hosts (B source).
-      sshProfiles: combinedSshProfileRepo,
+      sshProfiles: sshProfileRepo,
       sshClientFactory: sshClientFactory,
       homeTarget: defaultTargetResolver,
       chatCubit: () => chatCubit,
@@ -1286,13 +1233,13 @@ Future<AppShell> buildAppShell({
       storage: homeStorage,
       // Workspace terminal transports / shells connect to work-plane `ssh:<id>`
       // workload hosts (B source), with the A home binding as fallback.
-      sshProfileRepo: combinedSshProfileRepo,
+      sshProfileRepo: sshProfileRepo,
       sshCredentialStore: sshCredentialStore,
       sshKnownHostRepo: sshKnownHostRepo,
       sshClientFactory: sshClientFactory,
       sessionPreferencesCubit: sessionPreferencesCubit,
       homeTarget: defaultTargetResolver,
-      sshProfileById: combinedProfileById,
+      sshProfileById: sshProfileById,
     );
     final commandBus = commands.commandBus;
     final shortcutCubit = commands.shortcutCubit;
@@ -1383,7 +1330,7 @@ Future<AppShell> buildAppShell({
           final profiles = <String, SshProfile>{};
           try {
             for (final id in profileIds) {
-              final profile = await planeSshProfileRepo.findById(id);
+              final profile = sshProfileById(id);
               if (profile != null) profiles[id] = profile;
             }
           } on Object catch (error, stackTrace) {
@@ -1445,7 +1392,7 @@ Future<AppShell> buildAppShell({
       transportFactory: transportFactory,
       // Combined B-first + A-fallback id resolver so B-only workload hosts
       // can run remote sessions / provisioning (Task 4 wiring gap).
-      sshProfileById: sessionProfileById,
+      sshProfileById: sshProfileById,
       defaultTargetResolver: defaultTargetResolver,
       sshClientFactory: sshClientFactory,
       runtimePlanBuilder: sessionRuntimePlanBuilder,
@@ -2472,7 +2419,7 @@ Future<AppShell> buildAppShell({
       sessionRepo: sessionRepo,
       workspaceProjectConfigRepository: workspaceProjectConfigRepository,
       sshProfileRepo: sshProfileRepo,
-      combinedSshProfileRepo: combinedSshProfileRepo,
+
       sshCredentialStore: sshCredentialStore,
       sshKnownHostRepo: sshKnownHostRepo,
       transportFactory: transportFactory,

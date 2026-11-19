@@ -5,7 +5,8 @@ import '../../cubits/ssh_profile_cubit.dart';
 import '../../cubits/ssh_workload_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../repositories/plane_ssh_profile_repository.dart';
-import '../../repositories/ssh_server_profile_repository.dart';
+import '../../repositories/catalog_store.dart';
+import '../../repositories/ssh_profile_repository.dart';
 import '../../services/storage/home_storage.dart';
 import '../../widgets/settings/workspace_pane_header.dart';
 import '../ssh_profiles/ssh_profiles_section.dart';
@@ -44,7 +45,8 @@ class _SshProfilesConfigWorkspaceState
     // read, so this write repository needs no device-target facade.
     _repository = PlaneSshProfileRepository(
       storage: storage,
-      servers: SshServerProfileRepository(storage: storage),
+      connections: context.read<SshProfileRepository>().connectionStore,
+      catalog: CatalogStore(storage: storage),
     );
   }
 

@@ -29,6 +29,8 @@
   "penaltyRefused": "The server temporarily refused the connection (its anti-brute-force protection was triggered). Wait about a minute and try again.",
   "saveToVault": "Save to vault",
   "serversEmpty": "No SSH servers saved on this host yet.",
+  "serversNeedsConnectionHint": "Listed on this host, not set up on this device",
+  "serversNotConnectedOnDevice": "No connection from this device yet",
   "serversLoadError": "Could not load the SSH servers. Check the connection and try again.",
   "serversNotConnected": "Not connected to a remote host.",
   "serversTitle": "SSH servers",

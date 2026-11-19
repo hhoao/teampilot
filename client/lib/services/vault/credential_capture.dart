@@ -39,7 +39,7 @@ class VaultCaptureException implements Exception {
 /// Finds the vault entry that owns [ownerKind]/[ownerId].
 ///
 /// Also the recovery path for owners whose catalog record cannot carry a
-/// `vaultEntryId` — the home-plane `SshServerProfile` projection — because the
+/// `vaultEntryId` — the home-plane catalog never carries it — because the
 /// secret stays on the device that saved it, keyed by the owner.
 Future<VaultEntry?> findVaultOwnerEntry(
   VaultService vault, {

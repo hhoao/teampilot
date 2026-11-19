@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import '../../../models/ssh_profile.dart';
+import '../../connect/profile_connection_mapping.dart';
 import '../../chat/team_bus/remote/reverse_tunnel.dart';
 import '../ssh_forward_channel.dart';
 import 'ssh_profile_worker_manager.dart';
@@ -114,7 +115,12 @@ final class SshWorkerForwardSession {
 
   Map<String, Object?> _openArgs(String forwardId) => {
     'forwardId': forwardId,
-    'profile': _profile.toJson(),
+    ...SshWorkerConnectionRef(
+      machineId: _profile.id,
+      generation: planGenerationOf(_profile),
+      username: _profile.username,
+      authType: _profile.authType,
+    ).toArgs(),
     'target': _target.toWire(),
     'timeoutMs': _timeout.inMilliseconds,
   };

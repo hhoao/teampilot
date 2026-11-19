@@ -4,15 +4,21 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ssh_workload_profile_cubit.dart';
 import 'package:teampilot/services/io/filesystem.dart';
+import 'package:teampilot/repositories/connection_store.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
 import '../support/in_memory_filesystem.dart';
+
+SshWorkloadProfileCubit _cubit(HomeStorage storage) => SshWorkloadProfileCubit(
+  storage: storage,
+  connections: ConnectionStore(rootDir: '/device', fs: storage.fs),
+);
 
 void main() {
   group('SshWorkloadProfileCubit', () {
     test('load reads the home-plane server catalog (B source)', () async {
       final storage = await _plane(['plane-a']);
-      final cubit = SshWorkloadProfileCubit(storage: storage);
+      final cubit = _cubit(storage);
       addTearDown(cubit.close);
 
       await cubit.load();
@@ -25,7 +31,7 @@ void main() {
       () async {
         final first = await _plane(['plane-a']);
         final second = await _plane(['plane-b', 'plane-c']);
-        final cubit = SshWorkloadProfileCubit(storage: first);
+        final cubit = _cubit(first);
         addTearDown(cubit.close);
 
         await cubit.load();
@@ -50,7 +56,7 @@ void main() {
         final gated = _GatedFilesystem();
         final first = await _plane(['plane-a'], filesystem: gated);
         final second = await _plane(['plane-b', 'plane-c']);
-        final cubit = SshWorkloadProfileCubit(storage: first);
+        final cubit = _cubit(first);
         addTearDown(cubit.close);
 
         // Hold the first read at the filesystem boundary (a slow SSH read).
@@ -82,7 +88,7 @@ void main() {
         final storage = fakeHomeStorage(
           filesystem: _ToggleableFailureFilesystem()..fail = true,
         );
-        final cubit = SshWorkloadProfileCubit(storage: storage);
+        final cubit = _cubit(storage);
         addTearDown(cubit.close);
 
         // Capture AppLogger console output so the warning is asserted rather
@@ -99,7 +105,7 @@ void main() {
       () async {
         final fs = _ToggleableFailureFilesystem();
         final storage = await _plane(['plane-a'], filesystem: fs);
-        final cubit = SshWorkloadProfileCubit(storage: storage);
+        final cubit = _cubit(storage);
         addTearDown(cubit.close);
 
         await cubit.load();

@@ -1,16 +1,20 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/remote_target.dart';
+import 'package:teampilot/models/connection/device_connection.dart';
+import 'package:teampilot/models/connection/machine_id.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
-import 'package:teampilot/repositories/remote_target_repository.dart';
+import 'package:teampilot/repositories/connection_store.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
+import 'package:teampilot/services/connect/profile_connection_mapping.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import '../support/test_runtime_context.dart';
 import '../support/in_memory_filesystem.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
+
+import '../support/connection_fixtures.dart';
 
 void main() {
   test('load follows AppStorage home when rootDir is not overridden', () async {
@@ -75,6 +79,7 @@ void main() {
     expect(await repo.loadAll(), hasLength(1));
     expect((await repo.loadAll()).single.name, 'Pinned');
   });
+
   test(
     'a dropped transport fails loud instead of reporting no profiles',
     () async {
@@ -106,43 +111,48 @@ void main() {
     expect(await repo.loadAll(), isEmpty);
   });
 
-  test('projects a RemoteTarget into a runtime SshProfile', () {
-    const endpoint = SshReachabilityEndpoint(
-      kind: SshEndpointKind.relay,
-      host: 'relay.example.com',
-      port: 443,
-    );
-    const target = RemoteTarget(
-      id: 't1',
-      name: 'dev',
+  test('projects a connection into a runtime SshProfile', () {
+    const lan = SshReachabilityEndpoint(
+      kind: SshEndpointKind.lan,
       host: 'h',
       port: 2222,
+    );
+    const extra = SshReachabilityEndpoint(
+      kind: SshEndpointKind.extra,
+      host: '203.0.113.9',
+      port: 22,
+    );
+    final connection = deviceConnection(
+      machineId: 't1',
+      displayName: 'dev',
       username: 'u',
       authType: SshAuthType.privateKey,
-      vaultEntryId: 'vault-1',
-      endpoints: [endpoint],
-      hostKeyFingerprints: ['SHA256:abc'],
-      lastGoodKind: SshEndpointKind.relay,
-      lastHome: '/home/u',
-      lastAppDataRoot: '/data/u',
+      credentialRef: 'vault-1',
+      endpoints: const [lan, extra],
+      preferredKind: SshEndpointKind.extra,
+      fingerprints: const ['SHA256:abc'],
+      paths: const HomePathCache(home: '/home/u', appDataRoot: '/data/u'),
       embeddedTarget: true,
       relayUrl: 'wss://relay.example.com',
       pairedDesktopId: 'desktop-1',
       updatedAt: 10,
     );
-    final profile = SshProfile.fromTarget(target);
+
+    final profile = profileFromConnection(connection);
+
     expect(profile.id, 't1');
     expect(profile.name, 'dev');
-    expect(profile.host, 'h');
-    expect(profile.port, 2222);
+    // The address is the preferred endpoint, not an independent stored host.
+    expect(profile.host, '203.0.113.9');
+    expect(profile.port, 22);
     expect(profile.username, 'u');
     expect(profile.authType, SshAuthType.privateKey);
     expect(profile.createdAt, 10);
     expect(profile.updatedAt, 10);
     expect(profile.vaultEntryId, 'vault-1');
-    expect(profile.endpoints, [endpoint]);
+    expect(profile.endpoints, [lan, extra]);
     expect(profile.hostKeyFingerprints, ['SHA256:abc']);
-    expect(profile.lastGoodKind, SshEndpointKind.relay);
+    expect(profile.lastGoodKind, SshEndpointKind.extra);
     expect(profile.lastHome, '/home/u');
     expect(profile.lastAppDataRoot, '/data/u');
     expect(profile.embeddedTarget, isTrue);
@@ -150,10 +160,10 @@ void main() {
     expect(profile.pairedDesktopId, 'desktop-1');
   });
 
-  test('facade delegates to an explicit RemoteTargetRepository', () async {
-    final (repo, targetRepo) = _facadePair();
+  test('facade delegates to an explicit ConnectionStore', () async {
+    final (repo, store) = _facadePair();
 
-    expect(identical(repo.targetRepo, targetRepo), isTrue);
+    expect(identical(repo.connectionStore, store), isTrue);
 
     await repo.save(
       const SshProfile(
@@ -165,11 +175,11 @@ void main() {
       ),
     );
 
-    final targets = await targetRepo.loadAll();
-    expect(targets, hasLength(1));
-    expect(targets.single.id, 'p1');
-    expect(targets.single.embeddedTarget, isTrue);
-    expect(targets.single.updatedAt, greaterThan(0));
+    final connections = await store.loadAll();
+    expect(connections, hasLength(1));
+    expect(connections.single.machineId.value, 'p1');
+    expect(connections.single.plan.embeddedTarget, isTrue);
+    expect(connections.single.updatedAt, greaterThan(0));
 
     final profiles = await repo.loadAll();
     expect(profiles.single.id, 'p1');
@@ -177,22 +187,18 @@ void main() {
   });
 
   test(
-    'facade save clears nullable fields when updating an existing target',
+    'facade save clears nullable fields when updating an existing connection',
     () async {
-      final (repo, targetRepo) = _facadePair();
+      final (repo, store) = _facadePair();
 
-      await targetRepo.save(
-        const RemoteTarget(
-          id: 'p1',
-          name: 'dev',
-          host: 'h',
-          username: 'u',
-          vaultEntryId: 'vault-1',
+      await store.save(
+        deviceConnection(
+          machineId: 'p1',
+          credentialRef: 'vault-1',
           relayUrl: 'wss://old',
           pairedDesktopId: 'desktop-1',
-          lastHome: '/old/home',
-          lastAppDataRoot: '/old/data',
-          lastGoodKind: SshEndpointKind.relay,
+          paths: const HomePathCache(home: '/old/home', appDataRoot: '/old/data'),
+          preferredKind: SshEndpointKind.extra,
         ),
       );
 
@@ -200,15 +206,14 @@ void main() {
         const SshProfile(id: 'p1', name: 'dev2', host: 'h2', username: 'u2'),
       );
 
-      final target = (await targetRepo.loadAll()).single;
-      expect(target.name, 'dev2');
-      expect(target.vaultEntryId, isNull);
-      expect(target.relayUrl, isNull);
-      expect(target.pairedDesktopId, isNull);
-      expect(target.lastHome, isNull);
-      expect(target.lastAppDataRoot, isNull);
-      expect(target.lastGoodKind, isNull);
-      expect(target.updatedAt, greaterThan(0));
+      final connection = (await store.loadAll()).single;
+      expect(connection.displayName, 'dev2');
+      expect(connection.plan.credentialRef, isNull);
+      expect(connection.plan.relayUrl, isNull);
+      expect(connection.pairedDesktopId, isNull);
+      expect(connection.paths, isNull);
+      expect(connection.preferredKind, isNull);
+      expect(connection.updatedAt, greaterThan(0));
 
       final profile = (await repo.loadAll()).single;
       expect(profile.vaultEntryId, isNull);
@@ -217,30 +222,89 @@ void main() {
     },
   );
 
+  test('a manual address fix keeps the rest of the address plan', () async {
+    final (repo, store) = _facadePair();
+    await store.save(
+      deviceConnection(
+        machineId: 'p1',
+        endpoints: const [
+          SshReachabilityEndpoint(kind: SshEndpointKind.lan, host: 'old', port: 22),
+          SshReachabilityEndpoint(
+            kind: SshEndpointKind.extra,
+            host: '203.0.113.9',
+            port: 22,
+          ),
+        ],
+      ),
+    );
+
+    await repo.save(
+      const SshProfile(id: 'p1', name: 'dev', host: 'new', username: 'u'),
+    );
+
+    final connection = (await store.loadAll()).single;
+    expect(connection.plan.endpoints.map((e) => e.host), ['new', '203.0.113.9']);
+  });
+
+  test('a relay win never changes the address plan or its generation', () async {
+    final (repo, store) = _facadePair();
+    const lan = SshReachabilityEndpoint(
+      kind: SshEndpointKind.lan,
+      host: 'h',
+      port: 22,
+    );
+    await store.save(
+      deviceConnection(
+        machineId: 'p1',
+        endpoints: const [lan],
+        preferredKind: SshEndpointKind.lan,
+      ),
+    );
+    final before = (await store.loadAll()).single;
+
+    // PairedConnectAttempt persists a relay win as lastGoodKind=relay while the
+    // stored host/port stay put.
+    await repo.save(
+      const SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'h',
+        username: 'u',
+        lastGoodKind: SshEndpointKind.relay,
+      ),
+    );
+
+    final after = (await store.loadAll()).single;
+    expect(after.preferredKind, SshEndpointKind.relay);
+    expect(after.plan.endpoints, const [lan]);
+    expect(after.generation, before.generation);
+  });
+
   test(
-    'facade saveAll, findById and delete delegate to the target repo',
+    'facade saveAll, findById and delete delegate to the connection store',
     () async {
-      final (repo, targetRepo) = _facadePair();
+      final (repo, store) = _facadePair();
 
       await repo.saveAll(const [
         SshProfile(id: 'a', name: 'A', host: 'ha', username: 'ua'),
         SshProfile(id: 'b', name: 'B', host: 'hb', username: 'ub'),
       ]);
-      expect(await targetRepo.loadAll(), hasLength(2));
+      expect(await store.loadAll(), hasLength(2));
 
       final found = await repo.findById('a');
       expect(found?.name, 'A');
       expect(await repo.findById('missing'), isNull);
 
       await repo.delete('a');
-      expect(await targetRepo.loadAll(), hasLength(1));
+      expect(await store.loadAll(), hasLength(1));
       expect(await repo.findById('a'), isNull);
+      expect(await store.findById(const MachineId('a')), isNull);
       expect((await repo.loadAll()).single.id, 'b');
     },
   );
 
   test('facade save persists local-only fields', () async {
-    final (repo, targetRepo) = _facadePair();
+    final (repo, store) = _facadePair();
 
     await repo.save(
       const SshProfile(
@@ -254,11 +318,11 @@ void main() {
       ),
     );
 
-    final target = (await targetRepo.loadAll()).single;
-    expect(target.vaultEntryId, 'vault-1');
-    expect(target.lastHome, '/home/u');
-    expect(target.lastAppDataRoot, '/data/u');
-    expect(target.updatedAt, greaterThan(0));
+    final connection = (await store.loadAll()).single;
+    expect(connection.plan.credentialRef, 'vault-1');
+    expect(connection.paths?.home, '/home/u');
+    expect(connection.paths?.appDataRoot, '/data/u');
+    expect(connection.updatedAt, greaterThan(0));
   });
 
   test('legacy repo getter throws a clear StateError', () async {
@@ -271,29 +335,26 @@ void main() {
     expect(await repo.loadAll(), hasLength(1));
 
     expect(
-      () => repo.targetRepo,
+      () => repo.connectionStore,
       throwsA(
         predicate<Object>(
           (error) =>
               error is StateError &&
-              error.message.contains('RemoteTargetRepository'),
+              error.message.contains('ConnectionStore'),
         ),
       ),
     );
   });
 }
 
-(SshProfileRepository, RemoteTargetRepository) _facadePair() {
+(SshProfileRepository, ConnectionStore) _facadePair() {
   final fs = InMemoryFilesystem();
-  final targetRepo = RemoteTargetRepository(
-    rootDir: '/tp/ssh_profiles',
-    fs: fs,
-  );
+  final store = ConnectionStore(rootDir: '/tp/ssh_profiles', fs: fs);
   final repo = SshProfileRepository(
-    targetRepo: targetRepo,
+    connections: store,
     storage: fakeHomeStorage(filesystem: fs),
   );
-  return (repo, targetRepo);
+  return (repo, store);
 }
 
 /// Filesystem whose reads fail the way a closed dartssh2 channel does.

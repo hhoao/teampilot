@@ -251,15 +251,24 @@ void main() {
     },
   );
 
-  test('ssh target with no profile falls back to native', () async {
+  test('ssh target with no connection never resolves to a local fs', () async {
     final resolver = RuntimeContextResolver(
       nativeAppDataPath: tmp.path,
       nativeHome: tmp.path,
       nativeCwd: tmp.path,
     );
-    final ctx = await resolver.resolve(RuntimeTarget.ssh('p1', label: 'box'));
-    expect(ctx.appDataRoot, tmp.path);
-    expect(ctx.usesPosixPaths, isFalse);
+
+    // Degrading a remote machine to the phone's filesystem silently wrote to
+    // the wrong device. Resolution must fail loudly instead.
+    await expectLater(
+      resolver.resolve(RuntimeTarget.ssh('p1', label: 'box')),
+      throwsA(
+        predicate<Object>(
+          (error) =>
+              error is StateError && error.message.contains('has no connection'),
+        ),
+      ),
+    );
   });
 
   test('resolveCached ssh uses persisted paths without any network', () async {
@@ -296,7 +305,7 @@ void main() {
     verifyNever(() => factory.ensureStorageConnected(any()));
   });
 
-  test('resolveCached ssh without cached paths falls back to native', () async {
+  test('resolveCached ssh without cached paths returns the boot placeholder', () async {
     final resolver = RuntimeContextResolver(
       nativeAppDataPath: tmp.path,
       nativeHome: tmp.path,

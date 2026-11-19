@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import '../../../models/ssh_profile.dart';
+import '../../connect/profile_connection_mapping.dart';
 import '../ssh_storage_io.dart';
 import 'ssh_profile_worker_manager.dart';
 import 'ssh_worker_protocol.dart';
@@ -240,7 +241,12 @@ final class SshWorkerLeaseStorageTransport
     SshWorkerDialTarget target, {
     Duration? timeout,
   }) => _request(SshWorkerOperation.connectStorage, {
-    'profile': profile.toJson(),
+    ...SshWorkerConnectionRef(
+      machineId: profile.id,
+      generation: planGenerationOf(profile),
+      username: profile.username,
+      authType: profile.authType,
+    ).toArgs(),
     'target': target.toWire(),
   }, timeout: timeout).then((_) {});
 

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
@@ -196,7 +197,71 @@ void main() {
   );
 
   test(
-    'editing the host retires the old storage plane as a local profile edit',
+    'a last-good endpoint switch reuses the same storage lease',
+    () async {
+      // Regression for the retire storm: rewiring which endpoint wins rewrites
+      // the profile's host/port but not the address set, so the plan (and its
+      // generation) is unchanged. The pool must keep the live lease.
+      final launcher = _StorageWorkerLauncher();
+      final events = SshConnectionEvents();
+      final closes = <SshTransportClosed>[];
+      events.onTransportClosed = (_, error, _) {
+        if (error is SshTransportClosed) closes.add(error);
+      };
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        events: events,
+        workerManager: SshProfileWorkerManager(launcher: launcher),
+      );
+      const lan = SshReachabilityEndpoint(
+        kind: SshEndpointKind.lan,
+        host: '10.0.0.5',
+        port: 22,
+      );
+      const extra = SshReachabilityEndpoint(
+        kind: SshEndpointKind.extra,
+        host: '203.0.113.9',
+        port: 22,
+      );
+      const lanWin = SshProfile(
+        id: 'p1',
+        name: 'test',
+        host: '10.0.0.5',
+        username: 'tester',
+        endpoints: [lan, extra],
+        lastGoodKind: SshEndpointKind.lan,
+      );
+
+      await factory.storageFor(lanWin);
+      closes.clear();
+
+      const extraWin = SshProfile(
+        id: 'p1',
+        name: 'test',
+        host: '203.0.113.9',
+        username: 'tester',
+        endpoints: [lan, extra],
+        lastGoodKind: SshEndpointKind.extra,
+      );
+      await factory.storageFor(extraWin);
+
+      expect(closes, isEmpty, reason: 'the address set did not change');
+      expect(factory.hasLiveStorageClient('p1'), isTrue);
+      expect(launcher.spawnCount, 1);
+      expect(
+        launcher.operations
+            .where((op) => op == SshWorkerOperation.connectStorage)
+            .length,
+        1,
+        reason: 'no second dial for the same plan',
+      );
+      await factory.close();
+    },
+  );
+
+  test(
+    'editing the host retires the old storage plane silently',
     () async {
       // Regression: a user-edited host changes hostIdentifier, and the stale
       // connection used to be retired as `hostIdentityChanged`. That reason is
@@ -235,21 +300,14 @@ void main() {
       await factory.storageFor(edited);
       await Future<void>.delayed(Duration.zero);
 
-      expect(closes, hasLength(1));
-      expect(
-        closes.single.reason,
-        SshTransportCloseReason.profileInvalidated,
-        reason:
-            'an edited host is a local re-target, not a server host-key '
-            'change; hostIdentityChanged stops retries and suspends the '
-            'profile',
-      );
-      expect(
-        isNonRetryableTransportClose(closes.single),
-        isFalse,
-        reason: 'the edited profile must stay retryable',
-      );
+      // A plan edit is local intent, not a connection failure: the pool retires
+      // the superseded lease without reporting a transport close, so the
+      // coordinator never trips the shared breaker. The worker is recycled
+      // because one worker owns one SSH connection to one address.
+      expect(closes, isEmpty);
       expect(factory.hasLiveStorageClient(edited.id), isTrue);
+      expect(launcher.shutdownCount, 1);
+      expect(launcher.spawnCount, 2);
       await factory.close();
     },
   );

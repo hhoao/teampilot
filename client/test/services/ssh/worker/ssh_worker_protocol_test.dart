@@ -2,6 +2,7 @@ import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/ssh_auth_type.dart';
 import 'package:teampilot/services/ssh/worker/ssh_worker_protocol.dart';
 import 'package:teampilot/services/ssh/worker/ssh_worker_storage_types.dart';
 
@@ -295,5 +296,99 @@ void main() {
     expect(decodedResult.exitCode, isNull);
     expect(decodedChunk.bytes, [0, 255, 1]);
     expect(decodedChunk.isFinal, isTrue);
+  });
+
+  group('connection reference', () {
+    const target = SshWorkerDialTarget(
+      host: '10.0.0.5',
+      port: 2222,
+      hostKeyFingerprints: ['SHA256:abc'],
+    );
+
+    test('carries identity, not an address', () {
+      const ref = SshWorkerConnectionRef(
+        machineId: 'm1',
+        generation: 7,
+        username: 'alice',
+        authType: SshAuthType.privateKey,
+      );
+
+      expect(ref.toArgs(), {
+        'machineId': 'm1',
+        'generation': 7,
+        'username': 'alice',
+        'authType': 'privateKey',
+      });
+      final decoded = SshWorkerConnectionRef.fromArgs(ref.toArgs());
+      expect(decoded.machineId, 'm1');
+      expect(decoded.generation, 7);
+      expect(decoded.authType, SshAuthType.privateKey);
+    });
+
+    test('builds the dialer view from the endpoint attempt', () {
+      const ref = SshWorkerConnectionRef(
+        machineId: 'm1',
+        generation: 1,
+        username: 'alice',
+        authType: SshAuthType.password,
+      );
+
+      final profile = ref.profileFor(target);
+
+      expect(profile.id, 'm1');
+      expect(profile.host, '10.0.0.5');
+      expect(profile.port, 2222);
+      expect(profile.username, 'alice');
+      expect(profile.authType, SshAuthType.password);
+      expect(profile.hostKeyFingerprints, ['SHA256:abc']);
+    });
+
+    test('rejects a missing or malformed identity', () {
+      expect(
+        () => SshWorkerConnectionRef.fromArgs({
+          'username': 'alice',
+          'authType': 'password',
+        }),
+        throwsFormatException,
+      );
+      expect(
+        () => SshWorkerConnectionRef.fromArgs({
+          'machineId': 'm1',
+          'generation': 0,
+          'username': 'alice',
+          'authType': 'password',
+        }),
+        throwsFormatException,
+      );
+      expect(
+        () => SshWorkerConnectionRef.fromArgs({
+          'machineId': 'm1',
+          'generation': 1,
+          'username': 'alice',
+          'authType': 'nope',
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('a schema-1 request version is rejected', () {
+      final wire = SshWorkerRequest(
+        requestId: 'r1',
+        operation: SshWorkerOperation.connectStorage,
+        args: const {
+          'machineId': 'm1',
+          'generation': 1,
+          'username': 'alice',
+          'authType': 'password',
+          'target': {'host': 'h', 'port': 22},
+        },
+      ).toWire();
+      wire['version'] = 1;
+
+      expect(
+        () => SshWorkerRequest.fromWire(wire),
+        throwsFormatException,
+      );
+    });
   });
 }

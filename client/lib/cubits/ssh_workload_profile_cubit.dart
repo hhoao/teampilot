@@ -4,8 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/ssh_profile.dart';
 import '../repositories/plane_ssh_profile_repository.dart';
-import '../repositories/remote_target_repository.dart';
-import '../repositories/ssh_server_profile_repository.dart';
+import '../repositories/connection_store.dart';
+import '../repositories/catalog_store.dart';
 import '../services/storage/home_storage.dart';
 import '../utils/logging/logger.dart';
 import 'ssh_profile_cubit.dart';
@@ -29,15 +29,15 @@ import 'ssh_profile_cubit.dart';
 class SshWorkloadProfileCubit extends Cubit<SshProfileState> {
   SshWorkloadProfileCubit({
     required HomeStorage storage,
-    RemoteTargetRepository? deviceTargets,
+    required ConnectionStore connections,
   }) : _storage = storage,
-       _deviceTargets = deviceTargets,
+       _connections = connections,
        super(const SshProfileState()) {
     _changesSub = storage.changes.listen((_) => unawaited(load()));
   }
 
   final HomeStorage _storage;
-  final RemoteTargetRepository? _deviceTargets;
+  final ConnectionStore _connections;
 
   StreamSubscription<StoragePlaneChange>? _changesSub;
 
@@ -81,8 +81,8 @@ class SshWorkloadProfileCubit extends Cubit<SshProfileState> {
     // HomeStorage.swap mutates the same storage in place.
     final repository = PlaneSshProfileRepository(
       storage: _storage,
-      servers: SshServerProfileRepository(storage: _storage),
-      deviceTargets: _deviceTargets,
+      connections: _connections,
+      catalog: CatalogStore(storage: _storage),
     );
     List<SshProfile> profiles;
     try {

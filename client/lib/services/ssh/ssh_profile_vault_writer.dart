@@ -97,7 +97,7 @@ Future<SshProfileVaultWriteResult> saveSshProfileWithVault({
   );
   final saved = profile.copyWith(vaultEntryId: result.entryId);
   // Only drop the legacy keychain copy once the persisted row actually points
-  // at the vault entry. The home-plane server catalog stores `SshServerProfile`
+  // at the vault entry. The home-plane catalog stores only a `CatalogEntry`
   // (no credential reference), so deleting there would leave that row with no
   // reachable secret at all.
   if (await _persistedVaultEntryId(repository, profile.id) == result.entryId) {

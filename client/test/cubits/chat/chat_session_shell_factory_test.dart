@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/chat/launch/connect/chat_session_shell_factory.dart';
-import 'package:teampilot/services/ssh/combined_ssh_profile_resolver.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -94,13 +93,9 @@ void main() {
       host: 'work.example.com',
       username: 'u',
     );
-    // The combined resolver fed by wireChatSession: B source has the host,
-    // the A source does not. A B-only workload host must resolve for remote
-    // sessions / provisioning (the Task 4 wiring gap).
-    final byId = combinedSshProfileResolver(
-      workloadById: (id) => id == 'workload' ? workload : null,
-      homeById: (_) => null,
-    );
+    // A device connection for a work machine must resolve for remote sessions
+    // and provisioning.
+    final byId = (String id) => id == 'workload' ? workload : null;
     final factory = ChatSessionShellFactory(
       executableResolver: () => 'claude',
       sshProfileById: byId,
@@ -120,14 +115,10 @@ void main() {
       host: 'home.example.com',
       username: 'u',
     );
-    // Both sources miss (e.g. offline / no id): _profileFor must still fall
-    // back to `_sshProfileResolver?.call()` (the A-source selected home), so
-    // SSH home mode and offline home binding keep working. The combined
-    // resolver must NOT replace that fallback with a B-only lookup.
-    final byId = combinedSshProfileResolver(
-      workloadById: (_) => null,
-      homeById: (_) => null,
-    );
+    // The id misses (e.g. offline): _profileFor must still fall back to
+    // `_sshProfileResolver?.call()` (the selected home), so SSH home mode and
+    // offline home binding keep working.
+    final byId = (String id) => null;
     final factory = ChatSessionShellFactory(
       executableResolver: () => 'claude',
       sshProfileById: byId,

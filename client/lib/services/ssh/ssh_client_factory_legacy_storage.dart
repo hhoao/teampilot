@@ -36,12 +36,13 @@ extension SshClientFactoryLegacyStorage on SshClientFactory {
         'Raw SSH storage clients are test-only; use storageFor instead',
       );
     }
+    final generation = planGenerationOf(profile);
     final cached = _legacyPool[profile.id];
     if (cached != null) {
       if (cached.client.isClosed) {
         _legacyPool.remove(profile.id);
         _legacySftpByProfile.remove(profile.id);
-      } else if (cached.hostIdentifier == profile.hostIdentifier) {
+      } else if (cached.generation == generation) {
         await cached.ready;
         final inFlight = _inFlight[profile.id] ?? 0;
         final skipProbe = !probeCached || inFlight > 0;
@@ -57,8 +58,9 @@ extension SshClientFactoryLegacyStorage on SshClientFactory {
           reason: SshTransportCloseReason.transportError,
         );
       } else {
-        // The user edited the host: a local re-target, not a server host-key
-        // change. Keep it retryable instead of latching the profile.
+        // The dial plan changed (address, account or trust policy): a local
+        // re-target, not a server host-key change. Retire the old client; the
+        // caller re-dials under the new plan on this same call.
         _evictLegacyProfile(
           profile.id,
           closePooled: true,
@@ -75,7 +77,7 @@ extension SshClientFactoryLegacyStorage on SshClientFactory {
     final ready = client.authenticated;
     final pooled = _PooledConnection(
       client: client,
-      hostIdentifier: profile.hostIdentifier,
+      generation: generation,
       ready: ready,
     );
     _legacyPool[profile.id] = pooled;

@@ -478,23 +478,10 @@ class SshProfileWorker {
   };
 
   SshWorkerStorageCore _createStorageCore(SshWorkerRequest request) {
-    final rawProfile = request.args['profile'];
-    final rawTarget = request.args['target'];
-    if (rawProfile is! Map || rawTarget is! Map) throw const FormatException();
-    final profileMap = rawProfile.cast<String, Object?>();
-    _validateStorageProfile(profileMap);
-    final profile = SshProfile.fromJson(profileMap);
-    final target = SshWorkerDialTarget.fromWire(rawTarget);
-    if (profile.id != bootstrap.profileId ||
-        profile.host.isEmpty ||
-        profile.username.isEmpty ||
-        profile.port < 1 ||
-        profile.port > 65535 ||
-        target.host.isEmpty ||
-        target.port < 1 ||
-        target.port > 65535) {
-      throw const FormatException();
-    }
+    final target = SshWorkerDialTarget.fromWire(request.args['target']);
+    final ref = SshWorkerConnectionRef.fromArgs(request.args);
+    if (ref.machineId != bootstrap.profileId) throw const FormatException();
+    final profile = ref.profileFor(target);
     late SshWorkerStorageCore core;
     final backend = SshWorkerDartStorageBackend(
       openClient: (connectRequest) => _sharedClient.acquire(
@@ -516,22 +503,6 @@ class SshProfileWorker {
         ? request.args['timeoutMs']! as int
         : const Duration(seconds: 30).inMilliseconds,
   );
-
-  void _validateStorageProfile(Map<String, Object?> profile) {
-    for (final field in ['id', 'name', 'host', 'username']) {
-      final value = profile[field];
-      if (value is! String || value.isEmpty) throw const FormatException();
-    }
-    final port = profile['port'];
-    if (port is! int || port < 1 || port > 65535) {
-      throw const FormatException();
-    }
-    final authType = profile['authType'];
-    if (authType is! String ||
-        !SshAuthType.values.any((value) => value.name == authType)) {
-      throw const FormatException();
-    }
-  }
 
   void _acceptAuthReply(Object? wire) {
     SshWorkerAuthReply reply;

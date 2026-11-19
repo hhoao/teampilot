@@ -25,6 +25,8 @@
   "penaltyRefused": "服务器暂时拒绝了连接（触发了防暴力破解保护），请等待约一分钟后重试。",
   "saveToVault": "保存到保险库",
   "serversEmpty": "此主机上还没有保存的 SSH 服务器。",
+  "serversNeedsConnectionHint": "本机清单中存在，但尚未在这台设备上建立连接",
+  "serversNotConnectedOnDevice": "尚未在这台设备上建立连接",
   "serversLoadError": "无法加载 SSH 服务器，请检查连接后重试。",
   "serversNotConnected": "未连接远程主机。",
   "serversTitle": "SSH 服务器",

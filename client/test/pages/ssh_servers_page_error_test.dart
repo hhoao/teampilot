@@ -5,7 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/ssh_profiles_page.dart';
+import 'package:teampilot/repositories/connection_store.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
+import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
@@ -44,19 +46,33 @@ void main() {
     await coordinator.dispose();
   });
 
-  Widget host(HomeStorage storage) => MaterialApp(
-    localizationsDelegates: appLocalizationsDelegates,
-    supportedLocales: appLocalizationsSupportedLocales,
-    locale: const Locale('en'),
-    theme: ThemeData(useMaterial3: true),
-    home: MultiRepositoryProvider(
-      providers: [RepositoryProvider<HomeStorage>.value(value: storage)],
-      child: BlocProvider<SshConnectionCubit>.value(
-        value: connectionCubit,
-        child: const SshServersPage(),
+  Widget host(HomeStorage storage) {
+    // Device-local connection catalog: adoption seeds it from legacy plane
+    // rows, and it never rides the (possibly remote) home plane.
+    final deviceFs = InMemoryFilesystem();
+    final deviceStorage = fakeHomeStorage(filesystem: deviceFs);
+    return MaterialApp(
+      localizationsDelegates: appLocalizationsDelegates,
+      supportedLocales: appLocalizationsSupportedLocales,
+      locale: const Locale('en'),
+      theme: ThemeData(useMaterial3: true),
+      home: MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<HomeStorage>.value(value: storage),
+          RepositoryProvider<SshProfileRepository>.value(
+            value: SshProfileRepository(
+              connections: ConnectionStore(rootDir: '/device', fs: deviceFs),
+              storage: deviceStorage,
+            ),
+          ),
+        ],
+        child: BlocProvider<SshConnectionCubit>.value(
+          value: connectionCubit,
+          child: const SshServersPage(),
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   testWidgets('not-connected branch shows the not-connected message', (
     tester,
@@ -82,6 +98,25 @@ void main() {
     expect(find.text('prod-db'), findsOneWidget);
     expect(find.textContaining('alice@10.0.0.5:2222'), findsOneWidget);
     expect(find.text('Not connected to a remote host.'), findsNothing);
+  });
+
+  testWidgets('a listed machine with no local connection stays visible', (
+    tester,
+  ) async {
+    final fs = _RemoteFilesystem();
+    fs.files['/tp/ssh_profiles/profiles.json'] =
+        '{"schemaVersion":2,"entries":[{"machineId":"m1",'
+        '"displayName":"lab-box","updatedAt":1}]}';
+    await tester.pumpWidget(host(fakeHomeStorage(filesystem: fs)));
+    await tester.pumpAndSettle();
+
+    // Membership is visible even though this device has no dial plan: hiding
+    // it is how a machine silently disappears from the catalog UI.
+    expect(find.text('lab-box'), findsOneWidget);
+    expect(
+      find.text('No connection from this device yet'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('remote load failure shows a localized message and retry', (

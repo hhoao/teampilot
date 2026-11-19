@@ -88,11 +88,7 @@ Future<HomePlaneWiring> wireHomePlane({
   final runtimeContextRegistry = RuntimeContextRegistry(
     resolver: runtimeContextResolver,
     homeTarget: homeTarget(),
-    // Home binding resolves from the device-local A source; work-plane
-    // `ssh:<id>` contexts resolve from the combined B-first + A-fallback
-    // resolver so home-plane workload hosts get an SSH transport.
     sshProfileById: sshProfileById,
-    workProfileById: workProfileById,
     termuxPathCache: () {
       final cfg = termuxConfig();
       if (cfg == null) {

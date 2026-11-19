@@ -259,6 +259,16 @@ class SshProfileConnectionCoordinator {
       );
       return;
     }
+    // A plan change (address, account or trust edit) is local intent, not a
+    // connection failure: the pool already retired the superseded lease and
+    // the next I/O reopens under the new plan. Tripping the shared breaker here
+    // would turn a local re-target into a whole-home outage.
+    if (error is SshTransportClosed &&
+        error.plane == SshTransportPlane.storage &&
+        error.reason == SshTransportCloseReason.profileInvalidated) {
+      appLogger.d('[ssh] profile $profileId storage plan changed; re-dial on demand');
+      return;
+    }
     // A storage lease can retire on its own (probe failure / request timeout)
     // while the shared SSH client and the forward planes stay healthy. That is
     // plane-scoped: do not tear the home down. But it MUST trip the I/O breaker
@@ -482,6 +492,7 @@ class SshProfileConnectionCoordinator {
       );
 
       await _dial(profile);
+      if (_disposed) return;
       if (_userDisconnectLatched.contains(profileId)) {
         _factory.disconnectProfile(
           profileId,
@@ -497,6 +508,7 @@ class SshProfileConnectionCoordinator {
       if (sessionPlane != null) {
         await sessionPlane(profileId);
       }
+      if (_disposed) return;
       if (_userDisconnectLatched.contains(profileId)) {
         _factory.disconnectProfile(
           profileId,
@@ -510,6 +522,7 @@ class SshProfileConnectionCoordinator {
       appLogger.i('[ssh] profile $profileId reconnect succeeded');
       _notifyReconnected(profileId);
     } on Object catch (error, stackTrace) {
+      if (_disposed) return;
       if (_userDisconnectLatched.contains(profileId)) {
         monitor.reconnectFailed();
         return;

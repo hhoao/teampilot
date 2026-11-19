@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/cubits/ssh_workload_profile_cubit.dart';
+import 'package:teampilot/repositories/connection_store.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
@@ -77,7 +78,7 @@ void main() {
       credentialStore: InMemorySshCredentialStore(),
     );
     await sshProfiles.load();
-    final workload = SshWorkloadProfileCubit(storage: plane);
+    final workload = _workloadCubit(plane);
     await workload.load();
 
     final events = SshConnectionEvents();
@@ -170,3 +171,10 @@ void main() {
     expect(connections.state.hostsById.keys, isNot(contains('p1')));
   });
 }
+
+
+SshWorkloadProfileCubit _workloadCubit(HomeStorage storage) =>
+    SshWorkloadProfileCubit(
+      storage: storage,
+      connections: ConnectionStore(rootDir: '/device', fs: storage.fs),
+    );

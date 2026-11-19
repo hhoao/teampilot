@@ -10,7 +10,7 @@ import '../../../../models/workspace.dart';
 import '../../../../models/workspace_folder.dart';
 import '../../../../models/workspace_topology.dart';
 import '../../../../repositories/session_repository.dart';
-import '../../../../repositories/combined_ssh_profile_repository.dart';
+import '../../../../repositories/ssh_profile_repository.dart';
 import '../../../../services/storage/home_target_controller.dart';
 import '../../../../services/storage/work_target_canonicalizer.dart';
 import '../../../../services/workspace/target_liveness.dart';
@@ -42,7 +42,7 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
 
   TargetLiveness _liveness(BuildContext context) =>
       DefaultTargetLiveness(
-        sshProfiles: context.read<CombinedSshProfileRepository>(),
+        sshProfiles: context.read<SshProfileRepository>(),
       );
 
   void _ensureDeadTargetsChecked(List<WorkspaceFolder> folders) {

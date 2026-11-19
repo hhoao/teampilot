@@ -62,6 +62,13 @@ class RuntimeContextResolver {
         'Termux home requires a transport profile and SSH client factory',
       );
     }
+    if (usesSshTransport(target.kind)) {
+      // Never hand back a local filesystem for a remote machine: that turned
+      // "this device has no connection" into "write to the phone by accident".
+      throw StateError(
+        'SSH target ${target.id} has no connection on this device',
+      );
+    }
 
     if (Platform.isWindows && target.kind == RuntimeKind.wsl) {
       return _resolveWsl(target);

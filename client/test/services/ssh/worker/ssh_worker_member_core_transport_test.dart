@@ -26,7 +26,7 @@ void main() {
         operation: SshWorkerOperation.openMember,
         args: {
           'memberId': 'member-1',
-          'profile': _profile.toJson(),
+          ..._connectionArgs(_profile),
           'target': const SshWorkerDialTarget(
             host: 'example.test',
             port: 22,
@@ -133,3 +133,10 @@ final class _NoopSink implements StreamSink<List<int>> {
   @override
   Future<void> get done => Future<void>.value();
 }
+
+Map<String, Object?> _connectionArgs(SshProfile profile) => {
+  'machineId': profile.id,
+  'generation': 1,
+  'username': profile.username,
+  'authType': profile.authType.name,
+};

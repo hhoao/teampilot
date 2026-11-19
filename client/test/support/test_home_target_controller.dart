@@ -1,5 +1,4 @@
 import 'package:teampilot/models/runtime_target.dart';
-import 'package:teampilot/repositories/combined_ssh_profile_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/services/storage/runtime_target_registry.dart';
@@ -15,21 +14,6 @@ SshProfileRepository testSshProfileRepository({
     rootDir: root,
     fs: InMemoryFilesystem(),
     storage: fakeHomeStorage(),
-  );
-}
-
-/// Minimal work-plane execution repository for widget tests. Both sources are
-/// empty in-memory catalogs, so `ssh:<id>` targets resolve as dead unless a
-/// test seeds them. Widgets that construct TargetLiveness read this provider.
-CombinedSshProfileRepository testCombinedSshProfileRepository({
-  SshProfileRepository? workload,
-  SshProfileRepository? home,
-}) {
-  return CombinedSshProfileRepository(
-    storage: fakeHomeStorage(),
-    workload:
-        workload ?? testSshProfileRepository(root: '/tp-test-workload'),
-    home: home ?? testSshProfileRepository(),
   );
 }
 

@@ -334,8 +334,8 @@ final class SshWorkerForwardCore {
   Future<SshWorkerForwardClient> _openForwardClient(
     SshWorkerRequest request,
   ) async {
-    final profile = _profile(request);
     final target = SshWorkerDialTarget.fromWire(request.args['target']);
+    final profile = _profile(request, target);
     final client = await openClient(
       profile: profile,
       target: target,
@@ -387,16 +387,13 @@ final class SshWorkerForwardCore {
     }
   }
 
-  SshProfile _profile(SshWorkerRequest request) {
-    final raw = request.args['profile'];
-    if (raw is! Map) throw const FormatException();
-    final profile = SshProfile.fromJson(raw.cast<String, Object?>());
-    if (profile.id != profileId ||
-        profile.host.isEmpty ||
-        profile.username.isEmpty) {
-      throw const FormatException();
-    }
-    return profile;
+  SshProfile _profile(
+    SshWorkerRequest request,
+    SshWorkerDialTarget target,
+  ) {
+    final ref = SshWorkerConnectionRef.fromArgs(request.args);
+    if (ref.machineId != profileId) throw const FormatException();
+    return ref.profileFor(target);
   }
 
   Duration _timeout(SshWorkerRequest request) => Duration(

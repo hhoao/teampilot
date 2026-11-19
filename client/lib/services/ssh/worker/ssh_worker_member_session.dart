@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dartssh2/dartssh2.dart';
 
 import '../../../models/ssh_profile.dart';
+import '../../connect/profile_connection_mapping.dart';
 import '../ssh_forward_channel.dart';
 import '../ssh_transport_close.dart';
 import 'ssh_worker_exec_proxy.dart';
@@ -288,7 +289,12 @@ final class SshWorkerLeaseMemberTransport implements SshWorkerMemberTransport {
     final memberId = _lease.resourceId('member');
     final reply = await _request(SshWorkerOperation.openMember, {
       'memberId': memberId,
-      'profile': profile.toJson(),
+      ...SshWorkerConnectionRef(
+        machineId: profile.id,
+        generation: planGenerationOf(profile),
+        username: profile.username,
+        authType: profile.authType,
+      ).toArgs(),
       'target': _target.toWire(),
       'timeoutMs': timeout.inMilliseconds,
     });

@@ -1,212 +1,138 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/connection/catalog_entry.dart';
+import 'package:teampilot/models/connection/machine_id.dart';
 import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/repositories/catalog_store.dart';
+import 'package:teampilot/repositories/connection_store.dart';
 import 'package:teampilot/repositories/plane_ssh_profile_repository.dart';
-import 'package:teampilot/repositories/remote_target_repository.dart';
-import 'package:teampilot/repositories/ssh_server_profile_repository.dart';
-import 'package:teampilot/services/io/filesystem.dart';
-import 'package:teampilot/services/storage/home_storage.dart';
 
-import '../support/post_frame_test_harness.dart';
-import '../support/test_runtime_context.dart';
+import '../support/connection_fixtures.dart';
+import '../support/in_memory_filesystem.dart';
 
 void main() {
-  late Directory planeDir;
-  late HomeStorage planeStorage;
+  late InMemoryFilesystem fs;
+  late CatalogStore catalog;
+  late ConnectionStore connections;
+  late PlaneSshProfileRepository repo;
 
   setUp(() {
-    setUpTestAppStorage();
-    planeDir = Directory.systemTemp.createTempSync('test_plane_');
-    planeStorage = HomeStorage(testRuntimeContext(planeDir.path));
-  });
-
-  tearDown(() {
-    tearDownTestAppStorage();
-    if (planeDir.existsSync()) planeDir.deleteSync(recursive: true);
-  });
-
-  PlaneSshProfileRepository buildRepo({
-    RemoteTargetRepository? deviceTargets,
-  }) => PlaneSshProfileRepository(
-    storage: planeStorage,
-    servers: SshServerProfileRepository(storage: planeStorage),
-    deviceTargets: deviceTargets,
-  );
-
-  RemoteTargetRepository deviceTargets() => RemoteTargetRepository(
-    rootDir: testHomeStorage.appDataRoot,
-    fs: testHomeStorage.fs,
-  );
-
-  test('lists the plane catalog and ignores this device targets', () async {
-    // Device-local catalog (the shared test home) holds one server.
-    final deviceFs = testHomeStorage.fs;
-    await _writeJson(
-      deviceFs,
-      deviceFs.pathContext.join(
-        testHomeStorage.appDataRoot,
-        'remote-targets.json',
-      ),
-      [_json(id: 'device-1', name: 'device-only')],
+    fs = InMemoryFilesystem();
+    final storage = fakeHomeStorage(filesystem: fs);
+    catalog = CatalogStore(storage: storage);
+    connections = ConnectionStore(rootDir: '/device', fs: fs);
+    repo = PlaneSshProfileRepository(
+      storage: storage,
+      connections: connections,
+      catalog: catalog,
     );
-    // The plane holds a different server.
-    final planeFs = planeStorage.fs;
-    await _writeJson(
-      planeFs,
-      planeFs.pathContext.join(
-        planeStorage.paths.sshProfilesDir,
-        'profiles.json',
-      ),
-      [_json(id: 'plane-1', name: 'plane-only')],
-    );
-
-    final profiles = await buildRepo().loadAll();
-
-    expect(profiles.map((p) => p.id), ['plane-1']);
   });
 
-  test(
-    'attaches this device vault reference to the matching plane server',
-    () async {
-      final deviceFs = testHomeStorage.fs;
-      await _writeJson(
-        deviceFs,
-        deviceFs.pathContext.join(
-          testHomeStorage.appDataRoot,
-          'remote-targets.json',
-        ),
-        [_json(id: 'plane-1', name: 'shared', vaultEntryId: 'vault-1')],
-      );
-      final planeFs = planeStorage.fs;
-      await _writeJson(
-        planeFs,
-        planeFs.pathContext.join(
-          planeStorage.paths.sshProfilesDir,
-          'profiles.json',
-        ),
-        [_json(id: 'plane-1', name: 'shared')],
-      );
+  test('lists the join of plane membership and device reachability', () async {
+    await catalog.saveAll(const [
+      CatalogEntry(machineId: MachineId('m1'), displayName: 'plane name'),
+      CatalogEntry(machineId: MachineId('ghost'), displayName: 'no plan'),
+    ]);
+    await connections.save(
+      deviceConnection(machineId: 'm1', displayName: 'device name'),
+    );
+    await connections.save(deviceConnection(machineId: 'local-only'));
 
-      final profiles = await buildRepo(
-        deviceTargets: deviceTargets(),
-      ).loadAll();
+    final view = await repo.loadView();
 
-      expect(profiles.single.vaultEntryId, 'vault-1');
-    },
-  );
+    // Membership comes from the plane; the address only from the connection.
+    expect(view.reachable.map((p) => p.id), ['m1']);
+    expect(view.reachable.single.name, 'plane name');
+    expect(view.reachable.single.host, 'h');
+    expect(view.reachable.single.username, 'u');
+    // The entry with no local plan stays visible as NeedsConnection.
+    expect(view.needsConnection.map((e) => e.machineId.value), ['ghost']);
+    expect(await repo.loadAll(), hasLength(1));
+  });
 
-  test(
-    'save never writes the vault reference into the plane projection',
-    () async {
-      final repo = buildRepo(deviceTargets: deviceTargets());
+  test('save writes membership to the plane and the plan to the device', () async {
+    await repo.save(
+      const SshProfile(
+        id: 'm1',
+        name: 'dev',
+        host: '10.0.0.5',
+        port: 2222,
+        username: 'alice',
+      ),
+    );
 
-      await repo.save(
-        const SshProfile(
-          id: 'plane-1',
-          name: 'shared',
-          host: 'h',
-          username: 'u',
-          vaultEntryId: 'vault-1',
-        ),
-      );
+    final entry = (await catalog.readSnapshot())!.entries.single;
+    expect(entry.machineId.value, 'm1');
+    expect(entry.displayName, 'dev');
+    final connection = (await connections.loadAll()).single;
+    expect(connection.primaryEndpoint.port, 2222);
+    expect((await repo.loadAll()).single.host, '10.0.0.5');
+    // The plane file must not carry the address.
+    expect(await fs.readString(catalog.path), isNot(contains('10.0.0.5')));
+  });
 
-      final planeFs = planeStorage.fs;
-      final planeFile = await planeFs.readString(
-        planeFs.pathContext.join(
-          planeStorage.paths.sshProfilesDir,
-          'profiles.json',
-        ),
-      );
-      expect(planeFile, isNot(contains('vaultEntryId')));
-    },
-  );
-
-  test('save writes the plane projection, never the device catalog', () async {
-    final repo = buildRepo();
+  test('renaming a plane row never touches the dial plan', () async {
+    await repo.save(
+      const SshProfile(id: 'm1', name: 'old', host: 'h', username: 'u'),
+    );
+    final before = (await connections.loadAll()).single;
 
     await repo.save(
-      const SshProfile(id: 'new-1', name: 'fresh', host: 'h', username: 'u'),
+      const SshProfile(id: 'm1', name: 'new', host: 'h', username: 'u'),
     );
 
-    final planeFs = planeStorage.fs;
-    final planeFile = await planeFs.readString(
-      planeFs.pathContext.join(
-        planeStorage.paths.sshProfilesDir,
-        'profiles.json',
-      ),
-    );
-    expect((jsonDecode(planeFile!) as List).length, 1);
-    final deviceFs = testHomeStorage.fs;
-    expect(
-      (await deviceFs.stat(
-        deviceFs.pathContext.join(
-          testHomeStorage.appDataRoot,
-          'remote-targets.json',
-        ),
-      )).isFile,
-      isFalse,
-    );
+    final after = (await connections.loadAll()).single;
+    expect(after.displayName, 'new');
+    expect(after.generation, before.generation);
+    expect((await repo.loadAll()).single.name, 'new');
   });
 
-  test('delete removes the plane entry', () async {
-    final planeFs = planeStorage.fs;
-    await _writeJson(
-      planeFs,
-      planeFs.pathContext.join(
-        planeStorage.paths.sshProfilesDir,
-        'profiles.json',
-      ),
-      [_json(id: 'plane-1', name: 'one'), _json(id: 'plane-2', name: 'two')],
+  test('delete drops membership but keeps the device plan', () async {
+    await repo.save(
+      const SshProfile(id: 'm1', name: 'dev', host: 'h', username: 'u'),
     );
-    final repo = buildRepo();
 
-    await repo.delete('plane-1');
+    await repo.delete('m1');
 
-    expect((await repo.loadAll()).map((p) => p.id), ['plane-2']);
+    expect(await repo.loadAll(), isEmpty);
+    expect(await repo.findById('m1'), isNull);
+    expect(await connections.findById(const MachineId('m1')), isNotNull);
   });
 
-  test('profile selection is not persisted on the plane', () async {
-    final repo = buildRepo();
+  test('a connection without plane membership is not listed', () async {
+    await connections.save(deviceConnection(machineId: 'm1'));
 
-    expect(await repo.loadSelectedProfileId(), '');
-    await repo.saveSelectedProfileId('plane-1');
+    expect(await repo.findById('m1'), isNull);
+    expect(await repo.loadAll(), isEmpty);
+  });
 
-    final planeFs = planeStorage.fs;
-    expect(
-      (await planeFs.stat(
-        planeFs.pathContext.join(
-          planeStorage.paths.sshProfilesDir,
-          'selected_profile.txt',
-        ),
-      )).isFile,
-      isFalse,
+  test('adopts schema-1 plane rows into connections before listing', () async {
+    await fs.atomicWrite(
+      catalog.path,
+      jsonEncode([
+        {
+          'id': 'm1',
+          'name': 'legacy',
+          'host': '10.0.0.9',
+          'port': 22,
+          'username': 'u',
+          'authType': 'password',
+          'updatedAt': 1,
+        },
+      ]),
     );
+
+    final profiles = await repo.loadAll();
+
+    expect(profiles.single.id, 'm1');
+    expect(profiles.single.host, '10.0.0.9');
+    expect(
+      (await connections.findById(
+        const MachineId('m1'),
+      ))?.primaryEndpoint.host,
+      '10.0.0.9',
+    );
+    expect((await catalog.readSnapshot())?.legacy, isFalse);
   });
 }
-
-Future<void> _writeJson(
-  Filesystem fs,
-  String path,
-  List<Map<String, Object?>> rows,
-) async {
-  await fs.ensureDir(fs.pathContext.dirname(path));
-  await fs.atomicWrite(path, jsonEncode(rows));
-}
-
-Map<String, Object?> _json({
-  required String id,
-  required String name,
-  String? vaultEntryId,
-}) => {
-  'schemaVersion': 1,
-  'id': id,
-  'name': name,
-  'host': 'h',
-  'port': 22,
-  'username': 'u',
-  'authType': 'password',
-  if (vaultEntryId != null) 'vaultEntryId': vaultEntryId,
-  'updatedAt': 10,
-};
