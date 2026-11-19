@@ -105,94 +105,124 @@ class _WorkspaceCreateDirectoryPickerState
                   : cs.outlineVariant.withValues(alpha: 0.6),
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          cs.primary,
-                          Color.lerp(cs.primary, cs.tertiary, 0.6) ??
-                              cs.primary,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      Icons.folder_open_rounded,
-                      size: context.tpIconSizes.lg,
-                      color: cs.onPrimary,
-                    ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final targetLabel = entries
+                  .firstWhere(
+                    (e) => e.$1 == widget.targetId,
+                    orElse: () => (widget.targetId, widget.targetId),
+                  )
+                  .$2;
+              final icon = Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      cs.primary,
+                      Color.lerp(cs.primary, cs.tertiary, 0.6) ?? cs.primary,
+                    ],
                   ),
-                  const SizedBox(width: 14),
-                  Text(
-                    l10n.homeWorkspace.newWorkspaceDirectoryLabel,
-                    style: styles.mdSemiboldColored(cs.onSurface),
-                    maxLines: 1,
-                    softWrap: false,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Tooltip(
-                      message: entries
-                          .firstWhere(
-                            (e) => e.$1 == widget.targetId,
-                            orElse: () => (widget.targetId, widget.targetId),
-                          )
-                          .$2,
-                      waitDuration: const Duration(milliseconds: 400),
-                      child: TpCompactSelect<String>(
-                        value: widget.targetId,
-                        entries: entries,
-                        onChanged: (id) {
-                          if (id == null || id == widget.targetId) return;
-                          widget.onTargetChanged(id);
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: _addDirectory,
-                    icon: Icon(
-                      Icons.drive_folder_upload_outlined,
-                      size: context.tpIconSizes.md,
-                    ),
-                    label: Text(l10n.homeWorkspace.newWorkspaceChooseDirectory),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              if (!hasDirectory) ...[
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.only(left: 58),
-                  child: Text(
-                    l10n.homeWorkspace.newWorkspaceDirectoryHint,
-                    style: styles.mdColored(
-                      cs.onSurfaceVariant.withValues(alpha: 0.7),
-                    ),
-                  ),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              ] else ...[
-                for (var i = 0; i < widget.folders.length; i++)
-                  WorkspaceFolderDirectoryRow(
-                    folder: widget.folders[i],
-                    isPrimary: i == 0,
-                    targets: targets,
-                    onRemove: () => _removeDirectoryAt(i),
-                  ),
-              ],
-            ],
+                child: Icon(
+                  Icons.folder_open_rounded,
+                  size: context.tpIconSizes.lg,
+                  color: cs.onPrimary,
+                ),
+              );
+              final label = Text(
+                l10n.homeWorkspace.newWorkspaceDirectoryLabel,
+                style: styles.mdSemiboldColored(cs.onSurface),
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+              );
+              final select = Tooltip(
+                message: targetLabel,
+                waitDuration: const Duration(milliseconds: 400),
+                child: TpCompactSelect<String>(
+                  value: widget.targetId,
+                  entries: entries,
+                  onChanged: (id) {
+                    if (id == null || id == widget.targetId) return;
+                    widget.onTargetChanged(id);
+                  },
+                ),
+              );
+              final addButton = OutlinedButton.icon(
+                onPressed: _addDirectory,
+                icon: Icon(
+                  Icons.drive_folder_upload_outlined,
+                  size: context.tpIconSizes.md,
+                ),
+                label: Text(l10n.homeWorkspace.newWorkspaceChooseDirectory),
+              );
+              // Narrow dialogs cannot fit label + machine select + button on one
+              // line; stacking the controls keeps the select wide enough for its
+              // trigger (a squeezed select overflows internally).
+              final stackControls = constraints.maxWidth < 420;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (stackControls) ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        icon,
+                        const SizedBox(width: 14),
+                        Expanded(child: label),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(child: select),
+                        const SizedBox(width: 8),
+                        addButton,
+                      ],
+                    ),
+                  ] else
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        icon,
+                        const SizedBox(width: 14),
+                        label,
+                        const SizedBox(width: 8),
+                        Expanded(child: select),
+                        const SizedBox(width: 8),
+                        addButton,
+                      ],
+                    ),
+                  const SizedBox(height: 10),
+                  if (!hasDirectory) ...[
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 58),
+                      child: Text(
+                        l10n.homeWorkspace.newWorkspaceDirectoryHint,
+                        style: styles.mdColored(
+                          cs.onSurfaceVariant.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    for (var i = 0; i < widget.folders.length; i++)
+                      WorkspaceFolderDirectoryRow(
+                        folder: widget.folders[i],
+                        isPrimary: i == 0,
+                        targets: targets,
+                        onRemove: () => _removeDirectoryAt(i),
+                      ),
+                  ],
+                ],
+              );
+            },
           ),
         );
       },

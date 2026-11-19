@@ -43,6 +43,8 @@ Future<void> _pumpEditor(
   required HomeTargetController controller,
   required List<WorkspaceFolder> folders,
   bool lockTargets = false,
+  Set<String> deadTargetIds = const {},
+  ValueChanged<String>? onRemapDeadTarget,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -54,6 +56,8 @@ Future<void> _pumpEditor(
           body: WorkspaceFoldersEditor(
             folders: folders,
             lockTargets: lockTargets,
+            deadTargetIds: deadTargetIds,
+            onRemapDeadTarget: onRemapDeadTarget,
             onChanged: (_) {},
           ),
         ),
@@ -198,5 +202,32 @@ void main() {
       find.text(l10n.workspace.foldersAddOnAnotherMachine),
       findsOneWidget,
     );
+  });
+
+  testWidgets('card header wraps actions instead of overflowing', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final controller = await _controllerWithSshProfiles([serverA, serverB]);
+    await _pumpEditor(
+      tester,
+      controller: controller,
+      folders: const [
+        WorkspaceFolder(path: '/local'),
+        WorkspaceFolder(path: '/remote', targetId: 'ssh:gone'),
+      ],
+      deadTargetIds: const {'ssh:gone'},
+      onRemapDeadTarget: (_) {},
+    );
+
+    final l10n = await const AppLocalizationsCompatDelegate().load(
+      const Locale('en'),
+    );
+    expect(find.text(l10n.workspace.deadTargetBadge), findsOneWidget);
+    expect(find.text(l10n.workspace.deadTargetRemap), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

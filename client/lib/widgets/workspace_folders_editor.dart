@@ -475,6 +475,42 @@ class _MachineFolderCard extends StatelessWidget {
         .where((e) => e.folder.path.trim().isNotEmpty)
         .toList();
     final showEmptyHint = listed.isEmpty && emptyHint != null;
+    // Header actions flow onto their own line(s) so a long machine label plus
+    // several controls never overflow a narrow card.
+    final headerActions = <Widget>[
+      if (targetEditable && enabled)
+        TextButton(
+          onPressed: onPickTargetForGroup,
+          child: Text(l10n.workspace.foldersChangeTarget),
+        ),
+      if (isDead) ...[
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: cs.errorContainer,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            l10n.workspace.deadTargetBadge,
+            style: styles.xsColored(cs.onErrorContainer),
+          ),
+        ),
+        if (onRemapDeadTarget != null)
+          TextButton(
+            onPressed: () => onRemapDeadTarget!(targetId),
+            child: Text(l10n.workspace.deadTargetRemap),
+          ),
+      ],
+      if (enabled)
+        TextButton.icon(
+          onPressed: onAddDirectory,
+          icon: Icon(
+            Icons.create_new_folder_outlined,
+            size: context.tpIconSizes.sm,
+          ),
+          label: Text(l10n.addWorkspaceDirectory),
+        ),
+    ];
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -503,41 +539,6 @@ class _MachineFolderCard extends StatelessWidget {
                     style: styles.mdSemiboldColored(cs.onSurface),
                   ),
                 ),
-                if (targetEditable && enabled)
-                  TextButton(
-                    onPressed: onPickTargetForGroup,
-                    child: Text(l10n.workspace.foldersChangeTarget),
-                  ),
-                if (isDead) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: cs.errorContainer,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      l10n.workspace.deadTargetBadge,
-                      style: styles.xsColored(cs.onErrorContainer),
-                    ),
-                  ),
-                  if (onRemapDeadTarget != null)
-                    TextButton(
-                      onPressed: () => onRemapDeadTarget!(targetId),
-                      child: Text(l10n.workspace.deadTargetRemap),
-                    ),
-                ],
-                if (enabled)
-                  TextButton.icon(
-                    onPressed: onAddDirectory,
-                    icon: Icon(
-                      Icons.create_new_folder_outlined,
-                      size: context.tpIconSizes.sm,
-                    ),
-                    label: Text(l10n.addWorkspaceDirectory),
-                  ),
                 if (enabled && onRemoveTarget != null)
                   TpIconButton(
                     icon: Icons.delete_outline_rounded,
@@ -549,6 +550,17 @@ class _MachineFolderCard extends StatelessWidget {
                   ),
               ],
             ),
+            if (headerActions.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 4,
+                  runSpacing: 2,
+                  children: headerActions,
+                ),
+              ),
             if (showEmptyHint)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
