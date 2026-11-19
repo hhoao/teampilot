@@ -37,11 +37,8 @@ void main() {
         return ctx(target);
       },
     );
-    const target = RuntimeTarget(
-      id: 'ssh:p',
-      label: 'p',
-      kind: RuntimeKind.ssh,
-    );
+    const target = RuntimeTarget(id: 'ssh:p',
+      label: 'p');
     await resolver.forTarget(target);
     await resolver.forTarget(target);
     expect(calls, 1);
@@ -55,11 +52,8 @@ void main() {
     final resolver = SeatRuntimeResolver(
       resolve: (target) async => ctx(target),
     );
-    const target = RuntimeTarget(
-      id: 'local',
-      label: 'local',
-      kind: RuntimeKind.local,
-    );
+    const target = RuntimeTarget(id: 'local',
+      label: 'local');
     expect(resolver.peek(target.id), isNull);
     final resolved = await resolver.forTarget(target);
     expect(resolver.peek(target.id), same(resolved));
@@ -73,8 +67,8 @@ void main() {
         return ctx(target);
       },
     );
-    const a = RuntimeTarget(id: 'ssh:a', label: 'a', kind: RuntimeKind.ssh);
-    const b = RuntimeTarget(id: 'ssh:b', label: 'b', kind: RuntimeKind.ssh);
+    const a = RuntimeTarget(id: 'ssh:a', label: 'a');
+    const b = RuntimeTarget(id: 'ssh:b', label: 'b');
     await resolver.forTarget(a);
     await resolver.forTarget(b);
     expect(calls, 2);
@@ -93,8 +87,8 @@ void main() {
         return ctx(target);
       },
     );
-    const a = RuntimeTarget(id: 'ssh:a', label: 'a', kind: RuntimeKind.ssh);
-    const b = RuntimeTarget(id: 'ssh:b', label: 'b', kind: RuntimeKind.ssh);
+    const a = RuntimeTarget(id: 'ssh:a', label: 'a');
+    const b = RuntimeTarget(id: 'ssh:b', label: 'b');
     final ca = await resolver.forTarget(a);
     final cb = await resolver.forTarget(b);
     expect(calls, 2);

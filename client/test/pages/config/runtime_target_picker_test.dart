@@ -44,11 +44,8 @@ void main() {
     selected.clear();
     controller = HomeTargetController(
       registry: registry,
-      current: () => RuntimeTarget(
-        id: currentId,
-        label: currentId,
-        kind: runtimeKindOfId(currentId),
-      ),
+      current: () => RuntimeTarget(id: currentId,
+        label: currentId),
       switchTo: (id) async {
         selected.add(id);
         currentId = id;

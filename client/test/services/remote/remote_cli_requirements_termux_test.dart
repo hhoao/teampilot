@@ -8,12 +8,8 @@ import 'package:teampilot/services/remote/remote_cli_requirements.dart';
 
 void main() {
   test('remoteCliRequirementsForPlacement includes termux machine', () {
-    const termuxTarget = RuntimeTarget(
-      id: 'termux:default',
-      label: 'Termux',
-      kind: RuntimeKind.termux,
-      sshProfileId: 'termux',
-    );
+    const termuxTarget = RuntimeTarget(id: 'termux:default',
+      label: 'Termux');
     final team = TeamProfile(
       id: 'team-1',
       name: 'Team',

@@ -65,12 +65,8 @@ void main() {
     final factory = sshFactory!;
 
     final profile = _profile.copyWith(port: docker.port);
-    final target = RuntimeTarget(
-      id: 'ssh:${profile.id}',
-      label: profile.name,
-      kind: RuntimeKind.ssh,
-      sshProfileId: profile.id,
-    );
+    final target = RuntimeTarget(id: 'ssh:${profile.id}',
+      label: profile.name);
 
     final service = RemoteCliReadinessService(
       registry: CliToolRegistry.builtIn(),

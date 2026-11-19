@@ -91,12 +91,8 @@ void main() {
     final total = Stopwatch()..start();
 
     final profile = _profile.copyWith(port: docker.port);
-    final target = RuntimeTarget(
-      id: 'ssh:${profile.id}',
-      label: profile.name,
-      kind: RuntimeKind.ssh,
-      sshProfileId: profile.id,
-    );
+    final target = RuntimeTarget(id: 'ssh:${profile.id}',
+      label: profile.name);
 
     final readiness = RemoteCliReadinessService(
       registry: CliToolRegistry.builtIn(),

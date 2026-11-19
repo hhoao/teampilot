@@ -14,12 +14,8 @@ import 'package:teampilot/services/ssh/worker/ssh_worker_member_session.dart';
 import 'package:teampilot/services/ssh/worker/ssh_worker_storage_types.dart';
 
 void main() {
-  const target = RuntimeTarget(
-    id: 'ssh:host-a',
-    label: 'host',
-    kind: RuntimeKind.ssh,
-    sshProfileId: 'host-a',
-  );
+  const target = RuntimeTarget(id: 'ssh:host-a',
+    label: 'host');
 
   late Map<String, String> overrides;
   late RemoteCliReadinessService service;

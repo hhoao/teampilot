@@ -45,11 +45,8 @@ void main() {
         isWindows: false,
         isAndroid: false,
       ),
-      current: () => RuntimeTarget(
-        id: currentId,
-        label: currentId,
-        kind: runtimeKindOfId(currentId),
-      ),
+      current: () => RuntimeTarget(id: currentId,
+        label: currentId),
       switchTo: (id) async {
         currentId = id;
       },

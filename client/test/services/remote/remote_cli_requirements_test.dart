@@ -7,12 +7,8 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/remote/remote_cli_requirements.dart';
 
 void main() {
-  const sshTarget = RuntimeTarget(
-    id: 'ssh:host-a',
-    label: 'Build host',
-    kind: RuntimeKind.ssh,
-    sshProfileId: 'host-a',
-  );
+  const sshTarget = RuntimeTarget(id: 'ssh:host-a',
+    label: 'Build host');
   final localTarget = RuntimeTarget.local();
 
   final workspace = Workspace(

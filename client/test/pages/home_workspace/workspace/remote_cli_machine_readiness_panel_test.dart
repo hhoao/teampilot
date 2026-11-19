@@ -21,12 +21,8 @@ import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
 void main() {
-  const target = RuntimeTarget(
-    id: 'ssh:host-a',
-    label: 'Build host',
-    kind: RuntimeKind.ssh,
-    sshProfileId: 'host-a',
-  );
+  const target = RuntimeTarget(id: 'ssh:host-a',
+    label: 'Build host');
 
   testWidgets('renders an adapter row from an adapter requirement', (
     tester,

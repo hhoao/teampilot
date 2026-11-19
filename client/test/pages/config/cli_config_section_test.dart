@@ -226,12 +226,8 @@ Widget _wrapCardRemote(
     providers: [
       RepositoryProvider<ConnectionModeService>(
         create: (_) => ConnectionModeService(
-          defaultTargetResolver: () => const RuntimeTarget(
-            id: 'ssh:host-a',
-            label: 'host',
-            kind: RuntimeKind.ssh,
-            sshProfileId: 'host-a',
-          ),
+          defaultTargetResolver: () => const RuntimeTarget(id: 'ssh:host-a',
+            label: 'host'),
           hasSshProfiles: () => true,
         ),
       ),

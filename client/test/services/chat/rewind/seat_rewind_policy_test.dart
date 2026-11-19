@@ -140,11 +140,8 @@ void main() {
   // old mobile/remote denials; this keeps them from coming back.
   test('ssh work plane with git is eligible (mobile enablement)', () {
     final result = policy(
-      target: const RuntimeTarget(
-        id: 'ssh:phone',
-        label: 'Phone',
-        kind: RuntimeKind.ssh,
-      ),
+      target: const RuntimeTarget(id: 'ssh:phone',
+        label: 'Phone'),
       capability: const RewindCapability(
         available: true,
         version: '2.43',

@@ -124,12 +124,8 @@ void main() {
   });
 
   group('WorkspaceLandingLaunchGate.asyncRemoteCliBlock', () {
-    const sshTarget = RuntimeTarget(
-      id: 'ssh:host-a',
-      label: 'Remote',
-      kind: RuntimeKind.ssh,
-      sshProfileId: 'host-a',
-    );
+    const sshTarget = RuntimeTarget(id: 'ssh:host-a',
+      label: 'Remote');
 
     test('allows when all required remote CLIs are ready', () async {
       final team = TeamProfile(
@@ -196,12 +192,8 @@ void main() {
   });
 
   group('WorkspaceLandingLaunchGate.asyncRemoteCliBlockForSimple', () {
-    const sshTarget = RuntimeTarget(
-      id: 'ssh:host-a',
-      label: 'Remote',
-      kind: RuntimeKind.ssh,
-      sshProfileId: 'host-a',
-    );
+    const sshTarget = RuntimeTarget(id: 'ssh:host-a',
+      label: 'Remote');
     final localHome = RuntimeTarget.local();
 
     test('blocks when remote CLI is missing on SSH project folder', () async {

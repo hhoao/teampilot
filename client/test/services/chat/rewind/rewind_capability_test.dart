@@ -45,7 +45,7 @@ void main() {
   );
 
   RuntimeTarget target(String id) =>
-      RuntimeTarget(id: id, label: id, kind: RuntimeKind.local);
+      RuntimeTarget(id: id, label: id);
 
   const capable = GitCapability(
     available: true,

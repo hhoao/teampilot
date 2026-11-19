@@ -1072,7 +1072,7 @@ class AcpRuntimeAttach {
     if (prepareTeamConnect != null) {
       final id = session.memberTargets[memberId]?.trim();
       if (id == null || id.isEmpty) return RuntimeTarget.local();
-      return RuntimeTarget(id: id, label: id, kind: runtimeKindOfId(id));
+      return RuntimeTarget(id: id, label: id);
     }
     if (workspace == null) return RuntimeTarget.local();
     return launchWorkTarget(session, memberId: memberId);
