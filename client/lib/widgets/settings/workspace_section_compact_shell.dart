@@ -6,11 +6,19 @@ import 'workspace_pane_insets.dart';
 import 'workspace_section_nav_item.dart';
 import 'workspace_section_tab_bar.dart';
 
+/// Whether the compact section shell renders [WorkspacePaneHeader].
+///
+/// Android hub pages are pushed routes whose shell AppBar already carries the
+/// back affordance, so they skip the pane header. An inline page (e.g. the
+/// workspace manage overlay rendered inside the workspace route) has no AppBar;
+/// when it supplies [hasBack] it must keep the header or the user loses the
+/// only way out.
 @visibleForTesting
 bool workspaceSectionCompactShowHeader({
   required bool androidHub,
   required bool embedded,
-}) => !(androidHub && !embedded);
+  required bool hasBack,
+}) => !(androidHub && !embedded) || hasBack;
 
 class WorkspaceSectionCompactShell extends StatelessWidget {
   const WorkspaceSectionCompactShell({
@@ -40,6 +48,7 @@ class WorkspaceSectionCompactShell extends StatelessWidget {
     final showHeader = workspaceSectionCompactShowHeader(
       androidHub: useAndroidHubNavigation(context),
       embedded: embedded,
+      hasBack: onBack != null,
     );
     final showTabs = items.length > 1;
     final selectedIndex = _selectedIndex(items);

@@ -336,15 +336,40 @@ void main() {
 
   test('compact tabs: Android standalone hides pane header', () {
     expect(
-      workspaceSectionCompactShowHeader(androidHub: true, embedded: false),
+      workspaceSectionCompactShowHeader(
+        androidHub: true,
+        embedded: false,
+        hasBack: false,
+      ),
       isFalse,
     );
     expect(
-      workspaceSectionCompactShowHeader(androidHub: true, embedded: true),
+      workspaceSectionCompactShowHeader(
+        androidHub: true,
+        embedded: true,
+        hasBack: false,
+      ),
       isTrue,
     );
     expect(
-      workspaceSectionCompactShowHeader(androidHub: false, embedded: false),
+      workspaceSectionCompactShowHeader(
+        androidHub: false,
+        embedded: false,
+        hasBack: false,
+      ),
+      isTrue,
+    );
+  });
+
+  test('compact tabs: inline page keeps header even on Android hub', () {
+    // The workspace manage panel renders inline inside the workspace route, so
+    // no pushed-route AppBar carries a back affordance; the pane header must.
+    expect(
+      workspaceSectionCompactShowHeader(
+        androidHub: true,
+        embedded: false,
+        hasBack: true,
+      ),
       isTrue,
     );
   });
