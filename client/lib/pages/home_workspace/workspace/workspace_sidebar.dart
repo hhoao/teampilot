@@ -41,6 +41,7 @@ import '../../../utils/session/running_session_ids.dart';
 import '../../../widgets/remote_activity_builder.dart';
 import '../../../utils/session/session_archive_filter.dart';
 import '../../../utils/session/session_list_structure.dart';
+import '../../../utils/session/session_lookup.dart';
 import '../../../utils/session/session_reorder_merge.dart';
 import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
@@ -488,12 +489,8 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
   }
 }
 
-AppSession? _sessionById(ChatState state, String sessionId) {
-  for (final session in state.sessions) {
-    if (session.sessionId == sessionId) return session;
-  }
-  return null;
-}
+AppSession? _sessionById(ChatState state, String sessionId) =>
+    SessionLookup.byId(state.sessions, sessionId);
 
 List<AppSession> _sessionsForStructure(
   List<AppSession> sessions,

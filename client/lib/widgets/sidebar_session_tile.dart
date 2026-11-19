@@ -11,7 +11,9 @@ import '../cubits/automation_cubit.dart';
 import '../cubits/automation_state.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/seat_lease_cubit.dart';
+import '../cubits/session/session_pod.dart';
 import '../cubits/session_groups_cubit.dart';
+import '../cubits/session_remote_activity_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
 import '../models/automation_list_scope.dart';
@@ -32,8 +34,6 @@ import 'app_toast/app_toast.dart';
 import 'light_hover_row.dart';
 import 'session_working_spinner.dart';
 import 'package:shared_ui/shared_ui.dart';
-
-import 'remote_activity_builder.dart';
 
 /// Session row for sidebars: rename, archive, overflow menu, and context menu.
 class SidebarSessionTile extends StatefulWidget {
@@ -93,14 +93,69 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
 
   SessionRepository? _repo;
   ChatCubit? _chatCubit;
+  SessionPod? _pod;
+  String _podSessionId = '';
   var _sessionAutomationCount = 0;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _repo = context.read<SessionRepository>();
-    _chatCubit = context.read<ChatCubit>();
+    final chatCubit = context.read<ChatCubit>();
+    if (!identical(_chatCubit, chatCubit)) {
+      _chatCubit?.podRegistry.removeListener(_onPodRegistryChanged);
+      _chatCubit = chatCubit;
+      chatCubit.podRegistry.addListener(_onPodRegistryChanged);
+      _pod = null;
+    }
+    _bindPod();
     _refreshSessionAutomationCount(context.read<AutomationCubit>().state);
+  }
+
+  @override
+  void didUpdateWidget(covariant SidebarSessionTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.session.sessionId != widget.session.sessionId) {
+      _pod = null;
+      _bindPod();
+    }
+  }
+
+  @override
+  void dispose() {
+    _chatCubit?.podRegistry.removeListener(_onPodRegistryChanged);
+    super.dispose();
+  }
+
+  void _onPodRegistryChanged() {
+    if (mounted) _bindPod(notify: true);
+  }
+
+  /// Seeds the idle runtime pod for this row outside build.
+  ///
+  /// The pod backs the launching spinner. Seeding it from a build-time
+  /// selector created a [ChangeNotifier] (plus a registry microtask) during
+  /// build, and phase reads then only refreshed on ChatCubit emits instead of
+  /// the pod's own notifications. Tab teardown drops the pod from the
+  /// registry, so re-resolve on registry changes as well.
+  void _bindPod({bool notify = false}) {
+    final chatCubit = _chatCubit;
+    if (chatCubit == null) return;
+    final sessionId = widget.session.sessionId;
+    final current = _pod;
+    if (current != null &&
+        _podSessionId == sessionId &&
+        identical(chatCubit.podRuntime(sessionId), current)) {
+      return;
+    }
+    final pod = chatCubit.ensurePodRuntime(sessionId);
+    if (identical(pod, current) && _podSessionId == sessionId) return;
+    _podSessionId = sessionId;
+    if (notify && mounted) {
+      setState(() => _pod = pod);
+    } else {
+      _pod = pod;
+    }
   }
 
   void _refreshSessionAutomationCount(AutomationState state) {
@@ -133,6 +188,18 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   /// running, reclaimed for idle, or exited.
   bool _sessionHasOpenTab(ChatCubit chat, String sessionId) =>
       chat.tabStore.getOpenTabBySessionId(sessionId) != null;
+
+  /// Remote session-plane busy flag as a bool: unrelated sessions' activity
+  /// deltas must not rebuild this row.
+  bool _sessionRemoteBusy(BuildContext context, String sessionId) {
+    try {
+      return context.select<SessionRemoteActivityCubit, bool>(
+        (cubit) => cubit.state.isBusy(sessionId),
+      );
+    } on Object {
+      return false;
+    }
+  }
 
   Future<void> _confirmAndDelete(BuildContext context) async {
     final l10n = context.l10n;
@@ -585,36 +652,45 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     // the spinner says a turn is answering (input queues behind it), the
     // breathing hourglass says the seat is parked on background work and new
     // input starts a fresh turn immediately.
-    // The pod ChangeNotifier flips `phase` connecting→running mid-call; select
-    // it so the indicator rebuilds on that transition without a global emit.
-    final connecting = context.select<ChatCubit, bool>(
-      (cubit) => cubit.ensurePodRuntime(sessionId).state.phase.isLaunching,
-    );
-    final remoteBusy = maybeRemoteActivity(context)?.isBusy(sessionId) ?? false;
-    final working = workingFromState || connecting || remoteBusy;
+    //
+    // The pod phase flips connecting→running mid-call; listen to the pod
+    // itself so only this 24×24 slot rebuilds, not the whole row.
+    final remoteBusy = _sessionRemoteBusy(context, sessionId);
     final leaseCubit = context.read<ChatCubit>().seatLeaseCubit;
-    final Widget indicator = leaseCubit == null
-        ? _sessionIndicator(
-            working: working,
-            waiting: waiting,
-            backgroundRunning: false,
-            selected: selected,
-            cs: cs,
-          )
-        : BlocBuilder<SeatLeaseCubit, SeatLeaseState>(
-            bloc: leaseCubit,
-            builder: (context, leaseState) => _sessionIndicator(
-              working: working,
-              waiting: waiting,
-              // Only once the turn is over does a held lease mean background
-              // work; waiting wins anyway.
-              backgroundRunning:
-                  !working &&
-                  !waiting &&
-                  leaseState.sessionHasLeases(sessionId),
-              selected: selected,
-              cs: cs,
-            ),
+    final pod = _pod;
+
+    Widget buildIndicator() {
+      final connecting = pod?.state.phase.isLaunching ?? false;
+      final working = workingFromState || connecting || remoteBusy;
+      if (leaseCubit == null) {
+        return _sessionIndicator(
+          working: working,
+          waiting: waiting,
+          backgroundRunning: false,
+          selected: selected,
+          cs: cs,
+        );
+      }
+      return BlocBuilder<SeatLeaseCubit, SeatLeaseState>(
+        bloc: leaseCubit,
+        builder: (context, leaseState) => _sessionIndicator(
+          working: working,
+          waiting: waiting,
+          // Only once the turn is over does a held lease mean background
+          // work; waiting wins anyway.
+          backgroundRunning:
+              !working && !waiting && leaseState.sessionHasLeases(sessionId),
+          selected: selected,
+          cs: cs,
+        ),
+      );
+    }
+
+    final Widget indicator = pod == null
+        ? buildIndicator()
+        : ListenableBuilder(
+            listenable: pod,
+            builder: (context, child) => buildIndicator(),
           );
     final Widget leadingWidget;
     if (widget.index >= 0) {
@@ -901,15 +977,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   ),
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: TpTooltip(
-                      message: paintedTitle,
-                      child: Text(
-                        paintedTitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TpTextStyles.of(context).mdColored(cs.onSurface),
-                      ),
-                    ),
+                    child: _titleWithTooltip(paintedTitle, cs),
                   ),
                 ),
               ),
@@ -950,6 +1018,22 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     );
     if (name == null || name.trim().isEmpty || !context.mounted) return;
     await chatCubit.renameSession(repo, session.sessionId, name.trim());
+  }
+
+  /// Title text, wrapped in a tooltip outside reorderable lists.
+  ///
+  /// Reorderable rows suppress every tooltip via [TooltipVisibility] (a live
+  /// tooltip's ticker breaks when the list reparents the row), so building
+  /// [TpTooltip] there only adds an invisible [OverlayPortal] per row.
+  Widget _titleWithTooltip(String title, ColorScheme cs) {
+    final text = Text(
+      title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TpTextStyles.of(context).mdColored(cs.onSurface),
+    );
+    if (widget.index >= 0) return text;
+    return TpTooltip(message: title, child: text);
   }
 
   /// Leading status slot for the row. Waiting (needs-you) wins over working,

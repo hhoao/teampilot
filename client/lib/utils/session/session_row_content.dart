@@ -4,6 +4,7 @@ import '../../cubits/chat_state.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/app_session.dart';
 import 'session_display_title.dart';
+import 'session_lookup.dart';
 
 /// Painted sidebar / tab-chip title + relative-time inputs + pin mark for one
 /// session.
@@ -48,9 +49,8 @@ class SessionRowContent {
   }
 
   factory SessionRowContent.fromChatState(ChatState state, String sessionId) {
-    for (final s in state.sessions) {
-      if (s.sessionId == sessionId) return SessionRowContent.fromSession(s);
-    }
+    final session = SessionLookup.byId(state.sessions, sessionId);
+    if (session != null) return SessionRowContent.fromSession(session);
     return SessionRowContent(
       sessionId: sessionId,
       display: '',

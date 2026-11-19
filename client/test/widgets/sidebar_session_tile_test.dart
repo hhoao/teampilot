@@ -1235,6 +1235,98 @@ void main() {
     expect(find.byKey(AppKeys.sidebarSessionWaitingMarker), findsNothing);
   });
 
+  testWidgets('mounting the row seeds the runtime pod it shows', (
+    tester,
+  ) async {
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+      ),
+    );
+    await tester.pump();
+
+    expect(chatCubit.podRuntime(_session.sessionId), isNotNull);
+  });
+
+  testWidgets('pod phase arriving after mount flips the row indicator', (
+    tester,
+  ) async {
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(SessionWorkingSpinner), findsNothing);
+
+    // Launched straight from the shell while the row sits mounted: the pod's
+    // own notification must repaint the leading slot — no ChatCubit emit.
+    chatCubit
+        .ensurePodRuntime(_session.sessionId)
+        .setPhase(SessionPhase.connecting);
+    await tester.pump();
+
+    expect(find.byType(SessionWorkingSpinner), findsOneWidget);
+  });
+
+  testWidgets('reorderable rows skip the title tooltip wrapper', (
+    tester,
+  ) async {
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+        child: SidebarSessionTile(
+          session: _session,
+          index: 0,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(TpTooltip), findsNothing);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+        child: SidebarSessionTile(session: _session, onTap: () {}),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(TpTooltip), findsOneWidget);
+  });
+
   testWidgets('tap while waiting selects first waiting seat, stays on Chat', (
     tester,
   ) async {
