@@ -225,7 +225,7 @@ exec "$realGit" "\$@"
     );
     expect(await File('$work/claude/projects/a.jsonl').readAsString(), 'two');
     expect(await failing.checkedOut(), second.commit);
-  });
+  }, skip: Platform.isWindows ? 'fake git is a POSIX shell script' : false);
 
   test(
     'forkAt copies the selected commit into a personal dest layout',

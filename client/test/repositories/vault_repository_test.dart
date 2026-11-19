@@ -3,13 +3,17 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/repositories/vault_repository.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import '../support/in_memory_filesystem.dart';
+import '../support/posix_path.dart';
 
 void main() {
   test('app paths expose the vault file and backup', () {
     final paths = AppPaths('/root');
-    expect(paths.vaultDir, p.join('/root', 'vault'));
-    expect(paths.vaultFile, p.join('/root', 'vault', 'vault.json'));
-    expect(paths.vaultBackupFile, p.join('/root', 'vault', 'vault.json.bak'));
+    expect(paths.vaultDir, posixPath.join('/root', 'vault'));
+    expect(paths.vaultFile, posixPath.join('/root', 'vault', 'vault.json'));
+    expect(
+      paths.vaultBackupFile,
+      posixPath.join('/root', 'vault', 'vault.json.bak'),
+    );
   });
 
   test('writes atomically and archives to the backup path', () async {
@@ -24,7 +28,7 @@ void main() {
     await repo.archive();
     expect(await repo.exists(), isFalse);
     expect(
-      await fs.readString(p.join('/root/vault', 'vault.json.bak')),
+      await fs.readString(posixPath.join('/root/vault', 'vault.json.bak')),
       '{"v":1}',
     );
   });

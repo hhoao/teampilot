@@ -20,9 +20,9 @@ void main() {
     );
     final dir = authStore.providerAuthDir('work');
     await fs.ensureDir(dir);
-    await fs.writeString(p.join(dir, QoderAuthStore.userFileName), 'USER');
+    await fs.writeString(p.posix.join(dir, QoderAuthStore.userFileName), 'USER');
     await fs.writeString(
-      p.join(dir, QoderAuthStore.machineIdFileName),
+      p.posix.join(dir, QoderAuthStore.machineIdFileName),
       'MACHINE',
     );
   });
@@ -50,7 +50,7 @@ void main() {
             // ignore: avoid_print
             expect(executable, 'qodercli');
             expect(
-              await fs.readString(p.join(configDir, '.auth', 'user')),
+              await fs.readString(p.posix.join(configDir, '.auth', 'user')),
               'USER',
               reason: 'probe config dir is seeded from the provider auth',
             );
@@ -178,7 +178,7 @@ void main() {
             }) async {
               calls++;
               expect(
-                await fs.readString(p.join(configDir, '.auth', 'user')),
+                await fs.readString(p.posix.join(configDir, '.auth', 'user')),
                 'MACHINE_USER',
               );
               return const QoderModelsSnapshot(modelIds: ['auto', 'smodel']);
@@ -210,7 +210,7 @@ void main() {
             expect(executable, 'qoderclicn');
             expect(configDir, '/app/tmp/qoder-cn-models/work');
             expect(
-              await fs.readString(p.join(configDir, '.auth', 'user')),
+              await fs.readString(p.posix.join(configDir, '.auth', 'user')),
               'CNUSER',
             );
             return const QoderModelsSnapshot(

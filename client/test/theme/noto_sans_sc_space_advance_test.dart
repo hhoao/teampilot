@@ -16,17 +16,12 @@ void main() {
     );
   });
 
-  testWidgets('Noto Sans SC FontLoader space advance stays proportional', (
-    tester,
-  ) async {
+  test('Noto Sans SC FontLoader space advance stays proportional', () async {
     const family = 'Noto Sans SC';
     const size = 20.0;
     final loader = FontLoader(family);
     loader.addFont(rootBundle.load('google_fonts/NotoSansSC-Regular.ttf'));
     await loader.load();
-    // FontLoader notifies system fonts on a later turn. Flutter 3.50 then
-    // schedules a frame; pump it before the test binding disposes the tree.
-    await tester.pump();
 
     final style = const TextStyle(fontFamily: family, fontSize: size);
     final without = TextPainter(
@@ -38,8 +33,13 @@ void main() {
       textDirection: TextDirection.ltr,
     )..layout();
     final spaceAdv = withSpace.width - without.width;
+    without.dispose();
+    withSpace.dispose();
 
     // Bundled face is ~0.224em; the Android mismatch was ~1.24em.
+    // Stay off testWidgets. Flutter 3.50 delivers FontLoader's fontsChange
+    // on a later turn, and the harness text render object schedules a frame
+    // the binding's single cleanup pump does not run.
     expect(spaceAdv, lessThan(size * 0.5));
     expect(spaceAdv, greaterThan(size * 0.1));
   });

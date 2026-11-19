@@ -63,7 +63,10 @@ void main() {
 
     expect(result.allowed, isTrue);
     expect(result.store!.target.seatKey, 'personal');
-    expect(result.store!.gitDir, contains('/rewind/personal'));
+    expect(
+      result.store!.gitDir.replaceAll('\\', '/'),
+      contains('/rewind/personal'),
+    );
   });
 
   test('mixed seat is denied (mixedSeatsDisabled)', () {

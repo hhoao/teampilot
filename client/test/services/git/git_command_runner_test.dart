@@ -475,12 +475,16 @@ void main() {
       expect(await File(dest).readAsString(), 'hello');
     });
 
-    test('runScript runs a POSIX shell script', () async {
-      final runner = LocalGitCommandRunner();
-      final result = await runner.runScript('printf "ok"');
-      expect(result.stdout, 'ok');
-      expect(result.exitCode, 0);
-    });
+    test(
+      'runScript runs a POSIX shell script',
+      () async {
+        final runner = LocalGitCommandRunner();
+        final result = await runner.runScript('printf "ok"');
+        expect(result.stdout, 'ok');
+        expect(result.exitCode, 0);
+      },
+      skip: Platform.isWindows ? 'runScript is POSIX-only' : false,
+    );
   });
 
   group('gitCommandRunnerForContext', () {

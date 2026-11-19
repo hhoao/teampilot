@@ -114,7 +114,9 @@ void main() {
       await transport.close();
       expect(process.killSignals, [
         ProcessSignal.sigterm,
-        ProcessSignal.sigkill,
+        // Windows Process.kill() takes no POSIX signal, so the escalation
+        // step is recorded as the default SIGTERM too.
+        Platform.isWindows ? ProcessSignal.sigterm : ProcessSignal.sigkill,
       ]);
       expect(transport.isClosed, isTrue);
     });

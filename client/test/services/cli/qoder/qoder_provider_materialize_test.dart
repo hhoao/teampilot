@@ -463,8 +463,8 @@ void main() {
 
         final loginAuth = '/tp/cli-login/qoder/qoder/config/.auth';
         await fs.ensureDir(loginAuth);
-        await fs.atomicWrite(p.join(loginAuth, 'user'), 'USER');
-        await fs.atomicWrite(p.join(loginAuth, 'machine_id'), 'MID');
+        await fs.atomicWrite(p.posix.join(loginAuth, 'user'), 'USER');
+        await fs.atomicWrite(p.posix.join(loginAuth, 'machine_id'), 'MID');
 
         final result = await capability.execute(
           providerId: provider.id,

@@ -260,12 +260,12 @@ final class _FakeHost implements CliInstallerHost {
   @override
   HostExecutionEnvironment get hostEnvironment =>
       HostExecutionEnvironment.resolve(
-        isWindowsHost: false,
+        isWindowsHost: Platform.isWindows,
         storageMode: StorageBackendMode.native,
       );
 
   @override
-  bool get isWindows => false;
+  bool get isWindows => Platform.isWindows;
 
   @override
   HostScriptRunner get scriptRunner => hostEnvironment.scriptRunner;

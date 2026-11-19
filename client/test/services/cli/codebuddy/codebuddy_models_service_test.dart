@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
+import 'package:teampilot/services/cli/codebuddy/provider/codebuddy_auth_store.dart';
 import 'package:teampilot/services/cli/codebuddy/provider/codebuddy_models_service.dart';
 
 import '../../../support/in_memory_filesystem.dart';
@@ -9,15 +9,11 @@ import '../../../support/in_memory_filesystem.dart';
 void main() {
   late InMemoryFilesystem fs;
 
-  String machineAuthDir(String home) => p.join(
-    home,
-    '.local',
-    'share',
-    'CodeBuddyExtension',
-    'Data',
-    'Public',
-    'auth',
-  );
+  String machineAuthDir(String home) => CodebuddyAuthStore(
+    fs: fs,
+    basePath: '/app',
+    pathContext: fs.pathContext,
+  ).authDirIn(home);
 
   Future<void> writeProviderToken(String providerId, String token) async {
     await fs.ensureDir('/app/providers/codebuddy');
@@ -186,7 +182,10 @@ void main() {
   test('falls back to the machine login without a provider token', () async {
     final authDir = machineAuthDir('/home/me');
     await fs.ensureDir(authDir);
-    await fs.writeString(p.join(authDir, 'Tencent-Cloud.info'), '{}');
+    await fs.writeString(
+      fs.pathContext.join(authDir, 'Tencent-Cloud.info'),
+      '{}',
+    );
 
     var calls = 0;
     final service = CodebuddyModelsService(

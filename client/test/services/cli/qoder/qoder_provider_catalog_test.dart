@@ -18,9 +18,9 @@ void main() {
     );
     final dir = store.providerAuthDir('work');
     await fs.ensureDir(dir);
-    await fs.writeString(p.join(dir, QoderAuthStore.userFileName), 'USER');
+    await fs.writeString(p.posix.join(dir, QoderAuthStore.userFileName), 'USER');
     await fs.writeString(
-      p.join(dir, QoderAuthStore.machineIdFileName),
+      p.posix.join(dir, QoderAuthStore.machineIdFileName),
       'MACHINE',
     );
     final service = QoderModelsService(

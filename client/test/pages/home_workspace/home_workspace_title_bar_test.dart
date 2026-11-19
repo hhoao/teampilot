@@ -16,6 +16,7 @@ import 'package:teampilot/services/app/platform_utils.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 import 'package:teampilot/widgets/notification/notification_bell_button.dart';
+import 'package:teampilot/widgets/window_chrome_controls.dart';
 import 'package:teampilot/widgets/window_drag_area.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -573,8 +574,19 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // macOS draws traffic lights, not the Windows glyphs. Both must flip
-    // before the OS reports the new window state.
+    // macOS draws traffic lights, not the Windows glyphs. The symbol is
+    // mounted only while the cluster is hovered, and it must flip before
+    // the OS reports the new window state.
+    if (useMacWindowChromeStyle) {
+      final lights = find.byType(MacTrafficLightControls);
+      expect(lights, findsOneWidget);
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await gesture.addPointer(location: Offset.zero);
+      addTearDown(gesture.removePointer);
+      await gesture.moveTo(tester.getCenter(lights));
+      await tester.pump();
+    }
+
     final maximize = useMacWindowChromeStyle
         ? find.byKey(const Key('mac_traffic_light_maximize_glyph'))
         : find.byIcon(Icons.crop_square_outlined);

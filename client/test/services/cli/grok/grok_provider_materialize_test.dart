@@ -98,6 +98,7 @@ void main() {
       final adapter = GrokCredentialAdapter(
         authority: authority,
         sessionProviderId: (_) => 'xai',
+        isWindows: false,
         now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
       );
       final capability = GrokProviderCapability(
@@ -187,6 +188,7 @@ void main() {
       adapter: GrokCredentialAdapter(
         authority: authority,
         sessionProviderId: (_) => 'xai',
+        isWindows: false,
         now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
       ),
     );
@@ -362,6 +364,7 @@ void main() {
         adapter: GrokCredentialAdapter(
           authority: authority,
           sessionProviderId: (_) => 'xai',
+          isWindows: false,
           now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
         ),
       );
@@ -461,6 +464,7 @@ void main() {
       adapter: GrokCredentialAdapter(
         authority: authority,
         sessionProviderId: (_) => 'xai',
+        isWindows: false,
         now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
       ),
     );
@@ -548,6 +552,7 @@ void main() {
       adapter: GrokCredentialAdapter(
         authority: authority,
         sessionProviderId: (_) => 'xai',
+        isWindows: false,
         now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
       ),
     );
@@ -705,6 +710,7 @@ void main() {
         adapter: GrokCredentialAdapter(
           authority: authority,
           sessionProviderId: (_) => 'xai',
+          isWindows: false,
           now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
         ),
       );
@@ -846,6 +852,7 @@ void main() {
         adapter: GrokCredentialAdapter(
           authority: authority,
           sessionProviderId: (_) => 'xai',
+          isWindows: false,
           now: () => now,
         ),
       );

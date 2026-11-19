@@ -123,7 +123,9 @@ void main() {
             stdoutEncoding,
             stderrEncoding,
           }) async {
-            final line = [executable, ...arguments].join(' ');
+            final line = [executable, ...arguments]
+                .join(' ')
+                .replaceAll('\\', '/');
             if (line.contains('.opencode/bin/opencode')) {
               return ProcessResult(
                 0,

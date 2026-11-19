@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/credential_action_result.dart';
 import 'package:teampilot/models/hook_event.dart';
@@ -209,17 +208,16 @@ void main() {
     });
 
     test('custom endpoints are never probed', () async {
-      final authDir = p.join(
-        '/home/me',
-        '.local',
-        'share',
-        'CodeBuddyExtension',
-        'Data',
-        'Public',
-        'auth',
-      );
+      final authDir = CodebuddyAuthStore(
+        fs: fs,
+        basePath: '/app',
+        pathContext: fs.pathContext,
+      ).authDirIn('/home/me');
       await fs.ensureDir(authDir);
-      await fs.writeString(p.join(authDir, 'Tencent-Cloud.info'), '{}');
+      await fs.writeString(
+        fs.pathContext.join(authDir, 'Tencent-Cloud.info'),
+        '{}',
+      );
 
       var calls = 0;
       final service = CodebuddyModelsService(
@@ -376,12 +374,15 @@ void main() {
       final fs = InMemoryFilesystem();
       final storage = fakeHomeStorage(filesystem: fs, appDataRoot: '/tp');
       final cap = CodebuddyProviderCapability(storage: storage);
-      final authDir =
-          '/tp/cli-login/codebuddy/codebuddy/home/.local/share/'
-          'CodeBuddyExtension/Data/Public/auth';
+      final authStore = CodebuddyAuthStore(
+        fs: fs,
+        basePath: '/tp',
+        pathContext: fs.pathContext,
+      );
+      final authDir = authStore.authDirIn(authStore.loginHome(provider.id));
       await fs.ensureDir(authDir);
       await fs.atomicWrite(
-        '$authDir/Tencent-Cloud.coding-copilot.info',
+        fs.pathContext.join(authDir, 'Tencent-Cloud.coding-copilot.info'),
         jsonEncode({
           'auth': {
             'accessToken': 'tok-1',

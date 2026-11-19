@@ -77,7 +77,8 @@ void main() {
   );
 
   Future<GrokCredentialAdapter> build({
-    bool? isWindows,
+    // Fixtures exercise the POSIX shim. Windows refusal is opt-in.
+    bool isWindows = false,
     void Function(String sessionId, String providerId)? onSessionMaterialized,
   }) async {
     final fs = InMemoryFilesystem();

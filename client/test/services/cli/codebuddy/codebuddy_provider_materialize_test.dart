@@ -283,9 +283,15 @@ void main() {
     final memFs = InMemoryFilesystem();
     final storage = fakeHomeStorage(filesystem: memFs, appDataRoot: base.path);
     // Provider-scoped isolated credential (injected as CODEBUDDY_AUTH_TOKEN).
-    await memFs.ensureDir(p.join(base.path, 'providers', 'codebuddy'));
+    final authPath = memFs.pathContext.join(
+      base.path,
+      'providers',
+      'codebuddy',
+      'custom-endpoint.auth.json',
+    );
+    await memFs.ensureDir(memFs.pathContext.dirname(authPath));
     await memFs.atomicWrite(
-      p.join(base.path, 'providers', 'codebuddy', 'custom-endpoint.auth.json'),
+      authPath,
       jsonEncode({
         'accessToken': 'tok-custom',
         'expiresAt': DateTime.now()
@@ -387,9 +393,15 @@ void main() {
     final fs = LocalFilesystem();
     final memFs = InMemoryFilesystem();
     final storage = fakeHomeStorage(filesystem: memFs, appDataRoot: base.path);
-    await memFs.ensureDir(p.join(base.path, 'providers', 'codebuddy'));
+    final authPath = memFs.pathContext.join(
+      base.path,
+      'providers',
+      'codebuddy',
+      'codebuddy.auth.json',
+    );
+    await memFs.ensureDir(memFs.pathContext.dirname(authPath));
     await memFs.atomicWrite(
-      p.join(base.path, 'providers', 'codebuddy', 'codebuddy.auth.json'),
+      authPath,
       jsonEncode({
         'accessToken': 'tok-cn',
         'expiresAt': DateTime.now()

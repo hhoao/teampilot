@@ -63,12 +63,19 @@ void main() {
       executableName: 'agy_acp_server.par',
     );
 
-    expect(path, '${root.path}/toolchain/1.4.3/agy_acp_server.par');
+    expect(
+      path,
+      fs.pathContext.join(
+        '${root.path}/toolchain/1.4.3',
+        'agy_acp_server.par',
+      ),
+    );
     expect(File(path).readAsBytesSync(), [1, 2, 3]);
     // chmod runs on the staged file, before the atomic move.
     expect(chmodded, hasLength(1));
-    expect(chmodded.single, contains('/staging/'));
-    expect(chmodded.single, endsWith('/agy_acp_server.par'));
+    final staged = chmodded.single.replaceAll('\\', '/');
+    expect(staged, contains('/staging/'));
+    expect(staged, endsWith('/agy_acp_server.par'));
     if (!Platform.isWindows) {
       final executable = await Process.run('test', ['-x', path]);
       expect(executable.exitCode, 0, reason: '$path is not executable');
@@ -178,9 +185,10 @@ void main() {
       expect(File(path).readAsBytesSync(), [7, 8]);
       expect(File('$destDir/stale.txt').existsSync(), isFalse);
       expect(chmodded, hasLength(2));
-      expect(chmodded.every((path) => path.contains('/staging/')), isTrue);
-      expect(chmodded, contains(endsWith('agy_acp_server.par')));
-      expect(chmodded, contains(endsWith('bin/helper')));
+      final staged = chmodded.map((path) => path.replaceAll('\\', '/'));
+      expect(staged.every((path) => path.contains('/staging/')), isTrue);
+      expect(staged, contains(endsWith('agy_acp_server.par')));
+      expect(staged, contains(endsWith('bin/helper')));
       if (!Platform.isWindows) {
         for (final name in ['agy_acp_server.par', 'bin/helper']) {
           final executable = await Process.run('test', [
