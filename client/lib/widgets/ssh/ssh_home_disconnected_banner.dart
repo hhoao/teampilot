@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+import '../../cubits/home_connection_cubit.dart';
 import '../../cubits/ssh_connection_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/app/connection_mode_service.dart';
-import '../../services/storage/home_target_controller.dart';
 
 /// Non-blocking strip when Android home is a remote SSH profile but storage
 /// pool is not connected.
@@ -19,10 +19,11 @@ class SshHomeDisconnectedBanner extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final profileId = context
-        .watch<HomeTargetController>()
-        .current
-        .sshProfileId;
+    // The connection cubit carries the live home identity and emits when a
+    // switch reseeds it. Reading `HomeTargetController.current` here would
+    // freeze the id at the first build (it is a plain object, not a listenable)
+    // and the banner would keep looking up the abandoned home.
+    final profileId = context.watch<HomeConnectionCubit>().state.profileId;
     if (profileId == null || profileId.isEmpty) {
       return const SizedBox.shrink();
     }

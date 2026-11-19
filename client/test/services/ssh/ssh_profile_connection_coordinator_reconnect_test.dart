@@ -128,6 +128,34 @@ void main() {
     await harness.dispose();
   });
 
+  test('resumeRetries confirms an already-live transport', () async {
+    final cubit = HomeConnectionCubit(
+      connect: () async =>
+          const HomeConnectResult.unreachable(HomeErrorKind.tcpUnreachable),
+      cancelRetry: () async {},
+      resumeRetry: () async {},
+      onConnected: () {},
+      profileId: _profile.id,
+    );
+    addTearDown(cubit.close);
+    final harness = _ReconnectHarness(maxAttempts: 3, homeCubit: cubit);
+    addTearDown(harness.dispose);
+
+    // Mirrors a home switch: `rebindHome` already opened the replacement's
+    // storage lease before the connection cubit was reseeded. The resume must
+    // confirm that live transport instead of silently returning from the retry
+    // driver because `gate.isUp` — the view would otherwise stay `reconnecting`.
+    await harness.factory.ensureStorageConnected(_profile);
+    cubit.markBackgroundAttempt(1);
+    expect(cubit.state.status, HomeConnectionStatus.reconnecting);
+
+    harness.coordinator.resumeRetries(_profile.id);
+
+    expect(harness.reconnected, [_profile.id]);
+    expect(harness.attempts, isEmpty);
+    expect(cubit.state.status, HomeConnectionStatus.connected);
+  });
+
   test('hostIdentityChanged is classified as non-retryable', () {
     const changed = SshTransportClosed(
       reason: SshTransportCloseReason.hostIdentityChanged,

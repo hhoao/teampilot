@@ -1980,11 +1980,18 @@ Future<AppShell> buildAppShell({
     // remote boot), so hot recovery is preserved; an `up` that follows a
     // connecting/reconnecting/failed phase is the only thing that runs it.
     SshPhase? previousHomePhase;
+    String? projectedHomeProfileId;
     homeConnectivitySub = sshHomeConnectivity.changes.listen((state) {
       final cubit = homeConnectionCubit;
       if (cubit == null || cubit.isClosed) return;
       if (state.profileId != activeHomeProfileId) return;
-      final previous = previousHomePhase;
+      // Phase transitions are only meaningful within one home. A switch to a
+      // different profile starts a fresh baseline: otherwise a live replacement
+      // after a reconnecting home looks like `reconnecting → up` and replays
+      // hot recovery (remote boot + session reconnect) on a plain switch.
+      final sameHome = projectedHomeProfileId == state.profileId;
+      projectedHomeProfileId = state.profileId;
+      final previous = sameHome ? previousHomePhase : null;
       previousHomePhase = state.phase;
       if (state.planeRebinding) {
         cubit.markPlaneRebinding();
@@ -2333,6 +2340,7 @@ Future<AppShell> buildAppShell({
       writeActiveHomeProfileId: (id) => activeHomeProfileId = id,
       writeWatchedConnectivityKey: (key) =>
           watchedHomeProfileConnectivityKey = key,
+      resetNavigation: () => appRouter.go('/home-v2'),
       homeInvalidationService: () => homeInvalidationService,
     );
 

@@ -100,21 +100,37 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
   bool shouldPersistRetry(String id) =>
       id == _activeHomeId && !stateFor(id).isUp;
 
-  /// The single write path. Command entry points (cubit connect/disconnect)
-  /// and internal signals all funnel through here; dedup keeps the stream
-  /// quiet and makes the `up` transition atomic (invariant 3).
+  /// The single write path for derived state. Command entry points (cubit
+  /// connect/disconnect) and internal signals all funnel through here; dedup
+  /// keeps the stream quiet and makes the `up` transition atomic (invariant 3).
+  ///
+  /// Lifecycle *outcomes* (a reconnect/resume confirmation) use [_announce]
+  /// instead: the view can have missed the earlier emission while a different
+  /// home was active, so an equal state is still news.
   @override
   void publish(SshHomeConnectivityState state) {
     if (_disposed || _changes.isClosed) return;
     final id = state.profileId;
-    // Lazily observe this profile's monitor so direct monitorFor(...) changes
-    // from the retry driver re-derive and publish.
+    _observe(id);
+    if (_states[id] == state) return;
+    _states[id] = state;
+    _changes.add(state);
+  }
+
+  /// Lazily observes [id]'s monitor so direct `monitorFor(...)` changes from
+  /// the retry driver re-derive and publish.
+  void _observe(String id) {
     _monitorSubs.putIfAbsent(
       id,
       () => _coordinator.changesFor(id).listen((_) => _onMonitorChanged(id)),
     );
-    if (_states[id] == state) return;
-    _states[id] = state;
+  }
+
+  /// Announces a lifecycle outcome verbatim, bypassing equality dedup.
+  void _announce(SshHomeConnectivityState state) {
+    if (_disposed || _changes.isClosed) return;
+    _observe(state.profileId);
+    _states[state.profileId] = state;
     _changes.add(state);
   }
 
@@ -130,7 +146,7 @@ class SshHomeConnectivitySupervisor implements SshConnectivitySource {
 
   void noteReconnected(String id) {
     _gate.markUp(id);
-    publish(SshHomeConnectivityState.up(id));
+    _announce(SshHomeConnectivityState.up(id));
   }
 
   void noteNonRetryableClose(String id, Object error) {

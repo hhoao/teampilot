@@ -130,16 +130,15 @@ class HomeConnectionCubit extends Cubit<HomeConnectionState> {
 
   Future<void> retryNow() async {
     if (isClosed) return;
-    // The coordinator is the single retry driver. Surface `reconnecting` and
-    // hand off; do NOT run a competing `connectOnce` here — two drivers writing
-    // this state made the button flip between `unreachable` and `reconnecting`.
-    emit(state.copyWith(attempt: 0, status: HomeConnectionStatus.reconnecting));
+    // The supervisor owns connectivity state: this only hands off to the
+    // coordinator. Resuming either confirms an already-live transport
+    // (announced as `up`) or starts a dial (announced as `reconnecting`).
+    // Pre-writing `reconnecting` here painted the retry page on a plain home
+    // switch even when the replacement was already connected.
     try {
       await _resumeRetry();
     } on Object catch (error) {
       appLogger.w('[home] resume retry failed: ${error.runtimeType}');
-      // Stay `reconnecting`: the coordinator keeps trying. Only an explicit
-      // cancel moves to `unreachable`.
     }
   }
 

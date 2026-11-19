@@ -70,6 +70,9 @@ void main() {
       await cubit.retryNow();
       expect(resume, 1);
       expect(cubit.state.attempt, 0);
+      // The cubit no longer synthesizes `reconnecting`: only the supervisor
+      // announces connectivity progress.
+      expect(cubit.state.status, HomeConnectionStatus.unreachable);
     },
   );
 
@@ -108,9 +111,11 @@ void main() {
     );
     await cubit.connectOnce();
     expect(cubit.state.lastErrorKind, HomeErrorKind.sshTimeout);
-    // 「继续重试」 hands off; the coordinator reports success via markReconnected.
+    // 「继续重试」 hands off; only the supervisor reports progress (`reconnecting`)
+    // or success (`up`). The cubit must not paint a retry state on its own.
     await cubit.retryNow();
-    expect(cubit.state.status, HomeConnectionStatus.reconnecting);
+    expect(cubit.state.status, HomeConnectionStatus.unreachable);
+    expect(cubit.state.lastErrorKind, HomeErrorKind.sshTimeout);
     cubit.markReconnected();
     expect(cubit.state.status, HomeConnectionStatus.connected);
     expect(cubit.state.lastErrorKind, isNull);
@@ -218,12 +223,15 @@ void main() {
         resumeRetry: () async => throw StateError('boom'),
         onConnected: () {},
       );
+      cubit.markInitial(
+        const HomeConnectResult.unreachable(HomeErrorKind.tcpUnreachable),
+      );
       await cubit.retryNow();
-      // Single retry driver: `retryNow` must not run `connect` itself, and a
-      // throwing resume must stay `reconnecting` (the coordinator keeps
-      // trying) rather than flipping to `unreachable`.
+      // Single retry driver: `retryNow` must not run `connect` itself and must
+      // not invent a `reconnecting` state. A throwing handoff leaves the last
+      // authoritative state untouched.
       expect(connectCalls, 0);
-      expect(cubit.state.status, HomeConnectionStatus.reconnecting);
+      expect(cubit.state.status, HomeConnectionStatus.unreachable);
     },
   );
 

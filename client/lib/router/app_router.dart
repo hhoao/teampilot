@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+import '../cubits/chat_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../models/app_provider_config.dart';
 import '../pages/config/config_workspace.dart';
@@ -88,6 +90,29 @@ void reapplyWorkspaceEntryFromPreferences(
   );
 }
 
+/// Guard for `/home-v2/workspace/:workspaceId`.
+///
+/// Workspace ids are scoped to the home plane. The device-local
+/// `lastOpenedWorkspaceId` (and a pending home switch) can point at a workspace
+/// from another home; rendering that route paints an empty body because
+/// [HomeWorkspaceBodyStack] has no matching workspace for the tab.
+///
+/// The index is authoritative: an empty list means the current home's index has
+/// not loaded yet (or the home has no workspaces), so the restore decision
+/// stays with [reapplyWorkspaceEntryFromPreferences], which re-applies the
+/// notifier once the index lands.
+@visibleForTesting
+String? homeWorkspaceRouteRedirect({
+  required String? workspaceId,
+  required Iterable<String> workspaceIds,
+}) {
+  if (workspaceId == null || workspaceId.trim().isEmpty) return '/home-v2';
+  for (final id in workspaceIds) {
+    if (id == workspaceId) return null;
+  }
+  return '/home-v2';
+}
+
 final appRouter = GoRouter(
   refreshListenable: _workspaceEntryNotifier,
   initialLocation: _workspaceEntryNotifier.value,
@@ -134,6 +159,19 @@ final appRouter = GoRouter(
             ),
             GoRoute(
               path: '/home-v2/workspace/:workspaceId',
+              redirect: (context, state) {
+                final workspaces = context.read<ChatCubit>().state.workspaces;
+                // Empty: the current home's index is still loading. The
+                // workspace-entry reapply runs after it lands and refreshes the
+                // router, which re-runs this redirect with the real index.
+                if (workspaces.isEmpty) return null;
+                return homeWorkspaceRouteRedirect(
+                  workspaceId: state.pathParameters['workspaceId'],
+                  workspaceIds: [
+                    for (final workspace in workspaces) workspace.workspaceId,
+                  ],
+                );
+              },
               pageBuilder: (context, state) =>
                   const NoTransitionPage(child: SizedBox.shrink()),
             ),

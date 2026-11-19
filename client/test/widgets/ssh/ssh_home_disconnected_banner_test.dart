@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/cubits/home_connection_cubit.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -17,6 +18,7 @@ import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
+import 'package:teampilot/services/ssh/ssh_home_connectivity_state.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_host_profile_assembly.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
@@ -35,9 +37,25 @@ const _profile = SshProfile(
   username: 'alice',
 );
 
+const _otherProfile = SshProfile(
+  id: 'p2',
+  name: 'other',
+  host: 'other.example.com',
+  username: 'bob',
+);
+
+HomeConnectionCubit _homeConnection({String? profileId}) => HomeConnectionCubit(
+  connect: () async => throw UnimplementedError('unused in banner test'),
+  cancelRetry: () async {},
+  resumeRetry: () async {},
+  onConnected: () {},
+  profileId: profileId,
+);
+
 Widget _host({
   required RuntimeTarget home,
   required SshConnectionCubit sshCubit,
+  HomeConnectionCubit? homeCubit,
   required Widget child,
 }) {
   final scheme = ColorScheme.fromSeed(seedColor: Colors.indigo);
@@ -46,6 +64,8 @@ Widget _host({
     hasSshProfiles: () => true,
   );
   final homeController = _homeTargetController(home);
+  final liveHome =
+      homeCubit ?? _homeConnection(profileId: home.sshProfileId);
   return MaterialApp(
     localizationsDelegates: appLocalizationsDelegates,
     supportedLocales: appLocalizationsSupportedLocales,
@@ -58,8 +78,11 @@ Widget _host({
           RepositoryProvider<ConnectionModeService>.value(value: mode),
           RepositoryProvider<HomeTargetController>.value(value: homeController),
         ],
-        child: BlocProvider<SshConnectionCubit>.value(
-          value: sshCubit,
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider<HomeConnectionCubit>.value(value: liveHome),
+            BlocProvider<SshConnectionCubit>.value(value: sshCubit),
+          ],
           child: Scaffold(body: child),
         ),
       ),
@@ -114,16 +137,20 @@ class _Harness {
   final Map<String, SshProfile> _profiles;
   late final SshClientFactory factory;
   late final SshProfileConnectionCoordinator coordinator;
+  final connectivity = TestSshConnectivity();
 
   SshConnectionCubit createCubit() {
     return SshConnectionCubit(
       factory: factory,
       coordinator: coordinator,
-      connectivity: TestSshConnectivity(),
+      connectivity: connectivity,
     );
   }
 
-  Future<void> dispose() => coordinator.dispose();
+  Future<void> dispose() async {
+    await connectivity.dispose();
+    await coordinator.dispose();
+  }
 }
 
 void main() {
@@ -152,6 +179,45 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Reconnect'), findsOneWidget);
+  });
+
+  testWidgets('follows the live home profile id after a switch', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    final cubit = harness.createCubit();
+    final homeCubit = _homeConnection(profileId: _profile.id);
+    addTearDown(() async {
+      await homeCubit.close();
+      await cubit.close();
+      await harness.dispose();
+    });
+
+    await cubit.syncProfiles(const [_profile, _otherProfile]);
+    harness.connectivity.publish(
+      SshHomeConnectivityState.up(_otherProfile.id),
+    );
+
+    await tester.pumpWidget(
+      _host(
+        home: RuntimeTarget.ssh(_profile.id, label: _profile.name),
+        sshCubit: cubit,
+        homeCubit: homeCubit,
+        child: const SshHomeDisconnectedBanner(),
+      ),
+    );
+    expect(find.text('Reconnect'), findsOneWidget);
+
+    // The home switch reseeds the connection cubit onto p2. The banner must
+    // re-read that live id instead of looking up the abandoned p1.
+    homeCubit.rebind(profileId: _otherProfile.id, host: _otherProfile.host);
+    await tester.pump();
+
+    expect(find.text('Reconnect'), findsNothing);
+    expect(
+      find.textContaining('Remote SSH work home is disconnected'),
+      findsNothing,
+    );
   });
 
   testWidgets('reconnect calls connect', (tester) async {

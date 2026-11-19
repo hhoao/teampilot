@@ -51,6 +51,7 @@ class HomePlaneSwitchController {
     required this.readActiveHomeProfileId,
     required this.writeActiveHomeProfileId,
     required this.writeWatchedConnectivityKey,
+    required this.resetNavigation,
     required this.homeInvalidationService,
   });
 
@@ -71,6 +72,12 @@ class HomePlaneSwitchController {
   final String? Function() readActiveHomeProfileId;
   final void Function(String? profileId) writeActiveHomeProfileId;
   final void Function(String? key) writeWatchedConnectivityKey;
+
+  /// Resets the navigator to the home route. Workspace routes (and the tabs
+  /// they render) are scoped to the home plane: after a switch they reference
+  /// the outgoing plane's workspace ids, which the shell cannot resolve on the
+  /// replacement and renders as an empty body.
+  final void Function() resetNavigation;
   final HomeInvalidationService Function() homeInvalidationService;
 
   Future<void> persistSshHomePathCacheIfLive() async {
@@ -162,9 +169,21 @@ class HomePlaneSwitchController {
     writeWatchedConnectivityKey(
       pendingProfile == null ? null : sshProfileConnectivityKey(pendingProfile),
     );
+    final previousContext = storage.context;
     await setHomeTarget(
       id,
     ); // persists + rebinds home + republishes HomeStorage
+    final nextContext = storage.context;
+    if (previousContext.target.id != nextContext.target.id ||
+        previousContext.appDataRoot != nextContext.appDataRoot) {
+      // The plane identity changed: any workspace route/tab still pointing at
+      // one of the outgoing plane's ids can no longer render (the shell has no
+      // matching workspace and paints an empty body). Reset navigation as soon
+      // as the replacement is published; the cubit/transport rebind below does
+      // not depend on the route. A same-identity reinstall (reconnect) keeps
+      // the current route.
+      resetNavigation();
+    }
     final nextSshProfileId = readActiveHomeProfileId();
     if (previousSshProfileId != nextSshProfileId) {
       // Latch the abandoned profile (in-flight attempts back out, timer is

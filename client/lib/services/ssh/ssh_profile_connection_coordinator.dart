@@ -204,7 +204,25 @@ class SshProfileConnectionCoordinator {
     resetReconnectAttempts(profileId);
     final profile = _profileResolver(profileId);
     if (profile == null) return;
-    monitorFor(profileId).markDown();
+    final monitor = monitorFor(profileId);
+    if (_gate.isUp(profileId) || _factory.hasLiveStorageClient(profileId)) {
+      // The transport can already be live when resume is requested: a home
+      // switch resolves the replacement before the connection cubit is reseeded,
+      // and a lazy pool open can bring a profile back before the retry driver
+      // runs. That is a resume confirmation, not a retry, and must be reported
+      // through the reconnected hook — `_runReconnect` would refuse to dial an
+      // already-up gate and silently leave the view in `reconnecting`.
+      if (_reconnectInFlight[profileId] == true) {
+        // A dial is still unwinding; its success path reports the same
+        // confirmation, so do not confirm twice.
+        return;
+      }
+      _gate.markUp(profileId);
+      monitor.reconnected();
+      _notifyReconnected(profileId);
+      return;
+    }
+    monitor.markDown();
     if (_reconnectInFlight[profileId] == true) {
       _scheduleReconnect(profileId);
       return;

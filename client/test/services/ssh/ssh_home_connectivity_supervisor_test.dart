@@ -104,6 +104,28 @@ void main() {
     expect(states.last.failure, isNull);
   });
 
+  test('a resume confirmation announces up even when cached state is up',
+      () async {
+    final h = _Harness();
+    addTearDown(h.dispose);
+
+    final states = <SshHomeConnectivityState>[];
+    final sub = h.supervisor.changes.listen(states.add);
+    addTearDown(sub.cancel);
+
+    h.supervisor.noteReconnected(_profile.id);
+    await waitUntil(() => states.length == 1);
+    expect(states.single.phase, SshPhase.up);
+
+    // A home switch resolves the replacement before the connection cubit is
+    // reseeded, so the view can miss the first `up`. Confirming the resume is
+    // a lifecycle outcome: it must reach the stream even though the cached
+    // state already equals `up` (dedup is for derived recomputations only).
+    h.supervisor.noteReconnected(_profile.id);
+    await waitUntil(() => states.length == 2);
+    expect(states.last.phase, SshPhase.up);
+  });
+
   test('activateHome persists retries only for the active home', () async {
     final h = _Harness();
     addTearDown(h.dispose);

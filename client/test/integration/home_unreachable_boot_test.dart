@@ -370,6 +370,39 @@ void main() {
     },
   );
 
+  test(
+    'switching to an already-connected home confirms instead of retrying',
+    () async {
+      final harness = _HomeBootHarness(
+        reachable: false,
+        reachableHosts: {_replacementProfile.host},
+      );
+      addTearDown(harness.dispose);
+
+      harness.seedBoot(await harness.attempt.run(_profile.id));
+      expect(harness.cubit.state.status, HomeConnectionStatus.unreachable);
+
+      // Mirrors `setHomeTarget`: `rebindHome` resolves (and dials) the
+      // replacement before the connection cubit is reseeded. The storage lease
+      // is therefore already live when `retryNow` hands off.
+      await harness.factory.ensureStorageConnected(_replacementProfile);
+      harness.activeProfileId = _replacementProfile.id;
+      harness.cubit.rebind(
+        profileId: _replacementProfile.id,
+        host: _replacementProfile.host,
+        port: _replacementProfile.port,
+      );
+      expect(harness.cubit.state.status, HomeConnectionStatus.connecting);
+
+      await harness.cubit.retryNow();
+
+      // The resume must confirm the live transport: no dial, no retry-page
+      // state left behind.
+      expect(harness.cubit.state.status, HomeConnectionStatus.connected);
+      expect(harness.backgroundAttempts, isEmpty);
+    },
+  );
+
   // `buildAppShell` is unmountable (see file header), so the wiring the
   // behavior cases cannot observe being deleted is pinned at the source
   // level, following `test/app/app_shell_bootstrap_retry_test.dart`.

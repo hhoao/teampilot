@@ -9,6 +9,7 @@ import '../../cubits/ssh_profile_cubit.dart';
 import '../../cubits/ssh_workload_profile_cubit.dart';
 import '../../models/ssh_profile.dart';
 import '../../services/ssh/ssh_host_profile_assembly.dart';
+import '../../services/storage/home_storage.dart';
 import '../../services/storage/home_target_controller.dart';
 
 /// Keeps [SshConnectionCubit] host VMs in sync with the home-plane workload
@@ -28,6 +29,7 @@ class SshConnectionBinder extends StatefulWidget {
 class _SshConnectionBinderState extends State<SshConnectionBinder> {
   var _syncing = false;
   List<SshProfile>? _pending;
+  StreamSubscription<StoragePlaneChange>? _storageSub;
 
   @override
   void initState() {
@@ -36,6 +38,25 @@ class _SshConnectionBinderState extends State<SshConnectionBinder> {
       if (!mounted) return;
       _requestSync(_assembled(context));
     });
+    // The current home is one of the assembled inputs. A home switch publishes
+    // a new storage plane *without* changing either catalog, so the profile
+    // listeners above cannot observe it; without this the replacement home is
+    // missing from [SshConnectionCubit], the disconnected banner cannot resolve
+    // its status, and its reconnect button has no profile to connect. Only a
+    // target change is a home switch — a same-target reinstall (hot recovery)
+    // is already followed by `reconnectHomeSshIfNeeded`.
+    _storageSub = context.read<HomeStorage>().changes.listen((change) {
+      if (!mounted) return;
+      if (change.oldContext.target.id == change.newContext.target.id) return;
+      _requestSync(_assembled(context));
+    });
+  }
+
+  @override
+  void dispose() {
+    _storageSub?.cancel();
+    _storageSub = null;
+    super.dispose();
   }
 
   /// Single assembly point shared with `shell_boot.reconnectHomeSshIfNeeded`,
