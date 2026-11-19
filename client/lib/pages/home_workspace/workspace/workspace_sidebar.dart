@@ -47,6 +47,7 @@ import '../../../utils/session/session_reorder_merge.dart';
 import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
 import 'project_tree_section.dart';
+import 'running_sessions_scroll.dart';
 import 'workspace_sidebar_probe.dart';
 import 'workspace_sidebar_row_metrics.dart';
 import '../../../widgets/sidebar_session_tile.dart';
@@ -1013,10 +1014,7 @@ class _RunningSessionsSection extends StatelessWidget {
         // Only the rows scroll once the strip hits its max height — the
         // section title stays pinned above the scroll view.
         Flexible(
-          child: SingleChildScrollView(
-            key: const ValueKey('workspace-running-sessions-scroll'),
-            primary: false,
-            padding: EdgeInsets.zero,
+          child: RunningSessionsScroll(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: rows,
@@ -1112,10 +1110,7 @@ class _RunningSplitGroupsSection extends StatelessWidget {
         // Only the rows scroll once the strip hits its max height — the
         // section title stays pinned above the scroll view.
         Flexible(
-          child: SingleChildScrollView(
-            key: const ValueKey('workspace-running-sessions-scroll'),
-            primary: false,
-            padding: EdgeInsets.zero,
+          child: RunningSessionsScroll(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: body,
