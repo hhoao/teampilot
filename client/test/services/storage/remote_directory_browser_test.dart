@@ -74,6 +74,35 @@ void main() {
     );
   });
 
+  group('RemoteDirectoryBrowser initial directory', () {
+    test(
+      'uses the injected initial directory instead of re-resolving "."',
+      () async {
+        // `resolveSymlink('.')` falls back to the process root, which is not
+        // browsable on Android; the runtime context already knows the home.
+        final fs = _FakeFilesystem(home: '/', entries: {'/srv/app': const []});
+        final browser = RemoteDirectoryBrowser(
+          fs,
+          initialDirectory: '/srv/app/',
+        );
+
+        expect(await browser.resolveInitial(''), '/srv/app');
+        expect(await browser.resolveInitial(null), '/srv/app');
+      },
+    );
+
+    test('"~" expands against the injected initial directory', () async {
+      final fs = _FakeFilesystem(home: '/', entries: {});
+      final browser = RemoteDirectoryBrowser(
+        fs,
+        initialDirectory: '/srv/app',
+      );
+
+      expect(await browser.resolveInitial('~'), '/srv/app');
+      expect(await browser.resolveInitial('~/work'), '/srv/app/work');
+    });
+  });
+
   group('RemoteDirectoryBrowser.list', () {
     test('returns only directories, sorted, parent computed', () async {
       final fs = _FakeFilesystem(

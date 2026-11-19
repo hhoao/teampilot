@@ -20,14 +20,21 @@ class RemoteDirectoryListing {
 /// (local cwd, WSL, SFTP remote home). No Flutter imports — fully unit-testable
 /// with a fake [Filesystem].
 class RemoteDirectoryBrowser {
-  RemoteDirectoryBrowser(this._fs);
+  RemoteDirectoryBrowser(this._fs, {String? initialDirectory})
+    : _initialDirectory = initialDirectory;
 
   final Filesystem _fs;
 
+  /// Known starting directory (the runtime context's remote home). Preferred
+  /// over `resolveSymlink('.')`, which falls back to the *process* root when the
+  /// backend cannot resolve it — unreadable on Android.
+  final String? _initialDirectory;
+
   /// Resolve the directory to open first. Empty / `~` / `.` resolve to the
-  /// backend's "here" via `resolveSymlink('.')` (remote home for SFTP, cwd for
-  /// local); a `~/...` prefix expands against that home. Anything else is
-  /// normalized with the backend path context.
+  /// browser's [initialDirectory] when given (the runtime context's home),
+  /// otherwise to the backend's "here" via `resolveSymlink('.')` (remote home
+  /// for SFTP, cwd for local); a `~/...` prefix expands against that home.
+  /// Anything else is normalized with the backend path context.
   Future<String> resolveInitial(String? input) async {
     final trimmed = (input ?? '').trim();
     if (trimmed.isEmpty || trimmed == '~' || trimmed == '.') {
@@ -44,6 +51,8 @@ class RemoteDirectoryBrowser {
   }
 
   Future<String> _home() async {
+    final known = _initialDirectory?.trim() ?? '';
+    if (known.isNotEmpty) return _fs.pathContext.normalize(known);
     final resolved = await _fs.resolveSymlink('.');
     if (resolved != null && resolved.trim().isNotEmpty) return resolved;
     return _fs.pathContext.rootPrefix(_fs.pathContext.current).isNotEmpty

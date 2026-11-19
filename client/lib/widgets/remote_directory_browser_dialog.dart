@@ -61,8 +61,11 @@ class _RemoteDirectoryBrowserDialogState
   Future<void> _init() async {
     final picker = context.read<WorkspaceDirectoryPicker>();
     try {
-      final fs = await picker.filesystemFor(widget.targetId);
-      final browser = RemoteDirectoryBrowser(fs);
+      final ctx = await picker.contextFor(widget.targetId);
+      final browser = RemoteDirectoryBrowser(
+        ctx.fs,
+        initialDirectory: ctx.home,
+      );
       final initial = await browser.resolveInitial(widget.initialPath);
       final listing = await browser.list(initial);
       if (!mounted) return;
