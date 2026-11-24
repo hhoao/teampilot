@@ -351,6 +351,7 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
         ),
         decoration: TpActionMenuMetrics.panelDecoration(context),
         padding: TpActionMenuMetrics.panelPadding,
+        capHeightToAnchorSide: true,
         popover: (ctx) => GitGraphFilterableActionMenuPanel(
           minWidth: 200,
           showsSearchField: _showsSearchField,
