@@ -193,6 +193,61 @@ String backgroundModelFromProvider(AppProviderConfig? provider) {
   return '';
 }
 
+/// Context window (tokens) configured on the model row in [provider]'s
+/// `config['models']`, or null when the model keeps the CLI default.
+///
+/// Rows are keyed by their stable entry id, which may differ from the served
+/// model id, so the lookup tries the entry id first, then the key as a model
+/// id, then the row's own `model` field. [legacyProviderFallback] keeps
+/// Qoder's old provider-wide `config['contextWindow']` working for providers
+/// saved before windows moved to individual models.
+int? resolveModelContextWindow(
+  AppProviderConfig? provider, {
+  String? model,
+  String? entryId,
+  bool legacyProviderFallback = false,
+}) {
+  final wantedModel = model?.trim() ?? '';
+  final wantedEntry = entryId?.trim() ?? '';
+  final rawModels = provider?.config['models'];
+  if (rawModels is Map) {
+    Map? byEntry;
+    Map? byKeyAsModel;
+    Map? byModelField;
+    for (final entry in rawModels.entries) {
+      final value = entry.value;
+      if (value is! Map) continue;
+      final key = entry.key.toString().trim();
+      final rowModel = (value['model'] as String? ?? '').trim();
+      if (wantedEntry.isNotEmpty && key == wantedEntry) {
+        byEntry ??= value;
+      }
+      if (wantedModel.isNotEmpty && key == wantedModel) {
+        byKeyAsModel ??= value;
+      }
+      if (wantedModel.isNotEmpty && rowModel == wantedModel) {
+        byModelField ??= value;
+      }
+    }
+    for (final row in [byEntry, byKeyAsModel, byModelField]) {
+      final window = _positiveInt(row?['contextWindow']);
+      if (window != null) return window;
+    }
+  }
+  if (!legacyProviderFallback) return null;
+  return _positiveInt(provider?.config['contextWindow']);
+}
+
+int? _positiveInt(Object? raw) {
+  final value = switch (raw) {
+    int() => raw,
+    num() => raw.toInt(),
+    String() => int.tryParse(raw.trim()),
+    _ => null,
+  };
+  return value != null && value > 0 ? value : null;
+}
+
 /// Merges a CLI built-in catalog with models declared on [AppProviderConfig].
 List<String> mergeProviderModelCandidates({
   required Iterable<String> builtInCatalog,

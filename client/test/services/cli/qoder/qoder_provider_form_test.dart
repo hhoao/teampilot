@@ -5,35 +5,33 @@ import 'package:teampilot/services/cli/registry/capabilities/provider_capability
 void main() {
   const capability = QoderProviderCapability();
 
-  test('maps effort and context window into the provider config', () {
+  test('maps effort into the provider config', () {
     final config = capability.buildConfig(
       const ProviderFormInput(
         baseUrl: '',
         defaultModel: '',
         apiKeyField: 'api_key',
         config: {'keep': true},
-        extra: {'reasoningEffort': 'xhigh', 'contextWindow': '300000'},
+        extra: {'reasoningEffort': 'xhigh'},
       ),
     );
 
     expect(config['reasoningEffort'], 'xhigh');
-    expect(config['contextWindow'], 300000);
     expect(config['keep'], isTrue);
   });
 
-  test('drops an empty or invalid context window', () {
-    for (final raw in ['', 'abc', '0', '-5']) {
-      final config = capability.buildConfig(
-        ProviderFormInput(
-          baseUrl: '',
-          defaultModel: '',
-          apiKeyField: 'api_key',
-          config: const {},
-          extra: {'contextWindow': raw},
-        ),
-      );
-      expect(config.containsKey('contextWindow'), isFalse, reason: raw);
-    }
+  test('preserves the legacy provider-wide context window', () {
+    final config = capability.buildConfig(
+      const ProviderFormInput(
+        baseUrl: '',
+        defaultModel: '',
+        apiKeyField: 'api_key',
+        config: {'contextWindow': 300000},
+        extra: {},
+      ),
+    );
+
+    expect(config['contextWindow'], 300000);
   });
 
   test('offers the CLI reasoning effort levels', () {

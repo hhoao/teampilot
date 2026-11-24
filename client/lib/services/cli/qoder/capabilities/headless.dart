@@ -6,6 +6,7 @@ import '../../../../models/launch_security_policy.dart';
 import '../../../../utils/logging/logger_utils.dart';
 import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
+import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
 import '../../registry/launch/headless_launch_context_adapter.dart';
@@ -158,7 +159,12 @@ final class QoderHeadlessCapability
         ? ctx.effort.trim()
         : configuredEffort;
     if (effort.isNotEmpty) settings['reasoningEffort'] = effort;
-    final contextWindow = _positiveTokens(provider?.config['contextWindow']);
+    final contextWindow = resolveModelContextWindow(
+      provider,
+      model: model,
+      entryId: model,
+      legacyProviderFallback: true,
+    );
     if (contextWindow != null) settings['contextWindow'] = contextWindow;
     await writeJson(settingsPath, settings);
 
@@ -217,11 +223,4 @@ final class QoderHeadlessCapability
     // own account default applies.
     return provider?.defaultModel.trim() ?? '';
   }
-}
-
-int? _positiveTokens(Object? raw) {
-  final value = raw is num
-      ? raw.toInt()
-      : int.tryParse(raw?.toString().trim() ?? '');
-  return value == null || value <= 0 ? null : value;
 }

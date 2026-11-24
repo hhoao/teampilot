@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import '../../../../models/team_config.dart';
 import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
+import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
 import '../../registry/launch/cli_launch_context.dart';
@@ -115,6 +116,23 @@ final class OpencodeHeadlessCapability
       modelId: ctx.model,
     );
     config = mergeOpencodeSecurityPolicy(config, ctx.securityPolicy);
+    final contextWindow = resolveModelContextWindow(
+      resolved,
+      model: ctx.model,
+      entryId: ctx.model,
+    );
+    if (contextWindow != null) {
+      config = mergeOpencodeContextWindow(
+        config,
+        resolved,
+        contextWindow,
+        memberModel: ctx.model,
+        providerId: OpencodeModelNamespace.forModel(
+          provider: resolved,
+          modelId: ctx.model,
+        ),
+      );
+    }
     final externalDirectories = <String>[
       for (final directory in ctx.additionalDirectories)
         if (directory.trim().isNotEmpty)

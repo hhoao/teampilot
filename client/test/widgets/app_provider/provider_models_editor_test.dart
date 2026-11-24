@@ -1,5 +1,11 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/widgets/app_provider/provider_models_editor.dart';
 
 void main() {
@@ -66,4 +72,77 @@ void main() {
   test('parse returns empty for null models', () {
     expect(ProviderModelsEditor.parse(null), isEmpty);
   });
+
+  test('parse reads contextWindow without duplicating it in raw', () {
+    final entries = ProviderModelsEditor.parse({
+      'glm': {
+        'name': 'GLM',
+        'model': 'glm',
+        'enabled': true,
+        'contextWindow': 200000,
+        'provider': 'DeepSeek',
+      },
+    });
+
+    final entry = entries.single;
+    expect(entry.contextWindow, 200000);
+    expect(entry.raw.containsKey('contextWindow'), isFalse);
+    expect(entry.toJson(), {
+      'provider': 'DeepSeek',
+      'name': 'GLM',
+      'model': 'glm',
+      'enabled': true,
+      'contextWindow': 200000,
+    });
+  });
+
+  test('parse ignores invalid contextWindow and toJson omits it', () {
+    final entries = ProviderModelsEditor.parse({
+      'zero': {'model': 'zero', 'contextWindow': 0},
+      'none': {'model': 'none'},
+    });
+
+    expect(entries.every((e) => e.contextWindow == null), isTrue);
+    for (final entry in entries) {
+      expect(entry.toJson().containsKey('contextWindow'), isFalse);
+    }
+  });
+
+  testWidgets('model dialog shows the context window for any CLI', (
+    tester,
+  ) async {
+    for (final cli in [CliTool.qoder, CliTool.codebuddy, CliTool.claude]) {
+      await tester.pumpWidget(_wrapEditor(cli));
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pumpAndSettle();
+      expect(find.text('Context window (tokens)'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+    }
+  });
+}
+
+Widget _wrapEditor(CliTool cli) {
+  return MaterialApp(
+    locale: const Locale('en'),
+    localizationsDelegates: const [
+      AppLocalizationsCompatDelegate(),
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    supportedLocales: appLocalizationsSupportedLocales,
+    home: Scaffold(
+      body: CliToolRegistryScope(
+        registry: CliToolRegistry.builtIn(),
+        child: ProviderModelsEditor(
+          cli: cli,
+          draftProvider: () => AppProviderConfig(id: 'p', cli: cli, name: 'P'),
+          models: const {},
+          defaultModel: '',
+          onChanged: (_, _) {},
+        ),
+      ),
+    ),
+  );
 }

@@ -1,8 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_assembler.dart';
@@ -11,30 +12,47 @@ import 'package:teampilot/services/cli/cursor/capabilities/headless.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_launch_environment.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/headless.dart';
+import '../../../../support/in_memory_filesystem.dart';
 
-HeadlessRunContext ctx({String effort = '', String model = 'm'}) =>
-    HeadlessRunContext(
-      prompt: 'P',
-      model: model,
-      effort: effort,
-      configDir: '/tmp/c',
-    );
+HeadlessRunContext ctx({
+  String effort = '',
+  String model = 'm',
+  int? contextWindow,
+}) => HeadlessRunContext(
+  prompt: 'P',
+  model: model,
+  effort: effort,
+  configDir: '/tmp/c',
+  contextWindow: contextWindow,
+);
 
 void main() {
-  test('codex: exec + model + effort override + CODEX_HOME', () {
-    const cap = CodexHeadlessCapability();
-    expect(cap.isSupported, isTrue);
-    final run = ctx(effort: 'high');
+  test(
+    'codex: exec + model + effort override + context window + CODEX_HOME',
+    () {
+      const cap = CodexHeadlessCapability();
+      expect(cap.isSupported, isTrue);
+      final run = ctx(effort: 'high', contextWindow: 200000);
+      final args = const CliLaunchArgAssembler().assembleHeadless(
+        CliToolRegistry.builtIn().tryGet(CliTool.codex)!,
+        run,
+      );
+      expect(args.first, 'exec');
+      expect(args, containsAllInOrder(['--model', 'm']));
+      expect(args, containsAllInOrder(['-c', 'model_reasoning_effort=high']));
+      expect(args, containsAllInOrder(['-c', 'model_context_window=200000']));
+      expect(args.last, 'P');
+      expect(cap.buildEnvironment(run)['CODEX_HOME'], '/tmp/c');
+      expect(cap.extractText(ProcessResult(0, 0, ' out ', '')), 'out');
+    },
+  );
+
+  test('codex: omits the context window override when unset', () {
     final args = const CliLaunchArgAssembler().assembleHeadless(
       CliToolRegistry.builtIn().tryGet(CliTool.codex)!,
-      run,
+      ctx(),
     );
-    expect(args.first, 'exec');
-    expect(args, containsAllInOrder(['--model', 'm']));
-    expect(args, containsAllInOrder(['-c', 'model_reasoning_effort=high']));
-    expect(args.last, 'P');
-    expect(cap.buildEnvironment(run)['CODEX_HOME'], '/tmp/c');
-    expect(cap.extractText(ProcessResult(0, 0, ' out ', '')), 'out');
+    expect(args.where((a) => a.contains('model_context_window')), isEmpty);
   });
 
   test('codex: promptViaStdin passes - as the prompt positional', () {
@@ -111,6 +129,47 @@ void main() {
     expect(args, isNot(contains('--agent')));
     expect(cap.buildEnvironment(run)['OPENCODE_CONFIG_DIR'], '/tmp/c');
   });
+
+  test(
+    'opencode: headless provision writes the per-model context window',
+    () async {
+      final fs = InMemoryFilesystem();
+      const provider = AppProviderConfig(
+        id: 'anthropic',
+        cli: CliTool.opencode,
+        name: 'Anthropic',
+        defaultModel: 'm',
+        config: {
+          'models': {
+            'm': {
+              'name': 'M',
+              'model': 'm',
+              'enabled': true,
+              'contextWindow': 200000,
+            },
+          },
+        },
+      );
+      final cap = OpencodeHeadlessCapability(
+        storage: fakeHomeStorage(filesystem: fs),
+      );
+      await cap.provision(
+        HeadlessProvisionContext(
+          provider: provider,
+          providerId: provider.id,
+          model: 'm',
+          effort: '',
+          configDir: '/tmp/oc',
+        ),
+      );
+
+      final contents = await fs.readString(p.join('/tmp/oc', 'opencode.json'));
+      final config = jsonDecode(contents!) as Map<String, Object?>;
+      final models =
+          ((config['providers'] as Map)['anthropic'] as Map)['models'] as Map;
+      expect((models['m']['limit'] as Map)['context'], 200000);
+    },
+  );
 
   test('flashskyai: -p print mode', () {
     final args = const CliLaunchArgAssembler().assembleHeadless(

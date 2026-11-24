@@ -8,6 +8,7 @@ import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../utils/logging/logger_utils.dart';
+import '../../utils/ui/format_tokens.dart';
 import '../cli/cli_brand_icon.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -64,6 +65,33 @@ final class CascadeCustomModelRequest extends CascadeSelection {
     required super.providerId,
     super.namespace,
   });
+}
+
+/// Requests the per-model context-window editor for one catalog model.
+final class CascadeContextWindowEditRequest extends CascadeSelection {
+  const CascadeContextWindowEditRequest({
+    required super.cli,
+    required super.providerId,
+    required this.modelId,
+    super.namespace,
+  });
+
+  final String modelId;
+}
+
+/// Picks a concrete context window for one catalog model (`null` = clear, so
+/// the model default applies again).
+final class CascadeContextWindowPick extends CascadeSelection {
+  const CascadeContextWindowPick({
+    required super.cli,
+    required super.providerId,
+    required this.modelId,
+    required this.tokens,
+    super.namespace,
+  });
+
+  final String modelId;
+  final int? tokens;
 }
 
 /// One labeled bucket inside a provider submenu (e.g. OpenCode `opencode-go`).
@@ -296,6 +324,44 @@ SimpleLaunchFourTuple? decodeComposeCascadeValue(Object? value) {
   return null;
 }
 
+/// Returns a copy of [config] with [modelId]'s context window set to [tokens].
+/// Null (or a non-positive value) removes the key so the model default applies.
+///
+/// Model rows are keyed by a stable entry id that can differ from the served
+/// model id, so the row is located by key first, then by its `model` field.
+Map<String, Object?> configWithModelContextWindow(
+  Map<String, Object?> config,
+  String modelId,
+  int? tokens,
+) {
+  final models = <String, Object?>{
+    ...((config['models'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  var key = modelId;
+  if (!models.containsKey(key)) {
+    for (final entry in models.entries) {
+      final value = entry.value;
+      if (value is Map &&
+          (value['model']?.toString() ?? '').trim() == modelId.trim()) {
+        key = entry.key.toString();
+        break;
+      }
+    }
+  }
+  final row = <String, Object?>{
+    ...((models[key] as Map?)?.cast<String, Object?>() ??
+        <String, Object?>{'name': modelId, 'model': modelId, 'enabled': true}),
+  };
+  if (tokens == null || tokens <= 0) {
+    row.remove('contextWindow');
+  } else {
+    row['contextWindow'] = tokens;
+  }
+  models[key] = row;
+  return {...config, 'models': models};
+}
+
 class SimpleLaunchFourTuple {
   final CliTool cli;
   final String providerId;
@@ -324,6 +390,92 @@ String composeCustomModelRef(String namespace, String modelId) {
   return '$ns/$id';
 }
 
+/// Common context-window presets offered by the standalone window selector.
+const List<int> kComposeContextWindowPresets = [
+  128000,
+  200000,
+  300000,
+  1000000,
+];
+
+/// Effort options for the standalone effort selector (empty ⇒ hide it).
+List<TpActionMenuSpec> buildComposeEffortSpecs({
+  required CliTool cli,
+  required String providerId,
+  required String modelId,
+  required List<String> efforts,
+  required String selectedEffort,
+  required String defaultLabel,
+}) {
+  final selected = selectedEffort.trim();
+  return [
+    TpActionMenuSpec.item(
+      value: CascadeModelPick(
+        cli: cli,
+        providerId: providerId,
+        modelId: modelId,
+      ),
+      label: defaultLabel,
+      selected: selected.isEmpty,
+    ),
+    for (final effort in efforts)
+      TpActionMenuSpec.item(
+        value: CascadeEffortPick(
+          cli: cli,
+          providerId: providerId,
+          modelId: modelId,
+          effort: effort,
+        ),
+        label: effort,
+        selected: selected == effort,
+      ),
+  ];
+}
+
+/// Context-window options for the standalone window selector.
+List<TpActionMenuSpec> buildComposeContextWindowSpecs({
+  required CliTool cli,
+  required String providerId,
+  required String modelId,
+  required int? currentWindow,
+  required String defaultLabel,
+  required String customLabel,
+  required String Function(int tokens) formatTokens,
+}) {
+  return [
+    TpActionMenuSpec.item(
+      value: CascadeContextWindowPick(
+        cli: cli,
+        providerId: providerId,
+        modelId: modelId,
+        tokens: null,
+      ),
+      label: defaultLabel,
+      selected: currentWindow == null,
+    ),
+    for (final tokens in kComposeContextWindowPresets)
+      TpActionMenuSpec.item(
+        value: CascadeContextWindowPick(
+          cli: cli,
+          providerId: providerId,
+          modelId: modelId,
+          tokens: tokens,
+        ),
+        label: formatTokens(tokens),
+        selected: currentWindow == tokens,
+      ),
+    const TpActionMenuSpec.divider(),
+    TpActionMenuSpec.item(
+      value: CascadeContextWindowEditRequest(
+        cli: cli,
+        providerId: providerId,
+        modelId: modelId,
+      ),
+      label: customLabel,
+    ),
+  ];
+}
+
 List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
   required List<CliPreset> presets,
   required String? selectedPresetId,
@@ -346,9 +498,34 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
   /// Optional hover text (capabilities / credit multiplier).
   String? Function(CliTool cli, String providerId, String modelId)?
   modelTooltip,
+
+  /// Formats a per-model context window into the muted row suffix.
+  /// Null leaves windows out of the menu entirely.
+  String? Function(int tokens)? contextWindowLabel,
+
+  /// Non-null adds a per-model context-window editor submenu for CLIs that
+  /// support it. Showing the edit affordance is opt-in per surface.
+  String? contextWindowEditLabel,
+
+  /// Shown for models with no configured window (model default).
+  String? contextWindowDefaultLabel,
+
+  /// When false, model rows are leaves: effort is picked from the separate
+  /// effort selector instead of a nested submenu.
+  bool showEffortLevels = true,
   bool showSavePreset = true,
   bool showManagePresets = true,
 }) {
+  String? contextWindowValueLabel(ComposeCascadeProvider p, String model) {
+    final window = resolveModelContextWindow(
+      p.config,
+      model: model,
+      entryId: model,
+    );
+    if (window == null) return contextWindowDefaultLabel;
+    return contextWindowLabel?.call(window) ?? compactTokenCount(window);
+  }
+
   /// Model rows for one provider, optionally one upstream namespace.
   ///
   /// The pick reports the provider **row id** (what the session/preset stores)
@@ -360,9 +537,26 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
     Iterable<String> models,
     String namespace,
   ) {
+    /// The row suffix shows the configured window first, then the upstream
+    /// description when both exist (workbuddy-style model rows).
+    String? suffixFor(String model) {
+      final description = modelTooltip?.call(group.cli, p.id, model);
+      final window = resolveModelContextWindow(
+        p.config,
+        model: model,
+        entryId: model,
+      );
+      final contextLabel = window == null
+          ? null
+          : contextWindowLabel?.call(window);
+      if (contextLabel == null || contextLabel.isEmpty) return description;
+      if (description == null || description.isEmpty) return contextLabel;
+      return '$contextLabel · $description';
+    }
+
     return [
       for (final model in models)
-        if ((p.effortByModel[model]?.isNotEmpty ?? false))
+        if (showEffortLevels && (p.effortByModel[model]?.isNotEmpty ?? false))
           TpActionMenuSpec.submenu(
             value: CascadeModelPick(
               cli: group.cli,
@@ -371,7 +565,7 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
               modelId: model,
             ),
             label: modelLabel?.call(group.cli, p.id, model) ?? model,
-            subtitleSuffix: modelTooltip?.call(group.cli, p.id, model),
+            subtitleSuffix: suffixFor(model),
             children: [
               TpActionMenuSpec.item(
                 value: CascadeModelPick(
@@ -405,10 +599,44 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
               modelId: model,
             ),
             label: modelLabel?.call(group.cli, p.id, model) ?? model,
-            subtitleSuffix: modelTooltip?.call(group.cli, p.id, model),
+            subtitleSuffix: suffixFor(model),
             tooltip: modelTooltip?.call(group.cli, p.id, model),
             tooltipPlacement: TpTooltipPlacement.right,
           ),
+    ];
+  }
+
+  /// The edit submenu lists every model with its current window; picking one
+  /// opens the editor. It lives one level below the provider (or the namespace
+  /// group) so selecting a model keeps its original one-click behavior.
+  List<TpActionMenuSpec> contextWindowEditRows(
+    ComposeCascadeCliGroup group,
+    ComposeCascadeProvider p,
+    Iterable<String> models,
+    String namespace,
+  ) {
+    final editLabel = contextWindowEditLabel;
+    if (editLabel == null || models.isEmpty) {
+      return const [];
+    }
+    return [
+      const TpActionMenuSpec.divider(),
+      TpActionMenuSpec.submenu(
+        label: editLabel,
+        children: [
+          for (final model in models)
+            TpActionMenuSpec.item(
+              value: CascadeContextWindowEditRequest(
+                cli: group.cli,
+                providerId: p.id,
+                modelId: model,
+                namespace: namespace,
+              ),
+              label: modelLabel?.call(group.cli, p.id, model) ?? model,
+              subtitleSuffix: contextWindowValueLabel(p, model),
+            ),
+        ],
+      ),
     ];
   }
 
@@ -447,6 +675,7 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
                   label: customModelIdLabel,
                 ),
               ],
+              ...contextWindowEditRows(group, p, g.models, g.namespace),
             ],
           ),
       if (!grouped && p.supportsCustomModelEntry) ...[
@@ -456,6 +685,7 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
           label: customModelIdLabel,
         ),
       ],
+      if (!grouped) ...contextWindowEditRows(group, p, p.models, ''),
     ];
     return rows;
   }

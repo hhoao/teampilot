@@ -79,6 +79,57 @@ void main() {
     expect(options['reasoningEffort'], 'high');
   });
 
+  test('mergeOpencodeContextWindow writes model scoped limit.context', () {
+    const provider = AppProviderConfig(
+      id: 'anthropic',
+      cli: CliTool.opencode,
+      name: 'Anthropic',
+      defaultModel: 'claude-sonnet-4-20250514',
+    );
+    final merged = mergeOpencodeContextWindow(
+      const {},
+      provider,
+      200000,
+      memberModel: 'claude-sonnet-4-20250514',
+    );
+    final providerEntry = (merged['providers'] as Map)['anthropic'] as Map;
+    final modelEntry =
+        (providerEntry['models'] as Map)['claude-sonnet-4-20250514'] as Map;
+    expect((modelEntry['limit'] as Map)['context'], 200000);
+  });
+
+  test('mergeOpencodeContextWindow preserves other limit keys', () {
+    const provider = AppProviderConfig(
+      id: 'anthropic',
+      cli: CliTool.opencode,
+      name: 'Anthropic',
+      defaultModel: 'm',
+    );
+    final existing = {
+      'providers': {
+        'anthropic': {
+          'models': {
+            'm': {
+              'limit': {'output': 8192},
+            },
+          },
+        },
+      },
+    };
+    final merged = mergeOpencodeContextWindow(
+      existing,
+      provider,
+      128000,
+      memberModel: 'm',
+    );
+    final limit =
+        (((merged['providers'] as Map)['anthropic'] as Map)['models']
+                as Map)['m']['limit']
+            as Map;
+    expect(limit['context'], 128000);
+    expect(limit['output'], 8192);
+  });
+
   test('FlashskyaiEffortCapability mirrors Claude placement', () {
     const capability = FlashskyaiProviderCapability();
     expect(capability.teamPickerPlacement(), EffortPickerPlacement.team);

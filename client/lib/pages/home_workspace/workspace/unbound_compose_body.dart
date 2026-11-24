@@ -52,6 +52,7 @@ import '../../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../../services/cli/preset_resolver.dart';
 import '../../../utils/team/team_member_naming.dart';
+import '../../../utils/ui/format_tokens.dart';
 import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
@@ -60,6 +61,7 @@ import '../../../services/team_config/team_landing_recent_store.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
 import '../../../widgets/compose/compose_chrome.dart';
 import '../../../widgets/compose/compose_model_preset_chip.dart';
+import '../../../widgets/compose/context_window_edit_dialog.dart';
 import '../../../widgets/compose/simple_custom_launch_dialog.dart';
 import '../../../widgets/compose/workspace_compose_card.dart';
 import '../../../services/chat/launch/pre_send/workspace_landing_launch_gate.dart';
@@ -1620,6 +1622,9 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           providerId: providerId,
           modelId: modelId,
         ),
+        contextWindowLabel: (tokens) =>
+            l10n.modelContextWindowShort(tokens: compactTokenCount(tokens)),
+        showEffortLevels: false,
         onModelsOpened: (cli, providerId, config) => unawaited(
           refreshComposeCascadeCatalog(
             context,
@@ -1645,6 +1650,85 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       selectedTeamId: _generateLaunch ? null : _selectedTeamId,
       generateLaunchSelected: _generateLaunch,
       recentTeams: recent,
+    );
+  }
+
+  /// Effort / context-window submenus folded into the toolbar's "more
+  /// options" chip for Simple mode.
+  ComposeMoreOptions? _moreOptions(
+    AppLocalizations l10n,
+    List<CliPreset> presets,
+  ) {
+    if (_conversationMode != _LandingConversationMode.simple) return null;
+    final cli =
+        _selectedCli ?? _cliForDraft(presets: presets, selectedTeam: null);
+    final providerId = _selectedProvider?.trim() ?? '';
+    final model = _selectedModel?.trim() ?? '';
+    if (cli == null || providerId.isEmpty || model.isEmpty) return null;
+    final registry = CliToolRegistryScope.of(context);
+    final capability = registry.capability<ProviderCapability>(cli);
+    final provider = context
+        .read<AppProviderCubit>()
+        .state
+        .providersFor(cli)
+        .where((p) => p.id == providerId)
+        .firstOrNull;
+    if (capability == null || provider == null) return null;
+    var configModelId = model;
+    if (configModelId.contains('/') &&
+        !capability.isApplicable(model: configModelId)) {
+      configModelId = configModelId.split('/').last;
+    }
+    final efforts = capability.isApplicable(model: configModelId)
+        ? capability.effortCandidates(model: configModelId, provider: provider)
+        : const <String>[];
+    final window = resolveModelContextWindow(
+      provider,
+      model: configModelId,
+      entryId: configModelId,
+    );
+
+    void handle(Object? value) {
+      if (value is CascadeContextWindowPick) {
+        unawaited(applyComposeContextWindowPick(context, request: value));
+        return;
+      }
+      if (value is CascadeContextWindowEditRequest) {
+        unawaited(showComposeContextWindowEditor(context, request: value));
+        return;
+      }
+      final tuple = decodeComposeCascadeValue(value);
+      if (tuple != null) unawaited(_applyCascadeLaunch(tuple));
+    }
+
+    return ComposeMoreOptions(
+      menus: [
+        if (efforts.isNotEmpty)
+          TpActionMenuSpec.submenu(
+            label: l10n.modelEffortLabel,
+            children: buildComposeEffortSpecs(
+              cli: cli,
+              providerId: providerId,
+              modelId: model,
+              efforts: efforts,
+              selectedEffort: _selectedEffort ?? '',
+              defaultLabel: l10n.compose.cascadeDefaultEffort,
+            ),
+          ),
+        TpActionMenuSpec.submenu(
+          label: l10n.modelContextWindowEdit,
+          children: buildComposeContextWindowSpecs(
+            cli: cli,
+            providerId: providerId,
+            modelId: configModelId,
+            currentWindow: window,
+            defaultLabel: l10n.modelContextWindowDefault,
+            customLabel: l10n.modelContextWindowCustom,
+            formatTokens: compactTokenCount,
+          ),
+        ),
+      ],
+      onSelected: handle,
     );
   }
 
@@ -1717,6 +1801,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     final remoteCliMissing = launchWarningBlock is RemoteCliMissingLaunchBlock
         ? launchWarningBlock.missing
         : null;
+    final moreOptions = _moreOptions(l10n, presets);
 
     WorkspaceComposeCard buildCard(
       BuildContext context,
@@ -1750,6 +1835,9 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         autoChipLeading: _autoChipLeading(context, presets: presets),
         conversationModeSpecs: _conversationModeSpecs(l10n),
         autoChipSpecs: _autoChipSpecs(l10n, presets: presets, teams: teams),
+        moreOptions: moreOptions,
+        moreOptionsLabel: l10n.moreOptions,
+        securityModeLabel: l10n.securityMode,
         onConversationModeSelected: (value) {
           if (value is _LandingConversationMode) {
             _setConversationMode(value);
@@ -1767,6 +1855,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           }
           if (value is CascadeCustomModelRequest) {
             await _applyCustomModelId(request: value);
+            return;
+          }
+          if (value is CascadeContextWindowEditRequest) {
+            await showComposeContextWindowEditor(context, request: value);
             return;
           }
           if (value == ComposeModelPresetChipAction.savePreset) {

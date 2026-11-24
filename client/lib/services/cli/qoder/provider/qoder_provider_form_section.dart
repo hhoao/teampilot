@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../../../l10n/l10n_extensions.dart';
@@ -7,49 +6,23 @@ import '../../../../models/app_provider_config.dart';
 import '../../../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../qoder_flavor.dart';
 
-/// Qoder-only provider fields: reasoning effort and context window.
-class QoderProviderFormSection extends StatefulWidget {
+/// Qoder-only provider fields: reasoning effort.
+///
+/// The context window moved to the per-model editor
+/// (`provider_models_editor.dart`).
+class QoderProviderFormSection extends StatelessWidget {
   const QoderProviderFormSection({
     required this.flavor,
     required this.effort,
-    required this.contextWindow,
     required this.defaultModel,
     required this.onEffortChanged,
-    required this.onContextWindowChanged,
     super.key,
   });
 
   final QoderFlavor flavor;
   final String effort;
-  final String contextWindow;
   final String defaultModel;
   final ValueChanged<String> onEffortChanged;
-  final ValueChanged<String> onContextWindowChanged;
-
-  @override
-  State<QoderProviderFormSection> createState() =>
-      _QoderProviderFormSectionState();
-}
-
-class _QoderProviderFormSectionState extends State<QoderProviderFormSection> {
-  late final TextEditingController _contextWindow = TextEditingController(
-    text: widget.contextWindow,
-  );
-
-  @override
-  void didUpdateWidget(QoderProviderFormSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.contextWindow != oldWidget.contextWindow &&
-        _contextWindow.text != widget.contextWindow) {
-      _contextWindow.text = widget.contextWindow;
-    }
-  }
-
-  @override
-  void dispose() {
-    _contextWindow.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,29 +46,16 @@ class _QoderProviderFormSectionState extends State<QoderProviderFormSection> {
           ),
           const SizedBox(height: 6),
           CliEffortPickerField(
-            cli: widget.flavor.cli,
-            value: widget.effort,
-            model: widget.defaultModel,
+            cli: flavor.cli,
+            value: effort,
+            model: defaultModel,
             provider: AppProviderConfig(
-              id: '${widget.flavor.cli.value}-form',
-              cli: widget.flavor.cli,
-              name: widget.flavor.providerLabel,
-              defaultModel: widget.defaultModel,
+              id: '${flavor.cli.value}-form',
+              cli: flavor.cli,
+              name: flavor.providerLabel,
+              defaultModel: defaultModel,
             ),
-            onChanged: widget.onEffortChanged,
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(l10n.qoder.contextWindow, style: styles.mdSnug),
-          ),
-          const SizedBox(height: 6),
-          TextField(
-            controller: _contextWindow,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(hintText: l10n.qoder.contextWindowHint),
-            onChanged: widget.onContextWindowChanged,
+            onChanged: onEffortChanged,
           ),
         ],
       ),

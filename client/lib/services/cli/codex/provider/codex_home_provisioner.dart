@@ -41,6 +41,7 @@ final class CodexHomeProvisioner {
     Iterable<String> trustedProjectDirectories = const [],
     String? storedAuthPath,
     String? reasoningEffortOverride,
+    int? contextWindowOverride,
     String? providerDir,
   }) async {
     final store = _fs;
@@ -89,6 +90,7 @@ final class CodexHomeProvisioner {
       busOverlayToml: busOverlayToml,
       trustedProjectDirectories: trustedProjectDirectories,
       reasoningEffortOverride: reasoningEffortOverride,
+      contextWindowOverride: contextWindowOverride,
       usesPosixPaths: _usesPosixPaths,
     );
     toml = CodexTomlMerge.preserveManagedTables(

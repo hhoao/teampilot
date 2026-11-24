@@ -86,6 +86,14 @@ final class CodexHeadlessCapability
         args: ['-c', 'model_reasoning_effort=$effort'],
       );
     }
+    final contextWindow = ctx.contextWindow;
+    if (contextWindow != null) {
+      yield CliLaunchArgContribution(
+        key: 'codex-headless-context-window',
+        phase: LaunchArgPhase.model,
+        args: ['-c', 'model_context_window=$contextWindow'],
+      );
+    }
     yield* CliToolRegistry.builtIn()
         .capability<WorkspaceBaseInfoCapability>(CliTool.codex)!
         .buildLaunchArgs(interactive);
@@ -145,6 +153,7 @@ final class CodexHeadlessCapability
         reasoningEffortOverride: ctx.effort.trim().isNotEmpty
             ? ctx.effort.trim()
             : null,
+        contextWindowOverride: ctx.contextWindow,
         providerDir: p.join(basePath, 'providers', 'codex', resolved.id),
       );
     } on CodexHomeProvisionException catch (e) {

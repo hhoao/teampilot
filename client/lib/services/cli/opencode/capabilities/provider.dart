@@ -490,6 +490,20 @@ final class OpencodeProviderCapability extends CatalogModelCapability
           providerId: modelNamespace,
         );
       }
+      final contextWindow = resolveModelContextWindow(
+        launchProvider,
+        model: memberModel,
+        entryId: memberModel,
+      );
+      if (contextWindow != null) {
+        config = mergeOpencodeContextWindow(
+          config,
+          launchProvider,
+          contextWindow,
+          memberModel: memberModel,
+          providerId: modelNamespace,
+        );
+      }
       changed = true;
     }
 

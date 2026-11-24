@@ -5,6 +5,93 @@ import '../../models/launch_security_policy.dart';
 import 'compose_menu_chip.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+/// Policies the chrome can actually render for the current CLI.
+List<LaunchSecurityPolicy> composeRenderablePolicies({
+  required Set<LaunchSecurityPolicy> supportedPolicies,
+  String? askLabel,
+  String? askReadOnlyLabel,
+  String? autoApproveWorkspaceWriteLabel,
+}) => [
+  if (supportedPolicies.contains(LaunchSecurityPolicy.cliDefault))
+    LaunchSecurityPolicy.cliDefault,
+  if (supportedPolicies.contains(LaunchSecurityPolicy.ask) && askLabel != null)
+    LaunchSecurityPolicy.ask,
+  if (supportedPolicies.contains(LaunchSecurityPolicy.askReadOnlyTrusted) &&
+      askReadOnlyLabel != null)
+    LaunchSecurityPolicy.askReadOnlyTrusted,
+  if (supportedPolicies.contains(
+        LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+      ) &&
+      autoApproveWorkspaceWriteLabel != null)
+    LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+  if (supportedPolicies.contains(LaunchSecurityPolicy.fullAccess))
+    LaunchSecurityPolicy.fullAccess,
+];
+
+/// Menu specs for the security-mode selector. Shared by the standalone chip
+/// and the "more options" submenu.
+List<TpActionMenuSpec> buildComposePermissionSpecs({
+  required Set<LaunchSecurityPolicy> supportedPolicies,
+  required LaunchSecurityPolicy launchSecurityPolicy,
+  required String defaultLabel,
+  required String fullAccessLabel,
+  String? askLabel,
+  String? askReadOnlyLabel,
+  String? autoApproveWorkspaceWriteLabel,
+}) {
+  final renderable = composeRenderablePolicies(
+    supportedPolicies: supportedPolicies,
+    askLabel: askLabel,
+    askReadOnlyLabel: askReadOnlyLabel,
+    autoApproveWorkspaceWriteLabel: autoApproveWorkspaceWriteLabel,
+  );
+  final selected = renderable.isEmpty
+      ? null
+      : (renderable.contains(launchSecurityPolicy)
+            ? launchSecurityPolicy
+            : renderable.first);
+  return [
+    if (renderable.contains(LaunchSecurityPolicy.cliDefault))
+      TpActionMenuSpec.item(
+        value: LaunchSecurityPolicy.cliDefault,
+        icon: Icons.verified_outlined,
+        label: defaultLabel,
+        selected: selected == LaunchSecurityPolicy.cliDefault,
+      ),
+    if (renderable.contains(LaunchSecurityPolicy.ask))
+      TpActionMenuSpec.item(
+        value: LaunchSecurityPolicy.ask,
+        icon: Icons.help_outline,
+        label: askLabel!,
+        selected: selected == LaunchSecurityPolicy.ask,
+      ),
+    if (renderable.contains(LaunchSecurityPolicy.askReadOnlyTrusted))
+      TpActionMenuSpec.item(
+        value: LaunchSecurityPolicy.askReadOnlyTrusted,
+        icon: Icons.visibility_outlined,
+        label: askReadOnlyLabel!,
+        selected: selected == LaunchSecurityPolicy.askReadOnlyTrusted,
+      ),
+    if (renderable.contains(
+      LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+    ))
+      TpActionMenuSpec.item(
+        value: LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+        icon: Icons.edit_note_outlined,
+        label: autoApproveWorkspaceWriteLabel!,
+        selected:
+            selected == LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+      ),
+    if (renderable.contains(LaunchSecurityPolicy.fullAccess))
+      TpActionMenuSpec.item(
+        value: LaunchSecurityPolicy.fullAccess,
+        icon: Icons.lock_open_outlined,
+        label: fullAccessLabel,
+        selected: selected == LaunchSecurityPolicy.fullAccess,
+      ),
+  ];
+}
+
 /// Shared permission menu chip for Landing and History continue chrome.
 ///
 /// The chip stores normalized policies and exposes named intermediate presets.
@@ -36,23 +123,13 @@ class ComposePermissionChip extends StatelessWidget {
   final String? customLabel;
   final ValueChanged<LaunchSecurityPolicy> onSelected;
 
-  List<LaunchSecurityPolicy> get _renderablePolicies => [
-    if (supportedPolicies.contains(LaunchSecurityPolicy.cliDefault))
-      LaunchSecurityPolicy.cliDefault,
-    if (supportedPolicies.contains(LaunchSecurityPolicy.ask) &&
-        askLabel != null)
-      LaunchSecurityPolicy.ask,
-    if (supportedPolicies.contains(LaunchSecurityPolicy.askReadOnlyTrusted) &&
-        askReadOnlyLabel != null)
-      LaunchSecurityPolicy.askReadOnlyTrusted,
-    if (supportedPolicies.contains(
-          LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
-        ) &&
-        autoApproveWorkspaceWriteLabel != null)
-      LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
-    if (supportedPolicies.contains(LaunchSecurityPolicy.fullAccess))
-      LaunchSecurityPolicy.fullAccess,
-  ];
+  List<LaunchSecurityPolicy> get _renderablePolicies =>
+      composeRenderablePolicies(
+        supportedPolicies: supportedPolicies,
+        askLabel: askLabel,
+        askReadOnlyLabel: askReadOnlyLabel,
+        autoApproveWorkspaceWriteLabel: autoApproveWorkspaceWriteLabel,
+      );
 
   LaunchSecurityPolicy? get _effectiveLaunchSecurityPolicy {
     final renderablePolicies = _renderablePolicies;
@@ -82,52 +159,16 @@ class ComposePermissionChip extends StatelessWidget {
     return customLabel ?? defaultLabel;
   }
 
-  List<TpActionMenuSpec> _specs() {
-    final renderablePolicies = _renderablePolicies;
-    final selectedPolicy = _effectiveLaunchSecurityPolicy;
-    final specs = <TpActionMenuSpec>[
-      if (renderablePolicies.contains(LaunchSecurityPolicy.cliDefault))
-        TpActionMenuSpec.item(
-          value: LaunchSecurityPolicy.cliDefault,
-          icon: Icons.verified_outlined,
-          label: defaultLabel,
-          selected: selectedPolicy == LaunchSecurityPolicy.cliDefault,
-        ),
-      if (renderablePolicies.contains(LaunchSecurityPolicy.ask))
-        TpActionMenuSpec.item(
-          value: LaunchSecurityPolicy.ask,
-          icon: Icons.help_outline,
-          label: askLabel!,
-          selected: selectedPolicy == LaunchSecurityPolicy.ask,
-        ),
-      if (renderablePolicies.contains(LaunchSecurityPolicy.askReadOnlyTrusted))
-        TpActionMenuSpec.item(
-          value: LaunchSecurityPolicy.askReadOnlyTrusted,
-          icon: Icons.visibility_outlined,
-          label: askReadOnlyLabel!,
-          selected: selectedPolicy == LaunchSecurityPolicy.askReadOnlyTrusted,
-        ),
-      if (renderablePolicies.contains(
-        LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
-      ))
-        TpActionMenuSpec.item(
-          value: LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
-          icon: Icons.edit_note_outlined,
-          label: autoApproveWorkspaceWriteLabel!,
-          selected:
-              selectedPolicy ==
-              LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
-        ),
-      if (renderablePolicies.contains(LaunchSecurityPolicy.fullAccess))
-        TpActionMenuSpec.item(
-          value: LaunchSecurityPolicy.fullAccess,
-          icon: Icons.lock_open_outlined,
-          label: fullAccessLabel,
-          selected: selectedPolicy == LaunchSecurityPolicy.fullAccess,
-        ),
-    ];
-    return specs;
-  }
+  List<TpActionMenuSpec> _specs() => buildComposePermissionSpecs(
+    supportedPolicies: supportedPolicies,
+    launchSecurityPolicy:
+        _effectiveLaunchSecurityPolicy ?? launchSecurityPolicy,
+    defaultLabel: defaultLabel,
+    fullAccessLabel: fullAccessLabel,
+    askLabel: askLabel,
+    askReadOnlyLabel: askReadOnlyLabel,
+    autoApproveWorkspaceWriteLabel: autoApproveWorkspaceWriteLabel,
+  );
 
   @override
   Widget build(BuildContext context) {

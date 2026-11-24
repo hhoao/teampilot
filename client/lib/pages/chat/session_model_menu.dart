@@ -33,6 +33,7 @@ List<TpActionMenuSpec> buildSessionModelMenuSpecs({
   required AcpModelState modelState,
   required String agentSectionLabel,
   required String launchSectionLabel,
+  String? Function(String modelId)? modelContextWindowLabel,
 }) {
   return [
     TpActionMenuSpec.item(label: agentSectionLabel, enabled: false),
@@ -40,7 +41,10 @@ List<TpActionMenuSpec> buildSessionModelMenuSpecs({
       TpActionMenuSpec.item(
         value: AcpModelPick(option.id),
         label: option.name,
-        subtitle: option.description == null ? null : Text(option.description!),
+        subtitle: _agentModelSubtitle(
+          option.description,
+          modelContextWindowLabel?.call(option.id),
+        ),
         selected: option.id == modelState.currentId,
       ),
     if (launchSpecs.isNotEmpty) ...[
@@ -51,6 +55,15 @@ List<TpActionMenuSpec> buildSessionModelMenuSpecs({
       ),
     ],
   ];
+}
+
+/// The agent's own description plus the configured context window (if any).
+Text? _agentModelSubtitle(String? description, String? contextLabel) {
+  if (contextLabel == null || contextLabel.isEmpty) {
+    return description == null ? null : Text(description);
+  }
+  if (description == null || description.isEmpty) return Text(contextLabel);
+  return Text('$description · $contextLabel');
 }
 
 /// The live agent model id for a launch-config [namespace] / [model] pair.

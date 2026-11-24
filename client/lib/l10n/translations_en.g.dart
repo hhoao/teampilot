@@ -474,6 +474,39 @@ class AppLocalizations with BaseTranslations<AppLocale, AppLocalizations> {
 	/// en: 'Model alias/name'
 	String get modelName => 'Model alias/name';
 
+	/// en: 'Context window (tokens)'
+	String get modelContextWindow => 'Context window (tokens)';
+
+	/// en: 'Leave empty to use the model default.'
+	String get modelContextWindowHint => 'Leave empty to use the model default.';
+
+	/// en: '{tokens: String} ctx'
+	String modelContextWindowShort({required String tokens}) => '${tokens} ctx';
+
+	/// en: 'Context window'
+	String get modelContextWindowEdit => 'Context window';
+
+	/// en: '{model: String} · Context window'
+	String modelContextWindowEditTitle({required String model}) => '${model} · Context window';
+
+	/// en: 'Model default'
+	String get modelContextWindowDefault => 'Model default';
+
+	/// en: 'Use model default'
+	String get modelContextWindowUseDefault => 'Use model default';
+
+	/// en: 'Custom…'
+	String get modelContextWindowCustom => 'Custom…';
+
+	/// en: 'Thinking effort'
+	String get modelEffortLabel => 'Thinking effort';
+
+	/// en: 'More options'
+	String get moreOptions => 'More options';
+
+	/// en: 'Security mode'
+	String get securityMode => 'Security mode';
+
 	/// en: 'Models'
 	String get models => 'Models';
 
@@ -6694,12 +6727,6 @@ class AppLocalizations$qoder$en {
 
 	// Translations
 
-	/// en: 'Context window (tokens)'
-	String get contextWindow => 'Context window (tokens)';
-
-	/// en: 'Leave empty to use the model default.'
-	String get contextWindowHint => 'Leave empty to use the model default.';
-
 	/// en: 'The Qoder action failed'
 	String get credentialsActionFailed => 'The Qoder action failed';
 
@@ -10402,6 +10429,17 @@ extension on AppLocalizations {
 			'model' => 'Model',
 			'modelId' => 'Model ID',
 			'modelName' => 'Model alias/name',
+			'modelContextWindow' => 'Context window (tokens)',
+			'modelContextWindowHint' => 'Leave empty to use the model default.',
+			'modelContextWindowShort' => ({required String tokens}) => '${tokens} ctx',
+			'modelContextWindowEdit' => 'Context window',
+			'modelContextWindowEditTitle' => ({required String model}) => '${model} · Context window',
+			'modelContextWindowDefault' => 'Model default',
+			'modelContextWindowUseDefault' => 'Use model default',
+			'modelContextWindowCustom' => 'Custom…',
+			'modelEffortLabel' => 'Thinking effort',
+			'moreOptions' => 'More options',
+			'securityMode' => 'Security mode',
 			'models' => 'Models',
 			'modelsTab' => 'Models',
 			'modelsUsingProvider' => ({required int count}) => 'Models using this provider: ${count}',
@@ -10760,6 +10798,8 @@ extension on AppLocalizations {
 			'automations.filterStatusLabel' => 'Status',
 			'automations.hideFilter' => 'Hide filters',
 			'automations.invalidCron' => 'Invalid cron expression (5 fields required)',
+			_ => null,
+		} ?? switch (path) {
 			'automations.invalidMaxRunCount' => 'Run limit must be a positive number',
 			'automations.invalidTime' => 'Time must be HH:mm',
 			'automations.launchMode' => 'Conversation mode',
@@ -10771,8 +10811,6 @@ extension on AppLocalizations {
 			'automations.maxRunCount' => 'Run limit',
 			'automations.maxRunCountHint' => 'Leave empty for unlimited',
 			'automations.message' => 'Message',
-			_ => null,
-		} ?? switch (path) {
 			'automations.name' => 'Name',
 			'automations.kNew' => 'New automation',
 			'automations.nextRun' => ({required String time}) => 'Next run: ${time}',
@@ -11274,6 +11312,8 @@ extension on AppLocalizations {
 			'file.previewHostFloating' => 'Floating',
 			'file.previewHostTitle' => 'File preview',
 			'fileTree.fileTree' => 'File Tree',
+			_ => null,
+		} ?? switch (path) {
 			'fileTree.copy' => 'Copy',
 			'fileTree.copyPath' => 'Copy path',
 			'fileTree.copyRelativePath' => 'Copy relative path',
@@ -11285,8 +11325,6 @@ extension on AppLocalizations {
 			'fileTree.fileCreated' => 'File created',
 			'fileTree.folderCreated' => 'Folder created',
 			'fileTree.hideFilter' => 'Hide file filter',
-			_ => null,
-		} ?? switch (path) {
 			'fileTree.importApplyRemaining' => 'Apply to remaining conflicts',
 			'fileTree.importCancelAll' => 'Cancel all',
 			'fileTree.importConflictBody' => ({required String name}) => '"${name}" already exists at the destination.',
@@ -11788,6 +11826,8 @@ extension on AppLocalizations {
 			'managedProviders.credentialTemplate' => 'Credential template',
 			'managedProviders.credentialTemplateHelper' => 'Builds the final credential; often a Cookie with brace variables.',
 			'managedProviders.credentialTemplateHint' => 'e.g. WorkosCursorSessionToken=user::token',
+			_ => null,
+		} ?? switch (path) {
 			'managedProviders.credentials' => 'Credentials',
 			'managedProviders.credentialsSectionSubtitle' => 'Credential source and how it is sent.',
 			'managedProviders.credentialsSectionTitle' => 'Credential source and delivery',
@@ -11799,8 +11839,6 @@ extension on AppLocalizations {
 			'managedProviders.deleteContent' => ({required Object name}) => 'Delete “${name}” and its cached usage?',
 			'managedProviders.deleteFailed' => 'Unable to delete managed provider.',
 			'managedProviders.deleteTitle' => 'Delete managed provider?',
-			_ => null,
-		} ?? switch (path) {
 			'managedProviders.disable' => 'Disable',
 			'managedProviders.disabled' => 'Disabled',
 			'managedProviders.display' => 'Display configuration',
@@ -12270,8 +12308,6 @@ extension on AppLocalizations {
 			'provider.name' => 'Provider name',
 			'provider.type' => 'Provider type',
 			'provider.typeHint' => 'openai, claude, or custom',
-			'qoder.contextWindow' => 'Context window (tokens)',
-			'qoder.contextWindowHint' => 'Leave empty to use the model default.',
 			'qoder.credentialsActionFailed' => 'The Qoder action failed',
 			'qoder.credentialsCancel' => 'Cancel',
 			'qoder.credentialsDone' => 'Done',
@@ -12304,6 +12340,8 @@ extension on AppLocalizations {
 			'resource.managerColumnCpu' => 'CPU',
 			'resource.managerColumnMemory' => 'Memory',
 			'resource.managerColumnName' => 'Name',
+			_ => null,
+		} ?? switch (path) {
 			'resource.managerEmptyTree' => 'Nothing running right now.',
 			'resource.managerKill' => 'Kill',
 			'resource.managerKillAll' => 'Kill all',
@@ -12313,8 +12351,6 @@ extension on AppLocalizations {
 			'resource.managerMetricsError' => 'Could not refresh process metrics.',
 			'resource.managerPanelTitle' => 'Resource Manager - Sessions',
 			'resource.managerRefresh' => 'Refresh',
-			_ => null,
-		} ?? switch (path) {
 			'resource.managerSpace' => 'Space',
 			'resource.managerSpaceBeta' => 'Beta',
 			'resource.managerSpaceNotScanned' => 'Does not scan workspace disk usage.',
@@ -12818,6 +12854,8 @@ extension on AppLocalizations {
 			'ssh.hostsOpenTerminal' => 'Open Terminal',
 			'ssh.hostsOpenTerminalNoWorkspace' => 'Open a workspace first to start a terminal.',
 			'ssh.hostsPanelTitle' => 'Remote Hosts',
+			_ => null,
+		} ?? switch (path) {
 			'ssh.hostsPillConnecting' => 'Connecting…',
 			'ssh.hostsPillCount' => ({required int count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '1 host', other: '${count} hosts', ), 
 			'ssh.hostsRowKind' => 'SSH Host',
@@ -12827,8 +12865,6 @@ extension on AppLocalizations {
 			'ssh.serversEmpty' => 'No SSH servers saved on this host yet.',
 			'ssh.serversNeedsConnectionHint' => 'Listed on this host, not set up on this device',
 			'ssh.serversNotConnectedOnDevice' => 'No connection from this device yet',
-			_ => null,
-		} ?? switch (path) {
 			'ssh.serversLoadError' => 'Could not load the SSH servers. Check the connection and try again.',
 			'ssh.serversNotConnected' => 'Not connected to a remote host.',
 			'ssh.serversTitle' => 'SSH servers',
@@ -13332,6 +13368,8 @@ extension on AppLocalizations {
 			'workspace.searchRegex' => 'Regex',
 			'workspace.searchReplace' => 'Replace',
 			'workspace.searchReplaceAll' => 'Replace All',
+			_ => null,
+		} ?? switch (path) {
 			'workspace.searchReplaceAllMessage' => ({required int count}) => 'Replace ${count} occurrence(s)?',
 			'workspace.searchReplaceAllTitle' => 'Replace all?',
 			'workspace.searchReplaceHint' => 'Replace with',
@@ -13341,8 +13379,6 @@ extension on AppLocalizations {
 			'workspace.searchShowMore' => 'Show more results',
 			'workspace.searchSliceError' => ({required String directory}) => 'Search failed in "${directory}"',
 			'workspace.searchTitle' => 'Search',
-			_ => null,
-		} ?? switch (path) {
 			'workspace.searchToggleDetails' => 'Toggle search details',
 			'workspace.searchTruncated' => 'Results truncated — refine your query',
 			'workspace.searchUseGitignore' => 'Use .gitignore settings',

@@ -245,6 +245,11 @@ class HeadlessAiService {
         ? setting.model.trim()
         : (provider?.defaultModel.trim() ?? '');
     final effort = _resolveEffort(cli, model, provider, setting.effort);
+    final contextWindow = resolveModelContextWindow(
+      provider,
+      model: model,
+      entryId: model,
+    );
 
     // Long prompts go via stdin: as argv they can exceed the ~8k-char
     // cmd.exe command-line limit of npm `.cmd` shims on Windows.
@@ -257,6 +262,7 @@ class HeadlessAiService {
         prompt: prompt,
         model: model,
         effort: effort,
+        contextWindow: contextWindow,
         configDir: dir.path,
         providerId: setting.providerId,
         workingDirectory: workingDirectory,
@@ -282,6 +288,7 @@ class HeadlessAiService {
                 providerId: setting.providerId,
                 model: model,
                 effort: effort,
+                contextWindow: contextWindow,
                 configDir: dir.path,
                 workingDirectory: workingDirectory,
                 additionalDirectories: additionalDirectories,
@@ -409,6 +416,11 @@ class HeadlessAiService {
         ? setting.model.trim()
         : (provider?.defaultModel.trim() ?? '');
     final effort = _resolveEffort(cli, model, provider, setting.effort);
+    final contextWindow = resolveModelContextWindow(
+      provider,
+      model: model,
+      entryId: model,
+    );
 
     // Long prompts go via stdin: as argv they can exceed the ~8k-char
     // cmd.exe command-line limit of npm `.cmd` shims on Windows.
@@ -421,6 +433,7 @@ class HeadlessAiService {
         prompt: prompt,
         model: model,
         effort: effort,
+        contextWindow: contextWindow,
         configDir: dir.path,
         providerId: setting.providerId,
         workingDirectory: workingDirectory,
@@ -447,6 +460,7 @@ class HeadlessAiService {
                 providerId: setting.providerId,
                 model: model,
                 effort: effort,
+                contextWindow: contextWindow,
                 configDir: dir.path,
                 workingDirectory: workingDirectory,
                 additionalDirectories: additionalDirectories,

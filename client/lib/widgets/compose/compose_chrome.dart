@@ -7,6 +7,17 @@ sealed class ComposeChrome {
   const ComposeChrome();
 }
 
+/// Extra selectors folded into the compose toolbar's "more options" chip.
+///
+/// [menus] are submenu specs (label + children); the toolbar appends the
+/// security-mode submenu itself and dispatches policy values separately.
+final class ComposeMoreOptions {
+  const ComposeMoreOptions({required this.menus, required this.onSelected});
+
+  final List<TpActionMenuSpec> menus;
+  final ValueChanged<Object?> onSelected;
+}
+
 final class ComposePermissionControl {
   const ComposePermissionControl({
     required this.launchSecurityPolicy,
@@ -44,6 +55,9 @@ final class UnboundComposeChrome extends ComposeChrome {
     required this.onConversationModeSelected,
     required this.onAutoChipSelected,
     this.autoChipLeading,
+    this.moreOptions,
+    this.moreOptionsLabel = 'More options',
+    this.securityModeLabel = 'Security mode',
     this.expertChipLabel,
     this.expertChipSpecs = const [],
     this.onExpertChipSelected,
@@ -60,6 +74,9 @@ final class UnboundComposeChrome extends ComposeChrome {
   final ValueChanged<Object?> onConversationModeSelected;
   final ValueChanged<Object?> onAutoChipSelected;
   final Widget? autoChipLeading;
+  final ComposeMoreOptions? moreOptions;
+  final String moreOptionsLabel;
+  final String securityModeLabel;
   final String? expertChipLabel;
   final List<TpActionMenuSpec> expertChipSpecs;
   final ValueChanged<Object?>? onExpertChipSelected;
@@ -82,6 +99,9 @@ final class BoundComposeChrome extends ComposeChrome {
     this.modelPresetLabel,
     this.modelChipLeading,
     this.modelCascadeSpecs,
+    this.moreOptions,
+    this.moreOptionsLabel = 'More options',
+    this.securityModeLabel = 'Security mode',
     this.onModelCascadeSelected,
     this.permissionControl,
     this.teamSettingsTooltip,
@@ -106,6 +126,9 @@ final class BoundComposeChrome extends ComposeChrome {
   final String? modelPresetLabel;
   final Widget? modelChipLeading;
   final List<TpActionMenuSpec>? modelCascadeSpecs;
+  final ComposeMoreOptions? moreOptions;
+  final String moreOptionsLabel;
+  final String securityModeLabel;
   final ValueChanged<Object?>? onModelCascadeSelected;
 
   final ComposePermissionControl? permissionControl;

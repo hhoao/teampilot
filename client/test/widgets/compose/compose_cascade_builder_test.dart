@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/utils/ui/format_tokens.dart';
 import 'package:teampilot/widgets/compose/compose_model_preset_chip.dart';
 
 AppProviderConfig provider(
@@ -359,6 +361,129 @@ void main() {
       );
     });
 
+    test('model rows show the per-model context window', () {
+      final groups = [
+        ComposeCascadeCliGroup(
+          cli: CliTool.qoder,
+          providers: [
+            ComposeCascadeProvider(
+              id: 'p1',
+              name: 'Qoder',
+              supportsCustomModelEntry: false,
+              models: const ['m1', 'm2'],
+              config: provider(
+                'p1',
+                config: {
+                  'models': {
+                    'm1': {'model': 'm1', 'contextWindow': 200000},
+                  },
+                },
+              ),
+              effortByModel: const {'m1': [], 'm2': []},
+            ),
+          ],
+        ),
+      ];
+      final specs = buildComposeModelCascadeMenuSpecs(
+        presets: const [],
+        selectedPresetId: null,
+        emptyHintLabel: 'x',
+        emptyProvidersLabel: 'y',
+        presetsLabel: 'Presets',
+        defaultEffortLabel: 'Default',
+        customModelIdLabel: 'Custom',
+        noModelsLabel: 'No models',
+        savePresetLabel: 'Save',
+        managePresetsLabel: 'Manage',
+        cliGroups: groups,
+        groupByCli: false,
+        modelTooltip: (cli, providerId, model) => 'desc-$model',
+        contextWindowLabel: (tokens) => '${compactTokenCount(tokens)} ctx',
+      );
+      final providerSpec = specs.firstWhere((s) => s.isSubmenu);
+      final rows = providerSpec.children!;
+      expect(rows[0].subtitleSuffix, '200K ctx · desc-m1');
+      expect(rows[1].subtitleSuffix, 'desc-m2');
+    });
+
+    test('context window is absent when no formatter is supplied', () {
+      final groups = [
+        ComposeCascadeCliGroup(
+          cli: CliTool.qoder,
+          providers: [
+            ComposeCascadeProvider(
+              id: 'p1',
+              name: 'Qoder',
+              supportsCustomModelEntry: false,
+              models: const ['m1'],
+              config: provider(
+                'p1',
+                config: {
+                  'models': {
+                    'm1': {'model': 'm1', 'contextWindow': 200000},
+                  },
+                },
+              ),
+              effortByModel: const {'m1': []},
+            ),
+          ],
+        ),
+      ];
+      final specs = buildComposeModelCascadeMenuSpecs(
+        presets: const [],
+        selectedPresetId: null,
+        emptyHintLabel: 'x',
+        emptyProvidersLabel: 'y',
+        presetsLabel: 'Presets',
+        defaultEffortLabel: 'Default',
+        customModelIdLabel: 'Custom',
+        noModelsLabel: 'No models',
+        savePresetLabel: 'Save',
+        managePresetsLabel: 'Manage',
+        cliGroups: groups,
+        groupByCli: false,
+      );
+      final providerSpec = specs.firstWhere((s) => s.isSubmenu);
+      expect(providerSpec.children!.first.subtitleSuffix, isNull);
+    });
+
+    test('showEffortLevels=false keeps model rows as direct leaves', () {
+      final groups = [
+        ComposeCascadeCliGroup(
+          cli: CliTool.qoder,
+          providers: [
+            cascadeProvider(
+              id: 'p1',
+              name: 'Qoder',
+              models: ['m1'],
+              efforts: {
+                'm1': ['low', 'high'],
+              },
+            ),
+          ],
+        ),
+      ];
+      final specs = buildComposeModelCascadeMenuSpecs(
+        presets: const [],
+        selectedPresetId: null,
+        emptyHintLabel: 'x',
+        emptyProvidersLabel: 'y',
+        presetsLabel: 'Presets',
+        defaultEffortLabel: 'Default',
+        customModelIdLabel: 'Custom',
+        noModelsLabel: 'No models',
+        savePresetLabel: 'Save',
+        managePresetsLabel: 'Manage',
+        cliGroups: groups,
+        groupByCli: false,
+        showEffortLevels: false,
+      );
+      final providerSpec = specs.firstWhere((s) => s.isSubmenu);
+      final modelSpec = providerSpec.children!.first;
+      expect(modelSpec.isSubmenu, isFalse);
+      expect(modelSpec.value, isA<CascadeModelPick>());
+    });
+
     test('omits save preset when showSavePreset is false', () {
       final specs = buildComposeModelCascadeMenuSpecs(
         presets: const [],
@@ -554,6 +679,200 @@ void main() {
       expect(freePick.providerId, 'opencode');
       expect(freePick.namespace, 'opencode');
       expect(freePick.modelId, 'deepseek-v4.1-flash-free');
+    });
+  });
+
+  group('configWithModelContextWindow', () {
+    test('sets the window on a row keyed by the model id', () {
+      final config = <String, Object?>{
+        'keep': true,
+        'models': {
+          'm1': {'name': 'M1', 'model': 'm1', 'enabled': true},
+          'm2': {'name': 'M2', 'model': 'm2', 'enabled': true},
+        },
+      };
+      final next = configWithModelContextWindow(config, 'm1', 200000);
+      expect(next['keep'], isTrue);
+      final models = next['models'] as Map;
+      expect((models['m1'] as Map)['contextWindow'], 200000);
+      expect((models['m2'] as Map).containsKey('contextWindow'), isFalse);
+      // Pure: the input config is not mutated.
+      expect(
+        ((config['models'] as Map)['m1'] as Map).containsKey('contextWindow'),
+        isFalse,
+      );
+    });
+
+    test('matches a row whose key differs from the served model id', () {
+      final config = <String, Object?>{
+        'models': {
+          'alias': {'name': 'Alias', 'model': 'served-model', 'enabled': true},
+        },
+      };
+      final next = configWithModelContextWindow(config, 'served-model', 128000);
+      expect(
+        ((next['models'] as Map)['alias'] as Map)['contextWindow'],
+        128000,
+      );
+      expect((next['models'] as Map).containsKey('served-model'), isFalse);
+    });
+
+    test('creates a row for a model with none', () {
+      final next = configWithModelContextWindow(const {}, 'new-model', 300000);
+      final row = (next['models'] as Map)['new-model'] as Map;
+      expect(row['model'], 'new-model');
+      expect(row['enabled'], isTrue);
+      expect(row['contextWindow'], 300000);
+    });
+
+    test('clearing removes the key and keeps the rest of the row', () {
+      final config = <String, Object?>{
+        'models': {
+          'm1': {
+            'name': 'M1',
+            'model': 'm1',
+            'enabled': true,
+            'contextWindow': 200000,
+            'provider': 'X',
+          },
+        },
+      };
+      final next = configWithModelContextWindow(config, 'm1', null);
+      final row = (next['models'] as Map)['m1'] as Map;
+      expect(row.containsKey('contextWindow'), isFalse);
+      expect(row['provider'], 'X');
+    });
+  });
+
+  group('context window editor submenu', () {
+    List<TpActionMenuSpec> buildSpecs({
+      List<ComposeCascadeModelGroup> groups = const [],
+      bool withEditLabel = true,
+    }) {
+      return buildComposeModelCascadeMenuSpecs(
+        presets: const [],
+        selectedPresetId: null,
+        emptyHintLabel: 'x',
+        emptyProvidersLabel: 'y',
+        presetsLabel: 'Presets',
+        defaultEffortLabel: 'Default',
+        customModelIdLabel: 'Custom',
+        noModelsLabel: 'No models',
+        savePresetLabel: 'Save',
+        managePresetsLabel: 'Manage',
+        cliGroups: [
+          ComposeCascadeCliGroup(
+            cli: CliTool.qoder,
+            providers: [
+              ComposeCascadeProvider(
+                id: 'p1',
+                name: 'Qoder',
+                supportsCustomModelEntry: false,
+                models: groups.isEmpty ? const ['m1', 'm2'] : const [],
+                config: provider(
+                  'p1',
+                  config: {
+                    'models': {
+                      'm1': {'model': 'm1', 'contextWindow': 200000},
+                    },
+                  },
+                ),
+                effortByModel: const {'m1': [], 'm2': []},
+                groups: groups,
+              ),
+            ],
+          ),
+        ],
+        groupByCli: false,
+        contextWindowLabel: (t) => '${compactTokenCount(t)} ctx',
+        contextWindowEditLabel: withEditLabel ? 'Context window' : null,
+        contextWindowDefaultLabel: 'Model default',
+      );
+    }
+
+    test('lists models with their current value and routes edit requests', () {
+      final specs = buildSpecs();
+      final providerSpec = specs.firstWhere((s) => s.isSubmenu);
+      final editSubmenu = providerSpec.children!
+          .where((s) => s.isSubmenu && s.label == 'Context window')
+          .single;
+      final rows = editSubmenu.children!;
+      expect(rows, hasLength(2));
+      final pick = rows[0].value as CascadeContextWindowEditRequest;
+      expect(pick.cli, CliTool.qoder);
+      expect(pick.providerId, 'p1');
+      expect(pick.modelId, 'm1');
+      expect(rows[0].subtitleSuffix, '200K ctx');
+      expect(rows[1].subtitleSuffix, 'Model default');
+    });
+
+    test('hidden when the surface does not opt into the editor', () {
+      final specs = buildSpecs(withEditLabel: false);
+      final providerSpec = specs.firstWhere((s) => s.isSubmenu);
+      expect(
+        providerSpec.children!.where((s) => s.label == 'Context window'),
+        isEmpty,
+      );
+    });
+
+    test('grouped provider nests the editor under each namespace', () {
+      final specs = buildSpecs(
+        groups: const [
+          ComposeCascadeModelGroup(namespace: 'ns-a', models: ['m1']),
+          ComposeCascadeModelGroup(namespace: 'ns-b', models: ['m2']),
+        ],
+      );
+      final providerSpec = specs.firstWhere((s) => s.isSubmenu);
+      final namespaceSubmenus = providerSpec.children!
+          .where((s) => s.isSubmenu && s.label != 'Context window')
+          .toList();
+      expect(namespaceSubmenus, hasLength(2));
+      for (final submenu in namespaceSubmenus) {
+        final editor = submenu.children!
+            .where((s) => s.isSubmenu && s.label == 'Context window')
+            .single;
+        final request =
+            editor.children!.single.value as CascadeContextWindowEditRequest;
+        expect(request.namespace, submenu.label);
+      }
+    });
+  });
+
+  group('standalone effort and window selectors', () {
+    test('effort specs mark the current level', () {
+      final specs = buildComposeEffortSpecs(
+        cli: CliTool.qoder,
+        providerId: 'p1',
+        modelId: 'm1',
+        efforts: const ['low', 'high'],
+        selectedEffort: 'high',
+        defaultLabel: 'Default',
+      );
+      expect(specs.map((s) => s.label), ['Default', 'low', 'high']);
+      expect(specs.first.selected, isFalse);
+      expect(specs.last.selected, isTrue);
+      expect(specs.first.value, isA<CascadeModelPick>());
+      expect(specs.last.value, isA<CascadeEffortPick>());
+    });
+
+    test('window specs include default, presets and a custom entry', () {
+      final specs = buildComposeContextWindowSpecs(
+        cli: CliTool.qoder,
+        providerId: 'p1',
+        modelId: 'm1',
+        currentWindow: 200000,
+        defaultLabel: 'Model default',
+        customLabel: 'Custom…',
+        formatTokens: compactTokenCount,
+      );
+      expect(specs.first.label, 'Model default');
+      expect(specs.where((s) => s.selected).single.label, '200K');
+      expect(specs.last.label, 'Custom…');
+      expect(specs.last.value, isA<CascadeContextWindowEditRequest>());
+      final picks = specs
+          .where((s) => s.value is CascadeContextWindowPick)
+          .map((s) => (s.value as CascadeContextWindowPick).tokens);
+      expect(picks, containsAll([null, 128000, 200000, 300000, 1000000]));
     });
   });
 }

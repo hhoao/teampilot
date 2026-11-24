@@ -53,10 +53,12 @@ import '../../services/chat/session/chat_tab.dart';
 import '../../services/chat/session/session_member_cli_resolver.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/team/team_member_naming.dart';
+import '../../utils/ui/format_tokens.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/compose/compose_chrome.dart';
 import '../../widgets/compose/compose_model_preset_chip.dart';
+import '../../widgets/compose/context_window_edit_dialog.dart';
 import '../../widgets/compose/simple_custom_launch_dialog.dart';
 import '../../widgets/compose/workspace_compose_card.dart';
 import '../../widgets/follow_up/follow_up_queue_strip.dart';
@@ -263,6 +265,41 @@ class SessionChatComposeSection extends StatelessWidget {
       context,
       (c) => c.state.providersFor(lockedCli),
     );
+    final activeProviderId = session.provider.trim().isNotEmpty
+        ? session.provider
+        : (selectedPreset?.provider ?? '');
+    final activeProvider = providerList
+        .where((p) => p.id == activeProviderId)
+        .firstOrNull;
+
+    /// Muted menu-row label for a per-model context window.
+    String? contextWindowLabel(int tokens) =>
+        l10n.modelContextWindowShort(tokens: compactTokenCount(tokens));
+
+    /// Live ACP ids may be namespace-qualified (`opencode-go/x`) while the
+    /// provider's model rows are keyed by the bare served id.
+    int? agentContextWindow(String modelId) {
+      final trimmed = modelId.trim();
+      final candidates = [
+        trimmed,
+        if (trimmed.contains('/')) trimmed.split('/').last,
+      ];
+      for (final id in candidates) {
+        final window = resolveModelContextWindow(
+          activeProvider,
+          model: id,
+          entryId: id,
+        );
+        if (window != null) return window;
+      }
+      return null;
+    }
+
+    String? agentContextWindowLabel(String modelId) {
+      final window = agentContextWindow(modelId);
+      return window == null ? null : contextWindowLabel(window);
+    }
+
     final modelLabel = session.isSimple
         ? simpleLaunchChipLabel(
             presetName: selectedPreset?.name,
@@ -285,6 +322,80 @@ class SessionChatComposeSection extends StatelessWidget {
                   ? acpModelState.options.first.name
                   : acpModelState.currentId));
     final modelChipLabel = acpModelLabel ?? modelLabel;
+
+    // Standalone effort / context-window selectors next to the model chip.
+    final providerCapability = registry.capability<ProviderCapability>(
+      lockedCli,
+    );
+    var effortModelId = session.model.trim();
+    if (providerCapability != null &&
+        effortModelId.contains('/') &&
+        !providerCapability.isApplicable(model: effortModelId)) {
+      effortModelId = effortModelId.split('/').last;
+    }
+    final availableEfforts =
+        session.isSimple &&
+            providerCapability != null &&
+            effortModelId.isNotEmpty &&
+            providerCapability.isApplicable(model: effortModelId)
+        ? providerCapability.effortCandidates(
+            model: effortModelId,
+            provider: activeProvider,
+          )
+        : const <String>[];
+    final currentWindow = session.isSimple
+        ? resolveModelContextWindow(
+            activeProvider,
+            model: effortModelId,
+            entryId: effortModelId,
+          )
+        : null;
+
+    void handleValue(Object? value) => unawaited(
+      _onCascadeSelected(
+        context: context,
+        session: session,
+        team: team,
+        sameCliPresets: sameCliPresets,
+        lockedCli: lockedCli,
+        selectedMemberId: selectedMemberId,
+        acpRuntime: acpRuntime,
+        value: value,
+      ),
+    );
+
+    final moreOptions = session.isSimple
+        ? ComposeMoreOptions(
+            menus: [
+              if (availableEfforts.isNotEmpty && activeProvider != null)
+                TpActionMenuSpec.submenu(
+                  label: l10n.modelEffortLabel,
+                  children: buildComposeEffortSpecs(
+                    cli: lockedCli,
+                    providerId: activeProvider.id,
+                    modelId: session.model,
+                    efforts: availableEfforts,
+                    selectedEffort: session.effort,
+                    defaultLabel: l10n.compose.cascadeDefaultEffort,
+                  ),
+                ),
+              if (activeProvider != null && effortModelId.isNotEmpty)
+                TpActionMenuSpec.submenu(
+                  label: l10n.modelContextWindowEdit,
+                  children: buildComposeContextWindowSpecs(
+                    cli: lockedCli,
+                    providerId: activeProvider.id,
+                    modelId: effortModelId,
+                    currentWindow: currentWindow,
+                    defaultLabel: l10n.modelContextWindowDefault,
+                    customLabel: l10n.modelContextWindowCustom,
+                    formatTokens: compactTokenCount,
+                  ),
+                ),
+            ],
+            onSelected: handleValue,
+          )
+        : null;
     final identityLabel = resolveIdentityLabel(
       session: session,
       team: team,
@@ -452,6 +563,8 @@ class SessionChatComposeSection extends StatelessWidget {
                                     providerId: providerId,
                                     modelId: modelId,
                                   ),
+                              contextWindowLabel: contextWindowLabel,
+                              showEffortLevels: false,
                               onModelsOpened: (cli, pid, config) => unawaited(
                                 refreshComposeCascadeCatalog(
                                   context,
@@ -475,6 +588,7 @@ class SessionChatComposeSection extends StatelessWidget {
                               modelState: acpModelState,
                               agentSectionLabel: l10n.acp.modelSectionAgent,
                               launchSectionLabel: l10n.acp.modelSectionLaunch,
+                              modelContextWindowLabel: agentContextWindowLabel,
                             );
                       return ListenableBuilder(
                         listenable: Listenable.merge([
@@ -554,6 +668,9 @@ class SessionChatComposeSection extends StatelessWidget {
                                 showBorder: false,
                               ),
                               modelCascadeSpecs: cascadeSpecs,
+                              moreOptions: moreOptions,
+                              moreOptionsLabel: l10n.moreOptions,
+                              securityModeLabel: l10n.securityMode,
                               onModelCascadeSelected: (v) => unawaited(
                                 _onCascadeSelected(
                                   context: context,
@@ -1063,6 +1180,14 @@ class SessionChatComposeSection extends StatelessWidget {
         effort: session.effort,
         acpRuntime: acpRuntime,
       );
+      return;
+    }
+    if (value is CascadeContextWindowEditRequest) {
+      await showComposeContextWindowEditor(context, request: value);
+      return;
+    }
+    if (value is CascadeContextWindowPick) {
+      await applyComposeContextWindowPick(context, request: value);
       return;
     }
     if (value == ComposeModelPresetChipAction.savePreset) {

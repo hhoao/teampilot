@@ -1,11 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
+import '../../utils/ui/format_tokens.dart';
 import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:shared_ui/shared_ui.dart';
+
+int? _positiveInt(Object? raw) {
+  final value = switch (raw) {
+    int() => raw,
+    num() => raw.toInt(),
+    String() => int.tryParse(raw.trim()),
+    _ => null,
+  };
+  return value != null && value > 0 ? value : null;
+}
 
 /// One model row stored under `provider.config['models']`.
 @immutable
@@ -16,6 +28,7 @@ class ProviderModelEntry {
     required this.model,
     required this.enabled,
     this.tier = ProviderModelTier.standard,
+    this.contextWindow,
     this.raw = const {},
   });
 
@@ -27,6 +40,9 @@ class ProviderModelEntry {
   /// Tier role for tier-aware CLIs (Claude). Ignored when the CLI is flat.
   final ProviderModelTier tier;
 
+  /// Context window in tokens for this model; null keeps the CLI default.
+  final int? contextWindow;
+
   /// Extra keys (e.g. flashskyai `provider`) preserved on round-trip.
   final Map<String, Object?> raw;
 
@@ -35,12 +51,14 @@ class ProviderModelEntry {
     String? model,
     bool? enabled,
     ProviderModelTier? tier,
+    int? contextWindow,
   }) => ProviderModelEntry(
     id: id,
     name: name ?? this.name,
     model: model ?? this.model,
     enabled: enabled ?? this.enabled,
     tier: tier ?? this.tier,
+    contextWindow: contextWindow ?? this.contextWindow,
     raw: raw,
   );
 
@@ -50,6 +68,7 @@ class ProviderModelEntry {
     'model': model,
     'enabled': enabled,
     if (tier != ProviderModelTier.standard) 'role': tier.value,
+    if (contextWindow != null) 'contextWindow': contextWindow,
   };
 }
 
@@ -89,11 +108,13 @@ class ProviderModelsEditor extends StatelessWidget {
             model: (map['model'] as String?)?.trim() ?? entry.key,
             enabled: map['enabled'] as bool? ?? true,
             tier: ProviderModelTier.fromJson(map['role']),
+            contextWindow: _positiveInt(map['contextWindow']),
             raw: map
               ..remove('name')
               ..remove('model')
               ..remove('enabled')
-              ..remove('role'),
+              ..remove('role')
+              ..remove('contextWindow'),
           ),
         );
       } else {
@@ -317,6 +338,15 @@ class _ModelRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: styles.smColored(muted),
                   ),
+                if (entry.contextWindow != null)
+                  Text(
+                    l10n.modelContextWindowShort(
+                      tokens: compactTokenCount(entry.contextWindow!),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: styles.smColored(muted),
+                  ),
               ],
             ),
           ),
@@ -362,6 +392,7 @@ class _ProviderModelEntryDialog extends StatefulWidget {
 
 class _ProviderModelEntryDialogState extends State<_ProviderModelEntryDialog> {
   late final TextEditingController _nameController;
+  late final TextEditingController _contextWindowController;
   late String _model;
   late bool _enabled;
 
@@ -371,6 +402,9 @@ class _ProviderModelEntryDialogState extends State<_ProviderModelEntryDialog> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.existing?.name ?? '');
+    _contextWindowController = TextEditingController(
+      text: widget.existing?.contextWindow?.toString() ?? '',
+    );
     _model = widget.existing?.model ?? '';
     _enabled = widget.existing?.enabled ?? true;
   }
@@ -378,6 +412,7 @@ class _ProviderModelEntryDialogState extends State<_ProviderModelEntryDialog> {
   @override
   void dispose() {
     _nameController.dispose();
+    _contextWindowController.dispose();
     super.dispose();
   }
 
@@ -406,6 +441,16 @@ class _ProviderModelEntryDialogState extends State<_ProviderModelEntryDialog> {
           TextField(
             controller: _nameController,
             decoration: InputDecoration(labelText: l10n.modelName),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _contextWindowController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              labelText: l10n.modelContextWindow,
+              hintText: l10n.modelContextWindowHint,
+            ),
           ),
           const SizedBox(height: 8),
           SwitchListTile(
@@ -439,6 +484,7 @@ class _ProviderModelEntryDialogState extends State<_ProviderModelEntryDialog> {
         name: name.isEmpty ? model : name,
         model: model,
         enabled: _enabled,
+        contextWindow: _positiveInt(_contextWindowController.text),
         raw: widget.existing?.raw ?? const {},
       ),
     );

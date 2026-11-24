@@ -181,6 +181,17 @@ class AppLocalizationsZh extends AppLocalizations with BaseTranslations<AppLocal
 	@override String get model => '模型';
 	@override String get modelId => '模型 ID';
 	@override String get modelName => '模型别名/名称';
+	@override String get modelContextWindow => '上下文窗口（tokens）';
+	@override String get modelContextWindowHint => '留空则使用模型默认值。';
+	@override String modelContextWindowShort({required String tokens}) => '上下文 ${tokens}';
+	@override String get modelContextWindowEdit => '上下文窗口';
+	@override String modelContextWindowEditTitle({required String model}) => '${model} · 上下文窗口';
+	@override String get modelContextWindowDefault => '模型默认';
+	@override String get modelContextWindowUseDefault => '使用模型默认值';
+	@override String get modelContextWindowCustom => '自定义…';
+	@override String get modelEffortLabel => '思考强度';
+	@override String get moreOptions => '更多选项';
+	@override String get securityMode => '安全模式';
 	@override String get models => '模型';
 	@override String get modelsTab => '模型';
 	@override String modelsUsingProvider({required int count}) => '使用此提供商的模型： ${count}';
@@ -2677,8 +2688,6 @@ class _AppLocalizations$qoder$zh extends AppLocalizations$qoder$en {
 	final AppLocalizationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get contextWindow => '上下文窗口（tokens）';
-	@override String get contextWindowHint => '留空则使用模型默认值。';
 	@override String get credentialsActionFailed => 'Qoder 操作失败';
 	@override String get credentialsCancel => '取消';
 	@override String get credentialsDone => '完成';
@@ -4138,6 +4147,17 @@ extension on AppLocalizationsZh {
 			'model' => '模型',
 			'modelId' => '模型 ID',
 			'modelName' => '模型别名/名称',
+			'modelContextWindow' => '上下文窗口（tokens）',
+			'modelContextWindowHint' => '留空则使用模型默认值。',
+			'modelContextWindowShort' => ({required String tokens}) => '上下文 ${tokens}',
+			'modelContextWindowEdit' => '上下文窗口',
+			'modelContextWindowEditTitle' => ({required String model}) => '${model} · 上下文窗口',
+			'modelContextWindowDefault' => '模型默认',
+			'modelContextWindowUseDefault' => '使用模型默认值',
+			'modelContextWindowCustom' => '自定义…',
+			'modelEffortLabel' => '思考强度',
+			'moreOptions' => '更多选项',
+			'securityMode' => '安全模式',
 			'models' => '模型',
 			'modelsTab' => '模型',
 			'modelsUsingProvider' => ({required int count}) => '使用此提供商的模型： ${count}',
@@ -4497,6 +4517,8 @@ extension on AppLocalizationsZh {
 			'automations.filterStatusLabel' => '状态',
 			'automations.hideFilter' => '隐藏筛选',
 			'automations.invalidCron' => '无效的 cron 表达式（需要 5 个字段）',
+			_ => null,
+		} ?? switch (path) {
 			'automations.invalidMaxRunCount' => '运行次数上限须为正整数',
 			'automations.invalidTime' => '时间格式须为 HH:mm',
 			'automations.launchMode' => '对话模式',
@@ -4508,8 +4530,6 @@ extension on AppLocalizationsZh {
 			'automations.maxRunCount' => '运行次数上限',
 			'automations.maxRunCountHint' => '留空表示无限制',
 			'automations.message' => '消息',
-			_ => null,
-		} ?? switch (path) {
 			'automations.name' => '名称',
 			'automations.kNew' => '新建自动化',
 			'automations.nextRun' => ({required String time}) => '下次运行：${time}',
@@ -5011,6 +5031,8 @@ extension on AppLocalizationsZh {
 			'file.previewHostFloating' => '浮动',
 			'file.previewHostTitle' => '文件预览位置',
 			'fileTree.fileTree' => '文件树',
+			_ => null,
+		} ?? switch (path) {
 			'fileTree.copy' => '复制',
 			'fileTree.copyPath' => '复制路径',
 			'fileTree.copyRelativePath' => '复制相对路径',
@@ -5022,8 +5044,6 @@ extension on AppLocalizationsZh {
 			'fileTree.fileCreated' => '已创建文件',
 			'fileTree.folderCreated' => '已创建文件夹',
 			'fileTree.hideFilter' => '隐藏筛选',
-			_ => null,
-		} ?? switch (path) {
 			'fileTree.importApplyRemaining' => '应用于剩余冲突',
 			'fileTree.importCancelAll' => '全部取消',
 			'fileTree.importConflictBody' => ({required String name}) => '目标位置已存在「${name}」。',
@@ -5525,6 +5545,8 @@ extension on AppLocalizationsZh {
 			'managedProviders.credentialTemplate' => '凭据拼接模板',
 			'managedProviders.credentialTemplateHelper' => '拼成最终凭据值，常用于 Cookie；用花括号填变量。',
 			'managedProviders.credentialTemplateHint' => '例如 WorkosCursorSessionToken=user::token',
+			_ => null,
+		} ?? switch (path) {
 			'managedProviders.credentials' => '凭据',
 			'managedProviders.credentialsSectionSubtitle' => '凭据来源及写入请求的方式。',
 			'managedProviders.credentialsSectionTitle' => '凭据来源与请求写入',
@@ -5536,8 +5558,6 @@ extension on AppLocalizationsZh {
 			'managedProviders.deleteContent' => ({required Object name}) => '删除“${name}”及其缓存用量？',
 			'managedProviders.deleteFailed' => '无法删除管理 Provider。',
 			'managedProviders.deleteTitle' => '删除管理 Provider？',
-			_ => null,
-		} ?? switch (path) {
 			'managedProviders.disable' => '禁用',
 			'managedProviders.disabled' => '已禁用',
 			'managedProviders.display' => '显示配置',
@@ -6007,8 +6027,6 @@ extension on AppLocalizationsZh {
 			'provider.name' => '提供商名称',
 			'provider.type' => '提供商类型',
 			'provider.typeHint' => 'openai, claude 或自定义',
-			'qoder.contextWindow' => '上下文窗口（tokens）',
-			'qoder.contextWindowHint' => '留空则使用模型默认值。',
 			'qoder.credentialsActionFailed' => 'Qoder 操作失败',
 			'qoder.credentialsCancel' => '取消',
 			'qoder.credentialsDone' => '完成',
@@ -6041,6 +6059,8 @@ extension on AppLocalizationsZh {
 			'resource.managerColumnCpu' => 'CPU',
 			'resource.managerColumnMemory' => '内存',
 			'resource.managerColumnName' => '名称',
+			_ => null,
+		} ?? switch (path) {
 			'resource.managerEmptyTree' => '当前没有运行中的会话。',
 			'resource.managerKill' => '结束',
 			'resource.managerKillAll' => '全部结束',
@@ -6050,8 +6070,6 @@ extension on AppLocalizationsZh {
 			'resource.managerMetricsError' => '无法刷新进程指标。',
 			'resource.managerPanelTitle' => '资源管理器 - 会话',
 			'resource.managerRefresh' => '刷新',
-			_ => null,
-		} ?? switch (path) {
 			'resource.managerSpace' => '空间',
 			'resource.managerSpaceBeta' => 'Beta',
 			'resource.managerSpaceNotScanned' => '不会扫描工作区磁盘占用。',
@@ -6555,6 +6573,8 @@ extension on AppLocalizationsZh {
 			'ssh.hostsOpenTerminal' => '打开终端',
 			'ssh.hostsOpenTerminalNoWorkspace' => '请先打开一个工作区再启动终端。',
 			'ssh.hostsPanelTitle' => '远程主机',
+			_ => null,
+		} ?? switch (path) {
 			'ssh.hostsPillConnecting' => '连接中…',
 			'ssh.hostsRowKind' => 'SSH 主机',
 			'ssh.migrateToVault' => '迁移到保险库',
@@ -6564,8 +6584,6 @@ extension on AppLocalizationsZh {
 			'ssh.serversNeedsConnectionHint' => '本机清单中存在，但尚未在这台设备上建立连接',
 			'ssh.serversNotConnectedOnDevice' => '尚未在这台设备上建立连接',
 			'ssh.serversLoadError' => '无法加载 SSH 服务器，请检查连接后重试。',
-			_ => null,
-		} ?? switch (path) {
 			'ssh.serversNotConnected' => '未连接远程主机。',
 			'ssh.serversTitle' => 'SSH 服务器',
 			'ssh.vaultBadge' => '保险库',
@@ -7069,6 +7087,8 @@ extension on AppLocalizationsZh {
 			'workspace.searchRegex' => '正则',
 			'workspace.searchReplace' => '替换',
 			'workspace.searchReplaceAll' => '全部替换',
+			_ => null,
+		} ?? switch (path) {
 			'workspace.searchReplaceAllMessage' => ({required int count}) => '替换 ${count} 处匹配？',
 			'workspace.searchReplaceAllTitle' => '全部替换？',
 			'workspace.searchReplaceHint' => '替换为',
@@ -7078,8 +7098,6 @@ extension on AppLocalizationsZh {
 			'workspace.searchShowMore' => '查看更多结果',
 			'workspace.searchSliceError' => ({required String directory}) => '「${directory}」目录搜索失败',
 			'workspace.searchTitle' => '搜索',
-			_ => null,
-		} ?? switch (path) {
 			'workspace.searchToggleDetails' => '展开搜索选项',
 			'workspace.searchTruncated' => '结果过多已截断——请细化查询',
 			'workspace.searchUseGitignore' => '使用 .gitignore 设置',

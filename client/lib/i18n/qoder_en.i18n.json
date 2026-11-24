@@ -1,6 +1,4 @@
 {
-  "contextWindow": "Context window (tokens)",
-  "contextWindowHint": "Leave empty to use the model default.",
   "credentialsActionFailed": "The Qoder action failed",
   "credentialsCancel": "Cancel",
   "credentialsDone": "Done",

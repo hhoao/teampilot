@@ -285,7 +285,19 @@ void main() {
             'cli': 'qoder',
             'name': 'Work',
             'defaultModel': 'glm-5.3',
-            'config': {'reasoningEffort': 'high', 'contextWindow': 300000},
+            'config': {
+              'reasoningEffort': 'high',
+              // Legacy provider-wide window; the model row below wins.
+              'contextWindow': 300000,
+              'models': {
+                'glm-5.3': {
+                  'name': 'GLM',
+                  'model': 'glm-5.3',
+                  'enabled': true,
+                  'contextWindow': 200000,
+                },
+              },
+            },
           },
         },
       }),
@@ -342,7 +354,7 @@ void main() {
             as Map<String, Object?>;
     expect(settings['model'], 'glm-5.3');
     expect(settings['reasoningEffort'], 'high');
-    expect(settings['contextWindow'], 300000);
+    expect(settings['contextWindow'], 200000);
     expect(settings['telemetry'], isFalse);
   });
 

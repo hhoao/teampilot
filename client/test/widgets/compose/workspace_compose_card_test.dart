@@ -14,12 +14,23 @@ import 'package:teampilot/widgets/compose/compose_at_file_chip_row.dart';
 import 'package:teampilot/widgets/compose/compose_paste_clip_bar.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
 import 'package:teampilot/widgets/compose/compose_file_drop_region.dart';
+import 'package:teampilot/widgets/compose/compose_menu_chip.dart';
 import 'package:teampilot/widgets/compose/compose_permission_chip.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import '../../support/post_frame_test_harness.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+/// The single "more options" chip; effort, window and security live inside it.
+ComposeMenuChip _moreOptionsChip(WidgetTester tester) {
+  return tester.widget<ComposeMenuChip>(
+    find.ancestor(
+      of: find.text('More options'),
+      matching: find.byType(ComposeMenuChip),
+    ),
+  );
+}
 
 void main() {
   setUp(setUpTestAppStorage);
@@ -217,11 +228,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(ComposePermissionChip), findsOneWidget);
-    await tester.tap(find.text('Default permissions'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Full access'));
-    await tester.pumpAndSettle();
+    final chip = _moreOptionsChip(tester);
+    final security = chip.specs
+        .where((spec) => spec.label == 'Security mode')
+        .single;
+    expect(
+      security.children!.map((spec) => spec.label),
+      containsAll(['Default permissions', 'Full access']),
+    );
+    chip.onSelected(LaunchSecurityPolicy.fullAccess);
     expect(selected, LaunchSecurityPolicy.fullAccess);
   });
 
@@ -256,8 +271,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(ComposePermissionChip), findsOneWidget);
-    expect(find.text('Ask'), findsOneWidget);
+    final security = _moreOptionsChip(
+      tester,
+    ).specs.where((spec) => spec.label == 'Security mode').single;
+    expect(security.children!.map((spec) => spec.label), contains('Ask'));
   });
 
   testWidgets('ACP Ask permission control shows chip on bound compose', (
@@ -287,8 +304,51 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(ComposePermissionChip), findsOneWidget);
-    expect(find.text('Full access'), findsOneWidget);
+    final security = _moreOptionsChip(
+      tester,
+    ).specs.where((spec) => spec.label == 'Security mode').single;
+    expect(
+      security.children!.map((spec) => spec.label),
+      contains('Full access'),
+    );
+  });
+
+  testWidgets('more options chip folds effort and context window submenus', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(
+          chrome: BoundComposeChrome(
+            moreOptions: ComposeMoreOptions(
+              menus: [
+                TpActionMenuSpec.submenu(
+                  label: 'Thinking effort',
+                  children: [
+                    TpActionMenuSpec.item(value: 'high', label: 'high'),
+                  ],
+                ),
+                TpActionMenuSpec.submenu(
+                  label: 'Context window',
+                  children: [
+                    TpActionMenuSpec.item(value: '300K', label: '300K'),
+                  ],
+                ),
+              ],
+              onSelected: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final chip = _moreOptionsChip(tester);
+    expect(
+      chip.specs.map((spec) => spec.label),
+      containsAll(['Thinking effort', 'Context window']),
+    );
   });
 
   testWidgets('unbound chrome shows conversation mode label and drop region', (

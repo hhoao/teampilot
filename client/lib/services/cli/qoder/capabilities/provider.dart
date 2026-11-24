@@ -30,14 +30,6 @@ abstract final class QoderFormExtraKeys {
   const QoderFormExtraKeys._();
 
   static const effort = 'reasoningEffort';
-  static const contextWindow = 'contextWindow';
-}
-
-int? _positiveInt(Object? raw) {
-  final value = raw is num
-      ? raw.toInt()
-      : int.tryParse(raw?.toString().trim() ?? '');
-  return value == null || value <= 0 ? null : value;
 }
 
 abstract final class QoderModelCatalog {
@@ -206,8 +198,6 @@ final class QoderProviderCapability extends CatalogModelCapability
     return {
       QoderFormExtraKeys.effort:
           config['reasoningEffort']?.toString().trim() ?? '',
-      QoderFormExtraKeys.contextWindow:
-          _positiveInt(config['contextWindow'])?.toString() ?? '',
     };
   }
 
@@ -217,8 +207,6 @@ final class QoderProviderCapability extends CatalogModelCapability
     return {
       QoderFormExtraKeys.effort:
           config['reasoningEffort']?.toString().trim() ?? '',
-      QoderFormExtraKeys.contextWindow:
-          _positiveInt(config['contextWindow'])?.toString() ?? '',
     };
   }
 
@@ -232,12 +220,8 @@ final class QoderProviderCapability extends CatalogModelCapability
     } else {
       config['reasoningEffort'] = effort;
     }
-    final window = _positiveInt(input.extra[QoderFormExtraKeys.contextWindow]);
-    if (window == null) {
-      config.remove('contextWindow');
-    } else {
-      config['contextWindow'] = window;
-    }
+    // `contextWindow` stays untouched: it is a legacy provider-wide default
+    // read as a fallback by resolveModelContextWindow.
     return config;
   }
 
@@ -249,16 +233,10 @@ final class QoderProviderCapability extends CatalogModelCapability
     return QoderProviderFormSection(
       flavor: flavor,
       effort: props.extra[QoderFormExtraKeys.effort]?.toString() ?? '',
-      contextWindow:
-          props.extra[QoderFormExtraKeys.contextWindow]?.toString() ?? '',
       defaultModel: props.defaultModel,
       onEffortChanged: (value) => props.onExtraChanged({
         ...props.extra,
         QoderFormExtraKeys.effort: value,
-      }),
-      onContextWindowChanged: (value) => props.onExtraChanged({
-        ...props.extra,
-        QoderFormExtraKeys.contextWindow: value,
       }),
     );
   }
@@ -521,7 +499,12 @@ final class QoderProviderCapability extends CatalogModelCapability
     if (model.isNotEmpty) settings['model'] = model;
     final effort = provider?.config['reasoningEffort']?.toString().trim() ?? '';
     if (effort.isNotEmpty) settings['reasoningEffort'] = effort;
-    final contextWindow = _positiveInt(provider?.config['contextWindow']);
+    final contextWindow = resolveModelContextWindow(
+      provider,
+      model: model,
+      entryId: model,
+      legacyProviderFallback: true,
+    );
     if (contextWindow != null) settings['contextWindow'] = contextWindow;
 
     await delegate.writeSettingsFile(

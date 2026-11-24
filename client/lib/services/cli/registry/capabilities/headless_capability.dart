@@ -48,6 +48,7 @@ class HeadlessProvisionContext {
     required this.model,
     required this.effort,
     required this.configDir,
+    this.contextWindow,
     this.workingDirectory,
     this.additionalDirectories = const [],
     this.securityPolicy = LaunchSecurityPolicy.fullAccess,
@@ -59,6 +60,9 @@ class HeadlessProvisionContext {
   final String model;
   final String effort;
   final String configDir;
+
+  /// Per-model context window in tokens; null keeps the CLI default.
+  final int? contextWindow;
   final String? workingDirectory;
   final List<String> additionalDirectories;
   final LaunchSecurityPolicy securityPolicy;

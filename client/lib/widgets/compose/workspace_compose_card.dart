@@ -5,6 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/config_bundle.dart';
+import '../../models/launch_security_policy.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
@@ -322,6 +323,49 @@ class WorkspaceComposeCard extends StatelessWidget {
     );
   }
 
+  /// One "more options" chip folding effort, context window and security mode
+  /// into a single toolbar control.
+  Widget? _moreOptionsChip(
+    ComposeMoreOptions? more,
+    ComposePermissionControl? control,
+    WorkspaceChatLandingPalette palette, {
+    required String moreLabel,
+    required String securityLabel,
+  }) {
+    final menus = <TpActionMenuSpec>[
+      ...?more?.menus,
+      if (control != null)
+        TpActionMenuSpec.submenu(
+          label: securityLabel,
+          children: buildComposePermissionSpecs(
+            supportedPolicies: control.supportedPolicies,
+            launchSecurityPolicy: control.launchSecurityPolicy,
+            defaultLabel: control.defaultLabel,
+            fullAccessLabel: control.fullAccessLabel,
+            askLabel: control.askLabel,
+            askReadOnlyLabel: control.askReadOnlyLabel,
+            autoApproveWorkspaceWriteLabel:
+                control.autoApproveWorkspaceWriteLabel,
+          ),
+        ),
+    ];
+    if (menus.isEmpty) return null;
+    return ComposeMenuChip(
+      palette: palette,
+      icon: Icons.tune,
+      label: moreLabel,
+      minWidth: 150,
+      specs: menus,
+      onSelected: (value) {
+        if (value is LaunchSecurityPolicy) {
+          control?.onSelected(value);
+          return;
+        }
+        more?.onSelected(value);
+      },
+    );
+  }
+
   List<Widget> _unboundLeadingChips(
     UnboundComposeChrome chrome,
     WorkspaceChatLandingPalette palette,
@@ -344,6 +388,17 @@ class WorkspaceComposeCard extends StatelessWidget {
         specs: chrome.autoChipSpecs,
         onSelected: chrome.onAutoChipSelected,
       ),
+      if (_moreOptionsChip(
+            chrome.moreOptions,
+            chrome.permissionControl,
+            palette,
+            moreLabel: chrome.moreOptionsLabel,
+            securityLabel: chrome.securityModeLabel,
+          )
+          case final more?) ...[
+        SizedBox(width: spacing.sm),
+        more,
+      ],
       if (chrome.onTeamSettings != null) ...[
         SizedBox(width: spacing.xs),
         _TeamSettingsButton(
@@ -364,23 +419,6 @@ class WorkspaceComposeCard extends StatelessWidget {
           specs: chrome.expertChipSpecs,
           onSelected: chrome.onExpertChipSelected!,
         ),
-      ],
-      if (chrome.permissionControl case final control?) ...[
-        SizedBox(width: spacing.sm),
-        ComposePermissionChip(
-          palette: palette,
-          supportedPolicies: control.supportedPolicies,
-          launchSecurityPolicy: control.launchSecurityPolicy,
-          defaultLabel: control.defaultLabel,
-          fullAccessLabel: control.fullAccessLabel,
-          askLabel: control.askLabel,
-          askReadOnlyLabel: control.askReadOnlyLabel,
-          autoApproveWorkspaceWriteLabel:
-              control.autoApproveWorkspaceWriteLabel,
-          customLabel: control.customLabel,
-          onSelected: control.onSelected,
-        ),
-        SizedBox(width: spacing.sm),
       ],
     ];
   }
@@ -413,20 +451,15 @@ class WorkspaceComposeCard extends StatelessWidget {
         ),
         SizedBox(width: spacing.sm),
       ],
-      if (chrome.permissionControl case final control?) ...[
-        ComposePermissionChip(
-          palette: palette,
-          supportedPolicies: control.supportedPolicies,
-          launchSecurityPolicy: control.launchSecurityPolicy,
-          defaultLabel: control.defaultLabel,
-          fullAccessLabel: control.fullAccessLabel,
-          askLabel: control.askLabel,
-          askReadOnlyLabel: control.askReadOnlyLabel,
-          autoApproveWorkspaceWriteLabel:
-              control.autoApproveWorkspaceWriteLabel,
-          customLabel: control.customLabel,
-          onSelected: control.onSelected,
-        ),
+      if (_moreOptionsChip(
+            chrome.moreOptions,
+            chrome.permissionControl,
+            palette,
+            moreLabel: chrome.moreOptionsLabel,
+            securityLabel: chrome.securityModeLabel,
+          )
+          case final more?) ...[
+        more,
         SizedBox(width: spacing.sm),
       ],
       if (chrome.onTeamSettings != null) ...[
@@ -491,6 +524,7 @@ class WorkspaceComposeCard extends StatelessWidget {
       chrome.identityLabel != null ||
       chrome.onModelCascadeSelected != null ||
       chrome.permissionControl != null ||
+      chrome.moreOptions != null ||
       chrome.onTeamSettings != null;
 
   List<Widget> _voiceRecordingActions({

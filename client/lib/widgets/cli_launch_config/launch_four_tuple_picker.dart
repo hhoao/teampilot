@@ -15,8 +15,10 @@ import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../utils/ui/format_tokens.dart';
 import '../cli/cli_brand_icon.dart';
 import '../compose/compose_model_preset_chip.dart';
+import '../compose/context_window_edit_dialog.dart';
 import '../compose/simple_custom_launch_dialog.dart';
 
 SimpleLaunchFourTuple? tupleFromCascadeSelection({
@@ -129,6 +131,10 @@ class _LaunchFourTuplePickerState extends State<LaunchFourTuplePicker> {
       );
       return;
     }
+    if (value is CascadeContextWindowEditRequest) {
+      await showComposeContextWindowEditor(context, request: value);
+      return;
+    }
     if (value == ComposeModelPresetChipAction.manage) {
       await showDialog<void>(
         context: context,
@@ -225,6 +231,10 @@ class _LaunchFourTuplePickerState extends State<LaunchFourTuplePicker> {
         providerId: providerId,
         modelId: modelId,
       ),
+      contextWindowLabel: (tokens) =>
+          l10n.modelContextWindowShort(tokens: compactTokenCount(tokens)),
+      contextWindowEditLabel: l10n.modelContextWindowEdit,
+      contextWindowDefaultLabel: l10n.modelContextWindowDefault,
       showSavePreset: widget.showSavePreset,
       showManagePresets: widget.showManagePresets,
       onModelsOpened: (cli, providerId, provider) => unawaited(

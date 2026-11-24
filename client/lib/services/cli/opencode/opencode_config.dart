@@ -388,6 +388,56 @@ Map<String, Object?> mergeOpencodeReasoningEffort(
   return {...config, opencodeProvidersKey: providers};
 }
 
+/// Writes a per-model context window as opencode's `limit.context`.
+///
+/// opencode reads the limit from the model entry itself; a configured window
+/// overrides the upstream catalog default for that model.
+Map<String, Object?> mergeOpencodeContextWindow(
+  Map<String, Object?> config,
+  AppProviderConfig provider,
+  int contextWindow, {
+  String? memberModel,
+  String? providerId,
+}) {
+  if (contextWindow <= 0) return config;
+
+  final override = providerId?.trim() ?? '';
+  final resolvedProviderId = override.isNotEmpty
+      ? override
+      : opencodeStagingProviderKey(provider);
+  final modelId = (memberModel?.trim().isNotEmpty ?? false)
+      ? memberModel!.trim()
+      : provider.defaultModel.trim();
+  if (resolvedProviderId.isEmpty || modelId.isEmpty) return config;
+
+  final providers = <String, Object?>{
+    ...((config[opencodeProvidersKey] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  final existing =
+      (providers[resolvedProviderId] as Map?)?.cast<String, Object?>() ??
+      <String, Object?>{};
+  final entry = <String, Object?>{...existing};
+  final models = <String, Object?>{
+    ...((existing['models'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  final modelEntry = <String, Object?>{
+    ...((models[modelId] as Map?)?.cast<String, Object?>() ??
+        <String, Object?>{}),
+  };
+  final limit = <String, Object?>{
+    ...((modelEntry['limit'] as Map?)?.cast<String, Object?>() ??
+        <String, Object?>{}),
+  };
+  limit['context'] = contextWindow;
+  modelEntry['limit'] = limit;
+  models[modelId] = modelEntry;
+  entry['models'] = models;
+  providers[resolvedProviderId] = entry;
+  return {...config, opencodeProvidersKey: providers};
+}
+
 List<Map<String, Object?>> opencodePermissionsOf(Map<String, Object?> config) {
   final raw = config[opencodePermissionsKey];
   if (raw is! List) return <Map<String, Object?>>[];

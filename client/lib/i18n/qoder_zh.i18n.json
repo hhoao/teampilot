@@ -1,6 +1,4 @@
 {
-  "contextWindow": "上下文窗口（tokens）",
-  "contextWindowHint": "留空则使用模型默认值。",
   "credentialsActionFailed": "Qoder 操作失败",
   "credentialsCancel": "取消",
   "credentialsDone": "完成",

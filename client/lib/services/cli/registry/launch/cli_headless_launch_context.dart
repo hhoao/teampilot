@@ -7,6 +7,7 @@ final class CliHeadlessLaunchContext {
     required this.model,
     required this.effort,
     required this.configDir,
+    this.contextWindow,
     this.providerId = '',
     this.agent = '',
     this.workingDirectory,
@@ -25,6 +26,9 @@ final class CliHeadlessLaunchContext {
   final String prompt;
   final String model;
   final String effort;
+
+  /// Per-model context window in tokens; null keeps the CLI default.
+  final int? contextWindow;
   final String configDir;
   final String providerId;
   final String agent;

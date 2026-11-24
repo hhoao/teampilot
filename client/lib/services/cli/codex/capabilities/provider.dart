@@ -513,6 +513,11 @@ final class CodexProviderCapability extends CatalogModelCapability
             provider: provider,
             profileEffort: member?.effort ?? '',
           ),
+          contextWindowOverride: resolveModelContextWindow(
+            provider,
+            model: member?.model ?? provider.defaultModel,
+            entryId: member?.model ?? provider.defaultModel,
+          ),
           providerDir: paths.joinWork(
             paths.basePath,
             'providers',
