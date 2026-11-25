@@ -1,5 +1,6 @@
 {
-  "chatLaunchFailed": "Couldn't start {cliName: String}. Make sure the CLI is installed and try again.",
+  "chatLaunchFailed": "Couldn't start {cliName: String} due to an unknown error. Check the logs for details.",
+  "chatWorkingDirectoryMissing": "The working directory does not exist: {path: String}. Check whether the project folder was moved or deleted, then try again.",
   "chatNotLoggedIn": "The agent isn't logged in. Sign in under Settings → Providers, then try again.",
   "chatProcessExited": "{cliName: String} exited unexpectedly",
   "chatSessionOpenFailed": "Couldn't open the {cliName: String} session.",

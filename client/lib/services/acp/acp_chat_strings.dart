@@ -12,6 +12,9 @@ import 'acp_session_runtime.dart';
 /// these English constants only keep the record total.
 // TODO(l10n): every production host must inject `acpChatStrings`; these
 // defaults are not localized by design.
+String _defaultWorkingDirectoryMissing(String path) =>
+    'The working directory does not exist: $path';
+
 const AcpChatStrings defaultAcpChatStrings = AcpChatStrings(
   launchFailedVersion: acpLaunchFailedVersion,
   launchFailedAdapter: acpLaunchFailedAdapter,
@@ -21,6 +24,7 @@ const AcpChatStrings defaultAcpChatStrings = AcpChatStrings(
   notLoggedIn:
       "The agent isn't logged in. Sign in under Settings → Providers, then try again.",
   sessionOpenFailed: 'Failed to open the agent session',
+  workingDirectoryMissing: _defaultWorkingDirectoryMissing,
 );
 
 class AcpChatStrings {
@@ -32,6 +36,7 @@ class AcpChatStrings {
     required this.processExited,
     required this.notLoggedIn,
     this.sessionOpenFailed = 'Failed to open the agent session',
+    this.workingDirectoryMissing = _defaultWorkingDirectoryMissing,
   });
 
   /// [acpLaunchFailedVersion] copy: no ACP flag candidate produced a usable
@@ -59,4 +64,8 @@ class AcpChatStrings {
   /// installed, session did not open). Distinct from [launchFailed] so
   /// missing-CLI copy is not used.
   final String sessionOpenFailed;
+
+  /// Local launch preflight: the launch working directory does not exist
+  /// (folder moved or deleted). [path] is the missing directory.
+  final String Function(String path) workingDirectoryMissing;
 }

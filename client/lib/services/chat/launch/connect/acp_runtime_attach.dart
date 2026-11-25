@@ -26,6 +26,7 @@ import '../../../cli/registry/capabilities/acp_background_transcript_capability.
 import '../../../cli/registry/capabilities/acp_capability.dart';
 import '../../../cli/registry/capabilities/session_credential_capability.dart';
 import '../../../cli/registry/cli_tool_registry.dart';
+import '../../../io/filesystem.dart';
 import '../../../ssh/ssh_client_factory.dart';
 import '../../../ssh/ssh_member_session.dart';
 import '../../../storage/home_storage.dart';
@@ -685,6 +686,7 @@ class AcpRuntimeAttach {
   }) {
     final remote = usesSshTransport(launchTarget.kind);
     final logger = AcpFrameLogger();
+    final localFs = remote ? null : filesystemDisk(_storage.fs);
     final runtime =
         runtimeFactory?.call(logger: logger, tool: cli) ??
         AcpSessionRuntime(
@@ -768,6 +770,12 @@ class AcpRuntimeAttach {
           sessionId: sessionId,
         );
       },
+      // ACP bypasses the PTY executable validator, so preflight the local cwd
+      // here: a deleted project folder would otherwise surface as the same
+      // ENOENT as a missing CLI.
+      localDirectoryExists: localFs == null
+          ? null
+          : (path) async => (await localFs.stat(path)).isDirectory,
     )..ensureStrings(_host.acpChatStrings?.call(cli) ?? defaultAcpChatStrings);
   }
 

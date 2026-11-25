@@ -1,5 +1,6 @@
 {
-  "chatLaunchFailed": "无法启动 {cliName: String}，请确认已安装对应 CLI 后重试。",
+  "chatLaunchFailed": "无法启动 {cliName: String}，发生未知错误，请查看日志了解详情。",
+  "chatWorkingDirectoryMissing": "工作目录不存在：{path: String}。请检查项目文件夹是否已被移动或删除，然后重试。",
   "chatNotLoggedIn": "代理尚未登录。请到设置 → 服务商完成登录后重试。",
   "chatProcessExited": "{cliName: String} 意外退出",
   "chatSessionOpenFailed": "无法打开 {cliName: String} 会话。",

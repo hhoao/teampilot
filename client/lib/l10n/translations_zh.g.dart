@@ -431,7 +431,8 @@ class _AppLocalizations$acp$zh extends AppLocalizations$acp$en {
 	final AppLocalizationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String chatLaunchFailed({required String cliName}) => '无法启动 ${cliName}，请确认已安装对应 CLI 后重试。';
+	@override String chatLaunchFailed({required String cliName}) => '无法启动 ${cliName}，发生未知错误，请查看日志了解详情。';
+	@override String chatWorkingDirectoryMissing({required String path}) => '工作目录不存在：${path}。请检查项目文件夹是否已被移动或删除，然后重试。';
 	@override String get chatNotLoggedIn => '代理尚未登录。请到设置 → 服务商完成登录后重试。';
 	@override String chatProcessExited({required String cliName}) => '${cliName} 意外退出';
 	@override String chatSessionOpenFailed({required String cliName}) => '无法打开 ${cliName} 会话。';
@@ -4301,7 +4302,8 @@ extension on AppLocalizationsZh {
 			'workflowCardRunMissing' => '未找到该调用的 Workflow 运行记录',
 			'workspaces' => '工作区',
 			'askUserQuestionBubbleAsked' => ({required int count}) => '已询问 ${count} 个问题',
-			'acp.chatLaunchFailed' => ({required String cliName}) => '无法启动 ${cliName}，请确认已安装对应 CLI 后重试。',
+			'acp.chatLaunchFailed' => ({required String cliName}) => '无法启动 ${cliName}，发生未知错误，请查看日志了解详情。',
+			'acp.chatWorkingDirectoryMissing' => ({required String path}) => '工作目录不存在：${path}。请检查项目文件夹是否已被移动或删除，然后重试。',
 			'acp.chatNotLoggedIn' => '代理尚未登录。请到设置 → 服务商完成登录后重试。',
 			'acp.chatProcessExited' => ({required String cliName}) => '${cliName} 意外退出',
 			'acp.chatSessionOpenFailed' => ({required String cliName}) => '无法打开 ${cliName} 会话。',
@@ -4516,9 +4518,9 @@ extension on AppLocalizationsZh {
 			'automations.filterScheduledMessage' => '定时消息',
 			'automations.filterStatusLabel' => '状态',
 			'automations.hideFilter' => '隐藏筛选',
-			'automations.invalidCron' => '无效的 cron 表达式（需要 5 个字段）',
 			_ => null,
 		} ?? switch (path) {
+			'automations.invalidCron' => '无效的 cron 表达式（需要 5 个字段）',
 			'automations.invalidMaxRunCount' => '运行次数上限须为正整数',
 			'automations.invalidTime' => '时间格式须为 HH:mm',
 			'automations.launchMode' => '对话模式',
@@ -5030,9 +5032,9 @@ extension on AppLocalizationsZh {
 			'file.previewHostDescription' => '在浮动工作区或中间工作台打开文件。',
 			'file.previewHostFloating' => '浮动',
 			'file.previewHostTitle' => '文件预览位置',
-			'fileTree.fileTree' => '文件树',
 			_ => null,
 		} ?? switch (path) {
+			'fileTree.fileTree' => '文件树',
 			'fileTree.copy' => '复制',
 			'fileTree.copyPath' => '复制路径',
 			'fileTree.copyRelativePath' => '复制相对路径',
@@ -5544,9 +5546,9 @@ extension on AppLocalizationsZh {
 			'managedProviders.credentialSourceHint' => 'secret 或 cli:cursor-mp-<entry>',
 			'managedProviders.credentialTemplate' => '凭据拼接模板',
 			'managedProviders.credentialTemplateHelper' => '拼成最终凭据值，常用于 Cookie；用花括号填变量。',
-			'managedProviders.credentialTemplateHint' => '例如 WorkosCursorSessionToken=user::token',
 			_ => null,
 		} ?? switch (path) {
+			'managedProviders.credentialTemplateHint' => '例如 WorkosCursorSessionToken=user::token',
 			'managedProviders.credentials' => '凭据',
 			'managedProviders.credentialsSectionSubtitle' => '凭据来源及写入请求的方式。',
 			'managedProviders.credentialsSectionTitle' => '凭据来源与请求写入',
@@ -6058,9 +6060,9 @@ extension on AppLocalizationsZh {
 			'resource.managerAppProcess' => '应用',
 			'resource.managerColumnCpu' => 'CPU',
 			'resource.managerColumnMemory' => '内存',
-			'resource.managerColumnName' => '名称',
 			_ => null,
 		} ?? switch (path) {
+			'resource.managerColumnName' => '名称',
 			'resource.managerEmptyTree' => '当前没有运行中的会话。',
 			'resource.managerKill' => '结束',
 			'resource.managerKillAll' => '全部结束',
@@ -6572,9 +6574,9 @@ extension on AppLocalizationsZh {
 			'ssh.hostsManage' => '管理远程主机',
 			'ssh.hostsOpenTerminal' => '打开终端',
 			'ssh.hostsOpenTerminalNoWorkspace' => '请先打开一个工作区再启动终端。',
-			'ssh.hostsPanelTitle' => '远程主机',
 			_ => null,
 		} ?? switch (path) {
+			'ssh.hostsPanelTitle' => '远程主机',
 			'ssh.hostsPillConnecting' => '连接中…',
 			'ssh.hostsRowKind' => 'SSH 主机',
 			'ssh.migrateToVault' => '迁移到保险库',
@@ -7086,9 +7088,9 @@ extension on AppLocalizationsZh {
 			'workspace.searchRecentSessions' => '最近会话',
 			'workspace.searchRegex' => '正则',
 			'workspace.searchReplace' => '替换',
-			'workspace.searchReplaceAll' => '全部替换',
 			_ => null,
 		} ?? switch (path) {
+			'workspace.searchReplaceAll' => '全部替换',
 			'workspace.searchReplaceAllMessage' => ({required int count}) => '替换 ${count} 处匹配？',
 			'workspace.searchReplaceAllTitle' => '全部替换？',
 			'workspace.searchReplaceHint' => '替换为',

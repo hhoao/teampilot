@@ -6,6 +6,7 @@ import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/chat/launch/session/shell_launch_spec.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
@@ -295,6 +296,10 @@ void main() {
     );
     tabStore.registerSession(tab);
     final runtime = _RecordingAcpRuntime();
+    // The staged team launch context supplies this cwd; it must exist for the
+    // local ACP preflight.
+    final fs = InMemoryFilesystem()
+      ..directories.add('/from-team-prepare');
     Map<String, Map<String, Object?>>? seenExtra;
     final team = TeamProfile(
       id: 'team-1',
@@ -309,7 +314,7 @@ void main() {
     );
     final service = SessionLaunchService(
       _Host(tabStore),
-      storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(filesystem: fs),
       acpRuntimeFactory: ({required logger, required tool}) => runtime,
       prepareAcpTeamConnect:
           ({
@@ -398,6 +403,49 @@ void main() {
       'teammate-bus',
     );
   });
+
+  test(
+    'attachAcpRuntime stops before spawning when the local folder is gone',
+    () async {
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())
+        ..setActiveWorkspaceId('w1');
+      final tab = ChatTab(
+        info: ChatTabInfo(id: 's1', title: 'S', subtitle: ''),
+        cliTeamName: '',
+      );
+      tabStore.registerSession(tab);
+      final runtime = _RecordingAcpRuntime();
+      final service = SessionLaunchService(
+        _Host(tabStore),
+        storage: fakeHomeStorage(filesystem: InMemoryFilesystem()),
+        acpRuntimeFactory: ({required logger, required tool}) => runtime,
+        prepareAcpContribution: (session, workspace) async => const {},
+      );
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        cli: CliTool.claude,
+        acp: true,
+        folders: const [WorkspaceFolder(path: '/gone-project')],
+        createdAt: 1,
+      );
+      final workspace = Workspace(workspaceId: 'w1', createdAt: 1);
+      final job = SessionConnectJob(
+        session: session,
+        request: SessionOpenRequest(session: session, workspace: workspace),
+        generation: 1,
+        workspace: workspace,
+        reason: LaunchReason.create,
+      );
+
+      await service.attachAcpRuntime(job, session);
+
+      expect(runtime.started, isFalse);
+      final cubit = tab.acpRuntime!;
+      expect(cubit.state.error?.message, contains('/gone-project'));
+      await cubit.close();
+    },
+  );
 }
 
 class _FakeLifecycle implements SessionLifecycleService {

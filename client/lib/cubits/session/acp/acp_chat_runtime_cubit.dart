@@ -203,6 +203,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     this.chunkCoalesceWindow = defaultChunkCoalesceWindow,
     this.onTurnCheckpoint,
     this.authRecovery,
+    this.localDirectoryExists,
   }) : _runtime = runtime,
        _attention = attention,
        _transcript = transcript,
@@ -262,6 +263,15 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// a fresh lease is available and the launch may be retried once. Null when
   /// the CLI has no credential capability (the failure is then terminal).
   final Future<bool> Function(String sessionId)? authRecovery;
+
+  /// Local launch preflight: resolves whether the effective working directory
+  /// exists. Null for remote (SSH / Termux) launches and tests without a real
+  /// filesystem — the check is then skipped.
+  ///
+  /// Catches the case where a session's recorded folder was moved/deleted:
+  /// `Process.start` would otherwise fail with the same ENOENT as a missing
+  /// executable and surface the generic launch copy.
+  final Future<bool> Function(String path)? localDirectoryExists;
 
   /// Snapshots the local seat after a real turn's transcript flush. Null when
   /// the runtime is remote, git is missing, or tests do not inject a hook.
@@ -544,7 +554,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   ///
   /// On success: subscribes to updates + permissions (before any prompt),
   /// stamps the attention seat idle, and moves to [AcpChatPhase.ready].
-  /// On [AcpLaunchException]: inline system message + ended phase.
+  /// A local missing working directory ends the session before spawning, with
+  /// [AcpChatStrings.workingDirectoryMissing] copy (the CLI is installed; the
+  /// project folder is gone). On [AcpLaunchException]: inline system message +
+  /// ended phase.
   /// [AcpAuthenticateException] and authenticate [TimeoutException] use
   /// not-logged-in copy. [acpd.RpcError] from `session/new` uses
   /// session-open-failed copy plus the agent's nested reason when present,
@@ -577,6 +590,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     final effectiveWorkingDirectory = storedCwd.isNotEmpty
         ? storedCwd
         : workingDirectory;
+    if (!await _ensureLocalWorkingDirectory(effectiveWorkingDirectory)) {
+      return;
+    }
+    if (_closing || isClosed) return;
     try {
       await _runtime.start(
         tool: tool,
@@ -743,6 +760,40 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       unawaited(syncHistory());
     }
     if (handshakeAuth != null) unawaited(_onUpdate(handshakeAuth));
+  }
+
+  /// Preflight gate for local launches: returns false (and ends the session
+  /// with dedicated copy) when [workingDirectory] is missing.
+  ///
+  /// Remote launches and hosts without a filesystem probe skip the check. A
+  /// stat error (permission denied, transient I/O) is treated as "exists" —
+  /// it is not evidence the folder was deleted, and the spawn error path
+  /// remains the source of truth there.
+  Future<bool> _ensureLocalWorkingDirectory(String workingDirectory) async {
+    final exists = localDirectoryExists;
+    final cwd = workingDirectory.trim();
+    if (exists == null || cwd.isEmpty) return true;
+    var isDirectory = true;
+    try {
+      isDirectory = await exists(cwd);
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[acp-chat] session $sessionId working-directory check failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+    if (_closing || isClosed) return false;
+    if (isDirectory) return true;
+    appLogger.e(
+      '[acp-chat] session $sessionId launch failed: '
+      'working directory does not exist: $cwd',
+    );
+    final missingCopy =
+        _strings?.workingDirectoryMissing ??
+        defaultAcpChatStrings.workingDirectoryMissing;
+    _endWith(AcpChatErrorKind.launchFailed, missingCopy(cwd));
+    return false;
   }
 
   /// Sends one prompt turn. Returns false (and does nothing) when a turn is

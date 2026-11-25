@@ -1419,6 +1419,8 @@ Future<AppShell> buildAppShell({
         launchFailed: l10n.acp.chatLaunchFailed(
           cliName: l10n.appProviderToolLabel(tool),
         ),
+        workingDirectoryMissing: (path) =>
+            l10n.acp.chatWorkingDirectoryMissing(path: path),
         turnFailed: l10n.acp.chatTurnFailed,
         processExited: l10n.acp.chatProcessExited(
           cliName: l10n.appProviderToolLabel(tool),

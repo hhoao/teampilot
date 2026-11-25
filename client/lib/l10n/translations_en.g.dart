@@ -1029,8 +1029,11 @@ class AppLocalizations$acp$en {
 
 	// Translations
 
-	/// en: 'Couldn't start {cliName: String}. Make sure the CLI is installed and try again.'
-	String chatLaunchFailed({required String cliName}) => 'Couldn\'t start ${cliName}. Make sure the CLI is installed and try again.';
+	/// en: 'Couldn't start {cliName: String} due to an unknown error. Check the logs for details.'
+	String chatLaunchFailed({required String cliName}) => 'Couldn\'t start ${cliName} due to an unknown error. Check the logs for details.';
+
+	/// en: 'The working directory does not exist: {path: String}. Check whether the project folder was moved or deleted, then try again.'
+	String chatWorkingDirectoryMissing({required String path}) => 'The working directory does not exist: ${path}. Check whether the project folder was moved or deleted, then try again.';
 
 	/// en: 'The agent isn't logged in. Sign in under Settings → Providers, then try again.'
 	String get chatNotLoggedIn => 'The agent isn\'t logged in. Sign in under Settings → Providers, then try again.';
@@ -10582,7 +10585,8 @@ extension on AppLocalizations {
 			'workflowCardAgents' => ({required int count}) => '${count} agents',
 			'workflowCardRunMissing' => 'Workflow run not found for this tool call.',
 			'workspaces' => 'Workspaces',
-			'acp.chatLaunchFailed' => ({required String cliName}) => 'Couldn\'t start ${cliName}. Make sure the CLI is installed and try again.',
+			'acp.chatLaunchFailed' => ({required String cliName}) => 'Couldn\'t start ${cliName} due to an unknown error. Check the logs for details.',
+			'acp.chatWorkingDirectoryMissing' => ({required String path}) => 'The working directory does not exist: ${path}. Check whether the project folder was moved or deleted, then try again.',
 			'acp.chatNotLoggedIn' => 'The agent isn\'t logged in. Sign in under Settings → Providers, then try again.',
 			'acp.chatProcessExited' => ({required String cliName}) => '${cliName} exited unexpectedly',
 			'acp.chatSessionOpenFailed' => ({required String cliName}) => 'Couldn\'t open the ${cliName} session.',
@@ -10797,9 +10801,9 @@ extension on AppLocalizations {
 			'automations.filterScheduledMessage' => 'Scheduled messages',
 			'automations.filterStatusLabel' => 'Status',
 			'automations.hideFilter' => 'Hide filters',
-			'automations.invalidCron' => 'Invalid cron expression (5 fields required)',
 			_ => null,
 		} ?? switch (path) {
+			'automations.invalidCron' => 'Invalid cron expression (5 fields required)',
 			'automations.invalidMaxRunCount' => 'Run limit must be a positive number',
 			'automations.invalidTime' => 'Time must be HH:mm',
 			'automations.launchMode' => 'Conversation mode',
@@ -11311,9 +11315,9 @@ extension on AppLocalizations {
 			'file.previewHostDescription' => 'Open files in the floating workspace or the center workbench.',
 			'file.previewHostFloating' => 'Floating',
 			'file.previewHostTitle' => 'File preview',
-			'fileTree.fileTree' => 'File Tree',
 			_ => null,
 		} ?? switch (path) {
+			'fileTree.fileTree' => 'File Tree',
 			'fileTree.copy' => 'Copy',
 			'fileTree.copyPath' => 'Copy path',
 			'fileTree.copyRelativePath' => 'Copy relative path',
@@ -11825,9 +11829,9 @@ extension on AppLocalizations {
 			'managedProviders.credentialSourceHint' => 'secret or cli:cursor-mp-<entry>',
 			'managedProviders.credentialTemplate' => 'Credential template',
 			'managedProviders.credentialTemplateHelper' => 'Builds the final credential; often a Cookie with brace variables.',
-			'managedProviders.credentialTemplateHint' => 'e.g. WorkosCursorSessionToken=user::token',
 			_ => null,
 		} ?? switch (path) {
+			'managedProviders.credentialTemplateHint' => 'e.g. WorkosCursorSessionToken=user::token',
 			'managedProviders.credentials' => 'Credentials',
 			'managedProviders.credentialsSectionSubtitle' => 'Credential source and how it is sent.',
 			'managedProviders.credentialsSectionTitle' => 'Credential source and delivery',
@@ -12339,9 +12343,9 @@ extension on AppLocalizations {
 			'resource.managerAppProcess' => 'App',
 			'resource.managerColumnCpu' => 'CPU',
 			'resource.managerColumnMemory' => 'Memory',
-			'resource.managerColumnName' => 'Name',
 			_ => null,
 		} ?? switch (path) {
+			'resource.managerColumnName' => 'Name',
 			'resource.managerEmptyTree' => 'Nothing running right now.',
 			'resource.managerKill' => 'Kill',
 			'resource.managerKillAll' => 'Kill all',
@@ -12853,9 +12857,9 @@ extension on AppLocalizations {
 			'ssh.hostsManage' => 'Manage Remote Hosts…',
 			'ssh.hostsOpenTerminal' => 'Open Terminal',
 			'ssh.hostsOpenTerminalNoWorkspace' => 'Open a workspace first to start a terminal.',
-			'ssh.hostsPanelTitle' => 'Remote Hosts',
 			_ => null,
 		} ?? switch (path) {
+			'ssh.hostsPanelTitle' => 'Remote Hosts',
 			'ssh.hostsPillConnecting' => 'Connecting…',
 			'ssh.hostsPillCount' => ({required int count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '1 host', other: '${count} hosts', ), 
 			'ssh.hostsRowKind' => 'SSH Host',
@@ -13367,9 +13371,9 @@ extension on AppLocalizations {
 			'workspace.searchRecentSessions' => 'Recent sessions',
 			'workspace.searchRegex' => 'Regex',
 			'workspace.searchReplace' => 'Replace',
-			'workspace.searchReplaceAll' => 'Replace All',
 			_ => null,
 		} ?? switch (path) {
+			'workspace.searchReplaceAll' => 'Replace All',
 			'workspace.searchReplaceAllMessage' => ({required int count}) => 'Replace ${count} occurrence(s)?',
 			'workspace.searchReplaceAllTitle' => 'Replace all?',
 			'workspace.searchReplaceHint' => 'Replace with',

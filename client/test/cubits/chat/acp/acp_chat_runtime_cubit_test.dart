@@ -347,6 +347,7 @@ void main() {
     Future<void> Function(String messageId, String userMessageId)?
     onTurnCheckpoint,
     Future<bool> Function(String sessionId)? authRecovery,
+    Future<bool> Function(String path)? localDirectoryExists,
   }) {
     final cubit = AcpChatRuntimeCubit(
       runtime: runtime,
@@ -358,6 +359,7 @@ void main() {
       onUserActivity: onUserActivity,
       onTurnCheckpoint: onTurnCheckpoint,
       authRecovery: authRecovery,
+      localDirectoryExists: localDirectoryExists,
       attention: attention,
       transcript: transcript,
       agentSession: agentSession,
@@ -405,6 +407,31 @@ void main() {
     expect(record?.sessionId, 'acp-session-1');
     expect(record?.cwd, '/repo');
   });
+
+  test(
+    'start ends before spawning when the local working directory is missing',
+    () async {
+      final checked = <String>[];
+      final cubit = bootCubit(
+        localDirectoryExists: (path) async {
+          checked.add(path);
+          return false;
+        },
+      );
+      await cubit.start(
+        executable: 'qoderclicn',
+        sessionToolDir: '/t',
+        workingDirectory: '/home/u/gone-project',
+      );
+
+      expect(checked, ['/home/u/gone-project']);
+      expect(runtime.started, isFalse);
+      expect(cubit.state.phase, AcpChatPhase.ended);
+      expect(cubit.state.error?.message, contains('/home/u/gone-project'));
+      expect(cubit.state.error?.kind, AcpChatErrorKind.launchFailed);
+      await cubit.close();
+    },
+  );
 
   test('start uses the launch cwd for a legacy sidecar without cwd', () async {
     final fs = InMemoryFilesystem();
