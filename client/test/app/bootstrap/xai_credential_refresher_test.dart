@@ -79,6 +79,9 @@ final class _FakeHttpClient implements HttpClient {
 
   var tokenRequests = 0;
 
+  /// Last token request, so a test can assert the wire encoding.
+  _FakeRequest? lastTokenRequest;
+
   @override
   Future<HttpClientRequest> getUrl(Uri url) async => _FakeRequest(
     _FakeResponse(
@@ -92,7 +95,9 @@ final class _FakeHttpClient implements HttpClient {
     tokenRequests++;
     final error = tokenError;
     if (error != null) throw error;
-    return _FakeRequest(_FakeResponse(tokenStatus, tokenBody));
+    final request = _FakeRequest(_FakeResponse(tokenStatus, tokenBody));
+    lastTokenRequest = request;
+    return request;
   }
 
   @override
@@ -281,6 +286,24 @@ void main() {
       ),
       isTrue,
     );
+  });
+
+  test('the token request is form-encoded, not JSON', () async {
+    final client = _FakeHttpClient(
+      tokenBody: jsonEncode({'access_token': 'a', 'expires_in': 60}),
+    );
+    await build(client).refresh('rt-old');
+
+    final request = client.lastTokenRequest!;
+    expect(
+      request.headers.contentType?.mimeType,
+      'application/x-www-form-urlencoded',
+      reason: 'the IdP answers a JSON token request with 415',
+    );
+    final params = Uri.splitQueryString(request.body);
+    expect(params['grant_type'], 'refresh_token');
+    expect(params['refresh_token'], 'rt-old');
+    expect(params['client_id'], isNotEmpty);
   });
 
   test('a 200 without an access token is transient, not a rejection', () async {

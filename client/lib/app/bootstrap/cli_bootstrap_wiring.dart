@@ -347,13 +347,21 @@ final class XaiCredentialRefresher implements CredentialRefresher {
     final String raw;
     try {
       final request = await _client.postUrl(Uri.parse(endpoint));
-      request.headers.contentType = ContentType.json;
+      // OAuth 2.0 token requests are form-encoded (RFC 6749 §4.1.3). The IdP
+      // rejects a JSON body with 415, which would read as a transient outage
+      // and block every launch once the access token expires.
+      request.headers.contentType = ContentType(
+        'application',
+        'x-www-form-urlencoded',
+      );
       request.write(
-        jsonEncode({
-          'grant_type': 'refresh_token',
-          'refresh_token': refreshToken,
-          'client_id': _clientId,
-        }),
+        Uri(
+          queryParameters: {
+            'grant_type': 'refresh_token',
+            'refresh_token': refreshToken,
+            'client_id': _clientId,
+          },
+        ).query,
       );
       response = await request.close();
       raw = await response.transform(utf8.decoder).join();
