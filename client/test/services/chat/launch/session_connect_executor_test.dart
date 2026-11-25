@@ -149,7 +149,7 @@ void main() {
       expect(events, isNot(contains('connect-shell')));
       expect(shellConnector.connectCalls, 0);
       expect(preparation.failedMemberIds, <String>['member-1']);
-      expect(preparation.rollbackCalls, 0);
+      expect(preparation.failureReports, 0);
     },
   );
 
@@ -169,7 +169,7 @@ void main() {
     expect(events, isNot(contains('connect-shell')));
     expect(results, isEmpty);
     expect(preparation.failedMemberIds, <String>['member-1']);
-    expect(preparation.rollbackCalls, 0);
+    expect(preparation.failureReports, 0);
   });
 
   test('executor reports the attachment result after connect', () async {
@@ -274,12 +274,12 @@ void main() {
     },
   );
 
-  test('executor rolls back a staged launch when preparation fails', () async {
+  test('a pre-attach failure keeps the tab and reports the error', () async {
     preparation.persistError = StateError('persist failed');
 
     await executor.execute(job);
 
-    expect(preparation.rollbackCalls, 1);
+    expect(preparation.failureReports, 1);
     expect(host.launchErrors, contains(job.sessionId));
   });
 
@@ -441,7 +441,7 @@ class _FakePreparation implements SessionConnectPreparationPort {
   bool memberAcpHandled = false;
   Object? memberAcpError;
   bool ptySupported = true;
-  int rollbackCalls = 0;
+  int failureReports = 0;
   final failedMemberIds = <String>[];
   final materializationSettled = Completer<void>();
   Completer<void>? ensureReadyEntered;
@@ -544,8 +544,13 @@ class _FakePreparation implements SessionConnectPreparationPort {
   bool supportsPtyTransport(CliTool cli) => ptySupported;
 
   @override
-  void rollback(SessionConnectJob job, AppSession session) {
-    rollbackCalls++;
+  void reportConnectFailure(
+    SessionConnectJob job,
+    AppSession session,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    failureReports++;
     host.failSessionConnect(job.sessionId, 'Failed to connect session');
   }
 }

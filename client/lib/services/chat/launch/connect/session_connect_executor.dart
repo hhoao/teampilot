@@ -69,7 +69,15 @@ abstract interface class SessionConnectPreparationPort {
 
   bool isValid(SessionConnectJob job);
 
-  void rollback(SessionConnectJob job, AppSession session);
+  /// Surfaces a failure that happened before anything was attached. The tab
+  /// stays open with the launch-error banner, so the user can retry the same
+  /// session instead of losing it.
+  void reportConnectFailure(
+    SessionConnectJob job,
+    AppSession session,
+    Object error,
+    StackTrace stackTrace,
+  );
 }
 
 /// Executes the shared preparation and shell-attachment workflow for one job.
@@ -198,7 +206,12 @@ class SessionConnectExecutor implements SessionConnectExecutorPort {
       } else if (attachedMemberId != null) {
         preparation.markConnectFailed(job, attachedMemberId);
       } else if (reportFailure) {
-        preparation.rollback(job, activeSession);
+        preparation.reportConnectFailure(
+          job,
+          activeSession,
+          error,
+          stackTrace,
+        );
       }
       appLogger.e(
         '[session-launch] connect job failed',

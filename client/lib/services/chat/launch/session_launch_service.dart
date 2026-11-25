@@ -338,17 +338,6 @@ class SessionLaunchService
     return persistedWithTitle;
   }
 
-  void _rollbackStagedLaunch({
-    required String sessionId,
-    required SessionOpenRequest request,
-    required String message,
-  }) {
-    _h.failSessionConnect(sessionId, message);
-    if (request.persistParams == null) return;
-    _h.closeSessionTab(sessionId);
-    _h.removeSessionSnapshot(sessionId);
-  }
-
   bool _launchStillValid(String sessionId, int generation) {
     if (_h.isClosed) return false;
     if (_openTab(sessionId) == null) return false;
@@ -562,11 +551,20 @@ class SessionLaunchService
       _launchStillValid(job.sessionId, job.generation);
 
   @override
-  void rollback(SessionConnectJob job, AppSession session) {
-    _rollbackStagedLaunch(
-      sessionId: session.sessionId,
-      request: job.request,
-      message: 'Failed to connect session.',
+  void reportConnectFailure(
+    SessionConnectJob job,
+    AppSession session,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    // `persist()` already wrote the session record, so the tab is the only
+    // place the user can see why the launch failed and retry it. Closing the
+    // tab would swallow the message and leave the record orphaned on disk.
+    _h.failSessionConnect(
+      session.sessionId,
+      'Failed to connect session.',
+      error: error,
+      stackTrace: stackTrace,
     );
   }
 
