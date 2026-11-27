@@ -20,6 +20,7 @@ class AiMessageStrings {
     this.copy = 'Copy',
     this.copied = 'Copied',
     this.attachFile = 'Attach file',
+    this.imageAttachment = 'Image attachment',
     this.retryDelivery = 'Retry',
     this.exportMarkdown = 'Export Markdown',
     this.code = 'code',
@@ -91,6 +92,7 @@ class AiMessageStrings {
   final String copy;
   final String copied;
   final String attachFile;
+  final String imageAttachment;
   final String retryDelivery;
   final String exportMarkdown;
   final String code;

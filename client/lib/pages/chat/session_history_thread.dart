@@ -71,6 +71,9 @@ bool _endsWithThinking(AiMessage message) {
 class SessionHistoryThread extends StatefulWidget {
   const SessionHistoryThread({
     required this.runtime,
+    this.userAttachmentWorkspaceRoot = '',
+    this.userAttachmentUsesPosixPaths = true,
+    this.onOpenUserImage,
     required this.hasOlder,
     required this.isLoadingOlder,
     this.onLoadOlder,
@@ -99,6 +102,9 @@ class SessionHistoryThread extends StatefulWidget {
   });
 
   final AiThreadRuntime runtime;
+  final String userAttachmentWorkspaceRoot;
+  final bool userAttachmentUsesPosixPaths;
+  final ValueChanged<AiUserMessageImage>? onOpenUserImage;
   final bool hasOlder;
   final bool isLoadingOlder;
   final Future<void> Function()? onLoadOlder;
@@ -1471,6 +1477,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                   : ai.id,
                             ),
                             message: ai,
+                            userAttachmentWorkspaceRoot:
+                                widget.userAttachmentWorkspaceRoot,
+                            userAttachmentUsesPosixPaths:
+                                widget.userAttachmentUsesPosixPaths,
+                            onOpenUserImage: widget.onOpenUserImage,
                             timestampText: timestampText,
                             actionBarHoverEnabled: _hoverEffectsEnabled,
                             actionBarReveal:

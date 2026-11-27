@@ -224,7 +224,7 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('Thinking process · 3 steps'), findsOneWidget);
+    expect(find.textContaining('Thinking process > 3 steps'), findsOneWidget);
     expect(find.textContaining('Used 3 tools'), findsNothing);
     expect(find.textContaining('Used tool:'), findsNothing);
 
@@ -428,7 +428,7 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('Thinking process · 2 steps'), findsOneWidget);
+    expect(find.textContaining('Thinking process > 2 steps'), findsOneWidget);
     // Only the live (last) reasoning body opens; finished reasoning folds to
     // its trigger row.
     expect(find.textContaining('second step'), findsOneWidget);
@@ -515,7 +515,7 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('Thinking process · 1 steps'), findsOneWidget);
+    expect(find.textContaining('Thinking process > 1 steps'), findsOneWidget);
     expect(find.textContaining('hidden thinking'), findsNothing);
   });
 

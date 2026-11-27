@@ -134,6 +134,7 @@ AiMessageStrings _buildAiMessageStrings(
     copy: l10n.copy,
     copied: l10n.ai.messageCopied,
     attachFile: l10n.workspace.chatLandingAttach,
+    imageAttachment: l10n.ai.messageImageAttachment,
     retryDelivery: l10n.session.historyRetry,
     exportMarkdown: l10n.ai.messageExportMarkdown,
     messageIncomplete: l10n.ai.messageIncomplete,

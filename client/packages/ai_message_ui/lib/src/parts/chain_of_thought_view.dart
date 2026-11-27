@@ -193,11 +193,13 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
     // describes the fold it belongs to. When tools are not folded into the
     // chain this stays 0 and the steps phrase is used unchanged.
     final chainToolCalls = widget.parts.whereType<AiToolCallPart>().length;
-    final phrase = formatted.isNotEmpty
+    final fallbackPhrase = stats != null && chainToolCalls > 0
+        ? stats(widget.parts.length, chainToolCalls)
+        : strings.formatThinkingProcessSteps(widget.parts.length);
+    final detail = formatted.isNotEmpty
         ? formatted
-        : (stats != null && chainToolCalls > 0
-              ? stats(widget.parts.length, chainToolCalls)
-              : strings.formatThinkingProcessSteps(widget.parts.length));
+        : _withoutThinkingPrefix(fallbackPhrase, strings.thinkingProcess);
+    final phrase = '${strings.thinkingProcess} > $detail';
     final showDiff =
         formatted.isNotEmpty && (summary.added > 0 || summary.removed > 0);
     final semanticsLabel = [
@@ -274,6 +276,12 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
     _bodyRailColor = railColor;
     _bodySpacing = aiTheme.partSpacing;
     return body;
+  }
+
+  static String _withoutThinkingPrefix(String label, String thinkingProcess) {
+    const separator = ' · ';
+    final prefix = '$thinkingProcess$separator';
+    return label.startsWith(prefix) ? label.substring(prefix.length) : label;
   }
 
   static bool _sameDigests(List<String> a, List<String> b) {

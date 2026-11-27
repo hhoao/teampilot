@@ -1,4 +1,5 @@
 import 'package:ai_message_core/ai_message_core.dart';
+import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -24,6 +25,9 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   const SessionHistoryReviewMessages({
     required this.state,
     required this.runtime,
+    this.userAttachmentWorkspaceRoot = '',
+    this.userAttachmentUsesPosixPaths = true,
+    this.onOpenUserImage,
     required this.onRetry,
     required this.onLoadOlder,
     this.liveChrome = SessionHistoryLiveChrome.none,
@@ -45,6 +49,9 @@ class SessionHistoryReviewMessages extends StatelessWidget {
 
   final AiHistoryState state;
   final AiThreadRuntime runtime;
+  final String userAttachmentWorkspaceRoot;
+  final bool userAttachmentUsesPosixPaths;
+  final ValueChanged<AiUserMessageImage>? onOpenUserImage;
   final VoidCallback onRetry;
   final Future<void> Function() onLoadOlder;
   final SessionHistoryLiveChrome liveChrome;
@@ -155,6 +162,9 @@ class SessionHistoryReviewMessages extends StatelessWidget {
             key: const ValueKey('session-history-thread'),
             child: SessionHistoryThread(
               runtime: runtime,
+              userAttachmentWorkspaceRoot: userAttachmentWorkspaceRoot,
+              userAttachmentUsesPosixPaths: userAttachmentUsesPosixPaths,
+              onOpenUserImage: onOpenUserImage,
               hasOlder: state.hasOlder,
               isLoadingOlder: state.isLoadingOlder,
               onLoadOlder: onLoadOlder,

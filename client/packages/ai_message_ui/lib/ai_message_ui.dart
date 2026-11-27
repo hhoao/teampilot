@@ -45,4 +45,5 @@ export 'src/thread_turns.dart';
 export 'src/turn_height_cache.dart';
 export 'src/turn_mount_keep_alive.dart';
 export 'src/frozen_size.dart';
+export 'src/user_message_attachments.dart';
 export 'src/virtual_thread_viewport.dart';

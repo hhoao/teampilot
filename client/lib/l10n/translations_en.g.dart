@@ -1209,6 +1209,9 @@ class AppLocalizations$ai$en {
 	/// en: 'Message incomplete'
 	String get messageIncomplete => 'Message incomplete';
 
+	/// en: 'Image attachment'
+	String get messageImageAttachment => 'Image attachment';
+
 	/// en: 'Reading file'
 	String get messageReadingFile => 'Reading file';
 
@@ -10660,6 +10663,7 @@ extension on AppLocalizations {
 			'ai.messageEditingFile' => 'Editing file',
 			'ai.messageExportMarkdown' => 'Export Markdown',
 			'ai.messageIncomplete' => 'Message incomplete',
+			'ai.messageImageAttachment' => 'Image attachment',
 			'ai.messageReadingFile' => 'Reading file',
 			'ai.messageReasoning' => 'Thought',
 			'ai.messageReasoningInProgress' => 'Thinking',
@@ -10821,9 +10825,9 @@ extension on AppLocalizations {
 			'automations.enabled' => 'Enabled',
 			'automations.exitCode' => ({required int code}) => 'Exit code ${code}',
 			'automations.filterActionAll' => 'All actions',
-			'automations.filterActionLabel' => 'Action type',
 			_ => null,
 		} ?? switch (path) {
+			'automations.filterActionLabel' => 'Action type',
 			'automations.filterAll' => 'All',
 			'automations.filterDisabled' => 'Disabled only',
 			'automations.filterEnabled' => 'Enabled only',
@@ -11335,9 +11339,9 @@ extension on AppLocalizations {
 			'extension.statusReadyVersion' => ({required String version}) => 'Ready (${version})',
 			'extension.statusVersionTooOld' => 'Installed version is too old',
 			'extension.uninstall' => 'Uninstall',
-			'file.codeBlockModeDescription' => 'How oversized code blocks render in the markdown file preview.',
 			_ => null,
 		} ?? switch (path) {
+			'file.codeBlockModeDescription' => 'How oversized code blocks render in the markdown file preview.',
 			'file.codeBlockModeTitle' => 'Code blocks in file preview',
 			'file.diffToggleDiff' => 'Diff',
 			'file.diffToggleFile' => 'File',
@@ -11849,9 +11853,9 @@ extension on AppLocalizations {
 			'managedProviders.credentialRefHint' => 'Reference only; secret values are never shown',
 			'managedProviders.credentialSaveFailed' => 'Unable to save provider credentials securely.',
 			'managedProviders.credentialSecret' => 'API key / token',
-			'managedProviders.credentialSecretExistingHint' => 'Leave blank to keep the stored secret',
 			_ => null,
 		} ?? switch (path) {
+			'managedProviders.credentialSecretExistingHint' => 'Leave blank to keep the stored secret',
 			'managedProviders.credentialSecretHelper' => 'Leave blank to keep the stored secret.',
 			'managedProviders.credentialSecretHint' => 'Paste the provider API key or token',
 			'managedProviders.credentialSource' => 'Credential source',
@@ -12363,9 +12367,9 @@ extension on AppLocalizations {
 			'remote.directoryBrowserEmpty' => 'No subdirectories here',
 			'remote.directoryBrowserError' => 'Couldn\'t open the remote directory. You can still type a path below.',
 			'remote.directoryBrowserTitle' => 'Browse remote directory',
-			'remote.directoryBrowserTypePathHint' => '~/work/workspace',
 			_ => null,
 		} ?? switch (path) {
+			'remote.directoryBrowserTypePathHint' => '~/work/workspace',
 			'remote.directoryBrowserTypePathLabel' => 'Or type a path',
 			'remote.directoryBrowserUpOneLevel' => 'Up one level',
 			'remote.directoryBrowserUseThisDirectory' => 'Use this directory',
@@ -12877,9 +12881,9 @@ extension on AppLocalizations {
 			'ssh.hostKeyKeyTypeLabel' => ({required String keyType}) => 'Key type: ${keyType}',
 			'ssh.hostKeyMismatchBody' => ({required String host}) => 'The host key for ${host} does not match the one TeamPilot saved earlier. This can happen after a reinstall — or if someone is intercepting the connection.',
 			'ssh.hostKeyMismatchTitle' => 'SSH host key changed',
-			'ssh.hostKeyPreviousFingerprintLabel' => 'Previously trusted',
 			_ => null,
 		} ?? switch (path) {
+			'ssh.hostKeyPreviousFingerprintLabel' => 'Previously trusted',
 			'ssh.hostKeyReplaceTrust' => 'Replace and trust',
 			'ssh.hostKeyTrust' => 'Trust and continue',
 			'ssh.hostKeyUnknownBody' => ({required String host}) => 'TeamPilot has not seen ${host} before. Confirm the fingerprint matches this machine before trusting it.',
@@ -13391,9 +13395,9 @@ extension on AppLocalizations {
 			'workspace.searchFilterFiles' => 'Files',
 			'workspace.searchGitignore' => '.gitignore',
 			'workspace.searchHint' => 'Search sessions, files and transcript content',
-			'workspace.searchIncludeHint' => 'Include (glob, comma-separated)',
 			_ => null,
 		} ?? switch (path) {
+			'workspace.searchIncludeHint' => 'Include (glob, comma-separated)',
 			'workspace.searchIndexing' => 'Indexing…',
 			'workspace.searchNoResults' => 'No matches',
 			'workspace.searchPanel' => 'Search',

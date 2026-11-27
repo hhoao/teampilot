@@ -503,6 +503,7 @@ class _AppLocalizations$ai$zh extends AppLocalizations$ai$en {
 	@override String get messageEditingFile => '正在编辑文件';
 	@override String get messageExportMarkdown => '导出 Markdown';
 	@override String get messageIncomplete => '消息未完成';
+	@override String get messageImageAttachment => '图片附件';
 	@override String get messageReadingFile => '正在读取文件';
 	@override String get messageReasoning => '已思考';
 	@override String get messageReasoningInProgress => '思考中';
@@ -4363,6 +4364,7 @@ extension on AppLocalizationsZh {
 			'ai.messageEditingFile' => '正在编辑文件',
 			'ai.messageExportMarkdown' => '导出 Markdown',
 			'ai.messageIncomplete' => '消息未完成',
+			'ai.messageImageAttachment' => '图片附件',
 			'ai.messageReadingFile' => '正在读取文件',
 			'ai.messageReasoning' => '已思考',
 			'ai.messageReasoningInProgress' => '思考中',
@@ -4524,9 +4526,9 @@ extension on AppLocalizationsZh {
 			'automations.enabled' => '已启用',
 			'automations.exitCode' => ({required int code}) => '退出码 ${code}',
 			'automations.filterActionAll' => '全部类型',
-			'automations.filterActionLabel' => '类型',
 			_ => null,
 		} ?? switch (path) {
+			'automations.filterActionLabel' => '类型',
 			'automations.filterAll' => '全部',
 			'automations.filterDisabled' => '仅已禁用',
 			'automations.filterEnabled' => '仅已启用',
@@ -5038,9 +5040,9 @@ extension on AppLocalizationsZh {
 			'extension.statusReadyVersion' => ({required String version}) => '就绪（${version}）',
 			'extension.statusVersionTooOld' => '已安装版本过旧',
 			'extension.uninstall' => '卸载',
-			'file.codeBlockModeDescription' => 'markdown 文件预览中超大代码块的呈现方式。',
 			_ => null,
 		} ?? switch (path) {
+			'file.codeBlockModeDescription' => 'markdown 文件预览中超大代码块的呈现方式。',
 			'file.codeBlockModeTitle' => '文件预览·代码块',
 			'file.diffToggleDiff' => 'Diff',
 			'file.diffToggleFile' => '文件',
@@ -5552,9 +5554,9 @@ extension on AppLocalizationsZh {
 			'managedProviders.credentialRefHint' => '仅保存引用，不会显示密钥',
 			'managedProviders.credentialSaveFailed' => '无法安全保存 Provider 凭据。',
 			'managedProviders.credentialSecret' => 'API Key / Token',
-			'managedProviders.credentialSecretExistingHint' => '留空保留已保存密钥',
 			_ => null,
 		} ?? switch (path) {
+			'managedProviders.credentialSecretExistingHint' => '留空保留已保存密钥',
 			'managedProviders.credentialSecretHelper' => '留空保留已保存密钥。',
 			'managedProviders.credentialSecretHint' => '填入 Provider 的 API Key 或 Token',
 			'managedProviders.credentialSource' => '凭据来源',
@@ -6066,9 +6068,9 @@ extension on AppLocalizationsZh {
 			'remote.directoryBrowserEmpty' => '此处没有子目录',
 			'remote.directoryBrowserError' => '无法打开远程目录。你仍可在下方手动输入路径。',
 			'remote.directoryBrowserTitle' => '浏览远程目录',
-			'remote.directoryBrowserTypePathHint' => '~/work/workspace',
 			_ => null,
 		} ?? switch (path) {
+			'remote.directoryBrowserTypePathHint' => '~/work/workspace',
 			'remote.directoryBrowserTypePathLabel' => '或手动输入路径',
 			'remote.directoryBrowserUpOneLevel' => '上一级',
 			'remote.directoryBrowserUseThisDirectory' => '使用此目录',
@@ -6580,9 +6582,9 @@ extension on AppLocalizationsZh {
 			'ssh.hostKeyKeyTypeLabel' => ({required String keyType}) => '密钥类型：${keyType}',
 			'ssh.hostKeyMismatchBody' => ({required String host}) => '${host} 的主机密钥与 TeamPilot 先前保存的不一致。可能是系统重装，也可能是连接被劫持。',
 			'ssh.hostKeyMismatchTitle' => 'SSH 主机密钥已变更',
-			'ssh.hostKeyPreviousFingerprintLabel' => '先前信任的指纹',
 			_ => null,
 		} ?? switch (path) {
+			'ssh.hostKeyPreviousFingerprintLabel' => '先前信任的指纹',
 			'ssh.hostKeyReplaceTrust' => '替换并信任',
 			'ssh.hostKeyTrust' => '信任并继续',
 			'ssh.hostKeyUnknownBody' => ({required String host}) => 'TeamPilot 尚未见过 ${host}。请确认指纹与该机器一致后再信任。',
@@ -7094,9 +7096,9 @@ extension on AppLocalizationsZh {
 			'workspace.searchFilterFiles' => '文件',
 			'workspace.searchGitignore' => '.gitignore',
 			'workspace.searchHint' => '搜索会话、文件和会话内容',
-			'workspace.searchIncludeHint' => '包含 (glob，逗号分隔)',
 			_ => null,
 		} ?? switch (path) {
+			'workspace.searchIncludeHint' => '包含 (glob，逗号分隔)',
 			'workspace.searchIndexing' => '正在索引…',
 			'workspace.searchNoResults' => '没有匹配结果',
 			'workspace.searchPanel' => '搜索',

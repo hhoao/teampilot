@@ -24,6 +24,7 @@ import '../../services/ai_history/special_tool_resolvers.dart';
 import '../../services/ai_history/workspace_edit_line_highlighter.dart';
 import '../../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../../services/cli/tasks/cli_task_board_controller.dart';
+import '../../services/chat/conversation/compose/compose_at_file_refs.dart';
 import '../../services/chat/conversation/history/chat_transcript_find_controller.dart';
 import '../../services/chat/session/chat_tab.dart';
 import '../../services/workbench/ai_tool_file_open_coordinator.dart';
@@ -397,6 +398,39 @@ class SessionChatMessageArea extends StatelessWidget {
                                             return SessionHistoryReviewMessages(
                                               state: state,
                                               runtime: historySeat.runtime,
+                                              userAttachmentWorkspaceRoot:
+                                                  workspaceRoot,
+                                              userAttachmentUsesPosixPaths:
+                                                  homeStorageOf(
+                                                    context,
+                                                  ).usesPosixPaths,
+                                              onOpenUserImage: (image) async {
+                                                final fs =
+                                                    await resolveSessionMemberFilesystem(
+                                                      lifecycle: lifecycle,
+                                                      launchContext:
+                                                          launchContext,
+                                                      memberId:
+                                                          selectedMemberId,
+                                                      toolsScope:
+                                                          WorkspaceToolsScope.maybeOf(
+                                                            context,
+                                                          ),
+                                                    );
+                                                if (!context.mounted) return;
+                                                await context
+                                                    .read<
+                                                      WorkbenchEditorOpener
+                                                    >()
+                                                    .openFile(
+                                                      session.workspaceId,
+                                                      image.path,
+                                                      fs: filesystemForComposeAtFileOpen(
+                                                        image.path,
+                                                        workspaceFilesystem: fs,
+                                                      ),
+                                                    );
+                                              },
                                               onRetry: onRetry,
                                               onLoadOlder:
                                                   historySeat.loadOlder,

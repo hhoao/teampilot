@@ -14,11 +14,15 @@ import 'part_registry.dart';
 import 'parts/fade_expand_body.dart';
 import 'strings.dart';
 import 'theme.dart';
+import 'user_message_attachments.dart';
 
 /// Role layout aligned with assistant-ui UserMessage / AssistantMessage.
 class AiMessageView extends StatefulWidget {
   const AiMessageView({
     required this.message,
+    this.userAttachmentWorkspaceRoot = '',
+    this.userAttachmentUsesPosixPaths = true,
+    this.onOpenUserImage,
     this.registry = AiPartRegistry.defaults,
     this.showActionBar = true,
     this.actionBarReveal = AiActionBarReveal.always,
@@ -49,6 +53,10 @@ class AiMessageView extends StatefulWidget {
   });
 
   final AiMessage message;
+
+  final String userAttachmentWorkspaceRoot;
+  final bool userAttachmentUsesPosixPaths;
+  final ValueChanged<AiUserMessageImage>? onOpenUserImage;
 
   /// Pre-formatted timestamp for the action bar; null hides the label.
   final String? timestampText;
@@ -149,12 +157,24 @@ class _AiMessageViewState extends State<AiMessageView> {
   Widget build(BuildContext context) {
     final aiTheme = AiMessageTheme.of(context);
     final scheme = Theme.of(context).colorScheme;
+    final images = widget.message.role == AiRole.user
+        ? parseAiUserMessageImages(
+            plainTextForCopy(widget.message),
+            workspaceRoot: widget.userAttachmentWorkspaceRoot,
+            usesPosixPaths: widget.userAttachmentUsesPosixPaths,
+          )
+        : const AiUserMessageImageContent(images: [], text: '');
+    final messageParts = images.isNotEmpty
+        ? <AiMessagePart>[
+            if (images.text.isNotEmpty) AiTextPart(text: images.text),
+          ]
+        : widget.message.parts;
     final parts = AiMessageRoleScope(
       role: widget.message.role,
       child: AiMessageStreamingScope(
         streaming: widget.message.status == AiMessageStatus.incomplete,
         child: AiMessageParts(
-          parts: widget.message.parts,
+          parts: messageParts,
           registry: widget.registry,
           chainOfThoughtAutoExpand: widget.chainOfThoughtAutoExpand,
         ),
@@ -184,6 +204,13 @@ class _AiMessageViewState extends State<AiMessageView> {
             scheme: scheme,
             aiTheme: aiTheme,
             parts: parts,
+            hasText: messageParts.isNotEmpty,
+            attachments: images.isNotEmpty
+                ? AiUserMessageImages(
+                    images: images.images,
+                    onOpen: widget.onOpenUserImage,
+                  )
+                : null,
             message: widget.message,
             showActionBar: widget.showActionBar,
             actionBarReveal: widget.actionBarReveal,
@@ -320,6 +347,8 @@ class _UserBubble extends StatelessWidget {
     required this.scheme,
     required this.aiTheme,
     required this.parts,
+    required this.hasText,
+    this.attachments,
     required this.message,
     required this.showActionBar,
     required this.actionBarReveal,
@@ -350,6 +379,8 @@ class _UserBubble extends StatelessWidget {
   final ColorScheme scheme;
   final AiMessageTheme aiTheme;
   final Widget parts;
+  final bool hasText;
+  final Widget? attachments;
   final AiMessage message;
   final bool showActionBar;
   final AiActionBarReveal actionBarReveal;
@@ -446,12 +477,26 @@ class _UserBubble extends StatelessWidget {
               ),
             ),
           );
+          final content = attachments == null
+              ? bubble
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: bubbleMax),
+                      child: attachments,
+                    ),
+                    if (hasText) SizedBox(height: aiTheme.partSpacing),
+                    if (hasText) bubble,
+                  ],
+                );
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               if (leadingAction == null)
-                bubble
+                content
               else
                 // The action centres on the bubble itself, not on the bubble
                 // plus the action bar underneath it.
@@ -461,7 +506,7 @@ class _UserBubble extends StatelessWidget {
                   children: [
                     leadingAction!,
                     const SizedBox(width: 6),
-                    Flexible(child: bubble),
+                    Flexible(child: content),
                   ],
                 ),
               if (showActionBar)
