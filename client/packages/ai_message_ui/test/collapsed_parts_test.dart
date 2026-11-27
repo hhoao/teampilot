@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('collapsed tool has no AnimatedSize body', (tester) async {
+  testWidgets('collapsed tool mounts no args body', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -19,7 +19,8 @@ void main() {
         ),
       ),
     );
-    expect(find.byType(AnimatedSize), findsNothing);
+    // The fold wrapper stays mounted (zero height) so the body can ease open.
+    expect(tester.getSize(find.byType(AiCollapsibleBody)).height, 0);
     expect(find.textContaining('{'), findsNothing);
     expect(find.byType(Flexible), findsNothing);
     expect(find.byType(InkWell), findsNothing);
@@ -36,7 +37,7 @@ void main() {
         ),
       ),
     );
-    expect(find.byType(AnimatedSize), findsNothing);
+    expect(tester.getSize(find.byType(AiCollapsibleBody)).height, 0);
     expect(find.text('secret thoughts'), findsNothing);
     expect(find.byType(InkWell), findsNothing);
     expect(find.byType(AnimatedScale), findsNothing);
@@ -58,7 +59,7 @@ void main() {
         ),
       ),
     );
-    expect(find.byType(AnimatedSize), findsNothing);
+    expect(tester.getSize(find.byType(AiCollapsibleBody)).height, 0);
     expect(find.text('Result:'), findsNothing);
     expect(find.textContaining('stdout line'), findsNothing);
   });
@@ -85,7 +86,7 @@ void main() {
       ),
     );
     expect(find.textContaining('Used 2 tools'), findsOneWidget);
-    expect(find.byType(AnimatedSize), findsNothing);
+    expect(tester.getSize(find.byType(AiCollapsibleBody)).height, 0);
     expect(find.textContaining('Used tool:'), findsNothing);
     expect(find.textContaining('/secret'), findsNothing);
     expect(find.textContaining('token'), findsNothing);

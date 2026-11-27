@@ -18,6 +18,7 @@ import '../strings.dart';
 import '../theme.dart';
 import '../tool_file_actions.dart';
 import '../tool_subagent_actions.dart';
+import 'collapsible_body.dart';
 import 'tool_status_icon.dart';
 
 /// Collapsible tool row aligned with assistant-ui ToolFallback.
@@ -162,43 +163,40 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
                       onToggle: _toggleExpanded,
                     ),
             ),
-          if (_open && shellTarget == null && editTarget == null)
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              alignment: Alignment.topLeft,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 24, top: 4, bottom: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (_hasArgs(part))
-                      _MutedPre(
-                        text: capToolPanelText(_argsText(part)),
-                        color: aiTheme.resolveToolPanel(scheme),
-                        radius: aiTheme.panelRadius,
-                        foreground: scheme.onSurface.withValues(alpha: 0.9),
-                      ),
-                    if (part.result != null) ...[
-                      if (_hasArgs(part)) const SizedBox(height: 8),
-                      Text(
-                        '${strings.result}:',
-                        style: markdown.toolTrigger(triggerColor),
-                      ),
-                      const SizedBox(height: 4),
-                      _MutedPre(
-                        text: capToolPanelText(_stringify(part.result)),
-                        color: aiTheme.resolveToolPanel(scheme),
-                        radius: aiTheme.panelRadius,
-                        foreground: part.isError
-                            ? scheme.error
-                            : scheme.onSurface.withValues(alpha: 0.9),
-                      ),
-                    ],
+          AiCollapsibleBody(
+            open: _open && shellTarget == null && editTarget == null,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 24, top: 4, bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_hasArgs(part))
+                    _MutedPre(
+                      text: capToolPanelText(_argsText(part)),
+                      color: aiTheme.resolveToolPanel(scheme),
+                      radius: aiTheme.panelRadius,
+                      foreground: scheme.onSurface.withValues(alpha: 0.9),
+                    ),
+                  if (part.result != null) ...[
+                    if (_hasArgs(part)) const SizedBox(height: 8),
+                    Text(
+                      '${strings.result}:',
+                      style: markdown.toolTrigger(triggerColor),
+                    ),
+                    const SizedBox(height: 4),
+                    _MutedPre(
+                      text: capToolPanelText(_stringify(part.result)),
+                      color: aiTheme.resolveToolPanel(scheme),
+                      radius: aiTheme.panelRadius,
+                      foreground: part.isError
+                          ? scheme.error
+                          : scheme.onSurface.withValues(alpha: 0.9),
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
+          ),
         ],
       ),
     );

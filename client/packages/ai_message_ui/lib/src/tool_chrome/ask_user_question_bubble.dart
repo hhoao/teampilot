@@ -2,6 +2,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+import '../parts/collapsible_body.dart';
 import '../strings.dart';
 import '../theme.dart';
 
@@ -74,8 +75,10 @@ class _AiAskUserQuestionBubbleState extends State<AiAskUserQuestionBubble> {
               ),
             ),
           ),
-          if (_open)
-            Padding(
+          AiCollapsibleBody(
+            open: _open,
+            alignment: Alignment.topLeft,
+            child: Padding(
               padding: const EdgeInsets.only(left: 24, top: 4, bottom: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -95,6 +98,7 @@ class _AiAskUserQuestionBubbleState extends State<AiAskUserQuestionBubble> {
                 ],
               ),
             ),
+          ),
         ],
       ),
     );

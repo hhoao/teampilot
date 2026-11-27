@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../markdown/compiled_markdown_chrome.dart';
 import 'package:tp_markdown/tp_markdown.dart';
+import '../parts/collapsible_body.dart';
 import '../parts/expandable_tool_card.dart';
 import '../parts/fade_expand_body.dart';
 import '../parts/tool_status_icon.dart';
@@ -164,16 +165,24 @@ class EditToolCard extends StatelessWidget {
           ),
         ),
         // Body stays selectable (user-bubble parity); only fade/chevron toggles.
-        _EditDiffPanel(
-          hunk: hunk,
-          lines: visibleLines,
-          panelColor: panelColor,
-          radius: aiTheme.panelRadius,
-          markdown: markdown,
-          highlighter: actions.lineHighlighter,
-          open: open,
-          onToggle: onToggle,
-          forceChrome: !open && hasMore,
+        // Preview ↔ full hunk is a size change, so the panel eases instead of
+        // snapping to the new height.
+        AnimatedSize(
+          duration: kAiCollapseDuration,
+          curve: kAiCollapseCurve,
+          alignment: Alignment.topCenter,
+          clipBehavior: Clip.hardEdge,
+          child: _EditDiffPanel(
+            hunk: hunk,
+            lines: visibleLines,
+            panelColor: panelColor,
+            radius: aiTheme.panelRadius,
+            markdown: markdown,
+            highlighter: actions.lineHighlighter,
+            open: open,
+            onToggle: onToggle,
+            forceChrome: !open && hasMore,
+          ),
         ),
       ],
     );

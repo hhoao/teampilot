@@ -42,7 +42,7 @@ void main() {
     expect(find.text('details'), findsOneWidget);
     expect(find.text('Doing it'), findsOneWidget);
     await tester.tap(find.text('Pending'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('details'), findsNothing);
   });
 
@@ -94,7 +94,7 @@ void main() {
     );
     expect(itemRow.crossAxisAlignment, CrossAxisAlignment.center);
     await tester.tap(find.text('0/2'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Task A'), findsNothing);
   });
 }

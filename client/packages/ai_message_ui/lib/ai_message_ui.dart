@@ -12,6 +12,7 @@ export 'src/message_streaming_scope.dart';
 export 'src/part_grouping.dart';
 export 'src/part_registry.dart';
 export 'src/parts/chain_of_thought_view.dart';
+export 'src/parts/collapsible_body.dart';
 export 'src/parts/expandable_tool_card.dart';
 export 'src/parts/fade_expand_body.dart';
 export 'src/parts/reasoning_part_view.dart';

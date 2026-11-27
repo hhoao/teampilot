@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../markdown/compiled_markdown_chrome.dart';
 import 'package:tp_markdown/tp_markdown.dart';
+import '../parts/collapsible_body.dart';
 import '../parts/expandable_tool_card.dart';
 import '../parts/fade_expand_body.dart';
 import '../parts/tool_status_icon.dart';
@@ -79,8 +80,9 @@ class ShellToolCard extends StatelessWidget {
             ),
           ),
         ),
-        if (open)
-          _ShellTerminalBody(
+        AiCollapsibleBody(
+          open: open,
+          child: _ShellTerminalBody(
             part: part,
             command: shell.command,
             panelColor: panelColor,
@@ -89,6 +91,7 @@ class ShellToolCard extends StatelessWidget {
             accentColor: triggerColor,
             onToggle: onToggle,
           ),
+        ),
       ],
     );
   }

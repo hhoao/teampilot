@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../markdown/compiled_markdown_chrome.dart';
 import '../strings.dart';
 import '../theme.dart';
+import 'collapsible_body.dart';
 import 'text_part_view.dart';
 
 /// Collapsible reasoning — assistant-ui ReasoningRoot (outline + markdown).
@@ -190,33 +191,30 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
               ),
             ),
           ),
-          if (_open)
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              alignment: Alignment.topLeft,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 24, top: 4, bottom: 8),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 256),
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: _onScroll,
-                    child: NotificationListener<ScrollMetricsNotification>(
-                      onNotification: _onMetricsChanged,
-                      child: Scrollbar(
-                        controller: _scroll,
-                        thumbVisibility: true,
-                        child: ScrollConfiguration(
-                          behavior: ScrollConfiguration.of(context)
-                              .copyWith(scrollbars: false),
-                          child: SingleChildScrollView(
-                            controller: _scroll,
-                            child: DefaultTextStyle.merge(
-                              style: markdown.reasoningBody(
-                                scheme.onSurfaceVariant,
-                              ),
-                              child: AiTextPartView(text: widget.part.text),
+          AiCollapsibleBody(
+            open: _open,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 24, top: 4, bottom: 8),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 256),
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: _onScroll,
+                  child: NotificationListener<ScrollMetricsNotification>(
+                    onNotification: _onMetricsChanged,
+                    child: Scrollbar(
+                      controller: _scroll,
+                      thumbVisibility: true,
+                      child: ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(
+                          context,
+                        ).copyWith(scrollbars: false),
+                        child: SingleChildScrollView(
+                          controller: _scroll,
+                          child: DefaultTextStyle.merge(
+                            style: markdown.reasoningBody(
+                              scheme.onSurfaceVariant,
                             ),
+                            child: AiTextPartView(text: widget.part.text),
                           ),
                         ),
                       ),
@@ -225,6 +223,7 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
                 ),
               ),
             ),
+          ),
         ],
       ),
     );

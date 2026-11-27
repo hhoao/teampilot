@@ -299,7 +299,7 @@ void main() {
     expect(find.textContaining('ok'), findsNothing);
   });
 
-  testWidgets('tool expand uses AnimatedSize; long args soft-wrap', (
+  testWidgets('tool expand mounts args; long args soft-wrap', (
     tester,
   ) async {
     final long = 'x' * 400;
@@ -321,10 +321,9 @@ void main() {
       ),
     );
 
-    expect(find.byType(AnimatedSize), findsNothing);
+    expect(find.textContaining('xxx'), findsNothing);
     await tester.tap(find.textContaining('Used tool:'));
     await tester.pumpAndSettle();
-    expect(find.byType(AnimatedSize), findsOneWidget);
     expect(find.textContaining('xxx'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

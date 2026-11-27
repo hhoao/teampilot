@@ -2,6 +2,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
 import '../markdown/compiled_markdown_chrome.dart';
+import '../parts/collapsible_body.dart';
 import '../strings.dart';
 import '../theme.dart';
 import 'tool_chrome_header.dart';
@@ -66,8 +67,10 @@ class _TodoListCardState extends State<_TodoListCard> {
               onToggle: () => setState(() => _open = !_open),
             ),
           ),
-          if (_open && widget.items.isNotEmpty)
-            Padding(
+          AiCollapsibleBody(
+            open: _open && widget.items.isNotEmpty,
+            alignment: Alignment.topLeft,
+            child: Padding(
               padding: const EdgeInsets.only(left: 24, top: 6, bottom: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -101,6 +104,7 @@ class _TodoListCardState extends State<_TodoListCard> {
                 ],
               ),
             ),
+          ),
         ],
       ),
     );
@@ -147,8 +151,10 @@ class _TaskCreateCardState extends State<_TaskCreateCard> {
               onToggle: () => setState(() => _open = !_open),
             ),
           ),
-          if (_open)
-            Padding(
+          AiCollapsibleBody(
+            open: _open,
+            alignment: Alignment.topLeft,
+            child: Padding(
               padding: const EdgeInsets.only(left: 24, top: 4, bottom: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -166,6 +172,7 @@ class _TaskCreateCardState extends State<_TaskCreateCard> {
                 ],
               ),
             ),
+          ),
         ],
       ),
     );
@@ -212,8 +219,10 @@ class _TaskUpdateCardState extends State<_TaskUpdateCard> {
               onToggle: () => setState(() => _open = !_open),
             ),
           ),
-          if (_open)
-            Padding(
+          AiCollapsibleBody(
+            open: _open,
+            alignment: Alignment.topLeft,
+            child: Padding(
               padding: const EdgeInsets.only(left: 24, top: 4, bottom: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -226,6 +235,7 @@ class _TaskUpdateCardState extends State<_TaskUpdateCard> {
                 ],
               ),
             ),
+          ),
         ],
       ),
     );
