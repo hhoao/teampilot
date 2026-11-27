@@ -300,6 +300,14 @@ void main() {
     // succeeds — the background loop must keep going and then recover.
     final harness = _HomeBootHarness(reachable: false, failFirstCreates: 2);
     addTearDown(harness.dispose);
+    // Status transitions are sampled, not polled: the third attempt succeeds
+    // milliseconds after the second, so reading `state` once can miss the
+    // `reconnecting` window entirely on a fast or loaded runner.
+    final statuses = <HomeConnectionStatus>[];
+    final statusSub = harness.cubit.stream.listen(
+      (state) => statuses.add(state.status),
+    );
+    addTearDown(statusSub.cancel);
 
     harness.seedBoot(await harness.attempt.run(_profile.id));
     expect(harness.cubit.state.status, HomeConnectionStatus.unreachable);
@@ -309,7 +317,7 @@ void main() {
 
     // Failed background attempts surface as `reconnecting` progress.
     await waitUntil(() => harness.backgroundAttempts.length >= 2);
-    expect(harness.cubit.state.status, HomeConnectionStatus.reconnecting);
+    expect(statuses, contains(HomeConnectionStatus.reconnecting));
     expect(harness.cubit.state.attempt, greaterThanOrEqualTo(1));
     expect(harness.remoteBoot.runs, 0);
 

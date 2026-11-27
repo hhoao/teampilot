@@ -480,68 +480,79 @@ void main() {
     );
   });
 
-  test('a windows HOST with a remote POSIX work plane is not blocked',
-      () async {
-    final adapter = await build(isWindows: true);
-    final fs = InMemoryFilesystem();
-    final service = serviceOn(fs);
-    // A different control-plane basePath means the work plane is remote; the
-    // shim runs on the POSIX remote, so the host OS must not fail the launch.
-    final remoteCatalog = serviceOn(fs, basePath: '/remote-control');
-    final ctx = context(service, catalog: remoteCatalog);
-    expect(ctx.crossMachine, isTrue);
+  test(
+    'a windows HOST with a remote POSIX work plane is not blocked',
+    () async {
+      final adapter = await build(isWindows: true);
+      final fs = InMemoryFilesystem();
+      final service = serviceOn(fs);
+      // A different control-plane basePath means the work plane is remote; the
+      // shim runs on the POSIX remote, so the host OS must not fail the launch.
+      final remoteCatalog = serviceOn(fs, basePath: '/remote-control');
+      final ctx = context(service, catalog: remoteCatalog);
+      expect(ctx.crossMachine, isTrue);
 
-    final contribution = await adapter.materialize(ctx, providerId: 'xai');
-    expect(
-      contribution.environment,
-      contains(GrokConstants.authProviderCommandEnvKey),
-    );
-  });
+      final contribution = await adapter.materialize(ctx, providerId: 'xai');
+      expect(
+        contribution.environment,
+        contains(GrokConstants.authProviderCommandEnvKey),
+      );
+    },
+  );
 
-  test('a custom providerId is no longer rejected (multi-provider support)',
-      () async {
-    final fs = InMemoryFilesystem();
-    final authority = OAuthCredentialAuthority(
-      fs: fs,
-      basePath: '/tp',
-      cliNamespace: 'grok',
-      refresher: _OkRefresher(),
-      now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
-    );
-    await authority.importFromLogin(
-      'acme',
-      utf8.encode(
-        jsonEncode({
-          'scope': {
-            'key': 'access-old',
-            'refresh_token': 'rt-old',
-            'expires_at': '2026-11-14T11:30:00Z',
-          },
-        }),
-      ),
-    );
-    // A seat launched with a real custom id must still materialize: the
-    // authoritative provider check now lives on the lease endpoint, backed by
-    // the session->provider registry, not a hardcoded id.
-    final adapter = GrokCredentialAdapter(
-      authority: authority,
-      sessionProviderId: (_) => 'xai',
-      now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
-    );
-    final service = serviceOn(fs);
+  test(
+    'a custom providerId is no longer rejected (multi-provider support)',
+    () async {
+      final fs = InMemoryFilesystem();
+      final authority = OAuthCredentialAuthority(
+        fs: fs,
+        basePath: '/tp',
+        cliNamespace: 'grok',
+        refresher: _OkRefresher(),
+        now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
+      );
+      await authority.importFromLogin(
+        'acme',
+        utf8.encode(
+          jsonEncode({
+            'scope': {
+              'key': 'access-old',
+              'refresh_token': 'rt-old',
+              'expires_at': '2026-11-14T11:30:00Z',
+            },
+          }),
+        ),
+      );
+      // A seat launched with a real custom id must still materialize: the
+      // authoritative provider check now lives on the lease endpoint, backed by
+      // the session->provider registry, not a hardcoded id.
+      final adapter = GrokCredentialAdapter(
+        authority: authority,
+        sessionProviderId: (_) => 'xai',
+        now: () => DateTime.utc(2026, 11, 14, 11, 0, 0),
+      );
+      final service = serviceOn(fs);
 
-    final contribution = await adapter.materialize(
-      context(service),
-      providerId: 'acme',
-    );
-    expect(
-      contribution.environment,
-      contains(GrokConstants.authProviderCommandEnvKey),
-    );
-    final configDir = contribution.environment[GrokConstants.homeEnvKey]!;
-    final leaseConfig = await readLeaseConfig(fs, configDir);
-    expect(leaseConfig['providerId'], 'acme');
-  });
+      final contribution = await adapter.materialize(
+        // Provider-id mapping is what this test pins down. Name a remote POSIX
+        // work plane so the gate does not depend on the runner's OS (a Windows
+        // host with a local plane fails closed by design).
+        context(
+          service,
+          catalog: serviceOn(fs, basePath: '/remote-control'),
+          workPlaneOs: RemoteOs.posix,
+        ),
+        providerId: 'acme',
+      );
+      expect(
+        contribution.environment,
+        contains(GrokConstants.authProviderCommandEnvKey),
+      );
+      final configDir = contribution.environment[GrokConstants.homeEnvKey]!;
+      final leaseConfig = await readLeaseConfig(fs, configDir);
+      expect(leaseConfig['providerId'], 'acme');
+    },
+  );
 
   test('registers the seat provider once materialization succeeds', () async {
     final registrations = <String>[];
@@ -585,11 +596,7 @@ void main() {
 
     expect(
       () => adapter.materialize(
-        context(
-          service,
-          catalog: remoteCatalog,
-          workPlaneOs: RemoteOs.windows,
-        ),
+        context(service, catalog: remoteCatalog, workPlaneOs: RemoteOs.windows),
         providerId: 'xai',
       ),
       throwsA(isA<CredentialUnavailableException>()),
@@ -603,11 +610,7 @@ void main() {
     final remoteCatalog = serviceOn(fs, basePath: '/remote-control');
 
     final contribution = await adapter.materialize(
-      context(
-        service,
-        catalog: remoteCatalog,
-        workPlaneOs: RemoteOs.posix,
-      ),
+      context(service, catalog: remoteCatalog, workPlaneOs: RemoteOs.posix),
       providerId: 'xai',
     );
     expect(
