@@ -9,6 +9,9 @@ final class _CubitSeatProcess implements SeatProcess {
 
   @override
   bool get turnInFlight {
+    if (_cubit.debugForcedTurnInFlight.contains(_session.sessionId)) {
+      return true;
+    }
     final activity = _cubit.state.sessionActivities[_session.sessionId];
     return activity?.isInTurn == true ||
         activity?.isBusy == true ||

@@ -327,8 +327,11 @@ final class _HarnessCubit extends ChatCubit {
   final relaunchCalls = <String>[];
 
   /// Latches a busy reason the way a real send does, so the seat process
-  /// reports a turn in flight.
+  /// reports a turn in flight. The latch is also forced through the guard's
+  /// own set: the activity projection recomputes asynchronously and would
+  /// otherwise clear the synthetic reason on a loaded runner.
   void debugMarkTurnInFlight(String sessionId) {
+    debugForcedTurnInFlight.add(sessionId);
     emit(
       state.copyWith(
         sessionActivities: {

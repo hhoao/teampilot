@@ -260,15 +260,18 @@ class ChatCubit extends Cubit<ChatState>
         _attentionJobsEnqueued++;
         final run = _attentionChain ?? Future<void>.value();
         late final Future<void> job;
-        job = run.catchError((Object _, StackTrace _) {}).then((_) async {
-          if (isClosed) return;
-          await _endMemberTurnsForNewlyDoneSeats(prior, next);
-          if (!isClosed) _updateSessionActivities();
-        }).whenComplete(() {
-          if (identical(_attentionChain, job)) {
-            _attentionChain = null;
-          }
-        });
+        job = run
+            .catchError((Object _, StackTrace _) {})
+            .then((_) async {
+              if (isClosed) return;
+              await _endMemberTurnsForNewlyDoneSeats(prior, next);
+              if (!isClosed) _updateSessionActivities();
+            })
+            .whenComplete(() {
+              if (identical(_attentionChain, job)) {
+                _attentionChain = null;
+              }
+            });
         _attentionChain = job;
       });
     }
@@ -311,6 +314,12 @@ class ChatCubit extends Cubit<ChatState>
   })?
   debugDeliverEditedMessage;
 
+  /// Sessions whose rewind guard must see a latched turn even after the
+  /// activity projection recomputes from seat state. Tests that mark a turn
+  /// in flight synthetically use this; production leaves it empty.
+  @visibleForTesting
+  final Set<String> debugForcedTurnInFlight = <String>{};
+
   /// Optimistic edit transactions, one per session, owned by the cubit so the
   /// phase, pending bubble, and draft survive a chat-area rebuild caused by the
   /// restore's reconnect.
@@ -333,10 +342,8 @@ class ChatCubit extends Cubit<ChatState>
       sessionId: sessionId,
       run: _runSeatEdit,
       watchdog: seatEditWatchdog,
-      transportFor: (memberId) => seatEditTransportFor?.call(
-        sessionId: sessionId,
-        memberId: memberId,
-      ),
+      transportFor: (memberId) =>
+          seatEditTransportFor?.call(sessionId: sessionId, memberId: memberId),
     ),
   );
 
@@ -489,9 +496,11 @@ class ChatCubit extends Cubit<ChatState>
   /// caches, so a local seat reads the home context + `gitOnPath` directly.
   late final SeatRewindPolicy _rewindPolicy = SeatRewindPolicy(
     workTargetFor: _workTargetForRewind,
-    contextFor: (target) => _seatRuntimeResolver.peek(target.id) ??
+    contextFor: (target) =>
+        _seatRuntimeResolver.peek(target.id) ??
         (target.kind == RuntimeKind.local ? _storage.context : null),
-    capabilityFor: (target) => _rewindCapability.peek(target.id) ??
+    capabilityFor: (target) =>
+        _rewindCapability.peek(target.id) ??
         (target.kind == RuntimeKind.local
             ? RewindCapability(available: _gitAvailableForRewind())
             : RewindCapability.unavailable),
