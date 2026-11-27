@@ -226,6 +226,13 @@ jobs:
           fi
 
       - name: Package
+        env:
+          # Flutter 3.50 flips macOSArm64Only on for stable builds; the pubspec
+          # pin should already disable it, but a packaged build run by the
+          # packaging tool must not depend on that resolution. Both levers are
+          # explicit: the feature flag and the ARCHS xcodebuild receives.
+          FLUTTER_MACOS_ARM64_ONLY: "false"
+          FLUTTER_XCODE_ARCHS: "arm64 x86_64"
         run: >
           fastforge package --platform macos --targets dmg
           --build-dart-define=GITHUB_OAUTH_CLIENT_ID=${TEAMPILOT_GITHUB_OAUTH_CLIENT_ID}
