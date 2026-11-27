@@ -303,9 +303,9 @@ void main() {
     // Status transitions are sampled, not polled: the third attempt succeeds
     // milliseconds after the second, so reading `state` once can miss the
     // `reconnecting` window entirely on a fast or loaded runner.
-    final statuses = <HomeConnectionStatus>[];
+    final progress = <({HomeConnectionStatus status, int attempt})>[];
     final statusSub = harness.cubit.stream.listen(
-      (state) => statuses.add(state.status),
+      (state) => progress.add((status: state.status, attempt: state.attempt)),
     );
     addTearDown(statusSub.cancel);
 
@@ -317,8 +317,13 @@ void main() {
 
     // Failed background attempts surface as `reconnecting` progress.
     await waitUntil(() => harness.backgroundAttempts.length >= 2);
-    expect(statuses, contains(HomeConnectionStatus.reconnecting));
-    expect(harness.cubit.state.attempt, greaterThanOrEqualTo(1));
+    expect(
+      progress.any(
+        (p) => p.status == HomeConnectionStatus.reconnecting && p.attempt >= 1,
+      ),
+      isTrue,
+      reason: 'failed background attempts must surface as progress',
+    );
     expect(harness.remoteBoot.runs, 0);
 
     // The next attempt succeeds and hot recovery runs once.
