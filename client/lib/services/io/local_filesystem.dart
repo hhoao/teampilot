@@ -269,18 +269,30 @@ class LocalFilesystem implements Filesystem, FsWatcher {
   /// REPLACE_EXISTING still fails with ACCESS_DENIED (errno 5) while another
   /// handle holds the dest (a concurrent reader, Defender, Search Indexer).
   /// Copy-overwrite then drop the temp file is the replace that succeeds
-  /// with a shared reader; retrying the same rename does not.
+  /// with a shared reader, and when the dest is held through that window too
+  /// the pair backs off and retries: those handles are short-lived scans, not
+  /// permanent locks.
   Future<void> _renameReplacing(String from, String to) async {
-    try {
-      await _renameFile(from, to);
-    } on FileSystemException catch (error) {
-      if (!_isSharingViolation(error)) rethrow;
+    const maxAttempts = 6;
+    for (var attempt = 1; ; attempt++) {
       try {
-        await File(from).copy(to);
-        await _deleteIfStillPresent(File(from));
-      } on Object {
-        throw error;
+        await _renameFile(from, to);
+        return;
+      } on FileSystemException catch (error) {
+        if (!_isSharingViolation(error)) rethrow;
+        try {
+          await File(from).copy(to);
+          await _deleteIfStillPresent(File(from));
+          return;
+        } on FileSystemException catch (copyError) {
+          if (!_isSharingViolation(copyError) || attempt >= maxAttempts) {
+            throw error;
+          }
+        } on Object {
+          if (attempt >= maxAttempts) throw error;
+        }
       }
+      await Future<void>.delayed(Duration(milliseconds: 5 * attempt));
     }
   }
 
