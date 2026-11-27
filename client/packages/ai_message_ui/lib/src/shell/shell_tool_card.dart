@@ -10,7 +10,7 @@ import '../parts/expandable_tool_card.dart';
 import '../parts/fade_expand_body.dart';
 import '../theme.dart';
 
-/// Cursor-style shell tool card: header + always-visible mini/full terminal panel.
+/// Cursor-style shell tool card: header row, terminal panel only while open.
 class ShellToolCard extends StatelessWidget {
   const ShellToolCard({
     required this.part,
@@ -68,20 +68,7 @@ class ShellToolCard extends StatelessWidget {
             ),
           ),
         ),
-        if (!open)
-          SelectionContainer.disabled(
-            child: _ShellTerminalBody(
-              part: part,
-              command: shell.command,
-              panelColor: panelColor,
-              radius: aiTheme.panelRadius,
-              markdown: markdown,
-              accentColor: triggerColor,
-              open: false,
-              onToggle: onToggle,
-            ),
-          )
-        else
+        if (open)
           _ShellTerminalBody(
             part: part,
             command: shell.command,
@@ -89,7 +76,6 @@ class ShellToolCard extends StatelessWidget {
             radius: aiTheme.panelRadius,
             markdown: markdown,
             accentColor: triggerColor,
-            open: true,
             onToggle: onToggle,
           ),
       ],
@@ -144,7 +130,6 @@ class _ShellTerminalBody extends StatelessWidget {
     required this.radius,
     required this.markdown,
     required this.accentColor,
-    required this.open,
     required this.onToggle,
   });
 
@@ -154,35 +139,27 @@ class _ShellTerminalBody extends StatelessWidget {
   final double radius;
   final MarkdownTokens markdown;
   final Color accentColor;
-  final bool open;
   final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final mono = markdown.codeBlock;
-    // Cap the strings, not just the visual clip: AiFadeExpandBody lays the
-    // child out at full height even while collapsed, so a giant command
-    // output would otherwise freeze the frame on every message mount.
+    // Cap the strings, not just the visual clip: the body is laid out in full
+    // before the scroll shell caps its height, so a giant command or output
+    // would otherwise freeze the frame on every mount.
     final cappedCommand = capToolPanelText(command);
     final rawOutput = part.result == null ? null : _stringify(part.result);
     final hasOutput = rawOutput != null && rawOutput.trim().isNotEmpty;
-    final huge =
-        hasOutput && rawOutput.length > kAiShellCollapsedPreviewMinChars;
-    final output = !hasOutput
-        ? null
-        : (open || !huge)
-        ? capToolPanelText(rawOutput)
-        : previewToolCardText(rawOutput);
+    final output = hasOutput ? capToolPanelText(rawOutput) : null;
     final outputColor = part.isError
         ? scheme.error
         : scheme.onSurface.withValues(alpha: 0.65);
 
     final body = AiFadeExpandBody(
-      open: open,
+      open: true,
       onToggle: onToggle,
       fadeColor: panelColor,
-      forceChrome: !open && huge,
       contentPadding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

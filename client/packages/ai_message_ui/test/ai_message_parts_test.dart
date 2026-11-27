@@ -291,13 +291,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('调用工具:'), findsNothing);
-    // Header summary + mini panel both show the command when no description.
+    // Header summary shows the command when no description; the terminal panel
+    // (`$` + output) stays unmounted while the row is collapsed.
     expect(find.textContaining('ls'), findsWidgets);
     expect(find.text('输出:'), findsNothing);
-    // Collapsed shell mini panel already shows $ and result (no further tap needed).
-    expect(find.textContaining(r'$'), findsWidgets);
-    // Fade-expand keeps full output in tree for measurement.
-    expect(find.textContaining('ok'), findsAtLeastNWidgets(1));
+    expect(find.textContaining(r'$'), findsNothing);
+    expect(find.textContaining('ok'), findsNothing);
   });
 
   testWidgets('tool expand uses AnimatedSize; long args soft-wrap', (

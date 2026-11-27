@@ -265,7 +265,7 @@ class _LegacyToolTrigger extends StatelessWidget {
                         ),
                       ],
                     ),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -365,7 +365,7 @@ class _SubagentToolTrigger extends StatelessWidget {
                           behavior: HitTestBehavior.opaque,
                           child: Text.rich(
                             labelSpan,
-                            maxLines: 2,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             strutStyle: strut,
                             textHeightBehavior: const TextHeightBehavior(
@@ -456,7 +456,7 @@ class _SummaryToolTrigger extends StatelessWidget {
 
     Widget fileLabelWidget = Text.rich(
       TextSpan(style: triggerStyle, children: fileLabelSpans),
-      maxLines: 2,
+      maxLines: 1,
       overflow: TextOverflow.ellipsis,
       strutStyle: strut,
       textHeightBehavior: const TextHeightBehavior(
