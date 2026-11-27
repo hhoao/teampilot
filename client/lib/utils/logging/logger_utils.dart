@@ -459,12 +459,21 @@ class AppLogger {
   static const Duration _rotateCheckInterval = Duration(seconds: 5);
   DateTime? _lastRotateCheck;
 
+  /// The rotation started by the last write, if it is still running.
+  ///
+  /// Rotations rename and reopen `latest.log`, so two of them overlapping can
+  /// archive the file a second time or leave a freshly opened file behind a
+  /// buffered line. Writes chain onto one rotation; flushes wait for it.
+  Future<void>? _rotationInFlight;
+
   void _maybeRotate() {
     final now = DateTime.now();
     final last = _lastRotateCheck;
     if (last != null && now.difference(last) < _rotateCheckInterval) return;
     _lastRotateCheck = now;
-    unawaited(_rotateIfNeeded());
+    _rotationInFlight ??= _rotateIfNeeded().whenComplete(() {
+      _rotationInFlight = null;
+    });
   }
 
   Future<void> _rotateIfNeeded() async {
@@ -488,6 +497,7 @@ class AppLogger {
   @visibleForTesting
   Future<void> checkRotationForTest() async {
     _lastRotateCheck = null;
+    await _rotationInFlight;
     await _rotateIfNeeded();
   }
 
@@ -526,9 +536,7 @@ class AppLogger {
       if (!name.endsWith('.log')) continue;
       files.add(entity);
     }
-    files.sort(
-      (a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()),
-    );
+    files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
     final now = clock();
     var kept = 0;
     for (final file in files) {
@@ -568,6 +576,7 @@ class AppLogger {
   /// Ensures buffered file log lines are visible on disk (tests / log viewer).
   @visibleForTesting
   Future<void> flushFileLogging() async {
+    await _rotationInFlight;
     await _fanout?.flush();
   }
 
@@ -640,10 +649,8 @@ class AppLogger {
   bool getFileLoggerInitialized() => _fileLoggerInitialized;
 
   /// Alias for [listLogFiles].
-  Future<List<String>> getLogFiles({
-    String? appDataRoot,
-    AppLogLevel? level,
-  }) => listLogFiles(appDataRoot: appDataRoot, level: level);
+  Future<List<String>> getLogFiles({String? appDataRoot, AppLogLevel? level}) =>
+      listLogFiles(appDataRoot: appDataRoot, level: level);
 
   @visibleForTesting
   Future<void> resetForTest() async {
