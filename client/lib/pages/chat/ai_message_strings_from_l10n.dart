@@ -1,3 +1,4 @@
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/foundation.dart';
 
@@ -126,6 +127,9 @@ AiMessageStrings _buildAiMessageStrings(
     cancelledTool: l10n.ai.messageCancelledTool,
     formatToolsUsed: (count) => l10n.ai.messageToolsUsed(count: count),
     reasoning: l10n.ai.messageReasoning,
+    reasoningInProgress: l10n.ai.messageReasoningInProgress,
+    formatToolActivity: (category, {required running}) =>
+        _toolActivityLabel(l10n, category, running: running),
     result: l10n.ai.messageToolResult,
     copy: l10n.copy,
     copied: l10n.ai.messageCopied,
@@ -197,6 +201,32 @@ AiMessageStrings _buildAiMessageStrings(
     taskBoardShowLess: l10n.cli.taskBoardShowLess,
   );
 }
+
+String _toolActivityLabel(
+  AppLocalizations l10n,
+  AiToolCallCategory category, {
+  required bool running,
+}) => switch (category) {
+  AiToolCallCategory.read =>
+    running ? l10n.ai.messageReadingFile : l10n.tool.categoryRead,
+  AiToolCallCategory.write =>
+    running ? l10n.ai.messageWritingFile : l10n.tool.categoryWrite,
+  AiToolCallCategory.edit =>
+    running ? l10n.ai.messageEditingFile : l10n.tool.categoryEdit,
+  AiToolCallCategory.command =>
+    running
+        ? l10n.ai.messageTerminalCommandRunning
+        : l10n.ai.messageTerminalCommandRan,
+  AiToolCallCategory.search => l10n.tool.categorySearch,
+  AiToolCallCategory.browser => l10n.tool.categoryBrowser,
+  AiToolCallCategory.subagent => l10n.tool.categorySubagent,
+  AiToolCallCategory.askUser => l10n.tool.categoryAskUser,
+  AiToolCallCategory.plan => l10n.tool.categoryPlan,
+  AiToolCallCategory.task => l10n.tool.categoryTask,
+  AiToolCallCategory.mcp => l10n.tool.categoryMcp,
+  AiToolCallCategory.other =>
+    running ? l10n.ai.messageToolRunning : l10n.ai.messageUsedTool,
+};
 
 String _thinkingProcessSummaryLabel(
   AppLocalizations l10n,

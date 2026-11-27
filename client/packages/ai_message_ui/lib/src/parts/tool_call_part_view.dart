@@ -18,6 +18,7 @@ import '../strings.dart';
 import '../theme.dart';
 import '../tool_file_actions.dart';
 import '../tool_subagent_actions.dart';
+import 'tool_status_icon.dart';
 
 /// Collapsible tool row aligned with assistant-ui ToolFallback.
 class AiToolCallPartView extends StatefulWidget {
@@ -81,8 +82,9 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
     final onOpenSubagent = subagentActions.onOpenSubagent;
     final isSub =
         (subagentActions.isSubagentTool?.call(part.toolName) ??
-            AiToolSubagentActions.defaultSubagentToolNames
-                .contains(part.toolName.trim().toLowerCase())) &&
+            AiToolSubagentActions.defaultSubagentToolNames.contains(
+              part.toolName.trim().toLowerCase(),
+            )) &&
         onOpenSubagent != null;
     final useSubagentChrome = isSub;
     final shellTarget = useSubagentChrome
@@ -226,10 +228,19 @@ class _LegacyToolTrigger extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final activityLabel = strings.toolActivityLabel(
+      part.category,
+      running: part.isRunning,
+    );
+    final showToolName =
+        part.category == AiToolCallCategory.other ||
+        part.category == AiToolCallCategory.mcp;
     return Semantics(
       button: true,
       expanded: open,
-      label: cancelled ? strings.cancelledTool : strings.usedTool,
+      label: cancelled
+          ? strings.cancelledTool
+          : '$activityLabel${showToolName ? ' ${part.toolName}' : ''}',
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
@@ -240,7 +251,7 @@ class _LegacyToolTrigger extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _StatusIcon(part: part, color: triggerColor),
+                AiToolStatusIcon(part: part, color: triggerColor),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text.rich(
@@ -251,18 +262,20 @@ class _LegacyToolTrigger extends StatelessWidget {
                       ),
                       children: [
                         TextSpan(
-                          text:
-                              '${cancelled ? strings.cancelledTool : strings.usedTool}: ',
+                          text: cancelled
+                              ? strings.cancelledTool
+                              : activityLabel,
                         ),
-                        TextSpan(
-                          text: part.toolName,
-                          style: markdown.toolNameEmphasis(
-                            markdown.toolTrigger(
-                              triggerColor,
-                              cancelled: cancelled,
+                        if (!cancelled && showToolName)
+                          TextSpan(
+                            text: ': ${part.toolName}',
+                            style: markdown.toolNameEmphasis(
+                              markdown.toolTrigger(
+                                triggerColor,
+                                cancelled: cancelled,
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                     maxLines: 1,
@@ -311,6 +324,9 @@ class _SubagentToolTrigger extends StatelessWidget {
       triggerColor,
       cancelled: cancelled,
     );
+    final activityLabel = AiMessageStrings.of(
+      context,
+    ).toolActivityLabel(AiToolCallCategory.subagent, running: part.isRunning);
     final title = subagentTitleFromPart(part);
     final strut = StrutStyle(
       fontSize: triggerStyle.fontSize,
@@ -320,15 +336,15 @@ class _SubagentToolTrigger extends StatelessWidget {
       leadingDistribution: TextLeadingDistribution.even,
     );
     final label = title == null || title.isEmpty
-        ? part.toolName
-        : '${part.toolName} $title';
+        ? activityLabel
+        : '$activityLabel $title';
     final labelSpan = title == null || title.isEmpty
-        ? TextSpan(text: part.toolName, style: triggerStyle)
+        ? TextSpan(text: activityLabel, style: triggerStyle)
         : TextSpan(
             style: triggerStyle,
             children: [
               TextSpan(
-                text: part.toolName,
+                text: activityLabel,
                 style: markdown.toolNameEmphasis(triggerStyle),
               ),
               TextSpan(text: ' $title'),
@@ -343,7 +359,7 @@ class _SubagentToolTrigger extends StatelessWidget {
           GestureDetector(
             onTap: onToggle,
             behavior: HitTestBehavior.opaque,
-            child: _StatusIcon(part: part, color: triggerColor),
+            child: AiToolStatusIcon(part: part, color: triggerColor),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -422,6 +438,12 @@ class _SummaryToolTrigger extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final activityLabel = AiMessageStrings.of(context).toolActivityLabel(
+      part.category == AiToolCallCategory.write
+          ? AiToolCallCategory.write
+          : AiToolCallCategory.read,
+      running: part.isRunning,
+    );
     final triggerStyle = markdown.toolTrigger(
       triggerColor,
       cancelled: cancelled,
@@ -488,7 +510,7 @@ class _SummaryToolTrigger extends StatelessWidget {
           GestureDetector(
             onTap: onToggle,
             behavior: HitTestBehavior.opaque,
-            child: _StatusIcon(part: part, color: triggerColor),
+            child: AiToolStatusIcon(part: part, color: triggerColor),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -500,8 +522,8 @@ class _SummaryToolTrigger extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    '${part.toolName} ',
-                    style: triggerStyle,
+                    '$activityLabel ',
+                    style: markdown.toolNameEmphasis(triggerStyle),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     strutStyle: strut,
@@ -554,43 +576,6 @@ class _ExpandChevron extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _StatusIcon extends StatelessWidget {
-  const _StatusIcon({required this.part, required this.color});
-
-  final AiToolCallPart part;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    if (part.isError) {
-      return Icon(Icons.error_outline, size: 16, color: scheme.error);
-    }
-    return switch (part.status) {
-      AiToolCallStatus.running => SizedBox(
-        width: 16,
-        height: 16,
-        child: CircularProgressIndicator(strokeWidth: 2, color: color),
-      ),
-      AiToolCallStatus.complete => Icon(
-        Icons.check_circle_outline,
-        size: 16,
-        color: color,
-      ),
-      AiToolCallStatus.incomplete => Icon(
-        Icons.highlight_off,
-        size: 16,
-        color: color,
-      ),
-      AiToolCallStatus.cancelled => Icon(
-        Icons.cancel_outlined,
-        size: 16,
-        color: color,
-      ),
-    };
   }
 }
 

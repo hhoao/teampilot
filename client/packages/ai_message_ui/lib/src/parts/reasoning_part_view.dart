@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
@@ -154,6 +152,7 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
     final strings = AiMessageStrings.of(context);
     final markdown = aiTheme.markdown;
     final triggerColor = aiTheme.resolveToolTrigger(scheme);
+    final label = strings.reasoningLabel(running: widget.autoFollow);
 
     return Padding(
       padding: EdgeInsets.only(bottom: aiTheme.partSpacing),
@@ -164,7 +163,7 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
             child: Semantics(
               button: true,
               expanded: _open,
-              label: strings.reasoning,
+              label: label,
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
@@ -174,27 +173,14 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.psychology_outlined,
-                          size: 16,
-                          color: triggerColor,
-                        ),
+                        _AiReasoningStatusIcon(live: widget.autoFollow),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            strings.reasoning,
+                            label,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: markdown.toolTrigger(triggerColor),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Transform.rotate(
-                          angle: _open ? 0 : -math.pi / 2,
-                          child: Icon(
-                            Icons.expand_more,
-                            size: 16,
-                            color: triggerColor,
                           ),
                         ),
                       ],
@@ -217,13 +203,21 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
                     onNotification: _onScroll,
                     child: NotificationListener<ScrollMetricsNotification>(
                       onNotification: _onMetricsChanged,
-                      child: SingleChildScrollView(
+                      child: Scrollbar(
                         controller: _scroll,
-                        child: DefaultTextStyle.merge(
-                          style: markdown.reasoningBody(
-                            scheme.onSurfaceVariant,
+                        thumbVisibility: true,
+                        child: ScrollConfiguration(
+                          behavior: ScrollConfiguration.of(context)
+                              .copyWith(scrollbars: false),
+                          child: SingleChildScrollView(
+                            controller: _scroll,
+                            child: DefaultTextStyle.merge(
+                              style: markdown.reasoningBody(
+                                scheme.onSurfaceVariant,
+                              ),
+                              child: AiTextPartView(text: widget.part.text),
+                            ),
                           ),
-                          child: AiTextPartView(text: widget.part.text),
                         ),
                       ),
                     ),
@@ -233,6 +227,28 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _AiReasoningStatusIcon extends StatelessWidget {
+  const _AiReasoningStatusIcon({required this.live});
+
+  final bool live;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final statusColor = live
+        ? scheme.primary
+        : AiMessageTheme.of(context).resolveToolSuccess(scheme);
+    return SizedBox(
+      key: const ValueKey('ai-reasoning-status-icon'),
+      width: 16,
+      height: 16,
+      child: live
+          ? CircularProgressIndicator(strokeWidth: 2, color: statusColor)
+          : Icon(Icons.check_circle_outline, size: 16, color: statusColor),
     );
   }
 }

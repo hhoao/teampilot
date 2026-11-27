@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
@@ -8,6 +6,7 @@ import '../strings.dart';
 import '../theme.dart';
 import '../thinking_process_summary.dart';
 import '../tool_file_actions.dart';
+import 'activity_outline.dart';
 import 'reasoning_part_view.dart';
 import 'tool_call_part_view.dart';
 
@@ -90,6 +89,7 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
   Object? _bodyActions;
   ColorScheme? _bodyScheme;
   TextStyle? _bodyTriggerStyle;
+  Color? _bodyRailColor;
   double? _bodySpacing;
 
   @override
@@ -125,11 +125,14 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
     final triggerColor = aiTheme.resolveToolTrigger(scheme);
     final actions = AiToolFileActions.of(context);
     final triggerStyle = markdown.toolTrigger(triggerColor);
+    final railColor = aiTheme.resolveReasoningBorder(scheme);
 
     // Memo contract: every input the chrome paints with is compared below.
     // Adding a visual input (a new theme field, a string, a resolved style)
     // without adding it to this check silently renders stale chrome.
-    final digests = [for (final part in widget.parts) messagePartIdentity(part)];
+    final digests = [
+      for (final part in widget.parts) messagePartIdentity(part),
+    ];
     final cachedBody = _body;
     if (cachedBody != null &&
         _bodyOpen == _open &&
@@ -138,6 +141,7 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
         identical(_bodyActions, actions) &&
         _bodyScheme == scheme &&
         _bodyTriggerStyle == triggerStyle &&
+        _bodyRailColor == railColor &&
         _bodySpacing == aiTheme.partSpacing &&
         _sameDigests(_bodyDigests!, digests)) {
       return cachedBody;
@@ -159,6 +163,8 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
         AiChainOfThoughtView._noteMiss('scheme');
       } else if (_bodyTriggerStyle != triggerStyle) {
         AiChainOfThoughtView._noteMiss('style');
+      } else if (_bodyRailColor != railColor) {
+        AiChainOfThoughtView._noteMiss('railColor');
       } else if (_bodySpacing != aiTheme.partSpacing) {
         AiChainOfThoughtView._noteMiss('spacing');
       } else {
@@ -170,10 +176,10 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
     // call at the tail means thinking paused, so nothing stays expanded.
     final activeReasoningIndex =
         widget.autoExpand &&
-                widget.parts.isNotEmpty &&
-                widget.parts.last is AiReasoningPart
-            ? widget.parts.length - 1
-            : -1;
+            widget.parts.isNotEmpty &&
+            widget.parts.last is AiReasoningPart
+        ? widget.parts.length - 1
+        : -1;
     final summary = summarizeThinkingProcess(
       widget.parts,
       fileResolver: actions.fileResolver,
@@ -190,8 +196,8 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
     final phrase = formatted.isNotEmpty
         ? formatted
         : (stats != null && chainToolCalls > 0
-            ? stats(widget.parts.length, chainToolCalls)
-            : strings.formatThinkingProcessSteps(widget.parts.length));
+              ? stats(widget.parts.length, chainToolCalls)
+              : strings.formatThinkingProcessSteps(widget.parts.length));
     final showDiff =
         formatted.isNotEmpty && (summary.added > 0 || summary.removed > 0);
     final semanticsLabel = [
@@ -200,75 +206,60 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
       if (showDiff && summary.removed > 0) '-${summary.removed}',
     ].join(' ');
 
-    final body = Padding(
-      padding: EdgeInsets.only(bottom: aiTheme.partSpacing),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SelectionContainer.disabled(
-            child: Semantics(
-              button: true,
-              expanded: _open,
-              label: semanticsLabel,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () => setState(() => _open = !_open),
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text.rich(
+    final header = SelectionContainer.disabled(
+      child: Semantics(
+        button: true,
+        expanded: _open,
+        label: semanticsLabel,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () => setState(() => _open = !_open),
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  AiActivityChevron(open: _open),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text.rich(
+                      TextSpan(
+                        style: triggerStyle,
+                        children: [
+                          TextSpan(text: phrase),
+                          if (showDiff && summary.added > 0)
                             TextSpan(
-                              style: triggerStyle,
-                              children: [
-                                TextSpan(text: phrase),
-                                if (showDiff && summary.added > 0)
-                                  TextSpan(
-                                    text: ' +${summary.added}',
-                                    style: markdown.toolTrigger(scheme.primary),
-                                  ),
-                                if (showDiff && summary.removed > 0)
-                                  TextSpan(
-                                    text: ' -${summary.removed}',
-                                    style: markdown.toolTrigger(scheme.error),
-                                  ),
-                              ],
+                              text: ' +${summary.added}',
+                              style: markdown.toolTrigger(scheme.primary),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Transform.rotate(
-                          angle: _open ? 0 : -math.pi / 2,
-                          child: Icon(
-                            Icons.expand_more,
-                            size: 16,
-                            color: triggerColor,
-                          ),
-                        ),
-                      ],
+                          if (showDiff && summary.removed > 0)
+                            TextSpan(
+                              text: ' -${summary.removed}',
+                              style: markdown.toolTrigger(scheme.error),
+                            ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
-              ),
-            ),
-          ),
-          if (_open)
-            Padding(
-              padding: const EdgeInsets.only(left: 8, top: 2),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (var i = 0; i < widget.parts.length; i++)
-                    _buildInnerPart(widget.parts[i], i, activeReasoningIndex),
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+    final body = Padding(
+      padding: EdgeInsets.only(bottom: aiTheme.partSpacing),
+      child: AiActivityOutline(
+        header: header,
+        followLatest: widget.autoExpand,
+        children: [
+          if (_open)
+            for (var i = 0; i < widget.parts.length; i++)
+              _buildInnerPart(widget.parts[i], i, activeReasoningIndex),
         ],
       ),
     );
@@ -280,6 +271,7 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
     _bodyActions = actions;
     _bodyScheme = scheme;
     _bodyTriggerStyle = triggerStyle;
+    _bodyRailColor = railColor;
     _bodySpacing = aiTheme.partSpacing;
     return body;
   }

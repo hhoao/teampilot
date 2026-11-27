@@ -500,9 +500,12 @@ class _AppLocalizations$ai$zh extends AppLocalizations$ai$en {
 	@override String get messageCancelled => '消息已取消';
 	@override String get messageCancelledTool => '已取消工具';
 	@override String get messageCopied => '已复制';
+	@override String get messageEditingFile => '正在编辑文件';
 	@override String get messageExportMarkdown => '导出 Markdown';
 	@override String get messageIncomplete => '消息未完成';
-	@override String get messageReasoning => '推理';
+	@override String get messageReadingFile => '正在读取文件';
+	@override String get messageReasoning => '已思考';
+	@override String get messageReasoningInProgress => '思考中';
 	@override String get messageScrollToBottom => '滚动到底部';
 	@override String get messageShowLess => '收起';
 	@override String get messageShowMore => '显示更多';
@@ -522,9 +525,13 @@ class _AppLocalizations$ai$zh extends AppLocalizations$ai$en {
 	@override String messageThinkingSearches({required int count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
 		other: '${count} 次搜索',
 	);
+	@override String get messageTerminalCommandRan => '终端命令已运行';
+	@override String get messageTerminalCommandRunning => '正在运行终端命令';
 	@override String get messageToolResult => '结果';
+	@override String get messageToolRunning => '正在运行工具';
 	@override String messageToolsUsed({required Object count}) => '已使用 ${count} 个工具';
 	@override String get messageUsedTool => '已使用工具';
+	@override String get messageWritingFile => '正在写入文件';
 	@override String toolFileNotFound({required String path}) => '找不到文件：${path}';
 }
 
@@ -4353,9 +4360,12 @@ extension on AppLocalizationsZh {
 			'ai.messageCancelled' => '消息已取消',
 			'ai.messageCancelledTool' => '已取消工具',
 			'ai.messageCopied' => '已复制',
+			'ai.messageEditingFile' => '正在编辑文件',
 			'ai.messageExportMarkdown' => '导出 Markdown',
 			'ai.messageIncomplete' => '消息未完成',
-			'ai.messageReasoning' => '推理',
+			'ai.messageReadingFile' => '正在读取文件',
+			'ai.messageReasoning' => '已思考',
+			'ai.messageReasoningInProgress' => '思考中',
 			'ai.messageScrollToBottom' => '滚动到底部',
 			'ai.messageShowLess' => '收起',
 			'ai.messageShowMore' => '显示更多',
@@ -4367,9 +4377,13 @@ extension on AppLocalizationsZh {
 			'ai.messageThinkingProcessSteps' => ({required int count}) => '思考过程 · ${count} 步',
 			'ai.messageThinkingProcessSummarySeparator' => '，',
 			'ai.messageThinkingSearches' => ({required int count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, other: '${count} 次搜索', ), 
+			'ai.messageTerminalCommandRan' => '终端命令已运行',
+			'ai.messageTerminalCommandRunning' => '正在运行终端命令',
 			'ai.messageToolResult' => '结果',
+			'ai.messageToolRunning' => '正在运行工具',
 			'ai.messageToolsUsed' => ({required Object count}) => '已使用 ${count} 个工具',
 			'ai.messageUsedTool' => '已使用工具',
+			'ai.messageWritingFile' => '正在写入文件',
 			'ai.toolFileNotFound' => ({required String path}) => '找不到文件：${path}',
 			'antigravity.credentialsActionFailed' => 'Antigravity 登录失败。',
 			'antigravity.credentialsCancel' => '取消',
@@ -4511,6 +4525,8 @@ extension on AppLocalizationsZh {
 			'automations.exitCode' => ({required int code}) => '退出码 ${code}',
 			'automations.filterActionAll' => '全部类型',
 			'automations.filterActionLabel' => '类型',
+			_ => null,
+		} ?? switch (path) {
 			'automations.filterAll' => '全部',
 			'automations.filterDisabled' => '仅已禁用',
 			'automations.filterEnabled' => '仅已启用',
@@ -4518,8 +4534,6 @@ extension on AppLocalizationsZh {
 			'automations.filterScheduledMessage' => '定时消息',
 			'automations.filterStatusLabel' => '状态',
 			'automations.hideFilter' => '隐藏筛选',
-			_ => null,
-		} ?? switch (path) {
 			'automations.invalidCron' => '无效的 cron 表达式（需要 5 个字段）',
 			'automations.invalidMaxRunCount' => '运行次数上限须为正整数',
 			'automations.invalidTime' => '时间格式须为 HH:mm',
@@ -5025,6 +5039,8 @@ extension on AppLocalizationsZh {
 			'extension.statusVersionTooOld' => '已安装版本过旧',
 			'extension.uninstall' => '卸载',
 			'file.codeBlockModeDescription' => 'markdown 文件预览中超大代码块的呈现方式。',
+			_ => null,
+		} ?? switch (path) {
 			'file.codeBlockModeTitle' => '文件预览·代码块',
 			'file.diffToggleDiff' => 'Diff',
 			'file.diffToggleFile' => '文件',
@@ -5032,8 +5048,6 @@ extension on AppLocalizationsZh {
 			'file.previewHostDescription' => '在浮动工作区或中间工作台打开文件。',
 			'file.previewHostFloating' => '浮动',
 			'file.previewHostTitle' => '文件预览位置',
-			_ => null,
-		} ?? switch (path) {
 			'fileTree.fileTree' => '文件树',
 			'fileTree.copy' => '复制',
 			'fileTree.copyPath' => '复制路径',
@@ -5539,6 +5553,8 @@ extension on AppLocalizationsZh {
 			'managedProviders.credentialSaveFailed' => '无法安全保存 Provider 凭据。',
 			'managedProviders.credentialSecret' => 'API Key / Token',
 			'managedProviders.credentialSecretExistingHint' => '留空保留已保存密钥',
+			_ => null,
+		} ?? switch (path) {
 			'managedProviders.credentialSecretHelper' => '留空保留已保存密钥。',
 			'managedProviders.credentialSecretHint' => '填入 Provider 的 API Key 或 Token',
 			'managedProviders.credentialSource' => '凭据来源',
@@ -5546,8 +5562,6 @@ extension on AppLocalizationsZh {
 			'managedProviders.credentialSourceHint' => 'secret 或 cli:cursor-mp-<entry>',
 			'managedProviders.credentialTemplate' => '凭据拼接模板',
 			'managedProviders.credentialTemplateHelper' => '拼成最终凭据值，常用于 Cookie；用花括号填变量。',
-			_ => null,
-		} ?? switch (path) {
 			'managedProviders.credentialTemplateHint' => '例如 WorkosCursorSessionToken=user::token',
 			'managedProviders.credentials' => '凭据',
 			'managedProviders.credentialsSectionSubtitle' => '凭据来源及写入请求的方式。',
@@ -6053,6 +6067,8 @@ extension on AppLocalizationsZh {
 			'remote.directoryBrowserError' => '无法打开远程目录。你仍可在下方手动输入路径。',
 			'remote.directoryBrowserTitle' => '浏览远程目录',
 			'remote.directoryBrowserTypePathHint' => '~/work/workspace',
+			_ => null,
+		} ?? switch (path) {
 			'remote.directoryBrowserTypePathLabel' => '或手动输入路径',
 			'remote.directoryBrowserUpOneLevel' => '上一级',
 			'remote.directoryBrowserUseThisDirectory' => '使用此目录',
@@ -6060,8 +6076,6 @@ extension on AppLocalizationsZh {
 			'resource.managerAppProcess' => '应用',
 			'resource.managerColumnCpu' => 'CPU',
 			'resource.managerColumnMemory' => '内存',
-			_ => null,
-		} ?? switch (path) {
 			'resource.managerColumnName' => '名称',
 			'resource.managerEmptyTree' => '当前没有运行中的会话。',
 			'resource.managerKill' => '结束',
@@ -6567,6 +6581,8 @@ extension on AppLocalizationsZh {
 			'ssh.hostKeyMismatchBody' => ({required String host}) => '${host} 的主机密钥与 TeamPilot 先前保存的不一致。可能是系统重装，也可能是连接被劫持。',
 			'ssh.hostKeyMismatchTitle' => 'SSH 主机密钥已变更',
 			'ssh.hostKeyPreviousFingerprintLabel' => '先前信任的指纹',
+			_ => null,
+		} ?? switch (path) {
 			'ssh.hostKeyReplaceTrust' => '替换并信任',
 			'ssh.hostKeyTrust' => '信任并继续',
 			'ssh.hostKeyUnknownBody' => ({required String host}) => 'TeamPilot 尚未见过 ${host}。请确认指纹与该机器一致后再信任。',
@@ -6574,8 +6590,6 @@ extension on AppLocalizationsZh {
 			'ssh.hostsManage' => '管理远程主机',
 			'ssh.hostsOpenTerminal' => '打开终端',
 			'ssh.hostsOpenTerminalNoWorkspace' => '请先打开一个工作区再启动终端。',
-			_ => null,
-		} ?? switch (path) {
 			'ssh.hostsPanelTitle' => '远程主机',
 			'ssh.hostsPillConnecting' => '连接中…',
 			'ssh.hostsRowKind' => 'SSH 主机',
@@ -7081,6 +7095,8 @@ extension on AppLocalizationsZh {
 			'workspace.searchGitignore' => '.gitignore',
 			'workspace.searchHint' => '搜索会话、文件和会话内容',
 			'workspace.searchIncludeHint' => '包含 (glob，逗号分隔)',
+			_ => null,
+		} ?? switch (path) {
 			'workspace.searchIndexing' => '正在索引…',
 			'workspace.searchNoResults' => '没有匹配结果',
 			'workspace.searchPanel' => '搜索',
@@ -7088,8 +7104,6 @@ extension on AppLocalizationsZh {
 			'workspace.searchRecentSessions' => '最近会话',
 			'workspace.searchRegex' => '正则',
 			'workspace.searchReplace' => '替换',
-			_ => null,
-		} ?? switch (path) {
 			'workspace.searchReplaceAll' => '全部替换',
 			'workspace.searchReplaceAllMessage' => ({required int count}) => '替换 ${count} 处匹配？',
 			'workspace.searchReplaceAllTitle' => '全部替换？',

@@ -3,6 +3,14 @@ import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+Future<void> pumpActivityUi(WidgetTester tester) async {
+  await tester.pump();
+  for (var i = 0; i < 3; i++) {
+    await tester.pump(const Duration(milliseconds: 250));
+  }
+  await tester.pump();
+}
+
 void main() {
   Widget buildLiveChain(List<AiMessagePart> parts, {bool autoExpand = true}) {
     return MaterialApp(
@@ -62,20 +70,20 @@ void main() {
     expect(find.text('all done'), findsOneWidget);
 
     await tester.tap(find.textContaining('Thinking process'));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
 
     // Nested rows visible as triggers, payloads still hidden.
-    expect(find.text('Reasoning'), findsOneWidget);
+    expect(find.text('Thought'), findsOneWidget);
     expect(find.textContaining('shell_command'), findsOneWidget);
     expect(find.textContaining('secret plan'), findsNothing);
     expect(find.textContaining('ok'), findsNothing);
 
-    await tester.tap(find.text('Reasoning'));
-    await tester.pumpAndSettle();
+    await tester.tap(find.text('Thought'));
+    await pumpActivityUi(tester);
     expect(find.textContaining('secret plan'), findsOneWidget);
 
     await tester.tap(find.textContaining('shell_command'));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
     expect(find.textContaining('ok'), findsOneWidget);
   });
 
@@ -112,7 +120,7 @@ void main() {
     );
 
     await tester.tap(find.textContaining('Thinking process'));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
 
     expect(find.textContaining('secret plan'), findsOneWidget);
     expect(find.textContaining('ok'), findsOneWidget);
@@ -146,7 +154,7 @@ void main() {
     );
 
     await tester.tap(find.textContaining('Thinking process'));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
 
     expect(find.textContaining('secret plan'), findsOneWidget);
     expect(find.textContaining('ok'), findsNothing);
@@ -182,19 +190,19 @@ void main() {
       );
 
       await tester.tap(find.textContaining('Thinking process'));
-      await tester.pumpAndSettle();
+      await pumpActivityUi(tester);
 
       expect(find.textContaining('file-a'), findsNothing);
       expect(find.textContaining('file-b'), findsNothing);
       expect(find.textContaining('Used 2 tools'), findsNothing);
 
       await tester.tap(find.textContaining('Read'));
-      await tester.pumpAndSettle();
+      await pumpActivityUi(tester);
       expect(find.textContaining('file-a'), findsOneWidget);
       expect(find.textContaining('file-b'), findsNothing);
 
       await tester.tap(find.textContaining('Grep'));
-      await tester.pumpAndSettle();
+      await pumpActivityUi(tester);
       expect(find.textContaining('file-b'), findsOneWidget);
     },
   );
@@ -290,8 +298,8 @@ void main() {
       expect(find.text('all done'), findsOneWidget);
 
       await tester.tap(find.textContaining('Edited 2 files, explored 1 file'));
-      await tester.pumpAndSettle();
-      expect(find.text('Reasoning'), findsOneWidget);
+      await pumpActivityUi(tester);
+      expect(find.text('Thought'), findsOneWidget);
       expect(find.textContaining('secret plan'), findsNothing);
     },
   );
@@ -318,7 +326,7 @@ void main() {
     }
 
     await tester.pumpWidget(build(lines));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
 
     final position = tester
         .state<ScrollableState>(find.byType(Scrollable))
@@ -326,7 +334,7 @@ void main() {
     expect(position.maxScrollExtent, greaterThan(0));
 
     await tester.pumpWidget(build('$lines\nnewest reasoning line'));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
 
     expect(position.pixels, greaterThan(0));
     expect(position.pixels, closeTo(position.maxScrollExtent, 1));
@@ -346,13 +354,13 @@ void main() {
     }
 
     await tester.pumpWidget(build(live: true));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
     expect(find.textContaining('live thought'), findsOneWidget);
 
     await tester.pumpWidget(build(live: false));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
 
-    expect(find.text('Reasoning'), findsOneWidget);
+    expect(find.text('Thought'), findsOneWidget);
     expect(find.textContaining('live thought'), findsNothing);
   });
 
@@ -372,11 +380,11 @@ void main() {
     }
 
     await tester.pumpWidget(build(live: false));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
     expect(find.textContaining('live thought'), findsNothing);
 
     await tester.pumpWidget(build(live: true));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
     expect(find.textContaining('live thought'), findsOneWidget);
   });
 
@@ -500,14 +508,14 @@ void main() {
     );
 
     await tester.pumpWidget(build(1));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
     await tester.tap(find.textContaining('Thinking process'));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
     expect(find.textContaining('2 steps · 1 tool calls'), findsOneWidget);
     expect(find.textContaining('thought'), findsOneWidget);
 
     await tester.pumpWidget(build(3));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
     expect(find.textContaining('4 steps · 3 tool calls'), findsOneWidget);
     expect(find.textContaining('thought'), findsOneWidget);
   });
@@ -520,12 +528,13 @@ void main() {
         AiReasoningPart(text: 'third thought'),
       ]),
     );
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
 
     expect(find.textContaining('first thought'), findsNothing);
     expect(find.textContaining('second thought'), findsNothing);
     expect(find.textContaining('third thought'), findsOneWidget);
-    expect(find.text('Reasoning'), findsNWidgets(3));
+    expect(find.text('Thought'), findsNWidgets(2));
+    expect(find.text('Thinking'), findsOneWidget);
   });
 
   testWidgets('live Cot folds all reasoning when a tool call is the tail', (
@@ -537,10 +546,10 @@ void main() {
         AiToolCallPart(toolCallId: 'c1', toolName: 'Read'),
       ]),
     );
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
 
     expect(find.textContaining('first thought'), findsNothing);
-    expect(find.text('Reasoning'), findsOneWidget);
+    expect(find.text('Thought'), findsOneWidget);
   });
 
   testWidgets('live Cot folds the previous reasoning when a new one arrives', (
@@ -551,11 +560,11 @@ void main() {
     const third = AiReasoningPart(text: 'third thought');
 
     await tester.pumpWidget(buildLiveChain(const [first, second]));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
     expect(find.textContaining('second thought'), findsOneWidget);
 
     await tester.pumpWidget(buildLiveChain(const [first, second, third]));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
 
     expect(find.textContaining('second thought'), findsNothing);
     expect(find.textContaining('third thought'), findsOneWidget);
@@ -569,15 +578,15 @@ void main() {
     const third = AiReasoningPart(text: 'third thought');
 
     await tester.pumpWidget(buildLiveChain(const [first, second]));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
 
     // Manually open the already-finished first block.
-    await tester.tap(find.text('Reasoning').first);
-    await tester.pumpAndSettle();
+    await tester.tap(find.text('Thought').first);
+    await pumpActivityUi(tester);
     expect(find.textContaining('first thought'), findsOneWidget);
 
     await tester.pumpWidget(buildLiveChain(const [first, second, third]));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
 
     expect(find.textContaining('first thought'), findsOneWidget);
     expect(find.textContaining('third thought'), findsOneWidget);
@@ -590,17 +599,409 @@ void main() {
     ];
 
     await tester.pumpWidget(buildLiveChain(parts));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
     // Only the active (last) reasoning body is open during live streaming.
     expect(find.textContaining('first thought'), findsNothing);
     expect(find.textContaining('second thought'), findsOneWidget);
 
     await tester.pumpWidget(buildLiveChain(parts, autoExpand: false));
-    await tester.pumpAndSettle();
+    await pumpActivityUi(tester);
 
     expect(find.textContaining('Thinking process'), findsOneWidget);
     expect(find.textContaining('first thought'), findsNothing);
     expect(find.textContaining('second thought'), findsNothing);
+  });
+  testWidgets('Cot uses a bordered leading chevron and colors expansion', (
+    tester,
+  ) async {
+    final scheme = ColorScheme.fromSeed(seedColor: Colors.blue);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(colorScheme: scheme),
+        home: const Scaffold(
+          body: AiChainOfThoughtView(parts: [AiReasoningPart(text: 'thought')]),
+        ),
+      ),
+    );
+
+    final closedChevron = tester.widget<Icon>(find.byIcon(Icons.chevron_right));
+    expect(closedChevron.color, scheme.onSurfaceVariant);
+    final button = find.byKey(const ValueKey('ai-activity-chevron'));
+    expect(button, findsOneWidget);
+    expect(tester.getSize(button), const Size(24, 24));
+    expect(
+      tester.getTopLeft(button).dx,
+      tester.getTopLeft(find.byType(AiChainOfThoughtView)).dx,
+    );
+    final decoration =
+        tester.widget<Container>(button).decoration! as BoxDecoration;
+    expect(decoration.color, scheme.surfaceContainerLow);
+    expect(decoration.border, Border.all(color: scheme.outlineVariant));
+    expect(decoration.borderRadius, BorderRadius.circular(7));
+    expect(
+      tester.getTopLeft(find.byIcon(Icons.chevron_right)).dx,
+      lessThan(tester.getTopLeft(find.textContaining('Thinking process')).dx),
+    );
+
+    await tester.tap(find.textContaining('Thinking process'));
+    await pumpActivityUi(tester);
+
+    final openChevron = tester.widget<Icon>(find.byIcon(Icons.expand_more));
+    expect(openChevron.color, scheme.primary);
+    expect(
+      tester
+              .getTopLeft(
+                find.byKey(const ValueKey('ai-reasoning-status-icon')),
+              )
+              .dx -
+          tester.getTopLeft(button).dx,
+      closeTo(32, 0.1),
+      reason: 'nested activity must be indented from the chain header',
+    );
+    expect(
+      tester
+          .getTopLeft(find.byKey(const ValueKey('ai-reasoning-status-icon')))
+          .dx,
+      lessThan(tester.getTopLeft(find.text('Thought')).dx),
+    );
+
+    await tester.tap(find.text('Thought'));
+    await pumpActivityUi(tester);
+    expect(
+      tester
+          .widgetList<Icon>(find.byIcon(Icons.expand_more))
+          .every((icon) => icon.color == scheme.primary),
+      isTrue,
+    );
+  });
+
+  testWidgets('reasoning and tool status icons share a center line', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AiChainOfThoughtView(
+            parts: [
+              AiReasoningPart(text: 'finished thought'),
+              AiToolCallPart(
+                toolCallId: 'read',
+                toolName: 'Read',
+                status: AiToolCallStatus.complete,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.textContaining('Thinking process'));
+    await pumpActivityUi(tester);
+
+    final reasoningIcon = find.descendant(
+      of: find.byType(AiReasoningPartView),
+      matching: find.byIcon(Icons.check_circle_outline),
+    );
+    final toolIcon = find.descendant(
+      of: find.byType(AiToolCallPartView),
+      matching: find.byIcon(Icons.check_circle_outline),
+    );
+    expect(reasoningIcon, findsOneWidget);
+    expect(toolIcon, findsOneWidget);
+    expect(
+      tester.getCenter(reasoningIcon).dx,
+      closeTo(tester.getCenter(toolIcon).dx, 0.01),
+    );
+    expect(
+      tester.getTopLeft(find.text('Thought')).dx,
+      closeTo(tester.getTopLeft(find.textContaining('Read')).dx, 0.01),
+    );
+  });
+
+  testWidgets('outline indentation guide aligns with the Cot trigger', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AiChainOfThoughtView(
+            parts: [
+              AiReasoningPart(text: 'first thought'),
+              AiReasoningPart(text: 'second thought'),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.textContaining('Thinking process'));
+    await pumpActivityUi(tester);
+
+    final guide = find.byKey(
+      const ValueKey('ai-activity-outline-indent-guide'),
+    );
+    expect(guide, findsOneWidget);
+    final guideRect = tester.getRect(guide);
+    expect(guideRect.width, 1);
+    expect(
+      guideRect.center.dx,
+      closeTo(tester.getRect(find.byIcon(Icons.expand_more)).center.dx, 0.01),
+      reason: 'the indentation guide must align with the Cot trigger icon',
+    );
+    expect(
+      guideRect.right,
+      lessThanOrEqualTo(
+        tester
+            .getRect(
+              find.byKey(const ValueKey('ai-reasoning-status-icon')).first,
+            )
+            .left,
+      ),
+    );
+    expect(
+      guideRect.top,
+      lessThanOrEqualTo(tester.getRect(find.text('Thought').first).top),
+    );
+    expect(
+      guideRect.bottom,
+      greaterThanOrEqualTo(tester.getRect(find.text('Thought').last).bottom),
+    );
+    for (final element in find.byType(Icon).evaluate()) {
+      expect(
+        guideRect.overlaps(tester.getRect(find.byWidget(element.widget))),
+        isFalse,
+      );
+    }
+  });
+
+  testWidgets(
+    'nested reasoning and tool bodies keep separate visible scrollbars',
+    (tester) async {
+      final reasoning = List.generate(
+        40,
+        (i) => 'reasoning line $i',
+      ).join('\n');
+      final output = List.generate(80, (i) => 'tool output line $i').join('\n');
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(
+            platform: TargetPlatform.linux,
+            extensions: [
+              AiMessageTheme.test(
+                cotExpandReasoningOnOpen: true,
+                cotExpandToolsOnOpen: true,
+              ),
+            ],
+          ),
+          home: Scaffold(
+            body: AiChainOfThoughtView(
+              parts: [
+                AiReasoningPart(text: reasoning),
+                AiToolCallPart(
+                  toolCallId: 'shell',
+                  toolName: 'Bash',
+                  category: AiToolCallCategory.command,
+                  args: const {'command': 'run checks'},
+                  result: output,
+                  status: AiToolCallStatus.complete,
+                ),
+                for (var i = 0; i < 10; i++)
+                  AiToolCallPart(toolCallId: 'tool-$i', toolName: 'Read $i'),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byIcon(Icons.chevron_right));
+      await pumpActivityUi(tester);
+
+      expect(find.byType(Scrollbar), findsNWidgets(3));
+      final reasoningScrollbar = find.descendant(
+        of: find.byType(AiReasoningPartView),
+        matching: find.byType(Scrollbar),
+      );
+      expect(reasoningScrollbar, findsOneWidget);
+      expect(
+        tester.widget<Scrollbar>(reasoningScrollbar).thumbVisibility,
+        isTrue,
+      );
+      final scrollables = find.byType(Scrollable);
+      expect(scrollables, findsNWidgets(3));
+      final outlineRight = tester.getRect(find.byType(Scrollbar).first).right;
+      for (var i = 1; i < 3; i++) {
+        final inner = scrollables.at(i);
+        expect(
+          outlineRight - tester.getRect(inner).right,
+          greaterThanOrEqualTo(16),
+          reason: 'inner scrollbars must stay in their own gutter',
+        );
+        final position = tester.state<ScrollableState>(inner).position;
+        expect(position.maxScrollExtent, greaterThan(0));
+        await tester.ensureVisible(inner);
+        await tester.drag(inner, const Offset(0, -80));
+        await pumpActivityUi(tester);
+        expect(position.pixels, greaterThan(0));
+      }
+    },
+  );
+
+  testWidgets('expanded Cot bounds long activity in a scrollable outline', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiChainOfThoughtView(
+            parts: [
+              for (var i = 0; i < 50; i++)
+                AiToolCallPart(
+                  toolCallId: 'c$i',
+                  toolName: 'Tool $i',
+                  status: AiToolCallStatus.complete,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.textContaining('Thinking process'));
+    await pumpActivityUi(tester);
+
+    final scrollable = find.byType(Scrollable);
+    expect(scrollable, findsOneWidget);
+    final position = tester.state<ScrollableState>(scrollable).position;
+    expect(position.maxScrollExtent, greaterThan(0));
+    expect(tester.getSize(scrollable).height, lessThanOrEqualTo(384));
+
+    await tester.drag(scrollable, const Offset(0, -240));
+    await pumpActivityUi(tester);
+    expect(position.pixels, greaterThan(0));
+  });
+
+  testWidgets('live Cot follows new activity to the outline bottom', (
+    tester,
+  ) async {
+    Widget build(int count) => MaterialApp(
+      home: Scaffold(
+        body: AiChainOfThoughtView(
+          autoExpand: true,
+          parts: [
+            for (var i = 0; i < count; i++)
+              AiToolCallPart(toolCallId: 'c$i', toolName: 'Tool $i'),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(build(40));
+    await pumpActivityUi(tester);
+    final position = tester
+        .state<ScrollableState>(find.byType(Scrollable))
+        .position;
+    expect(position.maxScrollExtent, greaterThan(0));
+    expect(position.pixels, closeTo(position.maxScrollExtent, 1));
+
+    await tester.pumpWidget(build(45));
+    await pumpActivityUi(tester);
+    expect(position.pixels, closeTo(position.maxScrollExtent, 1));
+  });
+
+  testWidgets('live Cot stops following while the reader scrolls up', (
+    tester,
+  ) async {
+    Widget build(int count) => MaterialApp(
+      home: Scaffold(
+        body: AiChainOfThoughtView(
+          autoExpand: true,
+          parts: [
+            for (var i = 0; i < count; i++)
+              AiToolCallPart(toolCallId: 'c$i', toolName: 'Tool $i'),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(build(40));
+    await pumpActivityUi(tester);
+    final scrollable = find.byType(Scrollable);
+    final position = tester.state<ScrollableState>(scrollable).position;
+    await tester.drag(scrollable, const Offset(0, 160));
+    await pumpActivityUi(tester);
+    final readOffset = position.pixels;
+    expect(position.maxScrollExtent - readOffset, greaterThan(20));
+
+    await tester.pumpWidget(build(45));
+    await pumpActivityUi(tester);
+    expect(position.pixels, closeTo(readOffset, 1));
+  });
+
+  testWidgets('tool status icons use success, error and running colors', (
+    tester,
+  ) async {
+    const successColor = Color(0xFF248A5A);
+    final scheme = ColorScheme.fromSeed(seedColor: Colors.blue);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(
+          colorScheme: scheme,
+          extensions: [AiMessageTheme.test(toolSuccessColor: successColor)],
+        ),
+        home: const Scaffold(
+          body: Column(
+            children: [
+              AiToolCallPartView(
+                part: AiToolCallPart(
+                  toolCallId: 'success',
+                  toolName: 'Read',
+                  status: AiToolCallStatus.complete,
+                ),
+              ),
+              AiToolCallPartView(
+                part: AiToolCallPart(
+                  toolCallId: 'failure',
+                  toolName: 'Read',
+                  status: AiToolCallStatus.complete,
+                  isError: true,
+                ),
+              ),
+              AiToolCallPartView(
+                part: AiToolCallPart(
+                  toolCallId: 'running',
+                  toolName: 'Read',
+                  status: AiToolCallStatus.running,
+                ),
+              ),
+              AiToolCallPartView(
+                part: AiToolCallPart(
+                  toolCallId: 'cancelled',
+                  toolName: 'Read',
+                  status: AiToolCallStatus.cancelled,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.check_circle_outline)).color,
+      successColor,
+    );
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.error_outline)).color,
+      scheme.error,
+    );
+    expect(
+      tester
+          .widget<CircularProgressIndicator>(
+            find.byType(CircularProgressIndicator),
+          )
+          .color,
+      scheme.primary,
+    );
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.cancel_outlined)).color,
+      scheme.error,
+    );
   });
 }
 

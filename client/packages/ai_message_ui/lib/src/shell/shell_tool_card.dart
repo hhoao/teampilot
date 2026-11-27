@@ -8,6 +8,8 @@ import '../markdown/compiled_markdown_chrome.dart';
 import 'package:tp_markdown/tp_markdown.dart';
 import '../parts/expandable_tool_card.dart';
 import '../parts/fade_expand_body.dart';
+import '../parts/tool_status_icon.dart';
+import '../strings.dart';
 import '../theme.dart';
 
 /// Cursor-style shell tool card: header row, terminal panel only while open.
@@ -40,6 +42,9 @@ class ShellToolCard extends StatelessWidget {
       triggerColor,
       cancelled: part.isCancelled,
     );
+    final activityLabel = AiMessageStrings.of(
+      context,
+    ).toolActivityLabel(AiToolCallCategory.command, running: part.isRunning);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -50,14 +55,20 @@ class ShellToolCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _ShellStatusIcon(part: part, color: triggerColor),
+                AiToolStatusIcon(part: part, color: triggerColor),
                 const SizedBox(width: 8),
-                Icon(Icons.terminal, size: 15, color: triggerColor),
-                const SizedBox(width: 6),
                 Expanded(
-                  child: Text(
-                    shell.summary,
-                    style: triggerStyle,
+                  child: Text.rich(
+                    TextSpan(
+                      style: triggerStyle,
+                      children: [
+                        TextSpan(
+                          text: activityLabel,
+                          style: markdown.toolNameEmphasis(triggerStyle),
+                        ),
+                        TextSpan(text: '  ${shell.summary}'),
+                      ],
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -210,43 +221,6 @@ class _ShellExpandChevron extends StatelessWidget {
         child: Icon(Icons.expand_more, size: 16, color: color),
       ),
     );
-  }
-}
-
-class _ShellStatusIcon extends StatelessWidget {
-  const _ShellStatusIcon({required this.part, required this.color});
-
-  final AiToolCallPart part;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    if (part.isError) {
-      return Icon(Icons.error_outline, size: 16, color: scheme.error);
-    }
-    return switch (part.status) {
-      AiToolCallStatus.running => SizedBox(
-        width: 16,
-        height: 16,
-        child: CircularProgressIndicator(strokeWidth: 2, color: color),
-      ),
-      AiToolCallStatus.complete => Icon(
-        Icons.check_circle_outline,
-        size: 16,
-        color: color,
-      ),
-      AiToolCallStatus.incomplete => Icon(
-        Icons.highlight_off,
-        size: 16,
-        color: color,
-      ),
-      AiToolCallStatus.cancelled => Icon(
-        Icons.cancel_outlined,
-        size: 16,
-        color: color,
-      ),
-    };
   }
 }
 

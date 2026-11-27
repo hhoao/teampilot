@@ -34,9 +34,7 @@ void main() {
             body = Theme(
               data: theme.copyWith(
                 extensions: [
-                  ...theme.extensions.values.where(
-                    (e) => e is! AiMessageTheme,
-                  ),
+                  ...theme.extensions.values.where((e) => e is! AiMessageTheme),
                   AiMessageTheme.test(messageSpacing: 8),
                 ],
               ),
@@ -56,9 +54,8 @@ void main() {
     await tester.pump();
   }
 
-  ScrollPosition livePosition(WidgetTester tester) => tester
-      .state<ScrollableState>(find.byType(Scrollable).first)
-      .position;
+  ScrollPosition livePosition(WidgetTester tester) =>
+      tester.state<ScrollableState>(find.byType(Scrollable).first).position;
 
   Future<void> pumpLive(WidgetTester tester) async {
     lines = List.generate(40, (i) => 'line $i');
@@ -160,6 +157,57 @@ void main() {
       livePosition(tester).maxScrollExtent - livePosition(tester).pixels,
       lessThan(4.0),
       reason: 'a rebuilt theme must not break the thinking follow',
+    );
+  });
+
+  testWidgets('finished reasoning uses the success status color', (
+    tester,
+  ) async {
+    const successColor = Color(0xFF248A5A);
+    final scheme = ColorScheme.fromSeed(seedColor: Colors.blue);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(
+          colorScheme: scheme,
+          extensions: [AiMessageTheme.test(toolSuccessColor: successColor)],
+        ),
+        home: const Scaffold(
+          body: AiReasoningPartView(part: AiReasoningPart(text: 'finished')),
+        ),
+      ),
+    );
+
+    expect(find.text('Thought'), findsOneWidget);
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.check_circle_outline)).color,
+      successColor,
+    );
+  });
+
+  testWidgets('live reasoning uses the running status color', (tester) async {
+    final scheme = ColorScheme.fromSeed(seedColor: Colors.blue);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(colorScheme: scheme),
+        home: const Scaffold(
+          body: AiReasoningPartView(
+            part: AiReasoningPart(text: 'streaming'),
+            initiallyExpanded: true,
+            autoFollow: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Thinking'), findsOneWidget);
+    expect(
+      tester
+          .widget<CircularProgressIndicator>(
+            find.byType(CircularProgressIndicator),
+          )
+          .color,
+      scheme.primary,
     );
   });
 }

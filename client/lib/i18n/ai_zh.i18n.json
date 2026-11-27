@@ -12,9 +12,12 @@
   "messageCancelled": "消息已取消",
   "messageCancelledTool": "已取消工具",
   "messageCopied": "已复制",
+  "messageEditingFile": "正在编辑文件",
   "messageExportMarkdown": "导出 Markdown",
   "messageIncomplete": "消息未完成",
-  "messageReasoning": "推理",
+  "messageReadingFile": "正在读取文件",
+  "messageReasoning": "已思考",
+  "messageReasoningInProgress": "思考中",
   "messageScrollToBottom": "滚动到底部",
   "messageShowLess": "收起",
   "messageShowMore": "显示更多",
@@ -34,8 +37,12 @@
   "messageThinkingSearches(param=count)": {
     "other": "{count: int} 次搜索"
   },
+  "messageTerminalCommandRan": "终端命令已运行",
+  "messageTerminalCommandRunning": "正在运行终端命令",
   "messageToolResult": "结果",
+  "messageToolRunning": "正在运行工具",
   "messageToolsUsed": "已使用 {count} 个工具",
   "messageUsedTool": "已使用工具",
+  "messageWritingFile": "正在写入文件",
   "toolFileNotFound": "找不到文件：{path: String}"
 }

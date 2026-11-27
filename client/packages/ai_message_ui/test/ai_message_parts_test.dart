@@ -158,7 +158,7 @@ void main() {
     expect(bubble.width, lessThan(1000 * 0.85));
   });
 
-  testWidgets('tool fallback shows Used tool label; tap expands args/result', (
+  testWidgets('read tool uses unified action label; tap expands result', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -184,7 +184,7 @@ void main() {
 
     expect(find.textContaining('Thinking process'), findsOneWidget);
     expect(find.textContaining('Used tool:'), findsNothing);
-    expect(find.textContaining('ReadFile'), findsNothing);
+    expect(find.textContaining('Read file'), findsNothing);
     expect(find.textContaining('/tmp/x'), findsNothing);
     expect(find.textContaining('file contents'), findsNothing);
 
@@ -192,12 +192,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Used tool:'), findsNothing);
-    expect(find.textContaining('ReadFile'), findsOneWidget);
+    expect(find.textContaining('Read file'), findsOneWidget);
     expect(find.textContaining('x'), findsOneWidget);
     expect(find.text('Result:'), findsNothing);
     expect(find.textContaining('file contents'), findsNothing);
 
-    await tester.tap(find.textContaining('ReadFile'));
+    await tester.tap(find.textContaining('Read file'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('/tmp/x'), findsOneWidget);
@@ -434,7 +434,8 @@ void main() {
     // its trigger row.
     expect(find.textContaining('second step'), findsOneWidget);
     expect(find.textContaining('first step'), findsNothing);
-    expect(find.text('Reasoning'), findsNWidgets(2));
+    expect(find.text('Thought'), findsOneWidget);
+    expect(find.text('Thinking'), findsOneWidget);
   });
 
   testWidgets('tip message with a trailing tool call keeps the thinking process', (

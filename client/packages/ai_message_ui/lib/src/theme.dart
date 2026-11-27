@@ -36,6 +36,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     this.userBubbleForeground,
     this.mutedSurface,
     this.toolTriggerColor,
+    this.toolSuccessColor,
     this.toolPanelColor,
     this.reasoningBorderColor,
     this.messageSpacing = 24,
@@ -62,6 +63,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     Color? userBubbleForeground,
     Color? mutedSurface,
     Color? toolTriggerColor,
+    Color? toolSuccessColor,
     Color? toolPanelColor,
     Color? reasoningBorderColor,
     double messageSpacing = 24,
@@ -88,6 +90,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
       userBubbleForeground: userBubbleForeground,
       mutedSurface: mutedSurface,
       toolTriggerColor: toolTriggerColor,
+      toolSuccessColor: toolSuccessColor,
       toolPanelColor: toolPanelColor,
       reasoningBorderColor: reasoningBorderColor,
       messageSpacing: messageSpacing,
@@ -114,6 +117,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
   final Color? userBubbleForeground;
   final Color? mutedSurface;
   final Color? toolTriggerColor;
+  final Color? toolSuccessColor;
   final Color? toolPanelColor;
   final Color? reasoningBorderColor;
 
@@ -152,6 +156,12 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
   Color resolveToolTrigger(ColorScheme scheme) =>
       toolTriggerColor ?? scheme.onSurfaceVariant;
 
+  Color resolveToolSuccess(ColorScheme scheme) =>
+      toolSuccessColor ??
+      (scheme.brightness == Brightness.dark
+          ? const Color(0xFF7BDCA5)
+          : const Color(0xFF248A5A));
+
   Color resolveToolPanel(ColorScheme scheme) =>
       toolPanelColor ?? resolveMutedSurface(scheme);
 
@@ -165,6 +175,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     Color? userBubbleForeground,
     Color? mutedSurface,
     Color? toolTriggerColor,
+    Color? toolSuccessColor,
     Color? toolPanelColor,
     Color? reasoningBorderColor,
     double? messageSpacing,
@@ -188,6 +199,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
       userBubbleForeground: userBubbleForeground ?? this.userBubbleForeground,
       mutedSurface: mutedSurface ?? this.mutedSurface,
       toolTriggerColor: toolTriggerColor ?? this.toolTriggerColor,
+      toolSuccessColor: toolSuccessColor ?? this.toolSuccessColor,
       toolPanelColor: toolPanelColor ?? this.toolPanelColor,
       reasoningBorderColor: reasoningBorderColor ?? this.reasoningBorderColor,
       messageSpacing: messageSpacing ?? this.messageSpacing,
@@ -223,6 +235,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
       ),
       mutedSurface: Color.lerp(mutedSurface, other.mutedSurface, t),
       toolTriggerColor: Color.lerp(toolTriggerColor, other.toolTriggerColor, t),
+      toolSuccessColor: Color.lerp(toolSuccessColor, other.toolSuccessColor, t),
       toolPanelColor: Color.lerp(toolPanelColor, other.toolPanelColor, t),
       reasoningBorderColor: Color.lerp(
         reasoningBorderColor,

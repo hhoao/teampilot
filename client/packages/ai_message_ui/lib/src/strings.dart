@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 
 import 'thinking_process_summary.dart';
 
+typedef AiToolActivityLabelFormatter =
+    String Function(AiToolCallCategory category, {required bool running});
+
 /// Host-injected copy for ai_message_ui (package stays l10n-free).
 @immutable
 class AiMessageStrings {
@@ -10,7 +13,9 @@ class AiMessageStrings {
     this.usedTool = 'Used tool',
     this.cancelledTool = 'Cancelled tool',
     this.formatToolsUsed = _defaultToolsUsed,
-    this.reasoning = 'Reasoning',
+    this.reasoning = 'Thought',
+    this.reasoningInProgress = 'Thinking',
+    this.formatToolActivity,
     this.result = 'Result',
     this.copy = 'Copy',
     this.copied = 'Copied',
@@ -80,6 +85,8 @@ class AiMessageStrings {
   final AiThinkingProcessSummaryFormatter formatThinkingProcessSummary;
   final String Function(int steps, int toolCalls)? formatThinkingProcessStats;
   final String reasoning;
+  final String reasoningInProgress;
+  final AiToolActivityLabelFormatter? formatToolActivity;
   final String result;
   final String copy;
   final String copied;
@@ -132,6 +139,19 @@ class AiMessageStrings {
   final String Function(Object count) formatTaskBoardMore;
   final String taskBoardShowLess;
 
+  String reasoningLabel({required bool running}) =>
+      running ? reasoningInProgress : reasoning;
+
+  String toolActivityLabel(
+    AiToolCallCategory category, {
+    required bool running,
+  }) {
+    final formatter = formatToolActivity;
+    if (formatter != null) return formatter(category, running: running);
+    if (category == AiToolCallCategory.other && !running) return usedTool;
+    return _defaultToolActivityLabel(category, running: running);
+  }
+
   String toolsUsedLabel(int count) => formatToolsUsed(count);
 
   String askUserAskedLabel(int count) => formatAskUserAsked(count);
@@ -156,6 +176,25 @@ class AiMessageStrings {
     AiTaskStatus.completed => taskStatusCompleted,
     AiTaskStatus.cancelled => taskStatusCancelled,
     AiTaskStatus.unknown => taskStatusUnknown,
+  };
+
+  static String _defaultToolActivityLabel(
+    AiToolCallCategory category, {
+    required bool running,
+  }) => switch (category) {
+    AiToolCallCategory.read => running ? 'Reading file' : 'Read file',
+    AiToolCallCategory.write => running ? 'Writing file' : 'Write file',
+    AiToolCallCategory.edit => running ? 'Editing file' : 'Edit file',
+    AiToolCallCategory.command =>
+      running ? 'Running terminal command' : 'Terminal command ran',
+    AiToolCallCategory.search => running ? 'Searching' : 'Search',
+    AiToolCallCategory.browser => running ? 'Using browser' : 'Browser action',
+    AiToolCallCategory.subagent => running ? 'Running subagent' : 'Subagent',
+    AiToolCallCategory.askUser => running ? 'Asking user' : 'Ask user',
+    AiToolCallCategory.plan => running ? 'Planning' : 'Plan',
+    AiToolCallCategory.task => running ? 'Updating tasks' : 'Task',
+    AiToolCallCategory.mcp => running ? 'Running MCP tool' : 'MCP tool',
+    AiToolCallCategory.other => running ? 'Running tool' : 'Used tool',
   };
 
   static String _defaultToolsUsed(Object count) => 'Used $count tools';

@@ -1200,14 +1200,23 @@ class AppLocalizations$ai$en {
 	/// en: 'Copied'
 	String get messageCopied => 'Copied';
 
+	/// en: 'Editing file'
+	String get messageEditingFile => 'Editing file';
+
 	/// en: 'Export Markdown'
 	String get messageExportMarkdown => 'Export Markdown';
 
 	/// en: 'Message incomplete'
 	String get messageIncomplete => 'Message incomplete';
 
-	/// en: 'Reasoning'
-	String get messageReasoning => 'Reasoning';
+	/// en: 'Reading file'
+	String get messageReadingFile => 'Reading file';
+
+	/// en: 'Thought'
+	String get messageReasoning => 'Thought';
+
+	/// en: 'Thinking'
+	String get messageReasoningInProgress => 'Thinking';
 
 	/// en: 'Scroll to bottom'
 	String get messageScrollToBottom => 'Scroll to bottom';
@@ -1254,14 +1263,26 @@ class AppLocalizations$ai$en {
 		other: '${count} searches',
 	);
 
+	/// en: 'Terminal command ran'
+	String get messageTerminalCommandRan => 'Terminal command ran';
+
+	/// en: 'Running terminal command'
+	String get messageTerminalCommandRunning => 'Running terminal command';
+
 	/// en: 'Result'
 	String get messageToolResult => 'Result';
+
+	/// en: 'Running tool'
+	String get messageToolRunning => 'Running tool';
 
 	/// en: 'Used {count} tools'
 	String messageToolsUsed({required Object count}) => 'Used ${count} tools';
 
 	/// en: 'Used tool'
 	String get messageUsedTool => 'Used tool';
+
+	/// en: 'Writing file'
+	String get messageWritingFile => 'Writing file';
 
 	/// en: 'Could not find file: {path: String}'
 	String toolFileNotFound({required String path}) => 'Could not find file: ${path}';
@@ -10636,9 +10657,12 @@ extension on AppLocalizations {
 			'ai.messageCancelled' => 'Message cancelled',
 			'ai.messageCancelledTool' => 'Cancelled tool',
 			'ai.messageCopied' => 'Copied',
+			'ai.messageEditingFile' => 'Editing file',
 			'ai.messageExportMarkdown' => 'Export Markdown',
 			'ai.messageIncomplete' => 'Message incomplete',
-			'ai.messageReasoning' => 'Reasoning',
+			'ai.messageReadingFile' => 'Reading file',
+			'ai.messageReasoning' => 'Thought',
+			'ai.messageReasoningInProgress' => 'Thinking',
 			'ai.messageScrollToBottom' => 'Scroll to bottom',
 			'ai.messageShowLess' => 'Show less',
 			'ai.messageShowMore' => 'Show more',
@@ -10650,9 +10674,13 @@ extension on AppLocalizations {
 			'ai.messageThinkingProcessSteps' => ({required int count}) => 'Thinking process · ${count} steps',
 			'ai.messageThinkingProcessSummarySeparator' => ', ',
 			'ai.messageThinkingSearches' => ({required int count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '1 search', other: '${count} searches', ), 
+			'ai.messageTerminalCommandRan' => 'Terminal command ran',
+			'ai.messageTerminalCommandRunning' => 'Running terminal command',
 			'ai.messageToolResult' => 'Result',
+			'ai.messageToolRunning' => 'Running tool',
 			'ai.messageToolsUsed' => ({required Object count}) => 'Used ${count} tools',
 			'ai.messageUsedTool' => 'Used tool',
+			'ai.messageWritingFile' => 'Writing file',
 			'ai.toolFileNotFound' => ({required String path}) => 'Could not find file: ${path}',
 			'antigravity.credentialsActionFailed' => 'Antigravity sign-in failed.',
 			'antigravity.credentialsCancel' => 'Cancel',
@@ -10794,6 +10822,8 @@ extension on AppLocalizations {
 			'automations.exitCode' => ({required int code}) => 'Exit code ${code}',
 			'automations.filterActionAll' => 'All actions',
 			'automations.filterActionLabel' => 'Action type',
+			_ => null,
+		} ?? switch (path) {
 			'automations.filterAll' => 'All',
 			'automations.filterDisabled' => 'Disabled only',
 			'automations.filterEnabled' => 'Enabled only',
@@ -10801,8 +10831,6 @@ extension on AppLocalizations {
 			'automations.filterScheduledMessage' => 'Scheduled messages',
 			'automations.filterStatusLabel' => 'Status',
 			'automations.hideFilter' => 'Hide filters',
-			_ => null,
-		} ?? switch (path) {
 			'automations.invalidCron' => 'Invalid cron expression (5 fields required)',
 			'automations.invalidMaxRunCount' => 'Run limit must be a positive number',
 			'automations.invalidTime' => 'Time must be HH:mm',
@@ -11308,6 +11336,8 @@ extension on AppLocalizations {
 			'extension.statusVersionTooOld' => 'Installed version is too old',
 			'extension.uninstall' => 'Uninstall',
 			'file.codeBlockModeDescription' => 'How oversized code blocks render in the markdown file preview.',
+			_ => null,
+		} ?? switch (path) {
 			'file.codeBlockModeTitle' => 'Code blocks in file preview',
 			'file.diffToggleDiff' => 'Diff',
 			'file.diffToggleFile' => 'File',
@@ -11315,8 +11345,6 @@ extension on AppLocalizations {
 			'file.previewHostDescription' => 'Open files in the floating workspace or the center workbench.',
 			'file.previewHostFloating' => 'Floating',
 			'file.previewHostTitle' => 'File preview',
-			_ => null,
-		} ?? switch (path) {
 			'fileTree.fileTree' => 'File Tree',
 			'fileTree.copy' => 'Copy',
 			'fileTree.copyPath' => 'Copy path',
@@ -11822,6 +11850,8 @@ extension on AppLocalizations {
 			'managedProviders.credentialSaveFailed' => 'Unable to save provider credentials securely.',
 			'managedProviders.credentialSecret' => 'API key / token',
 			'managedProviders.credentialSecretExistingHint' => 'Leave blank to keep the stored secret',
+			_ => null,
+		} ?? switch (path) {
 			'managedProviders.credentialSecretHelper' => 'Leave blank to keep the stored secret.',
 			'managedProviders.credentialSecretHint' => 'Paste the provider API key or token',
 			'managedProviders.credentialSource' => 'Credential source',
@@ -11829,8 +11859,6 @@ extension on AppLocalizations {
 			'managedProviders.credentialSourceHint' => 'secret or cli:cursor-mp-<entry>',
 			'managedProviders.credentialTemplate' => 'Credential template',
 			'managedProviders.credentialTemplateHelper' => 'Builds the final credential; often a Cookie with brace variables.',
-			_ => null,
-		} ?? switch (path) {
 			'managedProviders.credentialTemplateHint' => 'e.g. WorkosCursorSessionToken=user::token',
 			'managedProviders.credentials' => 'Credentials',
 			'managedProviders.credentialsSectionSubtitle' => 'Credential source and how it is sent.',
@@ -12336,6 +12364,8 @@ extension on AppLocalizations {
 			'remote.directoryBrowserError' => 'Couldn\'t open the remote directory. You can still type a path below.',
 			'remote.directoryBrowserTitle' => 'Browse remote directory',
 			'remote.directoryBrowserTypePathHint' => '~/work/workspace',
+			_ => null,
+		} ?? switch (path) {
 			'remote.directoryBrowserTypePathLabel' => 'Or type a path',
 			'remote.directoryBrowserUpOneLevel' => 'Up one level',
 			'remote.directoryBrowserUseThisDirectory' => 'Use this directory',
@@ -12343,8 +12373,6 @@ extension on AppLocalizations {
 			'resource.managerAppProcess' => 'App',
 			'resource.managerColumnCpu' => 'CPU',
 			'resource.managerColumnMemory' => 'Memory',
-			_ => null,
-		} ?? switch (path) {
 			'resource.managerColumnName' => 'Name',
 			'resource.managerEmptyTree' => 'Nothing running right now.',
 			'resource.managerKill' => 'Kill',
@@ -12850,6 +12878,8 @@ extension on AppLocalizations {
 			'ssh.hostKeyMismatchBody' => ({required String host}) => 'The host key for ${host} does not match the one TeamPilot saved earlier. This can happen after a reinstall — or if someone is intercepting the connection.',
 			'ssh.hostKeyMismatchTitle' => 'SSH host key changed',
 			'ssh.hostKeyPreviousFingerprintLabel' => 'Previously trusted',
+			_ => null,
+		} ?? switch (path) {
 			'ssh.hostKeyReplaceTrust' => 'Replace and trust',
 			'ssh.hostKeyTrust' => 'Trust and continue',
 			'ssh.hostKeyUnknownBody' => ({required String host}) => 'TeamPilot has not seen ${host} before. Confirm the fingerprint matches this machine before trusting it.',
@@ -12857,8 +12887,6 @@ extension on AppLocalizations {
 			'ssh.hostsManage' => 'Manage Remote Hosts…',
 			'ssh.hostsOpenTerminal' => 'Open Terminal',
 			'ssh.hostsOpenTerminalNoWorkspace' => 'Open a workspace first to start a terminal.',
-			_ => null,
-		} ?? switch (path) {
 			'ssh.hostsPanelTitle' => 'Remote Hosts',
 			'ssh.hostsPillConnecting' => 'Connecting…',
 			'ssh.hostsPillCount' => ({required int count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '1 host', other: '${count} hosts', ), 
@@ -13364,6 +13392,8 @@ extension on AppLocalizations {
 			'workspace.searchGitignore' => '.gitignore',
 			'workspace.searchHint' => 'Search sessions, files and transcript content',
 			'workspace.searchIncludeHint' => 'Include (glob, comma-separated)',
+			_ => null,
+		} ?? switch (path) {
 			'workspace.searchIndexing' => 'Indexing…',
 			'workspace.searchNoResults' => 'No matches',
 			'workspace.searchPanel' => 'Search',
@@ -13371,8 +13401,6 @@ extension on AppLocalizations {
 			'workspace.searchRecentSessions' => 'Recent sessions',
 			'workspace.searchRegex' => 'Regex',
 			'workspace.searchReplace' => 'Replace',
-			_ => null,
-		} ?? switch (path) {
 			'workspace.searchReplaceAll' => 'Replace All',
 			'workspace.searchReplaceAllMessage' => ({required int count}) => 'Replace ${count} occurrence(s)?',
 			'workspace.searchReplaceAllTitle' => 'Replace all?',

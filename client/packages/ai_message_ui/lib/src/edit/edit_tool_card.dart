@@ -7,7 +7,9 @@ import '../markdown/compiled_markdown_chrome.dart';
 import 'package:tp_markdown/tp_markdown.dart';
 import '../parts/expandable_tool_card.dart';
 import '../parts/fade_expand_body.dart';
+import '../parts/tool_status_icon.dart';
 import '../selection_dead_zone.dart';
+import '../strings.dart';
 import '../theme.dart';
 import '../tool_file_actions.dart';
 import 'edit_line_highlighter.dart';
@@ -74,10 +76,15 @@ class EditToolCard extends StatelessWidget {
     final openTarget = _openFileTarget(hunk);
     final onOpenFile = actions.onOpenFile;
     final triggerStyle = markdown.toolTrigger(triggerColor);
+    final activityLabel = AiMessageStrings.of(context).toolActivityLabel(
+      part.category == AiToolCallCategory.write
+          ? AiToolCallCategory.write
+          : AiToolCallCategory.edit,
+      running: part.isRunning,
+    );
     final openTargetStyle = markdown.toolFileLink(triggerStyle, triggerColor);
     // On-demand: collapsed mounts preview only; expand mounts full hunk.
-    final visibleLines =
-        open ? hunk.lines : previewEditHunkLines(hunk.lines);
+    final visibleLines = open ? hunk.lines : previewEditHunkLines(hunk.lines);
     final hasMore = hunk.lines.length > visibleLines.length;
 
     final titleWidget = Text(
@@ -127,15 +134,21 @@ class EditToolCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _EditStatusIcon(part: part, color: triggerColor),
-                const SizedBox(width: 6),
-                Icon(
-                  _fileTypeIcon(hunk.path),
-                  size: 15,
-                  color: triggerColor,
+                AiToolStatusIcon(part: part, color: triggerColor),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(
+                        '$activityLabel ',
+                        style: markdown.toolNameEmphasis(triggerStyle),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Flexible(child: title),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 6),
-                Expanded(child: title),
                 ...badges,
                 const SizedBox(width: 4),
                 MouseRegion(
@@ -143,10 +156,7 @@ class EditToolCard extends StatelessWidget {
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: onToggle,
-                    child: _EditExpandChevron(
-                      open: open,
-                      color: triggerColor,
-                    ),
+                    child: _EditExpandChevron(open: open, color: triggerColor),
                   ),
                 ),
               ],
@@ -225,10 +235,7 @@ class _EditDiffPanel extends StatelessWidget {
     // frame from outer padding).
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
-      child: ColoredBox(
-        color: panelColor,
-        child: lineList,
-      ),
+      child: ColoredBox(color: panelColor, child: lineList),
     );
   }
 }
@@ -367,10 +374,7 @@ class _EditBadge extends StatelessWidget {
 }
 
 class _EditExpandChevron extends StatelessWidget {
-  const _EditExpandChevron({
-    required this.open,
-    required this.color,
-  });
+  const _EditExpandChevron({required this.open, required this.color});
 
   final bool open;
   final Color color;
@@ -385,55 +389,6 @@ class _EditExpandChevron extends StatelessWidget {
       ),
     );
   }
-}
-
-class _EditStatusIcon extends StatelessWidget {
-  const _EditStatusIcon({required this.part, required this.color});
-
-  final AiToolCallPart part;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    if (part.isError) {
-      return Icon(Icons.error_outline, size: 16, color: scheme.error);
-    }
-    return switch (part.status) {
-      AiToolCallStatus.running => SizedBox(
-        width: 16,
-        height: 16,
-        child: CircularProgressIndicator(strokeWidth: 2, color: color),
-      ),
-      AiToolCallStatus.complete => Icon(
-        Icons.check_circle_outline,
-        size: 16,
-        color: color,
-      ),
-      AiToolCallStatus.incomplete => Icon(
-        Icons.highlight_off,
-        size: 16,
-        color: color,
-      ),
-      AiToolCallStatus.cancelled => Icon(
-        Icons.cancel_outlined,
-        size: 16,
-        color: color,
-      ),
-    };
-  }
-}
-
-IconData _fileTypeIcon(String path) {
-  final dot = path.lastIndexOf('.');
-  if (dot < 0) return Icons.insert_drive_file_outlined;
-  return switch (path.substring(dot + 1).toLowerCase()) {
-    'dart' || 'js' || 'ts' || 'tsx' || 'jsx' || 'py' || 'rs' || 'go' =>
-      Icons.code_outlined,
-    'md' || 'txt' => Icons.description_outlined,
-    'json' || 'yaml' || 'yml' => Icons.data_object_outlined,
-    _ => Icons.insert_drive_file_outlined,
-  };
 }
 
 String _pathBasename(String path) {

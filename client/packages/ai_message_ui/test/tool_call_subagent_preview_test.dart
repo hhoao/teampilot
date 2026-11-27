@@ -75,7 +75,7 @@ void main() {
     );
 
     expect(find.textContaining('Used tool:'), findsNothing);
-    expect(find.textContaining('Agent'), findsOneWidget);
+    expect(find.textContaining('Subagent'), findsOneWidget);
     expect(find.textContaining('Explore auth'), findsOneWidget);
     expect(find.textContaining('subagent done'), findsNothing);
 
@@ -114,7 +114,7 @@ void main() {
     );
 
     expect(find.textContaining('Used tool:'), findsNothing);
-    expect(find.textContaining('spawn_agent'), findsOneWidget);
+    expect(find.textContaining('Subagent'), findsOneWidget);
 
     await tester.tap(find.textContaining('Do work'));
     await tester.pumpAndSettle();

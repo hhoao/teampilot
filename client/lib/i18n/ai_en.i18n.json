@@ -12,9 +12,12 @@
   "messageCancelled": "Message cancelled",
   "messageCancelledTool": "Cancelled tool",
   "messageCopied": "Copied",
+  "messageEditingFile": "Editing file",
   "messageExportMarkdown": "Export Markdown",
   "messageIncomplete": "Message incomplete",
-  "messageReasoning": "Reasoning",
+  "messageReadingFile": "Reading file",
+  "messageReasoning": "Thought",
+  "messageReasoningInProgress": "Thinking",
   "messageScrollToBottom": "Scroll to bottom",
   "messageShowLess": "Show less",
   "messageShowMore": "Show more",
@@ -38,8 +41,12 @@
     "one": "1 search",
     "other": "{count: int} searches"
   },
+  "messageTerminalCommandRan": "Terminal command ran",
+  "messageTerminalCommandRunning": "Running terminal command",
   "messageToolResult": "Result",
+  "messageToolRunning": "Running tool",
   "messageToolsUsed": "Used {count} tools",
   "messageUsedTool": "Used tool",
+  "messageWritingFile": "Writing file",
   "toolFileNotFound": "Could not find file: {path: String}"
 }

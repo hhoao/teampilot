@@ -131,6 +131,8 @@ void main() {
     );
 
     expect(find.textContaining('Used tool:'), findsNothing);
+    expect(find.textContaining('Edit file'), findsOneWidget);
+    expect(find.byIcon(Icons.code_outlined), findsNothing);
     expect(find.textContaining('tp_sidebar_provider.dart'), findsOneWidget);
     expect(find.textContaining('+'), findsWidgets);
     expect(find.textContaining('edgeOpenEnabled'), findsAtLeastNWidgets(1));
@@ -499,7 +501,7 @@ void main() {
       ),
     );
     expect(find.textContaining('Used tool:'), findsNothing);
-    expect(find.textContaining('Read'), findsOneWidget);
+    expect(find.textContaining('Read file'), findsOneWidget);
     expect(find.textContaining('foo.dart'), findsOneWidget);
     expect(find.byIcon(Icons.terminal), findsNothing);
   });
@@ -537,7 +539,8 @@ void main() {
     expect(find.textContaining('Check worktree git state'), findsOneWidget);
     expect(find.textContaining('git status --short'), findsNothing);
     expect(find.textContaining('Result:'), findsNothing);
-    expect(find.byIcon(Icons.terminal), findsOneWidget);
+    expect(find.textContaining('Terminal command ran'), findsOneWidget);
+    expect(find.byIcon(Icons.terminal), findsNothing);
 
     await tester.tap(find.byIcon(Icons.expand_more));
     await tester.pumpAndSettle();
