@@ -50,6 +50,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_member_session.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/acp.dart'
     show opencodeEnableQuestionToolEnvKey;
@@ -626,7 +627,13 @@ void main() {
   test('attachAcpRuntime stages app-owned MCP (catalog + session SSH) for a '
       'personal seat', () async {
     final gateway = _FakeAgentStatusGateway();
-    final harness = _Harness(gateway: gateway);
+    final harness = _Harness(
+      gateway: gateway,
+      // ACP preflights the local working directory before launching.
+      storage: fakeHomeStorage(
+        filesystem: InMemoryFilesystem()..directories.add('/local'),
+      ),
+    );
     final session = _personalSession(cli: CliTool.opencode);
     final workspace = Workspace(
       workspaceId: 'w1',
@@ -848,7 +855,9 @@ class _Harness {
     this.seatLookup,
     this.remoteBusSetup,
     this.onTeamAgentStatus,
-  }) : launchTarget = launchTarget ?? RuntimeTarget.local() {
+    HomeStorage? storage,
+  }) : launchTarget = launchTarget ?? RuntimeTarget.local(),
+       storage = storage ?? fakeHomeStorage() {
     tabStore.setActiveWorkspaceId('w1');
     tabStore.registerSession(tab);
     materializer = _RecordingMaterializer(tabStore: tabStore);
@@ -861,7 +870,7 @@ class _Harness {
         seatLookup: seatLookup,
         remoteBusSetup: remoteBusSetup,
       ),
-      storage: fakeHomeStorage(),
+      storage: this.storage,
       acpRuntimeFactory: ({required logger, required tool}) => runtime,
       prepareAcpContribution: (session, workspace) async => const {},
       prepareAcpTeamConnect:
@@ -909,6 +918,7 @@ class _Harness {
   final AcpMemberLifecycleGate? gate;
   final String prepareTeamRemoteCliPath;
   final RuntimeTarget launchTarget;
+  final HomeStorage storage;
   final AcpRemoteStagingBuilder? remoteStaging;
   final AcpSshLaunchFactory? sshLaunchFactory;
   final TeammateBusMcpGatewayPort? gateway;

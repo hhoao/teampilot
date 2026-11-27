@@ -339,10 +339,7 @@ void main() {
       await pumpSidebar(tester, embedFooter: false);
 
       final viewport = tester.getRect(
-        find.ancestor(
-          of: find.byKey(const ValueKey('workspace-running-split-g0')),
-          matching: find.byType(ListView),
-        ),
+        find.byKey(const ValueKey('workspace-running-sessions-scroll')),
       );
       final lastTile = tester.getRect(
         find.byKey(const ValueKey('workspace-running-session-b')),
@@ -364,10 +361,7 @@ void main() {
     await pumpSidebar(tester);
 
     final viewport = tester.getRect(
-      find.ancestor(
-        of: find.byKey(const ValueKey('workspace-running-split-g0')),
-        matching: find.byType(ListView),
-      ),
+      find.byKey(const ValueKey('workspace-running-sessions-scroll')),
     );
     final lastTile = tester.getRect(
       find.byKey(const ValueKey('workspace-running-session-b')),
@@ -642,7 +636,9 @@ void main() {
     workbenchCubit.toggleGroupLock('ws-1', first);
     await pumpSidebar(tester);
 
-    final l10n = tester.element(find.byKey(const ValueKey('workspace-running-session-b'))).l10n;
+    final l10n = tester
+        .element(find.byKey(const ValueKey('workspace-running-session-b')))
+        .l10n;
     await tester.tap(
       find.byKey(const ValueKey('workspace-running-session-b')),
       buttons: kSecondaryMouseButton,

@@ -346,8 +346,8 @@ void main() {
 
     // Exactly one chain head (reasoning + Read folded in).
     expect(find.textContaining('Explored 1 file'), findsOneWidget);
-    // Task (subagent, not folded) stays standalone and visible.
-    expect(find.textContaining('Task'), findsWidgets);
+    // Subagent (not folded) stays standalone and visible.
+    expect(find.textContaining('Subagent'), findsWidgets);
 
     // History review opens with the tip chain folded; expanding it must show
     // the folded Read row *inside* the chain, while the unfolded Task stays
@@ -361,7 +361,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: chain, matching: find.textContaining('Task')),
+      find.descendant(of: chain, matching: find.textContaining('Subagent')),
       findsNothing,
     );
   });
