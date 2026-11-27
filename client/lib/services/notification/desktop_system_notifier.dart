@@ -6,6 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../utils/logging/logger.dart';
+import 'notification_support.dart';
 
 typedef NotificationTapHandler = void Function(String? payload);
 
@@ -33,6 +34,9 @@ class DesktopSystemNotifier {
   static bool _permissionsRequested = false;
   static FlutterLocalNotificationsPlugin? _sharedPlugin;
   static NotificationTapHandler? _onNotificationTap;
+
+  /// False on hosts without a usable notification backend (currently Wine).
+  static final bool isSupported = detectOsNotificationSupport();
 
   /// macOS/iOS: defer permission prompts out of [initialize] so the dialog is
   /// not shown while the main window is still hidden behind the boot splash.
@@ -74,7 +78,7 @@ class DesktopSystemNotifier {
     if (onNotificationTap != null) {
       _onNotificationTap = onNotificationTap;
     }
-    if (kIsWeb || _initialized) return;
+    if (kIsWeb || !isSupported || _initialized) return;
     _sharedPlugin ??= FlutterLocalNotificationsPlugin();
     await _initializePlugin(_sharedPlugin!, appName);
     _initialized = true;
@@ -112,6 +116,7 @@ class DesktopSystemNotifier {
     String? subtitle,
     String? payload,
   }) async {
+    if (!isSupported) return;
     final show = _show;
     if (show != null) {
       await show(

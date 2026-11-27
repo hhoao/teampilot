@@ -508,27 +508,6 @@ void main() async {
   if (!Platform.isAndroid) {
     await windowManager.setPreventClose(true);
   }
-  await DesktopSystemNotifier.ensureInitialized(
-    onNotificationTap: (payload) {
-      unawaited(
-        handleSessionIdleNotificationTap(
-          payload: payload,
-          go: appRouter.go,
-          markReadMatchingPayload: (location) async {
-            final recorder = NotificationRecorder.maybeCurrent;
-            if (recorder is NotificationCubit) {
-              await recorder.markReadMatchingPayload(location);
-            }
-          },
-          focusWindow: () async {
-            if (Platform.isAndroid) return;
-            await windowManager.show();
-            await windowManager.focus();
-          },
-        ),
-      );
-    },
-  );
 
   // Diagnostics: exclude the whole tree from semantics on desktop (no screen
   // reader users). `isBlockingPreviousSibling` semantics traversal is O(n²)
@@ -824,6 +803,35 @@ void main() async {
         ),
       ),
     ),
+  );
+
+  // Notifications are not part of the boot path: a slow or missing backend
+  // must never delay the first frame.
+  unawaited(_initSystemNotifications());
+}
+
+/// Warms up OS notifications after the first frame is scheduled.
+Future<void> _initSystemNotifications() {
+  return DesktopSystemNotifier.ensureInitialized(
+    onNotificationTap: (payload) {
+      unawaited(
+        handleSessionIdleNotificationTap(
+          payload: payload,
+          go: appRouter.go,
+          markReadMatchingPayload: (location) async {
+            final recorder = NotificationRecorder.maybeCurrent;
+            if (recorder is NotificationCubit) {
+              await recorder.markReadMatchingPayload(location);
+            }
+          },
+          focusWindow: () async {
+            if (Platform.isAndroid) return;
+            await windowManager.show();
+            await windowManager.focus();
+          },
+        ),
+      );
+    },
   );
 }
 
