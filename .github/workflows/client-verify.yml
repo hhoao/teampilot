@@ -91,6 +91,30 @@ jobs:
 
       - uses: ./.github/actions/apply-flutter-patches
 
+      # The SSH packet ciphers are an FFI shim with no pure-Dart fallback
+      # (docs/DEVELOPMENT.md#dartssh2-native-crypto-shim). `flutter test` does
+      # not build ffiPlugin lanes, so the tests that speak real SSH need the
+      # shim built for the host first. Linux loads the committed linux/x64
+      # prebuilt; the other desktop lanes have no committed artifact.
+      - name: Build tp_sshd crypto shim (macOS)
+        if: matrix.platform == 'macos'
+        working-directory: packages/dartssh2
+        run: |
+          brew install openssl@3
+          prefix="$(brew --prefix openssl@3)"
+          CFLAGS="-I$prefix/include" LDFLAGS="-L$prefix/lib" ./native/build.sh
+
+      - name: Build tp_sshd crypto shim (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vcpkg = if ($env:VCPKG_INSTALLATION_ROOT) { $env:VCPKG_INSTALLATION_ROOT } else { 'C:\vcpkg' }
+          & "$vcpkg\vcpkg.exe" install openssl:x64-mingw-static
+          $env:OPENSSL_ROOT_DIR = (Join-Path $vcpkg 'installed\x64-mingw-static') -replace '\\', '/'
+          $env:PATH = "C:\msys64\mingw64\bin;$env:PATH"
+          bash packages/dartssh2/native/ci-build-all.sh windows-x64
+
       - name: Accept Android SDK licenses
         if: matrix.platform == 'android'
         run: yes | flutter doctor --android-licenses
