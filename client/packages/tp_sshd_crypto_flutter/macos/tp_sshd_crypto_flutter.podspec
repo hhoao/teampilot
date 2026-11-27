@@ -23,10 +23,13 @@ the dartssh2 package; this lane only compiles it into the macOS build.
   s.source_files     = 'Classes/**/*'
   s.dependency 'FlutterMacOS'
 
-  # Current macOS SDKs do not ship LibreSSL headers. Compile against Homebrew
-  # OpenSSL 3 and link its static libcrypto, so the app does not need Homebrew
-  # at runtime. CI and local builds both need `brew install openssl@3`.
-  openssl_prefix = `brew --prefix openssl@3 2>/dev/null`.strip
+  # Current macOS SDKs do not ship LibreSSL headers. Compile against OpenSSL 3
+  # and link its static libcrypto, so the app does not need OpenSSL at runtime.
+  # A universal app needs a universal libcrypto: Homebrew's build is host-arch
+  # only, so release CI points TEAMPILOT_OPENSSL_PREFIX at a lipo'd prefix and
+  # local builds fall back to Homebrew (host arch, fine for tests).
+  openssl_prefix = ENV['TEAMPILOT_OPENSSL_PREFIX'] ||
+                   `brew --prefix openssl@3 2>/dev/null`.strip
   openssl_lib = File.join(openssl_prefix, 'lib', 'libcrypto.a')
   unless File.file?(openssl_lib)
     raise "tp_sshd_crypto_flutter: Homebrew OpenSSL 3 is required (brew install openssl@3); missing #{openssl_lib}"

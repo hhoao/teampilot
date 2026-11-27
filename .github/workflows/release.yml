@@ -159,8 +159,37 @@ jobs:
 
       - uses: ./.github/actions/apply-flutter-patches
 
-      - name: Install OpenSSL 3
-        run: brew install openssl@3
+      # A universal DMG needs a universal libcrypto: the tp_sshd crypto shim
+      # links OpenSSL statically, and Homebrew's openssl@3 is host-arch only,
+      # which drops the x86_64 slice of every binary that links it. Build both
+      # slices and lipo them into one prefix the podspec picks up.
+      - name: Build universal OpenSSL 3 (x86_64 + arm64)
+        run: |
+          set -euo pipefail
+          version=3.5.9
+          work="$RUNNER_TEMP/openssl-universal"
+          rm -rf "$work" && mkdir -p "$work"
+          curl -fsSL "https://www.openssl.org/source/openssl-${version}.tar.gz" |
+            tar -xz -C "$work"
+          src="$work/openssl-${version}"
+          for arch in arm64 x86_64; do
+            (
+              cd "$src"
+              make distclean >/dev/null 2>&1 || true
+              ./Configure "darwin64-${arch}-cc" no-shared no-tests \
+                --prefix="$work/$arch" >/dev/null
+              make -j"$(sysctl -n hw.ncpu)" build_libs >/dev/null
+              make install_dev >/dev/null
+            )
+          done
+          mkdir -p "$work/universal/lib" "$work/universal/include"
+          cp -R "$work/arm64/include/." "$work/universal/include/"
+          lipo -create \
+            "$work/arm64/lib/libcrypto.a" \
+            "$work/x86_64/lib/libcrypto.a" \
+            -output "$work/universal/lib/libcrypto.a"
+          lipo -info "$work/universal/lib/libcrypto.a"
+          echo "TEAMPILOT_OPENSSL_PREFIX=$work/universal" >> "$GITHUB_ENV"
 
       - name: Install fastforge + appdmg
         working-directory: .
