@@ -299,7 +299,8 @@ jobs:
           set -euo pipefail
           version=$(grep -E '^version:' pubspec.yaml | head -1 | sed 's/version:[[:space:]]*//')
           universal_dmg=$(find dist -type f -name '*-macos.dmg' -print -quit)
-          out_dir=$(dirname "$universal_dmg")
+          # Absolute: appdmg runs from the temporary staging directory.
+          out_dir=$(cd "$(dirname "$universal_dmg")" && pwd)
           work=$(mktemp -d)
           trap 'rm -rf "$work"' EXIT
 
