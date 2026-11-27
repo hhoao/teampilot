@@ -40,9 +40,12 @@ post_install do |installer|
     flutter_additional_macos_build_settings(target)
   end
 
-  # Homebrew OpenSSL 3 is one architecture. Drop the slice its static
-  # libcrypto does not contain, or the universal macOS link fails.
-  openssl_prefix = `brew --prefix openssl@3 2>/dev/null`.strip
+  # OpenSSL 3 is linked statically. Drop the slices its libcrypto does not
+  # contain, or the universal macOS link fails. Release CI points the env at a
+  # lipo'd universal prefix (both slices present → nothing excluded); local
+  # builds fall back to Homebrew, which is host-arch only.
+  openssl_prefix = ENV['TEAMPILOT_OPENSSL_PREFIX'] ||
+                   `brew --prefix openssl@3 2>/dev/null`.strip
   next if openssl_prefix.empty?
 
   openssl_lib = File.join(openssl_prefix, 'lib', 'libcrypto.a')
